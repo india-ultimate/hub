@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "hub"
+version = "0.1.0"
+description = "Hub for managing player information, membership, etc for UPAI"
+authors = ["Puneeth Chaganti <punchagan@muse-amuse.in>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+Django = "^4.2.1"
+
+[tool.poetry.group.dev.dependencies]
+ipython = "^8.13.2"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
