@@ -11,13 +11,42 @@ from server.models import Guardian, Membership, Player, User, Vaccination
 User = get_user_model()
 
 
-date_re = _lazy_re_compile(r"(?P<day>\d{1,2})/(?P<month>\d{1,2})/(?P<year>\d{4})$")
+DATE_RE = _lazy_re_compile(r"(?P<day>\d{1,2})/(?P<month>\d{1,2})/(?P<year>\d{4})$")
+
+
+ADULTS_COLUMNS = {
+    # User
+    "email": "Personal Email ID",
+    "phone": "Personal Phone Number",
+    # Player
+    "first_name": "First/Given Name",
+    "last_name": "Last Name or Initial",
+    "dob": "Date of Birth",
+    "gender": "Gender",
+    "city": "City",
+    "state_ut": "State / UT (in India)",
+    "team_name": "Team Name / Association to India Ultimate",
+    "occupation": "Occupation",
+    "india_ultimate_profile": "Please add the link (URL) to your www.indiaultimate.org Profile here",
+    # Parent
+    # Membership
+    "membership_type": "Type of UPAI Membership",
+    # Vaccination
+    "is_vaccinated": "Are you fully vaccinated against Covid-19?",
+    "vaccination_name": "Name of the vaccination",
+    "not_vaccinated_reason": "Please select/mention your reasons",
+    "not_vaccinated_explanation": "Please give an explanation to your selected reasons for not being vaccinated against Covid-19",
+    "certificate": "Upload your final (full) vaccination Certificate here",
+}
+
+
+MINORS_COLUMNS = {}
 
 
 def parse_date_custom(date_str):
     date = parse_date(date_str)
     if date is None:
-        if match := date_re.match(date_str):
+        if match := DATE_RE.match(date_str):
             kw = {k: int(v) for k, v in match.groupdict().items()}
             return datetime.date(**kw)
     return None
@@ -38,13 +67,14 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         minors = options["minors"]
         csv_file = options["csv_file"]
+        columns = MINORS_COLUMNS if minors else ADULTS_COLUMNS
         with open(csv_file, "r") as file:
             reader = csv.DictReader(file)
             for row in reader:
                 row = {key.strip(): value.strip() for key, value in row.items()}
-                email = row["Personal Email ID"]
-                first_name = row["First/Given Name"]
-                last_name = row["Last Name or Initial"]
+                email = row[columns["email"]]
+                first_name = row[columns["first_name"]]
+                last_name = row[columns["last_name"]]
                 if not email.strip():
                     name = f"{first_name} {last_name}"
                     email = slugify(name)
@@ -55,7 +85,7 @@ class Command(BaseCommand):
                     username=email,
                     defaults={
                         "email": email,
-                        "phone": row["Personal Phone Number"],
+                        "phone": row[columns["phone"]],
                         "is_player": not minors,
                         "is_guardian": False,
                     },
@@ -70,15 +100,15 @@ class Command(BaseCommand):
                     user=user,
                     first_name=first_name,
                     last_name=last_name,
-                    date_of_birth=parse_date_custom(row["Date of Birth"]),
-                    gender=row["Gender"],
-                    city=row["City"],
-                    state_ut=row["State / UT (in India)"],
-                    team_name=row["Team Name / Association to India Ultimate"],
-                    occupation=row["Occupation"],
-                    india_ultimate_profile=row[
-                        "Please add the link (URL) to your www.indiaultimate.org Profile here"
-                    ],
+                    date_of_birth=parse_date_custom(row[columns["dob"]]),
+                    gender=row[columns["gender"]],
+                    city=row[columns["city"]],
+                    state_ut=row[columns["state_ut"]],
+                    team_name=row[columns["team_name"]],
+                    occupation=row[columns["occupation"]],
+                    # FIXME: Do we need a URL here? Or the ID? Can we get the
+                    # ID using an API from the URL?
+                    india_ultimate_profile=row[columns["india_ultimate_profile"]],
                 )
 
                 # Create or get the Guardian instance if applicable
@@ -102,22 +132,22 @@ class Command(BaseCommand):
                 # Create the Membership instance
                 membership = Membership.objects.create(
                     player=player,
-                    is_annual=row["Type of UPAI Membership"] == "Full Member (INR 600/person)",
+                    is_annual=row[columns["membership_type"]] == "Full Member (INR 600/person)",
                     start_date="2022-04-01",  # FIXME: Check with Ops Team
                     end_date="2022-03-31",  # FIXME: Check with Ops Team
                     is_active=False,
                 )
 
                 # Create the Vaccination instance
-                is_vaccinated = row["Are you fully vaccinated against Covid-19?"] == "Yes"
-                explanation_key = "Please give an explanation to your selected reasons for not being vaccinated against Covid-19"
-                reason = row["Please select/mention your reasons"]
-                explanation = f"{reason}\n{row[explanation_key]}".strip()
-                certificate = row["Upload your final (full) vaccination Certificate here"]
+                is_vaccinated = row[columns["is_vaccinated"]] == "Yes"
+                reason = row[columns["not_vaccinated_reason"]]
+                explanation = row[columns["not_vaccinated_explanation"]]
+                explanation = f"{reason}\n{explanation}".strip()
+                certificate = row[columns["certificate"]]
                 vaccination = Vaccination.objects.create(
                     player=player,
                     is_vaccinated=is_vaccinated,
-                    vaccination_name=row["Name of the vaccination"],
+                    vaccination_name=row[columns["vaccination_name"]],
                     explain_not_vaccinated=explanation,
                     # FIXME: Actually upload the image and store the ID/path?
                     # vaccination_certificate = certificate,
