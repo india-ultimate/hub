@@ -28,7 +28,7 @@ ADULTS_COLUMNS = {
     "team_name": "Team Name / Association to India Ultimate",
     "occupation": "Occupation",
     "india_ultimate_profile": "Please add the link (URL) to your www.indiaultimate.org Profile here",
-    # Parent
+    # Guardian
     # Membership
     "membership_type": "Type of UPAI Membership",
     # Vaccination
@@ -40,7 +40,33 @@ ADULTS_COLUMNS = {
 }
 
 
-MINORS_COLUMNS = {}
+MINORS_COLUMNS = {
+    # User
+    "phone": "Personal  phone number of the Minor",
+    # Player
+    "first_name": "First/Given Name of Minor",
+    "last_name": "Last Name or Initial of Minor",
+    "dob": "Date of Birth of the Minor",
+    "gender": "Gender of the Minor",
+    "city": "City of residence of the Minor",
+    "state_ut": "State / UT (in India)",
+    "team_name": "Name of the Club/College the Minor is associated with/ association of the Minor with Indian Ultimate",
+    "occupation": "Occupation",
+    "educational_institution": "Name of the educational institution the Minor is associated with",
+    "india_ultimate_profile": "Please add the link to your son/ daughter or ward's  www.indiaultimate.org Profile here",
+    # Guardian
+    "guardian_email": "Personal Email ID of the parent/ guardian",
+    "guardian_phone": "Personal Phone Number of the parent/ guardian",
+    "guardian_name": "Name of parent/ guardian of the Minor",
+    "guardian_relation": "Relationship with the minor",
+    # Membership
+    "membership_type": "Type of UPAI Membership you are opting for your son/ daughter or ward",
+    # Vaccination
+    "is_vaccinated": "Is your son/ daughter or ward fully vaccinated against Covid-19?",
+    "vaccination_name": "Name of the Vaccination",
+    "not_vaccinated_reason": "If your son/ daughter or ward is NOT Vaccinated, please share reasons below",
+    "certificate": "Upload the final (full) vaccination Certificate of your son/ daughter or ward (if applicable)",
+}
 
 
 def parse_date_custom(date_str):
@@ -72,7 +98,7 @@ class Command(BaseCommand):
             reader = csv.DictReader(file)
             for row in reader:
                 row = {key.strip(): value.strip() for key, value in row.items()}
-                email = row[columns["email"]]
+                email = row[columns["email"]] if not minors else ""
                 first_name = row[columns["first_name"]]
                 last_name = row[columns["last_name"]]
                 if not email.strip():
@@ -105,7 +131,10 @@ class Command(BaseCommand):
                     city=row[columns["city"]],
                     state_ut=row[columns["state_ut"]],
                     team_name=row[columns["team_name"]],
-                    occupation=row[columns["occupation"]],
+                    occupation=row[columns["occupation"]] if not minors else None,
+                    educational_institution=row[columns["educational_institution"]]
+                    if minors
+                    else None,
                     # FIXME: Do we need a URL here? Or the ID? Can we get the
                     # ID using an API from the URL?
                     india_ultimate_profile=row[columns["india_ultimate_profile"]],
@@ -113,18 +142,24 @@ class Command(BaseCommand):
 
                 # Create or get the Guardian instance if applicable
                 if minors:
-                    guardian_user, _ = User.objects.get_or_create(
-                        username=row["guardian_username"],
+                    guardian_email = row[columns["guardian_email"]]
+                    guardian_name = row[columns["guardian_name"]]
+                    if not guardian_email:
+                        guardian_email = slugify(guardian_name)
+                    guardian_user, created = User.objects.get_or_create(
+                        username=guardian_email,
                         defaults={
-                            "email": row["guardian_email"],
-                            "phone": row["guardian_phone_number"],
+                            "email": guardian_email,
+                            "phone": row[columns["guardian_phone"]],
                             "is_guardian": True,
                         },
                     )
-                    guardian = Guardian.objects.create(
+                    guardian, _ = Guardian.objects.get_or_create(
                         user=guardian_user,
-                        first_name=row["guardian_first_name"],
-                        last_name=row["guardian_last_name"],
+                        defaults={
+                            "full_name": guardian_name,
+                            "relation": row[columns["guardian_relation"]],
+                        },
                     )
                     player.guardian = guardian
                     player.save()
@@ -141,8 +176,11 @@ class Command(BaseCommand):
                 # Create the Vaccination instance
                 is_vaccinated = row[columns["is_vaccinated"]] == "Yes"
                 reason = row[columns["not_vaccinated_reason"]]
-                explanation = row[columns["not_vaccinated_explanation"]]
-                explanation = f"{reason}\n{explanation}".strip()
+                if minors:
+                    explanation = reason
+                else:
+                    explanation = row[columns["not_vaccinated_explanation"]]
+                    explanation = f"{reason}\n{explanation}".strip()
                 certificate = row[columns["certificate"]]
                 vaccination = Vaccination.objects.create(
                     player=player,
