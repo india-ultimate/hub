@@ -1,8 +1,9 @@
 import csv
 import datetime
+from pathlib import Path
 
 from django.contrib.auth import get_user_model
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.utils.dateparse import parse_date
 from django.utils.regex_helper import _lazy_re_compile
 from django.utils.text import slugify
@@ -82,7 +83,7 @@ class Command(BaseCommand):
     help = "Import data from CSV"
 
     def add_arguments(self, parser):
-        parser.add_argument("csv_file", type=str, help="Path to the CSV file")
+        parser.add_argument("csv_file", type=Path, help="Path to the CSV file")
         parser.add_argument(
             "--minors",
             action="store_true",
@@ -94,7 +95,9 @@ class Command(BaseCommand):
         minors = options["minors"]
         csv_file = options["csv_file"]
         columns = MINORS_COLUMNS if minors else ADULTS_COLUMNS
-        with open(csv_file, "r") as file:
+        if not csv_file.exists():
+            raise CommandError(f"'{csv_file}' does not exist.")
+        with csv_file.open("r") as file:
             reader = csv.DictReader(file)
             for row in reader:
                 row = {key.strip(): value.strip() for key, value in row.items()}
