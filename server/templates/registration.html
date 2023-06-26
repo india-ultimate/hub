@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <h1>Registration</h1>
+  <form method="POST">
+    {% csrf_token %}
+    <h3>User details</h3>
+    {{ user_form.as_p }}
+    <h3>Player details</h3>
+    {{ player_form.as_p }}
+    <h3>UPAI membership details</h3>
+    {{ membership_form.as_p }}
+    <h3>Vaccination status</h3>
+    {{ vaccination_form.as_p }}
+    <input type="submit" value="Submit">
+
+  </form>
+{% endblock %}
