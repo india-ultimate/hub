@@ -13,10 +13,10 @@ def registration_view(request):
         vaccination_form = VaccinationForm(request.POST)
 
         if user_form.is_valid() and player_form.is_valid() and membership_form.is_valid() and vaccination_form.is_valid():
-            user = user_form.save(commit=False)
-            player = player_form.save(commit=False)
-            membership = membership_form.save(commit=False)
-            vaccination = vaccination_form.save(commit=False)
+            user = user_form.save()
+            player = player_form.save()
+            membership = membership_form.save()
+            vaccination = vaccination_form.save()
             return redirect('registration_success')
 
     else:
