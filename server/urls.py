@@ -6,7 +6,7 @@ urlpatterns = [
     path("", views.home, name="home"),
     path("registration", views.registration_view, name="registration"),
     path(
-        "registration_success",
+        "registration_success/<str:membership_number>/",
         views.registration_success_view,
         name="registration_success",
     ),
