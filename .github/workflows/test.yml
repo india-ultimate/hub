@@ -19,6 +19,7 @@ jobs:
 
       - name: Ensure requirements.txt and pyproject.toml in sync
         run: |
+          poetry lock --no-update
           poetry export --without-hashes -o requirements.txt
           git diff --exit-code
 
