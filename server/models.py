@@ -77,7 +77,7 @@ class Player(models.Model):
         UK = "UK", _("Uttarakhand")
         WB = "WB", _("West Bengal")
 
-    state_ut = models.CharField(max_length=5, choices=StatesUTs.choices)
+    state_ut = models.CharField(max_length=5, choices=StatesUTs.choices, blank=True)
     team_name = models.CharField(max_length=100)
     occupation = models.CharField(max_length=100, null=True, blank=True)
     educational_institution = models.CharField(max_length=100, null=True, blank=True)
@@ -121,8 +121,8 @@ class Vaccination(models.Model):
 
     vaccination_name = models.CharField(
         max_length=10,
-        blank=True,
         choices=VaccinationName.choices,
+        blank=True,
     )
     vaccination_certificate = models.FileField(
         upload_to="vaccination_certificates/", blank=True
