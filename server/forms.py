@@ -20,6 +20,7 @@ class PlayerForm(forms.ModelForm):
             "gender",
             "city",
             "state_ut",
+            "not_in_india",
             "team_name",
             "occupation",
             "educational_institution",
@@ -27,7 +28,20 @@ class PlayerForm(forms.ModelForm):
         ]
         labels = {
             "state_ut": "State/UT",
+            "not_in_india": "I'm not in India",
         }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        state_ut = cleaned_data.get("state_ut")
+        not_in_india = cleaned_data.get("not_in_india")
+
+        if (not state_ut and not not_in_india) or (state_ut and not_in_india):
+            raise forms.ValidationError(
+                "State/UT & 'Not in India' cannot be both checked or cannot be both empty"
+            )
+
+        return cleaned_data
 
 
 class MembershipForm(forms.ModelForm):
