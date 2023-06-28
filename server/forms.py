@@ -1,5 +1,6 @@
 from django import forms
 from .models import User, Player, Membership, Vaccination
+from .helpers import calculate_startdate_enddate
 
 
 class UserForm(forms.ModelForm):
@@ -47,11 +48,17 @@ class PlayerForm(forms.ModelForm):
 
 
 class MembershipForm(forms.ModelForm):
+    membership_start, membership_end = calculate_startdate_enddate()
+
     start_date = forms.DateField(
-        widget=forms.DateInput(attrs={"type": "date"}), initial="2023-04-01"
+        widget=forms.DateInput(attrs={"type": "date", "readonly": "readonly"}),
+        initial=membership_start,
+        label="Membership start date",
     )
     end_date = forms.DateField(
-        widget=forms.DateInput(attrs={"type": "date"}), initial="2024-03-31"
+        widget=forms.DateInput(attrs={"type": "date", "readonly": "readonly"}),
+        initial=membership_end,
+        label="Membership end date",
     )
 
     class Meta:
@@ -60,10 +67,6 @@ class MembershipForm(forms.ModelForm):
             "start_date",
             "end_date",
         ]
-        labels = {
-            "start_date": "Membership start date",
-            "end_date": "Membership end date",
-        }
 
 
 class VaccinationForm(forms.ModelForm):
