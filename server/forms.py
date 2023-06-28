@@ -1,6 +1,7 @@
 from django import forms
-from .models import User, Player, Membership, Vaccination
+
 from .helpers import calculate_startdate_enddate
+from .models import Membership, Player, User, Vaccination
 
 
 class UserForm(forms.ModelForm):
@@ -89,15 +90,20 @@ class VaccinationForm(forms.ModelForm):
         explain_not_vaccinated = cleaned_data.get("explain_not_vaccinated")
         vaccination_name = cleaned_data.get("vaccination_name")
 
-        if not is_vaccinated and not explain_not_vaccinated:
-            self.add_error("is_vaccinated", "Please check box")
-            self.add_error("vaccination_name", "Select you vaccination name")
-        elif is_vaccinated and explain_not_vaccinated:
-            self.add_error("vaccination_name", "Select your vaccination name")
-            self.add_error(
-                "explain_not_vaccinated", "No explanation needed if you are vaccinated!"
-            )
-        elif is_vaccinated and not vaccination_name:
-            self.add_error("vaccination_name", "Select vaccination name")
+        if is_vaccinated:
+            if explain_not_vaccinated:
+                self.add_error(
+                    "explain_not_vaccinated", "No explanation needed if you are vaccinated"
+                )
+            if not vaccination_name:
+                self.add_error("vaccination_name", "Please select the vaccination name")
+
+        else:
+            if not explain_not_vaccinated:
+                self.add_error("explain_not_vaccinated", "Please add an explanation")
+
+            if vaccination_name:
+                msg = "Please select the checkbox if you are vaccinated or unselect the vaccinaton name"
+                self.add_error("is_vaccinated", msg)
 
         return cleaned_data
