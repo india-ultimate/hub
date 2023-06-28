@@ -20,18 +20,25 @@ def registration_view(request):
             and membership_form.is_valid()
             and vaccination_form.is_valid()
         ):
-            user = user_form.save()
+            user = user_form.save(commit=False)
             player = player_form.save(commit=False)
-            player.user = user
-            player.save()
             membership = membership_form.save(commit=False)
+            vaccination = vaccination_form.save(commit=False)
+            # Connect the objects
+            player.user = user
             membership.player = player
+            vaccination.player = player
+
+            # Save to database
+            user.save()
+            player.save()
             membership.save()
+            vaccination.save()
+
+            # Get the membership_number
             membership.refresh_from_db()
             membership_number = membership.membership_number
-            vaccination = vaccination_form.save(commit=False)
-            vaccination.player = player
-            vaccination.save()
+
             return redirect("registration_success", membership_number=membership_number)
 
     else:
@@ -51,7 +58,7 @@ def registration_view(request):
 
 
 def registration_success_view(request, membership_number):
-    membership_number = {
+    context = {
         "membership_number": membership_number,
     }
-    return render(request, "success.html", membership_number)
+    return render(request, "success.html", context)
