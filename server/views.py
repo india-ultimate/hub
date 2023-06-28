@@ -12,7 +12,7 @@ def registration_view(request):
         user_form = UserForm(request.POST)
         player_form = PlayerForm(request.POST)
         membership_form = MembershipForm(request.POST)
-        vaccination_form = VaccinationForm(request.POST)
+        vaccination_form = VaccinationForm(request.POST, request.FILES)
 
         if (
             user_form.is_valid()
