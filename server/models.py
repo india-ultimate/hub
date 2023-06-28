@@ -13,6 +13,10 @@ class User(AbstractUser):
     phone = models.CharField(max_length=20)
     email = models.EmailField()
 
+    def save(self, *args, **kwargs):
+        self.username = self.email
+        super().save(*args, **kwargs)
+
 
 class Player(models.Model):
     user = models.OneToOneField(
