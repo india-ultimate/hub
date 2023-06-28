@@ -8,7 +8,7 @@ def calculate_startdate_enddate():
     start_datetime = datetime(current_year, 4, 1)
     end_datetime = datetime(current_year + 1, 3, 31)
 
-    if start_datetime <= current_datetime <= end_datetime:
+    if start_datetime <= current_datetime < end_datetime:
         start_date = start_datetime.date()
         end_date = end_datetime.date()
     elif current_datetime < start_datetime:
