@@ -89,6 +89,7 @@ class VaccinationForm(forms.ModelForm):
         is_vaccinated = cleaned_data.get("is_vaccinated")
         explain_not_vaccinated = cleaned_data.get("explain_not_vaccinated")
         vaccination_name = cleaned_data.get("vaccination_name")
+        vaccination_certificate = cleaned_data.get("vaccination_certificate")
 
         if is_vaccinated:
             if explain_not_vaccinated:
@@ -98,12 +99,15 @@ class VaccinationForm(forms.ModelForm):
             if not vaccination_name:
                 self.add_error("vaccination_name", "Please select the vaccination name")
 
+            if not vaccination_certificate:
+                self.add_error("vaccination_certificate", "Please upload a vaccination certificate")
+
         else:
             if not explain_not_vaccinated:
                 self.add_error("explain_not_vaccinated", "Please add an explanation")
 
-            if vaccination_name:
-                msg = "Please select the checkbox if you are vaccinated or unselect the vaccinaton name"
+            if vaccination_name or vaccination_certificate:
+                msg = "Please select the checkbox if you are vaccinated or unselect the vaccinaton name and/or certificate"
                 self.add_error("is_vaccinated", msg)
 
         return cleaned_data
