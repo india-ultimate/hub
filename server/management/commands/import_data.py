@@ -3,6 +3,7 @@ import datetime
 from pathlib import Path
 
 from django.contrib.auth import get_user_model
+from django.core.files.base import ContentFile
 from django.core.management.base import BaseCommand, CommandError
 from django.utils.dateparse import parse_date
 from django.utils.regex_helper import _lazy_re_compile
@@ -90,8 +91,28 @@ class Command(BaseCommand):
             default=False,
             help="Specify that the CSV file has data for minors",
         )
+        parser.add_argument(
+            "--gdrive-map-csv",
+            type=Path,
+            help="Path to CSV file mapping downloaded file paths to GDrive IDs",
+        )
+        parser.add_argument(
+            "--download-path", type=Path, help="Path of parent directory containing downloaded data"
+        )
 
     def handle(self, *args, **options):
+        gdrive_map_csv = options["gdrive_map_csv"]
+        download_path = options["download_path"]
+        gdrive_map = {}
+        if not gdrive_map_csv and not download_path:
+            self.stdout.write(self.style.WARNING("Not uploading any media files."))
+        elif not gdrive_map_csv or not download_path:
+            raise CommandError(f"Please set both --gdrive-map-csv and --download-path.")
+        else:
+            with gdrive_map_csv.open("r") as file:
+                reader = csv.DictReader(file)
+                gdrive_map = {row["File ID"]: download_path / row["File Path"] for row in reader}
+
         minors = options["minors"]
         csv_file = options["csv_file"]
         columns = MINORS_COLUMNS if minors else ADULTS_COLUMNS
@@ -184,14 +205,32 @@ class Command(BaseCommand):
                 else:
                     explanation = row[columns["not_vaccinated_explanation"]]
                     explanation = f"{reason}\n{explanation}".strip()
-                certificate = row[columns["certificate"]]
                 vaccination = Vaccination.objects.create(
                     player=player,
                     is_vaccinated=is_vaccinated,
                     vaccination_name=row[columns["vaccination_name"]],
                     explain_not_vaccinated=explanation,
-                    # FIXME: Actually upload the image and store the ID/path?
-                    # vaccination_certificate = certificate,
                 )
+                certificate_url = row[columns["certificate"]]
+                name, content = self.find_vaccination_file(certificate_url, gdrive_map)
+                if name and content:
+                    vaccination.vaccination_certificate.save(name, content)
+                uploading_media = bool(name)
 
-                self.stdout.write(self.style.SUCCESS("Data imported successfully."))
+                msg = (
+                    "Data imported successfully."
+                    if uploading_media
+                    else "Data imported successfully (without media)."
+                )
+                self.stdout.write(self.style.SUCCESS(msg))
+
+    def find_vaccination_file(self, url, gdrive_map):
+        if not url:
+            return None, None
+        drive_id = url.split("=")[1]
+        if drive_id not in gdrive_map:
+            return drive_id, None
+        path = gdrive_map[drive_id]
+        with path.open("rb") as f:
+            name = slugify(path.stem) + path.suffix
+            return name, ContentFile(f.read())
