@@ -192,8 +192,8 @@ class Command(BaseCommand):
                 membership = Membership.objects.create(
                     player=player,
                     is_annual=row[columns["membership_type"]] == "Full Member (INR 600/person)",
-                    start_date="2022-04-01",  # FIXME: Check with Ops Team
-                    end_date="2022-03-31",  # FIXME: Check with Ops Team
+                    start_date="2022-04-01",
+                    end_date="2022-03-31",
                     is_active=False,
                 )
 
