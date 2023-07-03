@@ -27,7 +27,6 @@ DEBUG = True
 
 ALLOWED_HOSTS = ["upai-hub.fly.dev", "127.0.0.1", "localhost"]
 
-
 # Application definition
 
 AUTH_USER_MODEL = "server.User"
@@ -119,6 +118,8 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
 STATIC_URL = "static/"
+STATIC_ROOT = "/tmp/staticfiles/"
+STATICFILES_DIRS = [BASE_DIR / "frontend" / "dist"]
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
@@ -144,3 +145,8 @@ LOGGING = {
 # File upload settings
 MEDIA_ROOT = BASE_DIR / "uploads"
 MEDIA_URL = "/uploads/"
+
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.ManifestStaticFilesStorage"},
+}
