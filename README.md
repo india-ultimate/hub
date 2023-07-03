@@ -17,5 +17,5 @@ The frontend is built using SolidJS. To run the development server with
 hot-reloading, run the webpack dev server:
 
 ```bash
-yarn webpack serve --mode development
+yarn run dev
 ```
