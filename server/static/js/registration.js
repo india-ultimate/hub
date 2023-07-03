@@ -4,21 +4,25 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 
 function handleVaccinationFields() {
-  var vaccinationFieldsContainer = document.getElementById("vaccination-fields-container");
-  var explainNotVaccinatedContainer = document.getElementById("explain-not-vaccinated-container");
-  var isVaccinatedCheckbox = document.getElementById("id_is_vaccinated");
+  var isVaccinatedCheckbox = document.querySelector("#id_is_vaccinated");
+  var vaccinationName = document.querySelector("#id_vaccination_name").parentNode;
+  var vaccinationCertificate = document.querySelector("#id_vaccination_certificate").parentNode;
+  var explainNotVaccinated = document.querySelector("#id_explain_not_vaccinated").parentNode;
 
   // Initially hide the vaccination fields and show the explain_not_vaccinated field
-  vaccinationFieldsContainer.style.display = "none";
-  explainNotVaccinatedContainer.style.display = "block";
+  vaccinationName.style.display = "none";
+  vaccinationCertificate.style.display = "none";
+  explainNotVaccinated.style.display = "block";
 
   isVaccinatedCheckbox.addEventListener("change", function() {
     if (this.checked) {
-      vaccinationFieldsContainer.style.display = "block";
-      explainNotVaccinatedContainer.style.display = "none";
+      vaccinationName.style.display = "block";
+      vaccinationCertificate.style.display = "block";
+      explainNotVaccinated.style.display = "none";
     } else {
-      vaccinationFieldsContainer.style.display = "none";
-      explainNotVaccinatedContainer.style.display = "block";
+      vaccinationName.style.display = "none";
+      vaccinationCertificate.style.display = "none";
+      explainNotVaccinated.style.display = "block";
     }
   });
 }

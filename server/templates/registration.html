@@ -12,20 +12,7 @@
     <h3>UPAI membership details</h3>
     {{ membership_form.as_p }}
     <h3>Vaccination status</h3>
-    <div>
-      <label for="id_is_vaccinated">Is Vaccinated:</label>
-      {{ vaccination_form.is_vaccinated }}
-    </div>
-    <div id="vaccination-fields-container">
-      <label for="id_vaccination_name">Vaccination Name:</label>
-      {{ vaccination_form.vaccination_name }}
-      <label for="id_vaccination_certificate">Vaccination Certificate:</label>
-      {{ vaccination_form.vaccination_certificate }}
-    </div>
-    <div id="explain-not-vaccinated-container">
-      <label for="id_explain_not_vaccinated">Explanation for not being vaccinated:</label>
-      {{ vaccination_form.explain_not_vaccinated }}
-    </div>
+    {{ vaccination_form.as_p }}
     <!-- Submit button -->
     <input type="submit" value="Submit">
   </form>
