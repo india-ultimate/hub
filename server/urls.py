@@ -1,13 +1,10 @@
+from django.conf import settings
+from django.shortcuts import redirect
 from django.urls import path
 
-from . import views
+urlpatterns = []
 
-urlpatterns = [
-    path("", views.home, name="home"),
-    path("registration", views.registration_view, name="registration"),
-    path(
-        "registration_success/<str:membership_number>/",
-        views.registration_success_view,
-        name="registration_success",
-    ),
-]
+if settings.DEBUG:
+    urlpatterns.append(path("", lambda x: redirect("http://localhost:3000")))
+else:
+    raise RuntimeError("FIXME: Figure out deployment of the app!")
