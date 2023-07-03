@@ -1,5 +1,3 @@
-import { createSignal } from "solid-js";
-
 const getCookie = name => {
   const cookies = document.cookie.split(";").reduce((acc, x) => {
     const [key, val] = x.split("=");
@@ -36,15 +34,4 @@ const LoginButton = () => {
   );
 };
 
-const App = () => {
-  const [count, setCount] = createSignal(0);
-
-  return (
-    <div>
-      <h1>Welcome to India Ultimate Hub!</h1>
-      <LoginButton />
-    </div>
-  );
-};
-
-export default App;
+export default LoginButton;

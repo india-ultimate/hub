@@ -20,6 +20,19 @@ module.exports = {
             presets: ["@babel/preset-env", "solid"]
           }
         }
+      },
+      {
+        test: /\.js$/,
+        include: path.resolve(__dirname, "src/components"),
+        use: [
+          "solid-hot-loader",
+          {
+            loader: "babel-loader",
+            options: {
+              presets: ["@babel/preset-env", "solid"]
+            }
+          }
+        ]
       }
     ]
   },
