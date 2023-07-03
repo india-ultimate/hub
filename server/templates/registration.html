@@ -8,50 +8,7 @@
     <h3>User details</h3>
     {{ user_form.as_p }}
     <h3>Player details</h3>
-    <div id="id_first_name">
-      <label for="id_first_name">First Name:</label>
-      {{player_form.first_name}}
-    </div>
-    <div id="id_last_name">
-      <label for="id_last_name">Last Name:</label>
-      {{player_form.last_name}}
-    </div>
-    <div id="id_date_of_birth">
-      <label for="id_date_of_birth">Date Of Birth:</label>
-      {{player_form.date_of_birth}}
-    </div>
-    <div id="id_gender">
-      <label for="id_gender">Gender:</label>
-      {{player_form.gender}}
-    </div>
-    <div id="id_city">
-      <label for="id_city">City:</label>
-      {{player_form.city}}
-    </div>
-    <div id="id_not_in_inda">
-      <label for="id_not_in_india">I'm not in India:</label>
-      {{player_form.not_in_india}}
-    </div>
-    <div id="id_state_ut">
-      <label for="id_state_ut">State/UT:</label>
-      {{player_form.state_ut}}
-    </div>
-    <div id="id_team_name">
-      <label for="id_team_name">Team Name:</label>
-    {{player_form.team_name}}
-    </div>
-    <div id="id_occupation">
-      <label for="id_occupation">Occupation:</label>
-    {{player_form.occupation}}
-    </div>
-    <div id="id_educational_institution">
-      <label for="id_educational_institution">Educational Institution:</label>
-    {{player_form.educational_institution}}
-    </div>
-    <div id="id_india_ultimate_profile">
-      <label for="id_india_ultimate_profile">India Ultimate Profile:</label>
-    {{player_form.india_ultimate_profile}}
-    </div>
+    {{ player_form.as_p }}
     <h3>UPAI membership details</h3>
     {{ membership_form.as_p }}
     <h3>Vaccination status</h3>

@@ -24,17 +24,27 @@ function handleVaccinationFields() {
 }
 
 function handleNotInIndiaField() {
-  var notInIndiaCheckbox = document.getElementById("id_not_in_india");
-  var stateUTField = document.getElementById("id_state_ut");
+  var notInIndiaCheckbox = document.querySelector("#id_not_in_india");
+  var stateUTFieldContainer = document.querySelector("#id_state_ut").parentNode; // Comment this line for Method 2
 
-  // Initially show state_ut field
-  stateUTField.style.display = "block";
+  // Method 2: uncomment following lines
+  // var stateUTField = document.querySelector("#id_state_ut");
+  // var stateUTLabel = document.querySelector("label[for='id_state_ut']");
+
+  // Initially show state_ut field and title
+  stateUTFieldContainer.style.display = "block";
+  // Method 2: uncomment following line
+  // stateUTLabel.style.display = "block";
 
   notInIndiaCheckbox.addEventListener("change", function() {
     if (this.checked) {
-      stateUTField.style.display = "none";
+      stateUTFieldContainer.style.display = "none";
+      // Method 2: uncomment following line
+      // stateUTLabel.style.display = "none";
     } else {
-      stateUTField.style.display = "block";
+      stateUTFieldContainer.style.display = "block";
+      // Method 2: uncomment following line
+      // stateUTLabel.style.display = "block";
     }
   });
 }
