@@ -1,16 +1,20 @@
-import { createSignal } from "solid-js";
+import { lazy } from "solid-js";
+import { Routes, Route } from "@solidjs/router";
+const Login = lazy(() => import("./Login"));
+const Home = lazy(() => import("./Home"));
 
-import LoginButton from "./LoginButton";
-
-const App = () => {
-  const [count, setCount] = createSignal(0);
-
+export default function App() {
   return (
     <div>
       <h1>Welcome to India Ultimate Hub!</h1>
-      <LoginButton />
+      <Routes>
+        <Route path="/login" component={Login} />
+        <Route path="/" component={Home} />
+        <Route
+          path="/about"
+          element={<div>This site was made with Solid</div>}
+        />
+      </Routes>
     </div>
   );
-};
-
-export default App;
+}
