@@ -14,6 +14,7 @@ django-ninja = "^0.22.2"
 [tool.poetry.group.dev.dependencies]
 ipython = "^8.13.2"
 black = "^23.3.0"
+ipdb = "^0.13.13"
 
 [build-system]
 requires = ["poetry-core"]
