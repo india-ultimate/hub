@@ -1,5 +1,6 @@
 from django.contrib.auth import authenticate, login
-from ninja import NinjaAPI, Schema
+from django.views.decorators.csrf import csrf_exempt
+from ninja import Form, NinjaAPI, Schema
 from ninja.security import django_auth
 
 api = NinjaAPI(auth=django_auth, csrf=True)
@@ -12,6 +13,12 @@ class Credentials(Schema):
 
 class Response(Schema):
     message: str
+
+
+class WAMessage(Schema):
+    NumMedia: int
+    From: str
+    Body: str
 
 
 @api.get("/user")
@@ -27,3 +34,20 @@ def login(request, credentials: Credentials):
         return 200, {"message": "Login successful"}
     else:
         return 403, {"message": "Invalid credentials"}
+
+
+@api.post("/whatsapp-message", auth=None)
+@csrf_exempt
+def login(request, message: WAMessage = Form(...)):
+    print(message)
+    print(request.POST)
+
+    # TODO: Check if sender is_admin (or maybe is_staff) using phone number in
+    # the message.
+
+    # For validated messages, create a Post object in the DB, with author as
+    # sender and with a creation timestamp.
+
+    # These messages can be displayed in the UI to authenticated users?
+
+    return {"message": "Received message"}
