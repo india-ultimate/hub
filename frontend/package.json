@@ -1,6 +1,8 @@
 {
   "scripts": {
-    "dev": "yarn webpack serve --mode development"
+    "dev": "yarn webpack serve --mode development",
+    "build-dev": "yarn webpack --mode development",
+    "build": "yarn webpack --mode production"
   },
   "devDependencies": {
     "@babel/core": "^7.22.5",
