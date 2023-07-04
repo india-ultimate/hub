@@ -163,3 +163,6 @@ site
 /.data/
 /uploads/
 /.envrc
+
+Dockerfile
+.git*
