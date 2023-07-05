@@ -93,6 +93,20 @@ def clean_india_ultimate_profile(url):
     return url
 
 
+def clean_phone(phone):
+    clean = phone.strip().replace("-", "").replace(" ", "").lstrip("0")
+    if not clean:
+        return ""
+    elif clean.startswith("+91") and len(clean) == 13:
+        return clean
+    elif clean.startswith("+") and not clean.startswith("+91"):
+        return clean
+    elif not clean.startswith("+") and len(clean) == 10:
+        return f"+91{clean}"
+    else:
+        return ""
+
+
 class Command(BaseCommand):
     help = "Import data from CSV"
 
@@ -143,7 +157,7 @@ class Command(BaseCommand):
                     email = slugify(name)
                     print(f"Adding user with slugified username: {email}")
 
-                phone = row[columns["phone"]]
+                phone = clean_phone(row[columns["phone"]])
                 # Create or get the User instance
                 user, created = User.objects.get_or_create(
                     username=email,
@@ -205,7 +219,7 @@ class Command(BaseCommand):
                     guardian_name = row[columns["guardian_name"]]
                     if not guardian_email:
                         guardian_email = slugify(guardian_name)
-                    guardian_phone = row[columns["guardian_phone"]]
+                    guardian_phone = clean_phone(row[columns["guardian_phone"]])
                     guardian_user, created = User.objects.get_or_create(
                         username=guardian_email,
                         defaults={
