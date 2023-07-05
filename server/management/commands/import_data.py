@@ -1,6 +1,7 @@
 import csv
 import datetime
 from pathlib import Path
+from urllib.parse import urlparse
 
 from django.contrib.auth import get_user_model
 from django.core.files.base import ContentFile
@@ -70,6 +71,11 @@ MINORS_COLUMNS = {
     "certificate": "Upload the final (full) vaccination Certificate of your son/ daughter or ward (if applicable)",
 }
 
+VALUES = {"not_in_india": "N/A (I'm not in India)"}
+
+GENDERS = {t.label: t for t in Player.GenderTypes}
+STATE_UT = {t.label: t for t in Player.StatesUTs}
+
 
 def parse_date_custom(date_str):
     date = parse_date(date_str)
@@ -78,6 +84,13 @@ def parse_date_custom(date_str):
             kw = {k: int(v) for k, v in match.groupdict().items()}
             return datetime.date(**kw)
     return None
+
+
+def clean_india_ultimate_profile(url):
+    p = urlparse(url)
+    if not p.netloc == "indiaultimate.org":
+        return None
+    return url
 
 
 class Command(BaseCommand):
@@ -130,12 +143,13 @@ class Command(BaseCommand):
                     email = slugify(name)
                     print(f"Adding user with slugified username: {email}")
 
+                phone = row[columns["phone"]]
                 # Create or get the User instance
                 user, created = User.objects.get_or_create(
                     username=email,
                     defaults={
                         "email": email,
-                        "phone": row[columns["phone"]],
+                        "phone": phone,
                         "is_player": not minors,
                         "is_guardian": False,
                     },
@@ -145,15 +159,34 @@ class Command(BaseCommand):
                     # Use the data from the first available row
                     continue
 
+                gender = row[columns["gender"]]
+                if gender in GENDERS:
+                    gender = GENDERS[gender]
+                    other_gender = None
+                else:
+                    other_gender = gender
+                    gender = GENDERS["Other"]
+
+                state_ut = row[columns["state_ut"]]
+                if state_ut in STATE_UT:
+                    state_ut = STATE_UT[state_ut]
+                    not_in_india = False
+                else:
+                    not_in_india = True
+                    state_ut = None
+
+                iu_profile = clean_india_ultimate_profile(row[columns["india_ultimate_profile"]])
+
                 # Create the Player instance
-                player = Player.objects.create(
+                player = Player(
                     user=user,
                     first_name=first_name,
                     last_name=last_name,
                     date_of_birth=parse_date_custom(row[columns["dob"]]),
-                    gender=row[columns["gender"]],
+                    gender=gender,
+                    other_gender=gender,
                     city=row[columns["city"]],
-                    state_ut=row[columns["state_ut"]],
+                    state_ut=state_ut,
                     team_name=row[columns["team_name"]],
                     occupation=row[columns["occupation"]] if not minors else None,
                     educational_institution=row[columns["educational_institution"]]
@@ -161,8 +194,10 @@ class Command(BaseCommand):
                     else None,
                     # FIXME: Do we need a URL here? Or the ID? Can we get the
                     # ID using an API from the URL?
-                    india_ultimate_profile=row[columns["india_ultimate_profile"]],
+                    india_ultimate_profile=iu_profile,
                 )
+                player.full_clean()
+                player.save()
 
                 # Create or get the Guardian instance if applicable
                 if minors:
@@ -170,11 +205,12 @@ class Command(BaseCommand):
                     guardian_name = row[columns["guardian_name"]]
                     if not guardian_email:
                         guardian_email = slugify(guardian_name)
+                    guardian_phone = row[columns["guardian_phone"]]
                     guardian_user, created = User.objects.get_or_create(
                         username=guardian_email,
                         defaults={
                             "email": guardian_email,
-                            "phone": row[columns["guardian_phone"]],
+                            "phone": guardian_phone,
                             "is_guardian": True,
                         },
                     )

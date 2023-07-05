@@ -15,12 +15,8 @@ class User(AbstractUser):
 
 
 class Player(models.Model):
-    user = models.OneToOneField(
-        User, on_delete=models.CASCADE, related_name="player_profile"
-    )
-    guardian = models.ForeignKey(
-        "Guardian", on_delete=models.SET_NULL, null=True, blank=True
-    )
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="player_profile")
+    guardian = models.ForeignKey("Guardian", on_delete=models.SET_NULL, null=True, blank=True)
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
     date_of_birth = models.DateField()
@@ -31,6 +27,7 @@ class Player(models.Model):
         OTHER = "O", _("Other")
 
     gender = models.CharField(max_length=5, choices=GenderTypes.choices)
+    other_gender = models.CharField(max_length=30, null=True, blank=True)
     city = models.CharField(max_length=100)
 
     class StatesUTs(models.TextChoices):
@@ -39,15 +36,10 @@ class Player(models.Model):
         AR = "AR", _("Arunachal Pradesh")
         AS = "AS", _("Assam")
         BR = "BR", _("Bihar")
-        CDG = (
-            "CDG",
-            _("Chandigarh"),
-        )
+        CDG = "CDG", _("Chandigarh")
         CG = "CG", _("Chhattisgarh")
-        DHDD = (
-            "DHDD",
-            _("Dadra & Nagar Haveli and Daman & Diu"),
-        )
+        DNH = "DNH", _("Dadra and Nagar Haveli")
+        DD = "DD", _("Daman and Diu")
         DL = "DL", _("Delhi")
         GA = "GA", _("Goa")
         GJ = "GJ", _("Gujarat")
@@ -77,7 +69,7 @@ class Player(models.Model):
         UK = "UK", _("Uttarakhand")
         WB = "WB", _("West Bengal")
 
-    state_ut = models.CharField(max_length=5, choices=StatesUTs.choices)
+    state_ut = models.CharField(max_length=5, choices=StatesUTs.choices, blank=True)
     not_in_india = models.BooleanField(default=False)
     team_name = models.CharField(max_length=100)
     occupation = models.CharField(max_length=100, null=True, blank=True)
@@ -86,9 +78,7 @@ class Player(models.Model):
 
 
 class Guardian(models.Model):
-    user = models.OneToOneField(
-        User, on_delete=models.CASCADE, related_name="guardian_profile"
-    )
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="guardian_profile")
     full_name = models.CharField(max_length=200)
     relation = models.TextField(max_length=200)
 
@@ -125,9 +115,7 @@ class Vaccination(models.Model):
         choices=VaccinationName.choices,
         blank=True,
     )
-    vaccination_certificate = models.FileField(
-        upload_to="vaccination_certificates/", blank=True
-    )
+    vaccination_certificate = models.FileField(upload_to="vaccination_certificates/", blank=True)
     explain_not_vaccinated = models.TextField(blank=True)
 
 
