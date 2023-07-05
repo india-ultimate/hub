@@ -31,9 +31,15 @@ const Login = () => {
       setStatus(`Successfully logged in!`);
       setLoggedIn(true);
     } else {
-      const data = await response.json();
-      setStatus(`Login failed with error: ${data.message}`);
       setLoggedIn(false);
+      try {
+        const data = await response.json();
+        setStatus(`Login failed with error: ${data.message}`);
+      } catch {
+        setStatus(
+          `Login failed with error: ${response.statusText} (${response.status})`
+        );
+      }
     }
   };
 
