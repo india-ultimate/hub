@@ -1,4 +1,5 @@
 const path = require("path");
+const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 
 module.exports = {
   entry: "./src/index.js",
@@ -11,6 +12,10 @@ module.exports = {
   },
   module: {
     rules: [
+      {
+        test: /\.css$/,
+        use: [MiniCssExtractPlugin.loader, "css-loader", "postcss-loader"]
+      },
       {
         test: /\.js$/,
         exclude: /node_modules/,
@@ -36,6 +41,12 @@ module.exports = {
       }
     ]
   },
+  plugins: [
+    // MiniCssExtractPlugin to extract css into separate files
+    new MiniCssExtractPlugin({
+      filename: "main.css"
+    })
+  ],
   devServer: {
     static: {
       directory: path.resolve(__dirname),
