@@ -1,4 +1,5 @@
-name: Django Test
+---
+name: CI Tests
 
 on:
   push:
@@ -7,10 +8,8 @@ on:
       - main
 
 jobs:
-  build:
-
+  build-generated-files:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v3
 
@@ -22,6 +21,11 @@ jobs:
           poetry lock --no-update
           poetry export --without-hashes -o requirements.txt
           git diff --exit-code
+
+  build-django-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
 
       - name: Set up Python
         uses: actions/setup-python@v4
