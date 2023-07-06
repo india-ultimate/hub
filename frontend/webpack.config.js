@@ -1,5 +1,6 @@
 const path = require("path");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
+const CopyWebpackPlugin = require("copy-webpack-plugin");
 
 module.exports = {
   entry: "./src/index.js",
@@ -45,6 +46,12 @@ module.exports = {
     // MiniCssExtractPlugin to extract css into separate files
     new MiniCssExtractPlugin({
       filename: "main.css"
+    }),
+    // CopyWebpackPlugin to copy assets folder
+    new CopyWebpackPlugin({
+      patterns: [
+        { from: "assets", to: "assets" } // Specify the source and destination folders
+      ]
     })
   ],
   devServer: {
