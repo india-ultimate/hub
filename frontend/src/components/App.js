@@ -1,6 +1,7 @@
 import { lazy } from "solid-js";
 import { Routes, Route } from "@solidjs/router";
 import Header from "./Header";
+import Footer from "./Footer";
 const Login = lazy(() => import("./Login"));
 const Home = lazy(() => import("./Home"));
 
@@ -18,6 +19,7 @@ export default function App() {
           />
         </Routes>
       </div>
+      <Footer />
     </div>
   );
 }
