@@ -15,6 +15,7 @@ django-ninja = "^0.22.2"
 ipython = "^8.13.2"
 black = "^23.3.0"
 ipdb = "^0.13.13"
+beautifulsoup4 = "^4.12.2"
 
 [build-system]
 requires = ["poetry-core"]
