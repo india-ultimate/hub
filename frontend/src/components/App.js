@@ -3,8 +3,9 @@ import { Routes, Route } from "@solidjs/router";
 import Header from "./Header";
 import Footer from "./Footer";
 
-const Login = lazy(() => import("./Login"));
+const EmailLink = lazy(() => import("./EmailLink"));
 const Home = lazy(() => import("./Home"));
+const Login = lazy(() => import("./Login"));
 
 export default function App() {
   return (
@@ -16,6 +17,7 @@ export default function App() {
             <Routes>
               <Route path="/login" component={Login} />
               <Route path="/" component={Home} />
+              <Route path="/email-link" component={EmailLink} />
               <Route
                 path="/about"
                 element={<div>This site was made with Django and Solid</div>}

@@ -3,6 +3,8 @@ from firebase_admin import auth
 from ninja import ModelSchema, NinjaAPI, Schema
 from ninja.security import django_auth
 
+from server.firebase_middleware import firebase_to_django_user
+
 User = get_user_model()
 
 api = NinjaAPI(auth=django_auth, csrf=True)
@@ -51,15 +53,10 @@ def api_login(request):
 @api.post("/firebase-login", auth=None, response={200: UserSchema, 403: Response})
 def login(request, credentials: FirebaseCredentials):
     firebase_user = auth.get_user(credentials.uid)
+    user = firebase_to_django_user(firebase_user)
     invalid_credentials = 403, {"message": "Invalid credentials"}
-    if firebase_user is None:
-        return invalid_credentials
-
-    try:
-        # FIXME: Handle login using email
+    if user is None:
         # FIXME: Decide on how to handle new sign-ups
-        user = User.objects.get(phone=firebase_user.phone_number)
-    except User.DoesNotExist:
         return invalid_credentials
 
     request.session["firebase_token"] = credentials.token

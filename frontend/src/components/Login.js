@@ -1,4 +1,8 @@
-import { getCookie } from "../utils.js";
+import {
+  getCookie,
+  loginWithFirebaseResponse,
+  firebaseConfig
+} from "../utils.js";
 import { useStore } from "../store.js";
 import { createSignal, createEffect, onMount } from "solid-js";
 import { useNavigate } from "@solidjs/router";
@@ -6,19 +10,10 @@ import { initializeApp } from "firebase/app";
 import {
   getAuth,
   RecaptchaVerifier,
+  sendSignInLinkToEmail,
   signInWithPhoneNumber
 } from "firebase/auth";
 import { initFlowbite } from "flowbite";
-
-// Your web app's Firebase configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyB5iRXnIckzjZMOthOUc3d4tCIaO2blLCA",
-  authDomain: "india-ultimate-hub.firebaseapp.com",
-  projectId: "india-ultimate-hub",
-  storageBucket: "india-ultimate-hub.appspot.com",
-  messagingSenderId: "677703680955",
-  appId: "1:677703680955:web:9014c1e57b3e04e7873a9e"
-};
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
@@ -112,6 +107,67 @@ const PasswordLogin = ({ setStatus }) => {
   );
 };
 
+const SendEmailLink = ({ setStatus }) => {
+  const [email, setEmail] = createSignal("");
+  let url = new URL(window.location);
+  url.hash = "#/email-link";
+  const sendFirebaseEmailLink = e => {
+    e.preventDefault();
+    const actionCodeSettings = {
+      // URL you want to redirect back to. The domain (www.example.com) for this
+      // URL must be in the authorized domains list in the Firebase Console.
+      url: url.toString(),
+      // This must be true.
+      handleCodeInApp: true
+    };
+
+    // console.log(auth, email, actionCodeSettings);
+
+    sendSignInLinkToEmail(auth, email(), actionCodeSettings)
+      .then(() => {
+        // The link was successfully sent. Inform the user.
+        setStatus(`Email was successfully sent to ${email()}`);
+        // Save the email locally so you don't need to ask the user for it
+        // again if they open the link on the same device.
+        window.localStorage.setItem("emailForSignIn", email());
+      })
+      .catch(error => {
+        setStatus(
+          `Failed to send email to ${email()}: ${error.code}; ${error.message}`
+        );
+      });
+  };
+
+  return (
+    <form onSubmit={sendFirebaseEmailLink}>
+      <div class="grid gap-3 mb-6">
+        <label
+          for="email-link-input"
+          class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+        >
+          Enter Email ID for sending login link
+        </label>
+        <div class="mb-6">
+          <input
+            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+            id="email-link-input"
+            placeholder="Email Address"
+            value={email()}
+            onInput={e => setEmail(e.currentTarget.value)}
+          />
+        </div>
+
+        <button
+          type="submit"
+          class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+        >
+          Send Email
+        </button>
+      </div>
+    </form>
+  );
+};
+
 const SendPhoneConfirmation = ({ setStatus }) => {
   const [phone, setPhone] = createSignal("+91");
   const [code, setCode] = createSignal("");
@@ -150,36 +206,9 @@ const SendPhoneConfirmation = ({ setStatus }) => {
     console.log(e);
     confirmationResult()
       .confirm(code())
-      .then(async firebaseResponse => {
-        const { user: { uid, accessToken: token } } = firebaseResponse;
-        const response = await fetch("/api/firebase-login", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-CSRFToken": getCookie("csrftoken")
-          },
-          body: JSON.stringify({ uid, token })
-        });
-
-        if (response.ok) {
-          setStatus(`Successfully logged in!`);
-          const data = await response.json();
-          setData(data);
-          setLoggedIn(true);
-        } else {
-          setLoggedIn(false);
-          try {
-            const data = await response.json();
-            setStatus(`Login failed with error: ${data.message}`);
-          } catch {
-            setStatus(
-              `Login failed with error: ${response.statusText} (${
-                response.status
-              })`
-            );
-          }
-        }
-      })
+      .then(async response =>
+        loginWithFirebaseResponse(response, setStatus, setLoggedIn, setData)
+      )
       .catch(error => {
         setStatus(`Login failed: ${error}`);
         console.log(error);
@@ -249,9 +278,16 @@ const Login = () => {
   const [status, setStatus] = createSignal("");
   const [store, { setLoggedIn, setData }] = useStore();
 
+  const signInFailed = window.localStorage.getItem("emailSignInFailed");
+  if (signInFailed) {
+    setStatus(signInFailed);
+    window.localStorage.removeItem("emailSignInFailed");
+  }
+
   createEffect(() => {
     if (store.loggedIn) {
       const navigate = useNavigate();
+      // FIXME: query params are not cleared with hashrouter!
       navigate("/", { replace: true });
     }
   });
@@ -272,7 +308,20 @@ const Login = () => {
           <li class="mr-2" role="presentation">
             <button
               class="inline-block p-4 border-b-2 rounded-t-lg"
+              id="email-link-tab"
+              data-tabs-target="#email-link"
+              type="button"
+              role="tab"
+              aria-controls="email-link"
+              aria-selected="false"
+            >
+              Email-Link
+            </button>
+          </li>
+          <li class="mr-2" role="presentation">
+            <button
               id="phone-tab"
+              class="inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300"
               data-tabs-target="#phone"
               type="button"
               role="tab"
@@ -298,6 +347,14 @@ const Login = () => {
         </ul>
       </div>
       <div id="signinTabContent">
+        <div
+          class="hidden p-4 rounded-lg bg-gray-50 dark:bg-gray-800"
+          id="email-link"
+          role="tabpanel"
+          aria-labelledby="email-link-tab"
+        >
+          <SendEmailLink setStatus={setStatus} />
+        </div>
         <div
           class="hidden p-4 rounded-lg bg-gray-50 dark:bg-gray-800"
           id="phone"
