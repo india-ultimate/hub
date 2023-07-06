@@ -6,7 +6,7 @@ from hub.settings import *  # noqa
 DEBUG = False
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
-SECURE_SSL_REDIRECT = True
+SECURE_SSL_REDIRECT = bool(int(os.environ.get("SECURE_SSL_REDIRECT", "1")))
 SECRET_KEY = os.environ.get("SECRET_KEY", SECRET_KEY)
 
 DATA_DIR = Path("/data")
