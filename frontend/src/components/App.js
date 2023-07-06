@@ -2,6 +2,7 @@ import { lazy } from "solid-js";
 import { Routes, Route } from "@solidjs/router";
 import Header from "./Header";
 import Footer from "./Footer";
+
 const Login = lazy(() => import("./Login"));
 const Home = lazy(() => import("./Home"));
 
@@ -9,16 +10,20 @@ export default function App() {
   return (
     <div>
       <Header />
-      <div>
-        <Routes>
-          <Route path="/login" component={Login} />
-          <Route path="/" component={Home} />
-          <Route
-            path="/about"
-            element={<div>This site was made with Solid</div>}
-          />
-        </Routes>
-      </div>
+      <section class="bg-white dark:bg-gray-900">
+        <div class="py-8 px-4 mx-auto max-w-screen-xl lg:py-16 lg:px-6">
+          <div class="max-w-screen-lg text-gray-500 sm:text-lg dark:text-gray-400">
+            <Routes>
+              <Route path="/login" component={Login} />
+              <Route path="/" component={Home} />
+              <Route
+                path="/about"
+                element={<div>This site was made with Solid</div>}
+              />
+            </Routes>
+          </div>
+        </div>
+      </section>
       <Footer />
     </div>
   );
