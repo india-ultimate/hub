@@ -22,6 +22,12 @@ jobs:
           poetry export --without-hashes -o requirements.txt
           git diff --exit-code
 
+      - name: Ensure server/templates/index.html is in sync with the frontend
+        run: |
+          poetry install --no-root --only dev
+          poetry run ./scripts/update-index-template
+          git diff --exit-code
+
   build-django-tests:
     runs-on: ubuntu-latest
     steps:
