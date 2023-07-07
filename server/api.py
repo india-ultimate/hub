@@ -3,6 +3,8 @@ from django.contrib.auth import authenticate, get_user_model, login, logout
 from firebase_admin import auth
 from ninja import ModelSchema, NinjaAPI, Schema
 from ninja.security import django_auth
+from ninja import ModelSchema
+from .models import Player, User
 
 from server.firebase_middleware import firebase_to_django_user
 
@@ -29,6 +31,13 @@ class UserSchema(ModelSchema):
     class Config:
         model = User
         model_fields = ["username"]
+
+
+class PlayerSchema(ModelSchema):
+    class Config:
+        model = Player
+        model_exclude = ['guardian'] # FIXME: Confirm what should be excluded and what are optional
+        model_fields_optional = "__all__"
 
 
 @api.get("/user")
@@ -70,3 +79,15 @@ def firebase_login(request, credentials: FirebaseCredentials):
     request.user = user
     login(request, user)
     return 200, UserSchema.from_orm(user)
+
+@api.post("/registration", response={200: Response, 400: Response})
+def register_player(request, player: PlayerSchema):
+    user = request.user
+    try:
+        Player.objects.get(user=user)
+        return 400, {"message": "Player already exists"}
+    except Player.DoesNotExist:
+        player_instance = Player(**player.dict())
+        player_instance.user = user
+        player_instance.save()
+        return 200, {"message": "Player successfully submitted"}
