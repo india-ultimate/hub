@@ -6,6 +6,11 @@ import Footer from "./Footer";
 const EmailLink = lazy(() => import("./EmailLink"));
 const Home = lazy(() => import("./Home"));
 const Login = lazy(() => import("./Login"));
+const Registration = lazy(() => import("./Registration"));
+const RegistrationSuccess = lazy(() => import("./RegistrationSuccess"));
+const RegistrationPlayerExists = lazy(() => import("./RegistrationPlayerExists"));
+const RegistrationError = lazy(() => import("./RegistrationError"));
+
 
 export default function App() {
   return (
@@ -16,6 +21,10 @@ export default function App() {
           <div class="max-w-screen-lg text-gray-500 sm:text-lg dark:text-gray-400">
             <Routes>
               <Route path="/login" component={Login} />
+              <Route path="/registration" component={Registration} />
+              <Route path="/registration-success" component={RegistrationSuccess}/>
+              <Route path="/registration-player-exists" component={RegistrationPlayerExists}/>
+              <Route path="/registration-error" component={RegistrationError}/>
               <Route path="/" component={Home} />
               <Route path="/email-link" component={EmailLink} />
               <Route
