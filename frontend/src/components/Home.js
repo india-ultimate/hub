@@ -1,5 +1,3 @@
-import { getCookie } from "../utils.js";
-
 const Home = () => {
   return (
     <div>
