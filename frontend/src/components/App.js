@@ -18,7 +18,7 @@ export default function App() {
               <Route path="/" component={Home} />
               <Route
                 path="/about"
-                element={<div>This site was made with Solid</div>}
+                element={<div>This site was made with Django and Solid</div>}
               />
             </Routes>
           </div>
