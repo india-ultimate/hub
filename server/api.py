@@ -1,7 +1,6 @@
-from django.contrib.auth import authenticate, get_user_model, login
+from django.contrib.auth import authenticate, get_user_model, login, logout
 from ninja import ModelSchema, NinjaAPI, Schema
 from ninja.security import django_auth
-
 
 User = get_user_model()
 
@@ -36,3 +35,8 @@ def api_login(request, credentials: Credentials):
         return 200, {"message": "Login successful"}
     else:
         return 403, {"message": "Invalid credentials"}
+
+
+@api.post("/logout")
+def api_login(request):
+    logout(request)

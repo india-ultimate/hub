@@ -1,5 +1,6 @@
 import { useNavigate } from "@solidjs/router";
 import { createSignal, createEffect } from "solid-js";
+import { getCookie } from "../utils.js";
 
 const Home = () => {
   // FIXME: store this information in a solidjs store, instead!
@@ -12,6 +13,20 @@ const Home = () => {
       navigate("/login", { replace: true });
     }
   });
+
+  const logout = async () => {
+    const response = await fetch("/api/logout", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCookie("csrftoken")
+      },
+      credentials: "same-origin"
+    });
+    if (response.status == 200) {
+      setLoggedIn(false);
+    }
+  };
 
   const response = fetch("/api/user", {
     method: "GET",
@@ -38,6 +53,7 @@ const Home = () => {
       <h1 class="text-4xl font-bold mb-4 text-red-500">
         Welcome, {data().username}!
       </h1>
+      <button onClick={logout}>Logout</button>
     </div>
   );
 };
