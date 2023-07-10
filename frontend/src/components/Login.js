@@ -1,16 +1,17 @@
 import { getCookie } from "../utils.js";
 import { createSignal, createEffect } from "solid-js";
 import { useNavigate } from "@solidjs/router";
+import { useStore } from "../store.js";
 
 const Login = () => {
   const csrftoken = getCookie("csrftoken");
   const [username, setUsername] = createSignal("");
   const [password, setPassword] = createSignal("");
   const [status, setStatus] = createSignal("");
-  const [loggedIn, setLoggedIn] = createSignal(false);
+  const [store, { setLoggedIn }] = useStore();
 
   createEffect(() => {
-    if (loggedIn()) {
+    if (store.loggedIn) {
       const navigate = useNavigate();
       navigate("/", { replace: true });
     }

@@ -1,14 +1,13 @@
 import { useNavigate } from "@solidjs/router";
 import { createSignal, createEffect } from "solid-js";
 import { getCookie } from "../utils.js";
+import { useStore } from "../store.js";
 
 const Home = () => {
-  // FIXME: store this information in a solidjs store, instead!
-  const [loggedIn, setLoggedIn] = createSignal(true);
-  const [data, setData] = createSignal({});
+  const [store, { setLoggedIn, setData }] = useStore();
 
   createEffect(() => {
-    if (!loggedIn()) {
+    if (!store.loggedIn) {
       const navigate = useNavigate();
       navigate("/login", { replace: true });
     }
@@ -51,7 +50,7 @@ const Home = () => {
   return (
     <div>
       <h1 class="text-4xl font-bold mb-4 text-red-500">
-        Welcome, {data().username}!
+        Welcome, {store.data.username}!
       </h1>
       <button onClick={logout}>Logout</button>
     </div>
