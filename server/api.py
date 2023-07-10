@@ -20,7 +20,7 @@ def current_user(request):
 
 
 @api.post("/login", auth=None, response={200: Response, 403: Response})
-def login(request, credentials: Credentials):
+def api_login(request, credentials: Credentials):
     user = authenticate(request, username=credentials.username, password=credentials.password)
     if user is not None:
         login(request, user)
