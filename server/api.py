@@ -1,3 +1,4 @@
+import firebase_admin
 from django.contrib.auth import authenticate, get_user_model, login, logout
 from firebase_admin import auth
 from ninja import ModelSchema, NinjaAPI, Schema
@@ -55,8 +56,9 @@ def api_logout(request):
 def firebase_login(request, credentials: FirebaseCredentials):
     try:
         firebase_user = auth.get_user(credentials.uid)
-    except ValueError:
-        # In case, firebase_app wasn't initialized because no server credentials
+    except (firebase_admin._auth_utils.UserNotFoundError, ValueError):
+        # ValueError occurs when firebase_app wasn't initialized because no
+        # server credentials
         firebase_user = None
     user = firebase_to_django_user(firebase_user)
     invalid_credentials = 403, {"message": "Invalid credentials"}
