@@ -27,7 +27,7 @@ const Home = () => {
     }
   };
 
-  const response = fetch("/api/user", {
+  fetch("/api/user", {
     method: "GET",
     headers: { "Content-Type": "application/json" },
     credentials: "same-origin"
@@ -47,6 +47,7 @@ const Home = () => {
       console.log(error);
       setLoggedIn(false);
     });
+
   return (
     <div>
       <h1 class="text-4xl font-bold mb-4 text-red-500">
