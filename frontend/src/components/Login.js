@@ -362,6 +362,10 @@ const Login = () => {
           aria-labelledby="phone-tab"
         >
           <SendPhoneConfirmation setStatus={setStatus} />
+          <p>
+            Note: The free Firebase plan only allows for 10 SMS/day. Use the
+            email login feature, if you can.
+          </p>
         </div>
         <div
           class="hidden p-4 rounded-lg bg-gray-50 dark:bg-gray-800"
