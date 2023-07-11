@@ -46,3 +46,21 @@ jobs:
       - name: Run Django tests
         run: |
           python manage.py test
+
+  frontend-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        working-directory: './frontend'
+        run: yarn
+
+      - name: Run Build
+        working-directory: './frontend'
+        run: yarn build
