@@ -48,6 +48,7 @@ def api_login(request, credentials: Credentials):
 @api.post("/logout")
 def api_login(request):
     logout(request)
+    return 200, {"message": "Logged out"}
 
 
 @api.post("/firebase-login", auth=None, response={200: UserSchema, 403: Response})
