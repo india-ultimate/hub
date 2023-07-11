@@ -1,3 +1,6 @@
+import base64
+import json
+import os
 from pathlib import Path
 
 import firebase_admin
@@ -54,6 +57,15 @@ class FirebaseAuthenticationMiddleware:
 
     def initialize_firebase_app(self):
         credentials_file = Path("secrets/serviceAccountKey.json")
+        env_var = "FIREBASE_SERVICE_ACCOUNT_CREDENTIALS"
         if credentials_file.exists():
-            cred = credentials.Certificate(str(credentials_file))
+            with credentials_file.open() as f:
+                credentials_data = json.load(f)
+        elif env_var in os.environ:
+            credentials_data = json.loads(base64.b64decode(os.environ[env_var]))
+        else:
+            credentials_data = None
+
+        if credentials_data:
+            cred = credentials.Certificate(credentials_data)
             self.firebase_app = firebase_admin.initialize_app(cred)
