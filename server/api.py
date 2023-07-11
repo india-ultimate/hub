@@ -46,7 +46,7 @@ def api_login(request, credentials: Credentials):
 
 
 @api.post("/logout")
-def api_login(request):
+def api_logout(request):
     logout(request)
     return 200, {"message": "Logged out"}
 
