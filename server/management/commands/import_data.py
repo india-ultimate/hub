@@ -164,8 +164,7 @@ class Command(BaseCommand):
                     defaults={
                         "email": email,
                         "phone": phone,
-                        "is_player": not minors,
-                        "is_guardian": False,
+                        "is_player": True,
                     },
                 )
 
