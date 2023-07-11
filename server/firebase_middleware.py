@@ -35,8 +35,7 @@ class FirebaseAuthenticationMiddleware:
         self.firebase_app = None
 
     def __call__(self, request):
-        if not self.firebase_app:
-            self.initialize_firebase_app()
+        self.initialize_firebase_app()
 
         # Check if the user is authenticated with Firebase
         firebase_token = request.session.get("firebase_token")
@@ -56,6 +55,18 @@ class FirebaseAuthenticationMiddleware:
         return response
 
     def initialize_firebase_app(self):
+        if self.firebase_app:
+            return
+
+        # In tests, the middleware is instantiated multiple times and causes
+        # firebase initialization errors. This ensures that the initialization
+        # only happens when required.
+        try:
+            self.firebase_app = firebase_admin.get_app()
+            return
+        except ValueError:
+            pass
+
         credentials_file = Path("secrets/serviceAccountKey.json")
         env_var = "FIREBASE_SERVICE_ACCOUNT_CREDENTIALS"
         if credentials_file.exists():
