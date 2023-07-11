@@ -52,7 +52,11 @@ def api_login(request):
 
 @api.post("/firebase-login", auth=None, response={200: UserSchema, 403: Response})
 def login(request, credentials: FirebaseCredentials):
-    firebase_user = auth.get_user(credentials.uid)
+    try:
+        firebase_user = auth.get_user(credentials.uid)
+    except ValueError:
+        # In case, firebase_app wasn't initialized because no server credentials
+        firebase_user = None
     user = firebase_to_django_user(firebase_user)
     invalid_credentials = 403, {"message": "Invalid credentials"}
     if user is None:

@@ -8,6 +8,9 @@ User = get_user_model()
 
 
 def firebase_to_django_user(firebase_user):
+    if firebase_user is None:
+        return None
+
     phone = firebase_user.phone_number
     email = firebase_user.email
     if not (phone or email):
