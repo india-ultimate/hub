@@ -69,7 +69,7 @@ class Player(models.Model):
         UK = "UK", _("Uttarakhand")
         WB = "WB", _("West Bengal")
 
-    state_ut = models.CharField(max_length=5, choices=StatesUTs.choices, blank=True)
+    state_ut = models.CharField(max_length=5, choices=StatesUTs.choices, null=True, blank=True)
     not_in_india = models.BooleanField(default=False)
     team_name = models.CharField(max_length=100)
     occupation = models.CharField(max_length=100, null=True, blank=True)
