@@ -51,7 +51,7 @@ def api_login(request):
 
 
 @api.post("/firebase-login", auth=None, response={200: UserSchema, 403: Response})
-def login(request, credentials: FirebaseCredentials):
+def firebase_login(request, credentials: FirebaseCredentials):
     try:
         firebase_user = auth.get_user(credentials.uid)
     except ValueError:
