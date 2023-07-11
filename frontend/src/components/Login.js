@@ -31,7 +31,7 @@ const Login = () => {
     if (response.ok) {
       setStatus(`Successfully logged in!`);
       const data = await response.json();
-      console.log(data);
+      setData(data);
       setLoggedIn(true);
     } else {
       setLoggedIn(false);
