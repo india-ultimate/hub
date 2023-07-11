@@ -50,7 +50,12 @@ const Login = () => {
     <>
       <form onSubmit={login}>
         <div class="grid gap-3 mb-6">
-          <label for="username" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Username</label>
+          <label
+            for="username"
+            class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+          >
+            Username
+          </label>
           <div class="mb-6">
             <input
               id="username"
@@ -60,7 +65,12 @@ const Login = () => {
               onInput={e => setUsername(e.currentTarget.value)}
             />
           </div>
-          <label for="password" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Password</label>
+          <label
+            for="password"
+            class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+          >
+            Password
+          </label>
           <div class="mb-6">
             <input
               id="password"
@@ -75,7 +85,8 @@ const Login = () => {
           <button
             type="submit"
             class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
-          >Login
+          >
+            Login
           </button>
         </div>
       </form>
