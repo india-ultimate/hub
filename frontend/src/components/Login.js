@@ -320,19 +320,6 @@ const Login = () => {
           </li>
           <li class="mr-2" role="presentation">
             <button
-              id="phone-tab"
-              class="inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300"
-              data-tabs-target="#phone"
-              type="button"
-              role="tab"
-              aria-controls="phone"
-              aria-selected="false"
-            >
-              Phone
-            </button>
-          </li>
-          <li class="mr-2" role="presentation">
-            <button
               class="inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300"
               id="password-tab"
               data-tabs-target="#password"
