@@ -68,4 +68,5 @@ def firebase_login(request, credentials: FirebaseCredentials):
 
     request.session["firebase_token"] = credentials.token
     request.user = user
+    login(request, user)
     return 200, UserSchema.from_orm(user)
