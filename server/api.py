@@ -27,12 +27,12 @@ def current_user(request, response={200: UserSchema}):
     return UserSchema.from_orm(request.user)
 
 
-@api.post("/login", auth=None, response={200: Response, 403: Response})
+@api.post("/login", auth=None, response={200: UserSchema, 403: Response})
 def api_login(request, credentials: Credentials):
     user = authenticate(request, username=credentials.username, password=credentials.password)
     if user is not None:
         login(request, user)
-        return 200, {"message": "Login successful"}
+        return 200, UserSchema.from_orm(user)
     else:
         return 403, {"message": "Invalid credentials"}
 

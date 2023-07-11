@@ -8,7 +8,7 @@ const Login = () => {
   const [username, setUsername] = createSignal("");
   const [password, setPassword] = createSignal("");
   const [status, setStatus] = createSignal("");
-  const [store, { setLoggedIn }] = useStore();
+  const [store, { setLoggedIn, setData }] = useStore();
 
   createEffect(() => {
     if (store.loggedIn) {
@@ -30,6 +30,8 @@ const Login = () => {
 
     if (response.ok) {
       setStatus(`Successfully logged in!`);
+      const data = await response.json();
+      console.log(data);
       setLoggedIn(true);
     } else {
       setLoggedIn(false);
