@@ -227,6 +227,9 @@ class Command(BaseCommand):
                             "is_guardian": True,
                         },
                     )
+                    if not created:
+                        guardian_user.is_guardian = True
+                        guardian_user.save()
                     guardian, _ = Guardian.objects.get_or_create(
                         user=guardian_user,
                         defaults={
