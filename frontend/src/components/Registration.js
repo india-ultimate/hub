@@ -49,7 +49,7 @@ const RegistrationForm = () => {
       gender: gender(),
       other_gender: otherGender(),
       city: city(),
-      // phone: phone(), // FIXME: Uncomment when multiple ModelSchema is implemented
+      phone: phone(),
       state_ut: state(),
       not_in_india: notInIndia(),
       team_name: teamName(),

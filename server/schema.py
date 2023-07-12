@@ -29,7 +29,7 @@ class UserSchema(ModelSchema):
 class UserFormSchema(ModelSchema):
     class Config:
         model = User
-        model_fields = ["first_name", "last_name"]
+        model_fields = ["first_name", "last_name", "phone"]
 
 
 class PlayerFormSchema(ModelSchema):
