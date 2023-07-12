@@ -10,6 +10,7 @@ from server.schema import (
     Credentials,
     FirebaseCredentials,
     PlayerFormSchema,
+    PlayerSchema,
     RegistrationSchema,
     Response,
     UserFormSchema,
@@ -62,7 +63,7 @@ def firebase_login(request, credentials: FirebaseCredentials):
     return 200, UserSchema.from_orm(user)
 
 
-@api.post("/registration", response={200: Response, 400: Response})
+@api.post("/registration", response={200: PlayerSchema, 400: Response})
 def register_player(request, registration: RegistrationSchema):
     user = request.user
 
@@ -79,4 +80,4 @@ def register_player(request, registration: RegistrationSchema):
             setattr(user, attr, value)
         user.save()
 
-        return 200, {"message": "Player successfully submitted"}
+        return 200, PlayerSchema.from_orm(player)

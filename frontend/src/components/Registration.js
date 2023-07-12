@@ -97,7 +97,10 @@ const RegistrationForm = () => {
 
   return (
     <div>
-      <Show when={!player()} fallback={<RegistrationSuccess />}>
+      <Show
+        when={!player()}
+        fallback={<RegistrationSuccess player={player()} />}
+      >
         <form onSubmit={handleSubmit}>
           <div class="grid gap-6 mb-6 md:grid-cols-2">
             <div>
