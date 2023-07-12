@@ -3,6 +3,8 @@ import { createSignal, createEffect } from "solid-js";
 import { getCookie } from "../utils.js";
 import { useStore } from "../store.js";
 
+import Player from "./Player";
+
 const Home = () => {
   const [store, { setLoggedIn, setData }] = useStore();
 
@@ -53,7 +55,10 @@ const Home = () => {
       <h1 class="text-4xl font-bold mb-4 text-red-500">
         Welcome, {store.data.first_name} {store.data.last_name}!
       </h1>
-      <button onClick={logout}>Logout</button>
+      <Player player={store.data.player} />
+      <button class="my-10" onClick={logout}>
+        Logout
+      </button>
     </div>
   );
 };
