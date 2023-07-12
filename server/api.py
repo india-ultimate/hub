@@ -29,17 +29,23 @@ class Response(Schema):
 class UserSchema(ModelSchema):
     class Config:
         model = User
+        model_fields = ["username", "first_name", "last_name"]
+
+
+class UserFormSchema(ModelSchema):
+    class Config:
+        model = User
         model_fields = ["first_name", "last_name"]
 
 
-class PlayerSchema(ModelSchema):
+class PlayerFormSchema(ModelSchema):
     class Config:
         model = Player
         model_exclude = ["user"]
         model_fields_optional = "__all__"
 
 
-class RegistrationSchema(UserSchema, PlayerSchema):
+class RegistrationSchema(UserFormSchema, PlayerFormSchema):
     pass
 
 
@@ -92,11 +98,11 @@ def register_player(request, registration: RegistrationSchema):
         Player.objects.get(user=user)
         return 400, {"message": "Player already exists"}
     except Player.DoesNotExist:
-        player_data = PlayerSchema(**registration.dict()).dict()
+        player_data = PlayerFormSchema(**registration.dict()).dict()
         player = Player(**player_data, user=user)
         player.save()
 
-        user_data = UserSchema(**registration.dict()).dict()
+        user_data = UserFormSchema(**registration.dict()).dict()
         for attr, value in user_data.items():
             setattr(user, attr, value)
         user.save()
