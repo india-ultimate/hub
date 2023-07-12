@@ -7,7 +7,6 @@ const EmailLink = lazy(() => import("./EmailLink"));
 const Home = lazy(() => import("./Home"));
 const Login = lazy(() => import("./Login"));
 const Registration = lazy(() => import("./Registration"));
-const RegistrationSuccess = lazy(() => import("./RegistrationSuccess"));
 
 export default function App() {
   return (
@@ -19,10 +18,6 @@ export default function App() {
             <Routes>
               <Route path="/login" component={Login} />
               <Route path="/registration" component={Registration} />
-              <Route
-                path="/registration-success"
-                component={RegistrationSuccess}
-              />
               <Route path="/" component={Home} />
               <Route path="/email-link" component={EmailLink} />
               <Route
