@@ -309,7 +309,7 @@ const RegistrationForm = () => {
           </div>
           <div>
             {/* State dropdown */}
-            {notInIndia() !== true && (
+            {!notInIndia() && (
               <label
                 for="state"
                 class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
