@@ -198,7 +198,7 @@ class Command(BaseCommand):
                     user=user,
                     date_of_birth=parse_date_custom(row[columns["dob"]]),
                     gender=gender,
-                    other_gender=gender,
+                    other_gender=other_gender,
                     city=row[columns["city"]],
                     state_ut=state_ut,
                     team_name=row[columns["team_name"]],
