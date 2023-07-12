@@ -3,7 +3,7 @@ from typing import List
 from django.contrib.auth import get_user_model
 from ninja import ModelSchema, Schema
 
-from server.models import Player
+from server.models import Membership, Player
 
 User = get_user_model()
 
@@ -22,12 +22,27 @@ class Response(Schema):
     message: str
 
 
+class MembershipSchema(ModelSchema):
+    class Config:
+        model = Membership
+        model_fields = "__all__"
+
+
 class PlayerSchema(ModelSchema):
     full_name: str
 
     @staticmethod
     def resolve_full_name(player):
         return player.user.get_full_name()
+
+    membership: MembershipSchema = None
+
+    @staticmethod
+    def resolve_membership(player):
+        try:
+            return MembershipSchema.from_orm(player.membership)
+        except Membership.DoesNotExist:
+            return
 
     class Config:
         model = Player
