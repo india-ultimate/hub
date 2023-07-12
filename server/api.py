@@ -1,52 +1,24 @@
 import firebase_admin
 from django.contrib.auth import authenticate, get_user_model, login, logout
 from firebase_admin import auth
-from ninja import ModelSchema, NinjaAPI, Schema
+from ninja import NinjaAPI
 from ninja.security import django_auth
 
 from server.firebase_middleware import firebase_to_django_user
 from server.models import Player
+from server.schema import (
+    Credentials,
+    FirebaseCredentials,
+    PlayerFormSchema,
+    RegistrationSchema,
+    Response,
+    UserFormSchema,
+    UserSchema,
+)
 
 User = get_user_model()
 
 api = NinjaAPI(auth=django_auth, csrf=True)
-
-
-class Credentials(Schema):
-    username: str
-    password: str
-
-
-class FirebaseCredentials(Schema):
-    token: str
-    uid: str
-
-
-class Response(Schema):
-    message: str
-
-
-class UserSchema(ModelSchema):
-    class Config:
-        model = User
-        model_fields = ["username", "first_name", "last_name"]
-
-
-class UserFormSchema(ModelSchema):
-    class Config:
-        model = User
-        model_fields = ["first_name", "last_name"]
-
-
-class PlayerFormSchema(ModelSchema):
-    class Config:
-        model = Player
-        model_exclude = ["user"]
-        model_fields_optional = "__all__"
-
-
-class RegistrationSchema(UserFormSchema, PlayerFormSchema):
-    pass
 
 
 @api.get("/user")
