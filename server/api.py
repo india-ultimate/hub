@@ -29,14 +29,18 @@ class Response(Schema):
 class UserSchema(ModelSchema):
     class Config:
         model = User
-        model_fields = ["username"]
+        model_fields = ["first_name", "last_name"]
 
 
 class PlayerSchema(ModelSchema):
     class Config:
         model = Player
-        model_exclude = ["guardian"]  # FIXME: Confirm what should be excluded and what are optional
+        model_exclude = ["user"]
         model_fields_optional = "__all__"
+
+
+class RegistrationSchema(UserSchema, PlayerSchema):
+    pass
 
 
 @api.get("/user")
@@ -81,13 +85,20 @@ def firebase_login(request, credentials: FirebaseCredentials):
 
 
 @api.post("/registration", response={200: Response, 400: Response})
-def register_player(request, player: PlayerSchema):
+def register_player(request, registration: RegistrationSchema):
     user = request.user
+
     try:
         Player.objects.get(user=user)
         return 400, {"message": "Player already exists"}
     except Player.DoesNotExist:
-        player_instance = Player(**player.dict())
-        player_instance.user = user
-        player_instance.save()
+        player_data = PlayerSchema(**registration.dict()).dict()
+        player = Player(**player_data, user=user)
+        player.save()
+
+        user_data = UserSchema(**registration.dict()).dict()
+        for attr, value in user_data.items():
+            setattr(user, attr, value)
+        user.save()
+
         return 200, {"message": "Player successfully submitted"}

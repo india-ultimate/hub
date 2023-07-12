@@ -9,7 +9,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.utils.dateparse import parse_date
 from django.utils.regex_helper import _lazy_re_compile
 from django.utils.text import slugify
-from server.models import Guardian, Membership, Player, User, Vaccination
+from server.models import Guardianship, Membership, Player, User, Vaccination
 
 User = get_user_model()
 
@@ -75,6 +75,7 @@ VALUES = {"not_in_india": "N/A (I'm not in India)"}
 
 GENDERS = {t.label: t for t in Player.GenderTypes}
 STATE_UT = {t.label: t for t in Player.StatesUTs}
+RELATIONS = {t.label: t for t in Guardianship.Relation}
 
 
 def parse_date_custom(date_str):
@@ -165,6 +166,8 @@ class Command(BaseCommand):
                         "email": email,
                         "phone": phone,
                         "is_player": True,
+                        "first_name": first_name,
+                        "last_name": last_name,
                     },
                 )
 
@@ -193,8 +196,6 @@ class Command(BaseCommand):
                 # Create the Player instance
                 player = Player(
                     user=user,
-                    first_name=first_name,
-                    last_name=last_name,
                     date_of_birth=parse_date_custom(row[columns["dob"]]),
                     gender=gender,
                     other_gender=gender,
@@ -219,26 +220,30 @@ class Command(BaseCommand):
                     if not guardian_email:
                         guardian_email = slugify(guardian_name)
                     guardian_phone = clean_phone(row[columns["guardian_phone"]])
+                    first_name, last_name = (guardian_name.strip().split() + ["", ""])[:2]
                     guardian_user, created = User.objects.get_or_create(
                         username=guardian_email,
                         defaults={
                             "email": guardian_email,
                             "phone": guardian_phone,
                             "is_guardian": True,
+                            "first_name": first_name,
+                            "last_name": last_name,
                         },
                     )
                     if not created:
                         guardian_user.is_guardian = True
                         guardian_user.save()
-                    guardian, _ = Guardian.objects.get_or_create(
+
+                    relation = row[columns["guardian_relation"]]
+                    guardian = Guardianship(
                         user=guardian_user,
-                        defaults={
-                            "full_name": guardian_name,
-                            "relation": row[columns["guardian_relation"]],
-                        },
+                        relation=RELATIONS[relation],
+                        player=player,
                     )
-                    player.guardian = guardian
-                    player.save()
+                    guardian.full_clean()
+                    # player.guardian = guardian
+                    guardian.save()
 
                 # Create the Membership instance
                 membership = Membership.objects.create(

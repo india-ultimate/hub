@@ -16,9 +16,6 @@ class User(AbstractUser):
 
 class Player(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="player_profile")
-    guardian = models.ForeignKey("Guardian", on_delete=models.SET_NULL, null=True, blank=True)
-    first_name = models.CharField(max_length=100)
-    last_name = models.CharField(max_length=100)
     date_of_birth = models.DateField()
 
     class GenderTypes(models.TextChoices):
@@ -77,10 +74,19 @@ class Player(models.Model):
     india_ultimate_profile = models.URLField(null=True, blank=True)
 
 
-class Guardian(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="guardian_profile")
-    full_name = models.CharField(max_length=200)
-    relation = models.TextField(max_length=200)
+class Guardianship(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    player = models.ForeignKey(Player, on_delete=models.CASCADE)
+
+    class Relation(models.TextChoices):
+        MO = "MO", _("Mother")
+        FA = "FA", _("Father")
+        LG = "LG", _("Legal Guardian")
+
+    relation = models.TextField(max_length=2, choices=Relation.choices)
+
+    class Meta:
+        unique_together = ("user", "player")
 
 
 class Event(models.Model):

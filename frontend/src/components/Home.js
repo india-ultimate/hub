@@ -51,7 +51,7 @@ const Home = () => {
   return (
     <div>
       <h1 class="text-4xl font-bold mb-4 text-red-500">
-        Welcome, {store.data.username}!
+        Welcome, {store.data.first_name} {store.data.last_name}!
       </h1>
       <button onClick={logout}>Logout</button>
     </div>
