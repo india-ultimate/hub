@@ -47,3 +47,8 @@ export const stateChoices = [
   { value: "UK", label: "Uttarakhand" },
   { value: "WB", label: "West Bengal" }
 ];
+
+// NOTE: Memberships go from 1st June to 31st May
+export const membershipStartDate = [1, 6];
+export const membershipEndDate = [31, 5];
+export const membershipFee = 600 * 100; // needs to be in Paise, not Rupees

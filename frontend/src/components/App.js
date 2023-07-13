@@ -7,6 +7,8 @@ const EmailLink = lazy(() => import("./EmailLink"));
 const Home = lazy(() => import("./Home"));
 const Login = lazy(() => import("./Login"));
 const Registration = lazy(() => import("./Registration"));
+const Membership = lazy(() => import("./Membership"));
+
 const filters = {
   id: /^\d+$/ // only allow numbers
 };
@@ -25,8 +27,8 @@ export default function App() {
               <Route path="/email-link" component={EmailLink} />
               <Route
                 path="/membership/:playerId"
+                component={Membership}
                 matchFilters={filters}
-                element={<div>Work in Progress!</div>}
               />
               <Route
                 path="/about"
