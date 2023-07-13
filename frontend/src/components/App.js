@@ -7,6 +7,9 @@ const EmailLink = lazy(() => import("./EmailLink"));
 const Home = lazy(() => import("./Home"));
 const Login = lazy(() => import("./Login"));
 const Registration = lazy(() => import("./Registration"));
+const filters = {
+  id: /^\d+$/ // only allow numbers
+};
 
 export default function App() {
   return (
@@ -20,6 +23,11 @@ export default function App() {
               <Route path="/registration" component={Registration} />
               <Route path="/" component={Home} />
               <Route path="/email-link" component={EmailLink} />
+              <Route
+                path="/membership/:playerId"
+                matchFilters={filters}
+                element={<div>Work in Progress!</div>}
+              />
               <Route
                 path="/about"
                 element={<div>This site was made with Django and Solid</div>}
