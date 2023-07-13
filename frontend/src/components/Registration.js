@@ -248,7 +248,9 @@ const RegistrationForm = () => {
                 onInput={handleGenderChange}
                 required
               >
-                <option value="">Select Gender</option>
+                <option value="" disabled>
+                  Select Gender
+                </option>
                 <For each={genderChoices}>
                   {choice => (
                     <option value={choice.value}>{choice.label}</option>
@@ -326,7 +328,9 @@ const RegistrationForm = () => {
                   onInput={e => setState(e.target.value)}
                   required
                 >
-                  <option value="">Select State/UT</option>
+                  <option value="" disabled>
+                    Select State/UT
+                  </option>
                   <For each={stateChoices}>
                     {choice => (
                       <option value={choice.value}>{choice.label}</option>
