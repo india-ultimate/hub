@@ -1,5 +1,5 @@
 import { getCookie } from "../utils";
-import { createSignal, Show } from "solid-js";
+import { createSignal, Show, For } from "solid-js";
 import { genderChoices, stateChoices } from "../constants";
 import RegistrationSuccess from "./RegistrationSuccess";
 
@@ -249,9 +249,11 @@ const RegistrationForm = () => {
                 required
               >
                 <option value="">Select Gender</option>
-                {genderChoices.map(choice => (
-                  <option value={choice.value}>{choice.label}</option>
-                ))}
+                <For each={genderChoices}>
+                  {choice => (
+                    <option value={choice.value}>{choice.label}</option>
+                  )}
+                </For>
               </select>
             </div>
             <div>
@@ -325,9 +327,11 @@ const RegistrationForm = () => {
                   required
                 >
                   <option value="">Select State/UT</option>
-                  {stateChoices.map(choice => (
-                    <option value={choice.value}>{choice.label}</option>
-                  ))}
+                  <For each={stateChoices}>
+                    {choice => (
+                      <option value={choice.value}>{choice.label}</option>
+                    )}
+                  </For>
                 </select>
               </div>
             </Show>
