@@ -1,6 +1,6 @@
 import { getCookie, loginWithFirebaseResponse, firebaseConfig } from "../utils";
 import { useStore } from "../store";
-import { createSignal, createEffect, onMount } from "solid-js";
+import { createSignal, createEffect, onMount, Show } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 import { initializeApp } from "firebase/app";
 import {
@@ -213,7 +213,7 @@ const SendPhoneConfirmation = ({ setStatus }) => {
 
   return (
     <>
-      {!confirmationResult() && (
+      <Show when={!confirmationResult()}>
         <form onSubmit={onSignInSubmit}>
           <div class="grid gap-3 mb-6">
             <label
@@ -240,8 +240,8 @@ const SendPhoneConfirmation = ({ setStatus }) => {
             <div class="py-2.5" id="recaptcha-container" />
           </div>
         </form>
-      )}
-      {confirmationResult() && (
+      </Show>
+      <Show when={confirmationResult()}>
         <form onSubmit={confirmResult}>
           <div class="grid gap-3 mb-6">
             <label
@@ -265,7 +265,7 @@ const SendPhoneConfirmation = ({ setStatus }) => {
             </button>
           </div>
         </form>
-      )}
+      </Show>
     </>
   );
 };
