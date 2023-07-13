@@ -144,17 +144,15 @@ const RegistrationForm = () => {
               >
                 Date of Birth
               </label>
-              <div class="relative max-w-sm">
-                <input
-                  type="date"
-                  id="dateofbirth"
-                  class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                  placeholder="Select date"
-                  value={dateOfBirth()}
-                  onInput={e => setDateOfBirth(e.currentTarget.value)}
-                  required
-                />
-              </div>
+              <input
+                type="date"
+                id="dateofbirth"
+                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                placeholder="Select date"
+                value={dateOfBirth()}
+                onInput={e => setDateOfBirth(e.currentTarget.value)}
+                required
+              />
             </div>
             <div>
               <label
@@ -242,19 +240,19 @@ const RegistrationForm = () => {
                 class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
               >
                 Gender
-                <select
-                  id="gender"
-                  class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                  value={gender()}
-                  onInput={handleGenderChange}
-                  required
-                >
-                  <option value="">Select Gender</option>
-                  {genderChoices.map(choice => (
-                    <option value={choice.value}>{choice.label}</option>
-                  ))}
-                </select>
               </label>
+              <select
+                id="gender"
+                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                value={gender()}
+                onInput={handleGenderChange}
+                required
+              >
+                <option value="">Select Gender</option>
+                {genderChoices.map(choice => (
+                  <option value={choice.value}>{choice.label}</option>
+                ))}
+              </select>
             </div>
             <div>
               <Show when={gender() === "O"}>
@@ -263,15 +261,15 @@ const RegistrationForm = () => {
                   class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
                 >
                   Other Gender:
-                  <input
-                    id="other-gender"
-                    type="text"
-                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                    value={otherGender()}
-                    onInput={e => setOtherGender(e.target.value)}
-                    required
-                  />
                 </label>
+                <input
+                  id="other-gender"
+                  type="text"
+                  class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                  value={otherGender()}
+                  onInput={e => setOtherGender(e.target.value)}
+                  required
+                />
               </Show>
             </div>
             <div>
