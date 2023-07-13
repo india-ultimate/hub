@@ -1,3 +1,5 @@
+import datetime
+from enum import Enum
 from typing import List
 
 from django.contrib.auth import get_user_model
@@ -26,6 +28,36 @@ class MembershipSchema(ModelSchema):
     class Config:
         model = Membership
         model_fields = "__all__"
+
+
+class OrderTypeEnum(str, Enum):
+    MEMBERSHIP = "membership"
+
+
+class OrderFormSchema(Schema):
+    amount: int
+    player_id: int
+    type: OrderTypeEnum
+    start_date: datetime.date
+    end_date: datetime.date
+
+
+class PaymentFormSchema(Schema):
+    razorpay_order_id: str
+    razorpay_payment_id: str
+    razorpay_signature: str
+
+
+class OrderSchema(Schema):
+    order_id: str
+    amount: int
+    currency: str
+    receipt: str
+    key: str
+    name: str
+    image: str
+    description: str
+    prefill: dict
 
 
 class PlayerSchema(ModelSchema):

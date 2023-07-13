@@ -1,14 +1,21 @@
+import time
+
 import firebase_admin
+from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model, login, logout
 from firebase_admin import auth
 from ninja import NinjaAPI
 from ninja.security import django_auth
+from requests.exceptions import RequestException
 
 from server.firebase_middleware import firebase_to_django_user
-from server.models import Player
+from server.models import Membership, Player, RazorpayTransaction
 from server.schema import (
     Credentials,
     FirebaseCredentials,
+    OrderFormSchema,
+    OrderSchema,
+    PaymentFormSchema,
     PlayerFormSchema,
     PlayerSchema,
     RegistrationSchema,
@@ -16,6 +23,7 @@ from server.schema import (
     UserFormSchema,
     UserSchema,
 )
+from server.utils import create_razorpay_order, verify_razorpay_payment
 
 User = get_user_model()
 
@@ -81,3 +89,79 @@ def register_player(request, registration: RegistrationSchema):
         user.save()
 
         return 200, PlayerSchema.from_orm(player)
+
+
+# Payments
+
+
+@api.post("/create-order", response={200: OrderSchema, 400: Response, 502: str})
+def create_order(request, order: OrderFormSchema):
+    user = request.user
+
+    try:
+        player = Player.objects.get(id=order.player_id)
+    except Player.DoesNotExist:
+        return 400, {"message": "Player does not exist!"}
+
+    try:
+        membership = player.membership
+    except Membership.DoesNotExist:
+        membership = Membership.objects.create(
+            player=player,
+            is_annual=True,
+            start_date=order.start_date,
+            end_date=order.end_date,
+            is_active=False,
+        )
+
+    ts = round(time.time())
+    receipt = f"{membership.membership_number}:{order.start_date}:{ts}"
+    notes = {
+        "user_id": user.id,
+        "player_id": player.id,
+        "membership_id": membership.id,
+    }
+    try:
+        data = create_razorpay_order(order.amount, receipt=receipt, notes=notes)
+    except RequestException as e:
+        return 502, "Failed to connect to Razorpay."
+
+    transaction = RazorpayTransaction.create_from_order_data(data, user, membership)
+    extra_data = {
+        "name": settings.APP_NAME,
+        "image": settings.LOGO_URL,
+        "description": f"{order.type.title()} for {player.user.get_full_name()}",
+        "prefill": {"name": user.get_full_name(), "email": user.email, "contact": user.phone},
+    }
+    data.update(extra_data)
+    return data
+
+
+@api.post("/payment-success", response={200: PlayerSchema, 502: str, 404: Response, 422: Response})
+def payment_success(request, payment: PaymentFormSchema):
+    # FIXME: This API end-point could potentially also be used by the webhook
+    # for on payment success. no CSRF, no auth
+    try:
+        transaction = RazorpayTransaction.objects.get(order_id=payment.razorpay_order_id)
+    except RazorpayTransaction.DoesNotExist:
+        return 404, {"message": "No order found."}
+
+    try:
+        authentic = verify_razorpay_payment(payment.dict())
+    except RequestException as e:
+        return 502, "Failed to connect to Razorpay."
+
+    if authentic:
+        n = len("razorpay_")
+        for key, value in payment.dict().items():
+            setattr(transaction, key[n:], value)
+        transaction.status = RazorpayTransaction.TransactionStatusChoices.COMPLETED
+        transaction.save()
+        transaction.membership.is_active = True
+        transaction.membership.save()
+        response = PlayerSchema.from_orm(transaction.membership.player)
+    else:
+        transaction.status = RazorpayTransaction.TransactionStatusChoices.FAILED
+        transaction.save()
+        response = 422, {"message": "We were unable to ascertain the authenticity of the payment."}
+    return response
