@@ -1,5 +1,5 @@
-import { useStore } from "../store.js";
-import { firebaseConfig, loginWithFirebaseResponse } from "../utils.js";
+import { useStore } from "../store";
+import { firebaseConfig, loginWithFirebaseResponse } from "../utils";
 import { createSignal, createEffect } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 import { initializeApp } from "firebase/app";

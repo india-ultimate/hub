@@ -1,8 +1,7 @@
 import { useNavigate } from "@solidjs/router";
 import { createSignal, createEffect, Show } from "solid-js";
-import { getCookie } from "../utils.js";
-import { useStore } from "../store.js";
-
+import { getCookie } from "../utils";
+import { useStore } from "../store";
 import Player from "./Player";
 
 const Home = () => {

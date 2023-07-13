@@ -1,9 +1,5 @@
-import {
-  getCookie,
-  loginWithFirebaseResponse,
-  firebaseConfig
-} from "../utils.js";
-import { useStore } from "../store.js";
+import { getCookie, loginWithFirebaseResponse, firebaseConfig } from "../utils";
+import { useStore } from "../store";
 import { createSignal, createEffect, onMount } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 import { initializeApp } from "firebase/app";

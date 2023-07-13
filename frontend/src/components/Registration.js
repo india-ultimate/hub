@@ -1,6 +1,6 @@
-import { getCookie } from "../utils.js";
+import { getCookie } from "../utils";
 import { createSignal, Show } from "solid-js";
-import { genderChoices, stateChoices } from "../constants.js";
+import { genderChoices, stateChoices } from "../constants";
 import RegistrationSuccess from "./RegistrationSuccess";
 
 const RegistrationForm = () => {
