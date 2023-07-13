@@ -1,5 +1,5 @@
 import { useNavigate } from "@solidjs/router";
-import { createSignal, createEffect } from "solid-js";
+import { createSignal, createEffect, Show } from "solid-js";
 import { getCookie } from "../utils.js";
 import { useStore } from "../store.js";
 
@@ -55,7 +55,9 @@ const Home = () => {
       <h1 class="text-4xl font-bold mb-4 text-red-500">
         Welcome, {store.data.first_name} {store.data.last_name}!
       </h1>
-      <Player player={store.data.player} />
+      <Show when={store.data.player}>
+        <Player player={store.data.player} />
+      </Show>
       <button class="my-10" onClick={logout}>
         Logout
       </button>
