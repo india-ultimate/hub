@@ -47,3 +47,25 @@ export const firebaseConfig = {
   messagingSenderId: "677703680955",
   appId: "1:677703680955:web:9014c1e57b3e04e7873a9e"
 };
+
+export const fetchUserData = (setLoggedIn, setData) => {
+  fetch("/api/user", {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin"
+  })
+    .then(response => {
+      if (response.status == 200) {
+        setLoggedIn(true);
+        response.json().then(data => {
+          setData(data);
+        });
+      } else {
+        setLoggedIn(false);
+      }
+    })
+    .catch(error => {
+      console.log(error);
+      setLoggedIn(false);
+    });
+};

@@ -1,6 +1,6 @@
 import { useNavigate } from "@solidjs/router";
-import { createSignal, createEffect, Show } from "solid-js";
-import { getCookie } from "../utils";
+import { createSignal, createEffect, onMount, Show } from "solid-js";
+import { getCookie, fetchUserData } from "../utils";
 import { useStore } from "../store";
 import Player from "./Player";
 
@@ -11,6 +11,12 @@ const Home = () => {
     if (!store.loggedIn) {
       const navigate = useNavigate();
       navigate("/login", { replace: true });
+    }
+  });
+
+  onMount(() => {
+    if (!store.loggedIn) {
+      fetchUserData(setLoggedIn, setData);
     }
   });
 
@@ -27,27 +33,6 @@ const Home = () => {
       setLoggedIn(false);
     }
   };
-
-  fetch("/api/user", {
-    method: "GET",
-    headers: { "Content-Type": "application/json" },
-    credentials: "same-origin"
-  })
-    .then(response => {
-      if (response.status == 200) {
-        setLoggedIn(true);
-        response.json().then(data => {
-          console.log(data);
-          setData(data);
-        });
-      } else {
-        setLoggedIn(false);
-      }
-    })
-    .catch(error => {
-      console.log(error);
-      setLoggedIn(false);
-    });
 
   return (
     <div>
