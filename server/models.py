@@ -102,7 +102,7 @@ class Membership(models.Model):
     start_date = models.DateField()
     end_date = models.DateField()
     event = models.ForeignKey(Event, on_delete=models.CASCADE, blank=True, null=True)
-    is_active = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=False)
 
 
 class RazorpayTransaction(models.Model):
