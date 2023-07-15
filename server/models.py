@@ -105,6 +105,31 @@ class Membership(models.Model):
     is_active = models.BooleanField(default=True)
 
 
+class RazorpayTransaction(models.Model):
+    class TransactionStatusChoices(models.TextChoices):
+        PENDING = "pending", _("Pending")
+        COMPLETED = "completed", _("Completed")
+        FAILED = "failed", _("Failed")
+        REFUNDED = "refunded", _("Refunded")
+
+    order_id = models.CharField(primary_key=True, max_length=255)
+    payment_id = models.CharField(max_length=255)
+    payment_signature = models.CharField(max_length=255)
+    amount = models.IntegerField()
+    currency = models.CharField(max_length=5)
+    payment_date = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(
+        max_length=20,
+        choices=TransactionStatusChoices.choices,
+        default=TransactionStatusChoices.PENDING,
+    )
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    membership = models.ForeignKey(Membership, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return self.order_id
+
+
 class Vaccination(models.Model):
     player = models.OneToOneField(Player, on_delete=models.CASCADE)
     is_vaccinated = models.BooleanField()
