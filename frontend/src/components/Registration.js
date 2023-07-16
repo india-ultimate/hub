@@ -1,4 +1,5 @@
 import { getCookie } from "../utils";
+import { useStore } from "../store";
 import { createSignal, Show, For } from "solid-js";
 import { genderChoices, stateChoices } from "../constants";
 import RegistrationSuccess from "./RegistrationSuccess";
@@ -24,6 +25,8 @@ const RegistrationForm = () => {
   //UI signals
   const [error, setError] = createSignal("");
   const [player, setPlayer] = createSignal();
+
+  const [_, { setPlayerById }] = useStore();
 
   // Gender
   const handleGenderChange = e => {
@@ -77,7 +80,9 @@ const RegistrationForm = () => {
 
       if (response.ok) {
         console.log("Player created successfully");
-        setPlayer(await response.json());
+        const player = await response.json();
+        setPlayer(player);
+        setPlayerById(player);
       } else {
         if (response.status == 400) {
           const error = await response.json();
