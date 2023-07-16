@@ -41,19 +41,20 @@ const Home = () => {
       </h1>
       <Show when={store.data.is_player}>
         <div>
-          <Show when={!store.data.player}
-                fallback={
-                  <div>
-                    <h3 class="text-2xl font-bold mb-4 text-blue-500">
-                      You are registered to play.
-                    </h3>
-                    <Player player={store.data.player} />
-                  </div>
-                }
+          <Show
+            when={!store.data.player}
+            fallback={
+              <div>
+                <Player player={store.data.player} />
+              </div>
+            }
           >
-             <h3 class="text-2xl font-bold mb-4">
+            <h3 class="text-2xl font-bold mb-4">
               Want to play?{" "}
-              <A href="/registration" class="font-medium text-blue-600 dark:text-blue-500 hover:underline">
+              <A
+                href="/registration"
+                class="font-medium text-blue-600 dark:text-blue-500 hover:underline"
+              >
                 Register!
               </A>
             </h3>
