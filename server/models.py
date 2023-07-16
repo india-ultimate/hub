@@ -118,6 +118,11 @@ class RazorpayTransaction(models.Model):
     amount = models.IntegerField()
     currency = models.CharField(max_length=5)
     payment_date = models.DateTimeField(auto_now_add=True)
+    # NOTE: These dates are for the membership for which the transaction is
+    # being done. We store these dates when the order is created, and use them
+    # to update the membership on payment success.
+    start_date = models.DateField(default="1900-01-01")
+    end_date = models.DateField(default="1900-01-01")
     status = models.CharField(
         max_length=20,
         choices=TransactionStatusChoices.choices,

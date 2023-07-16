@@ -178,6 +178,8 @@ class TestPayment(TestCase):
             RazorpayTransaction.TransactionStatusChoices.PENDING,
             transaction.status,
         )
+        self.assertEqual(start_date, transaction.start_date.strftime("%Y-%m-%d"))
+        self.assertEqual(end_date, transaction.end_date.strftime("%Y-%m-%d"))
 
     def test_payment_success(self):
         c = self.client
@@ -191,6 +193,7 @@ class TestPayment(TestCase):
         membership = Membership.objects.create(
             start_date=start_date, end_date=end_date, player=player
         )
+        order.update(dict(start_date=start_date, end_date=end_date))
         transaction = RazorpayTransaction.create_from_order_data(
             order, user=user, membership=membership
         )
@@ -225,6 +228,8 @@ class TestPayment(TestCase):
 
         membership.refresh_from_db()
         self.assertTrue(membership.is_active)
+        self.assertEqual(start_date, membership.start_date.strftime("%Y-%m-%d"))
+        self.assertEqual(end_date, membership.end_date.strftime("%Y-%m-%d"))
 
     def test_razorpay_failures(self):
         player = create_player(user=self.user)

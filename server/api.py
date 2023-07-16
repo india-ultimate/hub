@@ -126,6 +126,7 @@ def create_order(request, order: OrderFormSchema):
     except RequestException as e:
         return 502, "Failed to connect to Razorpay."
 
+    data.update(dict(start_date=order.start_date, end_date=order.end_date))
     transaction = RazorpayTransaction.create_from_order_data(data, user, membership)
     extra_data = {
         "name": settings.APP_NAME,
@@ -157,6 +158,8 @@ def payment_success(request, payment: PaymentFormSchema):
             setattr(transaction, key[n:], value)
         transaction.status = RazorpayTransaction.TransactionStatusChoices.COMPLETED
         transaction.save()
+        transaction.membership.start_date = transaction.start_date
+        transaction.membership.end_date = transaction.end_date
         transaction.membership.is_active = True
         transaction.membership.save()
         response = PlayerSchema.from_orm(transaction.membership.player)
