@@ -166,3 +166,4 @@ site
 
 Dockerfile
 .git*
+*.tar.gz
