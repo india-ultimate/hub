@@ -75,6 +75,7 @@ VALUES = {"not_in_india": "N/A (I'm not in India)"}
 
 GENDERS = {t.label: t for t in Player.GenderTypes}
 STATE_UT = {t.label: t for t in Player.StatesUTs}
+OCCUPATIONS = {t.label: t for t in Player.OccupationTypes}
 RELATIONS = {t.label: t for t in Guardianship.Relation}
 
 
@@ -106,6 +107,21 @@ def clean_phone(phone):
         return f"+91{clean}"
     else:
         return ""
+
+
+def clean_occupation(occupation):
+    if occupation is None:
+        cleaned = None
+    elif occupation.startswith("Student"):
+        cleaned = "Student"
+    elif occupation.startswith("Not working"):
+        cleaned = "Unemployed"
+    elif occupation.startswith("Working -"):
+        cleaned = occupation.replace("Working -", "").replace("job", "").strip()
+    else:
+        cleaned = ""
+
+    return OCCUPATIONS[cleaned] if cleaned in OCCUPATIONS else None
 
 
 class Command(BaseCommand):
@@ -191,6 +207,11 @@ class Command(BaseCommand):
                     not_in_india = True
                     state_ut = None
 
+                if not minors:
+                    occupation = clean_occupation(row[columns["occupation"]])
+                else:
+                    occupation = None
+
                 iu_profile = clean_india_ultimate_profile(row[columns["india_ultimate_profile"]])
 
                 # Create the Player instance
@@ -202,7 +223,7 @@ class Command(BaseCommand):
                     city=row[columns["city"]],
                     state_ut=state_ut,
                     team_name=row[columns["team_name"]],
-                    occupation=row[columns["occupation"]] if not minors else None,
+                    occupation=occupation,
                     educational_institution=row[columns["educational_institution"]]
                     if minors
                     else None,
