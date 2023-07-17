@@ -33,6 +33,7 @@ def main():
     with open(OUTPUT, "w") as f:
         f.write(msg)
         f.write("{% load static %}\n")
+        f.write("{% csrf_token %}\n")
         f.write(soup.prettify())
 
     print(f"Created {OUTPUT}")
