@@ -15,7 +15,7 @@ const Home = () => {
   });
 
   onMount(() => {
-    if (!store.loggedIn) {
+    if (!store?.data?.username) {
       fetchUserData(setLoggedIn, setData);
     }
   });
