@@ -25,9 +25,9 @@ rm -f "${DATA_DIR:?}/db.sqlite3"
 
 python manage.py migrate
 
-python manage.py import_data "${IMPORT_DATA_DIR}/minors.csv" --minors  --download-path "${IMPORT_DATA_DIR}/minors-uploads/" --gdrive-map-csv "${IMPORT_DATA_DIR}/FileMapping-minors.csv"
+python manage.py import_members_data "${IMPORT_DATA_DIR}/minors.csv" --minors  --download-path "${IMPORT_DATA_DIR}/minors-uploads/" --gdrive-map-csv "${IMPORT_DATA_DIR}/FileMapping-minors.csv"
 
-python manage.py import_data "${IMPORT_DATA_DIR}/members.csv" --download-path "${IMPORT_DATA_DIR}/members-uploads/" --gdrive-map-csv "${IMPORT_DATA_DIR}/FileMapping-members.csv"
+python manage.py import_members_data "${IMPORT_DATA_DIR}/members.csv" --download-path "${IMPORT_DATA_DIR}/members-uploads/" --gdrive-map-csv "${IMPORT_DATA_DIR}/FileMapping-members.csv"
 
 # Make a tarball to copy to production
 PRODUCTION_DIR="${IMPORT_DATA_DIR}/production/"

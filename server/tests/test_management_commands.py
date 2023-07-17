@@ -14,16 +14,16 @@ class TestImportData(TestCase):
         super().setUp()
         self.fixtures_dir = Path(__file__).parent.joinpath("fixtures")
 
-    def test_import_data(self) -> None:
+    def test_import_members_data(self) -> None:
         with self.assertRaisesRegex(CommandError, "'foo' does not exist"):
-            call_command("import_data", "foo")
+            call_command("import_members_data", "foo")
 
         # Import Adults form data
         adults_csv = self.fixtures_dir.joinpath("form-data.csv")
         with adults_csv.open() as f:
             reader = csv.DictReader(f)
             rows = list(reader)
-        call_command("import_data", adults_csv)
+        call_command("import_members_data", adults_csv)
         n = len(rows)
         self.assertEqual(User.objects.count(), n)
         self.assertEqual(Player.objects.count(), n)
@@ -33,7 +33,7 @@ class TestImportData(TestCase):
         with minors_csv.open() as f:
             reader = csv.DictReader(f)
             m_rows = list(reader)
-        call_command("import_data", "--minors", minors_csv)
+        call_command("import_members_data", "--minors", minors_csv)
         m = len(m_rows)
         self.assertEqual(User.objects.count(), m * 2 + n)
         self.assertEqual(Player.objects.count(), m + n)

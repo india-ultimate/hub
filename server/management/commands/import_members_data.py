@@ -109,7 +109,7 @@ def clean_phone(phone):
 
 
 class Command(BaseCommand):
-    help = "Import data from CSV"
+    help = "Import members data from CSV"
 
     def add_arguments(self, parser):
         parser.add_argument("csv_file", type=Path, help="Path to the CSV file")
