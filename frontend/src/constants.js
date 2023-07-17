@@ -48,6 +48,16 @@ export const stateChoices = [
   { value: "WB", label: "West Bengal" }
 ];
 
+export const occupationChoices = [
+  {value: "Student", label: "Student"},
+  {value: "Own business", label: "Own business"},
+  {value: "Government", label: "Government"},
+  {value: "NGO / NPO", label: "NGO / NPO"},
+  {value: "Other", label: "Other"},
+  {value: "Unemployed", label: "Unemployed"}
+];
+
+
 // NOTE: Memberships go from 1st June to 31st May
 export const membershipStartDate = [1, 6];
 export const membershipEndDate = [31, 5];

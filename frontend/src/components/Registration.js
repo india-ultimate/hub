@@ -1,7 +1,7 @@
 import { getCookie } from "../utils";
 import { useStore } from "../store";
 import { createSignal, Show, For } from "solid-js";
-import { genderChoices, stateChoices } from "../constants";
+import { genderChoices, stateChoices, occupationChoices } from "../constants";
 import RegistrationSuccess from "./RegistrationSuccess";
 
 const RegistrationForm = () => {
@@ -214,14 +214,22 @@ const RegistrationForm = () => {
               >
                 Occupation
               </label>
-              <input
-                type="text"
+              <select
                 id="occupation"
                 class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                placeholder=""
                 value={occupation()}
                 onInput={e => setOccupation(e.currentTarget.value)}
-              />
+                required
+              >
+                <option value="" disabled>
+                  Select Occupation
+                </option>
+                <For each={occupationChoices}>
+                   {choice => (
+                    <option value={choice.value}>{choice.label}</option>
+                  )}
+                </For>
+              </select>
             </div>
             <div>
               <label
