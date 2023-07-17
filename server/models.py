@@ -69,7 +69,16 @@ class Player(models.Model):
     state_ut = models.CharField(max_length=5, choices=StatesUTs.choices, null=True, blank=True)
     not_in_india = models.BooleanField(default=False)
     team_name = models.CharField(max_length=100)
-    occupation = models.CharField(max_length=100, null=True, blank=True)
+
+    class OccupationTypes(models.TextChoices):
+        STUDENT = "Student", _("Student")
+        BUSINESS = "Business", _("Own business")
+        GOVERNMENT = "Government", _("Government")
+        NONPROFIT = "Non-profit", _("NGO / NPO")
+        OTHER = "Other", _("Other")
+        UNEMPLOYED = "Unemployed", _("Unemployed")
+
+    occupation = models.CharField(max_length=25, choices=OccupationTypes.choices, null=True, blank=True)
     educational_institution = models.CharField(max_length=100, null=True, blank=True)
     india_ultimate_profile = models.URLField(null=True, blank=True)
 
