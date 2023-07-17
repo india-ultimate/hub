@@ -9,7 +9,8 @@ export const getCookie = name => {
 export const loginWithFirebaseResponse = async (
   firebaseResponse,
   setStatus,
-  setLoggedIn
+  setLoggedIn,
+  setData
 ) => {
   const { user: { uid, accessToken: token } } = firebaseResponse;
   const response = await fetch("/api/firebase-login", {
@@ -24,6 +25,7 @@ export const loginWithFirebaseResponse = async (
   if (response.ok) {
     setStatus(`Successfully logged in!`);
     setLoggedIn(true);
+    setData(await response.json());
   } else {
     setLoggedIn(false);
     try {
