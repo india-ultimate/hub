@@ -1,0 +1,40 @@
+#!/bin/bash
+
+IMPORT_DATA_DIR="${1:-.data}"
+
+if [ ! -d "${IMPORT_DATA_DIR}" ];
+then
+    echo "${IMPORT_DATA_DIR} does not exist."
+    exit 1
+fi
+
+python manage.py migrate -v 0
+
+COUNT=$(python manage.py shell -c 'from server.models import Player; print(Player.objects.count())')
+
+if [ ! "${COUNT}" == "0" ];
+then
+    echo "Database already has data"
+    exit 1
+fi
+
+DATA_DIR=$(dirname "${IMPORT_DATA_DIR}")
+
+rm -rf "${DATA_DIR:?}/uploads/"
+rm -f "${DATA_DIR:?}/db.sqlite3"
+
+python manage.py migrate
+
+python manage.py import_data "${IMPORT_DATA_DIR}/minors.csv" --minors  --download-path "${IMPORT_DATA_DIR}/minors-uploads/" --gdrive-map-csv "${IMPORT_DATA_DIR}/FileMapping-minors.csv"
+
+python manage.py import_data "${IMPORT_DATA_DIR}/members.csv" --download-path "${IMPORT_DATA_DIR}/members-uploads/" --gdrive-map-csv "${IMPORT_DATA_DIR}/FileMapping-members.csv"
+
+# Make a tarball to copy to production
+PRODUCTION_DIR="${IMPORT_DATA_DIR}/production/"
+rm -rf "${PRODUCTION_DIR}"
+mkdir -p "${PRODUCTION_DIR}"
+cp db.sqlite3 "${PRODUCTION_DIR}/production.db.sqlite"
+cp -a uploads/ "${PRODUCTION_DIR}/media/"
+echo "Making production tarball..."
+tar czf "${IMPORT_DATA_DIR}/production.tar.gz" "${PRODUCTION_DIR}/"
+ls -lah "${IMPORT_DATA_DIR}/production.tar.gz"
