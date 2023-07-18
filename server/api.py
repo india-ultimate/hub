@@ -1,3 +1,4 @@
+import datetime
 import time
 
 import firebase_admin
@@ -8,6 +9,7 @@ from ninja import NinjaAPI
 from ninja.security import django_auth
 from requests.exceptions import RequestException
 
+from server.constants import MEMBERSHIP_AMOUNT, MEMBERSHIP_END, MEMBERSHIP_START
 from server.firebase_middleware import firebase_to_django_user
 from server.models import Membership, Player, RazorpayTransaction
 from server.schema import (
@@ -103,30 +105,33 @@ def create_order(request, order: OrderFormSchema):
     except Player.DoesNotExist:
         return 400, {"message": "Player does not exist!"}
 
+    start_date = datetime.date(order.year, *MEMBERSHIP_START)
+    end_date = datetime.date(order.year + 1, *MEMBERSHIP_END)
+
     try:
         membership = player.membership
     except Membership.DoesNotExist:
         membership = Membership.objects.create(
             player=player,
             is_annual=True,
-            start_date=order.start_date,
-            end_date=order.end_date,
+            start_date=start_date,
+            end_date=end_date,
             is_active=False,
         )
 
     ts = round(time.time())
-    receipt = f"{membership.membership_number}:{order.start_date}:{ts}"
+    receipt = f"{membership.membership_number}:{start_date}:{ts}"
     notes = {
         "user_id": user.id,
         "player_id": player.id,
         "membership_id": membership.id,
     }
     try:
-        data = create_razorpay_order(order.amount, receipt=receipt, notes=notes)
+        data = create_razorpay_order(MEMBERSHIP_AMOUNT, receipt=receipt, notes=notes)
     except RequestException as e:
         return 502, "Failed to connect to Razorpay."
 
-    data.update(dict(start_date=order.start_date, end_date=order.end_date))
+    data.update(dict(start_date=start_date, end_date=end_date))
     transaction = RazorpayTransaction.create_from_order_data(data, user, membership)
     extra_data = {
         "name": settings.APP_NAME,

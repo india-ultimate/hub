@@ -1,4 +1,3 @@
-import datetime
 from enum import Enum
 from typing import List
 
@@ -35,11 +34,9 @@ class OrderTypeEnum(str, Enum):
 
 
 class OrderFormSchema(Schema):
-    amount: int
     player_id: int
     type: OrderTypeEnum
-    start_date: datetime.date
-    end_date: datetime.date
+    year: int
 
 
 class PaymentFormSchema(Schema):

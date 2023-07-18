@@ -6,6 +6,7 @@ from unittest import mock
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 from requests.exceptions import RequestException
+from server.constants import MEMBERSHIP_AMOUNT
 from server.models import Membership, Player, RazorpayTransaction
 
 User = get_user_model()
@@ -125,10 +126,7 @@ class TestPayment(TestCase):
     def test_create_order(self):
         c = self.client
 
-        amount = 60000
         player_id = 200
-        start_date = "2023-06-01"
-        end_date = "2024-05-31"
 
         # Player does not exist
         with mock.patch(
@@ -139,10 +137,8 @@ class TestPayment(TestCase):
                 "/api/create-order",
                 data={
                     "type": "membership",
-                    "amount": amount,
                     "player_id": player_id,
-                    "start_date": start_date,
-                    "end_date": end_date,
+                    "year": 2023,
                 },
                 content_type="application/json",
             )
@@ -151,6 +147,7 @@ class TestPayment(TestCase):
 
         # Player exists, membership does not exist
         player = create_player(user=self.user)
+        amount = MEMBERSHIP_AMOUNT
         with mock.patch(
             "server.api.create_razorpay_order",
             return_value=fake_order(amount),
@@ -159,10 +156,8 @@ class TestPayment(TestCase):
                 "/api/create-order",
                 data={
                     "type": "membership",
-                    "amount": amount,
                     "player_id": player.id,
-                    "start_date": start_date,
-                    "end_date": end_date,
+                    "year": 2023,
                 },
                 content_type="application/json",
             )
@@ -173,13 +168,14 @@ class TestPayment(TestCase):
         order_id = order_data["order_id"]
         transaction = RazorpayTransaction.objects.get(order_id=order_id)
         self.assertEqual(self.user, transaction.user)
+        self.assertEqual(amount, transaction.amount)
         self.assertEqual(player.membership, transaction.membership)
         self.assertEqual(
             RazorpayTransaction.TransactionStatusChoices.PENDING,
             transaction.status,
         )
-        self.assertEqual(start_date, transaction.start_date.strftime("%Y-%m-%d"))
-        self.assertEqual(end_date, transaction.end_date.strftime("%Y-%m-%d"))
+        self.assertEqual("2023-06-01", transaction.start_date.strftime("%Y-%m-%d"))
+        self.assertEqual("2024-05-31", transaction.end_date.strftime("%Y-%m-%d"))
 
     def test_payment_success(self):
         c = self.client
@@ -239,10 +235,8 @@ class TestPayment(TestCase):
                 "/api/create-order",
                 data={
                     "type": "membership",
-                    "amount": 10000,
                     "player_id": player.id,
-                    "start_date": "2024-05-31",
-                    "end_date": "2023-06-01",
+                    "year": 2023,
                 },
                 content_type="application/json",
             )
