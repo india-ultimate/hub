@@ -143,6 +143,7 @@ class RazorpayTransaction(models.Model):
     )
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     membership = models.ForeignKey(Membership, on_delete=models.CASCADE)
+    event = models.ForeignKey(Event, on_delete=models.SET_NULL, blank=True, null=True)
 
     def __str__(self):
         return self.order_id

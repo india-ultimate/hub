@@ -1,4 +1,3 @@
-from enum import Enum
 from typing import List
 
 from django.contrib.auth import get_user_model
@@ -29,14 +28,14 @@ class MembershipSchema(ModelSchema):
         model_fields = "__all__"
 
 
-class OrderTypeEnum(str, Enum):
-    MEMBERSHIP = "membership"
-
-
-class OrderFormSchema(Schema):
+class AnnualMembershipSchema(Schema):
     player_id: int
-    type: OrderTypeEnum
     year: int
+
+
+class EventMembershipSchema(Schema):
+    player_id: int
+    event_id: int
 
 
 class PaymentFormSchema(Schema):
