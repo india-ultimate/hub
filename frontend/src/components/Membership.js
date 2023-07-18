@@ -2,7 +2,7 @@ import Player from "./Player";
 import { useStore } from "../store";
 import { useParams } from "@solidjs/router";
 import { createSignal, createEffect, onCleanup, onMount, Show } from "solid-js";
-import { getCookie, fetchUserData } from "../utils";
+import { getCookie, fetchUserData, displayDate } from "../utils";
 import {
   membershipStartDate,
   membershipEndDate,
@@ -189,7 +189,7 @@ const Membership = () => {
         fallback={
           <div>
             Membership for {player().full_name} is active until{" "}
-            {membership().end_date}
+            {displayDate(membership().end_date)}
           </div>
         }
       >
@@ -212,7 +212,7 @@ const Membership = () => {
           </select>
           <p>
             Pay the membership fee (₹ {membershipFee / 100}) for the period{" "}
-            {startDate} to {endDate}
+            {displayDate(startDate())} to {displayDate(endDate())}
           </p>
           <button
             class="my-2 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"

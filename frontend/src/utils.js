@@ -71,3 +71,8 @@ export const fetchUserData = (setLoggedIn, setData) => {
       setLoggedIn(false);
     });
 };
+
+export const displayDate = (dateString) => {
+    const date = new Date(dateString).toLocaleDateString("en-IN", {year: 'numeric', month: 'long', day: 'numeric'});
+    return date;
+};
