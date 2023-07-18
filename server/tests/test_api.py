@@ -189,10 +189,10 @@ class TestPayment(TestCase):
         membership = Membership.objects.create(
             start_date=start_date, end_date=end_date, player=player
         )
-        order.update(dict(start_date=start_date, end_date=end_date))
-        transaction = RazorpayTransaction.create_from_order_data(
-            order, user=user, membership=membership
+        order.update(
+            dict(start_date=start_date, end_date=end_date, user=user, membership=membership)
         )
+        transaction = RazorpayTransaction.create_from_order_data(order)
         self.assertFalse(membership.is_active)
         self.assertEqual(self.user, transaction.user)
         self.assertEqual(player.membership, transaction.membership)

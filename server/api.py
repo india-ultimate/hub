@@ -131,8 +131,8 @@ def create_order(request, order: OrderFormSchema):
     except RequestException as e:
         return 502, "Failed to connect to Razorpay."
 
-    data.update(dict(start_date=start_date, end_date=end_date))
-    transaction = RazorpayTransaction.create_from_order_data(data, user, membership)
+    data.update(dict(start_date=start_date, end_date=end_date, user=user, membership=membership))
+    transaction = RazorpayTransaction.create_from_order_data(data)
     extra_data = {
         "name": settings.APP_NAME,
         "image": settings.LOGO_URL,

@@ -148,10 +148,10 @@ class RazorpayTransaction(models.Model):
         return self.order_id
 
     @classmethod
-    def create_from_order_data(cls, data, user, membership):
+    def create_from_order_data(cls, data):
         fields = {f.name for f in RazorpayTransaction._meta.fields}
         data = {key: value for key, value in data.items() if key in fields}
-        return cls.objects.create(**data, user=user, membership=membership)
+        return cls.objects.create(**data)
 
 
 class Vaccination(models.Model):
