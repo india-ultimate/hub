@@ -93,6 +93,8 @@ class Event(models.Model):
     title = models.CharField(max_length=255)
     start_date = models.DateField()
     end_date = models.DateField()
+    ultimate_central_id = models.PositiveIntegerField(unique=True, null=True, blank=True)
+    ultimate_central_slug = models.SlugField(default="unknown")
 
 
 class Membership(models.Model):
