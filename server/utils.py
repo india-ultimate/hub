@@ -23,4 +23,8 @@ def create_razorpay_order(amount, currency="INR", receipt=None, notes=None):
 
 
 def verify_razorpay_payment(payment_info):
-    return CLIENT.utility.verify_payment_signature(payment_info)
+    try:
+        return CLIENT.utility.verify_payment_signature(payment_info)
+    except razorpay.errors.SignatureVerificationError as e:
+        print(e)
+        return False
