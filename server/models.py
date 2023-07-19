@@ -78,7 +78,9 @@ class Player(models.Model):
         OTHER = "Other", _("Other")
         UNEMPLOYED = "Unemployed", _("Unemployed")
 
-    occupation = models.CharField(max_length=25, choices=OccupationTypes.choices, null=True, blank=True)
+    occupation = models.CharField(
+        max_length=25, choices=OccupationTypes.choices, null=True, blank=True
+    )
     educational_institution = models.CharField(max_length=100, null=True, blank=True)
     india_ultimate_profile = models.URLField(null=True, blank=True)
 
