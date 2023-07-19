@@ -194,11 +194,17 @@ def payment_success(request, payment: PaymentFormSchema):
     authentic = verify_razorpay_payment(payment.dict())
     if not authentic:
         return 422, {"message": "We were unable to ascertain the authenticity of the payment."}
+    transaction = update_transaction(payment)
+    if not transaction:
+        return 404, {"message": "No order found."}
+    return PlayerSchema.from_orm(transaction.membership.player)
 
+
+def update_transaction(payment):
     try:
         transaction = RazorpayTransaction.objects.get(order_id=payment.razorpay_order_id)
     except RazorpayTransaction.DoesNotExist:
-        return 404, {"message": "No order found."}
+        return None
 
     n = len("razorpay_")
     for key, value in payment.dict().items():
@@ -211,4 +217,4 @@ def payment_success(request, payment: PaymentFormSchema):
     membership.event = transaction.event
     membership.is_active = True
     membership.save()
-    return PlayerSchema.from_orm(transaction.membership.player)
+    return transaction
