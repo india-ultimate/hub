@@ -191,31 +191,24 @@ def create_order(request, order: Union[AnnualMembershipSchema, EventMembershipSc
 def payment_success(request, payment: PaymentFormSchema):
     # FIXME: This API end-point could potentially also be used by the webhook
     # for on payment success. no CSRF, no auth
+    authentic = verify_razorpay_payment(payment.dict())
+    if not authentic:
+        return 422, {"message": "We were unable to ascertain the authenticity of the payment."}
+
     try:
         transaction = RazorpayTransaction.objects.get(order_id=payment.razorpay_order_id)
     except RazorpayTransaction.DoesNotExist:
         return 404, {"message": "No order found."}
 
-    try:
-        authentic = verify_razorpay_payment(payment.dict())
-    except RequestException as e:
-        return 502, "Failed to connect to Razorpay."
-
-    if authentic:
-        n = len("razorpay_")
-        for key, value in payment.dict().items():
-            setattr(transaction, key[n:], value)
-        transaction.status = RazorpayTransaction.TransactionStatusChoices.COMPLETED
-        transaction.save()
-        membership = transaction.membership
-        membership.start_date = transaction.start_date
-        membership.end_date = transaction.end_date
-        membership.event = transaction.event
-        membership.is_active = True
-        membership.save()
-        response = PlayerSchema.from_orm(transaction.membership.player)
-    else:
-        transaction.status = RazorpayTransaction.TransactionStatusChoices.FAILED
-        transaction.save()
-        response = 422, {"message": "We were unable to ascertain the authenticity of the payment."}
-    return response
+    n = len("razorpay_")
+    for key, value in payment.dict().items():
+        setattr(transaction, key[n:], value)
+    transaction.status = RazorpayTransaction.TransactionStatusChoices.COMPLETED
+    transaction.save()
+    membership = transaction.membership
+    membership.start_date = transaction.start_date
+    membership.end_date = transaction.end_date
+    membership.event = transaction.event
+    membership.is_active = True
+    membership.save()
+    return PlayerSchema.from_orm(transaction.membership.player)
