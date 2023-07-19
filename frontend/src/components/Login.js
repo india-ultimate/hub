@@ -33,7 +33,10 @@ const PasswordLogin = ({ setStatus }) => {
     e.preventDefault();
     const response = await fetch("/api/login", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "X-CSRFToken": csrftoken },
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": csrftoken
+      },
       body: JSON.stringify({
         username: username(),
         password: password()
@@ -190,7 +193,7 @@ const SendPhoneConfirmation = ({ setStatus }) => {
         setStatus(`Failed to send code: ${error}`);
         verifier()
           .render()
-          .then(function(widgetId) {
+          .then(function (widgetId) {
             grecaptcha.reset(widgetId);
           });
         setConfirmationResult();

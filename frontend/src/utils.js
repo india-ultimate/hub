@@ -12,7 +12,9 @@ export const loginWithFirebaseResponse = async (
   setLoggedIn,
   setData
 ) => {
-  const { user: { uid, accessToken: token } } = firebaseResponse;
+  const {
+    user: { uid, accessToken: token }
+  } = firebaseResponse;
   const response = await fetch("/api/firebase-login", {
     method: "POST",
     headers: {

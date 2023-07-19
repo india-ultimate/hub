@@ -89,9 +89,7 @@ const RegistrationForm = () => {
           setError(error.message);
         } else {
           setError(
-            `Server returned an error: ${response.statusText} (${
-              response.status
-            })`
+            `Server returned an error: ${response.statusText} (${response.status})`
           );
         }
       }
