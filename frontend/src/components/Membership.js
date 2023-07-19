@@ -38,7 +38,7 @@ const membershipOptions = () => {
   return renewalOptions;
 };
 
-const handleSuccess = (data, setStatus, setPlayerById) => {
+const handlePaymentSuccess = (data, setStatus, setPlayerById) => {
   fetch("/api/payment-success", {
     method: "POST",
     headers: {
@@ -68,7 +68,7 @@ const handleSuccess = (data, setStatus, setPlayerById) => {
 const openRazorpayUI = (data, setStatus, setPlayerById) => {
   const options = {
     ...data,
-    handler: e => handleSuccess(e, setStatus, setPlayerById)
+    handler: e => handlePaymentSuccess(e, setStatus, setPlayerById)
   };
   const rzp = window.Razorpay(options);
   rzp.open();
