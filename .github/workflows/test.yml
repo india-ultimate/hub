@@ -67,8 +67,14 @@ jobs:
 
       - name: Install dependencies
         working-directory: './frontend'
-        run: yarn
+        run: yarn install --production=false
 
       - name: Run Build
         working-directory: './frontend'
         run: yarn build
+
+      - name: Run Prettier
+        working-directory: './frontend'
+        run: |
+          npx prettier --write src/**/*.js src/*.js
+          git diff --exit-code
