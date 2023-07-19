@@ -28,3 +28,12 @@ def verify_razorpay_payment(payment_info):
     except razorpay.errors.SignatureVerificationError as e:
         print(e)
         return False
+
+
+def verify_razorpay_webhook_payload(body, signature):
+    secret = settings.RAZORPAY_WEBHOOK_SECRET
+    try:
+        return CLIENT.utility.verify_webhook_signature(body, signature, secret)
+    except razorpay.errors.SignatureVerificationError as e:
+        print(e)
+        return False

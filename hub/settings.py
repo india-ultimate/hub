@@ -159,3 +159,4 @@ LOGO_URL = "https://d36m266ykvepgv.cloudfront.net/uploads/media/o4G97mT9vR/s-448
 # Razorpay settings
 RAZORPAY_KEY_ID = os.environ.get("RAZORPAY_KEY_ID", "")
 RAZORPAY_KEY_SECRET = os.environ.get("RAZORPAY_KEY_SECRET", "")
+RAZORPAY_WEBHOOK_SECRET = os.environ.get("RAZORPAY_WEBHOOK_SECRET", "")

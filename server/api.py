@@ -1,10 +1,12 @@
 import datetime
+import json
 import time
 from typing import List, Union
 
 import firebase_admin
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model, login, logout
+from django.views.decorators.csrf import csrf_exempt
 from firebase_admin import auth
 from ninja import NinjaAPI
 from ninja.security import django_auth
@@ -33,7 +35,11 @@ from server.schema import (
     UserFormSchema,
     UserSchema,
 )
-from server.utils import create_razorpay_order, verify_razorpay_payment
+from server.utils import (
+    create_razorpay_order,
+    verify_razorpay_payment,
+    verify_razorpay_webhook_payload,
+)
 
 User = get_user_model()
 
@@ -189,8 +195,6 @@ def create_order(request, order: Union[AnnualMembershipSchema, EventMembershipSc
 
 @api.post("/payment-success", response={200: PlayerSchema, 502: str, 404: Response, 422: Response})
 def payment_success(request, payment: PaymentFormSchema):
-    # FIXME: This API end-point could potentially also be used by the webhook
-    # for on payment success. no CSRF, no auth
     authentic = verify_razorpay_payment(payment.dict())
     if not authentic:
         return 422, {"message": "We were unable to ascertain the authenticity of the payment."}
@@ -218,3 +222,20 @@ def update_transaction(payment):
     membership.is_active = True
     membership.save()
     return transaction
+
+
+@api.post("/payment-success-webhook", auth=None, response={200: Response})
+@csrf_exempt
+def payment_webhook(request):
+    body = request.body.decode("utf8")
+    signature = request.headers.get("X-Razorpay-Signature", "")
+    if not verify_razorpay_webhook_payload(body, signature):
+        return {"message": "Signature could not be verified"}
+    data = json.loads(body)["payload"]["payment"]["entity"]
+    payment = PaymentFormSchema(
+        razorpay_payment_id=data["id"],
+        razorpay_order_id=data["order_id"],
+        razorpay_signature=f"webhook_{signature}",
+    )
+    update_transaction(payment)
+    return {"message": "Webhook processed"}
