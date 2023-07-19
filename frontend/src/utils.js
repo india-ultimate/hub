@@ -72,7 +72,11 @@ export const fetchUserData = (setLoggedIn, setData) => {
     });
 };
 
-export const displayDate = (dateString) => {
-    const date = new Date(dateString).toLocaleDateString("en-IN", {year: 'numeric', month: 'long', day: 'numeric'});
-    return date;
+export const displayDate = dateString => {
+  const date = new Date(dateString).toLocaleDateString("en-IN", {
+    year: "numeric",
+    month: "long",
+    day: "numeric"
+  });
+  return date;
 };

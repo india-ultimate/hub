@@ -225,7 +225,7 @@ const RegistrationForm = () => {
                   Select Occupation
                 </option>
                 <For each={occupationChoices}>
-                   {choice => (
+                  {choice => (
                     <option value={choice.value}>{choice.label}</option>
                   )}
                 </For>

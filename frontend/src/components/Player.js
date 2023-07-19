@@ -40,7 +40,10 @@ const Player = props => {
             >
               Date of Birth
             </th>
-            <td class="px-6 py-4">{props.player?.date_of_birth && displayDate(props.player.date_of_birth)}</td>
+            <td class="px-6 py-4">
+              {props.player?.date_of_birth &&
+                displayDate(props.player.date_of_birth)}
+            </td>
           </tr>
           <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
             <th
@@ -81,8 +84,11 @@ const Player = props => {
                 Membership validity
               </th>
               <td class="px-6 py-4">
-                {props.player?.membership.start_date && displayDate(props.player.membership.start_date)} &mdash;{" "}
-                {props.player?.membership.end_date && displayDate(props.player.membership.end_date)}
+                {props.player?.membership.start_date &&
+                  displayDate(props.player.membership.start_date)}{" "}
+                &mdash;{" "}
+                {props.player?.membership.end_date &&
+                  displayDate(props.player.membership.end_date)}
                 <Show when={!props.player?.membership?.is_active}>
                   <p class="mb-4">
                     You need a valid UPAI membership to participate in UPAI
