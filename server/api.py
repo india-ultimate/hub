@@ -1,6 +1,6 @@
 import datetime
 import time
-from typing import Union
+from typing import List, Union
 
 import firebase_admin
 from django.conf import settings
@@ -22,6 +22,7 @@ from server.schema import (
     AnnualMembershipSchema,
     Credentials,
     EventMembershipSchema,
+    EventSchema,
     FirebaseCredentials,
     OrderSchema,
     PaymentFormSchema,
@@ -98,6 +99,16 @@ def register_player(request, registration: RegistrationSchema):
         user.save()
 
         return 200, PlayerSchema.from_orm(player)
+
+
+# Events
+
+
+@api.get("/events")
+def list_events(request, include_all: bool = False, response={200: List[EventSchema]}):
+    today = datetime.date.today()
+    events = Event.objects.all() if include_all else Event.objects.filter(start_date__gte=today)
+    return [EventSchema.from_orm(e) for e in events]
 
 
 # Payments

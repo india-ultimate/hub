@@ -3,7 +3,7 @@ from typing import List
 from django.contrib.auth import get_user_model
 from ninja import ModelSchema, Schema
 
-from server.models import Membership, Player
+from server.models import Event, Membership, Player
 
 User = get_user_model()
 
@@ -75,6 +75,12 @@ class PlayerSchema(ModelSchema):
     class Config:
         model = Player
         model_fields = "__all__"
+
+
+class EventSchema(ModelSchema):
+    class Config:
+        model = Event
+        model_fields = ["id", "title", "start_date", "end_date"]
 
 
 class UserSchema(ModelSchema):
