@@ -93,12 +93,12 @@ class UserSchema(ModelSchema):
         except Player.DoesNotExist:
             return
 
-    players: List[PlayerSchema]
+    wards: List[PlayerSchema]
 
     @staticmethod
-    def resolve_players(user):
-        players = Player.objects.filter(guardianship__user=user)
-        return [PlayerSchema.from_orm(p) for p in players]
+    def resolve_wards(user):
+        wards = Player.objects.filter(guardianship__user=user)
+        return [PlayerSchema.from_orm(p) for p in wards]
 
     class Config:
         model = User
