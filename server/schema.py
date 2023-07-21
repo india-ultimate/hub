@@ -84,6 +84,12 @@ class EventSchema(ModelSchema):
 
 
 class UserSchema(ModelSchema):
+    full_name: str
+
+    @staticmethod
+    def resolve_full_name(user):
+        return user.get_full_name()
+
     player: PlayerSchema = None
 
     @staticmethod
