@@ -102,6 +102,7 @@ def register_player(request, registration: RegistrationSchema):
         user_data = UserFormSchema(**registration.dict()).dict()
         for attr, value in user_data.items():
             setattr(user, attr, value)
+        user.is_player = True
         user.save()
 
         return 200, PlayerSchema.from_orm(player)
