@@ -37,7 +37,7 @@ const Home = () => {
   return (
     <div>
       <h1 class="text-4xl font-bold mb-4 text-red-500">
-        Welcome, {store.data.first_name} {store.data.last_name}!
+        Welcome {store?.data?.full_name || store?.data?.username}!
       </h1>
       <div>
         <Show
