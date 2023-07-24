@@ -125,6 +125,12 @@ class UserFormSchema(ModelSchema):
         model_fields = ["first_name", "last_name", "phone"]
 
 
+class UserOtherFormSchema(ModelSchema):
+    class Config:
+        model = User
+        model_fields = ["first_name", "last_name", "phone", "email"]
+
+
 class PlayerFormSchema(ModelSchema):
     class Config:
         model = Player
@@ -133,4 +139,8 @@ class PlayerFormSchema(ModelSchema):
 
 
 class RegistrationSchema(UserFormSchema, PlayerFormSchema):
+    pass
+
+
+class RegistrationOthersSchema(UserOtherFormSchema, PlayerFormSchema):
     pass

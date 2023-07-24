@@ -30,6 +30,7 @@ from server.schema import (
     PaymentFormSchema,
     PlayerFormSchema,
     PlayerSchema,
+    RegistrationOthersSchema,
     RegistrationSchema,
     Response,
     UserFormSchema,
@@ -88,9 +89,11 @@ def firebase_login(request, credentials: FirebaseCredentials):
 
 
 @api.post("/registration", response={200: PlayerSchema, 400: Response})
-def register_player(request, registration: RegistrationSchema):
-    user = request.user
+def register_self(request, registration: RegistrationSchema):
+    return do_register(request.user, registration)
 
+
+def do_register(user, registration: Union[RegistrationSchema, RegistrationOthersSchema]):
     try:
         Player.objects.get(user=user)
         return 400, {"message": "Player already exists"}
@@ -106,6 +109,21 @@ def register_player(request, registration: RegistrationSchema):
         user.save()
 
         return 200, PlayerSchema.from_orm(player)
+
+
+@api.post("/registration/others", response={200: PlayerSchema, 400: Response})
+def register_others(request, registration: RegistrationOthersSchema):
+    user, created = User.objects.get_or_create(
+        username=registration.email,
+        defaults={
+            "email": registration.email,
+            "phone": registration.phone,
+            "is_player": True,
+            "first_name": registration.first_name,
+            "last_name": registration.last_name,
+        },
+    )
+    return do_register(user, registration)
 
 
 # Events
