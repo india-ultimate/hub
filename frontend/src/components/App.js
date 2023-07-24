@@ -22,7 +22,7 @@ export default function App() {
           <div class="max-w-screen-lg text-gray-500 sm:text-lg dark:text-gray-400">
             <Routes>
               <Route path="/login" component={Login} />
-              <Route path="/registration" component={Registration} />
+              <Route path="/registration/me" component={Registration} />
               <Route path="/" component={Home} />
               <Route path="/email-link" component={EmailLink} />
               <Route
