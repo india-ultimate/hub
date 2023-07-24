@@ -114,6 +114,38 @@ class TestLogin(TestCase):
         self.assertNotIn("firebase_token", c.session.keys())
 
 
+class TestRegistration(TestCase):
+    def setUp(self):
+        super().setUp()
+        self.client = Client()
+        self.username = "username@foo.com"
+        self.user = User.objects.create(username=self.username, email=self.username)
+        self.client.force_login(self.user)
+
+    def test_register_me(self):
+        c = self.client
+        data = {
+            "phone": "+1234567890",
+            "date_of_birth": "1990-01-01",
+            "gender": "F",
+            "city": "Bangalore",
+            "team_name": "TIKS",
+            "first_name": "Nora",
+            "last_name": "Quinn",
+        }
+        response = c.post(
+            "/api/registration",
+            data=data,
+            content_type="application/json",
+        )
+        response_data = response.json()
+        self.assertEqual(200, response.status_code)
+        for key, value in data.items():
+            if key in response_data:
+                self.assertEqual(value, response_data[key])
+        self.assertEqual(self.user.id, response_data["user"])
+
+
 class TestPayment(TestCase):
     def setUp(self):
         super().setUp()
