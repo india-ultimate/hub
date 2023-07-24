@@ -1,6 +1,6 @@
 import { useNavigate, A } from "@solidjs/router";
 import { createSignal, createEffect, onMount, Show } from "solid-js";
-import { getCookie, fetchUserData } from "../utils";
+import { fetchUserData } from "../utils";
 import { useStore } from "../store";
 import Player from "./Player";
 
@@ -19,20 +19,6 @@ const Home = () => {
       fetchUserData(setLoggedIn, setData);
     }
   });
-
-  const logout = async () => {
-    const response = await fetch("/api/logout", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-CSRFToken": getCookie("csrftoken")
-      },
-      credentials: "same-origin"
-    });
-    if (response.status == 200) {
-      setLoggedIn(false);
-    }
-  };
 
   return (
     <div>
@@ -59,9 +45,6 @@ const Home = () => {
           </h3>
         </Show>
       </div>
-      <button class="my-10" onClick={logout}>
-        Logout
-      </button>
     </div>
   );
 };
