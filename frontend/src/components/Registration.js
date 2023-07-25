@@ -113,7 +113,7 @@ const RegistrationForm = ({ others }) => {
     <div>
       <Show
         when={!player()}
-        fallback={<RegistrationSuccess player={player()} />}
+        fallback={<RegistrationSuccess player={player()} others={others} />}
       >
         <Show when={others}>
           <div
