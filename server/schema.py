@@ -122,8 +122,6 @@ class UserSchema(ModelSchema):
             "username",
             "email",
             "phone",
-            "is_player",
-            "is_guardian",
             "first_name",
             "last_name",
         ]

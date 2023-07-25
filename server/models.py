@@ -8,8 +8,6 @@ from django.utils.translation import gettext_lazy as _
 
 
 class User(AbstractUser):
-    is_player = models.BooleanField(default=False)
-    is_guardian = models.BooleanField(default=False)
     phone = models.CharField(max_length=20)
     email = models.EmailField()
 

@@ -181,7 +181,6 @@ class Command(BaseCommand):
                     defaults={
                         "email": email,
                         "phone": phone,
-                        "is_player": True,
                         "first_name": first_name,
                         "last_name": last_name,
                     },
@@ -247,13 +246,11 @@ class Command(BaseCommand):
                         defaults={
                             "email": guardian_email,
                             "phone": guardian_phone,
-                            "is_guardian": True,
                             "first_name": first_name,
                             "last_name": last_name,
                         },
                     )
                     if not created:
-                        guardian_user.is_guardian = True
                         guardian_user.save()
 
                     relation = row[columns["guardian_relation"]]

@@ -111,7 +111,6 @@ def do_register(
         user_data = UserFormSchema(**registration.dict()).dict()
         for attr, value in user_data.items():
             setattr(user, attr, value)
-        user.is_player = True
         user.save()
 
         if guardian:
@@ -129,7 +128,6 @@ def register_others(request, registration: RegistrationOthersSchema):
         defaults={
             "email": registration.email,
             "phone": registration.phone,
-            "is_player": True,
             "first_name": registration.first_name,
             "last_name": registration.last_name,
         },
@@ -147,7 +145,6 @@ def register_ward(request, registration: RegistrationWardSchema):
         defaults={
             "email": email,
             "phone": registration.phone,
-            "is_player": True,
             "first_name": registration.first_name,
             "last_name": registration.last_name,
         },
