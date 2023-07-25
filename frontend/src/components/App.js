@@ -23,6 +23,10 @@ export default function App() {
             <Routes>
               <Route path="/login" component={Login} />
               <Route path="/registration/me" component={Registration} />
+              <Route
+                path="/registration/others"
+                element={<Registration others={true} />}
+              />
               <Route path="/" component={Home} />
               <Route path="/email-link" component={EmailLink} />
               <Route

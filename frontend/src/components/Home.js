@@ -49,8 +49,8 @@ const Home = () => {
                 class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
               >
                 <A
-                  href=""
-                  class="font-medium text-blue-600 dark:text-blue-500 hover:underline cursor-not-allowed"
+                  href="/registration/others"
+                  class="font-medium text-blue-600 dark:text-blue-500 hover:underline"
                 >
                   Fill the membership form for another player
                 </A>
