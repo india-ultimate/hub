@@ -7,17 +7,25 @@ export const StoreProvider = props => {
   const [store, setStore] = createStore({ loggedIn: false, data: {} });
   const setLoggedIn = flag => setStore("loggedIn", flag);
   const setData = data => setStore("data", data);
-  const setPlayerById = player => {
-    const searchPlayer = data => {
-      if (data?.player?.id === player.id) {
-        return "player";
-      } else {
-        // FIXME: Implement updating a player in players list.
-      }
-    };
+  const setPlayer = player => {
     setStore("data", "player", player);
   };
-  const data = [store, { setStore, setLoggedIn, setData, setPlayerById }];
+  const setPlayerById = player => {
+    if (store.data.player?.id === player.id) {
+      setStore("data", "player", player);
+    } else {
+      const wardIndex = store.data.wards?.findIndex(w => w.id === player.id);
+      if (wardIndex > -1) {
+        setStore("data", "wards", wardIndex, player);
+      } else {
+        console.log("Could not find ward");
+      }
+    }
+  };
+  const data = [
+    store,
+    { setStore, setLoggedIn, setData, setPlayer, setPlayerById }
+  ];
 
   return (
     <StoreContext.Provider value={data}>{props.children}</StoreContext.Provider>

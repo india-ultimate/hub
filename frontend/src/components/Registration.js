@@ -29,7 +29,7 @@ const RegistrationForm = ({ others }) => {
   const [player, setPlayer] = createSignal();
   const [disableSubmit, setDisableSubmit] = createSignal(false);
 
-  const [_, { setPlayerById }] = useStore();
+  const [_, { setPlayer: setStorePlayer }] = useStore();
 
   // Gender
   const handleGenderChange = e => {
@@ -88,7 +88,7 @@ const RegistrationForm = ({ others }) => {
         const player = await response.json();
         setPlayer(player);
         if (!others) {
-          setPlayerById(player);
+          setStorePlayer(player);
         }
       } else {
         if (response.status == 400) {
