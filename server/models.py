@@ -87,7 +87,7 @@ class Player(models.Model):
 
 class Guardianship(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    player = models.ForeignKey(Player, on_delete=models.CASCADE)
+    player = models.OneToOneField(Player, on_delete=models.CASCADE, unique=True)
 
     class Relation(models.TextChoices):
         MO = "MO", _("Mother")
@@ -95,9 +95,6 @@ class Guardianship(models.Model):
         LG = "LG", _("Legal Guardian")
 
     relation = models.TextField(max_length=2, choices=Relation.choices)
-
-    class Meta:
-        unique_together = ("user", "player")
 
 
 class Event(models.Model):
