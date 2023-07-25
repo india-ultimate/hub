@@ -3,7 +3,7 @@ from typing import List
 from django.contrib.auth import get_user_model
 from ninja import ModelSchema, Schema
 
-from server.models import Event, Membership, Player
+from server.models import Event, Guardianship, Membership, Player
 
 User = get_user_model()
 
@@ -72,6 +72,16 @@ class PlayerSchema(ModelSchema):
         except Membership.DoesNotExist:
             return
 
+    guardian: int = None
+
+    @staticmethod
+    def resolve_guardian(player):
+        try:
+            guardianship = Guardianship.objects.get(player=player)
+            return guardianship.user.id
+        except Guardianship.DoesNotExist:
+            return
+
     class Config:
         model = Player
         model_fields = "__all__"
@@ -131,6 +141,14 @@ class UserOtherFormSchema(ModelSchema):
         model_fields = ["first_name", "last_name", "phone", "email"]
 
 
+class UserWardFormSchema(ModelSchema):
+    email: str = None
+
+    class Config:
+        model = User
+        model_fields = ["first_name", "last_name", "phone", "email"]
+
+
 class PlayerFormSchema(ModelSchema):
     class Config:
         model = Player
@@ -138,9 +156,19 @@ class PlayerFormSchema(ModelSchema):
         model_fields_optional = "__all__"
 
 
+class GuardianshipFormSchema(ModelSchema):
+    class Config:
+        model = Guardianship
+        model_fields = ["relation"]
+
+
 class RegistrationSchema(UserFormSchema, PlayerFormSchema):
     pass
 
 
 class RegistrationOthersSchema(UserOtherFormSchema, PlayerFormSchema):
+    pass
+
+
+class RegistrationWardSchema(UserWardFormSchema, PlayerFormSchema, GuardianshipFormSchema):
     pass

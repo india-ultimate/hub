@@ -6,6 +6,7 @@ from typing import List, Union
 import firebase_admin
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model, login, logout
+from django.utils.text import slugify
 from django.views.decorators.csrf import csrf_exempt
 from firebase_admin import auth
 from ninja import NinjaAPI
@@ -19,7 +20,7 @@ from server.constants import (
     MEMBERSHIP_START,
 )
 from server.firebase_middleware import firebase_to_django_user
-from server.models import Event, Membership, Player, RazorpayTransaction
+from server.models import Event, Guardianship, Membership, Player, RazorpayTransaction
 from server.schema import (
     AnnualMembershipSchema,
     Credentials,
@@ -32,6 +33,7 @@ from server.schema import (
     PlayerSchema,
     RegistrationOthersSchema,
     RegistrationSchema,
+    RegistrationWardSchema,
     Response,
     UserFormSchema,
     UserSchema,
@@ -93,7 +95,11 @@ def register_self(request, registration: RegistrationSchema):
     return do_register(request.user, registration)
 
 
-def do_register(user, registration: Union[RegistrationSchema, RegistrationOthersSchema]):
+def do_register(
+    user,
+    registration: Union[RegistrationSchema, RegistrationOthersSchema, RegistrationWardSchema],
+    guardian=None,
+):
     try:
         Player.objects.get(user=user)
         return 400, {"message": "Player already exists"}
@@ -107,6 +113,11 @@ def do_register(user, registration: Union[RegistrationSchema, RegistrationOthers
             setattr(user, attr, value)
         user.is_player = True
         user.save()
+
+        if guardian:
+            Guardianship.objects.create(
+                user=guardian, player=player, relation=registration.relation
+            )
 
         return 200, PlayerSchema.from_orm(player)
 
@@ -124,6 +135,24 @@ def register_others(request, registration: RegistrationOthersSchema):
         },
     )
     return do_register(user, registration)
+
+
+@api.post("/registration/ward", response={200: PlayerSchema, 400: Response})
+def register_ward(request, registration: RegistrationWardSchema):
+    email = registration.email
+    if email is None:
+        email = slugify(f"{registration.first_name} {registration.last_name}")
+    user, created = User.objects.get_or_create(
+        username=email,
+        defaults={
+            "email": email,
+            "phone": registration.phone,
+            "is_player": True,
+            "first_name": registration.first_name,
+            "last_name": registration.last_name,
+        },
+    )
+    return do_register(user, registration, guardian=request.user)
 
 
 # Events

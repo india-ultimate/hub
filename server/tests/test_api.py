@@ -172,6 +172,34 @@ class TestRegistration(TestCase):
         self.assertEqual(user.username, data["email"])
         self.assertEqual(user.email, data["email"])
 
+    def test_register_ward(self):
+        c = self.client
+        data = {
+            "phone": "+1234567890",
+            "date_of_birth": "1990-01-01",
+            "gender": "F",
+            "city": "Bangalore",
+            "team_name": "TIKS",
+            "first_name": "Nora",
+            "last_name": "Quinn",
+            "relation": "MO",
+        }
+        response = c.post(
+            "/api/registration/ward",
+            data=data,
+            content_type="application/json",
+        )
+        self.assertEqual(200, response.status_code)
+        response_data = response.json()
+        for key, value in data.items():
+            if key in response_data:
+                self.assertEqual(value, response_data[key])
+        self.assertLess(self.user.id, response_data["user"])
+        self.assertEqual(self.user.id, response_data["guardian"])
+        user = User.objects.get(id=response_data["user"])
+        self.assertEqual(user.username, "nora-quinn")
+        self.assertEqual(user.email, "nora-quinn")
+
 
 class TestPayment(TestCase):
     def setUp(self):
