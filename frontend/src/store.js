@@ -22,9 +22,12 @@ export const StoreProvider = props => {
       }
     }
   };
+  const addWard = player => {
+    setStore("data", "wards", w => [...w, player]);
+  };
   const data = [
     store,
-    { setStore, setLoggedIn, setData, setPlayer, setPlayerById }
+    { setStore, setLoggedIn, setData, setPlayer, setPlayerById, addWard }
   ];
 
   return (

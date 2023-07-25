@@ -27,6 +27,10 @@ export default function App() {
                 path="/registration/others"
                 element={<Registration others={true} />}
               />
+              <Route
+                path="/registration/ward"
+                element={<Registration ward={true} />}
+              />
               <Route path="/" component={Home} />
               <Route path="/email-link" component={EmailLink} />
               <Route

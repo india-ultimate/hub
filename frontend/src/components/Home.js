@@ -62,11 +62,10 @@ const Home = () => {
                 class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
               >
                 <A
-                  href=""
-                  class="font-medium text-blue-600 dark:text-blue-500 hover:underline cursor-not-allowed"
-                  disabled
+                  href="/registration/ward"
+                  class="font-medium text-blue-600 dark:text-blue-500 hover:underline"
                 >
-                  Fill the membership form as a guardian
+                  Fill the membership form for a ward
                 </A>
               </th>
               <td class="px-6 py-4" />

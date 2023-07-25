@@ -57,6 +57,12 @@ export const occupationChoices = [
   { value: "Unemployed", label: "Unemployed" }
 ];
 
+export const relationChoices = [
+  { value: "MO", label: "Mother" },
+  { value: "FA", label: "Father" },
+  { value: "LG", label: "Legal Guardian" }
+];
+
 // NOTE: Memberships go from 1st June to 31st May
 export const membershipStartDate = [1, 6];
 export const membershipEndDate = [31, 5];

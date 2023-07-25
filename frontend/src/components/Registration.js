@@ -1,13 +1,19 @@
 import { getCookie } from "../utils";
 import { useStore } from "../store";
 import { createEffect, createSignal, Show, For } from "solid-js";
-import { genderChoices, stateChoices, occupationChoices } from "../constants";
+import {
+  genderChoices,
+  stateChoices,
+  occupationChoices,
+  relationChoices
+} from "../constants";
 import RegistrationSuccess from "./RegistrationSuccess";
 
-const RegistrationForm = ({ others }) => {
+const RegistrationForm = ({ others, ward }) => {
   const csrftoken = getCookie("csrftoken");
 
   // Form signals
+  const [relation, setRelation] = createSignal("");
   const [email, setEmail] = createSignal("");
   const [emailConfirm, setEmailConfirm] = createSignal("");
   const [firstName, setFirstName] = createSignal("");
@@ -29,7 +35,7 @@ const RegistrationForm = ({ others }) => {
   const [player, setPlayer] = createSignal();
   const [disableSubmit, setDisableSubmit] = createSignal(false);
 
-  const [_, { setPlayer: setStorePlayer }] = useStore();
+  const [_, { setPlayer: setStorePlayer, addWard }] = useStore();
 
   // Gender
   const handleGenderChange = e => {
@@ -62,7 +68,8 @@ const RegistrationForm = ({ others }) => {
       occupation: occupation(),
       educational_institution: educationInstitution(),
       india_ultimate_profile: upaiProfile(),
-      email: others ? email() : null
+      email: others ? email() : null,
+      relation: ward ? relation() : null
     };
     // Perform form submission logic or API request with formData
     console.log("Form submitted with data:", formData);
@@ -72,7 +79,11 @@ const RegistrationForm = ({ others }) => {
 
   const submitFormData = async formData => {
     // Send a post request to the api
-    const url = others ? "/api/registration/others" : "/api/registration";
+    const url = others
+      ? "/api/registration/others"
+      : ward
+      ? "/api/registration/ward"
+      : "/api/registration";
     try {
       const response = await fetch(url, {
         method: "POST",
@@ -87,8 +98,10 @@ const RegistrationForm = ({ others }) => {
         console.log("Player created successfully");
         const player = await response.json();
         setPlayer(player);
-        if (!others) {
+        if (!others && !ward) {
           setStorePlayer(player);
+        } else if (ward) {
+          addWard(player);
         }
       } else {
         if (response.status == 400) {
@@ -113,7 +126,9 @@ const RegistrationForm = ({ others }) => {
     <div>
       <Show
         when={!player()}
-        fallback={<RegistrationSuccess player={player()} others={others} />}
+        fallback={
+          <RegistrationSuccess player={player()} others={others} ward={ward} />
+        }
       >
         <Show when={others}>
           <div
@@ -127,9 +142,46 @@ const RegistrationForm = ({ others }) => {
             email address mentioned here.
           </div>
         </Show>
+        <Show when={ward}>
+          <div
+            class="p-4 mb-4 text-sm text-blue-800 rounded-lg bg-blue-50 dark:bg-gray-800 dark:text-blue-400"
+            role="alert"
+          >
+            {/* FIXME: Fix the wording and presentation here. */}
+            You are filling up the registration form for a ward. Please be sure
+            that you are legally eligible to fill-up this form!
+          </div>
+        </Show>
         <form onSubmit={handleSubmit}>
           <div class="grid gap-6 mb-6 md:grid-cols-2">
             <Show when={others || ward}>
+              <Show when={ward}>
+                <div>
+                  <label
+                    for="relation"
+                    class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                  >
+                    Your relation to the ward
+                  </label>
+                  <select
+                    id="relation"
+                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                    value={relation()}
+                    onInput={e => setRelation(e.currentTarget.value)}
+                    required
+                  >
+                    <option value="" disabled>
+                      Select relation
+                    </option>
+                    <For each={relationChoices}>
+                      {choice => (
+                        <option value={choice.value}>{choice.label}</option>
+                      )}
+                    </For>
+                  </select>
+                </div>
+                <div>{/* Empty div to balance rows */}</div>
+              </Show>
               <div>
                 <label
                   for="email"
@@ -144,7 +196,7 @@ const RegistrationForm = ({ others }) => {
                   placeholder="foo@example.com"
                   value={email()}
                   onInput={e => setEmail(e.currentTarget.value)}
-                  required
+                  required={!ward}
                 />
               </div>
               <div>
@@ -161,7 +213,7 @@ const RegistrationForm = ({ others }) => {
                   placeholder="foo@example.com"
                   value={emailConfirm()}
                   onInput={e => setEmailConfirm(e.currentTarget.value)}
-                  required
+                  required={!ward}
                 />
               </div>
             </Show>
@@ -264,46 +316,52 @@ const RegistrationForm = ({ others }) => {
                 onInput={e => setTeamName(e.currentTarget.value)}
               />
             </div>
-            <div>
-              <label
-                for="occupation"
-                class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
-              >
-                Occupation
-              </label>
-              <select
-                id="occupation"
-                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                value={occupation()}
-                onInput={e => setOccupation(e.currentTarget.value)}
-                required
-              >
-                <option value="" disabled>
-                  Select Occupation
-                </option>
-                <For each={occupationChoices}>
-                  {choice => (
-                    <option value={choice.value}>{choice.label}</option>
-                  )}
-                </For>
-              </select>
-            </div>
-            <div>
-              <label
-                for="education-institution"
-                class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
-              >
-                Education Institution
-              </label>
-              <input
-                type="text"
-                id="education-institution"
-                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                placeholder=""
-                value={educationInstitution()}
-                onInput={e => setEducationInstitution(e.currentTarget.value)}
-              />
-            </div>
+            <Show when={!ward}>
+              <div>
+                <label
+                  for="occupation"
+                  class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                >
+                  Occupation
+                </label>
+                <select
+                  id="occupation"
+                  class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                  value={occupation()}
+                  onInput={e => setOccupation(e.currentTarget.value)}
+                  required
+                >
+                  <option value="" disabled>
+                    Select Occupation
+                  </option>
+                  <For each={occupationChoices}>
+                    {choice => (
+                      <option value={choice.value}>{choice.label}</option>
+                    )}
+                  </For>
+                </select>
+              </div>
+              <div>{/* Empty div to balance rows */}</div>
+            </Show>
+            <Show when={ward}>
+              <div>
+                <label
+                  for="education-institution"
+                  class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                >
+                  Education Institution
+                </label>
+                <input
+                  type="text"
+                  id="education-institution"
+                  class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                  placeholder=""
+                  value={educationInstitution()}
+                  onInput={e => setEducationInstitution(e.currentTarget.value)}
+                />
+              </div>
+              <div>{/* Empty div to balance rows */}</div>
+            </Show>
             <div>
               <label
                 for="gender"
@@ -365,7 +423,7 @@ const RegistrationForm = ({ others }) => {
                 </label>
               </div>
             </div>
-            <div />
+            <div>{/* Empty div to balance rows */}</div>
             <div>
               <label
                 for="city-name"
