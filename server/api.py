@@ -49,8 +49,8 @@ User = get_user_model()
 api = NinjaAPI(auth=django_auth, csrf=True)
 
 
-@api.get("/user")
-def current_user(request, response={200: UserSchema}):
+@api.get("/me")
+def me(request, response={200: UserSchema}):
     return UserSchema.from_orm(request.user)
 
 
