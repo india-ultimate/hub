@@ -37,3 +37,13 @@ def verify_razorpay_webhook_payload(body, signature):
     except razorpay.errors.SignatureVerificationError as e:
         print(e)
         return False
+
+
+def mask_string(s):
+    n = len(s)
+    if n >= 8:
+        return s[:2] + "x" * (n - 4) + s[-2:]
+    elif n >= 6:
+        return s[:1] + "x" * (n - 2) + s[-1:]
+    else:
+        return s[:1] + "x" * (n - 1)

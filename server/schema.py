@@ -4,6 +4,7 @@ from django.contrib.auth import get_user_model
 from ninja import ModelSchema, Schema
 
 from server.models import Event, Guardianship, Membership, Player
+from server.utils import mask_string
 
 User = get_user_model()
 
@@ -97,6 +98,41 @@ class PlayerSchema(ModelSchema):
     class Config:
         model = Player
         model_fields = "__all__"
+
+
+class PlayerTinySchema(ModelSchema):
+    full_name: str
+
+    @staticmethod
+    def resolve_full_name(player):
+        return player.user.get_full_name()
+
+    email: str
+
+    @staticmethod
+    def resolve_email(player):
+        username, suffix = (player.user.email.split("@") + [""])[:2]
+        masked_username = mask_string(username)
+        return f"{masked_username}@{suffix}"
+
+    phone: str
+
+    @staticmethod
+    def resolve_phone(player):
+        return mask_string(player.user.phone)
+
+    has_membership: bool
+
+    @staticmethod
+    def resolve_has_membership(player):
+        try:
+            return player.membership.is_active
+        except Membership.DoesNotExist:
+            return False
+
+    class Config:
+        model = Player
+        model_fields = ["id", "city", "state_ut", "team_name", "educational_institution"]
 
 
 class EventSchema(ModelSchema):

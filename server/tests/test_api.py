@@ -202,6 +202,53 @@ class TestRegistration(TestCase):
         self.assertEqual(user.email, "nora-quinn")
 
 
+class TestPlayers(TestCase):
+    def setUp(self):
+        super().setUp()
+        self.client = Client()
+        self.username = "username@foo.com"
+        self.user = User.objects.create(username=self.username, email=self.username)
+        self.client.force_login(self.user)
+
+    def test_get_players(self):
+        c = self.client
+        create_player(self.user)
+        response = c.get(
+            "/api/players",
+            content_type="application/json",
+        )
+        self.assertEqual(200, response.status_code)
+        data = response.json()
+        self.assertEqual(1, len(data))
+        user_data = data[0]
+        self.assertIn("team_name", user_data)
+        self.assertIn("city", user_data)
+        self.assertIn("state_ut", user_data)
+        self.assertEqual("usxxxxme@foo.com", user_data["email"])
+        self.assertNotIn("membership", user_data)
+        self.assertNotIn("guardian", user_data)
+
+    def test_get_players_staff(self):
+        c = self.client
+        self.user.is_staff = True
+        self.user.save()
+        create_player(self.user)
+        response = c.get(
+            "/api/players",
+            content_type="application/json",
+        )
+        self.assertEqual(200, response.status_code)
+        data = response.json()
+        self.assertEqual(1, len(data))
+        user_data = data[0]
+        self.assertIn("team_name", user_data)
+        self.assertIn("city", user_data)
+        self.assertIn("state_ut", user_data)
+        self.assertEqual("username@foo.com", user_data["email"])
+        self.assertIn("membership", user_data)
+        self.assertIn("guardian", user_data)
+
+
 class TestPayment(TestCase):
     def setUp(self):
         super().setUp()

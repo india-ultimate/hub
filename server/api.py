@@ -31,6 +31,7 @@ from server.schema import (
     PaymentFormSchema,
     PlayerFormSchema,
     PlayerSchema,
+    PlayerTinySchema,
     RegistrationOthersSchema,
     RegistrationSchema,
     RegistrationWardSchema,
@@ -55,6 +56,17 @@ api = NinjaAPI(auth=django_auth, csrf=True)
 @api.get("/me")
 def me(request, response={200: UserSchema}):
     return UserSchema.from_orm(request.user)
+
+
+# Players ##########
+
+
+@api.get("/players")
+def list_players(request, response={200: List[Union[PlayerTinySchema, PlayerSchema]]}):
+    players = Player.objects.all()
+    is_staff = request.user.is_staff
+    schema = PlayerSchema if is_staff else PlayerTinySchema
+    return [schema.from_orm(p) for p in players]
 
 
 # Login #########
