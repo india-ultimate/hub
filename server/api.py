@@ -49,9 +49,15 @@ User = get_user_model()
 api = NinjaAPI(auth=django_auth, csrf=True)
 
 
+# User #########
+
+
 @api.get("/me")
 def me(request, response={200: UserSchema}):
     return UserSchema.from_orm(request.user)
+
+
+# Login #########
 
 
 @api.post("/login", auth=None, response={200: UserSchema, 403: Response})
@@ -88,6 +94,9 @@ def firebase_login(request, credentials: FirebaseCredentials):
     request.user = user
     login(request, user)
     return 200, UserSchema.from_orm(user)
+
+
+# Registration #########
 
 
 @api.post("/registration", response={200: PlayerSchema, 400: Response})
@@ -152,7 +161,7 @@ def register_ward(request, registration: RegistrationWardSchema):
     return do_register(user, registration, guardian=request.user)
 
 
-# Events
+# Events ##########
 
 
 @api.get("/events")
@@ -162,7 +171,7 @@ def list_events(request, include_all: bool = False, response={200: List[EventSch
     return [EventSchema.from_orm(e) for e in events]
 
 
-# Payments
+# Payments ##########
 
 
 @api.post("/create-order", response={200: OrderSchema, 400: Response, 502: str})
