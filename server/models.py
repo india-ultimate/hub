@@ -137,7 +137,7 @@ class RazorpayTransaction(models.Model):
         default=TransactionStatusChoices.PENDING,
     )
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    membership = models.ForeignKey(Membership, on_delete=models.CASCADE)
+    players = models.ManyToManyField(Player)
     event = models.ForeignKey(Event, on_delete=models.SET_NULL, blank=True, null=True)
 
     def __str__(self):
@@ -146,8 +146,12 @@ class RazorpayTransaction(models.Model):
     @classmethod
     def create_from_order_data(cls, data):
         fields = {f.name for f in RazorpayTransaction._meta.fields}
-        data = {key: value for key, value in data.items() if key in fields}
-        return cls.objects.create(**data)
+        attrs_data = {key: value for key, value in data.items() if key in fields}
+        transaction = cls.objects.create(**attrs_data)
+        players = data.get("players", [])
+        for player in players:
+            transaction.players.add(player)
+        return transaction
 
 
 class Vaccination(models.Model):

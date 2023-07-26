@@ -51,8 +51,10 @@ const handlePaymentSuccess = (data, setStatus, setPlayerById) => {
   })
     .then(async response => {
       if (response.ok) {
-        const player = await response.json();
-        setPlayerById(player);
+        const players = await response.json();
+        players.forEach(player => {
+          setPlayerById(player);
+        });
         setStatus("Payment successfully completed!");
       } else {
         if (response.status === 422) {

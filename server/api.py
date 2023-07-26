@@ -244,7 +244,7 @@ def create_order(request, order: Union[AnnualMembershipSchema, EventMembershipSc
             start_date=start_date,
             end_date=end_date,
             user=user,
-            membership=membership,
+            players=[player],
             event=event,
         )
     )
@@ -259,7 +259,9 @@ def create_order(request, order: Union[AnnualMembershipSchema, EventMembershipSc
     return data
 
 
-@api.post("/payment-success", response={200: PlayerSchema, 502: str, 404: Response, 422: Response})
+@api.post(
+    "/payment-success", response={200: List[PlayerSchema], 502: str, 404: Response, 422: Response}
+)
 def payment_success(request, payment: PaymentFormSchema):
     authentic = verify_razorpay_payment(payment.dict())
     if not authentic:
@@ -267,7 +269,7 @@ def payment_success(request, payment: PaymentFormSchema):
     transaction = update_transaction(payment)
     if not transaction:
         return 404, {"message": "No order found."}
-    return PlayerSchema.from_orm(transaction.membership.player)
+    return [PlayerSchema.from_orm(player) for player in transaction.players.all()]
 
 
 def update_transaction(payment):
@@ -281,12 +283,13 @@ def update_transaction(payment):
         setattr(transaction, key[n:], value)
     transaction.status = RazorpayTransaction.TransactionStatusChoices.COMPLETED
     transaction.save()
-    membership = transaction.membership
-    membership.start_date = transaction.start_date
-    membership.end_date = transaction.end_date
-    membership.event = transaction.event
-    membership.is_active = True
-    membership.save()
+    for player in transaction.players.all():
+        membership = player.membership
+        membership.start_date = transaction.start_date
+        membership.end_date = transaction.end_date
+        membership.event = transaction.event
+        membership.is_active = True
+        membership.save()
     return transaction
 
 

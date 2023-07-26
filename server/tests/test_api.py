@@ -303,7 +303,7 @@ class TestPayment(TestCase):
         transaction = RazorpayTransaction.objects.get(order_id=order_id)
         self.assertEqual(self.user, transaction.user)
         self.assertEqual(amount, transaction.amount)
-        self.assertEqual(player.membership, transaction.membership)
+        self.assertIn(player, transaction.players.all())
         self.assertEqual(
             RazorpayTransaction.TransactionStatusChoices.PENDING,
             transaction.status,
@@ -376,7 +376,7 @@ class TestPayment(TestCase):
         order_id = order_data["order_id"]
         transaction = RazorpayTransaction.objects.get(order_id=order_id)
         self.assertEqual(self.user, transaction.user)
-        self.assertEqual(player.membership, transaction.membership)
+        self.assertIn(player, transaction.players.all())
         self.assertEqual(player.membership.start_date, event.start_date)
         self.assertEqual(player.membership.end_date, event.end_date)
         self.assertFalse(player.membership.is_annual)
@@ -401,13 +401,11 @@ class TestPayment(TestCase):
         membership = Membership.objects.create(
             start_date=start_date, end_date=end_date, player=player
         )
-        order.update(
-            dict(start_date=start_date, end_date=end_date, user=user, membership=membership)
-        )
+        order.update(dict(start_date=start_date, end_date=end_date, user=user, players=[player]))
         transaction = RazorpayTransaction.create_from_order_data(order)
         self.assertFalse(membership.is_active)
         self.assertEqual(self.user, transaction.user)
-        self.assertEqual(player.membership, transaction.membership)
+        self.assertIn(player, transaction.players.all())
 
         payment_id = f"pay_{fake_id(16)}"
         signature = f"{fake_id(64)}"
@@ -424,8 +422,12 @@ class TestPayment(TestCase):
 
         self.assertEqual(200, response.status_code)
         data = response.json()
-        self.assertEqual(player.id, data["id"])
-        self.assertEqual(membership.membership_number, data["membership"]["membership_number"])
+        self.assertEqual(1, len(data))
+        player_data = data[0]
+        self.assertEqual(player.id, player_data["id"])
+        self.assertEqual(
+            membership.membership_number, player_data["membership"]["membership_number"]
+        )
 
         transaction.refresh_from_db()
         self.assertEqual(transaction.payment_id, payment_id)
@@ -461,14 +463,14 @@ class TestPayment(TestCase):
                 start_date=start_date,
                 end_date=end_date,
                 user=user,
-                membership=membership,
+                players=[player],
                 event=event,
             )
         )
         transaction = RazorpayTransaction.create_from_order_data(order)
         self.assertFalse(membership.is_active)
         self.assertEqual(self.user, transaction.user)
-        self.assertEqual(player.membership, transaction.membership)
+        self.assertIn(player, transaction.players.all())
         self.assertEqual(event_old, player.membership.event)
         self.assertEqual(event, transaction.event)
 
@@ -487,8 +489,12 @@ class TestPayment(TestCase):
 
         self.assertEqual(200, response.status_code)
         data = response.json()
-        self.assertEqual(player.id, data["id"])
-        self.assertEqual(membership.membership_number, data["membership"]["membership_number"])
+        self.assertEqual(1, len(data))
+        player_data = data[0]
+        self.assertEqual(player.id, player_data["id"])
+        self.assertEqual(
+            membership.membership_number, player_data["membership"]["membership_number"]
+        )
 
         transaction.refresh_from_db()
         self.assertEqual(transaction.payment_id, payment_id)
