@@ -63,6 +63,18 @@ class PlayerSchema(ModelSchema):
     def resolve_full_name(player):
         return player.user.get_full_name()
 
+    email: str
+
+    @staticmethod
+    def resolve_email(player):
+        return player.user.email
+
+    phone: str
+
+    @staticmethod
+    def resolve_phone(player):
+        return player.user.phone
+
     membership: MembershipSchema = None
 
     @staticmethod
