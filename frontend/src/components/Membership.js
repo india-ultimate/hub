@@ -18,7 +18,7 @@ const getPlayer = (data, id) => {
   }
 };
 
-const membershipOptions = () => {
+const membershipYearOptions = () => {
   // Get the current date
   const currentDate = new Date();
   const currentMonth = currentDate.getMonth() + 1;
@@ -119,7 +119,7 @@ const Membership = () => {
 
   const [status, setStatus] = createSignal();
 
-  const years = membershipOptions();
+  const years = membershipYearOptions();
   const [year, setYear] = createSignal(years?.[0]);
   const [startDate, setStartDate] = createSignal("");
   const [endDate, setEndDate] = createSignal("");
