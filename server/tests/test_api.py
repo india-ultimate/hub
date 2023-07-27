@@ -1,11 +1,14 @@
 import datetime
+import json
 import random
 import string
 import uuid
 from unittest import mock
 
 from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase
+from django.test.client import MULTIPART_CONTENT
 from requests.exceptions import RequestException
 from server.constants import ANNUAL_MEMBERSHIP_AMOUNT, EVENT_MEMBERSHIP_AMOUNT
 from server.models import Event, Membership, Player, RazorpayTransaction
@@ -645,3 +648,55 @@ class TestPayment(TestCase):
 
         self.assertEqual(502, response.status_code)
         self.assertIn(b"Razorpay", response.content)
+
+
+class TestVaccination(TestCase):
+    def setUp(self):
+        super().setUp()
+        self.client = Client()
+        self.username = "username@foo.com"
+        self.user = User.objects.create(username=self.username, email=self.username)
+        self.client.force_login(self.user)
+        self.player = Player.objects.create(user=self.user, date_of_birth="1990-01-01")
+
+    def test_not_vaccinated(self):
+        c = self.client
+        data = {
+            "is_vaccinated": False,
+            "explain_not_vaccinated": "I do not believe in this shit!",
+            "player_id": self.player.id,
+        }
+
+        response = c.post(
+            "/api/vaccination",
+            data=dict(vaccination=json.dumps(data)),
+            content_type=MULTIPART_CONTENT,
+        )
+        response_data = response.json()
+        self.assertEqual(200, response.status_code)
+        for key, value in data.items():
+            if key in response_data:
+                self.assertEqual(value, response_data[key])
+        self.assertEqual(self.player.id, response_data["player"])
+
+    def test_vaccinated(self):
+        c = self.client
+
+        certificate = SimpleUploadedFile(
+            "certificate.pdf", b"file content", content_type="application/pdf"
+        )
+        data = {"is_vaccinated": True, "name": "CVXN", "player_id": self.player.id}
+        response = c.post(
+            path="/api/vaccination",
+            data=dict(vaccination=json.dumps(data), certificate=certificate),
+            content_type=MULTIPART_CONTENT,
+        )
+        response_data = response.json()
+        self.assertEqual(200, response.status_code)
+        for key, value in data.items():
+            if key in response_data:
+                if key != "certificate":
+                    self.assertEqual(value, response_data[key])
+                else:
+                    self.assertTrue(len(response_data[key]) > 0)
+        self.assertEqual(self.player.id, response_data["player"])

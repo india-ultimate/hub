@@ -1,7 +1,7 @@
 import datetime
 import json
 import time
-from typing import List, Union
+from typing import List, Optional, Union
 
 import firebase_admin
 from django.conf import settings
@@ -9,7 +9,7 @@ from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.utils.text import slugify
 from django.views.decorators.csrf import csrf_exempt
 from firebase_admin import auth
-from ninja import NinjaAPI
+from ninja import File, NinjaAPI, UploadedFile
 from ninja.security import django_auth
 from requests.exceptions import RequestException
 
@@ -20,7 +20,7 @@ from server.constants import (
     MEMBERSHIP_START,
 )
 from server.firebase_middleware import firebase_to_django_user
-from server.models import Event, Guardianship, Membership, Player, RazorpayTransaction
+from server.models import Event, Guardianship, Membership, Player, RazorpayTransaction, Vaccination
 from server.schema import (
     AnnualMembershipSchema,
     Credentials,
@@ -28,6 +28,7 @@ from server.schema import (
     EventSchema,
     FirebaseCredentials,
     GroupMembershipSchema,
+    NotVaccinatedFormSchema,
     OrderSchema,
     PaymentFormSchema,
     PlayerFormSchema,
@@ -39,6 +40,8 @@ from server.schema import (
     Response,
     UserFormSchema,
     UserSchema,
+    VaccinatedFormSchema,
+    VaccinationSchema,
 )
 from server.utils import (
     create_razorpay_order,
@@ -353,3 +356,33 @@ def payment_webhook(request):
     )
     update_transaction(payment)
     return {"message": "Webhook processed"}
+
+
+@api.post("/vaccination", response={200: VaccinationSchema, 400: Response})
+def vaccinated_player(
+    request,
+    vaccination: Union[VaccinatedFormSchema, NotVaccinatedFormSchema],
+    certificate: Optional[UploadedFile] = File(None),
+):
+    if vaccination.is_vaccinated and not certificate:
+        return 400, {"message": "Certificate needs to be uploaded!"}
+
+    try:
+        player = Player.objects.get(id=vaccination.player_id)
+    except Player.DoesNotExist:
+        return 400, {"message": "Player does not exist"}
+
+    try:
+        vaccination = player.vaccination
+        return 400, {"message": "Player's vaccination information is already available"}
+    except Vaccination.DoesNotExist:
+        pass
+
+    vaccination_data = vaccination.dict()
+    vaccination_data["certificate"] = certificate
+    vaccination_data["player"] = player
+    vaccine = Vaccination(**vaccination_data)
+    vaccine.full_clean()
+    vaccine.save()
+
+    return 200, VaccinationSchema.from_orm(vaccine)

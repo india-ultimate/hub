@@ -3,7 +3,7 @@ from typing import List
 from django.contrib.auth import get_user_model
 from ninja import ModelSchema, Schema
 
-from server.models import Event, Guardianship, Membership, Player
+from server.models import Event, Guardianship, Membership, Player, Vaccination
 from server.utils import mask_string
 
 User = get_user_model()
@@ -180,6 +180,12 @@ class UserSchema(ModelSchema):
         ]
 
 
+class VaccinationSchema(ModelSchema):
+    class Config:
+        model = Vaccination
+        model_fields = "__all__"
+
+
 class UserFormSchema(ModelSchema):
     class Config:
         model = User
@@ -211,6 +217,18 @@ class GuardianshipFormSchema(ModelSchema):
     class Config:
         model = Guardianship
         model_fields = ["relation"]
+
+
+class NotVaccinatedFormSchema(Schema):
+    player_id: int
+    is_vaccinated: bool
+    explain_not_vaccinated: str
+
+
+class VaccinatedFormSchema(Schema):
+    player_id: int
+    is_vaccinated: bool
+    name: str
 
 
 class RegistrationSchema(UserFormSchema, PlayerFormSchema):
