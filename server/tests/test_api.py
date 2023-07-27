@@ -1,6 +1,7 @@
 import datetime
 import random
 import string
+import uuid
 from unittest import mock
 
 from django.contrib.auth import get_user_model
@@ -389,6 +390,72 @@ class TestPayment(TestCase):
         self.assertEqual(event.start_date, transaction.start_date)
         self.assertEqual(event.end_date, transaction.end_date)
 
+    def test_create_order_group_membership(self):
+        c = self.client
+
+        player_ids = [200, 220, 230, 225]
+        event_id = 20
+
+        # Player does not exist
+        with mock.patch(
+            "server.api.create_razorpay_order",
+            return_value=mock.MagicMock(email=self.username),
+        ):
+            response = c.post(
+                "/api/create-order",
+                data={
+                    "player_ids": player_ids,
+                    "year": 2023,
+                },
+                content_type="application/json",
+            )
+        self.assertEqual(400, response.status_code)
+        self.assertEqual(
+            "Some players couldn't be found in the DB: [200, 220, 225, 230]",
+            response.json()["message"],
+        )
+
+        # Players exist
+        for id_ in player_ids:
+            username = str(uuid.uuid4())[:8]
+            user = User.objects.create(username=username)
+            date_of_birth = "2001-01-01"
+            player = Player.objects.create(id=id_, user=user, date_of_birth=date_of_birth)
+
+        amount = ANNUAL_MEMBERSHIP_AMOUNT * len(player_ids)
+        with mock.patch(
+            "server.api.create_razorpay_order",
+            return_value=fake_order(amount),
+        ) as f:
+            response = c.post(
+                "/api/create-order",
+                data={
+                    "player_ids": player_ids,
+                    "year": 2023,
+                },
+                content_type="application/json",
+            )
+        f.assert_called_once_with(amount, receipt=mock.ANY, notes=mock.ANY)
+        self.assertEqual(200, response.status_code)
+        order_data = response.json()
+        self.assertIn("amount", order_data)
+        self.assertIn("order_id", order_data)
+        order_id = order_data["order_id"]
+        transaction = RazorpayTransaction.objects.get(order_id=order_id)
+        self.assertEqual(self.user, transaction.user)
+        self.assertIsNotNone(transaction.start_date)
+        self.assertIsNotNone(transaction.end_date)
+        for player_id in player_ids:
+            player = Player.objects.get(id=player_id)
+            self.assertIn(player, transaction.players.all())
+            self.assertEqual(player.membership.start_date, transaction.start_date)
+            self.assertEqual(player.membership.end_date, transaction.end_date)
+            self.assertTrue(player.membership.is_annual)
+        self.assertEqual(
+            RazorpayTransaction.TransactionStatusChoices.PENDING,
+            transaction.status,
+        )
+
     def test_payment_success(self):
         c = self.client
         amount = 60000
@@ -440,6 +507,59 @@ class TestPayment(TestCase):
         self.assertTrue(membership.is_active)
         self.assertEqual(start_date, membership.start_date.strftime("%Y-%m-%d"))
         self.assertEqual(end_date, membership.end_date.strftime("%Y-%m-%d"))
+
+    def test_payment_success_group_membership(self):
+        c = self.client
+        n_players = 4
+        amount = 60000 * n_players
+        order = fake_order(amount)
+        order_id = order["order_id"]
+        user = self.user
+        start_date = "2023-06-01"
+        end_date = "2024-05-31"
+
+        players = []
+        for _ in range(n_players):
+            username = str(uuid.uuid4())[:8]
+            user_ = User.objects.create(username=username)
+            date_of_birth = "2001-01-01"
+            player = Player.objects.create(user=user_, date_of_birth=date_of_birth)
+            players.append(player)
+
+        order.update(dict(start_date=start_date, end_date=end_date, user=user, players=players))
+        transaction = RazorpayTransaction.create_from_order_data(order)
+        self.assertEqual(self.user, transaction.user)
+        for player in players:
+            self.assertIn(player, transaction.players.all())
+
+        payment_id = f"pay_{fake_id(16)}"
+        signature = f"{fake_id(64)}"
+        with mock.patch("server.api.verify_razorpay_payment", return_value=True):
+            response = c.post(
+                "/api/payment-success",
+                data={
+                    "razorpay_order_id": order_id,
+                    "razorpay_payment_id": payment_id,
+                    "razorpay_signature": signature,
+                },
+                content_type="application/json",
+            )
+
+        self.assertEqual(200, response.status_code)
+        data = response.json()
+        self.assertEqual(n_players, len(data))
+        for player in data:
+            membership = player["membership"]
+            self.assertTrue(membership["is_active"])
+            self.assertEqual(start_date, membership["start_date"])
+            self.assertEqual(end_date, membership["end_date"])
+
+        transaction.refresh_from_db()
+        self.assertEqual(transaction.payment_id, payment_id)
+        self.assertEqual(
+            RazorpayTransaction.TransactionStatusChoices.COMPLETED,
+            transaction.status,
+        )
 
     def test_payment_success_event_membership(self):
         c = self.client

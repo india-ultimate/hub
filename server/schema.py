@@ -39,6 +39,11 @@ class EventMembershipSchema(Schema):
     event_id: int
 
 
+class GroupMembershipSchema(Schema):
+    player_ids: List[int]
+    year: int
+
+
 class PaymentFormSchema(Schema):
     razorpay_order_id: str
     razorpay_payment_id: str

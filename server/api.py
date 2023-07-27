@@ -27,6 +27,7 @@ from server.schema import (
     EventMembershipSchema,
     EventSchema,
     FirebaseCredentials,
+    GroupMembershipSchema,
     OrderSchema,
     PaymentFormSchema,
     PlayerFormSchema,
@@ -187,18 +188,36 @@ def list_events(request, include_all: bool = False, response={200: List[EventSch
 
 
 @api.post("/create-order", response={200: OrderSchema, 400: Response, 502: str})
-def create_order(request, order: Union[AnnualMembershipSchema, EventMembershipSchema]):
-    try:
-        player = Player.objects.get(id=order.player_id)
-    except Player.DoesNotExist:
-        return 400, {"message": "Player does not exist!"}
+def create_order(
+    request, order: Union[AnnualMembershipSchema, EventMembershipSchema, GroupMembershipSchema]
+):
+    if isinstance(order, GroupMembershipSchema):
+        group_payment = True
+        players = Player.objects.filter(id__in=order.player_ids)
+        player_ids = {p.id for p in players}
+        if len(player_ids) != len(order.player_ids):
+            missing_players = set(order.player_ids) - player_ids
+            return 400, {
+                "message": f"Some players couldn't be found in the DB: {sorted(missing_players)}"
+            }
 
-    if isinstance(order, AnnualMembershipSchema):
+    else:
+        group_payment = False
+        try:
+            player = Player.objects.get(id=order.player_id)
+        except Player.DoesNotExist:
+            return 400, {"message": "Player does not exist!"}
+
+    if isinstance(order, (GroupMembershipSchema, AnnualMembershipSchema)):
         start_date = datetime.date(order.year, *MEMBERSHIP_START)
         end_date = datetime.date(order.year + 1, *MEMBERSHIP_END)
         is_annual = True
         event = None
-        amount = ANNUAL_MEMBERSHIP_AMOUNT
+        amount = (
+            ANNUAL_MEMBERSHIP_AMOUNT * len(order.player_ids)
+            if group_payment
+            else ANNUAL_MEMBERSHIP_AMOUNT
+        )
 
     elif isinstance(order, EventMembershipSchema):
         try:
@@ -223,16 +242,27 @@ def create_order(request, order: Union[AnnualMembershipSchema, EventMembershipSc
         "end_date": end_date,
         "event": event,
     }
-    membership, _ = Membership.objects.get_or_create(
-        player=player,
-        defaults=membership_defaults,
-    )
-    notes = {
-        "user_id": user.id,
-        "player_id": player.id,
-        "membership_id": membership.id,
-    }
-    receipt = f"{membership.membership_number}:{start_date}:{ts}"
+    if group_payment:
+        player_names = ", ".join(sorted([player.user.get_full_name() for player in players]))
+        notes = {
+            "user_id": user.id,
+            "player_ids": str(player_ids),
+            "players": player_names,
+        }
+        receipt = f"group:{start_date}:{ts}"
+        for player in players:
+            Membership.objects.get_or_create(player=player, defaults=membership_defaults)
+    else:
+        membership, _ = Membership.objects.get_or_create(
+            player=player,
+            defaults=membership_defaults,
+        )
+        notes = {
+            "user_id": user.id,
+            "player_id": player.id,
+            "membership_id": membership.id,
+        }
+        receipt = f"{membership.membership_number}:{start_date}:{ts}"
 
     try:
         data = create_razorpay_order(amount, receipt=receipt, notes=notes)
@@ -244,15 +274,21 @@ def create_order(request, order: Union[AnnualMembershipSchema, EventMembershipSc
             start_date=start_date,
             end_date=end_date,
             user=user,
-            players=[player],
+            players=[player] if not group_payment else players,
             event=event,
         )
     )
     transaction = RazorpayTransaction.create_from_order_data(data)
+    transaction_user_name = user.get_full_name()
+    description = (
+        f"Membership for {player.user.get_full_name()}"
+        if not group_payment
+        else f"Membership group payment by {transaction_user_name} for {player_names}"
+    )
     extra_data = {
         "name": settings.APP_NAME,
         "image": settings.LOGO_URL,
-        "description": f"Membership for {player.user.get_full_name()}",
+        "description": description,
         "prefill": {"name": user.get_full_name(), "email": user.email, "contact": user.phone},
     }
     data.update(extra_data)
@@ -283,13 +319,22 @@ def update_transaction(payment):
         setattr(transaction, key[n:], value)
     transaction.status = RazorpayTransaction.TransactionStatusChoices.COMPLETED
     transaction.save()
+
+    membership_defaults = {
+        "start_date": transaction.start_date,
+        "end_date": transaction.end_date,
+        "event": transaction.event,
+        "is_active": True,
+    }
     for player in transaction.players.all():
-        membership = player.membership
-        membership.start_date = transaction.start_date
-        membership.end_date = transaction.end_date
-        membership.event = transaction.event
-        membership.is_active = True
-        membership.save()
+        membership, created = Membership.objects.get_or_create(
+            player=player, defaults=membership_defaults
+        )
+        if not created:
+            for key, value in membership_defaults.items():
+                setattr(membership, key, value)
+            membership.save()
+
     return transaction
 
 
