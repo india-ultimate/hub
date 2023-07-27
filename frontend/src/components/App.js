@@ -8,6 +8,7 @@ const Home = lazy(() => import("./Home"));
 const Login = lazy(() => import("./Login"));
 const Registration = lazy(() => import("./Registration"));
 const Membership = lazy(() => import("./Membership"));
+const Vaccination = lazy(() => import("./Vaccination"));
 
 const filters = {
   id: /^\d+$/ // only allow numbers
@@ -36,6 +37,11 @@ export default function App() {
               <Route
                 path="/membership/:playerId"
                 component={Membership}
+                matchFilters={filters}
+              />
+              <Route
+                path="/vaccination/:playerId"
+                component={Vaccination}
                 matchFilters={filters}
               />
               <Route

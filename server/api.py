@@ -20,7 +20,7 @@ from server.constants import (
     MEMBERSHIP_START,
 )
 from server.firebase_middleware import firebase_to_django_user
-from server.models import Event, Guardianship, Membership, Player, RazorpayTransaction
+from server.models import Event, Guardianship, Membership, Player, RazorpayTransaction, Vaccination
 from server.schema import (
     AnnualMembershipSchema,
     Credentials,
@@ -34,6 +34,8 @@ from server.schema import (
     RegistrationOthersSchema,
     RegistrationSchema,
     RegistrationWardSchema,
+    VaccinationFormSchema,
+    VaccinationSchema,
     Response,
     UserFormSchema,
     UserSchema,
@@ -293,3 +295,29 @@ def payment_webhook(request):
     )
     update_transaction(payment)
     return {"message": "Webhook processed"}
+
+
+@api.post("/vaccination", response={200: VaccinationSchema, 400: Response})
+def vaccination_player(request, vaccination: VaccinationFormSchema):
+    user = request.user
+
+    try:
+        player = Player.objects.get(user=user)
+        if player.is_vaccinated:
+            return 400, {"message": "Player is already vaccinated"}
+
+        vaccination_data = VaccinationFormSchema(**vaccination.dict()).dict()
+        vaccination_data["player"] = player
+
+        if "vaccination_certificate" in request.FILES:
+            vaccination_data["vaccination_certificate"] = request.FILES["vaccination_certificate"]
+
+        vaccination_instance = Vaccination(**vaccination_data)
+        vaccination_instance.save()
+
+        player.is_vaccinated = True
+        player.save()
+
+        return 200, VaccinationSchema.from_orm(vaccination_instance)
+    except Player.DoesNotExist:
+        return 400, {"message": "Player does not exist"}
