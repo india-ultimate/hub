@@ -2,7 +2,7 @@ import Player from "./Player";
 import { useStore } from "../store";
 import { useParams } from "@solidjs/router";
 import { createSignal, createEffect, onCleanup, onMount, Show } from "solid-js";
-import { getCookie, fetchUserData, displayDate, fetchEvents } from "../utils";
+import { getCookie, fetchUserData, displayDate, fetchUrl } from "../utils";
 import {
   membershipStartDate,
   membershipEndDate,
@@ -149,7 +149,7 @@ const Membership = () => {
     if (!store.loggedIn) {
       fetchUserData(setLoggedIn, setData);
     }
-    fetchEvents(eventsSuccessHandler, error => console.log(error));
+    fetchUrl("/api/events", eventsSuccessHandler, error => console.log(error));
   });
 
   let rzpScript;

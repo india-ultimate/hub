@@ -83,8 +83,8 @@ export const displayDate = dateString => {
   return date;
 };
 
-export const fetchEvents = (successHandler, errorHandler) => {
-  fetch("/api/events", {
+export const fetchUrl = (url, successHandler, errorHandler) => {
+  fetch(url, {
     method: "GET",
     headers: { "Content-Type": "application/json" },
     credentials: "same-origin"
