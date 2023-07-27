@@ -58,11 +58,12 @@ class TestLogin(TestCase):
 
     def test_firebase_login_failure(self) -> None:
         c = Client()
-        response = c.post(
-            "/api/firebase-login",
-            data={"token": "token", "uid": "fake-uid"},
-            content_type="application/json",
-        )
+        with mock.patch("firebase_admin.auth.get_user", return_value=None):
+            response = c.post(
+                "/api/firebase-login",
+                data={"token": "token", "uid": "fake-uid"},
+                content_type="application/json",
+            )
         self.assertEqual(403, response.status_code)
 
     def test_firebase_login(self) -> None:
