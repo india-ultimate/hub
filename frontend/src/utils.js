@@ -129,7 +129,12 @@ export const findPlayerById = (data, id) => {
   }
 };
 
-const handlePaymentSuccess = (data, setStatus, setPlayerById) => {
+const handlePaymentSuccess = (
+  data,
+  setStatus,
+  setPlayerById,
+  successCallback
+) => {
   fetch("/api/payment-success", {
     method: "POST",
     headers: {
@@ -145,6 +150,9 @@ const handlePaymentSuccess = (data, setStatus, setPlayerById) => {
         players.forEach(player => {
           setPlayerById(player);
         });
+        if (successCallback) {
+          successCallback();
+        }
         setStatus("Payment successfully completed!");
       } else {
         if (response.status === 422) {
@@ -158,16 +166,22 @@ const handlePaymentSuccess = (data, setStatus, setPlayerById) => {
     .catch(error => setStatus(`Error: ${error}`));
 };
 
-const openRazorpayUI = (data, setStatus, setPlayerById) => {
+const openRazorpayUI = (data, setStatus, setPlayerById, successCallback) => {
   const options = {
     ...data,
-    handler: e => handlePaymentSuccess(e, setStatus, setPlayerById)
+    handler: e =>
+      handlePaymentSuccess(e, setStatus, setPlayerById, successCallback)
   };
   const rzp = window.Razorpay(options);
   rzp.open();
 };
 
-export const purchaseMembership = (data, setStatus, setPlayerById) => {
+export const purchaseMembership = (
+  data,
+  setStatus,
+  setPlayerById,
+  successCallback
+) => {
   const type = data?.year ? "annual" : "event";
   console.log(`Paying for ${type} membership for ${data?.player_id}`, data);
   fetch("/api/create-order", {
@@ -183,7 +197,7 @@ export const purchaseMembership = (data, setStatus, setPlayerById) => {
       if (response.ok) {
         const data = await response.json();
         setStatus("");
-        openRazorpayUI(data, setStatus, setPlayerById);
+        openRazorpayUI(data, setStatus, setPlayerById, successCallback);
       } else {
         if (response.status === 422) {
           const errors = await response.json();

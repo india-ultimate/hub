@@ -8,6 +8,7 @@ const Home = lazy(() => import("./Home"));
 const Login = lazy(() => import("./Login"));
 const Registration = lazy(() => import("./Registration"));
 const Membership = lazy(() => import("./Membership"));
+const GroupMembership = lazy(() => import("./GroupMembership"));
 
 const filters = {
   id: /^\d+$/ // only allow numbers
@@ -33,6 +34,7 @@ export default function App() {
               />
               <Route path="/" component={Home} />
               <Route path="/email-link" component={EmailLink} />
+              <Route path="/membership/group" component={GroupMembership} />
               <Route
                 path="/membership/:playerId"
                 component={Membership}

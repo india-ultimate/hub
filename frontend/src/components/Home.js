@@ -70,6 +70,20 @@ const Home = () => {
               </th>
               <td class="px-6 py-4" />
             </tr>
+            <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+              <th
+                scope="row"
+                class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+              >
+                <A
+                  href="/membership/group"
+                  class="font-medium text-blue-600 dark:text-blue-500 hover:underline"
+                >
+                  Pay the membership fee for a group
+                </A>
+              </th>
+              <td class="px-6 py-4" />
+            </tr>
           </tbody>
         </table>
       </div>
