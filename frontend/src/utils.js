@@ -1,3 +1,10 @@
+import {
+  membershipStartDate,
+  membershipEndDate,
+  annualMembershipFee,
+  eventMembershipFee
+} from "./constants";
+
 export const getCookie = name => {
   const cookies = document.cookie.split(";").reduce((acc, x) => {
     const [key, val] = x.split("=");
@@ -91,4 +98,106 @@ export const fetchUrl = (url, successHandler, errorHandler) => {
   })
     .then(successHandler)
     .catch(errorHandler);
+};
+
+export const membershipYearOptions = () => {
+  // Get the current date
+  const currentDate = new Date();
+  const currentMonth = currentDate.getMonth() + 1;
+  const year = currentDate.getFullYear();
+  const [_, membershipEndMonth] = membershipStartDate;
+
+  let renewalOptions = [];
+
+  if (currentMonth <= membershipEndMonth) {
+    renewalOptions.push(year - 1);
+    if (currentMonth == membershipEndMonth) {
+      renewalOptions.push(year);
+    }
+  } else if (currentMonth >= membershipEndMonth) {
+    renewalOptions.push(year);
+  }
+
+  return renewalOptions;
+};
+
+export const findPlayerById = (data, id) => {
+  if (data.player?.id === id) {
+    return data.player;
+  } else {
+    return data.wards?.filter(p => p.id === id)?.[0];
+  }
+};
+
+const handlePaymentSuccess = (data, setStatus, setPlayerById) => {
+  fetch("/api/payment-success", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    body: JSON.stringify(data),
+    credentials: "same-origin"
+  })
+    .then(async response => {
+      if (response.ok) {
+        const players = await response.json();
+        players.forEach(player => {
+          setPlayerById(player);
+        });
+        setStatus("Payment successfully completed!");
+      } else {
+        if (response.status === 422) {
+          const error = await response.json();
+          setStatus(`Error: ${error.message}`);
+        } else {
+          setStatus(`Error: ${response.statusText} (${response.status})`);
+        }
+      }
+    })
+    .catch(error => setStatus(`Error: ${error}`));
+};
+
+const openRazorpayUI = (data, setStatus, setPlayerById) => {
+  const options = {
+    ...data,
+    handler: e => handlePaymentSuccess(e, setStatus, setPlayerById)
+  };
+  const rzp = window.Razorpay(options);
+  rzp.open();
+};
+
+export const purchaseMembership = (data, setStatus, setPlayerById) => {
+  const type = data?.year ? "annual" : "event";
+  console.log(`Paying for ${type} membership for ${data?.player_id}`, data);
+  fetch("/api/create-order", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    body: JSON.stringify(data),
+    credentials: "same-origin"
+  })
+    .then(async response => {
+      if (response.ok) {
+        const data = await response.json();
+        setStatus("");
+        openRazorpayUI(data, setStatus, setPlayerById);
+      } else {
+        if (response.status === 422) {
+          const errors = await response.json();
+          const errorMsgs = errors.detail.map(
+            err => `${err.msg}: ${err.loc[2]}`
+          );
+          setStatus(`Validation errors: ${errorMsgs.join(", ")}`);
+        } else if (response.status === 400) {
+          const errors = await response.json();
+          setStatus(`Validation errors: ${errors.message}`);
+        } else {
+          setStatus(`Error: ${response.statusText} (${response.status})`);
+        }
+      }
+    })
+    .catch(error => setStatus(`Error: ${error}`));
 };
