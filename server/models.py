@@ -165,13 +165,14 @@ class Vaccination(models.Model):
         SPUTNIK = "SPTNK", _("Sputnik")
         JOHNSON_AND_JOHNSON = "JNJ", _("Johnson & Johnson")
 
-    vaccination_name = models.CharField(
+    name = models.CharField(
         max_length=10,
         choices=VaccinationName.choices,
         blank=True,
+        null=True,
     )
-    vaccination_certificate = models.FileField(upload_to="vaccination_certificates/", blank=True)
-    explain_not_vaccinated = models.TextField(blank=True)
+    certificate = models.FileField(upload_to="vaccination_certificates/", blank=True)
+    explain_not_vaccinated = models.TextField(blank=True, null=True)
 
 
 @receiver(pre_save, sender=Membership)

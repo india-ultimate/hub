@@ -283,13 +283,13 @@ class Command(BaseCommand):
                 vaccination = Vaccination.objects.create(
                     player=player,
                     is_vaccinated=is_vaccinated,
-                    vaccination_name=row[columns["vaccination_name"]],
+                    name=row[columns["vaccination_name"]],
                     explain_not_vaccinated=explanation,
                 )
                 certificate_url = row[columns["certificate"]]
                 name, content = self.find_vaccination_file(certificate_url, gdrive_map)
                 if name and content:
-                    vaccination.vaccination_certificate.save(name, content)
+                    vaccination.certificate.save(name, content)
                 uploading_media = bool(name)
 
                 msg = (
