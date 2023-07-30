@@ -62,6 +62,12 @@ class OrderSchema(Schema):
     prefill: dict
 
 
+class VaccinationSchema(ModelSchema):
+    class Config:
+        model = Vaccination
+        model_fields = "__all__"
+
+
 class PlayerSchema(ModelSchema):
     full_name: str
 
@@ -88,6 +94,15 @@ class PlayerSchema(ModelSchema):
         try:
             return MembershipSchema.from_orm(player.membership)
         except Membership.DoesNotExist:
+            return
+
+    vaccination: VaccinationSchema = None
+
+    @staticmethod
+    def resolve_vaccination(player):
+        try:
+            return VaccinationSchema.from_orm(player.vaccination)
+        except Vaccination.DoesNotExist:
             return
 
     guardian: int = None
@@ -178,12 +193,6 @@ class UserSchema(ModelSchema):
             "first_name",
             "last_name",
         ]
-
-
-class VaccinationSchema(ModelSchema):
-    class Config:
-        model = Vaccination
-        model_fields = "__all__"
 
 
 class UserFormSchema(ModelSchema):
