@@ -25,7 +25,6 @@ const SignInForm = ({ setStatus }) => {
   createEffect(() => {
     if (loginFail()) {
       const navigate = useNavigate();
-      // FIXME: query params are not cleared with hashrouter!
       navigate("/login");
     }
   });
@@ -97,14 +96,12 @@ const EmailLink = () => {
 
   createEffect(() => {
     if (store.loggedIn) {
-      // FIXME: query params are not cleared with hashrouter!
       navigate("/", { replace: true });
     }
   });
 
   createEffect(() => {
     if (invalidLink()) {
-      // FIXME: query params are not cleared with hashrouter!
       setTimeout(() => navigate("/login", { replace: true }), 3000);
     }
   });

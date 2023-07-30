@@ -180,6 +180,5 @@ def create_membership_number(sender, instance, raw, **kwargs):
     if raw or instance.membership_number:
         return
 
-    # FIXME: What are good ways to membership numbers?
     instance.membership_number = str(uuid.uuid4())[:8]
     return

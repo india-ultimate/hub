@@ -286,7 +286,6 @@ const Login = () => {
   createEffect(() => {
     if (store.loggedIn) {
       const navigate = useNavigate();
-      // FIXME: query params are not cleared with hashrouter!
       navigate("/", { replace: true });
     }
   });

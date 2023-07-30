@@ -226,8 +226,6 @@ class Command(BaseCommand):
                     educational_institution=row[columns["educational_institution"]]
                     if minors
                     else None,
-                    # FIXME: Do we need a URL here? Or the ID? Can we get the
-                    # ID using an API from the URL?
                     india_ultimate_profile=iu_profile,
                 )
                 player.full_clean()

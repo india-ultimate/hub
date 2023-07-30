@@ -103,7 +103,6 @@ def firebase_login(request, credentials: FirebaseCredentials):
     user = firebase_to_django_user(firebase_user)
     invalid_credentials = 403, {"message": "Invalid credentials"}
     if user is None:
-        # FIXME: Decide on how to handle new sign-ups
         return invalid_credentials
 
     request.session["firebase_token"] = credentials.token
