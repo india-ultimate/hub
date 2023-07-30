@@ -67,7 +67,8 @@ module.exports = {
     proxy: {
       "/api": "http://localhost:8000",
       "/admin": "http://localhost:8000",
-      "/static": "http://localhost:8000"
+      "/static": "http://localhost:8000",
+      "/uploads": "http://localhost:8000"
     }
   }
 };

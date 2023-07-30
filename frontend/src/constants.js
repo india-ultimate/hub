@@ -63,6 +63,14 @@ export const relationChoices = [
   { value: "LG", label: "Legal Guardian" }
 ];
 
+export const vaccinationChoices = [
+  { value: "CVSHLD", label: "Covishield" },
+  { value: "CVXN", label: "Covaxin" },
+  { value: "MDRN", label: "Moderna" },
+  { value: "SPTNK", label: "Sputnik V" },
+  { value: "JNJ", label: "Johnson & Johnson" }
+];
+
 // NOTE: Memberships go from 1st June to 31st May
 export const membershipStartDate = [1, 6];
 export const membershipEndDate = [31, 5];
