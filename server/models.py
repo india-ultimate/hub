@@ -164,10 +164,16 @@ class Vaccination(models.Model):
         MODERNA = "MDRN", _("Moderna")
         SPUTNIK = "SPTNK", _("Sputnik")
         JOHNSON_AND_JOHNSON = "JNJ", _("Johnson & Johnson")
+        OTHER = "OTHER", _("Other")
 
     name = models.CharField(
         max_length=10,
         choices=VaccinationName.choices,
+        blank=True,
+        null=True,
+    )
+    other_name = models.CharField(
+        max_length=25,
         blank=True,
         null=True,
     )

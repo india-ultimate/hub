@@ -90,6 +90,11 @@ export const displayDate = dateString => {
   return date;
 };
 
+export const getLabel = (choices, value) => {
+  const choice = choices.find((item) => item.value === value);
+  return choice?.label;
+};
+
 export const fetchUrl = (url, successHandler, errorHandler) => {
   fetch(url, {
     method: "GET",

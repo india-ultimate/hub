@@ -22,6 +22,7 @@ const Vaccination = () => {
 
   const [isVaccinated, setIsVaccinated] = createSignal(true);
   const [name, setName] = createSignal("");
+  const [otherName, setOtherName] = createSignal("");
   const [certificate, setCertificate] = createSignal(null);
   const [explanation, setExplanation] = createSignal("");
 
@@ -39,6 +40,14 @@ const Vaccination = () => {
     }
   });
 
+   // Other vaccination name
+  const handleVaccineNameOther = e => {
+    setName(e.target.value);
+    if (e.target.value !== "OTHER") {
+      setOtherName("");
+    }
+  };
+
   const handleFileChange = e => {
     const file = e.target.files[0];
     setCertificate(file);
@@ -50,6 +59,7 @@ const Vaccination = () => {
     const vaccinationData = {
       is_vaccinated: isVaccinated(),
       name: name(),
+      other_name: otherName(),
       explain_not_vaccinated: explanation(),
       player_id: player()?.id
     };
@@ -128,7 +138,7 @@ const Vaccination = () => {
                     id="vaccination-name"
                     class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
                     value={name()}
-                    onInput={e => setName(e.target.value)}
+                    onInput={handleVaccineNameOther}
                     required
                   >
                     <option value="" disabled>
@@ -140,6 +150,26 @@ const Vaccination = () => {
                       )}
                     </For>
                   </select>
+                </div>
+              </Show>
+            </div>
+            <div>
+              <Show when={name() === "OTHER"}>
+                <div>
+                  <label
+                    for="vaccination-other-name"
+                    class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                  >
+                    Other Vaccination Name
+                  </label>
+                  <input
+                    id="vaccination-other-name"
+                    type="text"
+                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                    value={otherName()}
+                    onInput={e => setOtherName(e.target.value)}
+                    required
+                  />
                 </div>
               </Show>
             </div>
@@ -169,6 +199,7 @@ const Vaccination = () => {
                 </div>
               </Show>
             </div>
+            <div/>
             <div>
               <Show when={!isVaccinated()}>
                 <label

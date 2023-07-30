@@ -68,7 +68,8 @@ export const vaccinationChoices = [
   { value: "CVXN", label: "Covaxin" },
   { value: "MDRN", label: "Moderna" },
   { value: "SPTNK", label: "Sputnik V" },
-  { value: "JNJ", label: "Johnson & Johnson" }
+  { value: "JNJ", label: "Johnson & Johnson" },
+  { value: "OTHER", label: "Other" },
 ];
 
 // NOTE: Memberships go from 1st June to 31st May

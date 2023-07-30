@@ -1,3 +1,6 @@
+import { vaccinationChoices } from "../constants";
+import { getLabel } from "../utils";
+
 const VaccinationInformation = props => {
   const url = (
     <a href={props?.vaccination?.certificate} target="_blank">
@@ -24,7 +27,7 @@ const VaccinationInformation = props => {
         >
           Vaccination name
         </th>
-        <td class="px-6 py-4">{props?.vaccination?.name}</td>
+        <td class="px-6 py-4">{props?.vaccination?.name === "OTHER" ? props?.vaccination?.other_name : getLabel(vaccinationChoices, props?.vaccination?.name)}</td>
       </tr>
       <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
         <th

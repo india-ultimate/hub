@@ -238,6 +238,7 @@ class VaccinatedFormSchema(Schema):
     player_id: int
     is_vaccinated: bool
     name: str
+    other_name: str
 
 
 class RegistrationSchema(UserFormSchema, PlayerFormSchema):
