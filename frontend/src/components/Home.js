@@ -7,6 +7,8 @@ import TransactionList from "./TransactionList";
 
 const Home = () => {
   const [store, { setLoggedIn, setData }] = useStore();
+  const [ playerAccordion, setPlayerAccordion ] = createSignal(false);
+  const [ wardAccordion, setWardAccordion ] = createSignal({});
 
   createEffect(() => {
     if (!store.loggedIn) {
@@ -20,6 +22,17 @@ const Home = () => {
       fetchUserData(setLoggedIn, setData);
     }
   });
+
+  const togglePlayerAccordion = () => {
+    setPlayerAccordion(!playerAccordion());
+  };
+
+  const getWardsWithIndices = () => {
+    return store.data.wards.map((ward, index) => ({ ward, index }));
+  };
+
+  const wardsWithIndices = getWardsWithIndices();
+  console.log(wardsWithIndices);
 
   return (
     <div>
@@ -89,16 +102,47 @@ const Home = () => {
         </table>
       </div>
       <Show when={store.data.player}>
-        <div class="mt-5">
-          <h2 class="text-2xl font-bold mb-4 text-black-500">
-            Player information
+        <div
+          id="accordion-flush"
+          data-accordion="open"
+          data-active-classes="bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+          data-inactive-classes="text-gray-500 dark:text-gray-400">
+          <h2 id="accordion-flush-heading-1">
+            <button
+              type="button"
+              class="flex items-center justify-between w-full py-5 font-medium text-left text-gray-500 border-b border-gray-200 dark:border-gray-700 dark:text-gray-400"
+              data-accordion-target="#accordion-flush-body-1"
+              aria-expanded="true"
+              aria-controls="accordion-flush-body-1"
+              onClick={togglePlayerAccordion}
+            >
+              <span class="text-red-600 dark:text-red-500">Player information</span>
+              <svg data-accordion-icon class={`w-3 h-3 shrink-0 ${ playerAccordion() ? "rotate-180" : "rotate-0" }`} aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 10 6">
+                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5 5 1 1 5"/>
+              </svg>
+            </button>
           </h2>
-          <div>
-            <Player player={store.data.player} />
+          <div
+            id="accordion-flush-body-1"
+            class={`${playerAccordion() ? "" : "hidden"}`}
+            aria-labelledby="accordion-flush-heading-1">
+            <div class="py-5 border-b border-gray-200 dark:border-gray-700">
+              <Player player={store.data.player} />
+            </div>
           </div>
         </div>
       </Show>
       <TransactionList />
+      <div />
+      <Show when={store.data.wards}>
+        <div>
+          {wardsWithIndices.map(({ ward, index }) => (
+            <div key={index}>
+              <Player player={ward} />
+            </div>
+          ))}
+        </div>
+      </Show>
     </div>
   );
 };
