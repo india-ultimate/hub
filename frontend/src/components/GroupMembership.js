@@ -58,6 +58,7 @@ const GroupMembership = () => {
   };
 
   onMount(() => {
+    initFlowbite();
     if (!store.loggedIn) {
       fetchUserData(setLoggedIn, setData);
     }
