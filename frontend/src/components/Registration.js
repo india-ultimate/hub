@@ -1,81 +1,68 @@
 import { getCookie } from "../utils";
 import { useStore } from "../store";
-import { createEffect, createSignal, Show, For } from "solid-js";
+import { createEffect, createSignal, Show, For, Switch, Match } from "solid-js";
 import {
   genderChoices,
   stateChoices,
   occupationChoices,
-  relationChoices
+  relationChoices,
+  minAge
 } from "../constants";
+import {
+  createForm,
+  getValue,
+  // validators
+  email,
+  pattern,
+  required,
+  value,
+  maxLength,
+  minLength,
+  url,
+  custom
+} from "@modular-forms/solid";
 import RegistrationSuccess from "./RegistrationSuccess";
+import TextInput from "./TextInput";
+import Select from "./Select";
+import Checkbox from "./Checkbox";
 
 const RegistrationForm = ({ others, ward }) => {
   const csrftoken = getCookie("csrftoken");
 
-  // Form signals
-  const [relation, setRelation] = createSignal("");
-  const [email, setEmail] = createSignal("");
-  const [emailConfirm, setEmailConfirm] = createSignal("");
-  const [firstName, setFirstName] = createSignal("");
-  const [lastName, setLastName] = createSignal("");
-  const [dateOfBirth, setDateOfBirth] = createSignal("");
-  const [phone, setPhone] = createSignal("");
-  const [upaiProfile, setUpaiProfile] = createSignal("");
-  const [teamName, setTeamName] = createSignal("");
-  const [occupation, setOccupation] = createSignal("");
-  const [educationInstitution, setEducationInstitution] = createSignal("");
-  const [gender, setGender] = createSignal("");
-  const [otherGender, setOtherGender] = createSignal("");
-  const [notInIndia, setNotInIndia] = createSignal(false);
-  const [city, setCity] = createSignal("");
-  const [state, setState] = createSignal("");
-
-  //UI signals
+  // UI signals
   const [error, setError] = createSignal("");
   const [player, setPlayer] = createSignal();
-  const [disableSubmit, setDisableSubmit] = createSignal(false);
 
   const [_, { setPlayer: setStorePlayer, addWard }] = useStore();
 
-  // Gender
-  const handleGenderChange = e => {
-    setGender(e.target.value);
-    if (e.target.value !== "O") {
-      setOtherGender("");
-    }
+  const today = new Date();
+  const maxDate = new Date(new Date().setFullYear(today.getFullYear() - minAge))
+    .toISOString()
+    .split("T")[0];
+
+  const getAge = value => {
+    const dobDate = new Date(value);
+    const yearDiff = today.getFullYear() - dobDate.getFullYear();
+    const monthDiff = today.getMonth() - dobDate.getMonth();
+    const dayDiff = today.getDate() - dobDate.getDate();
+    return yearDiff + monthDiff / 12 + dayDiff / 365;
   };
 
-  // Not in India checkbox
-  const handleNotInIndiaChange = () => {
-    setNotInIndia(!notInIndia());
-    setState("");
+  const validateMinAge = value => {
+    return getAge(value) >= 13;
   };
 
-  const handleSubmit = e => {
-    e.preventDefault();
-    // Prepare the data to be submitted
-    const formData = {
-      first_name: firstName(),
-      last_name: lastName(),
-      date_of_birth: dateOfBirth(),
-      gender: gender(),
-      other_gender: otherGender(),
-      city: city(),
-      phone: phone(),
-      state_ut: state(),
-      not_in_india: notInIndia(),
-      team_name: teamName(),
-      occupation: occupation(),
-      educational_institution: educationInstitution(),
-      india_ultimate_profile: upaiProfile(),
-      email: others ? email() : null,
-      relation: ward ? relation() : null
-    };
-    // Perform form submission logic or API request with formData
-    console.log("Form submitted with data:", formData);
-
-    submitFormData(formData);
+  const validateDateOfBirth = value => {
+    const age = getAge(value);
+    return ward ? age < 18 : age >= 18;
   };
+
+  const initialValues = {};
+  const [registrationForm, { Form, Field }] = createForm({
+    initialValues,
+    validateOn: "touched",
+    revalidateOn: "touched"
+  });
 
   const submitFormData = async formData => {
     // Send a post request to the api
@@ -118,10 +105,6 @@ const RegistrationForm = ({ others, ward }) => {
     }
   };
 
-  createEffect(() => {
-    setDisableSubmit(email() !== emailConfirm());
-  });
-
   return (
     <div>
       <Show
@@ -130,359 +113,325 @@ const RegistrationForm = ({ others, ward }) => {
           <RegistrationSuccess player={player()} others={others} ward={ward} />
         }
       >
-        <Show when={others}>
-          <div
-            class="p-4 mb-4 text-sm text-blue-800 rounded-lg bg-blue-50 dark:bg-gray-800 dark:text-blue-400"
-            role="alert"
-          >
-            {/* FIXME: Fix the wording and presentation here. */}
-            You are filling up the registration form for a different player.
-            Please make sure you enter their details correctly! You will be
-            unable to edit the details submitted, unless you have access to the
-            email address mentioned here.
-          </div>
-        </Show>
-        <Show when={ward}>
-          <div
-            class="p-4 mb-4 text-sm text-blue-800 rounded-lg bg-blue-50 dark:bg-gray-800 dark:text-blue-400"
-            role="alert"
-          >
-            {/* FIXME: Fix the wording and presentation here. */}
-            You are filling up the registration form for a ward. Please be sure
-            that you are legally eligible to fill-up this form!
-          </div>
-        </Show>
-        <form onSubmit={handleSubmit}>
-          <div class="grid gap-6 mb-6 md:grid-cols-2">
+        <Switch>
+          <Match when={others}>
+            <div
+              class="p-4 mb-4 text-sm text-blue-800 rounded-lg bg-blue-50 dark:bg-gray-800 dark:text-blue-400"
+              role="alert"
+            >
+              {/* FIXME: Fix the wording and presentation here. */}
+              You are filling up the registration form for a different player.
+              Please make sure you enter their details correctly! You will be
+              unable to edit the details submitted, unless you have access to
+              the email address mentioned here.
+            </div>
+          </Match>
+          <Match when={ward}>
+            <div
+              class="p-4 mb-4 text-sm text-blue-800 rounded-lg bg-blue-50 dark:bg-gray-800 dark:text-blue-400"
+              role="alert"
+            >
+              {/* FIXME: Fix the wording and presentation here. */}
+              You are filling up the registration form for a ward. Please be
+              sure that you are legally eligible to fill-up this form!
+            </div>
+          </Match>
+        </Switch>
+        <Form
+          class="space-y-12 md:space-y-14 lg:space-y-16"
+          onSubmit={values => submitFormData(values)}
+        >
+          <div class="space-y-8">
             <Show when={others || ward}>
               <Show when={ward}>
-                <div>
-                  <label
-                    for="relation"
-                    class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
-                  >
-                    Your relation to the ward
-                  </label>
-                  <select
-                    id="relation"
-                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                    value={relation()}
-                    onInput={e => setRelation(e.currentTarget.value)}
-                    required
-                  >
-                    <option value="" disabled>
-                      Select relation
-                    </option>
-                    <For each={relationChoices}>
-                      {choice => (
-                        <option value={choice.value}>{choice.label}</option>
-                      )}
-                    </For>
-                  </select>
-                </div>
-                <div>{/* Empty div to balance rows */}</div>
-              </Show>
-              <div>
-                <label
-                  for="email"
-                  class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
-                >
-                  Email
-                </label>
-                <input
-                  type="email"
-                  id="email"
-                  class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                  placeholder="foo@example.com"
-                  value={email()}
-                  onInput={e => setEmail(e.currentTarget.value)}
-                  required={!ward}
-                />
-              </div>
-              <div>
-                <label
-                  for="confirmEmail"
-                  class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
-                >
-                  Confirm Email
-                </label>
-                <input
-                  type="email"
-                  id="confirmEmail"
-                  class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                  placeholder="foo@example.com"
-                  value={emailConfirm()}
-                  onInput={e => setEmailConfirm(e.currentTarget.value)}
-                  required={!ward}
-                />
-              </div>
-            </Show>
-            <div>
-              <label
-                for="first_name"
-                class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
-              >
-                First name
-              </label>
-              <input
-                type="text"
-                id="first_name"
-                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                placeholder="John"
-                value={firstName()}
-                onInput={e => setFirstName(e.currentTarget.value)}
-                required
-              />
-            </div>
-            <div>
-              <label
-                for="last_name"
-                class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
-              >
-                Last name
-              </label>
-              <input
-                type="text"
-                id="last_name"
-                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                placeholder="Doe"
-                value={lastName()}
-                onInput={e => setLastName(e.currentTarget.value)}
-                required
-              />
-            </div>
-            <div>
-              <label
-                for="dateofbirth"
-                class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
-              >
-                Date of Birth
-              </label>
-              <input
-                type="date"
-                id="dateofbirth"
-                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                placeholder="Select date"
-                value={dateOfBirth()}
-                onInput={e => setDateOfBirth(e.currentTarget.value)}
-                required
-              />
-            </div>
-            <div>
-              <label
-                for="phone"
-                class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
-              >
-                Phone number
-              </label>
-              <input
-                type="tel"
-                id="phone"
-                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                placeholder="9999999999"
-                value={phone()}
-                onInput={e => setPhone(e.currentTarget.value)}
-              />
-            </div>
-            <div>
-              <label
-                for="upai-profile"
-                class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
-              >
-                India Ultimate Profile URL
-              </label>
-              <input
-                type="url"
-                id="upai-profile"
-                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                placeholder="https://indiaultimate.org/en-in/u/player-name"
-                value={upaiProfile()}
-                onInput={e => setUpaiProfile(e.currentTarget.value)}
-              />
-            </div>
-            <div>
-              <label
-                for="team-name"
-                class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
-              >
-                Team Name
-              </label>
-              <input
-                type="text"
-                id="team-name"
-                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                placeholder=""
-                value={teamName()}
-                onInput={e => setTeamName(e.currentTarget.value)}
-              />
-            </div>
-            <Show when={!ward}>
-              <div>
-                <label
-                  for="occupation"
-                  class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
-                >
-                  Occupation
-                </label>
-                <select
-                  id="occupation"
-                  class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                  value={occupation()}
-                  onInput={e => setOccupation(e.currentTarget.value)}
-                  required
-                >
-                  <option value="" disabled>
-                    Select Occupation
-                  </option>
-                  <For each={occupationChoices}>
-                    {choice => (
-                      <option value={choice.value}>{choice.label}</option>
-                    )}
-                  </For>
-                </select>
-              </div>
-              <div>{/* Empty div to balance rows */}</div>
-            </Show>
-            <Show when={ward}>
-              <div>
-                <label
-                  for="education-institution"
-                  class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
-                >
-                  Education Institution
-                </label>
-                <input
-                  type="text"
-                  id="education-institution"
-                  class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                  placeholder=""
-                  value={educationInstitution()}
-                  onInput={e => setEducationInstitution(e.currentTarget.value)}
-                />
-              </div>
-              <div>{/* Empty div to balance rows */}</div>
-            </Show>
-            <div>
-              <label
-                for="gender"
-                class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
-              >
-                Gender
-              </label>
-              <select
-                id="gender"
-                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                value={gender()}
-                onInput={handleGenderChange}
-                required
-              >
-                <option value="" disabled>
-                  Select Gender
-                </option>
-                <For each={genderChoices}>
-                  {choice => (
-                    <option value={choice.value}>{choice.label}</option>
+                <Field
+                  name="relation"
+                  validate={required(
+                    "Please select your relation to the ward."
                   )}
-                </For>
-              </select>
-            </div>
-            <div>
-              <Show when={gender() === "O"}>
-                <label
-                  for="other-gender"
-                  class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
                 >
-                  Other Gender:
-                </label>
-                <input
-                  id="other-gender"
-                  type="text"
-                  class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                  value={otherGender()}
-                  onInput={e => setOtherGender(e.target.value)}
-                  required
-                />
+                  {(field, props) => (
+                    <Select
+                      {...props}
+                      value={field.value}
+                      error={field.error}
+                      options={relationChoices}
+                      type="text"
+                      label="Relation to the ward"
+                      placeholder="Parent / Legal Guardian ?"
+                      required
+                    />
+                  )}
+                </Field>
               </Show>
-            </div>
-            <div>
-              <div class="flex items-center pl-4 border border-gray-200 rounded dark:border-gray-700">
-                <input
-                  id="not-in-india"
-                  type="checkbox"
-                  checked={notInIndia()}
-                  onChange={handleNotInIndiaChange}
-                  value={notInIndia()}
-                  name="bordered-checkbox"
-                  class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                />
-                <label
-                  for="not-in-india"
-                  class="w-full py-4 ml-2 text-sm font-medium text-gray-900 dark:text-gray-300"
-                >
-                  I'm not in India
-                </label>
-              </div>
-            </div>
-            <div>{/* Empty div to balance rows */}</div>
-            <div>
-              <label
-                for="city-name"
-                class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+              <Field
+                name="email"
+                type="string"
+                validate={[
+                  required("Please enter email address of the player."),
+                  email("Please enter a valid email address.")
+                ]}
               >
-                City
-              </label>
-              <input
-                type="text"
-                id="city-name"
-                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                value={city()}
-                onInput={e => setCity(e.target.value)}
-                placeholder=""
-              />
-            </div>
-            {/* State dropdown */}
-            <Show when={!notInIndia()}>
-              <div>
-                <label
-                  for="state"
-                  class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
-                >
-                  State
-                </label>
-                <select
-                  id="state"
-                  class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                  value={state()}
-                  onInput={e => setState(e.target.value)}
-                  required
-                >
-                  <option value="" disabled>
-                    Select State/UT
-                  </option>
-                  <For each={stateChoices}>
-                    {choice => (
-                      <option value={choice.value}>{choice.label}</option>
-                    )}
-                  </For>
-                </select>
-              </div>
+                {(field, props) => (
+                  <TextInput
+                    {...props}
+                    value={field.value}
+                    error={field.error}
+                    type="text"
+                    label="Email of the Player"
+                    placeholder="player.name@email.com"
+                    required
+                  />
+                )}
+              </Field>
             </Show>
+            <Field
+              name="first_name"
+              validate={required("Please enter first name.")}
+            >
+              {(field, props) => (
+                <TextInput
+                  {...props}
+                  value={field.value}
+                  error={field.error}
+                  type="text"
+                  label="First Name"
+                  placeholder="Jane"
+                  required
+                />
+              )}
+            </Field>
+            <Field
+              name="last_name"
+              validate={required("Please enter last name.")}
+            >
+              {(field, props) => (
+                <TextInput
+                  {...props}
+                  value={field.value}
+                  error={field.error}
+                  type="text"
+                  label="Last Name"
+                  placeholder="Doe"
+                  required
+                />
+              )}
+            </Field>
+            <Field
+              name="date_of_birth"
+              validate={[
+                required("Please enter date of birth."),
+                custom(validateMinAge, "Players need to be 13 years or older"),
+                custom(
+                  validateDateOfBirth,
+                  ward
+                    ? "Minors need to be under-18. Use the adults form, otherwise"
+                    : "Use the minors form if the player is less than 18 years old"
+                )
+              ]}
+            >
+              {(field, props) => (
+                <TextInput
+                  {...props}
+                  value={field.value}
+                  error={field.error}
+                  type="date"
+                  max={maxDate}
+                  label="Date of Birth"
+                  placeholder={maxDate}
+                  required
+                />
+              )}
+            </Field>
+            <Field name="gender" validate={required("Please select gender.")}>
+              {(field, props) => (
+                <Select
+                  {...props}
+                  value={field.value}
+                  options={genderChoices}
+                  error={field.error}
+                  label="Gender"
+                  placeholder="You identify as a ...?"
+                  required
+                />
+              )}
+            </Field>
+            <Show when={getValue(registrationForm, "gender") === "O"}>
+              <Field
+                name="other_gender"
+                validate={[
+                  required("Please enter the name of the other gender"),
+                  maxLength(30, "Gender cannot be more than 30 chars")
+                ]}
+              >
+                {(field, props) => (
+                  <TextInput
+                    {...props}
+                    value={field.value}
+                    error={field.error}
+                    type="text"
+                    label="Other Gender:"
+                    placeholder="Non-Binary"
+                    required
+                  />
+                )}
+              </Field>
+            </Show>
+            <Field
+              name="phone"
+              validate={[
+                required("Please enter a phone number."),
+                pattern(
+                  /^\+\d+$/,
+                  "Enter a phone number along with the country code"
+                ),
+                minLength(8, "Phone number must be at least 8 digits long")
+              ]}
+            >
+              {(field, props) => (
+                <TextInput
+                  {...props}
+                  value={field.value}
+                  error={field.error}
+                  type="text"
+                  label="Phone number"
+                  placeholder="+919998887776"
+                  required
+                />
+              )}
+            </Field>
+            <Field
+              name="india_ultimate_profile"
+              validate={[
+                url("Enter a valid url"),
+                pattern(
+                  new RegExp("https://indiaultimate.org/"),
+                  "Enter a valid Ultimate Central URL"
+                )
+              ]}
+            >
+              {(field, props) => (
+                <TextInput
+                  {...props}
+                  value={field.value}
+                  error={field.error}
+                  type="text"
+                  label="India Ultimate Profile URL"
+                  placeholder="https://indiaultimate.org/en-in/u/player-name"
+                />
+              )}
+            </Field>
+            <Field
+              name="team_name"
+              validate={required("Please enter Team name.")}
+            >
+              {(field, props) => (
+                <TextInput
+                  {...props}
+                  value={field.value}
+                  error={field.error}
+                  type="text"
+                  label="Team Name (Association with UPAI)"
+                  placeholder="Thatte Idli Kaal Soup"
+                  required
+                />
+              )}
+            </Field>
+            <Show when={!ward}>
+              <Field
+                name="occupation"
+                validate={required("Please select your occupation.")}
+              >
+                {(field, props) => (
+                  <Select
+                    {...props}
+                    value={field.value}
+                    options={occupationChoices}
+                    error={field.error}
+                    label="Occupation"
+                    placeholder="What do you do?"
+                    required
+                  />
+                )}
+              </Field>
+            </Show>
+            <Show
+              when={
+                ward || getValue(registrationForm, "occupation") === "Student"
+              }
+            >
+              <Field
+                name="educational_institution"
+                validate={required("Please enter Educational institution.")}
+              >
+                {(field, props) => (
+                  <TextInput
+                    {...props}
+                    value={field.value}
+                    error={field.error}
+                    type="text"
+                    label="Educational Institution"
+                    placeholder="Bangalore Public School"
+                    required
+                  />
+                )}
+              </Field>
+            </Show>
+            <Field name="city" validate={required("Please enter City")}>
+              {(field, props) => (
+                <TextInput
+                  {...props}
+                  value={field.value}
+                  error={field.error}
+                  type="text"
+                  label="City"
+                  placeholder="Bengaluru"
+                  required
+                />
+              )}
+            </Field>
+            <Field name="not_in_india" type="boolean">
+              {(field, props) => (
+                <Checkbox
+                  {...props}
+                  checked={field.checked}
+                  value={field.value}
+                  error={field.error}
+                  label="I'm not in India"
+                />
+              )}
+            </Field>
+            <Show when={!getValue(registrationForm, "not_in_india")}>
+              <Field
+                name="state_ut"
+                validate={required("Please select State or UT")}
+              >
+                {(field, props) => (
+                  <Select
+                    {...props}
+                    value={field.value}
+                    options={stateChoices}
+                    error={field.error}
+                    label="State / UT"
+                    placeholder="Which State/UT are you in?"
+                    required
+                  />
+                )}
+              </Field>
+            </Show>
+            <button
+              type="submit"
+              class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+            >
+              Submit
+            </button>
           </div>
-          <Show when={error()}>
-            <p class="my-2 text-sm text-red-600 dark:text-red-500">
-              <span class="font-medium">Oops!</span> {error()}
-            </p>
-          </Show>
-          <button
-            type="submit"
-            class={`text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 ${
-              disableSubmit() ? "cursor-not-allowed" : ""
-            }`}
-            disabled={disableSubmit()}
-          >
-            Submit
-          </button>
-        </form>
+        </Form>
+        <Show when={error()}>
+          <p class="my-2 text-sm text-red-600 dark:text-red-500">
+            <span class="font-medium">Oops!</span> {error()}
+          </p>
+        </Show>
       </Show>
     </div>
   );
