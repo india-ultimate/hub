@@ -6,6 +6,7 @@ from typing import List, Optional, Union
 import firebase_admin
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model, login, logout
+from django.core.exceptions import ValidationError
 from django.utils.text import slugify
 from django.views.decorators.csrf import csrf_exempt
 from firebase_admin import auth
@@ -128,21 +129,25 @@ def do_register(
         Player.objects.get(user=user)
         return 400, {"message": "Player already exists"}
     except Player.DoesNotExist:
-        player_data = PlayerFormSchema(**registration.dict()).dict()
-        player = Player(**player_data, user=user)
-        player.save()
+        pass
 
-        user_data = UserFormSchema(**registration.dict()).dict()
-        for attr, value in user_data.items():
-            setattr(user, attr, value)
-        user.save()
+    player_data = PlayerFormSchema(**registration.dict()).dict()
+    player = Player(**player_data, user=user)
+    try:
+        player.full_clean()
+    except ValidationError as e:
+        return 400, {"message": str(e)}
+    player.save()
 
-        if guardian:
-            Guardianship.objects.create(
-                user=guardian, player=player, relation=registration.relation
-            )
+    user_data = UserFormSchema(**registration.dict()).dict()
+    for attr, value in user_data.items():
+        setattr(user, attr, value)
+    user.save()
 
-        return 200, PlayerSchema.from_orm(player)
+    if guardian:
+        Guardianship.objects.create(user=guardian, player=player, relation=registration.relation)
+
+    return 200, PlayerSchema.from_orm(player)
 
 
 @api.post("/registration/others", response={200: PlayerSchema, 400: Response})
