@@ -72,6 +72,8 @@ const Vaccination = () => {
       });
       if (response.ok) {
         setStatus("Player vaccination information saved!");
+        const data = await response.json();
+        setPlayerById({ ...player(), vaccination: data });
       } else {
         const message = await response.json();
         const text = message?.message || JSON.stringify(message);
