@@ -89,7 +89,7 @@ const Vaccination = () => {
       <h1 class="text-2xl font-bold text-blue-500">Vaccination</h1>
       <h3>Vaccination details for {player()?.full_name}</h3>
       <Show
-        when={player() && !player()?.vaccination?.is_vaccinated}
+        when={player() && !player()?.vaccination}
         fallback={
           <table>
             <tbody>
