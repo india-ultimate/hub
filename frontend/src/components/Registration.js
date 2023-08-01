@@ -394,7 +394,7 @@ const RegistrationForm = ({ others, ward }) => {
               {(field, props) => (
                 <Checkbox
                   {...props}
-                  checked={field.checked}
+                  checked={field.value}
                   value={field.value}
                   error={field.error}
                   label="I'm not in India"
