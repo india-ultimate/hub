@@ -50,9 +50,9 @@ export const stateChoices = [
 
 export const occupationChoices = [
   { value: "Student", label: "Student" },
-  { value: "Own business", label: "Own business" },
+  { value: "Business", label: "Own business" },
   { value: "Government", label: "Government" },
-  { value: "NGO / NPO", label: "NGO / NPO" },
+  { value: "Non-profit", label: "NGO / NPO" },
   { value: "Other", label: "Other" },
   { value: "Unemployed", label: "Unemployed" }
 ];
