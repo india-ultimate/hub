@@ -3,6 +3,7 @@ import { createSignal, createEffect, onMount, Show } from "solid-js";
 import { fetchUserData } from "../utils";
 import { useStore } from "../store";
 import Player from "./Player";
+import TransactionList from "./TransactionList";
 
 const Home = () => {
   const [store, { setLoggedIn, setData }] = useStore();
@@ -97,6 +98,7 @@ const Home = () => {
           </div>
         </div>
       </Show>
+      <TransactionList />
     </div>
   );
 };
