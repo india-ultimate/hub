@@ -7,6 +7,7 @@ import firebase_admin
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.core.exceptions import ValidationError
+from django.db.models import Q
 from django.utils.text import slugify
 from django.views.decorators.csrf import csrf_exempt
 from firebase_admin import auth
@@ -39,6 +40,7 @@ from server.schema import (
     RegistrationSchema,
     RegistrationWardSchema,
     Response,
+    TransactionSchema,
     UserFormSchema,
     UserSchema,
     VaccinatedFormSchema,
@@ -360,6 +362,23 @@ def payment_webhook(request):
     )
     update_transaction(payment)
     return {"message": "Webhook processed"}
+
+
+@api.get("/transactions")
+def list_transactions(request, response={200: List[TransactionSchema]}):
+    user = request.user
+
+    # Get ids of all associated players of a user (player + wards)
+    ward_ids = set(user.guardianship_set.values_list("player_id", flat=True))
+    player_id = set(Player.objects.filter(user=user).values_list("id", flat=True))
+    player_ids = ward_ids.union(player_id)
+
+    query = Q(user=request.user) | Q(players__in=player_ids)
+    transactions = RazorpayTransaction.objects.filter(query).distinct()
+    return [TransactionSchema.from_orm(t) for t in transactions]
+
+
+# Vaccination ##########
 
 
 @api.post("/vaccination", response={200: VaccinationSchema, 400: Response})

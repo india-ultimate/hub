@@ -11,7 +11,7 @@ from django.test import Client, TestCase
 from django.test.client import MULTIPART_CONTENT
 from requests.exceptions import RequestException
 from server.constants import ANNUAL_MEMBERSHIP_AMOUNT, EVENT_MEMBERSHIP_AMOUNT
-from server.models import Event, Membership, Player, RazorpayTransaction
+from server.models import Event, Guardianship, Membership, Player, RazorpayTransaction
 
 User = get_user_model()
 
@@ -632,6 +632,62 @@ class TestPayment(TestCase):
         self.assertEqual(event.start_date, membership.start_date)
         self.assertEqual(event.end_date, membership.end_date)
         self.assertEqual(event, membership.event)
+
+    def test_list_transactions(self):
+        c = self.client
+
+        # Create player and wards for current user
+        users = []
+        players = []
+        for i in range(4):
+            if i > 0:
+                username = str(uuid.uuid4())[:8]
+                user_ = User.objects.create(username=username)
+                users.append(user_)
+            else:
+                user_ = self.user
+
+            date_of_birth = "2001-01-01"
+            player = Player.objects.create(user=user_, date_of_birth=date_of_birth)
+            players.append(player)
+
+        # Make players[1] a ward
+        Guardianship.objects.create(relation="LG", user=self.user, player=players[1])
+
+        orders = set()
+
+        # Create transaction made by current user
+        order = fake_order(ANNUAL_MEMBERSHIP_AMOUNT * 2)
+        order.update(user=self.user, players=players[2:])
+        transaction = RazorpayTransaction.create_from_order_data(order)
+        orders.add(order["order_id"])
+
+        # Create transaction for current user's player
+        order = fake_order(ANNUAL_MEMBERSHIP_AMOUNT)
+        order.update(user=users[0], players=players[:1])
+        transaction = RazorpayTransaction.create_from_order_data(order)
+        orders.add(order["order_id"])
+
+        # Create transaction for current user's ward
+        order = fake_order(ANNUAL_MEMBERSHIP_AMOUNT)
+        order.update(user=users[2], players=players[1:2])
+        transaction = RazorpayTransaction.create_from_order_data(order)
+        orders.add(order["order_id"])
+
+        # Create transaction made by another user
+        order = fake_order(ANNUAL_MEMBERSHIP_AMOUNT * 2)
+        order.update(user=users[2], players=players[2:])
+        transaction = RazorpayTransaction.create_from_order_data(order)
+
+        response = c.get(
+            "/api/transactions",
+            content_type="application/json",
+        )
+        self.assertEqual(200, response.status_code)
+        response_data = response.json()
+
+        self.assertEqual(len(orders), len(response_data))
+        self.assertEqual(orders, {t["order_id"] for t in response_data})
 
     def test_razorpay_failures(self):
         player = create_player(user=self.user)

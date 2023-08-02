@@ -3,7 +3,7 @@ from typing import List
 from django.contrib.auth import get_user_model
 from ninja import ModelSchema, Schema
 
-from server.models import Event, Guardianship, Membership, Player, Vaccination
+from server.models import Event, Guardianship, Membership, Player, RazorpayTransaction, Vaccination
 from server.utils import mask_string
 
 User = get_user_model()
@@ -48,6 +48,37 @@ class PaymentFormSchema(Schema):
     razorpay_order_id: str
     razorpay_payment_id: str
     razorpay_signature: str
+
+
+class EventSchema(ModelSchema):
+    class Config:
+        model = Event
+        model_fields = ["id", "title", "start_date", "end_date"]
+
+
+class TransactionSchema(ModelSchema):
+    user: str
+
+    @staticmethod
+    def resolve_user(transaction):
+        return transaction.user.get_full_name()
+
+    players: List[str]
+
+    @staticmethod
+    def resolve_players(transaction):
+        return [p.user.get_full_name() for p in transaction.players.all()]
+
+    event: EventSchema = None
+
+    @staticmethod
+    def resolve_event(transaction):
+        if transaction.event is not None:
+            return EventSchema.from_orm(transaction.event)
+
+    class Config:
+        model = RazorpayTransaction
+        model_fields = "__all__"
 
 
 class OrderSchema(Schema):
@@ -153,12 +184,6 @@ class PlayerTinySchema(ModelSchema):
     class Config:
         model = Player
         model_fields = ["id", "city", "state_ut", "team_name", "educational_institution"]
-
-
-class EventSchema(ModelSchema):
-    class Config:
-        model = Event
-        model_fields = ["id", "title", "start_date", "end_date"]
 
 
 class UserSchema(ModelSchema):
