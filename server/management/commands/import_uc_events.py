@@ -8,12 +8,22 @@ BASE_URL = "https://upai.usetopscore.com"
 class Command(BaseCommand):
     help = "Import data from UC"
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "-n",
+            "--num-events",
+            default=200,
+            type=int,
+            help="Number of events to sync.",
+        )
+
     def handle(self, *args, **options):
-        url = "{}/api/events?per_page=200&order_by=date_desc".format(BASE_URL)
+        n = options["num_events"]
+        url = f"{BASE_URL}/api/events?per_page={n}&order_by=date_desc"
         # NOTE: The request is unauthenticated
         r = requests.get(url)
         data = r.json()
-        count = data["count"]
+        count = min(data["count"], n)
         tournaments = data["result"]
         if len(tournaments) < count:
             print("WARNING: Need to add pagination")
