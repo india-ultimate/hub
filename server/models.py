@@ -125,6 +125,7 @@ class RazorpayTransaction(models.Model):
     payment_signature = models.CharField(max_length=255)
     amount = models.IntegerField()
     currency = models.CharField(max_length=5)
+    # FIXME: payment_date is actually order_date, currently
     payment_date = models.DateTimeField(auto_now_add=True)
     # NOTE: These dates are for the membership for which the transaction is
     # being done. We store these dates when the order is created, and use them

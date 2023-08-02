@@ -1,3 +1,4 @@
+import datetime
 import uuid
 
 import razorpay
@@ -20,6 +21,31 @@ def create_razorpay_order(amount, currency="INR", receipt=None, notes=None):
     response["key"] = settings.RAZORPAY_KEY_ID
     response["order_id"] = response["id"]
     return response
+
+
+def get_transactions():
+    now = datetime.datetime.now()
+    last_week = now - datetime.timedelta(days=7)
+
+    page_size = 100
+    default = {
+        "from": int(last_week.timestamp()),
+        "to": int(now.timestamp()),
+        "count": page_size,
+    }
+
+    transactions = []
+    skip = 0
+    while True:
+        query = dict(**default, skip=skip)
+        transactions_ = CLIENT.payment.all(query)
+        if transactions_["count"] == 0:
+            break
+        else:
+            transactions.extend(transactions_["items"])
+        skip += page_size
+
+    return transactions
 
 
 def verify_razorpay_payment(payment_info):
