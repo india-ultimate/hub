@@ -1,7 +1,7 @@
 FROM python:3.11
 
 RUN apt-get update \
-    && apt-get install --no-install-recommends --assume-yes nginx yarnpkg sudo \
+    && apt-get install --no-install-recommends --assume-yes nginx yarnpkg sudo cron \
     && rm -r /var/lib/apt/lists /var/cache/apt
 
 # Create a user
