@@ -15,6 +15,7 @@ def main():
         for var in ENV:
             value = os.environ.get(var)
             f.write(f"export {var}={value}\n")
+        f.write("cd $HOME/app\n")
 
 
 if __name__ == "__main__":
