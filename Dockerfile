@@ -50,4 +50,10 @@ RUN chown -hR user:users /data
 
 COPY --chown=user:users deploy deploy
 USER user
+
+# Setup cron jobs
+COPY --chown=user:users scripts/hourly.sh cron/hourly.sh
+COPY --chown=user:users scripts/daily.sh cron/daily.sh
+RUN crontab -l | { cat; cat deploy/crontab; echo ""; } | crontab -
+
 ENTRYPOINT deploy/start.sh
