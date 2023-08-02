@@ -326,6 +326,10 @@ def update_transaction(payment):
     n = len("razorpay_")
     for key, value in payment.dict().items():
         setattr(transaction, key[n:], value)
+    return mark_transaction_completed(transaction)
+
+
+def mark_transaction_completed(transaction):
     transaction.status = RazorpayTransaction.TransactionStatusChoices.COMPLETED
     transaction.save()
 
