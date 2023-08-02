@@ -28,7 +28,7 @@ class Command(BaseCommand):
         if len(tournaments) < count:
             print("WARNING: Need to add pagination")
 
-        print(f"Fetched {count} events")
+        self.stdout.write(self.style.SUCCESS(f"Fetched {count} events"))
 
         # Create events
         count = 0
@@ -45,4 +45,5 @@ class Command(BaseCommand):
             if created:
                 count += 1
 
-        print(f"Created {count} events")
+        style = self.style.SUCCESS if count > 0 else self.style.NOTICE
+        self.stdout.write(style(f"Created {count} events"))
