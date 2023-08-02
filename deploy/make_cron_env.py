@@ -5,7 +5,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
 
-ENV = ["PATH", "DJANGO_SETTINGS_MODULE"]
+ENV = ["PATH", "DJANGO_SETTINGS_MODULE", "RAZORPAY_KEY_ID", "RAZORPAY_KEY_SECRET"]
 
 
 def main():
