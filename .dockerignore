@@ -167,3 +167,5 @@ site
 Dockerfile
 .git*
 *.tar.gz
+
+/cron/

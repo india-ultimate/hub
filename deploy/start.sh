@@ -4,6 +4,10 @@
 sudo nginx
 sudo cron
 
+# Setup env vars for cron jobs
+HERE=$(dirname "$0")
+"$HERE/make_cron_env.py"
+
 # Migrate DB
 python manage.py migrate
 
