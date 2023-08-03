@@ -17,6 +17,7 @@ WORKDIR $APP
 # Install Python dependencies
 COPY --chown=user:users requirements.txt $APP/requirements.txt
 RUN pip install -r requirements.txt
+COPY --chown=user:users README.md .
 
 RUN mkdir $APP/frontend
 WORKDIR $APP/frontend
