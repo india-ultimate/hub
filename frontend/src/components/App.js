@@ -11,6 +11,7 @@ const Registration = lazy(() => import("./Registration"));
 const Membership = lazy(() => import("./Membership"));
 const GroupMembership = lazy(() => import("./GroupMembership"));
 const Vaccination = lazy(() => import("./Vaccination"));
+const Waiver = lazy(() => import("./Waiver"));
 
 const filters = {
   id: /^\d+$/ // only allow numbers
@@ -50,6 +51,11 @@ export default function App() {
               <Route
                 path="/vaccination/:playerId"
                 component={Vaccination}
+                matchFilters={filters}
+              />
+              <Route
+                path="/waiver/:playerId"
+                component={Waiver}
                 matchFilters={filters}
               />
             </Routes>

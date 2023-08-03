@@ -1,4 +1,4 @@
-import { createSignal, createEffect, Show } from "solid-js";
+import { createSignal, createEffect, Show, Switch, Match } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 import { displayDate } from "../utils";
 import VaccinationInformation from "./VaccinationInformation";
@@ -9,6 +9,11 @@ const Player = props => {
   const navMembership = (e, playerId) => {
     e.preventDefault();
     navigate(`/membership/${playerId}`);
+  };
+
+  const navWaiver = (e, playerId) => {
+    e.preventDefault();
+    navigate(`/waiver/${playerId}`);
   };
 
   const navVaccination = (e, playerId) => {
@@ -108,6 +113,31 @@ const Player = props => {
                     Renew
                   </button>
                 </Show>
+              </td>
+            </tr>
+            <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+              <th
+                scope="row"
+                class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+              >
+                Waiver
+              </th>
+              <td class="px-6 py-4">
+                <Switch>
+                  <Match when={props.player?.membership.waiver_signed_by}>
+                    Signed by {props.player?.membership.waiver_signed_by} on{" "}
+                    {displayDate(props.player?.membership.waiver_signed_at)}
+                  </Match>
+                  <Match when={!props.player?.membership.waiver_signed_by}>
+                    <button
+                      type="submit"
+                      class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+                      onclick={e => navWaiver(e, props.player?.id)}
+                    >
+                      Sign Waiver
+                    </button>
+                  </Match>
+                </Switch>
               </td>
             </tr>
           </Show>
