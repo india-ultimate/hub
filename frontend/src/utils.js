@@ -215,3 +215,11 @@ export const purchaseMembership = (
     })
     .catch(error => setStatus(`Error: ${error}`));
 };
+
+export const getPlayer = (data, id) => {
+  if (data.player?.id === id) {
+    return data.player;
+  } else {
+    return data.players?.filter(p => p.id === id)?.[0];
+  }
+};

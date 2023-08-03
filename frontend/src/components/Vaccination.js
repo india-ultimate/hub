@@ -10,20 +10,12 @@ import {
   Match
 } from "solid-js";
 import { vaccinationChoices } from "../constants";
-import { getCookie, fetchUserData, displayDate } from "../utils";
+import { getCookie, fetchUserData, displayDate, getPlayer } from "../utils";
 import { createForm, getValue, required } from "@modular-forms/solid";
 import TextInput from "./TextInput";
 import Select from "./Select";
 import Checkbox from "./Checkbox";
 import FileInput from "./FileInput";
-
-const getPlayer = (data, id) => {
-  if (data.player?.id === id) {
-    return data.player;
-  } else {
-    return data.players?.filter(p => p.id === id)?.[0];
-  }
-};
 
 const Vaccination = () => {
   const csrftoken = getCookie("csrftoken");
