@@ -78,8 +78,9 @@ const Vaccination = () => {
 
   return (
     <div>
-      <h1 class="text-2xl font-bold text-blue-500">Vaccination</h1>
-      <h3>Vaccination details for {player()?.full_name}</h3>
+      <h1 class="text-2xl font-bold text-blue-500">
+        Vaccination details for {player()?.full_name}
+      </h1>
       <Show
         when={player() && !player()?.vaccination}
         fallback={
