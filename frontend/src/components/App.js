@@ -23,7 +23,16 @@ export default function App() {
         <div class="py-8 px-4 mx-auto max-w-screen-xl lg:py-16 lg:px-6">
           <div class="max-w-screen-lg text-gray-500 sm:text-lg dark:text-gray-400">
             <Routes>
+              {/* Simple pages */}
+              <Route path="/" component={Home} />
+              <Route
+                path="/about"
+                element={<div>This site was made with Django and Solid</div>}
+              />
+              {/* Login related routes */}
               <Route path="/login" component={Login} />
+              <Route path="/email-link" component={EmailLink} />
+              {/* Registration routes */}
               <Route path="/registration/me" component={Registration} />
               <Route
                 path="/registration/others"
@@ -33,8 +42,7 @@ export default function App() {
                 path="/registration/ward"
                 element={<Registration ward={true} />}
               />
-              <Route path="/" component={Home} />
-              <Route path="/email-link" component={EmailLink} />
+              {/* Membership, vaccination, waiver, etc. */}
               <Route path="/membership/group" component={GroupMembership} />
               <Route
                 path="/membership/:playerId"
@@ -45,10 +53,6 @@ export default function App() {
                 path="/vaccination/:playerId"
                 component={Vaccination}
                 matchFilters={filters}
-              />
-              <Route
-                path="/about"
-                element={<div>This site was made with Django and Solid</div>}
               />
             </Routes>
           </div>
