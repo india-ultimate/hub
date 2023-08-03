@@ -220,6 +220,6 @@ export const getPlayer = (data, id) => {
   if (data.player?.id === id) {
     return data.player;
   } else {
-    return data.players?.filter(p => p.id === id)?.[0];
+    return data.wards?.filter(p => p.id === id)?.[0];
   }
 };
