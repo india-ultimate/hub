@@ -212,6 +212,7 @@ class UserSchema(ModelSchema):
     class Config:
         model = User
         model_fields = [
+            "id",
             "username",
             "email",
             "phone",
