@@ -1,9 +1,22 @@
 # hub
 
-UPAI's membership and payment management portal
+<!-- All the content from about:start to about:end appears in the About page -->
+<!-- about:start -->
 
-The discussions for building this app are [here](https://upai.zulipchat.com/).
+This is UPAI's membership and payment management portal
 
+The site is built using [Django](https://www.djangoproject.com/), [Django
+Ninja](https://django-ninja.rest-framework.com/) and
+[SolidJS](https://www.solidjs.com/). The code is licensed under the GNU AGPL
+v3.0 License.
+
+You can report issues on
+[GitHub](https://github.com/india-ultimate/hub/issues),
+[Zulip](https://upai.zulipchat.com/) or
+[WhatsApp](http://bit.ly/India-Ultimate-Helpdesk).
+
+
+<!-- about:end -->
 
 ## Development
 

@@ -28,6 +28,15 @@ module.exports = {
         }
       },
       {
+        test: /\.jsx$/,
+        use: {
+          loader: "babel-loader",
+          options: {
+            presets: ["@babel/preset-env", "solid"]
+          }
+        }
+      },
+      {
         test: /\.js$/,
         include: path.resolve(__dirname, "src/components"),
         use: [
@@ -39,7 +48,8 @@ module.exports = {
             }
           }
         ]
-      }
+      },
+      { test: /\.md$/, use: "raw-loader" }
     ]
   },
   plugins: [

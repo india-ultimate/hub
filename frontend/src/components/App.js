@@ -3,8 +3,9 @@ import { Routes, Route } from "@solidjs/router";
 import Header from "./Header";
 import Footer from "./Footer";
 
-const EmailLink = lazy(() => import("./EmailLink"));
+const About = lazy(() => import("./About"));
 const Home = lazy(() => import("./Home"));
+const EmailLink = lazy(() => import("./EmailLink"));
 const Login = lazy(() => import("./Login"));
 const Registration = lazy(() => import("./Registration"));
 const Membership = lazy(() => import("./Membership"));
@@ -25,10 +26,7 @@ export default function App() {
             <Routes>
               {/* Simple pages */}
               <Route path="/" component={Home} />
-              <Route
-                path="/about"
-                element={<div>This site was made with Django and Solid</div>}
-              />
+              <Route path="/about" component={About} />
               {/* Login related routes */}
               <Route path="/login" component={Login} />
               <Route path="/email-link" component={EmailLink} />
