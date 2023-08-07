@@ -8,7 +8,7 @@ on:
       - main
 
 jobs:
-  check-generated-files:
+  lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -30,6 +30,9 @@ jobs:
 
       - name: Ensure code has been blackened
         run: poetry run black hub/ server/ scripts/ deploy/ --check
+
+      - name: Ensure no Python lint errors
+        run: poetry run ruff check .
 
       - name: Ensure models and migrations are in sync
         run: |
