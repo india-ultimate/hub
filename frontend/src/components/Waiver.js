@@ -480,10 +480,13 @@ const Waiver = () => {
         <Match when={!player()}>
           <p>Waiver information for player {params.playerId} not accessible.</p>
         </Match>
-        <Match when={player()?.membership.consent_signed}>
+        <Match when={player()?.membership?.waiver_valid}>
           <p>
             Liability Waiver form for {player()?.full_name} has already been
-            signed.
+            signed for {displayDate(player()?.membership?.start_date)} to{" "}
+            {displayDate(player()?.membership?.end_date)} by{" "}
+            {player()?.membership?.waiver_signed_by} on{" "}
+            {displayDate(player()?.membership?.waiver_signed_at)}.
           </p>
         </Match>
         <Match
