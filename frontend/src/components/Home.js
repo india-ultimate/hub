@@ -1,5 +1,5 @@
 import { useNavigate, A } from "@solidjs/router";
-import { createSignal, createEffect, onMount, Show } from "solid-js";
+import { createSignal, createEffect, onMount, Show, For } from "solid-js";
 import { fetchUserData } from "../utils";
 import { useStore } from "../store";
 import Player from "./Player";
@@ -105,7 +105,7 @@ const Home = () => {
               aria-expanded="false"
               aria-controls="accordion-body-player"
             >
-              <span>Player Information</span>
+              <span>Player Information: {store.data.player.full_name}</span>
               <AccordionDownIcon />
             </button>
           </h2>
@@ -118,6 +118,35 @@ const Home = () => {
               <Player player={store.data.player} />
             </div>
           </div>
+        </Show>
+        <Show when={store.data.wards}>
+          <For each={store.data.wards}>
+            {ward => (
+              <>
+                <h2 id={`accordion-heading-ward-${ward.id}`}>
+                  <button
+                    type="button"
+                    class="flex items-center justify-between w-full py-5 font-medium text-left text-gray-500 border-b border-gray-200 dark:border-gray-700 dark:text-gray-400"
+                    data-accordion-target={`#accordion-body-ward-${ward.id}`}
+                    aria-expanded="false"
+                    aria-controls={`accordion-body-ward-${ward.id}`}
+                  >
+                    <span>Player Information: {ward.full_name}</span>
+                    <AccordionDownIcon />
+                  </button>
+                </h2>
+                <div
+                  id={`accordion-body-ward-${ward.id}`}
+                  class="hidden"
+                  aria-labelledby={`accordion-heading-ward-${ward.id}`}
+                >
+                  <div class="py-5 border-b border-gray-200 dark:border-gray-700">
+                    <Player player={ward} />
+                  </div>
+                </div>
+              </>
+            )}
+          </For>
         </Show>
         <h2 id="accordion-heading-transactions">
           <button
