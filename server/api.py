@@ -386,7 +386,7 @@ def list_transactions(request, response={200: List[TransactionSchema]}):
 
 
 @api.post("/vaccination", response={200: VaccinationSchema, 400: Response})
-def vaccinated_player(
+def vaccination(
     request,
     vaccination: Union[VaccinatedFormSchema, NotVaccinatedFormSchema],
     certificate: Optional[UploadedFile] = File(None),
