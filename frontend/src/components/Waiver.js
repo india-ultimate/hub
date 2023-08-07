@@ -460,7 +460,7 @@ const Waiver = () => {
       });
       setError("");
       if (response.ok) {
-        setStatus("Player's consent has been signed!");
+        setStatus("Player's liability waiver has been signed!");
         const data = await response.json();
         setPlayerById(data);
       } else {
@@ -470,7 +470,7 @@ const Waiver = () => {
       }
     } catch (error) {
       setStatus("");
-      setError(`An error occurred while submitting consent data: ${error}`);
+      setError(`An error occurred while submitting waiver data: ${error}`);
     }
   };
 
