@@ -275,7 +275,7 @@ def create_order(
 
     try:
         data = create_razorpay_order(amount, receipt=receipt, notes=notes)
-    except RequestException as e:
+    except RequestException:
         return 502, "Failed to connect to Razorpay."
 
     data.update(
@@ -287,7 +287,7 @@ def create_order(
             event=event,
         )
     )
-    transaction = RazorpayTransaction.create_from_order_data(data)
+    RazorpayTransaction.create_from_order_data(data)
     transaction_user_name = user.get_full_name()
     description = (
         f"Membership for {player.user.get_full_name()}"

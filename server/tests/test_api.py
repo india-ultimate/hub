@@ -111,7 +111,7 @@ class TestLogin(TestCase):
                 content_type="application/json",
             )
         self.assertEqual(200, response.status_code)
-        data = response.json()
+        response.json()
         self.assertIn("firebase_token", c.session.keys())
 
         response = c.post("/api/logout", content_type="application/json")
@@ -397,7 +397,6 @@ class TestPayment(TestCase):
         c = self.client
 
         player_ids = [200, 220, 230, 225]
-        event_id = 20
 
         # Player does not exist
         with mock.patch(
@@ -659,25 +658,25 @@ class TestPayment(TestCase):
         # Create transaction made by current user
         order = fake_order(ANNUAL_MEMBERSHIP_AMOUNT * 2)
         order.update(user=self.user, players=players[2:])
-        transaction = RazorpayTransaction.create_from_order_data(order)
+        RazorpayTransaction.create_from_order_data(order)
         orders.add(order["order_id"])
 
         # Create transaction for current user's player
         order = fake_order(ANNUAL_MEMBERSHIP_AMOUNT)
         order.update(user=users[0], players=players[:1])
-        transaction = RazorpayTransaction.create_from_order_data(order)
+        RazorpayTransaction.create_from_order_data(order)
         orders.add(order["order_id"])
 
         # Create transaction for current user's ward
         order = fake_order(ANNUAL_MEMBERSHIP_AMOUNT)
         order.update(user=users[2], players=players[1:2])
-        transaction = RazorpayTransaction.create_from_order_data(order)
+        RazorpayTransaction.create_from_order_data(order)
         orders.add(order["order_id"])
 
         # Create transaction made by another user
         order = fake_order(ANNUAL_MEMBERSHIP_AMOUNT * 2)
         order.update(user=users[2], players=players[2:])
-        transaction = RazorpayTransaction.create_from_order_data(order)
+        RazorpayTransaction.create_from_order_data(order)
 
         response = c.get(
             "/api/transactions",
@@ -692,7 +691,7 @@ class TestPayment(TestCase):
     def test_razorpay_failures(self):
         player = create_player(user=self.user)
         c = self.client
-        with mock.patch("server.api.create_razorpay_order", side_effect=RequestException) as e:
+        with mock.patch("server.api.create_razorpay_order", side_effect=RequestException):
             response = c.post(
                 "/api/create-order",
                 data={

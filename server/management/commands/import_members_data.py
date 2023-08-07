@@ -9,7 +9,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.utils.dateparse import parse_date
 from django.utils.regex_helper import _lazy_re_compile
 from django.utils.text import slugify
-from server.models import Guardianship, Membership, Player, User, Vaccination
+from server.models import Guardianship, Membership, Player, Vaccination
 
 User = get_user_model()
 
@@ -151,7 +151,7 @@ class Command(BaseCommand):
         if not gdrive_map_csv and not download_path:
             self.stdout.write(self.style.WARNING("Not uploading any media files."))
         elif not gdrive_map_csv or not download_path:
-            raise CommandError(f"Please set both --gdrive-map-csv and --download-path.")
+            raise CommandError("Please set both --gdrive-map-csv and --download-path.")
         else:
             with gdrive_map_csv.open("r") as file:
                 reader = csv.DictReader(file)
@@ -263,7 +263,7 @@ class Command(BaseCommand):
                     guardian.save()
 
                 # Create the Membership instance
-                membership = Membership.objects.create(
+                Membership.objects.create(
                     player=player,
                     is_annual=row[columns["membership_type"]] == "Full Member (INR 600/person)",
                     start_date="2022-04-01",
