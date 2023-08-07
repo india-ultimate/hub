@@ -755,3 +755,43 @@ class TestVaccination(TestCase):
                 else:
                     self.assertTrue(len(response_data[key]) > 0)
         self.assertEqual(self.player.id, response_data["player"])
+
+
+class TestWaiver(TestCase):
+    def setUp(self):
+        super().setUp()
+        self.client = Client()
+        self.username = "username@foo.com"
+        self.user = User.objects.create(
+            username=self.username, email=self.username, first_name="John", last_name="Doe"
+        )
+        self.client.force_login(self.user)
+        self.player = Player.objects.create(user=self.user, date_of_birth="1990-01-01")
+        start_date = "2023-06-01"
+        end_date = "2024-05-31"
+        _membership = Membership.objects.create(
+            start_date=start_date, end_date=end_date, player=self.player
+        )
+
+    def test_waiver_signed(self):
+        c = self.client
+        response = c.post(
+            "/api/waiver", data={"player_id": self.player.id}, content_type="application/json"
+        )
+        response_data = response.json()
+        self.assertEqual(200, response.status_code)
+        membership = response_data["membership"]
+        self.assertEqual(self.user.get_full_name(), membership["waiver_signed_by"])
+        self.assertIsNotNone(membership["waiver_signed_at"])
+
+    def test_minor_cannot_sign_waiver(self):
+        c = self.client
+        Guardianship.objects.create(
+            user=self.user, player=self.player, relation=Guardianship.Relation.MO
+        )
+        response = c.post(
+            "/api/waiver", data={"player_id": self.player.id}, content_type="application/json"
+        )
+        response_data = response.json()
+        self.assertEqual(400, response.status_code)
+        self.assertEqual(response_data["message"], "Waiver can only signed by a guardian")

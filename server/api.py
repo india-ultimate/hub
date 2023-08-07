@@ -9,6 +9,7 @@ from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.core.exceptions import ValidationError
 from django.db.models import Q
 from django.utils.text import slugify
+from django.utils.timezone import now
 from django.views.decorators.csrf import csrf_exempt
 from firebase_admin import auth
 from ninja import File, NinjaAPI, UploadedFile
@@ -45,6 +46,7 @@ from server.schema import (
     UserSchema,
     VaccinatedFormSchema,
     VaccinationSchema,
+    WaiverFormSchema,
 )
 from server.utils import (
     create_razorpay_order,
@@ -413,3 +415,33 @@ def vaccination(
     vaccine.save()
 
     return 200, VaccinationSchema.from_orm(vaccine)
+
+
+# Waiver ##########
+
+
+@api.post("/waiver", response={200: PlayerSchema, 400: Response})
+def waiver(request, waiver: WaiverFormSchema):
+    try:
+        player = Player.objects.get(id=waiver.player_id)
+    except Player.DoesNotExist:
+        return 400, {"message": "Player does not exist"}
+
+    try:
+        membership = player.membership
+    except Membership.DoesNotExist:
+        return 400, {"message": "Player does not have a membership"}
+
+    try:
+        is_minor = bool(player.guardianship)
+    except Guardianship.DoesNotExist:
+        is_minor = False
+
+    if is_minor and request.user == player.user:
+        return 400, {"message": "Waiver can only signed by a guardian"}
+
+    membership.waiver_signed_by = request.user
+    membership.waiver_signed_at = now()
+    membership.save(update_fields=["waiver_signed_by", "waiver_signed_at"])
+
+    return 200, PlayerSchema.from_orm(player)

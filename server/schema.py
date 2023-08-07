@@ -24,6 +24,13 @@ class Response(Schema):
 
 
 class MembershipSchema(ModelSchema):
+    waiver_signed_by: str = None
+
+    @staticmethod
+    def resolve_waiver_signed_by(membership):
+        user = membership.waiver_signed_by
+        return user.get_full_name() if user is not None else None
+
     class Config:
         model = Membership
         model_fields = "__all__"
@@ -264,6 +271,10 @@ class VaccinatedFormSchema(Schema):
     player_id: int
     is_vaccinated: bool
     name: str
+
+
+class WaiverFormSchema(Schema):
+    player_id: int
 
 
 class RegistrationSchema(UserFormSchema, PlayerFormSchema):
