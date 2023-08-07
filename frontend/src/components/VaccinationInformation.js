@@ -1,4 +1,6 @@
 import { Switch, Match } from "solid-js";
+import { getLabel } from "../utils";
+import { vaccinationChoices } from "../constants";
 
 const VaccinationInformation = props => {
   const url = (
@@ -28,7 +30,9 @@ const VaccinationInformation = props => {
             >
               Vaccination name
             </th>
-            <td class="px-6 py-4">{props?.vaccination?.name}</td>
+            <td class="px-6 py-4">
+              {getLabel(vaccinationChoices, props?.vaccination?.name)}
+            </td>
           </tr>
           <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
             <th

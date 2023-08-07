@@ -223,3 +223,8 @@ export const getPlayer = (data, id) => {
     return data.wards?.filter(p => p.id === id)?.[0];
   }
 };
+
+export const getLabel = (choices, value) => {
+  const choice = choices.find(item => item.value === value);
+  return choice?.label;
+};

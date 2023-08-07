@@ -2,6 +2,8 @@ import { createSignal, createEffect, Show, Switch, Match } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 import { displayDate } from "../utils";
 import VaccinationInformation from "./VaccinationInformation";
+import { getLabel } from "../utils";
+import { stateChoices } from "../constants";
 
 const Player = props => {
   const navigate = useNavigate();
@@ -72,7 +74,9 @@ const Player = props => {
             >
               State
             </th>
-            <td class="px-6 py-4">{props.player?.state_ut}</td>
+            <td class="px-6 py-4">
+              {getLabel(stateChoices, props.player?.state_ut)}
+            </td>
           </tr>
           {/* FIXME: Add more rows with other player information */}
           <Show when={props.player?.membership}>
