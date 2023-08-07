@@ -45,19 +45,21 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: Install poetry
+        run: pipx install poetry
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
-          cache: 'pip'
+          cache: 'poetry'
 
       - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
+        run: poetry install --no-root --with=dev
 
       - name: Run Django tests
         run: |
-          python manage.py test
+          poetry run pytest --disable-warnings
 
   frontend-build:
     runs-on: ubuntu-latest

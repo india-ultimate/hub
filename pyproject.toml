@@ -19,6 +19,8 @@ black = "^23.3.0"
 ipdb = "^0.13.13"
 beautifulsoup4 = "^4.12.2"
 ruff = "^0.0.282"
+pytest = "^7.4.0"
+pytest-django = "^4.5.2"
 
 [build-system]
 requires = ["poetry-core"]
@@ -32,3 +34,6 @@ line-length = 100
 # Allow autofix for all enabled rules (when `--fix`) is provided.
 fixable = ["ALL"]
 ignore = ["E501"]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "hub.settings"
