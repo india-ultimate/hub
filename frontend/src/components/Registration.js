@@ -397,7 +397,7 @@ const RegistrationForm = ({ others, ward }) => {
                   checked={field.value}
                   value={field.value}
                   error={field.error}
-                  label="I'm not in India"
+                  label="Not in India"
                 />
               )}
             </Field>
