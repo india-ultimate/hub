@@ -1,5 +1,5 @@
 import { getCookie, fetchUrl } from "../utils";
-import { createSignal, onMount, Switch, Match, For } from "solid-js";
+import { createSignal, onMount, Show, For } from "solid-js";
 import { initFlowbite } from "flowbite";
 
 const PlayersList = props => {
@@ -94,11 +94,12 @@ const TransactionList = () => {
                     <td class="px-6 py-4">₹ {transaction.amount / 100}</td>
                     <td class="px-6 py-4">{transaction.user}</td>
                     <td class="px-6 py-4">
-                      <Switch fallback={transaction.players[0].full_name}>
-                        <Match when={nPlayers !== 1}>
-                          <PlayersList players={transaction.players} />
-                        </Match>
-                      </Switch>
+                      <Show
+                        when={nPlayers !== 1}
+                        fallback={transaction.players[0]}
+                      >
+                        <PlayersList players={transaction.players} />
+                      </Show>
                     </td>
                     <td class="px-6 py-4">
                       {transaction.event?.title || "Annual"}
