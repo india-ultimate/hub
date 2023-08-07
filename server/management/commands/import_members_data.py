@@ -221,6 +221,7 @@ class Command(BaseCommand):
                     other_gender=other_gender,
                     city=row[columns["city"]],
                     state_ut=state_ut,
+                    not_in_india=not_in_india,
                     team_name=row[columns["team_name"]],
                     occupation=occupation,
                     educational_institution=row[columns["educational_institution"]]
