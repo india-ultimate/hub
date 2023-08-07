@@ -54,9 +54,11 @@ class TestInvalidateMemberships(TestCase):
                 is_active=True,
                 waiver_signed_by=user,
                 waiver_signed_at=now(),
+                waiver_valid=True,
             )
         call_command("invalidate_memberships")
         for membership in Membership.objects.filter():
             self.assertFalse(membership.is_active)
-            self.assertIsNone(membership.waiver_signed_at)
-            self.assertIsNone(membership.waiver_signed_by)
+            self.assertFalse(membership.waiver_valid)
+            self.assertIsNotNone(membership.waiver_signed_at)
+            self.assertIsNotNone(membership.waiver_signed_by)

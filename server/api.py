@@ -442,6 +442,7 @@ def waiver(request, waiver: WaiverFormSchema):
 
     membership.waiver_signed_by = request.user
     membership.waiver_signed_at = now()
-    membership.save(update_fields=["waiver_signed_by", "waiver_signed_at"])
+    membership.waiver_valid = True
+    membership.save(update_fields=["waiver_signed_by", "waiver_signed_at", "waiver_valid"])
 
     return 200, PlayerSchema.from_orm(player)

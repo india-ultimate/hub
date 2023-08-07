@@ -782,6 +782,7 @@ class TestWaiver(TestCase):
         self.assertEqual(200, response.status_code)
         membership = response_data["membership"]
         self.assertEqual(self.user.get_full_name(), membership["waiver_signed_by"])
+        self.assertTrue(membership["waiver_valid"])
         self.assertIsNotNone(membership["waiver_signed_at"])
 
     def test_minor_cannot_sign_waiver(self):

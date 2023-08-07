@@ -111,6 +111,7 @@ class Membership(models.Model):
     end_date = models.DateField()
     event = models.ForeignKey(Event, on_delete=models.CASCADE, blank=True, null=True)
     is_active = models.BooleanField(default=False)
+    waiver_valid = models.BooleanField(default=False)
     waiver_signed_by = models.ForeignKey(User, on_delete=models.SET_NULL, blank=True, null=True)
     waiver_signed_at = models.DateTimeField(blank=True, null=True)
 
