@@ -9,66 +9,34 @@ import { initFlowbite } from "flowbite";
 
 const Actions = props => {
   return (
-    <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-      <tbody>
-        <Show when={!props.player}>
-          <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-            <th
-              scope="row"
-              class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
-            >
-              <A
-                href="/registration/me"
-                class="font-medium text-blue-600 dark:text-blue-500 hover:underline"
-              >
-                Register yourself as a player
-              </A>
-            </th>
-          </tr>
-        </Show>
-        <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-          <th
-            scope="row"
-            class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
-          >
-            <A
-              href="/registration/others"
-              class="font-medium text-blue-600 dark:text-blue-500 hover:underline"
-            >
-              Fill the membership form for another player
-            </A>
-          </th>
-        </tr>
-        <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-          <th
-            scope="row"
-            class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
-          >
-            <A
-              href="/registration/ward"
-              class="font-medium text-blue-600 dark:text-blue-500 hover:underline"
-            >
-              Fill the membership form for a ward
-            </A>
-          </th>
-          <td class="px-6 py-4" />
-        </tr>
-        <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-          <th
-            scope="row"
-            class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
-          >
-            <A
-              href="/membership/group"
-              class="font-medium text-blue-600 dark:text-blue-500 hover:underline"
-            >
-              Pay the membership fee for a group
-            </A>
-          </th>
-          <td class="px-6 py-4" />
-        </tr>
-      </tbody>
-    </table>
+    <div class="w-90 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+      <Show when={!props.player}>
+        <A
+          href="/registration/me"
+          class="block w-full px-4 py-2 border-b border-gray-200 cursor-pointer hover:bg-gray-100 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 focus:text-blue-700 dark:border-gray-600 dark:hover:bg-gray-600 dark:hover:text-white dark:focus:ring-gray-500 dark:focus:text-white"
+        >
+          Register yourself as a player
+        </A>
+      </Show>
+      <A
+        href="/registration/ward"
+        class="block w-full px-4 py-2 border-b border-gray-200 cursor-pointer hover:bg-gray-100 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 focus:text-blue-700 dark:border-gray-600 dark:hover:bg-gray-600 dark:hover:text-white dark:focus:ring-gray-500 dark:focus:text-white"
+      >
+        Fill the membership form for a minor player as Guardian
+      </A>
+      <A
+        href="/registration/others"
+        class="block w-full px-4 py-2 border-b border-gray-200 cursor-pointer hover:bg-gray-100 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 focus:text-blue-700 dark:border-gray-600 dark:hover:bg-gray-600 dark:hover:text-white dark:focus:ring-gray-500 dark:focus:text-white"
+      >
+        Fill the membership form for another player
+      </A>
+      <A
+        href="/membership/group"
+        class="block w-full px-4 py-2 rounded-b-lg cursor-pointer hover:bg-gray-100 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 focus:text-blue-700 dark:border-gray-600 dark:hover:bg-gray-600 dark:hover:text-white dark:focus:ring-gray-500 dark:focus:text-white"
+      >
+        Pay the membership fee for a group
+      </A>
+    </div>
   );
 };
 
