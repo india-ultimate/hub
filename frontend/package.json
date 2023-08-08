@@ -37,5 +37,6 @@
     "trailingComma": "none",
     "tabWidth": 2,
     "arrowParens": "avoid"
-  }
+  },
+  "license": "AGPL-3.0-only"
 }
