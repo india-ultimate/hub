@@ -74,7 +74,7 @@ export const vaccinationChoices = [
 // NOTE: Memberships go from 1st June to 31st May
 export const membershipStartDate = [1, 6];
 export const membershipEndDate = [31, 5];
-export const annualMembershipFee = 600 * 100; // needs to be in Paise, not Rupees
-export const eventMembershipFee = 350 * 100; // needs to be in Paise, not Rupees
+export const annualMembershipFee = 650 * 100; // needs to be in Paise, not Rupees
+export const eventMembershipFee = 375 * 100; // needs to be in Paise, not Rupees
 
 export const minAge = 13; // Minimum age to register a player
