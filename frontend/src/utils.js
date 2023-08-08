@@ -28,7 +28,7 @@ export const loginWithFirebaseResponse = async (
       "Content-Type": "application/json",
       "X-CSRFToken": getCookie("csrftoken")
     },
-    body: JSON.stringify({ uid, token })
+    body: JSON.stringify({ uid, token, login: true })
   });
 
   if (response.ok) {

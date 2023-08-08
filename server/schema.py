@@ -22,6 +22,17 @@ class Credentials(Schema):
 class FirebaseCredentials(Schema):
     token: str
     uid: str
+    login: bool
+
+
+class FirebaseSignUpCredentials(Schema):
+    token: str
+    uid: str
+    email: str
+    first_name: str
+    last_name: str
+    phone: str
+    sign_up: bool
 
 
 class Response(Schema):

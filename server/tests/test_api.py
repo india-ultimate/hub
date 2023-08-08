@@ -63,7 +63,7 @@ class TestLogin(TestCase):
         with mock.patch("firebase_admin.auth.get_user", return_value=None):
             response = c.post(
                 "/api/firebase-login",
-                data={"token": "token", "uid": "fake-uid"},
+                data={"token": "token", "uid": "fake-uid", "login": True},
                 content_type="application/json",
             )
         self.assertEqual(403, response.status_code)
@@ -78,12 +78,36 @@ class TestLogin(TestCase):
         ):
             response = c.post(
                 "/api/firebase-login",
-                data={"token": token, "uid": uid},
+                data={"token": token, "uid": uid, "login": True},
                 content_type="application/json",
             )
         self.assertEqual(200, response.status_code)
         data = response.json()
         self.assertEqual(self.username, data["username"])
+        self.assertIn("firebase_token", c.session.keys())
+        self.assertEqual(token, c.session["firebase_token"])
+
+    def test_firebase_signup(self) -> None:
+        c = Client()
+        token = "my-secret-token"
+        email = "blah@example.com"
+        with mock.patch("firebase_admin.auth.get_user", return_value=None):
+            response = c.post(
+                "/api/firebase-login",
+                data={
+                    "token": token,
+                    "uid": "fake-uid",
+                    "email": email,
+                    "first_name": "John",
+                    "last_name": "Doe",
+                    "sign_up": True,
+                    "phone": "+919999900000",
+                },
+                content_type="application/json",
+            )
+        self.assertEqual(200, response.status_code)
+        data = response.json()
+        self.assertEqual(email, data["username"])
         self.assertIn("firebase_token", c.session.keys())
         self.assertEqual(token, c.session["firebase_token"])
 
@@ -105,7 +129,7 @@ class TestLogin(TestCase):
         ):
             response = c.post(
                 "/api/firebase-login",
-                data={"token": "token", "uid": "uid"},
+                data={"token": "token", "uid": "uid", "login": True},
                 content_type="application/json",
             )
         self.assertEqual(200, response.status_code)
