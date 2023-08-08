@@ -1,4 +1,5 @@
 import uuid
+from typing import Any, Dict
 
 from django.contrib.auth.models import AbstractUser
 from django.db import models
@@ -144,11 +145,11 @@ class RazorpayTransaction(models.Model):
     players = models.ManyToManyField(Player)
     event = models.ForeignKey(Event, on_delete=models.SET_NULL, blank=True, null=True)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.order_id
 
     @classmethod
-    def create_from_order_data(cls, data):
+    def create_from_order_data(cls, data: Dict[str, Any]) -> "RazorpayTransaction":
         fields = {f.name for f in RazorpayTransaction._meta.fields}
         attrs_data = {key: value for key, value in data.items() if key in fields}
         transaction = cls.objects.create(**attrs_data)
@@ -180,7 +181,7 @@ class Vaccination(models.Model):
 
 
 @receiver(pre_save, sender=Membership)
-def create_membership_number(sender, instance, raw, **kwargs):
+def create_membership_number(sender: Any, instance: Membership, raw: bool, **kwargs: Any) -> None:
     if raw or instance.membership_number:
         return
 
