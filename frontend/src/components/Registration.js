@@ -33,7 +33,7 @@ const RegistrationForm = ({ others, ward }) => {
   const [error, setError] = createSignal("");
   const [player, setPlayer] = createSignal();
 
-  const [_, { setPlayer: setStorePlayer, addWard }] = useStore();
+  const [store, { setPlayer: setStorePlayer, addWard }] = useStore();
 
   const today = new Date();
   const maxDate = new Date(new Date().setFullYear(today.getFullYear() - minAge))
@@ -57,7 +57,14 @@ const RegistrationForm = ({ others, ward }) => {
     return ward ? age < 18 : age >= 18;
   };
 
-  const initialValues = {};
+  const initialValues =
+    !ward && !others
+      ? {
+          first_name: store.data.first_name,
+          last_name: store.data.last_name,
+          phone: store.data.phone
+        }
+      : {};
   const [registrationForm, { Form, Field }] = createForm({
     initialValues,
     validateOn: "touched",
