@@ -78,6 +78,7 @@ GENDERS = {t.label: t for t in Player.GenderTypes}
 STATE_UT = {t.label: t for t in Player.StatesUTs}
 OCCUPATIONS = {t.label: t for t in Player.OccupationTypes}
 RELATIONS = {t.label: t for t in Guardianship.Relation}
+VACCINATIONS = {t.label: t for t in Vaccination.VaccinationName}
 
 
 def parse_date_custom(date_str: str) -> Optional[datetime.date]:
@@ -264,7 +265,6 @@ class Command(BaseCommand):
                         player=player,
                     )
                     guardian.full_clean()
-                    # player.guardian = guardian
                     guardian.save()
 
                 # Create the Membership instance
@@ -279,17 +279,21 @@ class Command(BaseCommand):
                 # Create the Vaccination instance
                 is_vaccinated = row[columns["is_vaccinated"]] == "Yes"
                 reason = row[columns["not_vaccinated_reason"]]
+                vaccination_name = row[columns["vaccination_name"]]
+
                 if minors:
                     explanation = reason
                 else:
                     explanation = row[columns["not_vaccinated_explanation"]]
                     explanation = f"{reason}\n{explanation}".strip()
-                vaccination = Vaccination.objects.create(
+                vaccination = Vaccination(
                     player=player,
                     is_vaccinated=is_vaccinated,
-                    name=row[columns["vaccination_name"]],
+                    name=VACCINATIONS.get(vaccination_name, None),
                     explain_not_vaccinated=explanation,
                 )
+                vaccination.full_clean()
+                vaccination.save()
                 certificate_url = row[columns["certificate"]]
                 cert_filename, content = self.find_vaccination_file(certificate_url, gdrive_map)
                 if cert_filename and content:
