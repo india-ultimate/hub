@@ -1,6 +1,6 @@
 import { useStore } from "../store";
 import { firebaseConfig, loginWithFirebaseResponse } from "../utils";
-import { createSignal, createEffect } from "solid-js";
+import { createSignal, createEffect, Switch, Match } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 import { initializeApp } from "firebase/app";
 import {
@@ -8,13 +8,14 @@ import {
   isSignInWithEmailLink,
   signInWithEmailLink
 } from "firebase/auth";
+import SignUp from "./SignUp";
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 auth.useDeviceLanguage();
 
-const SignInForm = ({ setStatus }) => {
+const SignInForm = ({ setStatus, setCreds }) => {
   // Get the email if available. This should be available if the user completes
   // the flow on the same device where they started it.
   const [email, setEmail] = createSignal(
@@ -43,7 +44,9 @@ const SignInForm = ({ setStatus }) => {
         // result.additionalUserInfo.profile == null
         // You can check if the user is new or existing:
         // result.additionalUserInfo.isNewUser
-        console.log(result);
+        const resultJSON = JSON.stringify(result);
+        window.localStorage.setItem("firebaseCreds", resultJSON);
+        setCreds(resultJSON);
         await loginWithFirebaseResponse(
           result,
           setStatus,
@@ -92,7 +95,12 @@ const SignInForm = ({ setStatus }) => {
 };
 
 const EmailLink = () => {
+  const firebaseCreds = window.localStorage.getItem("firebaseCreds");
+  const _creds = firebaseCreds ? JSON.parse(firebaseCreds) : null;
+
   const [status, setStatus] = createSignal("");
+  const [creds, setCreds] = createSignal(_creds);
+
   const [invalidLink, setInvalidLink] = createSignal(false);
   const [store, _] = useStore();
   const navigate = useNavigate();
@@ -121,10 +129,19 @@ const EmailLink = () => {
   }
 
   return (
-    <>
-      <SignInForm setStatus={setStatus} />
-      <p>{status()}</p>
-    </>
+    <Switch>
+      <Match when={!creds()}>
+        <SignInForm setStatus={setStatus} setCreds={setCreds} />
+        <p>{status()}</p>
+      </Match>
+      <Match when={creds()}>
+        <SignUp
+          emailId={creds()?.user?.email}
+          uid={creds()?.user?.uid}
+          token={creds()?.user?.stsTokenManager?.accessToken}
+        />
+      </Match>
+    </Switch>
   );
 };
 
