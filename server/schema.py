@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from django.contrib.auth import get_user_model
 from ninja import ModelSchema, Schema
@@ -24,7 +24,7 @@ class Response(Schema):
 
 
 class MembershipSchema(ModelSchema):
-    waiver_signed_by: str = None
+    waiver_signed_by: Optional[str]
 
     @staticmethod
     def resolve_waiver_signed_by(membership):
@@ -76,7 +76,7 @@ class TransactionSchema(ModelSchema):
     def resolve_players(transaction):
         return [p.user.get_full_name() for p in transaction.players.all()]
 
-    event: EventSchema = None
+    event: Optional[EventSchema]
 
     @staticmethod
     def resolve_event(transaction):
@@ -125,7 +125,7 @@ class PlayerSchema(ModelSchema):
     def resolve_phone(player):
         return player.user.phone
 
-    membership: MembershipSchema = None
+    membership: Optional[MembershipSchema]
 
     @staticmethod
     def resolve_membership(player):
@@ -134,7 +134,7 @@ class PlayerSchema(ModelSchema):
         except Membership.DoesNotExist:
             return
 
-    vaccination: VaccinationSchema = None
+    vaccination: Optional[VaccinationSchema]
 
     @staticmethod
     def resolve_vaccination(player):
@@ -143,7 +143,7 @@ class PlayerSchema(ModelSchema):
         except Vaccination.DoesNotExist:
             return
 
-    guardian: int = None
+    guardian: Optional[int]
 
     @staticmethod
     def resolve_guardian(player):
@@ -200,7 +200,7 @@ class UserSchema(ModelSchema):
     def resolve_full_name(user):
         return user.get_full_name()
 
-    player: PlayerSchema = None
+    player: Optional[PlayerSchema]
 
     @staticmethod
     def resolve_player(user):
@@ -241,11 +241,10 @@ class UserOtherFormSchema(ModelSchema):
 
 
 class UserWardFormSchema(ModelSchema):
-    email: str = None
-
     class Config:
         model = User
         model_fields = ["first_name", "last_name", "phone", "email"]
+        model_fields_optional = ["email"]
 
 
 class PlayerFormSchema(ModelSchema):
