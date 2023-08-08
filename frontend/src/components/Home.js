@@ -42,8 +42,6 @@ const Actions = props => {
 
 const Home = () => {
   const [store, { setLoggedIn, setData }] = useStore();
-  const [playerAccordion, setPlayerAccordion] = createSignal(false);
-  const [wardAccordion, setWardAccordion] = createSignal({});
 
   createEffect(() => {
     if (!store.loggedIn) {
