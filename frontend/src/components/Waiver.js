@@ -460,7 +460,6 @@ const Waiver = () => {
       });
       setError("");
       if (response.ok) {
-        setStatus("Player's liability waiver has been signed!");
         const data = await response.json();
         setPlayerById(data);
       } else {
@@ -482,8 +481,8 @@ const Waiver = () => {
         </Match>
         <Match when={player()?.membership?.waiver_valid}>
           <p>
-            Liability Waiver form for {player()?.full_name} has already been
-            signed for {displayDate(player()?.membership?.start_date)} to{" "}
+            Liability Waiver form for {player()?.full_name} has been signed for{" "}
+            {displayDate(player()?.membership?.start_date)} to{" "}
             {displayDate(player()?.membership?.end_date)} by{" "}
             {player()?.membership?.waiver_signed_by} on{" "}
             {displayDate(player()?.membership?.waiver_signed_at)}.
