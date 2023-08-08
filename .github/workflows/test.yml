@@ -40,6 +40,9 @@ jobs:
       - name: Ensure no Python lint errors
         run: poetry run ruff check .
 
+      - name: Ensure no Python static type errors
+        run: poetry run mypy .
+
       - name: Ensure models and migrations are in sync
         run: |
           poetry run python manage.py makemigrations --no-input
