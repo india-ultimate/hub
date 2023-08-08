@@ -1,5 +1,6 @@
 import datetime
 import uuid
+from typing import Any, Dict, List, Optional
 
 import razorpay
 from django.conf import settings
@@ -7,7 +8,12 @@ from django.conf import settings
 CLIENT = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
 
 
-def create_razorpay_order(amount, currency="INR", receipt=None, notes=None):
+def create_razorpay_order(
+    amount: int,
+    currency: str = "INR",
+    receipt: Optional[str] = None,
+    notes: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
     if receipt is None:
         receipt = str(uuid.uuid4())[:8]
 
@@ -23,7 +29,7 @@ def create_razorpay_order(amount, currency="INR", receipt=None, notes=None):
     return response
 
 
-def get_transactions():
+def get_transactions() -> List[Dict[str, Any]]:
     now = datetime.datetime.now()
     last_week = now - datetime.timedelta(days=7)
 
@@ -48,7 +54,7 @@ def get_transactions():
     return transactions
 
 
-def verify_razorpay_payment(payment_info):
+def verify_razorpay_payment(payment_info: Dict[str, str]) -> bool:
     try:
         return CLIENT.utility.verify_payment_signature(payment_info)
     except razorpay.errors.SignatureVerificationError as e:
@@ -56,7 +62,7 @@ def verify_razorpay_payment(payment_info):
         return False
 
 
-def verify_razorpay_webhook_payload(body, signature):
+def verify_razorpay_webhook_payload(body: str, signature: str) -> bool:
     secret = settings.RAZORPAY_WEBHOOK_SECRET
     try:
         return CLIENT.utility.verify_webhook_signature(body, signature, secret)
@@ -65,7 +71,7 @@ def verify_razorpay_webhook_payload(body, signature):
         return False
 
 
-def mask_string(s):
+def mask_string(s: str) -> str:
     n = len(s)
     if n >= 8:
         return s[:2] + "x" * (n - 4) + s[-2:]
