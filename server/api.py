@@ -62,16 +62,16 @@ api = NinjaAPI(auth=django_auth, csrf=True)
 # User #########
 
 
-@api.get("/me")
-def me(request, response={200: UserSchema}):
-    return UserSchema.from_orm(request.user)
+@api.get("/me", response={200: UserSchema})
+def me(request):
+    return request.user
 
 
 # Players ##########
 
 
 @api.get("/players")
-def list_players(request, response={200: List[Union[PlayerTinySchema, PlayerSchema]]}):
+def list_players(request):
     players = Player.objects.all()
     is_staff = request.user.is_staff
     schema = PlayerSchema if is_staff else PlayerTinySchema
@@ -86,7 +86,7 @@ def api_login(request, credentials: Credentials):
     user = authenticate(request, username=credentials.username, password=credentials.password)
     if user is not None:
         login(request, user)
-        return 200, UserSchema.from_orm(user)
+        return 200, user
     else:
         return 403, {"message": "Invalid credentials"}
 
@@ -113,7 +113,7 @@ def firebase_login(request, credentials: FirebaseCredentials):
     request.session["firebase_token"] = credentials.token
     request.user = user
     login(request, user)
-    return 200, UserSchema.from_orm(user)
+    return 200, user
 
 
 # Registration #########
@@ -151,7 +151,7 @@ def do_register(
     if guardian:
         Guardianship.objects.create(user=guardian, player=player, relation=registration.relation)
 
-    return 200, PlayerSchema.from_orm(player)
+    return 200, player
 
 
 @api.post("/registration/others", response={200: PlayerSchema, 400: Response})
@@ -188,11 +188,10 @@ def register_ward(request, registration: RegistrationWardSchema):
 # Events ##########
 
 
-@api.get("/events")
-def list_events(request, include_all: bool = False, response={200: List[EventSchema]}):
+@api.get("/events", response={200: List[EventSchema]})
+def list_events(request, include_all: bool = False):
     today = datetime.date.today()
-    events = Event.objects.all() if include_all else Event.objects.filter(start_date__gte=today)
-    return [EventSchema.from_orm(e) for e in events]
+    return Event.objects.all() if include_all else Event.objects.filter(start_date__gte=today)
 
 
 # Payments ##########
@@ -316,7 +315,7 @@ def payment_success(request, payment: PaymentFormSchema):
     transaction = update_transaction(payment)
     if not transaction:
         return 404, {"message": "No order found."}
-    return [PlayerSchema.from_orm(player) for player in transaction.players.all()]
+    return transaction.players.all()
 
 
 def update_transaction(payment):
@@ -370,8 +369,8 @@ def payment_webhook(request):
     return {"message": "Webhook processed"}
 
 
-@api.get("/transactions")
-def list_transactions(request, response={200: List[TransactionSchema]}):
+@api.get("/transactions", response={200: List[TransactionSchema]})
+def list_transactions(request):
     user = request.user
 
     # Get ids of all associated players of a user (player + wards)
@@ -380,8 +379,7 @@ def list_transactions(request, response={200: List[TransactionSchema]}):
     player_ids = ward_ids.union(player_id)
 
     query = Q(user=request.user) | Q(players__in=player_ids)
-    transactions = RazorpayTransaction.objects.filter(query).distinct()
-    return [TransactionSchema.from_orm(t) for t in transactions]
+    return RazorpayTransaction.objects.filter(query).distinct()
 
 
 # Vaccination ##########
@@ -414,7 +412,7 @@ def vaccination(
     vaccine.full_clean()
     vaccine.save()
 
-    return 200, VaccinationSchema.from_orm(vaccine)
+    return 200, vaccine
 
 
 # Waiver ##########
@@ -445,4 +443,4 @@ def waiver(request, waiver: WaiverFormSchema):
     membership.waiver_valid = True
     membership.save(update_fields=["waiver_signed_by", "waiver_signed_at", "waiver_valid"])
 
-    return 200, PlayerSchema.from_orm(player)
+    return 200, player
