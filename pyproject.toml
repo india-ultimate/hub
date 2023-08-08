@@ -21,6 +21,11 @@ beautifulsoup4 = "^4.12.2"
 ruff = "^0.0.282"
 pytest = "^7.4.0"
 pytest-django = "^4.5.2"
+mypy = "^1.4.1"
+django-stubs = "^4.2.3"
+types-requests = "^2.31.0.2"
+monkeytype = "^23.3.0"
+pytest-monkeytype = "^1.1.0"
 
 [build-system]
 requires = ["poetry-core"]
@@ -37,3 +42,37 @@ ignore = ["E501"]
 
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "hub.settings"
+
+[tool.mypy]
+scripts_are_modules = true
+show_traceback = true
+
+# Enable strict mode, with some exceptions.
+strict = true
+disallow_subclassing_any = false
+disallow_untyped_calls = false
+disallow_untyped_decorators = false
+warn_return_any = false
+
+# Enable optional errors.
+enable_error_code = [
+    "redundant-expr",
+    "truthy-bool",
+    "ignore-without-code",
+    "unused-awaitable",
+]
+
+# Display the codes needed for # type: ignore[code] annotations.
+show_error_codes = true
+
+# Warn of unreachable or redundant code.
+warn_unreachable = true
+
+# To suppress all missing import errors for all untyped libraries
+ignore_missing_imports = true
+
+
+plugins = ["mypy_django_plugin.main"]
+
+[tool.django-stubs]
+django_settings_module = "hub.settings"
