@@ -1,11 +1,12 @@
 import csv
 import datetime
 from pathlib import Path
+from typing import Any, Dict, Optional, Tuple
 from urllib.parse import urlparse
 
 from django.contrib.auth import get_user_model
 from django.core.files.base import ContentFile
-from django.core.management.base import BaseCommand, CommandError
+from django.core.management.base import BaseCommand, CommandError, CommandParser
 from django.utils.dateparse import parse_date
 from django.utils.regex_helper import _lazy_re_compile
 from django.utils.text import slugify
@@ -79,7 +80,7 @@ OCCUPATIONS = {t.label: t for t in Player.OccupationTypes}
 RELATIONS = {t.label: t for t in Guardianship.Relation}
 
 
-def parse_date_custom(date_str):
+def parse_date_custom(date_str: str) -> Optional[datetime.date]:
     date = parse_date(date_str)
     if date is None:
         if match := DATE_RE.match(date_str):
@@ -88,14 +89,14 @@ def parse_date_custom(date_str):
     return None
 
 
-def clean_india_ultimate_profile(url):
+def clean_india_ultimate_profile(url: str) -> Optional[str]:
     p = urlparse(url)
     if not p.netloc == "indiaultimate.org":
         return None
     return url
 
 
-def clean_phone(phone):
+def clean_phone(phone: str) -> str:
     clean = phone.strip().replace("-", "").replace(" ", "").lstrip("0")
     if not clean:
         return ""
@@ -109,7 +110,7 @@ def clean_phone(phone):
         return ""
 
 
-def clean_occupation(occupation):
+def clean_occupation(occupation: Optional[str]) -> Optional[str]:
     if occupation is None:
         cleaned = None
     elif occupation.startswith("Student"):
@@ -127,7 +128,7 @@ def clean_occupation(occupation):
 class Command(BaseCommand):
     help = "Import members data from CSV"
 
-    def add_arguments(self, parser):
+    def add_arguments(self, parser: CommandParser) -> None:
         parser.add_argument("csv_file", type=Path, help="Path to the CSV file")
         parser.add_argument(
             "--minors",
@@ -144,7 +145,7 @@ class Command(BaseCommand):
             "--download-path", type=Path, help="Path of parent directory containing downloaded data"
         )
 
-    def handle(self, *args, **options):
+    def handle(self, *args: Any, **options: Any) -> None:
         gdrive_map_csv = options["gdrive_map_csv"]
         download_path = options["download_path"]
         gdrive_map = {}
@@ -169,8 +170,12 @@ class Command(BaseCommand):
                 email = row[columns["email"]] if not minors else ""
                 first_name = row[columns["first_name"]]
                 last_name = row[columns["last_name"]]
+                name = f"{first_name} {last_name}"
+                date_of_birth = parse_date_custom(row[columns["dob"]])
+                if date_of_birth is None:
+                    print(f"Couldn't parse date of birth for {name}. Skipping")
+                    continue
                 if not email.strip():
-                    name = f"{first_name} {last_name}"
                     email = slugify(name)
                     print(f"Adding user with slugified username: {email}")
 
@@ -216,7 +221,7 @@ class Command(BaseCommand):
                 # Create the Player instance
                 player = Player(
                     user=user,
-                    date_of_birth=parse_date_custom(row[columns["dob"]]),
+                    date_of_birth=date_of_birth,
                     gender=gender,
                     other_gender=other_gender,
                     city=row[columns["city"]],
@@ -286,9 +291,9 @@ class Command(BaseCommand):
                     explain_not_vaccinated=explanation,
                 )
                 certificate_url = row[columns["certificate"]]
-                name, content = self.find_vaccination_file(certificate_url, gdrive_map)
-                if name and content:
-                    vaccination.certificate.save(name, content)
+                cert_filename, content = self.find_vaccination_file(certificate_url, gdrive_map)
+                if cert_filename and content:
+                    vaccination.certificate.save(cert_filename, content)
                 uploading_media = bool(name)
 
                 msg = (
@@ -298,7 +303,9 @@ class Command(BaseCommand):
                 )
                 self.stdout.write(self.style.SUCCESS(msg))
 
-    def find_vaccination_file(self, url, gdrive_map):
+    def find_vaccination_file(
+        self, url: Optional[str], gdrive_map: Dict[str, Path]
+    ) -> Tuple[Optional[str], Optional[ContentFile[bytes]]]:
         if not url:
             return None, None
         drive_id = url.split("=")[1]

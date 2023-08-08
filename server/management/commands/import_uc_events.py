@@ -1,5 +1,7 @@
+from typing import Any
+
 import requests
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandParser
 from server.models import Event
 
 BASE_URL = "https://upai.usetopscore.com"
@@ -8,7 +10,7 @@ BASE_URL = "https://upai.usetopscore.com"
 class Command(BaseCommand):
     help = "Import data from UC"
 
-    def add_arguments(self, parser):
+    def add_arguments(self, parser: CommandParser) -> None:
         parser.add_argument(
             "-n",
             "--num-events",
@@ -17,7 +19,7 @@ class Command(BaseCommand):
             help="Number of events to sync.",
         )
 
-    def handle(self, *args, **options):
+    def handle(self, *args: Any, **options: Any) -> None:
         n = options["num_events"]
         url = f"{BASE_URL}/api/events?per_page={n}&order_by=date_desc"
         # NOTE: The request is unauthenticated
