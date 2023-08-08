@@ -12,6 +12,7 @@ import {
 import { vaccinationChoices } from "../constants";
 import { getCookie, fetchUserData, displayDate, getPlayer } from "../utils";
 import { createForm, getValue, required } from "@modular-forms/solid";
+import StatusStepper from "./StatusStepper";
 import TextInput from "./TextInput";
 import Select from "./Select";
 import Checkbox from "./Checkbox";
@@ -95,6 +96,7 @@ const Vaccination = () => {
               <VaccinationInformation vaccination={player()?.vaccination} />
             </tbody>
           </table>
+          <StatusStepper player={player()} />
         </Show>
         <Show when={player() && !player()?.vaccination}>
           <Form

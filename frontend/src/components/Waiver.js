@@ -12,6 +12,7 @@ import { A } from "@solidjs/router";
 import { vaccinationChoices } from "../constants";
 import { getCookie, fetchUserData, displayDate, getPlayer } from "../utils";
 import { createForm, getValue, required } from "@modular-forms/solid";
+import StatusStepper from "./StatusStepper";
 import TextInput from "./TextInput";
 import Select from "./Select";
 import Checkbox from "./Checkbox";
@@ -480,13 +481,16 @@ const Waiver = () => {
           <p>Waiver information for player {params.playerId} not accessible.</p>
         </Match>
         <Match when={player()?.membership?.waiver_valid}>
-          <p>
-            Liability Waiver form for {player()?.full_name} has been signed for{" "}
-            {displayDate(player()?.membership?.start_date)} to{" "}
-            {displayDate(player()?.membership?.end_date)} by{" "}
-            {player()?.membership?.waiver_signed_by} on{" "}
-            {displayDate(player()?.membership?.waiver_signed_at)}.
-          </p>
+          <>
+            <p>
+              Liability Waiver form for {player()?.full_name} has been signed
+              for {displayDate(player()?.membership?.start_date)} to{" "}
+              {displayDate(player()?.membership?.end_date)} by{" "}
+              {player()?.membership?.waiver_signed_by} on{" "}
+              {displayDate(player()?.membership?.waiver_signed_at)}.
+            </p>
+            <StatusStepper player={player()} />
+          </>
         </Match>
         <Match
           when={player()?.guardian && player()?.guardian !== store.data.id}
