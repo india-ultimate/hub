@@ -11,7 +11,7 @@ User = get_user_model()
 
 
 class TestImportData(TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         super().setUp()
         self.fixtures_dir = Path(__file__).parent.joinpath("fixtures")
 

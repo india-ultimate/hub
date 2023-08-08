@@ -3,25 +3,23 @@ import json
 import random
 import string
 import uuid
+from typing import Any, Dict
 from unittest import mock
 
-from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase
 from django.test.client import MULTIPART_CONTENT
 from requests.exceptions import RequestException
 from server.constants import ANNUAL_MEMBERSHIP_AMOUNT, EVENT_MEMBERSHIP_AMOUNT
-from server.models import Event, Guardianship, Membership, Player, RazorpayTransaction
-
-User = get_user_model()
+from server.models import Event, Guardianship, Membership, Player, RazorpayTransaction, User
 
 
-def fake_id(n):
+def fake_id(n: int) -> str:
     choices = string.digits + string.ascii_letters
     return "".join(random.choice(choices) for _ in range(n))
 
 
-def fake_order(amount):
+def fake_order(amount: int) -> Dict[str, Any]:
     order_id = f"order_{fake_id(16)}"
     return {
         "order_id": order_id,
@@ -36,12 +34,12 @@ def fake_order(amount):
     }
 
 
-def create_player(user):
+def create_player(user: User) -> Player:
     return Player.objects.create(user=user, date_of_birth=datetime.date.today())
 
 
 class TestLogin(TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         super().setUp()
         self.username = "username@foo.com"
         self.password = "password"
@@ -120,14 +118,14 @@ class TestLogin(TestCase):
 
 
 class TestRegistration(TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         super().setUp()
         self.client = Client()
         self.username = "username@foo.com"
         self.user = User.objects.create(username=self.username, email=self.username)
         self.client.force_login(self.user)
 
-    def test_register_me(self):
+    def test_register_me(self) -> None:
         c = self.client
         data = {
             "phone": "+1234567890",
@@ -150,7 +148,7 @@ class TestRegistration(TestCase):
                 self.assertEqual(value, response_data[key])
         self.assertEqual(self.user.id, response_data["user"])
 
-    def test_register_others(self):
+    def test_register_others(self) -> None:
         c = self.client
         data = {
             "email": "foo@email.com",
@@ -177,7 +175,7 @@ class TestRegistration(TestCase):
         self.assertEqual(user.username, data["email"])
         self.assertEqual(user.email, data["email"])
 
-    def test_register_ward(self):
+    def test_register_ward(self) -> None:
         c = self.client
         data = {
             "phone": "+1234567890",
@@ -207,14 +205,14 @@ class TestRegistration(TestCase):
 
 
 class TestPlayers(TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         super().setUp()
         self.client = Client()
         self.username = "username@foo.com"
         self.user = User.objects.create(username=self.username, email=self.username)
         self.client.force_login(self.user)
 
-    def test_get_players(self):
+    def test_get_players(self) -> None:
         c = self.client
         create_player(self.user)
         response = c.get(
@@ -232,7 +230,7 @@ class TestPlayers(TestCase):
         self.assertNotIn("membership", user_data)
         self.assertNotIn("guardian", user_data)
 
-    def test_get_players_staff(self):
+    def test_get_players_staff(self) -> None:
         c = self.client
         self.user.is_staff = True
         self.user.save()
@@ -254,7 +252,7 @@ class TestPlayers(TestCase):
 
 
 class TestPayment(TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         super().setUp()
 
         self.client = Client()
@@ -262,7 +260,7 @@ class TestPayment(TestCase):
         self.user = User.objects.create(username=self.username, email=self.username)
         self.client.force_login(self.user)
 
-    def test_create_order(self):
+    def test_create_order(self) -> None:
         c = self.client
 
         player_id = 200
@@ -315,7 +313,7 @@ class TestPayment(TestCase):
         self.assertEqual("2023-06-01", transaction.start_date.strftime("%Y-%m-%d"))
         self.assertEqual("2024-05-31", transaction.end_date.strftime("%Y-%m-%d"))
 
-    def test_create_order_event_membership(self):
+    def test_create_order_event_membership(self) -> None:
         c = self.client
 
         player_id = 200
@@ -393,7 +391,7 @@ class TestPayment(TestCase):
         self.assertEqual(event.start_date, transaction.start_date)
         self.assertEqual(event.end_date, transaction.end_date)
 
-    def test_create_order_group_membership(self):
+    def test_create_order_group_membership(self) -> None:
         c = self.client
 
         player_ids = [200, 220, 230, 225]
@@ -458,7 +456,7 @@ class TestPayment(TestCase):
             transaction.status,
         )
 
-    def test_payment_success(self):
+    def test_payment_success(self) -> None:
         c = self.client
         amount = 60000
         order = fake_order(amount)
@@ -510,7 +508,7 @@ class TestPayment(TestCase):
         self.assertEqual(start_date, membership.start_date.strftime("%Y-%m-%d"))
         self.assertEqual(end_date, membership.end_date.strftime("%Y-%m-%d"))
 
-    def test_payment_success_group_membership(self):
+    def test_payment_success_group_membership(self) -> None:
         c = self.client
         n_players = 4
         amount = 60000 * n_players
@@ -550,8 +548,8 @@ class TestPayment(TestCase):
         self.assertEqual(200, response.status_code)
         data = response.json()
         self.assertEqual(n_players, len(data))
-        for player in data:
-            membership = player["membership"]
+        for player_data in data:
+            membership = player_data["membership"]
             self.assertTrue(membership["is_active"])
             self.assertEqual(start_date, membership["start_date"])
             self.assertEqual(end_date, membership["end_date"])
@@ -563,7 +561,7 @@ class TestPayment(TestCase):
             transaction.status,
         )
 
-    def test_payment_success_event_membership(self):
+    def test_payment_success_event_membership(self) -> None:
         c = self.client
         amount = EVENT_MEMBERSHIP_AMOUNT
         order = fake_order(amount)
@@ -632,7 +630,7 @@ class TestPayment(TestCase):
         self.assertEqual(event.end_date, membership.end_date)
         self.assertEqual(event, membership.event)
 
-    def test_list_transactions(self):
+    def test_list_transactions(self) -> None:
         c = self.client
 
         # Create player and wards for current user
@@ -688,7 +686,7 @@ class TestPayment(TestCase):
         self.assertEqual(len(orders), len(response_data))
         self.assertEqual(orders, {t["order_id"] for t in response_data})
 
-    def test_razorpay_failures(self):
+    def test_razorpay_failures(self) -> None:
         player = create_player(user=self.user)
         c = self.client
         with mock.patch("server.api.create_razorpay_order", side_effect=RequestException):
@@ -706,7 +704,7 @@ class TestPayment(TestCase):
 
 
 class TestVaccination(TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         super().setUp()
         self.client = Client()
         self.username = "username@foo.com"
@@ -714,7 +712,7 @@ class TestVaccination(TestCase):
         self.client.force_login(self.user)
         self.player = Player.objects.create(user=self.user, date_of_birth="1990-01-01")
 
-    def test_not_vaccinated(self):
+    def test_not_vaccinated(self) -> None:
         c = self.client
         data = {
             "is_vaccinated": False,
@@ -734,7 +732,7 @@ class TestVaccination(TestCase):
                 self.assertEqual(value, response_data[key])
         self.assertEqual(self.player.id, response_data["player"])
 
-    def test_vaccinated(self):
+    def test_vaccinated(self) -> None:
         c = self.client
 
         certificate = SimpleUploadedFile(
@@ -758,7 +756,7 @@ class TestVaccination(TestCase):
 
 
 class TestWaiver(TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         super().setUp()
         self.client = Client()
         self.username = "username@foo.com"
@@ -773,7 +771,7 @@ class TestWaiver(TestCase):
             start_date=start_date, end_date=end_date, player=self.player
         )
 
-    def test_waiver_signed(self):
+    def test_waiver_signed(self) -> None:
         c = self.client
         response = c.post(
             "/api/waiver", data={"player_id": self.player.id}, content_type="application/json"
@@ -785,7 +783,7 @@ class TestWaiver(TestCase):
         self.assertTrue(membership["waiver_valid"])
         self.assertIsNotNone(membership["waiver_signed_at"])
 
-    def test_minor_cannot_sign_waiver(self):
+    def test_minor_cannot_sign_waiver(self) -> None:
         c = self.client
         Guardianship.objects.create(
             user=self.user, player=self.player, relation=Guardianship.Relation.MO
