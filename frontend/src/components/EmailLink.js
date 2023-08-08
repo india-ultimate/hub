@@ -20,6 +20,8 @@ const SignInForm = ({ setStatus }) => {
   const [email, setEmail] = createSignal(
     window.localStorage.getItem("emailForSignIn") || ""
   );
+  // Input disabled if using same device and email is found from localStorage
+  const [disableInput, setDisableInput] = createSignal(email() !== "");
   const [loginFail, setLoginFail] = createSignal(false);
   const [_, { setLoggedIn, setData }] = useStore();
   createEffect(() => {
@@ -65,7 +67,7 @@ const SignInForm = ({ setStatus }) => {
           for="email-link-input"
           class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
         >
-          Confirm Email ID for login
+          Confirm the Email ID (for which the login link was created)
         </label>
         <div class="mb-6">
           <input
@@ -74,6 +76,7 @@ const SignInForm = ({ setStatus }) => {
             placeholder="Email Address"
             value={email()}
             onInput={e => setEmail(e.currentTarget.value)}
+            disabled={disableInput()}
           />
         </div>
 
