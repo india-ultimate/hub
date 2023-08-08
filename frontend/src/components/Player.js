@@ -2,6 +2,7 @@ import { createSignal, createEffect, Show, Switch, Match } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 import { displayDate } from "../utils";
 import VaccinationInformation from "./VaccinationInformation";
+import StatusStepper from "./StatusStepper";
 import { getLabel } from "../utils";
 import { stateChoices } from "../constants";
 
@@ -25,6 +26,7 @@ const Player = props => {
 
   return (
     <div class="relative overflow-x-auto">
+      <StatusStepper player={props.player} />
       <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
         <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
           <tr>
