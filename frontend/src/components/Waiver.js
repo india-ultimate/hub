@@ -18,13 +18,15 @@ import Select from "./Select";
 import Checkbox from "./Checkbox";
 import FileInput from "./FileInput";
 
-const Legal = ({ minor, onChange }) => (
+const Legal = ({ minor, onChange, signed }) => (
   <div class="my-10">
     <label class="flex select-none space-x-4 font-medium">
       <input
         class="mt-1 h-4 w-4 cursor-pointer lg:mt-1 lg:h-5 lg:w-5"
         type="checkbox"
         onChange={e => onChange(e.target.checked)}
+        checked={signed}
+        disabled={signed}
       />
       <span>
         I understand that this is a legally binding document and that I have
@@ -34,7 +36,7 @@ const Legal = ({ minor, onChange }) => (
   </div>
 );
 
-const PartA = ({ minor, onChange, startDate, endDate }) => (
+const PartA = ({ minor, onChange, startDate, endDate, signed }) => (
   <div class="my-10">
     <h3 class="text-xl font-bold text-blue-500">Part A</h3>
     <Switch>
@@ -92,6 +94,8 @@ const PartA = ({ minor, onChange, startDate, endDate }) => (
             class="mt-1 h-4 w-4 cursor-pointer lg:mt-1 lg:h-5 lg:w-5"
             type="checkbox"
             onChange={e => onChange(e.target.checked)}
+            checked={signed}
+            disabled={signed}
           />
           <span>I acknowledge and agree to the above.</span>
         </label>
@@ -132,6 +136,8 @@ const PartA = ({ minor, onChange, startDate, endDate }) => (
             class="mt-1 h-4 w-4 cursor-pointer lg:mt-1 lg:h-5 lg:w-5"
             type="checkbox"
             onChange={e => onChange(e.target.checked)}
+            checked={signed}
+            disabled={signed}
           />
           <span>I acknowledge and agree to the above.</span>
         </label>
@@ -140,7 +146,7 @@ const PartA = ({ minor, onChange, startDate, endDate }) => (
   </div>
 );
 
-const PartB = ({ minor, onChange }) => (
+const PartB = ({ minor, onChange, signed }) => (
   <div class="my-10">
     <h3 class="text-xl font-bold text-blue-500">Part B</h3>
     <Switch>
@@ -195,6 +201,8 @@ const PartB = ({ minor, onChange }) => (
             class="mt-1 h-4 w-4 cursor-pointer lg:mt-1 lg:h-5 lg:w-5"
             type="checkbox"
             onChange={e => onChange(e.target.checked)}
+            checked={signed}
+            disabled={signed}
           />
           <span>
             I acknowledge that I have read the foregoing Liability Release
@@ -252,6 +260,8 @@ const PartB = ({ minor, onChange }) => (
             class="mt-1 h-4 w-4 cursor-pointer lg:mt-1 lg:h-5 lg:w-5"
             type="checkbox"
             onChange={e => onChange(e.target.checked)}
+            checked={signed}
+            disabled={signed}
           />
           <span>
             I acknowledge that I have read the foregoing Liability Release
@@ -268,7 +278,7 @@ const PartB = ({ minor, onChange }) => (
   </div>
 );
 
-const MediaConsent = ({ minor, onChange }) => (
+const MediaConsent = ({ minor, onChange, signed }) => (
   <div class="my-10">
     <h3 class="text-xl font-bold text-blue-500">Media Consent</h3>
     <p class="my-4">
@@ -306,6 +316,8 @@ const MediaConsent = ({ minor, onChange }) => (
         class="mt-1 h-4 w-4 cursor-pointer lg:mt-1 lg:h-5 lg:w-5"
         type="checkbox"
         onChange={e => onChange(e.target.checked)}
+        checked={signed}
+        disabled={signed}
       />
       <span>
         I have read and understood whatever is stated above and hereby do give
@@ -315,7 +327,7 @@ const MediaConsent = ({ minor, onChange }) => (
   </div>
 );
 
-const Disclaimer = () => (
+const Disclaimer = ({ date = new Date() }) => (
   <div class="mt-6 inline-block font-medium">
     <h3 class="text-xl font-bold text-red-500">Disclaimer</h3>
     <p class="my-4">
@@ -330,17 +342,17 @@ const Disclaimer = () => (
       minors), or any affiliated persons (each an 'Actor'), whether or not
       affiliated to the UPAI, in any capacity, in or outside India, whether in a
       formal or informal setting (each such act individually, or taken together,
-      by any Actor, hereafter referred to as 'Play'), as of{" "}
-      {displayDate(new Date())} until stated otherwise, is undertaken in
-      personal capacity. Importantly, it is also hereby made clear, that neither
-      the UPAI, nor any of its employees, agents or representatives shall be
-      responsible, and no action may be brought against them, for any COVID-19
-      (or related infection/illnesses) or other personal injury, illness,
-      permanent disability, death and/or other damage, loss, claim, liability or
-      expense of any kind occurring prior to, during or after participation in
-      Play by an Actor or any other third party. All Actors engaged in any such,
-      or other, Play are assumed to know and acknowledge the contagious nature
-      of Covid-19 (or related infections/illnesses), and voluntarily assume all
+      by any Actor, hereafter referred to as 'Play'), as of {displayDate(date)}{" "}
+      until stated otherwise, is undertaken in personal capacity. Importantly,
+      it is also hereby made clear, that neither the UPAI, nor any of its
+      employees, agents or representatives shall be responsible, and no action
+      may be brought against them, for any COVID-19 (or related
+      infection/illnesses) or other personal injury, illness, permanent
+      disability, death and/or other damage, loss, claim, liability or expense
+      of any kind occurring prior to, during or after participation in Play by
+      an Actor or any other third party. All Actors engaged in any such, or
+      other, Play are assumed to know and acknowledge the contagious nature of
+      Covid-19 (or related infections/illnesses), and voluntarily assume all
       risk of and responsibility themselves, for exposure to such infections,
       whether caused by actions, omission, negligence or otherwise of themselves
       or other participants or connected persons, and any resulting personal
@@ -366,6 +378,7 @@ const Disclaimer = () => (
 
 const WaiverForm = props => {
   const minor = props.minor;
+  const signed = props.signed;
   const headline = !minor
     ? `Liability Waiver form for ${props.player.full_name}`
     : `Liability Waiver form and Guardian Consent for ${props.player.full_name}`;
@@ -399,17 +412,35 @@ const WaiverForm = props => {
         }
         when={props.player?.membership?.is_active}
       >
+        <Show when={signed}>
+          <div
+            class="p-4 my-4 text-sm text-green-800 rounded-lg bg-green-50 dark:bg-gray-800 dark:text-green-400"
+            role="alert"
+          >
+            Liability Waiver form for {props.player?.full_name} has been signed
+            for {displayDate(props.player?.membership?.start_date)} to{" "}
+            {displayDate(props.player?.membership?.end_date)} by{" "}
+            {props.player?.membership?.waiver_signed_by} on{" "}
+            {displayDate(props.player?.membership?.waiver_signed_at)}.
+          </div>
+          <StatusStepper player={props.player} />
+        </Show>
         <PartA
+          signed={signed}
           minor={minor}
           onChange={setPartA}
           startDate={props?.player?.membership?.start_date}
           endDate={props?.player?.membership?.end_date}
         />
-        <PartB minor={minor} onChange={setPartB} />
-        <MediaConsent minor={minor} onChange={setMediaConsent} />
-        <Disclaimer />
-        <Legal onChange={setIsLegal} />
-        <div>
+        <PartB signed={signed} minor={minor} onChange={setPartB} />
+        <MediaConsent
+          signed={signed}
+          minor={minor}
+          onChange={setMediaConsent}
+        />
+        <Disclaimer date={props?.player?.membership?.waiver_signed_at} />
+        <Legal signed={signed} onChange={setIsLegal} />
+        <Show when={!signed}>
           <button
             class={`my-4 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 ${
               !enableSubmit() ? "cursor-not-allowed" : ""
@@ -419,7 +450,7 @@ const WaiverForm = props => {
           >
             I Agree
           </button>
-        </div>
+        </Show>
       </Show>
     </div>
   );
@@ -480,14 +511,12 @@ const Waiver = () => {
         </Match>
         <Match when={player()?.membership?.waiver_valid}>
           <>
-            <p>
-              Liability Waiver form for {player()?.full_name} has been signed
-              for {displayDate(player()?.membership?.start_date)} to{" "}
-              {displayDate(player()?.membership?.end_date)} by{" "}
-              {player()?.membership?.waiver_signed_by} on{" "}
-              {displayDate(player()?.membership?.waiver_signed_at)}.
-            </p>
-            <StatusStepper player={player()} />
+            <WaiverForm
+              signed={true}
+              minor={true}
+              player={player()}
+              handleSubmit={submitConsent}
+            />
           </>
         </Match>
         <Match
