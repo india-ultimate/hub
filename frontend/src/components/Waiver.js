@@ -380,8 +380,6 @@ const WaiverForm = props => {
     setEnableSubmit(mediaConsent() && partA() && partB() && isLegal());
   });
 
-  const { start_date, end_date } = props.player.membership;
-
   return (
     <div>
       <h1 class="text-4xl font-bold text-blue-500">{headline}</h1>
@@ -404,8 +402,8 @@ const WaiverForm = props => {
         <PartA
           minor={minor}
           onChange={setPartA}
-          startDate={start_date}
-          endDate={end_date}
+          startDate={props?.player?.membership?.start_date}
+          endDate={props?.player?.membership?.end_date}
         />
         <PartB minor={minor} onChange={setPartB} />
         <MediaConsent minor={minor} onChange={setMediaConsent} />
