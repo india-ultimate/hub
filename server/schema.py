@@ -1,12 +1,17 @@
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
-from django.contrib.auth import get_user_model
 from ninja import ModelSchema, Schema
 
-from server.models import Event, Guardianship, Membership, Player, RazorpayTransaction, Vaccination
+from server.models import (
+    Event,
+    Guardianship,
+    Membership,
+    Player,
+    RazorpayTransaction,
+    User,
+    Vaccination,
+)
 from server.utils import mask_string
-
-User = get_user_model()
 
 
 class Credentials(Schema):
@@ -27,7 +32,7 @@ class MembershipSchema(ModelSchema):
     waiver_signed_by: Optional[str]
 
     @staticmethod
-    def resolve_waiver_signed_by(membership):
+    def resolve_waiver_signed_by(membership: Membership) -> Optional[str]:
         user = membership.waiver_signed_by
         return user.get_full_name() if user is not None else None
 
@@ -67,21 +72,22 @@ class TransactionSchema(ModelSchema):
     user: str
 
     @staticmethod
-    def resolve_user(transaction):
+    def resolve_user(transaction: RazorpayTransaction) -> str:
         return transaction.user.get_full_name()
 
     players: List[str]
 
     @staticmethod
-    def resolve_players(transaction):
+    def resolve_players(transaction: RazorpayTransaction) -> List[str]:
         return [p.user.get_full_name() for p in transaction.players.all()]
 
     event: Optional[EventSchema]
 
     @staticmethod
-    def resolve_event(transaction):
+    def resolve_event(transaction: RazorpayTransaction) -> Optional[EventSchema]:
         if transaction.event is not None:
             return EventSchema.from_orm(transaction.event)
+        return None
 
     class Config:
         model = RazorpayTransaction
@@ -97,7 +103,7 @@ class OrderSchema(Schema):
     name: str
     image: str
     description: str
-    prefill: dict
+    prefill: Dict[str, Any]
 
 
 class VaccinationSchema(ModelSchema):
@@ -110,48 +116,48 @@ class PlayerSchema(ModelSchema):
     full_name: str
 
     @staticmethod
-    def resolve_full_name(player):
+    def resolve_full_name(player: Player) -> str:
         return player.user.get_full_name()
 
     email: str
 
     @staticmethod
-    def resolve_email(player):
+    def resolve_email(player: Player) -> str:
         return player.user.email
 
     phone: str
 
     @staticmethod
-    def resolve_phone(player):
+    def resolve_phone(player: Player) -> str:
         return player.user.phone
 
     membership: Optional[MembershipSchema]
 
     @staticmethod
-    def resolve_membership(player):
+    def resolve_membership(player: Player) -> Optional[MembershipSchema]:
         try:
             return MembershipSchema.from_orm(player.membership)
         except Membership.DoesNotExist:
-            return
+            return None
 
     vaccination: Optional[VaccinationSchema]
 
     @staticmethod
-    def resolve_vaccination(player):
+    def resolve_vaccination(player: Player) -> Optional[VaccinationSchema]:
         try:
             return VaccinationSchema.from_orm(player.vaccination)
         except Vaccination.DoesNotExist:
-            return
+            return None
 
     guardian: Optional[int]
 
     @staticmethod
-    def resolve_guardian(player):
+    def resolve_guardian(player: Player) -> Optional[int]:
         try:
             guardianship = Guardianship.objects.get(player=player)
             return guardianship.user.id
         except Guardianship.DoesNotExist:
-            return
+            return None
 
     class Config:
         model = Player
@@ -162,13 +168,13 @@ class PlayerTinySchema(ModelSchema):
     full_name: str
 
     @staticmethod
-    def resolve_full_name(player):
+    def resolve_full_name(player: Player) -> str:
         return player.user.get_full_name()
 
     email: str
 
     @staticmethod
-    def resolve_email(player):
+    def resolve_email(player: Player) -> str:
         username, suffix = (player.user.email.split("@") + [""])[:2]
         masked_username = mask_string(username)
         return f"{masked_username}@{suffix}"
@@ -176,13 +182,13 @@ class PlayerTinySchema(ModelSchema):
     phone: str
 
     @staticmethod
-    def resolve_phone(player):
+    def resolve_phone(player: Player) -> str:
         return mask_string(player.user.phone)
 
     has_membership: bool
 
     @staticmethod
-    def resolve_has_membership(player):
+    def resolve_has_membership(player: Player) -> bool:
         try:
             return player.membership.is_active
         except Membership.DoesNotExist:
@@ -197,22 +203,22 @@ class UserSchema(ModelSchema):
     full_name: str
 
     @staticmethod
-    def resolve_full_name(user):
+    def resolve_full_name(user: User) -> str:
         return user.get_full_name()
 
     player: Optional[PlayerSchema]
 
     @staticmethod
-    def resolve_player(user):
+    def resolve_player(user: User) -> Optional[PlayerSchema]:
         try:
             return PlayerSchema.from_orm(user.player_profile)
         except Player.DoesNotExist:
-            return
+            return None
 
     wards: List[PlayerSchema]
 
     @staticmethod
-    def resolve_wards(user):
+    def resolve_wards(user: User) -> List[PlayerSchema]:
         wards = Player.objects.filter(guardianship__user=user)
         return [PlayerSchema.from_orm(p) for p in wards]
 
@@ -277,12 +283,15 @@ class WaiverFormSchema(Schema):
 
 
 class RegistrationSchema(UserFormSchema, PlayerFormSchema):
-    pass
+    class Config:
+        pass
 
 
 class RegistrationOthersSchema(UserOtherFormSchema, PlayerFormSchema):
-    pass
+    class Config:
+        pass
 
 
 class RegistrationWardSchema(UserWardFormSchema, PlayerFormSchema, GuardianshipFormSchema):
-    pass
+    class Config:
+        pass
