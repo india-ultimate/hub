@@ -4657,6 +4657,13 @@ sockjs@^0.3.24:
     uuid "^8.3.2"
     websocket-driver "^0.7.4"
 
+solid-heroicons@^3.2.4:
+  version "3.2.4"
+  resolved "https://registry.yarnpkg.com/solid-heroicons/-/solid-heroicons-3.2.4.tgz#908d6c436da48a6fcbbf3ecc08ec005e62057be5"
+  integrity sha512-u6BMdFLvkJnvUGYzdFcWp1wvJ4hb9Y1zd3AbZ9D3bUmmiy9jBzNZX+RcqBCI2EKRvdQwAb1UB9bkESfqfhayDg==
+  dependencies:
+    solid-js "^1.7.6"
+
 solid-hot-loader@^0.0.5:
   version "0.0.5"
   resolved "https://registry.yarnpkg.com/solid-hot-loader/-/solid-hot-loader-0.0.5.tgz#838d092ffd8af184746a69c72ea4a4b3fa34c0ec"
@@ -4668,6 +4675,14 @@ solid-js@^1.7.3:
   version "1.7.8"
   resolved "https://registry.yarnpkg.com/solid-js/-/solid-js-1.7.8.tgz#6856983e3edbcc57b0e003e6fd0c741dd8865892"
   integrity sha512-XHBWk1FvFd0JMKljko7FfhefJMTSgYEuVKcQ2a8hzRXfiuSJAGsrPPafqEo+f6l+e8Oe3cROSpIL6kbzjC1fjQ==
+  dependencies:
+    csstype "^3.1.0"
+    seroval "^0.5.0"
+
+solid-js@^1.7.6:
+  version "1.7.9"
+  resolved "https://registry.yarnpkg.com/solid-js/-/solid-js-1.7.9.tgz#eb666d1c0ab0322bf844b566edbf40557dee66c7"
+  integrity sha512-p1orXnauMQmwYULZtuPAXyKNRGEN2qh60kLX4YURa3jvulxAqjlh2kWEljXCtAVR6UZPC16NXdj9ASHcH383Fg==
   dependencies:
     csstype "^3.1.0"
     seroval "^0.5.0"
