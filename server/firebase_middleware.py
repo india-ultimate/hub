@@ -2,15 +2,16 @@ import base64
 import json
 import os
 from pathlib import Path
+from typing import Any, Optional
 
 import firebase_admin
-from django.contrib.auth import get_user_model
+from django.http import HttpRequest, HttpResponse
 from firebase_admin import auth, credentials
 
-User = get_user_model()
+from server.models import User
 
 
-def firebase_to_django_user(firebase_user):
+def firebase_to_django_user(firebase_user: auth.UserRecord) -> Optional[User]:
     if firebase_user is None:
         return None
 
@@ -30,11 +31,10 @@ def firebase_to_django_user(firebase_user):
 
 
 class FirebaseAuthenticationMiddleware:
-    def __init__(self, get_response):
+    def __init__(self, get_response: Any) -> None:
         self.get_response = get_response
-        self.firebase_app = None
 
-    def __call__(self, request):
+    def __call__(self, request: HttpRequest) -> HttpResponse:
         self.initialize_firebase_app()
 
         # Check if the user is authenticated with Firebase
@@ -54,10 +54,7 @@ class FirebaseAuthenticationMiddleware:
         response = self.get_response(request)
         return response
 
-    def initialize_firebase_app(self):
-        if self.firebase_app:
-            return
-
+    def initialize_firebase_app(self) -> None:
         # In tests, the middleware is instantiated multiple times and causes
         # firebase initialization errors. This ensures that the initialization
         # only happens when required.
