@@ -376,11 +376,7 @@ const Disclaimer = _props => {
   );
 };
 const WaiverForm = props => {
-  const minor = props.minor;
-  const signed = props.signed;
-  const headline = !minor
-    ? `Liability Waiver form for ${props.player.full_name}`
-    : `Liability Waiver form and Guardian Consent for ${props.player.full_name}`;
+  const [headline, setHeadline] = createSignal("");
 
   const [isLegal, setIsLegal] = createSignal(false);
   const [mediaConsent, setMediaConsent] = createSignal(false);
@@ -392,9 +388,16 @@ const WaiverForm = props => {
     setEnableSubmit(mediaConsent() && partA() && partB() && isLegal());
   });
 
+  createEffect(() => {
+    const headline = props.minor
+      ? `Liability Waiver form and Guardian Consent for ${props.player.full_name}`
+      : `Liability Waiver form for ${props.player.full_name}`;
+    setHeadline(headline);
+  });
+
   return (
     <div>
-      <h1 class="text-4xl font-bold text-blue-500">{headline}</h1>
+      <h1 class="text-4xl font-bold text-blue-500">{headline()}</h1>
       <Show
         fallback={
           <p>
@@ -411,7 +414,7 @@ const WaiverForm = props => {
         }
         when={props.player?.membership?.is_active}
       >
-        <Show when={signed}>
+        <Show when={props.signed}>
           <div
             class="p-4 my-4 text-sm text-green-800 rounded-lg bg-green-50 dark:bg-gray-800 dark:text-green-400"
             role="alert"
@@ -425,26 +428,26 @@ const WaiverForm = props => {
           <StatusStepper player={props.player} />
         </Show>
         <PartA
-          signed={signed}
-          minor={minor}
+          signed={props.signed}
+          minor={props.minor}
           onChange={setPartA}
           startDate={props?.player?.membership?.start_date}
           endDate={props?.player?.membership?.end_date}
         />
-        <PartB signed={signed} minor={minor} onChange={setPartB} />
+        <PartB signed={props.signed} minor={props.minor} onChange={setPartB} />
         <MediaConsent
-          signed={signed}
-          minor={minor}
+          signed={props.signed}
+          minor={props.minor}
           onChange={setMediaConsent}
         />
         <Disclaimer date={props?.player?.membership?.waiver_signed_at} />
-        <Legal signed={signed} onChange={setIsLegal} />
-        <Show when={!signed}>
+        <Legal signed={props.signed} onChange={setIsLegal} />
+        <Show when={!props.signed}>
           <button
             class={`my-4 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 ${
               !enableSubmit() ? "cursor-not-allowed" : ""
             } `}
-            onClick={props.handleSubmit}
+            onClick={props.handleSubmit} // eslint-disable-line solid/reactivity
             disabled={!enableSubmit()}
           >
             I Agree
