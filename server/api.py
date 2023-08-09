@@ -1,7 +1,7 @@
 import datetime
 import json
 import time
-from typing import Any, List, Optional, Union, cast
+from typing import Any, cast
 
 import firebase_admin
 from django.conf import settings
@@ -88,7 +88,7 @@ def me(request: AuthenticatedHttpRequest) -> User:
 
 
 @api.get("/players")
-def list_players(request: AuthenticatedHttpRequest) -> List[Union[PlayerTinySchema, PlayerSchema]]:
+def list_players(request: AuthenticatedHttpRequest) -> list[PlayerTinySchema | PlayerSchema]:
     players = Player.objects.all()
     is_staff = request.user.is_staff
     if is_staff:
@@ -103,7 +103,7 @@ def list_players(request: AuthenticatedHttpRequest) -> List[Union[PlayerTinySche
 @api.post("/login", auth=None, response={200: UserSchema, 403: Response})
 def api_login(
     request: HttpRequest, credentials: Credentials
-) -> tuple[int, Union[AbstractBaseUser, message_response]]:
+) -> tuple[int, AbstractBaseUser | message_response]:
     user = authenticate(request, username=credentials.username, password=credentials.password)
     if user is not None:
         login(request, user)
@@ -120,8 +120,8 @@ def api_logout(request: AuthenticatedHttpRequest) -> tuple[int, message_response
 
 @api.post("/firebase-login", auth=None, response={200: UserSchema, 403: Response})
 def firebase_login(
-    request: HttpRequest, credentials: Union[FirebaseCredentials, FirebaseSignUpCredentials]
-) -> tuple[int, Union[User, message_response]]:
+    request: HttpRequest, credentials: FirebaseCredentials | FirebaseSignUpCredentials
+) -> tuple[int, User | message_response]:
     try:
         firebase_user = auth.get_user(credentials.uid)
     except (firebase_admin._auth_utils.UserNotFoundError, ValueError):
@@ -156,15 +156,15 @@ def firebase_login(
 @api.post("/registration", response={200: PlayerSchema, 400: Response})
 def register_self(
     request: AuthenticatedHttpRequest, registration: RegistrationSchema
-) -> tuple[int, Union[Player, message_response]]:
+) -> tuple[int, Player | message_response]:
     return do_register(request.user, registration)
 
 
 def do_register(
     user: User,
-    registration: Union[RegistrationSchema, RegistrationOthersSchema, RegistrationWardSchema],
-    guardian: Optional[User] = None,
-) -> tuple[int, Union[Player, message_response]]:
+    registration: RegistrationSchema | RegistrationOthersSchema | RegistrationWardSchema,
+    guardian: User | None = None,
+) -> tuple[int, Player | message_response]:
     try:
         Player.objects.get(user=user)
         return 400, {"message": "Player already exists"}
@@ -198,7 +198,7 @@ def do_register(
 @api.post("/registration/others", response={200: PlayerSchema, 400: Response})
 def register_others(
     request: AuthenticatedHttpRequest, registration: RegistrationOthersSchema
-) -> tuple[int, Union[Player, message_response]]:
+) -> tuple[int, Player | message_response]:
     user, created = User.objects.get_or_create(
         username=registration.email,  # type: ignore[attr-defined]
         defaults={
@@ -214,7 +214,7 @@ def register_others(
 @api.post("/registration/ward", response={200: PlayerSchema, 400: Response})
 def register_ward(
     request: AuthenticatedHttpRequest, registration: RegistrationWardSchema
-) -> tuple[int, Union[Player, message_response]]:
+) -> tuple[int, Player | message_response]:
     email = registration.email  # type: ignore[attr-defined]
     if email is None:
         email = slugify(f"{registration.first_name} {registration.last_name}")  # type: ignore[attr-defined]
@@ -233,7 +233,7 @@ def register_ward(
 # Events ##########
 
 
-@api.get("/events", response={200: List[EventSchema]})
+@api.get("/events", response={200: list[EventSchema]})
 def list_events(request: AuthenticatedHttpRequest, include_all: bool = False) -> QuerySet[Event]:
     today = datetime.date.today()
     return Event.objects.all() if include_all else Event.objects.filter(start_date__gte=today)
@@ -245,8 +245,8 @@ def list_events(request: AuthenticatedHttpRequest, include_all: bool = False) ->
 @api.post("/create-order", response={200: OrderSchema, 400: Response, 502: str})
 def create_order(
     request: AuthenticatedHttpRequest,
-    order: Union[AnnualMembershipSchema, EventMembershipSchema, GroupMembershipSchema],
-) -> tuple[int, Union[str, message_response, dict[str, Any]]]:
+    order: AnnualMembershipSchema | EventMembershipSchema | GroupMembershipSchema,
+) -> tuple[int, str | message_response | dict[str, Any]]:
     if isinstance(order, GroupMembershipSchema):
         group_payment = True
         players = Player.objects.filter(id__in=order.player_ids)
@@ -264,7 +264,7 @@ def create_order(
         except Player.DoesNotExist:
             return 400, {"message": "Player does not exist!"}
 
-    if isinstance(order, (GroupMembershipSchema, AnnualMembershipSchema)):
+    if isinstance(order, GroupMembershipSchema | AnnualMembershipSchema):
         start_date = datetime.date(order.year, *MEMBERSHIP_START)
         end_date = datetime.date(order.year + 1, *MEMBERSHIP_END)
         is_annual = True
@@ -352,11 +352,11 @@ def create_order(
 
 
 @api.post(
-    "/payment-success", response={200: List[PlayerSchema], 502: str, 404: Response, 422: Response}
+    "/payment-success", response={200: list[PlayerSchema], 502: str, 404: Response, 422: Response}
 )
 def payment_success(
     request: AuthenticatedHttpRequest, payment: PaymentFormSchema
-) -> tuple[int, Union[QuerySet[Player], message_response, str]]:
+) -> tuple[int, QuerySet[Player] | message_response | str]:
     authentic = verify_razorpay_payment(payment.dict())
     if not authentic:
         return 422, {"message": "We were unable to ascertain the authenticity of the payment."}
@@ -366,7 +366,7 @@ def payment_success(
     return 200, transaction.players.all()
 
 
-def update_transaction(payment: PaymentFormSchema) -> Optional[RazorpayTransaction]:
+def update_transaction(payment: PaymentFormSchema) -> RazorpayTransaction | None:
     try:
         transaction = RazorpayTransaction.objects.get(order_id=payment.razorpay_order_id)
     except RazorpayTransaction.DoesNotExist:
@@ -417,7 +417,7 @@ def payment_webhook(request: HttpRequest) -> message_response:
     return {"message": "Webhook processed"}
 
 
-@api.get("/transactions", response={200: List[TransactionSchema]})
+@api.get("/transactions", response={200: list[TransactionSchema]})
 def list_transactions(request: AuthenticatedHttpRequest) -> QuerySet[RazorpayTransaction]:
     user = request.user
 
@@ -436,9 +436,9 @@ def list_transactions(request: AuthenticatedHttpRequest) -> QuerySet[RazorpayTra
 @api.post("/vaccination", response={200: VaccinationSchema, 400: Response})
 def vaccination(
     request: AuthenticatedHttpRequest,
-    vaccination: Union[VaccinatedFormSchema, NotVaccinatedFormSchema],
-    certificate: Optional[UploadedFile] = File(None),
-) -> tuple[int, Union[Vaccination, message_response]]:
+    vaccination: VaccinatedFormSchema | NotVaccinatedFormSchema,
+    certificate: UploadedFile | None = File(None),
+) -> tuple[int, Vaccination | message_response]:
     if vaccination.is_vaccinated and not certificate:
         return 400, {"message": "Certificate needs to be uploaded!"}
 
@@ -469,7 +469,7 @@ def vaccination(
 @api.post("/waiver", response={200: PlayerSchema, 400: Response})
 def waiver(
     request: AuthenticatedHttpRequest, waiver: WaiverFormSchema
-) -> Union[tuple[int, Player], tuple[int, message_response]]:
+) -> tuple[int, Player] | tuple[int, message_response]:
     try:
         player = Player.objects.get(id=waiver.player_id)
     except Player.DoesNotExist:

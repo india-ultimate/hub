@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from ninja import ModelSchema, Schema
 
@@ -40,10 +40,10 @@ class Response(Schema):
 
 
 class MembershipSchema(ModelSchema):
-    waiver_signed_by: Optional[str]
+    waiver_signed_by: str | None
 
     @staticmethod
-    def resolve_waiver_signed_by(membership: Membership) -> Optional[str]:
+    def resolve_waiver_signed_by(membership: Membership) -> str | None:
         user = membership.waiver_signed_by
         return user.get_full_name() if user is not None else None
 
@@ -63,7 +63,7 @@ class EventMembershipSchema(Schema):
 
 
 class GroupMembershipSchema(Schema):
-    player_ids: List[int]
+    player_ids: list[int]
     year: int
 
 
@@ -86,16 +86,16 @@ class TransactionSchema(ModelSchema):
     def resolve_user(transaction: RazorpayTransaction) -> str:
         return transaction.user.get_full_name()
 
-    players: List[str]
+    players: list[str]
 
     @staticmethod
-    def resolve_players(transaction: RazorpayTransaction) -> List[str]:
+    def resolve_players(transaction: RazorpayTransaction) -> list[str]:
         return [p.user.get_full_name() for p in transaction.players.all()]
 
-    event: Optional[EventSchema]
+    event: EventSchema | None
 
     @staticmethod
-    def resolve_event(transaction: RazorpayTransaction) -> Optional[EventSchema]:
+    def resolve_event(transaction: RazorpayTransaction) -> EventSchema | None:
         if transaction.event is not None:
             return EventSchema.from_orm(transaction.event)
         return None
@@ -114,7 +114,7 @@ class OrderSchema(Schema):
     name: str
     image: str
     description: str
-    prefill: Dict[str, Any]
+    prefill: dict[str, Any]
 
 
 class VaccinationSchema(ModelSchema):
@@ -142,28 +142,28 @@ class PlayerSchema(ModelSchema):
     def resolve_phone(player: Player) -> str:
         return player.user.phone
 
-    membership: Optional[MembershipSchema]
+    membership: MembershipSchema | None
 
     @staticmethod
-    def resolve_membership(player: Player) -> Optional[MembershipSchema]:
+    def resolve_membership(player: Player) -> MembershipSchema | None:
         try:
             return MembershipSchema.from_orm(player.membership)
         except Membership.DoesNotExist:
             return None
 
-    vaccination: Optional[VaccinationSchema]
+    vaccination: VaccinationSchema | None
 
     @staticmethod
-    def resolve_vaccination(player: Player) -> Optional[VaccinationSchema]:
+    def resolve_vaccination(player: Player) -> VaccinationSchema | None:
         try:
             return VaccinationSchema.from_orm(player.vaccination)
         except Vaccination.DoesNotExist:
             return None
 
-    guardian: Optional[int]
+    guardian: int | None
 
     @staticmethod
-    def resolve_guardian(player: Player) -> Optional[int]:
+    def resolve_guardian(player: Player) -> int | None:
         try:
             guardianship = Guardianship.objects.get(player=player)
             return guardianship.user.id
@@ -217,19 +217,19 @@ class UserSchema(ModelSchema):
     def resolve_full_name(user: User) -> str:
         return user.get_full_name()
 
-    player: Optional[PlayerSchema]
+    player: PlayerSchema | None
 
     @staticmethod
-    def resolve_player(user: User) -> Optional[PlayerSchema]:
+    def resolve_player(user: User) -> PlayerSchema | None:
         try:
             return PlayerSchema.from_orm(user.player_profile)
         except Player.DoesNotExist:
             return None
 
-    wards: List[PlayerSchema]
+    wards: list[PlayerSchema]
 
     @staticmethod
-    def resolve_wards(user: User) -> List[PlayerSchema]:
+    def resolve_wards(user: User) -> list[PlayerSchema]:
         wards = Player.objects.filter(guardianship__user=user)
         return [PlayerSchema.from_orm(p) for p in wards]
 

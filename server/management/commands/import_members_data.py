@@ -1,7 +1,7 @@
 import csv
 import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 from urllib.parse import urlparse
 
 from django.contrib.auth import get_user_model
@@ -81,7 +81,7 @@ RELATIONS = {t.label: t for t in Guardianship.Relation}
 VACCINATIONS = {t.label: t for t in Vaccination.VaccinationName}
 
 
-def parse_date_custom(date_str: str) -> Optional[datetime.date]:
+def parse_date_custom(date_str: str) -> datetime.date | None:
     date = parse_date(date_str)
     if date is None:
         if match := DATE_RE.match(date_str):
@@ -90,7 +90,7 @@ def parse_date_custom(date_str: str) -> Optional[datetime.date]:
     return None
 
 
-def clean_india_ultimate_profile(url: str) -> Optional[str]:
+def clean_india_ultimate_profile(url: str) -> str | None:
     p = urlparse(url)
     if not p.netloc == "indiaultimate.org":
         return None
@@ -111,7 +111,7 @@ def clean_phone(phone: str) -> str:
         return ""
 
 
-def clean_occupation(occupation: Optional[str]) -> Optional[str]:
+def clean_occupation(occupation: str | None) -> str | None:
     if occupation is None:
         cleaned = None
     elif occupation.startswith("Student"):
@@ -308,8 +308,8 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.SUCCESS(msg))
 
     def find_vaccination_file(
-        self, url: Optional[str], gdrive_map: Dict[str, Path]
-    ) -> Tuple[Optional[str], Optional[ContentFile[bytes]]]:
+        self, url: str | None, gdrive_map: dict[str, Path]
+    ) -> tuple[str | None, ContentFile[bytes] | None]:
         if not url:
             return None, None
         drive_id = url.split("=")[1]

@@ -1,6 +1,6 @@
 import datetime
 import uuid
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import razorpay
 from django.conf import settings
@@ -11,9 +11,9 @@ CLIENT = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_S
 def create_razorpay_order(
     amount: int,
     currency: str = "INR",
-    receipt: Optional[str] = None,
-    notes: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    receipt: str | None = None,
+    notes: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     if receipt is None:
         receipt = str(uuid.uuid4())[:8]
 
@@ -29,7 +29,7 @@ def create_razorpay_order(
     return response
 
 
-def get_transactions() -> List[Dict[str, Any]]:
+def get_transactions() -> list[dict[str, Any]]:
     now = datetime.datetime.now()
     last_week = now - datetime.timedelta(days=7)
 
@@ -54,7 +54,7 @@ def get_transactions() -> List[Dict[str, Any]]:
     return transactions
 
 
-def verify_razorpay_payment(payment_info: Dict[str, str]) -> bool:
+def verify_razorpay_payment(payment_info: dict[str, str]) -> bool:
     try:
         return CLIENT.utility.verify_payment_signature(payment_info)
     except razorpay.errors.SignatureVerificationError as e:

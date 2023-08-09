@@ -3,7 +3,7 @@ import json
 import random
 import string
 import uuid
-from typing import Any, Dict
+from typing import Any
 from unittest import mock
 
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -19,7 +19,7 @@ def fake_id(n: int) -> str:
     return "".join(random.choice(choices) for _ in range(n))
 
 
-def fake_order(amount: int) -> Dict[str, Any]:
+def fake_order(amount: int) -> dict[str, Any]:
     order_id = f"order_{fake_id(16)}"
     return {
         "order_id": order_id,

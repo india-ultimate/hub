@@ -1,5 +1,5 @@
 import uuid
-from typing import Any, Dict
+from typing import Any
 
 from django.contrib.auth.models import AbstractUser
 from django.db import models
@@ -149,7 +149,7 @@ class RazorpayTransaction(models.Model):
         return self.order_id
 
     @classmethod
-    def create_from_order_data(cls, data: Dict[str, Any]) -> "RazorpayTransaction":
+    def create_from_order_data(cls, data: dict[str, Any]) -> "RazorpayTransaction":
         fields = {f.name for f in RazorpayTransaction._meta.fields}
         attrs_data = {key: value for key, value in data.items() if key in fields}
         transaction = cls.objects.create(**attrs_data)

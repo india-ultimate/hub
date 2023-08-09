@@ -2,7 +2,7 @@ import base64
 import json
 import os
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import firebase_admin
 from django.http import HttpRequest, HttpResponse
@@ -11,7 +11,7 @@ from firebase_admin import auth, credentials
 from server.models import User
 
 
-def firebase_to_django_user(firebase_user: auth.UserRecord) -> Optional[User]:
+def firebase_to_django_user(firebase_user: auth.UserRecord) -> User | None:
     if firebase_user is None:
         return None
 
