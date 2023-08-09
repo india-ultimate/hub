@@ -1,6 +1,6 @@
 from django.conf import settings
 from django.shortcuts import redirect
-from django.urls import URLPattern, URLResolver, path  # noqa
+from django.urls import URLPattern, URLResolver, path  # noqa: F401
 from django.views.decorators.csrf import ensure_csrf_cookie
 
 from . import views
