@@ -325,13 +325,13 @@ def create_order(
         return 502, "Failed to connect to Razorpay."
 
     data.update(
-        dict(
-            start_date=start_date,
-            end_date=end_date,
-            user=user,
-            players=[player] if not group_payment else players,
-            event=event,
-        )
+        {
+            "start_date": start_date,
+            "end_date": end_date,
+            "user": user,
+            "players": [player] if not group_payment else players,
+            "event": event,
+        }
     )
     RazorpayTransaction.create_from_order_data(data)
     transaction_user_name = user.get_full_name()

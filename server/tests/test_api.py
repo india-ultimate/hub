@@ -493,7 +493,9 @@ class TestPayment(TestCase):
         membership = Membership.objects.create(
             start_date=start_date, end_date=end_date, player=player
         )
-        order.update(dict(start_date=start_date, end_date=end_date, user=user, players=[player]))
+        order.update(
+            {"start_date": start_date, "end_date": end_date, "user": user, "players": [player]}
+        )
         transaction = RazorpayTransaction.create_from_order_data(order)
         self.assertFalse(membership.is_active)
         self.assertEqual(self.user, transaction.user)
@@ -551,7 +553,9 @@ class TestPayment(TestCase):
             player = Player.objects.create(user=user_, date_of_birth=date_of_birth)
             players.append(player)
 
-        order.update(dict(start_date=start_date, end_date=end_date, user=user, players=players))
+        order.update(
+            {"start_date": start_date, "end_date": end_date, "user": user, "players": players}
+        )
         transaction = RazorpayTransaction.create_from_order_data(order)
         self.assertEqual(self.user, transaction.user)
         for player in players:
@@ -604,13 +608,13 @@ class TestPayment(TestCase):
             start_date=start_old, end_date=end_old, player=player, event=event_old
         )
         order.update(
-            dict(
-                start_date=start_date,
-                end_date=end_date,
-                user=user,
-                players=[player],
-                event=event,
-            )
+            {
+                "start_date": start_date,
+                "end_date": end_date,
+                "user": user,
+                "players": [player],
+                "event": event,
+            }
         )
         transaction = RazorpayTransaction.create_from_order_data(order)
         self.assertFalse(membership.is_active)
@@ -747,7 +751,7 @@ class TestVaccination(TestCase):
 
         response = c.post(
             "/api/vaccination",
-            data=dict(vaccination=json.dumps(data)),
+            data={"vaccination": json.dumps(data)},
             content_type=MULTIPART_CONTENT,
         )
         response_data = response.json()
@@ -766,7 +770,7 @@ class TestVaccination(TestCase):
         data = {"is_vaccinated": True, "name": "CVXN", "player_id": self.player.id}
         response = c.post(
             path="/api/vaccination",
-            data=dict(vaccination=json.dumps(data), certificate=certificate),
+            data={"vaccination": json.dumps(data), "certificate": certificate},
             content_type=MULTIPART_CONTENT,
         )
         response_data = response.json()
