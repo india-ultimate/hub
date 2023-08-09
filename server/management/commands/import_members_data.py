@@ -168,8 +168,8 @@ class Command(BaseCommand):
             raise CommandError(f"'{csv_file}' does not exist.")
         with csv_file.open("r") as file:
             reader = csv.DictReader(file)
-            for row in reader:
-                row = {key.strip(): value.strip() for key, value in row.items()}
+            for row_ in reader:
+                row = {key.strip(): value.strip() for key, value in row_.items()}
                 email = row[columns["email"]] if not minors else ""
                 first_name = row[columns["first_name"]]
                 last_name = row[columns["last_name"]]

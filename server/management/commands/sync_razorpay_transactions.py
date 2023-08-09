@@ -17,9 +17,8 @@ class Command(BaseCommand):
         transactions = get_transactions()
         transactions_by_status = itertools.groupby(transactions, key=lambda x: x["status"])
 
-        for status_value, ts in transactions_by_status:
-            if status_value == "captured":
-                status_value = "completed"
+        for status_, ts in transactions_by_status:
+            status_value = "completed" if status_ == "captured" else status_
             status = STATUSES[status_value]
             order_ids = {t["order_id"] for t in ts}
             qs = (
