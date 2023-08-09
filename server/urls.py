@@ -9,7 +9,8 @@ from .api import api
 urlpatterns = [path("api/", api.urls)]  # type: list[URLPattern | URLResolver]
 
 if settings.DEBUG:
-    urlpatterns.append(path("", ensure_csrf_cookie(lambda req: redirect("http://localhost:3000"))))
+    url = f"http://localhost:{settings.WEBPACK_SERVER_PORT}"
+    urlpatterns.append(path("", ensure_csrf_cookie(lambda req: redirect(url))))
 
 else:
     urlpatterns.append(path("", views.home, name="home"))
