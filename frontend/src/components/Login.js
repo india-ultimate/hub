@@ -44,7 +44,7 @@ const PasswordLogin = ({ setStatus }) => {
     });
 
     if (response.ok) {
-      setStatus(`Successfully logged in!`);
+      setStatus("Successfully logged in!");
       const data = await response.json();
       setData(data);
       setLoggedIn(true);

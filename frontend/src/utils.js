@@ -32,7 +32,7 @@ export const loginWithFirebaseResponse = async (
   });
 
   if (response.ok) {
-    setStatus(`Successfully logged in!`);
+    setStatus("Successfully logged in!");
     setLoggedIn(true);
     setData(await response.json());
   } else {

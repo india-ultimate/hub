@@ -22,7 +22,7 @@ const Step = props => {
     !props.last &&
       (props.color
         ? `after:border-${props.color}-100 dark:after:border-${props.color}-700`
-        : `after:border-gray-100 dark:after:border-gray-700`)
+        : "after:border-gray-100 dark:after:border-gray-700")
   );
   const divClass = clsx(
     "flex items-center justify-center w-10 h-10 rounded-full lg:h-12 lg:w-12 shrink-0",
