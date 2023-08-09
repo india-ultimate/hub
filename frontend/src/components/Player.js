@@ -1,4 +1,4 @@
-import { createSignal, createEffect, Show, Switch, Match } from "solid-js";
+import { Show, Switch, Match } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 import { displayDate } from "../utils";
 import VaccinationInformation from "./VaccinationInformation";

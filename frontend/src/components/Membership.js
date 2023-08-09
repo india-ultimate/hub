@@ -1,10 +1,15 @@
-import Player from "./Player";
 import StatusStepper from "./StatusStepper";
 import { useStore } from "../store";
 import { useParams } from "@solidjs/router";
-import { createSignal, createEffect, onCleanup, onMount, Show } from "solid-js";
 import {
-  getCookie,
+  createSignal,
+  createEffect,
+  onCleanup,
+  onMount,
+  Show,
+  For
+} from "solid-js";
+import {
   fetchUserData,
   displayDate,
   fetchUrl,

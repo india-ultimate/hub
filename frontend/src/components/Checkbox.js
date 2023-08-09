@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { JSX, splitProps } from "solid-js";
+import { splitProps } from "solid-js";
 import InputError from "./InputError";
 
 /**

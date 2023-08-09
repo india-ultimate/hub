@@ -1,5 +1,5 @@
 import { useNavigate, A } from "@solidjs/router";
-import { createSignal, createEffect, onMount, Show, For } from "solid-js";
+import { createEffect, onMount, Show, For } from "solid-js";
 import { fetchUserData } from "../utils";
 import { useStore } from "../store";
 import Player from "./Player";

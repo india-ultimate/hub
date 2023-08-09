@@ -1,16 +1,6 @@
-import Player from "./Player";
 import { useStore } from "../store";
-import { useParams } from "@solidjs/router";
+import { createSignal, createEffect, onCleanup, onMount, For } from "solid-js";
 import {
-  createSignal,
-  createEffect,
-  onCleanup,
-  onMount,
-  Show,
-  For
-} from "solid-js";
-import {
-  getCookie,
   fetchUserData,
   displayDate,
   fetchUrl,
@@ -20,8 +10,7 @@ import {
 import {
   membershipStartDate,
   membershipEndDate,
-  annualMembershipFee,
-  eventMembershipFee
+  annualMembershipFee
 } from "../constants";
 import MembershipPlayerList from "./MembershipPlayerList";
 import { initFlowbite } from "flowbite";

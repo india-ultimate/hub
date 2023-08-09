@@ -1,9 +1,4 @@
-import {
-  membershipStartDate,
-  membershipEndDate,
-  annualMembershipFee,
-  eventMembershipFee
-} from "./constants";
+import { membershipStartDate } from "./constants";
 
 export const getCookie = name => {
   const cookies = document.cookie.split(";").reduce((acc, x) => {

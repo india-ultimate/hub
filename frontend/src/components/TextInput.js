@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { createMemo, JSX, splitProps } from "solid-js";
+import { createMemo, splitProps } from "solid-js";
 import InputError from "./InputError";
 import InputLabel from "./InputLabel";
 

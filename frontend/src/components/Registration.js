@@ -1,6 +1,6 @@
 import { getCookie } from "../utils";
 import { useStore } from "../store";
-import { createEffect, createSignal, Show, For, Switch, Match } from "solid-js";
+import { createSignal, Show, Switch, Match } from "solid-js";
 import {
   genderChoices,
   stateChoices,
@@ -15,7 +15,6 @@ import {
   email,
   pattern,
   required,
-  value,
   maxLength,
   minLength,
   url,

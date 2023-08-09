@@ -1,15 +1,7 @@
 import { getCookie } from "../utils";
 import { useStore } from "../store";
-import { createEffect, createSignal, Show, For, Switch, Match } from "solid-js";
-import {
-  createForm,
-  getValue,
-  // validators
-  email,
-  pattern,
-  required,
-  minLength
-} from "@modular-forms/solid";
+import { createSignal, Show } from "solid-js";
+import { createForm, pattern, required, minLength } from "@modular-forms/solid";
 import { useNavigate } from "@solidjs/router";
 import TextInput from "./TextInput";
 

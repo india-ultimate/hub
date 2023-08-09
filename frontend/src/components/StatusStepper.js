@@ -1,5 +1,4 @@
 import clsx from "clsx";
-import { createSignal, createEffect } from "solid-js";
 import { Icon } from "solid-heroicons";
 import { A } from "@solidjs/router";
 

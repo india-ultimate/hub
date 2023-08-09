@@ -10,14 +10,8 @@ import {
   mergeProps
 } from "solid-js";
 import { A } from "@solidjs/router";
-import { vaccinationChoices } from "../constants";
 import { getCookie, fetchUserData, displayDate, getPlayer } from "../utils";
-import { createForm, getValue, required } from "@modular-forms/solid";
 import StatusStepper from "./StatusStepper";
-import TextInput from "./TextInput";
-import Select from "./Select";
-import Checkbox from "./Checkbox";
-import FileInput from "./FileInput";
 
 const Legal = props => (
   <div class="my-10">

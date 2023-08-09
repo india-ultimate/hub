@@ -1,3 +1,4 @@
+import { Show } from "solid-js";
 import { useStore } from "../store";
 import { getCookie } from "../utils";
 import { A } from "@solidjs/router";

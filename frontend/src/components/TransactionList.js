@@ -1,4 +1,4 @@
-import { getCookie, fetchUrl } from "../utils";
+import { fetchUrl } from "../utils";
 import { createSignal, onMount, Show, For } from "solid-js";
 import { initFlowbite } from "flowbite";
 
