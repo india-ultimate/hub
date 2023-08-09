@@ -17,7 +17,7 @@ from server.models import Event, Guardianship, Membership, Player, RazorpayTrans
 
 def fake_id(n: int) -> str:
     choices = string.digits + string.ascii_letters
-    return "".join(random.choice(choices) for _ in range(n))
+    return "".join(random.choice(choices) for _ in range(n))  # noqa: S311
 
 
 def fake_order(amount: int) -> dict[str, Any]:
