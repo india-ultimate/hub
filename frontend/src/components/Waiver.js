@@ -6,7 +6,8 @@ import {
   onMount,
   Show,
   Switch,
-  Match
+  Match,
+  mergeProps
 } from "solid-js";
 import { A } from "@solidjs/router";
 import { vaccinationChoices } from "../constants";
@@ -18,15 +19,15 @@ import Select from "./Select";
 import Checkbox from "./Checkbox";
 import FileInput from "./FileInput";
 
-const Legal = ({ minor, onChange, signed }) => (
+const Legal = props => (
   <div class="my-10">
     <label class="flex select-none space-x-4 font-medium">
       <input
         class="mt-1 h-4 w-4 cursor-pointer lg:mt-1 lg:h-5 lg:w-5"
         type="checkbox"
-        onChange={e => onChange(e.target.checked)}
-        checked={signed}
-        disabled={signed}
+        onChange={e => props.onChange(e.target.checked)}
+        checked={props.signed}
+        disabled={props.signed}
       />
       <span>
         I understand that this is a legally binding document and that I have
@@ -36,15 +37,16 @@ const Legal = ({ minor, onChange, signed }) => (
   </div>
 );
 
-const PartA = ({ minor, onChange, startDate, endDate, signed }) => (
+const PartA = props => (
   <div class="my-10">
     <h3 class="text-xl font-bold text-blue-500">Part A</h3>
     <Switch>
-      <Match when={minor}>
+      <Match when={props.minor}>
         <p>
           In consideration of the participation of my son/daughter/ward in the
-          UPAI events between {displayDate(startDate)} and{" "}
-          {displayDate(endDate)}, I acknowledge and agree to the following:
+          UPAI events between {displayDate(props.startDate)} and{" "}
+          {displayDate(props.endDate)}, I acknowledge and agree to the
+          following:
         </p>
         <ol class="pl-5 mt-2 space-y-1 list-decimal list-inside my-4">
           <li>
@@ -93,19 +95,19 @@ const PartA = ({ minor, onChange, startDate, endDate, signed }) => (
           <input
             class="mt-1 h-4 w-4 cursor-pointer lg:mt-1 lg:h-5 lg:w-5"
             type="checkbox"
-            onChange={e => onChange(e.target.checked)}
-            checked={signed}
-            disabled={signed}
+            onChange={e => props.onChange(e.target.checked)}
+            checked={props.signed}
+            disabled={props.signed}
           />
           <span>I acknowledge and agree to the above.</span>
         </label>
       </Match>
-      <Match when={!minor}>
+      <Match when={!props.minor}>
         <p>
           In consideration of my participation in UPAI's events that require me
-          to be fully vaccinated against Covid-19, from {displayDate(startDate)}{" "}
-          to {displayDate(endDate)}, I, the undersigned, acknowledge and agree
-          to the following:
+          to be fully vaccinated against Covid-19, from{" "}
+          {displayDate(props.startDate)} to {displayDate(props.endDate)}, I, the
+          undersigned, acknowledge and agree to the following:
         </p>
         <ol class="pl-5 mt-2 space-y-1 list-decimal list-inside my-4">
           <li>
@@ -135,9 +137,9 @@ const PartA = ({ minor, onChange, startDate, endDate, signed }) => (
           <input
             class="mt-1 h-4 w-4 cursor-pointer lg:mt-1 lg:h-5 lg:w-5"
             type="checkbox"
-            onChange={e => onChange(e.target.checked)}
-            checked={signed}
-            disabled={signed}
+            onChange={e => props.onChange(e.target.checked)}
+            checked={props.signed}
+            disabled={props.signed}
           />
           <span>I acknowledge and agree to the above.</span>
         </label>
@@ -146,11 +148,11 @@ const PartA = ({ minor, onChange, startDate, endDate, signed }) => (
   </div>
 );
 
-const PartB = ({ minor, onChange, signed }) => (
+const PartB = props => (
   <div class="my-10">
     <h3 class="text-xl font-bold text-blue-500">Part B</h3>
     <Switch>
-      <Match when={minor}>
+      <Match when={props.minor}>
         <p>
           Following the pronouncements above I hereby declare the following on
           behalf of my son/daughter/ward
@@ -200,9 +202,9 @@ const PartB = ({ minor, onChange, signed }) => (
           <input
             class="mt-1 h-4 w-4 cursor-pointer lg:mt-1 lg:h-5 lg:w-5"
             type="checkbox"
-            onChange={e => onChange(e.target.checked)}
-            checked={signed}
-            disabled={signed}
+            onChange={e => props.onChange(e.target.checked)}
+            checked={props.signed}
+            disabled={props.signed}
           />
           <span>
             I acknowledge that I have read the foregoing Liability Release
@@ -215,7 +217,7 @@ const PartB = ({ minor, onChange, signed }) => (
           </span>
         </label>
       </Match>
-      <Match when={!minor}>
+      <Match when={!props.minor}>
         <p>
           Following the pronouncements above I hereby declare the following:
         </p>
@@ -259,9 +261,9 @@ const PartB = ({ minor, onChange, signed }) => (
           <input
             class="mt-1 h-4 w-4 cursor-pointer lg:mt-1 lg:h-5 lg:w-5"
             type="checkbox"
-            onChange={e => onChange(e.target.checked)}
-            checked={signed}
-            disabled={signed}
+            onChange={e => props.onChange(e.target.checked)}
+            checked={props.signed}
+            disabled={props.signed}
           />
           <span>
             I acknowledge that I have read the foregoing Liability Release
@@ -278,12 +280,12 @@ const PartB = ({ minor, onChange, signed }) => (
   </div>
 );
 
-const MediaConsent = ({ minor, onChange, signed }) => (
+const MediaConsent = props => (
   <div class="my-10">
     <h3 class="text-xl font-bold text-blue-500">Media Consent</h3>
     <p class="my-4">
       <Switch>
-        <Match when={minor}>
+        <Match when={props.minor}>
           I, the parent/legal guardian of the above mentioned minor, hereby give
           consent to Ultimate Players Association of India to take photographs,
           videos and live stream of my son/ daughter or ward playing,
@@ -297,7 +299,7 @@ const MediaConsent = ({ minor, onChange, signed }) => (
           that publication of the aforesaid material confers no right of
           ownership or royalties whatsoever.
         </Match>
-        <Match when={!minor}>
+        <Match when={!props.minor}>
           I, hereby give consent to Ultimate Players Association of India to
           take photographs, videos and live stream myself playing, participating
           in or attending any UPAI event(s) to use on media platforms (both
@@ -315,9 +317,9 @@ const MediaConsent = ({ minor, onChange, signed }) => (
       <input
         class="mt-1 h-4 w-4 cursor-pointer lg:mt-1 lg:h-5 lg:w-5"
         type="checkbox"
-        onChange={e => onChange(e.target.checked)}
-        checked={signed}
-        disabled={signed}
+        onChange={e => props.onChange(e.target.checked)}
+        checked={props.signed}
+        disabled={props.signed}
       />
       <span>
         I have read and understood whatever is stated above and hereby do give
@@ -327,55 +329,58 @@ const MediaConsent = ({ minor, onChange, signed }) => (
   </div>
 );
 
-const Disclaimer = ({ date = new Date() }) => (
-  <div class="mt-6 inline-block font-medium">
-    <h3 class="text-xl font-bold text-red-500">Disclaimer</h3>
-    <p class="my-4">
-      The Ultimate Players Association of India ('UPAI') hereby makes clear that
-      all further play (including tournaments, team or other practice, pick-up,
-      throwing, workouts, and any other activities connected to disc sport,
-      other than those done individually; and including travel, hosting,
-      meetings, meals and other affiliated acts in connection with such play,
-      undertaken by state bodies, clubs, organizations (including those engaged
-      in development using disc sport, school related bodies or of any other
-      kind), teams, individuals (including parents, wards or guardians of
-      minors), or any affiliated persons (each an 'Actor'), whether or not
-      affiliated to the UPAI, in any capacity, in or outside India, whether in a
-      formal or informal setting (each such act individually, or taken together,
-      by any Actor, hereafter referred to as 'Play'), as of {displayDate(date)}{" "}
-      until stated otherwise, is undertaken in personal capacity. Importantly,
-      it is also hereby made clear, that neither the UPAI, nor any of its
-      employees, agents or representatives shall be responsible, and no action
-      may be brought against them, for any COVID-19 (or related
-      infection/illnesses) or other personal injury, illness, permanent
-      disability, death and/or other damage, loss, claim, liability or expense
-      of any kind occurring prior to, during or after participation in Play by
-      an Actor or any other third party. All Actors engaged in any such, or
-      other, Play are assumed to know and acknowledge the contagious nature of
-      Covid-19 (or related infections/illnesses), and voluntarily assume all
-      risk of and responsibility themselves, for exposure to such infections,
-      whether caused by actions, omission, negligence or otherwise of themselves
-      or other participants or connected persons, and any resulting personal
-      injury, illness, permanent disability, death and/or other damage, loss,
-      claim, liability or expense of any kind.
-    </p>
-    <p>
-      Please note: Any previously issued state or UPAI return-to-play guidelines
-      for tournaments or otherwise, have been prepared for informational
-      purposes alone and are not a substitute for legal or medical advice, which
-      it is recommended to obtain prior to acting on or relying on these
-      guidelines. The guidelines are not comprehensive or exhaustive with
-      respect to the measures/protocols that may be undertaken or are required
-      under law and may require modifications or additions as the current
-      outbreak evolves, and new information becomes available. Actors are
-      advised to closely follow the guidelines issued by the Ministry of Health
-      and Family Welfare, Government of India, Ministry of Home Affairs,
-      Government of India and from relevant state and local municipal
-      authorities.
-    </p>
-  </div>
-);
-
+const Disclaimer = _props => {
+  const props = mergeProps({ date: new Date() }, _props);
+  return (
+    <div class="mt-6 inline-block font-medium">
+      <h3 class="text-xl font-bold text-red-500">Disclaimer</h3>
+      <p class="my-4">
+        The Ultimate Players Association of India ('UPAI') hereby makes clear
+        that all further play (including tournaments, team or other practice,
+        pick-up, throwing, workouts, and any other activities connected to disc
+        sport, other than those done individually; and including travel,
+        hosting, meetings, meals and other affiliated acts in connection with
+        such play, undertaken by state bodies, clubs, organizations (including
+        those engaged in development using disc sport, school related bodies or
+        of any other kind), teams, individuals (including parents, wards or
+        guardians of minors), or any affiliated persons (each an 'Actor'),
+        whether or not affiliated to the UPAI, in any capacity, in or outside
+        India, whether in a formal or informal setting (each such act
+        individually, or taken together, by any Actor, hereafter referred to as
+        'Play'), as of {displayDate(props.date)} until stated otherwise, is
+        undertaken in personal capacity. Importantly, it is also hereby made
+        clear, that neither the UPAI, nor any of its employees, agents or
+        representatives shall be responsible, and no action may be brought
+        against them, for any COVID-19 (or related infection/illnesses) or other
+        personal injury, illness, permanent disability, death and/or other
+        damage, loss, claim, liability or expense of any kind occurring prior
+        to, during or after participation in Play by an Actor or any other third
+        party. All Actors engaged in any such, or other, Play are assumed to
+        know and acknowledge the contagious nature of Covid-19 (or related
+        infections/illnesses), and voluntarily assume all risk of and
+        responsibility themselves, for exposure to such infections, whether
+        caused by actions, omission, negligence or otherwise of themselves or
+        other participants or connected persons, and any resulting personal
+        injury, illness, permanent disability, death and/or other damage, loss,
+        claim, liability or expense of any kind.
+      </p>
+      <p>
+        Please note: Any previously issued state or UPAI return-to-play
+        guidelines for tournaments or otherwise, have been prepared for
+        informational purposes alone and are not a substitute for legal or
+        medical advice, which it is recommended to obtain prior to acting on or
+        relying on these guidelines. The guidelines are not comprehensive or
+        exhaustive with respect to the measures/protocols that may be undertaken
+        or are required under law and may require modifications or additions as
+        the current outbreak evolves, and new information becomes available.
+        Actors are advised to closely follow the guidelines issued by the
+        Ministry of Health and Family Welfare, Government of India, Ministry of
+        Home Affairs, Government of India and from relevant state and local
+        municipal authorities.
+      </p>
+    </div>
+  );
+};
 const WaiverForm = props => {
   const minor = props.minor;
   const signed = props.signed;

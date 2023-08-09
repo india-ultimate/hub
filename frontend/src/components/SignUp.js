@@ -13,7 +13,7 @@ import {
 import { useNavigate } from "@solidjs/router";
 import TextInput from "./TextInput";
 
-const SignUp = ({ emailId, uid, token }) => {
+const SignUp = props => {
   const csrftoken = getCookie("csrftoken");
 
   // UI signals
@@ -21,7 +21,7 @@ const SignUp = ({ emailId, uid, token }) => {
 
   const [store, { setLoggedIn, setData }] = useStore();
 
-  const initialValues = { email: emailId };
+  const initialValues = { email: props.emailId };
   const [signupForm, { Form, Field }] = createForm({
     initialValues,
     validateOn: "touched",
@@ -40,9 +40,9 @@ const SignUp = ({ emailId, uid, token }) => {
         },
         body: JSON.stringify({
           ...formData,
-          email: emailId,
-          uid,
-          token,
+          email: props.emailId,
+          uid: props.uid,
+          token: props.token,
           sign_up: true
         })
       });

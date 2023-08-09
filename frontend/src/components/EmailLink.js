@@ -15,7 +15,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 auth.useDeviceLanguage();
 
-const SignInForm = ({ setStatus, setCreds }) => {
+const SignInForm = props => {
   // Get the email if available. This should be available if the user completes
   // the flow on the same device where they started it.
   const [email, setEmail] = createSignal(
@@ -46,10 +46,10 @@ const SignInForm = ({ setStatus, setCreds }) => {
         // result.additionalUserInfo.isNewUser
         const resultJSON = JSON.stringify(result);
         window.localStorage.setItem("firebaseCreds", resultJSON);
-        setCreds(resultJSON);
+        props.setCreds(resultJSON);
         await loginWithFirebaseResponse(
           result,
-          setStatus,
+          props.setStatus,
           setLoggedIn,
           setData
         );

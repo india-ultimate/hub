@@ -16,7 +16,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 auth.useDeviceLanguage();
 
-const PasswordLogin = ({ setStatus }) => {
+const PasswordLogin = props => {
   const csrftoken = getCookie("csrftoken");
   const [username, setUsername] = createSignal("");
   const [password, setPassword] = createSignal("");
@@ -44,7 +44,7 @@ const PasswordLogin = ({ setStatus }) => {
     });
 
     if (response.ok) {
-      setStatus("Successfully logged in!");
+      props.setStatus("Successfully logged in!");
       const data = await response.json();
       setData(data);
       setLoggedIn(true);
@@ -52,9 +52,9 @@ const PasswordLogin = ({ setStatus }) => {
       setLoggedIn(false);
       try {
         const data = await response.json();
-        setStatus(`Login failed with error: ${data.message}`);
+        props.setStatus(`Login failed with error: ${data.message}`);
       } catch {
-        setStatus(
+        props.setStatus(
           `Login failed with error: ${response.statusText} (${response.status})`
         );
       }
@@ -106,7 +106,7 @@ const PasswordLogin = ({ setStatus }) => {
   );
 };
 
-const SendEmailLink = ({ setStatus }) => {
+const SendEmailLink = props => {
   const [email, setEmail] = createSignal("");
   let url = new URL(window.location);
   url.hash = "#/email-link";
@@ -125,13 +125,13 @@ const SendEmailLink = ({ setStatus }) => {
     sendSignInLinkToEmail(auth, email(), actionCodeSettings)
       .then(() => {
         // The link was successfully sent. Inform the user.
-        setStatus(`Email was successfully sent to ${email()}`);
+        props.setStatus(`Email was successfully sent to ${email()}`);
         // Save the email locally so you don't need to ask the user for it
         // again if they open the link on the same device.
         window.localStorage.setItem("emailForSignIn", email());
       })
       .catch(error => {
-        setStatus(
+        props.setStatus(
           `Failed to send email to ${email()}: ${error.code}; ${error.message}`
         );
       });
@@ -167,7 +167,7 @@ const SendEmailLink = ({ setStatus }) => {
   );
 };
 
-const SendPhoneConfirmation = ({ setStatus }) => {
+const SendPhoneConfirmation = props => {
   const [phone, setPhone] = createSignal("+91");
   const [code, setCode] = createSignal("");
   const [verifier, setVerifier] = createSignal();
@@ -185,12 +185,12 @@ const SendPhoneConfirmation = ({ setStatus }) => {
     signInWithPhoneNumber(auth, phone(), verifier())
       .then(confirmationResult => {
         setConfirmationResult(confirmationResult);
-        setStatus(`Confirmation code has been sent to ${phone()}`);
+        props.setStatus(`Confirmation code has been sent to ${phone()}`);
       })
       .catch(error => {
         // Error; SMS not sent
         console.log(error);
-        setStatus(`Failed to send code: ${error}`);
+        props.setStatus(`Failed to send code: ${error}`);
         verifier()
           .render()
           .then(function (widgetId) {
@@ -206,10 +206,15 @@ const SendPhoneConfirmation = ({ setStatus }) => {
     confirmationResult()
       .confirm(code())
       .then(async response =>
-        loginWithFirebaseResponse(response, setStatus, setLoggedIn, setData)
+        loginWithFirebaseResponse(
+          response,
+          props.setStatus,
+          setLoggedIn,
+          setData
+        )
       )
       .catch(error => {
-        setStatus(`Login failed: ${error}`);
+        props.setStatus(`Login failed: ${error}`);
         console.log(error);
       });
   };

@@ -26,7 +26,7 @@ import TextInput from "./TextInput";
 import Select from "./Select";
 import Checkbox from "./Checkbox";
 
-const RegistrationForm = ({ others, ward }) => {
+const RegistrationForm = props => {
   const csrftoken = getCookie("csrftoken");
 
   // UI signals
@@ -54,11 +54,11 @@ const RegistrationForm = ({ others, ward }) => {
 
   const validateDateOfBirth = value => {
     const age = getAge(value);
-    return ward ? age < 18 : age >= 18;
+    return props.ward ? age < 18 : age >= 18;
   };
 
   const initialValues =
-    !ward && !others
+    !props.ward && !props.others
       ? {
           first_name: store.data.first_name,
           last_name: store.data.last_name,
@@ -73,9 +73,9 @@ const RegistrationForm = ({ others, ward }) => {
 
   const submitFormData = async formData => {
     // Send a post request to the api
-    const url = others
+    const url = props.others
       ? "/api/registration/others"
-      : ward
+      : props.ward
       ? "/api/registration/ward"
       : "/api/registration";
     try {
@@ -92,9 +92,9 @@ const RegistrationForm = ({ others, ward }) => {
         console.log("Player created successfully");
         const player = await response.json();
         setPlayer(player);
-        if (!others && !ward) {
+        if (!props.others && !props.ward) {
           setStorePlayer(player);
-        } else if (ward) {
+        } else if (props.ward) {
           addWard(player);
         }
       } else {
@@ -117,11 +117,15 @@ const RegistrationForm = ({ others, ward }) => {
       <Show
         when={!player()}
         fallback={
-          <RegistrationSuccess player={player()} others={others} ward={ward} />
+          <RegistrationSuccess
+            player={player()}
+            others={props.others}
+            ward={props.ward}
+          />
         }
       >
         <Switch>
-          <Match when={others}>
+          <Match when={props.others}>
             <div
               class="p-4 mb-4 text-sm text-blue-800 rounded-lg bg-blue-50 dark:bg-gray-800 dark:text-blue-400"
               role="alert"
@@ -133,7 +137,7 @@ const RegistrationForm = ({ others, ward }) => {
               the email address mentioned here.
             </div>
           </Match>
-          <Match when={ward}>
+          <Match when={props.ward}>
             <div
               class="p-4 mb-4 text-sm text-blue-800 rounded-lg bg-blue-50 dark:bg-gray-800 dark:text-blue-400"
               role="alert"
@@ -149,8 +153,8 @@ const RegistrationForm = ({ others, ward }) => {
           onSubmit={values => submitFormData(values)}
         >
           <div class="space-y-8">
-            <Show when={others || ward}>
-              <Show when={ward}>
+            <Show when={props.others || props.ward}>
+              <Show when={props.ward}>
                 <Field
                   name="relation"
                   validate={required(
@@ -231,7 +235,7 @@ const RegistrationForm = ({ others, ward }) => {
                 custom(validateMinAge, "Players need to be 13 years or older"),
                 custom(
                   validateDateOfBirth,
-                  ward
+                  props.ward
                     ? "Minors need to be under-18. Use the adults form, otherwise"
                     : "Use the minors form if the player is less than 18 years old"
                 )
@@ -344,7 +348,7 @@ const RegistrationForm = ({ others, ward }) => {
                 />
               )}
             </Field>
-            <Show when={!ward}>
+            <Show when={!props.ward}>
               <Field
                 name="occupation"
                 validate={required("Please select your occupation.")}
@@ -364,7 +368,8 @@ const RegistrationForm = ({ others, ward }) => {
             </Show>
             <Show
               when={
-                ward || getValue(registrationForm, "occupation") === "Student"
+                props.ward ||
+                getValue(registrationForm, "occupation") === "Student"
               }
             >
               <Field
