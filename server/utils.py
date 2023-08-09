@@ -4,6 +4,7 @@ from typing import Any
 
 import razorpay
 from django.conf import settings
+from django.utils.timezone import now
 
 CLIENT = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
 
@@ -30,13 +31,13 @@ def create_razorpay_order(
 
 
 def get_transactions() -> list[dict[str, Any]]:
-    now = datetime.datetime.now()
-    last_week = now - datetime.timedelta(days=7)
+    today = now()
+    last_week = today - datetime.timedelta(days=7)
 
     page_size = 100
     default = {
         "from": int(last_week.timestamp()),
-        "to": int(now.timestamp()),
+        "to": int(today.timestamp()),
         "count": page_size,
     }
 
