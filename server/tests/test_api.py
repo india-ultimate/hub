@@ -1,53 +1,18 @@
 import json
-import random
-import string
 import uuid
-from typing import Any
 from unittest import mock
 
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import Client, TestCase
+from django.test import Client
 from django.test.client import MULTIPART_CONTENT
-from django.utils.timezone import now
 from requests.exceptions import RequestException
 
 from server.constants import ANNUAL_MEMBERSHIP_AMOUNT, EVENT_MEMBERSHIP_AMOUNT
 from server.models import Event, Guardianship, Membership, Player, RazorpayTransaction, User
+from server.tests.base import ApiBaseTestCase, fake_id, fake_order
 
 
-def fake_id(n: int) -> str:
-    choices = string.digits + string.ascii_letters
-    return "".join(random.choice(choices) for _ in range(n))  # noqa: S311
-
-
-def fake_order(amount: int) -> dict[str, Any]:
-    order_id = f"order_{fake_id(16)}"
-    return {
-        "order_id": order_id,
-        "amount": amount,
-        "currency": "INR",
-        "receipt": "78e1cdbe:2023-06-01:1689402191",
-        "key": "rzp_test_2wH8PYPLML64BA",
-        "name": "UPAI Hub",
-        "image": "https://d36m266ykvepgv.cloudfront.net/uploads/media/o4G97mT9vR/s-448-250/upai-2.png",
-        "description": "Membership for ",
-        "prefill": {"name": "", "email": "username@foo.com", "contact": ""},
-    }
-
-
-def create_player(user: User) -> Player:
-    return Player.objects.create(user=user, date_of_birth=now().date())
-
-
-class TestLogin(TestCase):
-    def setUp(self) -> None:
-        super().setUp()
-        self.username = "username@foo.com"
-        self.password = "password"
-        user = User.objects.create(username=self.username, email=self.username)
-        user.set_password(self.password)
-        user.save()
-
+class TestLogin(ApiBaseTestCase):
     def test_login(self) -> None:
         c = Client()
         response = c.post(
@@ -142,12 +107,10 @@ class TestLogin(TestCase):
         self.assertNotIn("firebase_token", c.session.keys())
 
 
-class TestRegistration(TestCase):
+class TestRegistration(ApiBaseTestCase):
     def setUp(self) -> None:
         super().setUp()
-        self.client = Client()
-        self.username = "username@foo.com"
-        self.user = User.objects.create(username=self.username, email=self.username)
+        self.user.player_profile.delete()
         self.client.force_login(self.user)
 
     def test_register_me(self) -> None:
@@ -229,17 +192,13 @@ class TestRegistration(TestCase):
         self.assertEqual(user.email, "nora-quinn")
 
 
-class TestPlayers(TestCase):
+class TestPlayers(ApiBaseTestCase):
     def setUp(self) -> None:
         super().setUp()
-        self.client = Client()
-        self.username = "username@foo.com"
-        self.user = User.objects.create(username=self.username, email=self.username)
         self.client.force_login(self.user)
 
     def test_get_players(self) -> None:
         c = self.client
-        create_player(self.user)
         response = c.get(
             "/api/players",
             content_type="application/json",
@@ -259,7 +218,6 @@ class TestPlayers(TestCase):
         c = self.client
         self.user.is_staff = True
         self.user.save()
-        create_player(self.user)
         response = c.get(
             "/api/players",
             content_type="application/json",
@@ -276,16 +234,12 @@ class TestPlayers(TestCase):
         self.assertIn("guardian", user_data)
 
 
-class TestPayment(TestCase):
+class TestPayment(ApiBaseTestCase):
     def setUp(self) -> None:
         super().setUp()
-
-        self.client = Client()
-        self.username = "username@foo.com"
-        self.user = User.objects.create(username=self.username, email=self.username)
         self.client.force_login(self.user)
 
-    def test_create_order(self) -> None:
+    def test_create_order_no_player(self) -> None:
         c = self.client
 
         player_id = 200
@@ -306,8 +260,10 @@ class TestPayment(TestCase):
         self.assertEqual(400, response.status_code)
         self.assertEqual("Player does not exist!", response.json()["message"])
 
+    def test_create_order_player_exists(self) -> None:
+        c = self.client
         # Player exists, membership does not exist
-        player = create_player(user=self.user)
+        player = self.player
         amount = ANNUAL_MEMBERSHIP_AMOUNT
         with mock.patch(
             "server.api.create_razorpay_order",
@@ -338,7 +294,7 @@ class TestPayment(TestCase):
         self.assertEqual("2023-06-01", transaction.start_date.strftime("%Y-%m-%d"))
         self.assertEqual("2024-05-31", transaction.end_date.strftime("%Y-%m-%d"))
 
-    def test_create_order_event_membership(self) -> None:
+    def test_create_order_event_membership_no_player(self) -> None:
         c = self.client
 
         player_id = 200
@@ -360,8 +316,10 @@ class TestPayment(TestCase):
         self.assertEqual(400, response.status_code)
         self.assertEqual("Player does not exist!", response.json()["message"])
 
-        # Player exists, event does not exist
-        player = create_player(user=self.user)
+    def test_create_order_event_membership_no_event(self) -> None:
+        c = self.client
+        event_id = 20
+
         with mock.patch(
             "server.api.create_razorpay_order",
             return_value=fake_order(0),
@@ -369,7 +327,7 @@ class TestPayment(TestCase):
             response = c.post(
                 "/api/create-order",
                 data={
-                    "player_id": player.id,
+                    "player_id": self.player.id,
                     "event_id": event_id,
                 },
                 content_type="application/json",
@@ -377,12 +335,16 @@ class TestPayment(TestCase):
         self.assertEqual(400, response.status_code)
         self.assertEqual("Event does not exist!", response.json()["message"])
 
+    def test_create_order_event_membership(self) -> None:
+        c = self.client
         # Player exists, event exists, membership does not exist
+        player = self.player
         event = Event.objects.create(
             start_date="2023-09-08", end_date="2023-09-10", title="South Regionals"
         )
         event.refresh_from_db()
         amount = EVENT_MEMBERSHIP_AMOUNT
+
         with mock.patch(
             "server.api.create_razorpay_order",
             return_value=fake_order(amount),
@@ -489,7 +451,7 @@ class TestPayment(TestCase):
         user = self.user
         start_date = "2023-06-01"
         end_date = "2024-05-31"
-        player = create_player(user=user)
+        player = self.player
         membership = Membership.objects.create(
             start_date=start_date, end_date=end_date, player=player
         )
@@ -600,7 +562,7 @@ class TestPayment(TestCase):
         end_old = "2023-05-31"
         start_date = "2023-06-01"
         end_date = "2024-05-31"
-        player = create_player(user=user)
+        player = self.player
         event_old = Event.objects.create(start_date=start_old, end_date=end_old, title="Old")
         event = Event.objects.create(start_date=start_date, end_date=end_date, title="New")
         event.refresh_from_db()
@@ -664,14 +626,11 @@ class TestPayment(TestCase):
 
         # Create player and wards for current user
         users = []
-        players = []
-        for i in range(4):
-            if i > 0:
-                username = str(uuid.uuid4())[:8]
-                user_ = User.objects.create(username=username)
-                users.append(user_)
-            else:
-                user_ = self.user
+        players = [self.player]
+        for _i in range(3):
+            username = str(uuid.uuid4())[:8]
+            user_ = User.objects.create(username=username)
+            users.append(user_)
 
             date_of_birth = "2001-01-01"
             player = Player.objects.create(user=user_, date_of_birth=date_of_birth)
@@ -716,7 +675,7 @@ class TestPayment(TestCase):
         self.assertEqual(orders, {t["order_id"] for t in response_data})
 
     def test_razorpay_failures(self) -> None:
-        player = create_player(user=self.user)
+        player = self.player
         c = self.client
         with mock.patch("server.api.create_razorpay_order", side_effect=RequestException):
             response = c.post(
@@ -732,14 +691,10 @@ class TestPayment(TestCase):
         self.assertIn(b"Razorpay", response.content)
 
 
-class TestVaccination(TestCase):
+class TestVaccination(ApiBaseTestCase):
     def setUp(self) -> None:
         super().setUp()
-        self.client = Client()
-        self.username = "username@foo.com"
-        self.user = User.objects.create(username=self.username, email=self.username)
         self.client.force_login(self.user)
-        self.player = Player.objects.create(user=self.user, date_of_birth="1990-01-01")
 
     def test_not_vaccinated(self) -> None:
         c = self.client
@@ -784,16 +739,10 @@ class TestVaccination(TestCase):
         self.assertEqual(self.player.id, response_data["player"])
 
 
-class TestWaiver(TestCase):
+class TestWaiver(ApiBaseTestCase):
     def setUp(self) -> None:
         super().setUp()
-        self.client = Client()
-        self.username = "username@foo.com"
-        self.user = User.objects.create(
-            username=self.username, email=self.username, first_name="John", last_name="Doe"
-        )
         self.client.force_login(self.user)
-        self.player = Player.objects.create(user=self.user, date_of_birth="1990-01-01")
         start_date = "2023-06-01"
         end_date = "2024-05-31"
         _membership = Membership.objects.create(
