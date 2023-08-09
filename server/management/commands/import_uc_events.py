@@ -24,7 +24,7 @@ class Command(BaseCommand):
         n = options["num_events"]
         url = f"{BASE_URL}/api/events?per_page={n}&order_by=date_desc"
         # NOTE: The request is unauthenticated
-        r = requests.get(url)
+        r = requests.get(url, timeout=30)
         data = r.json()
         count = min(data["count"], n)
         tournaments = data["result"]
