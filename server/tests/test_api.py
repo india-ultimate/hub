@@ -1,4 +1,3 @@
-import datetime
 import json
 import random
 import string
@@ -9,6 +8,7 @@ from unittest import mock
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase
 from django.test.client import MULTIPART_CONTENT
+from django.utils.timezone import now
 from requests.exceptions import RequestException
 
 from server.constants import ANNUAL_MEMBERSHIP_AMOUNT, EVENT_MEMBERSHIP_AMOUNT
@@ -36,7 +36,7 @@ def fake_order(amount: int) -> dict[str, Any]:
 
 
 def create_player(user: User) -> Player:
-    return Player.objects.create(user=user, date_of_birth=datetime.date.today())
+    return Player.objects.create(user=user, date_of_birth=now().date())
 
 
 class TestLogin(TestCase):

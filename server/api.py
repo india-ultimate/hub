@@ -234,7 +234,7 @@ def register_ward(
 
 @api.get("/events", response={200: list[EventSchema]})
 def list_events(request: AuthenticatedHttpRequest, include_all: bool = False) -> QuerySet[Event]:
-    today = datetime.date.today()
+    today = now().date()
     return Event.objects.all() if include_all else Event.objects.filter(start_date__gte=today)
 
 
