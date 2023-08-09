@@ -539,8 +539,8 @@ const Waiver = () => {
           <WaiverForm player={player()} handleSubmit={submitConsent} />
         </Match>
       </Switch>
-      <p>{error}</p>
-      <p>{status}</p>
+      <p>{error()}</p>
+      <p>{status()}</p>
     </>
   );
 };
