@@ -73,9 +73,11 @@ def verify_razorpay_webhook_payload(body: str, signature: str) -> bool:
 
 def mask_string(s: str) -> str:
     n = len(s)
-    if n >= 8:
+    long_str = 8
+    medium_str = 6
+    if n >= long_str:
         return s[:2] + "x" * (n - 4) + s[-2:]
-    elif n >= 6:
+    elif n >= medium_str:
         return s[:1] + "x" * (n - 2) + s[-1:]
     else:
         return s[:1] + "x" * (n - 1)
