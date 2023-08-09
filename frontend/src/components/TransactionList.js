@@ -81,9 +81,26 @@ const TransactionList = () => {
                   day: "numeric"
                 });
                 let nPlayers = transaction.players?.length;
+                let bgColor;
+                switch (transaction.status) {
+                  case "completed":
+                    bgColor = "bg-green-200";
+                    break;
+                  case "failed":
+                    bgColor = "bg-red-300";
+                    break;
+                  case "created":
+                    bgColor = "bg-orange-100";
+                    break;
+                  default:
+                    bgColor = "bg-white";
+                    break;
+                }
 
                 return (
-                  <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+                  <tr
+                    class={`${bgColor} border-b dark:bg-gray-800 dark:border-gray-700`}
+                  >
                     <th
                       scope="row"
                       class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
