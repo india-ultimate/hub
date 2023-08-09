@@ -15,6 +15,9 @@
     "clsx": "^2.0.0",
     "copy-webpack-plugin": "^11.0.0",
     "css-loader": "^6.8.1",
+    "eslint": "^8.46.0",
+    "eslint-plugin-solid": "^0.12.1",
+    "eslint-plugin-unused-imports": "^3.0.0",
     "firebase": "^9.23.0",
     "flowbite": "^1.7.0",
     "mini-css-extract-plugin": "^2.7.6",
@@ -37,6 +40,58 @@
     "trailingComma": "none",
     "tabWidth": 2,
     "arrowParens": "avoid"
+  },
+  "eslintConfig": {
+    "env": {
+      "browser": true,
+      "es2021": true
+    },
+    "plugins": [
+      "solid",
+      "unused-imports"
+    ],
+    "extends": [
+      "eslint:recommended",
+      "plugin:solid/recommended"
+    ],
+    "parserOptions": {
+      "ecmaVersion": "latest",
+      "sourceType": "module"
+    },
+    "rules": {
+      "quotes": [
+        "error",
+        "double"
+      ],
+      "comma-dangle": [
+        "error",
+        "never"
+      ],
+      "arrow-parens": [
+        "error",
+        "as-needed"
+      ],
+      "no-irregular-whitespace": [
+        "error",
+        {
+          "skipJSXText": true
+        }
+      ],
+      "unused-imports/no-unused-imports": "error",
+      "no-unused-vars": [
+        "error",
+        {
+          "vars": "all",
+          "args": "after-used",
+          "ignoreRestSiblings": false,
+          "varsIgnorePattern": "^_"
+        }
+      ]
+    },
+    "ignorePatterns": [
+      "dist/*",
+      "*.config.js"
+    ]
   },
   "license": "AGPL-3.0-only"
 }
