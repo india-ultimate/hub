@@ -426,7 +426,7 @@ def list_transactions(request: AuthenticatedHttpRequest) -> QuerySet[RazorpayTra
     player_ids = ward_ids.union(player_id)
 
     query = Q(user=request.user) | Q(players__in=player_ids)
-    return RazorpayTransaction.objects.filter(query).distinct()
+    return RazorpayTransaction.objects.filter(query).distinct().order_by("-payment_date")
 
 
 # Vaccination ##########
