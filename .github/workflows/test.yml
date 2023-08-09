@@ -93,3 +93,9 @@ jobs:
         run: |
           npx prettier --write src/**/*.js src/*.js
           git diff --exit-code
+
+      - name: Run eslint
+        working-directory: './frontend'
+        run: |
+          npx eslint .
+          git diff --exit-code
