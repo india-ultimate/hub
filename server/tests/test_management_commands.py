@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model
 from django.core.management import CommandError, call_command
 from django.test import TestCase
 from django.utils.timezone import now
+
 from server.models import Membership, Player
 
 User = get_user_model()

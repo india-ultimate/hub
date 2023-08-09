@@ -10,6 +10,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase
 from django.test.client import MULTIPART_CONTENT
 from requests.exceptions import RequestException
+
 from server.constants import ANNUAL_MEMBERSHIP_AMOUNT, EVENT_MEMBERSHIP_AMOUNT
 from server.models import Event, Guardianship, Membership, Player, RazorpayTransaction, User
 

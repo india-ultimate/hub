@@ -10,6 +10,7 @@ from django.core.management.base import BaseCommand, CommandError, CommandParser
 from django.utils.dateparse import parse_date
 from django.utils.regex_helper import _lazy_re_compile
 from django.utils.text import slugify
+
 from server.models import Guardianship, Membership, Player, Vaccination
 
 User = get_user_model()

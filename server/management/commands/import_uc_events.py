@@ -2,6 +2,7 @@ from typing import Any
 
 import requests
 from django.core.management.base import BaseCommand, CommandParser
+
 from server.models import Event
 
 BASE_URL = "https://upai.usetopscore.com"
