@@ -159,7 +159,7 @@ const GroupMembership = () => {
           type="button"
         >
           Select Players
-          <Icon path={chevronDown} style="width: 24px" />
+          <Icon path={chevronDown} style={{ width: "24px" }} />
         </button>
         <div
           id="playerSearch"
@@ -171,7 +171,7 @@ const GroupMembership = () => {
             </label>
             <div class="relative">
               <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                <Icon path={magnifyingGlass} style="width: 24px" />
+                <Icon path={magnifyingGlass} style={{ width: "24px" }} />
               </div>
               <input
                 type="text"

@@ -44,7 +44,7 @@ export default function Header() {
             aria-expanded="false"
           >
             <span class="sr-only">Open main menu</span>
-            <Icon path={bars_3} style="width: 24px" />
+            <Icon path={bars_3} style={{ width: "24px" }} />
           </button>
           <div class="hidden w-full md:block md:w-auto" id="navbar-solid-bg">
             <ul class="flex flex-col font-medium mt-4 rounded-lg bg-gray-50 md:flex-row md:space-x-8 md:mt-0 md:border-0 md:bg-transparent dark:bg-gray-800 md:dark:bg-transparent dark:border-gray-700">

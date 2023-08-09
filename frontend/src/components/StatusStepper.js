@@ -33,7 +33,7 @@ const Step = props => {
     <li class={liClass}>
       <div class={divClass}>
         <A href={props.link || ""}>
-          <Icon path={props.icon} style="width: 20px" />
+          <Icon path={props.icon} style={{ width: "20px" }} />
         </A>
       </div>
     </li>
