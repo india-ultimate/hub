@@ -98,14 +98,16 @@ def clean_india_ultimate_profile(url: str) -> str | None:
 
 
 def clean_phone(phone: str) -> str:
+    len_phone_with_cc = 13
+    len_phone = 10
     clean = phone.strip().replace("-", "").replace(" ", "").lstrip("0")
     if not clean:
         return ""
-    elif (clean.startswith("+91") and len(clean) == 13) or (
+    elif (clean.startswith("+91") and len(clean) == len_phone_with_cc) or (
         clean.startswith("+") and not clean.startswith("+91")
     ):
         return clean
-    elif not clean.startswith("+") and len(clean) == 10:
+    elif not clean.startswith("+") and len(clean) == len_phone:
         return f"+91{clean}"
     else:
         return ""
