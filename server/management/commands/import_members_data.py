@@ -242,7 +242,7 @@ class Command(BaseCommand):
                     if not guardian_email:
                         guardian_email = slugify(guardian_name)
                     guardian_phone = clean_phone(row[columns["guardian_phone"]])
-                    first_name, last_name = (guardian_name.strip().split() + ["", ""])[:2]
+                    first_name, last_name = ([*guardian_name.strip().split(), "", ""])[:2]
                     guardian_user, created = User.objects.get_or_create(
                         username=guardian_email,
                         defaults={
