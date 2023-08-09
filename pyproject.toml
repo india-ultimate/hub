@@ -37,9 +37,50 @@ line-length = 100
 line-length = 100
 # Allow autofix for all enabled rules (when `--fix`) is provided.
 fixable = ["ALL"]
+# https://beta.ruff.rs/docs/rules/#tryceratops-try
+select = [
+    "ANN", # annotations
+    "B", # bugbear
+    "C4", # comprehensions
+    "COM", # trailing comma
+    "DJ", # Django
+    "DTZ", # naive datetime
+    "E", # style errors
+    "EXE", # shebang
+    "F", # flakes
+    "FLY", # string formatting
+    "G", # logging format
+    "I", # import sorting
+    "INT", # gettext
+    "ISC", # string concatenation
+    "N", # naming
+    "PGH", # pygrep-hooks
+    "PIE", # miscellaneous
+    "PL", # pylint
+    "PYI", # typing stubs
+    "Q", # quotes
+    "RSE", # raise
+    "RUF", # Ruff
+    "S", # security
+    "SIM", # simplify
+    "T10", # debugger
+    "UP", # upgrade
+    "W", # style warnings
+    "YTT", # sys.version
+]
 ignore = [
+    "ANN101", # Missing type annotation for `self` in method
+    "ANN102", # Missing type annotation for `cls` in classmethod
+    "ANN401", # Dynamically typed expressions (typing.Any) are disallowed
+    "COM812", # Trailing comma missing
+    "DJ001", # Avoid using `null=True` on string-based fields
+    "DJ008", # Model does not define `__str__` method
     "E402", # Module level import not at top of file
     "E501", # Line too long
+    "PLR0915", # Too many statements
+    "PLR0912", # Too many branches
+    "RUF012", # Mutable class attributes should be annotated with `typing.ClassVar`
+    "S105", # Possible hardcoded password
 ]
 
 [tool.pytest.ini_options]
