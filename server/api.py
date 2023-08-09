@@ -436,7 +436,7 @@ def list_transactions(request: AuthenticatedHttpRequest) -> QuerySet[RazorpayTra
 def vaccination(
     request: AuthenticatedHttpRequest,
     vaccination: VaccinatedFormSchema | NotVaccinatedFormSchema,
-    certificate: UploadedFile | None = File(None),
+    certificate: UploadedFile | None = File(None),  # noqa: B008
 ) -> tuple[int, Vaccination | message_response]:
     if vaccination.is_vaccinated and not certificate:
         return 400, {"message": "Certificate needs to be uploaded!"}
