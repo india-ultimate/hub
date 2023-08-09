@@ -84,16 +84,15 @@ VACCINATIONS = {t.label: t for t in Vaccination.VaccinationName}
 
 def parse_date_custom(date_str: str) -> datetime.date | None:
     date = parse_date(date_str)
-    if date is None:
-        if match := DATE_RE.match(date_str):
-            kw = {k: int(v) for k, v in match.groupdict().items()}
-            return datetime.date(**kw)
+    if date is None and (match := DATE_RE.match(date_str)):
+        kw = {k: int(v) for k, v in match.groupdict().items()}
+        return datetime.date(**kw)
     return None
 
 
 def clean_india_ultimate_profile(url: str) -> str | None:
     p = urlparse(url)
-    if not p.netloc == "indiaultimate.org":
+    if p.netloc != "indiaultimate.org":
         return None
     return url
 
@@ -102,9 +101,9 @@ def clean_phone(phone: str) -> str:
     clean = phone.strip().replace("-", "").replace(" ", "").lstrip("0")
     if not clean:
         return ""
-    elif clean.startswith("+91") and len(clean) == 13:
-        return clean
-    elif clean.startswith("+") and not clean.startswith("+91"):
+    elif (clean.startswith("+91") and len(clean) == 13) or (
+        clean.startswith("+") and not clean.startswith("+91")
+    ):
         return clean
     elif not clean.startswith("+") and len(clean) == 10:
         return f"+91{clean}"
@@ -213,10 +212,7 @@ class Command(BaseCommand):
                     not_in_india = True
                     state_ut = None
 
-                if not minors:
-                    occupation = clean_occupation(row[columns["occupation"]])
-                else:
-                    occupation = None
+                occupation = clean_occupation(row[columns["occupation"]]) if not minors else None
 
                 iu_profile = clean_india_ultimate_profile(row[columns["india_ultimate_profile"]])
 
