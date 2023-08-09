@@ -44,7 +44,7 @@ RUN python manage.py collectstatic --no-input
 # Setup staticfiles and Nginx
 USER root
 RUN mkdir -p /var/www/hub/static/
-RUN cp -a /tmp/static/ /var/www/hub/
+RUN cp -a $HOME/staticfiles/ /var/www/hub/
 COPY deploy/nginx.conf /etc/nginx/sites-enabled/hub.conf
 RUN mkdir -p /data
 RUN chown -hR user:users /data

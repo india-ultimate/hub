@@ -12,4 +12,3 @@ SECRET_KEY = os.environ.get("SECRET_KEY", SECRET_KEY)  # noqa: F405
 DATA_DIR = Path("/data")
 DATABASES["default"]["NAME"] = DATA_DIR / "production.db.sqlite"  # noqa: F405
 MEDIA_ROOT = DATA_DIR / "media"
-STATIC_ROOT = "/tmp/static/"
