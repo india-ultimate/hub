@@ -172,7 +172,7 @@ const SendPhoneConfirmation = props => {
   const [code, setCode] = createSignal("");
   const [verifier, setVerifier] = createSignal();
   const [confirmationResult, setConfirmationResult] = createSignal();
-  const [store, { setLoggedIn, setData }] = useStore();
+  const [_, { setLoggedIn, setData }] = useStore();
 
   const auth = getAuth();
   auth.useDeviceLanguage();
@@ -194,7 +194,7 @@ const SendPhoneConfirmation = props => {
         verifier()
           .render()
           .then(function (widgetId) {
-            grecaptcha.reset(widgetId);
+            window.grecaptcha.reset(widgetId);
           });
         setConfirmationResult();
       });
@@ -280,7 +280,7 @@ const SendPhoneConfirmation = props => {
 
 const Login = () => {
   const [status, setStatus] = createSignal("");
-  const [store, { setLoggedIn, setData }] = useStore();
+  const [store, _] = useStore();
 
   const signInFailed = window.localStorage.getItem("emailSignInFailed");
   if (signInFailed) {

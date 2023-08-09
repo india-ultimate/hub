@@ -2,7 +2,6 @@ import { For } from "solid-js";
 import { AccordionDownIcon } from "../icons";
 
 const MembershipPlayerList = props => {
-  const players = props.players;
   return (
     <div id="accordion-collapse" data-accordion="collapse">
       <h2 id="accordion-collapse-heading-1">

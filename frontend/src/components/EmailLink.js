@@ -21,8 +21,10 @@ const SignInForm = props => {
   const [email, setEmail] = createSignal(
     window.localStorage.getItem("emailForSignIn") || ""
   );
-  // Input disabled if using same device and email is found from localStorage
-  const [disableInput, setDisableInput] = createSignal(email() !== "");
+  // Input disabled if email was found from localStorage. input shouldn't be
+  // disabled while email is being typed in by the user... so, we don't want
+  // reactivity, here.
+  const disabledInput = email() !== ""; // eslint-disable-line solid/reactivity
   const [loginFail, setLoginFail] = createSignal(false);
   const [_, { setLoggedIn, setData }] = useStore();
   createEffect(() => {
@@ -79,7 +81,7 @@ const SignInForm = props => {
             placeholder="Email Address"
             value={email()}
             onInput={e => setEmail(e.currentTarget.value)}
-            disabled={disableInput()}
+            disabled={disabledInput}
           />
         </div>
 

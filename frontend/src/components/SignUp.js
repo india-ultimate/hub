@@ -11,10 +11,10 @@ const SignUp = props => {
   // UI signals
   const [error, setError] = createSignal("");
 
-  const [store, { setLoggedIn, setData }] = useStore();
+  const [_, { setLoggedIn, setData }] = useStore();
 
   const initialValues = { email: props.emailId };
-  const [signupForm, { Form, Field }] = createForm({
+  const [_signupForm, { Form, Field }] = createForm({
     initialValues,
     validateOn: "touched",
     revalidateOn: "touched"

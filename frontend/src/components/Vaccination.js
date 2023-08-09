@@ -19,8 +19,6 @@ import Checkbox from "./Checkbox";
 import FileInput from "./FileInput";
 
 const Vaccination = () => {
-  const csrftoken = getCookie("csrftoken");
-
   const [store, { setLoggedIn, setData, setPlayerById }] = useStore();
 
   const initialValues = { is_vaccinated: true };
