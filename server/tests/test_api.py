@@ -57,7 +57,7 @@ class TestLogin(ApiBaseTestCase):
         c = Client()
         token = "my-secret-token"
         email = "blah@example.com"
-        with mock.patch("firebase_admin.auth.get_user", return_value=None):
+        with mock.patch("firebase_admin.auth.get_user"):
             response = c.post(
                 "/api/firebase-login",
                 data={

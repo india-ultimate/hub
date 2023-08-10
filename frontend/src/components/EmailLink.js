@@ -1,6 +1,6 @@
 import { useStore } from "../store";
 import { firebaseConfig, loginWithFirebaseResponse } from "../utils";
-import { createSignal, createEffect, Switch, Match } from "solid-js";
+import { createSignal, createEffect, Switch, Match, onCleanup } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 import { initializeApp } from "firebase/app";
 import {
@@ -21,6 +21,9 @@ const SignInForm = props => {
   const [email, setEmail] = createSignal(
     window.localStorage.getItem("emailForSignIn") || ""
   );
+
+  const [firebaseResponse, setFirebaseResponse] = createSignal();
+
   // Input disabled if email was found from localStorage. input shouldn't be
   // disabled while email is being typed in by the user... so, we don't want
   // reactivity, here.
@@ -34,6 +37,11 @@ const SignInForm = props => {
     }
   });
 
+  onCleanup(() => {
+    window.localStorage.removeItem("firebaseCreds");
+    window.localStorage.removeItem("emailForSignIn");
+  });
+
   const onSuccess = async response => {
     props.setStatus("Successfully logged in!");
     setLoggedIn(true);
@@ -42,6 +50,13 @@ const SignInForm = props => {
 
   const onFailure = async response => {
     setLoggedIn(false);
+    if (response.status === 404) {
+      try {
+        props.setCreds(JSON.parse(firebaseResponse()));
+      } catch (e) {
+        props.setStatus(`Signup prompt failed: ${e}`);
+      }
+    }
     try {
       const data = await response.json();
       props.setStatus(`Login failed with error: ${data.message}`);
@@ -64,15 +79,13 @@ const SignInForm = props => {
         // result.additionalUserInfo.profile == null
         // You can check if the user is new or existing:
         // result.additionalUserInfo.isNewUser
-        const resultJSON = JSON.stringify(result);
-        window.localStorage.setItem("firebaseCreds", resultJSON);
-        props.setCreds(resultJSON);
+        setFirebaseResponse(JSON.stringify(result));
         await loginWithFirebaseResponse(result, onSuccess, onFailure);
       })
       .catch(error => {
         window.localStorage.setItem(
           "emailSignInFailed",
-          `Logging in failed with an error: ${error.code}.`
+          `Logging in failed with an error: ${error?.code || error}.`
         );
         setLoginFail(true);
       });

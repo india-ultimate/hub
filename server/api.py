@@ -117,7 +117,7 @@ def api_logout(request: AuthenticatedHttpRequest) -> tuple[int, message_response
     return 200, {"message": "Logged out"}
 
 
-@api.post("/firebase-login", auth=None, response={200: UserSchema, 403: Response})
+@api.post("/firebase-login", auth=None, response={200: UserSchema, 404: Response, 403: Response})
 def firebase_login(
     request: HttpRequest, credentials: FirebaseCredentials | FirebaseSignUpCredentials
 ) -> tuple[int, User | message_response]:
@@ -129,9 +129,13 @@ def firebase_login(
         firebase_user = None
     user = firebase_to_django_user(firebase_user)
     invalid_credentials = 403, {"message": "Invalid credentials"}
-    if user is None and isinstance(credentials, FirebaseCredentials):
-        return invalid_credentials
-    elif user is None and isinstance(credentials, FirebaseSignUpCredentials):
+    if user is None and firebase_user is not None and isinstance(credentials, FirebaseCredentials):
+        return 404, {"message": "User not found in the DB"}
+    elif (
+        user is None
+        and firebase_user is not None
+        and isinstance(credentials, FirebaseSignUpCredentials)
+    ):
         # Create user when we have an email ID
         user = User.objects.create(
             email=credentials.email,
