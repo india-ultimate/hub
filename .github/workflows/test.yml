@@ -106,6 +106,11 @@ jobs:
         env:
           RAZORPAY_KEY_ID: ${{ secrets.RAZORPAY_KEY_ID }}
           RAZORPAY_KEY_SECRET: ${{ secrets.RAZORPAY_KEY_SECRET }}
+          ZULIP_STREAM_EMAIL: ${{ secrets.ZULIP_STREAM_EMAIL }}
+          ZULIP_EMAIL: ${{ secrets.ZULIP_EMAIL }}
+          ZULIP_API_KEY: ${{ secrets.ZULIP_API_KEY }}
+          ZULIP_SITE: ${{ secrets.ZULIP_SITE }}
+          FIREBASE_SERVICE_ACCOUNT_CREDENTIALS: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_CREDENTIALS }}
         run: |
           poetry run pytest --disable-warnings --ds=hub.test_settings -k Integration --firefox
 

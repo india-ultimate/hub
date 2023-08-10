@@ -462,6 +462,17 @@ files = [
 ]
 
 [[package]]
+name = "distro"
+version = "1.8.0"
+description = "Distro - an OS platform information API"
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "distro-1.8.0-py3-none-any.whl", hash = "sha256:99522ca3e365cac527b44bde033f64c6945d90eb9f769703caaec52b09bbd3ff"},
+    {file = "distro-1.8.0.tar.gz", hash = "sha256:02e111d1dc6a50abb8eed6bf31c3e48ed8b0830d1ea2a1b78c61765c2513fdd8"},
+]
+
+[[package]]
 name = "django"
 version = "4.2.2"
 description = "A high-level Python web framework that encourages rapid development and clean, pragmatic design."
@@ -1139,6 +1150,26 @@ files = [
 
 [package.dependencies]
 traitlets = "*"
+
+[[package]]
+name = "matrix-client"
+version = "0.4.0"
+description = "Client-Server SDK for Matrix"
+optional = false
+python-versions = "*"
+files = [
+    {file = "matrix_client-0.4.0-py2.py3-none-any.whl", hash = "sha256:20cb42fb644879858c3fdd348d1c349c33676f11d1597f820abfd0fc0e009cb1"},
+    {file = "matrix_client-0.4.0.tar.gz", hash = "sha256:0678af40f2cb2f0928a908a410c029747d40cb961ac5a3f1bd05aa35563c3156"},
+]
+
+[package.dependencies]
+requests = ">=2.22,<3.0"
+urllib3 = ">=1.21,<2.0"
+
+[package.extras]
+doc = ["Sphinx (>=1.7.6,<2.dev0)", "sphinx-rtd-theme (>=0.1.9,<0.2.dev0)", "sphinxcontrib-napoleon (>=0.5.3,<0.6.dev0)"]
+e2e = ["canonicaljson (>=1.1,<2.0)", "python-olm (>=3.1,<4.0)"]
+test = ["pytest (>=4.6,<6.0.0)", "responses (>=0.10.6,<0.11.dev0)"]
 
 [[package]]
 name = "mdurl"
@@ -2374,7 +2405,25 @@ files = [
 [package.dependencies]
 h11 = ">=0.9.0,<1"
 
+[[package]]
+name = "zulip"
+version = "0.8.2"
+description = "Bindings for the Zulip message API"
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "zulip-0.8.2-py3-none-any.whl", hash = "sha256:22ba357f55c538120eef02781faeb46a256aad4f7a1b5419889f765766cda0a5"},
+    {file = "zulip-0.8.2.tar.gz", hash = "sha256:7e3d5097feb22e912dda187cdabdebf5b2022cba95b32a43793e27abe9c52e6f"},
+]
+
+[package.dependencies]
+click = "*"
+distro = "*"
+matrix-client = "*"
+requests = {version = ">=0.12.1", extras = ["security"]}
+typing-extensions = ">=3.7"
+
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "a4679860204f0d9b05764564afab779de6127bb6a3c69b11bcd7ae7e19afa334"
+content-hash = "54386fded322271a3820dd9a30504b993dbcadce80f8775a7d68a3c42b0d8c1e"

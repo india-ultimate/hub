@@ -1,4 +1,5 @@
 import datetime
+import os
 import random
 
 import pytest
@@ -7,6 +8,7 @@ from seleniumbase import BaseCase
 
 from server.models import Event, Player, User
 from server.tests.localserver import running_test_server
+from server.utils import zulip_get_email_link
 
 
 def create_login_user() -> tuple[str, str, int]:
@@ -18,6 +20,14 @@ def create_login_user() -> tuple[str, str, int]:
     user.set_password(password)
     user.save()
     return username, password, user.id
+
+
+def create_email_link_user() -> tuple[str, int]:
+    username = os.environ["ZULIP_STREAM_EMAIL"]
+    user = User.objects.create(
+        username=username, email=username, first_name="Jagdeep", last_name="Chatterjee"
+    )
+    return username, user.id
 
 
 def create_event(title: str) -> Event:
@@ -104,3 +114,17 @@ class TestIntegration(BaseCase):
 
             self.click("h2#accordion-heading-transactions")
             self.assert_element("h2#accordion-heading-transactions")
+
+    def test_login_with_email(self) -> None:
+        username, user_id = create_email_link_user()
+
+        with running_test_server() as base_url:
+            self.open(base_url)
+            self.type("input#email-link-input", username)
+            self.click("div#email-link form div button")
+
+            signin_url = zulip_get_email_link()
+            self.open(signin_url)
+            self.click("form div button")
+
+            self.assert_text("Welcome Jagdeep Chatterjee")

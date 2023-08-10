@@ -26,6 +26,7 @@ mypy = "^1.4.1"
 django-stubs = "^4.2.3"
 types-requests = "^2.31.0.2"
 selenium-base = "^4.17.2"
+zulip = "^0.8.2"
 
 [build-system]
 requires = ["poetry-core"]
