@@ -25,6 +25,7 @@ pytest-django = "^4.5.2"
 mypy = "^1.4.1"
 django-stubs = "^4.2.3"
 types-requests = "^2.31.0.2"
+selenium-base = "^4.17.2"
 
 [build-system]
 requires = ["poetry-core"]
