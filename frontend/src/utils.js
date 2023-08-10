@@ -143,7 +143,10 @@ const handlePaymentSuccess = (
           const error = await response.json();
           setStatus(`Error: ${error.message}`);
         } else {
-          setStatus(`Error: ${response.statusText} (${response.status})`);
+          const body = await response.text();
+          setStatus(
+            `Error: ${response.statusText} (${response.status}) — ${body}`
+          );
         }
       }
     })
@@ -193,7 +196,10 @@ export const purchaseMembership = (
           const errors = await response.json();
           setStatus(`Validation errors: ${errors.message}`);
         } else {
-          setStatus(`Error: ${response.statusText} (${response.status})`);
+          const body = await response.text();
+          setStatus(
+            `Error: ${response.statusText} (${response.status}) — ${body}`
+          );
         }
       }
     })
