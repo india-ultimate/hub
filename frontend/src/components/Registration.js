@@ -17,7 +17,6 @@ import {
   required,
   maxLength,
   minLength,
-  url,
   custom
 } from "@modular-forms/solid";
 import RegistrationSuccess from "./RegistrationSuccess";
@@ -307,27 +306,6 @@ const RegistrationForm = props => {
                   label="Phone number"
                   placeholder="+919998887776"
                   required
-                />
-              )}
-            </Field>
-            <Field
-              name="india_ultimate_profile"
-              validate={[
-                url("Enter a valid url"),
-                pattern(
-                  new RegExp("https://indiaultimate.org/"),
-                  "Enter a valid Ultimate Central URL"
-                )
-              ]}
-            >
-              {(field, props) => (
-                <TextInput
-                  {...props}
-                  value={field.value}
-                  error={field.error}
-                  type="text"
-                  label="India Ultimate Profile URL"
-                  placeholder="https://indiaultimate.org/en-in/u/player-name"
                 />
               )}
             </Field>
