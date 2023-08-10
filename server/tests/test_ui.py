@@ -22,8 +22,12 @@ def create_login_user() -> tuple[str, str, int]:
     return username, password, user.id
 
 
+def get_zulip_stream_email() -> str:
+    return os.environ["ZULIP_STREAM_EMAIL"]
+
+
 def create_email_link_user() -> tuple[str, int]:
-    username = os.environ["ZULIP_STREAM_EMAIL"]
+    username = get_zulip_stream_email()
     user = User.objects.create(
         username=username, email=username, first_name="Jagdeep", last_name="Chatterjee"
     )
@@ -126,5 +130,22 @@ class TestIntegration(BaseCase):
             signin_url = zulip_get_email_link()
             self.open(signin_url)
             self.click("form div button")
+
+            self.assert_text("Welcome Jagdeep Chatterjee")
+
+    def test_signup_with_email(self) -> None:
+        username = get_zulip_stream_email()
+        with running_test_server() as base_url:
+            self.open(base_url)
+            self.type("input#email-link-input", username)
+            self.click("div#email-link form div button")
+
+            signin_url = zulip_get_email_link()
+            self.open(signin_url)
+            self.click("form div button")
+
+            self.type("input#first_name", "Jagdeep")
+            self.type("input#last_name", "Chatterjee")
+            self.type("input#phone", "+919876543210\n")
 
             self.assert_text("Welcome Jagdeep Chatterjee")
