@@ -1,6 +1,5 @@
 import datetime
 import random
-import time
 
 import pytest
 from django.utils.timezone import now
@@ -81,9 +80,8 @@ class TestIntegration(BaseCase):
             self.type("input#vpa-upi", "punchagan@upi")
             self.click("button#redesign-v15-cta")
             self.switch_to_default_content()
-            time.sleep(10)
 
-            self.click('a[href="#/vaccination/1"]')
+            self.click('a[href="#/vaccination/1"]', timeout=30)
             self.select_option_by_text("select#name", "Covishield")
             self.choose_file("input#certificate", "frontend/assets/favico.png")
             self.click('button:contains("Submit")')
