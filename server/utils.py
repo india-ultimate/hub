@@ -5,6 +5,7 @@ from typing import Any
 import razorpay
 from django.conf import settings
 from django.utils.timezone import now
+from requests.exceptions import RequestException
 
 CLIENT = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
 
@@ -14,7 +15,7 @@ def create_razorpay_order(
     currency: str = "INR",
     receipt: str | None = None,
     notes: dict[str, Any] | None = None,
-) -> dict[str, Any]:
+) -> dict[str, Any] | None:
     if receipt is None:
         receipt = str(uuid.uuid4())[:8]
 
@@ -24,7 +25,12 @@ def create_razorpay_order(
         "receipt": receipt,
         "notes": notes,
     }
-    response = CLIENT.order.create(data=data)
+    try:
+        response = CLIENT.order.create(data=data)
+    except (RequestException, razorpay.errors.BadRequestError) as e:
+        print(f"ERROR: Failed to connect to Razorpay with {e}")
+        return None
+
     response["key"] = settings.RAZORPAY_KEY_ID
     response["order_id"] = response["id"]
     return response

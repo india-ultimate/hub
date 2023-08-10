@@ -16,7 +16,6 @@ from django.views.decorators.csrf import csrf_exempt
 from firebase_admin import auth
 from ninja import File, NinjaAPI, UploadedFile
 from ninja.security import django_auth
-from requests.exceptions import RequestException
 
 from server.constants import (
     ANNUAL_MEMBERSHIP_AMOUNT,
@@ -323,9 +322,8 @@ def create_order(
         }
         receipt = f"{membership.membership_number}:{start_date}:{ts}"
 
-    try:
-        data = create_razorpay_order(amount, receipt=receipt, notes=notes)
-    except RequestException:
+    data = create_razorpay_order(amount, receipt=receipt, notes=notes)
+    if data is None:
         return 502, "Failed to connect to Razorpay."
 
     data.update(

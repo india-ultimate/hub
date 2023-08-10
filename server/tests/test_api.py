@@ -5,7 +5,6 @@ from unittest import mock
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client
 from django.test.client import MULTIPART_CONTENT
-from requests.exceptions import RequestException
 
 from server.constants import ANNUAL_MEMBERSHIP_AMOUNT, EVENT_MEMBERSHIP_AMOUNT
 from server.models import Event, Guardianship, Membership, Player, RazorpayTransaction, User
@@ -677,7 +676,7 @@ class TestPayment(ApiBaseTestCase):
     def test_razorpay_failures(self) -> None:
         player = self.player
         c = self.client
-        with mock.patch("server.api.create_razorpay_order", side_effect=RequestException):
+        with mock.patch("server.api.create_razorpay_order", return_value=None):
             response = c.post(
                 "/api/create-order",
                 data={
