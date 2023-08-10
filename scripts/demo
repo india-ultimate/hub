@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# Script to run a demo using all the integration tests
+
+pytest -k Integration --ds=hub.test_settings -s --disable-warnings \
+       --gui --highlights=1 --message_duration=0.1 --demo --demo_sleep=3 --firefox
