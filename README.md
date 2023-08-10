@@ -1,5 +1,7 @@
 # hub
 
+[![CI Tests](https://github.com/india-ultimate/hub/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/india-ultimate/hub/actions/workflows/test.yml)
+
 <!-- All the content from about:start to about:end appears in the About page -->
 <!-- about:start -->
 
@@ -14,7 +16,6 @@ You can report issues on
 [GitHub](https://github.com/india-ultimate/hub/issues),
 [Zulip](https://upai.zulipchat.com/) or
 [WhatsApp](http://bit.ly/India-Ultimate-Helpdesk).
-
 
 <!-- about:end -->
 
