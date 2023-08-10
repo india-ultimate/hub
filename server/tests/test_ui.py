@@ -5,7 +5,7 @@ import pytest
 from django.utils.timezone import now
 from seleniumbase import BaseCase
 
-from server.models import Event, User
+from server.models import Event, Player, User
 from server.tests.localserver import running_test_server
 
 
@@ -60,13 +60,15 @@ class TestIntegration(BaseCase):
             self.click('button:contains("Submit")')
             self.save_screenshot_to_logs("form.png")
 
+            player_id = Player.objects.get(user_id=user_id).id
+
             self.assert_element('a[href="#/"] svg')
-            self.assert_element(f'a[href="#/membership/{user_id}"]')
-            self.assert_element(f'a[href="#/vaccination/{user_id}"]')
-            self.assert_element(f'a[href="#/waiver/{user_id}"]')
+            self.assert_element(f'a[href="#/membership/{player_id}"]')
+            self.assert_element(f'a[href="#/vaccination/{player_id}"]')
+            self.assert_element(f'a[href="#/waiver/{player_id}"]')
             print("Successfully registered!")
 
-            self.click('a[href="#/membership/1"]')
+            self.click(f'a[href="#/membership/{player_id}"]')
             self.js_click("div.my-2 label div")
             self.click("select#event")
             self.assert_element("select#event option")
@@ -81,12 +83,12 @@ class TestIntegration(BaseCase):
             self.click("button#redesign-v15-cta")
             self.switch_to_default_content()
 
-            self.click('a[href="#/vaccination/1"]', timeout=60)
+            self.click(f'a[href="#/vaccination/{player_id}"]', timeout=60)
             self.select_option_by_text("select#name", "Covishield")
             self.choose_file("input#certificate", "frontend/assets/favico.png")
             self.click('button:contains("Submit")')
             self.click("div#root section div")
-            self.click('a[href="#/waiver/1"]')
+            self.click(f'a[href="#/waiver/{player_id}"]')
             self.js_click('span:contains("I acknowledge and agree to the above.")')
             self.js_click("div#root section div div:nth-of-type(2) label span")
             self.js_click("div#root section div div:nth-of-type(3) label span")
