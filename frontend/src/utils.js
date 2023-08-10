@@ -10,9 +10,8 @@ export const getCookie = name => {
 
 export const loginWithFirebaseResponse = async (
   firebaseResponse,
-  setStatus,
-  setLoggedIn,
-  setData
+  onSuccess,
+  onFailure
 ) => {
   const {
     user: { uid, accessToken: token }
@@ -27,19 +26,9 @@ export const loginWithFirebaseResponse = async (
   });
 
   if (response.ok) {
-    setStatus("Successfully logged in!");
-    setLoggedIn(true);
-    setData(await response.json());
+    onSuccess(response);
   } else {
-    setLoggedIn(false);
-    try {
-      const data = await response.json();
-      setStatus(`Login failed with error: ${data.message}`);
-    } catch {
-      setStatus(
-        `Login failed with error: ${response.statusText} (${response.status})`
-      );
-    }
+    onFailure(response);
   }
 };
 

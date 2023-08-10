@@ -200,18 +200,31 @@ const SendPhoneConfirmation = props => {
       });
   };
 
+  const onSuccess = async response => {
+    props.setStatus("Successfully logged in!");
+    setLoggedIn(true);
+    setData(await response.json());
+  };
+
+  const onFailure = async response => {
+    setLoggedIn(false);
+    try {
+      const data = await response.json();
+      props.setStatus(`Login failed with error: ${data.message}`);
+    } catch {
+      props.setStatus(
+        `Login failed with error: ${response.statusText} (${response.status})`
+      );
+    }
+  };
+
   const confirmResult = e => {
     e.preventDefault();
     console.log(e);
     confirmationResult()
       .confirm(code())
       .then(async response =>
-        loginWithFirebaseResponse(
-          response,
-          props.setStatus,
-          setLoggedIn,
-          setData
-        )
+        loginWithFirebaseResponse(response, onSuccess, onFailure)
       )
       .catch(error => {
         props.setStatus(`Login failed: ${error}`);

@@ -34,6 +34,24 @@ const SignInForm = props => {
     }
   });
 
+  const onSuccess = async response => {
+    props.setStatus("Successfully logged in!");
+    setLoggedIn(true);
+    setData(await response.json());
+  };
+
+  const onFailure = async response => {
+    setLoggedIn(false);
+    try {
+      const data = await response.json();
+      props.setStatus(`Login failed with error: ${data.message}`);
+    } catch {
+      props.setStatus(
+        `Login failed with error: ${response.statusText} (${response.status})`
+      );
+    }
+  };
+
   const signIn = e => {
     e.preventDefault();
     // The client SDK will parse the code from the link for you.
@@ -49,12 +67,7 @@ const SignInForm = props => {
         const resultJSON = JSON.stringify(result);
         window.localStorage.setItem("firebaseCreds", resultJSON);
         props.setCreds(resultJSON);
-        await loginWithFirebaseResponse(
-          result,
-          props.setStatus,
-          setLoggedIn,
-          setData
-        );
+        await loginWithFirebaseResponse(result, onSuccess, onFailure);
       })
       .catch(error => {
         window.localStorage.setItem(
