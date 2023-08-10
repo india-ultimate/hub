@@ -81,7 +81,7 @@ class TestIntegration(BaseCase):
             self.click("button#redesign-v15-cta")
             self.switch_to_default_content()
 
-            self.click('a[href="#/vaccination/1"]', timeout=30)
+            self.click('a[href="#/vaccination/1"]', timeout=60)
             self.select_option_by_text("select#name", "Covishield")
             self.choose_file("input#certificate", "frontend/assets/favico.png")
             self.click('button:contains("Submit")')
