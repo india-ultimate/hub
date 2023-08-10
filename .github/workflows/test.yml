@@ -66,9 +66,56 @@ jobs:
       - name: Install dependencies
         run: poetry install --no-root --with=dev
 
-      - name: Run Django tests
+      - name: Run Django unit tests
         run: |
-          poetry run pytest --disable-warnings
+          poetry run pytest --disable-warnings --ds=hub.test_settings -k 'not Integration'
+
+  run-integration-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install poetry
+        run: pipx install poetry
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          cache: 'poetry'
+
+      - name: Install dependencies
+        run: poetry install --no-root --with=dev
+
+      - name: Set up Node
+        uses: actions/setup-node@v3
+        with:
+          # webpack dev server proxy doesn't work with Node 18!
+          node-version: 16
+          cache: 'yarn'
+          cache-dependency-path: frontend/yarn.lock
+
+      - name: Install node dependencies (webpack-dev-server)
+        working-directory: './frontend'
+        run: yarn install --production=false
+
+      - name: Install geckodriver (for integration tests)
+        run: poetry run sbase get geckodriver latest
+
+      - name: Run Django Integration tests
+        env:
+          RAZORPAY_KEY_ID: ${{ secrets.RAZORPAY_KEY_ID }}
+          RAZORPAY_KEY_SECRET: ${{ secrets.RAZORPAY_KEY_SECRET }}
+        run: |
+          poetry run pytest --disable-warnings --ds=hub.test_settings -k Integration --firefox
+
+      - name: Upload selenium base logs as artifacts
+        if: failure()  # Upload the artifact even if a previous step fails
+        uses: actions/upload-artifact@v2
+        with:
+          name: sbase-logs
+          path: latest_logs/
+          retention-days: 1
 
   frontend-build:
     runs-on: ubuntu-latest
