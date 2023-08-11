@@ -81,6 +81,7 @@ ignore = [
     "E501", # Line too long
     "PLR0915", # Too many statements
     "PLR0912", # Too many branches
+    "PLR0913", # Too many arguments
     "RUF012", # Mutable class attributes should be annotated with `typing.ClassVar`
     "S105", # Possible hardcoded password
 ]
