@@ -69,23 +69,12 @@ class TopScoreClient:
             self.refresh_access_token()
 
         url = f"{self.site_url}/api/me"
-
-        try:
-            response = requests.get(url, headers=self.headers, timeout=15)
-        except requests.exceptions.RequestException as e:
-            logger.error("Failed to get person_id: %s", e)
+        data = self._request(url)
+        if data is None:
+            logger.error("Failed to events")
             return None
 
-        if response.status_code != HTTP_SUCCESS:
-            logger.error("Failed to get person_id: Server returned %s", response.status_code)
-            return None
-
-        try:
-            info = response.json().get("result")
-        except JSONDecodeError:
-            logger.error("Failed to get person_id: Invalid JSON")
-            return None
-
+        info = data.get("result")
         if not info:
             logger.error("Failed to get person_id: No 'result' data")
             return None
@@ -98,21 +87,33 @@ class TopScoreClient:
         if n is None:
             n = self.per_page
         url = f"{self.site_url}/api/events?per_page={n}&order_by={order_by}"
-
-        try:
-            response = requests.get(url, headers=self.headers, timeout=30)
-        except requests.exceptions.RequestException as e:
-            logger.error("Failed to get events: %s", e)
+        data = self._request(url)
+        if data is None:
+            logger.error("Failed to events")
             return None
 
-        if response.status_code != HTTP_SUCCESS:
-            logger.error("Failed to get events: Server returned %s", response.status_code)
-            return None
-
-        data = response.json()
         count = min(data["count"], n)
         events = data["result"]
         if len(events) < count:
             print("WARNING: Need to add pagination")
 
         return events
+
+    def _request(self, url: str) -> Any | None:
+        try:
+            response = requests.get(url, headers=self.headers, timeout=30)
+        except requests.exceptions.RequestException as e:
+            logger.error("Failed to get data: %s", e)
+            return None
+
+        if response.status_code != HTTP_SUCCESS:
+            logger.error("Failed to get data: Server returned %s", response.status_code)
+            return None
+
+        try:
+            data = response.json()
+        except JSONDecodeError:
+            logger.error("Failed to get person_id: Invalid JSON")
+            return None
+
+        return data
