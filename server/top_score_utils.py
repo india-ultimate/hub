@@ -19,6 +19,7 @@ class TopScoreClient:
         client_id: str | None = None,
         client_secret: str | None = None,
         site_slug: str | None = None,
+        per_page: int = 200,
     ) -> None:
         self.username = username
         self.password = password
@@ -38,6 +39,7 @@ class TopScoreClient:
         self.site_url = f"https://{site_slug}.usetopscore.com"
 
         self.headers = None  # type: dict[str, str] | None
+        self.per_page = per_page
 
     def refresh_access_token(self) -> None:
         data = {
@@ -89,3 +91,28 @@ class TopScoreClient:
             return None
 
         return info[0]
+
+    def get_events(
+        self, n: int | None = None, order_by: str = "date_desc"
+    ) -> list[dict[str, Any]] | None:
+        if n is None:
+            n = self.per_page
+        url = f"{self.site_url}/api/events?per_page={n}&order_by={order_by}"
+
+        try:
+            response = requests.get(url, headers=self.headers, timeout=30)
+        except requests.exceptions.RequestException as e:
+            logger.error("Failed to get events: %s", e)
+            return None
+
+        if response.status_code != HTTP_SUCCESS:
+            logger.error("Failed to get events: Server returned %s", response.status_code)
+            return None
+
+        data = response.json()
+        count = min(data["count"], n)
+        events = data["result"]
+        if len(events) < count:
+            print("WARNING: Need to add pagination")
+
+        return events

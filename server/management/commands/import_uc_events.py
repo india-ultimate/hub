@@ -1,9 +1,9 @@
 from typing import Any
 
-import requests
 from django.core.management.base import BaseCommand, CommandParser
 
 from server.models import Event
+from server.top_score_utils import TopScoreClient
 
 BASE_URL = "https://upai.usetopscore.com"
 
@@ -21,16 +21,13 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args: Any, **options: Any) -> None:
-        n = options["num_events"]
-        url = f"{BASE_URL}/api/events?per_page={n}&order_by=date_desc"
-        # NOTE: The request is unauthenticated
-        r = requests.get(url, timeout=30)
-        data = r.json()
-        count = min(data["count"], n)
-        tournaments = data["result"]
-        if len(tournaments) < count:
-            print("WARNING: Need to add pagination")
+        client = TopScoreClient()
+        tournaments = client.get_events(options["num_events"])
+        if tournaments is None:
+            self.stdout.write(self.style.ERROR("Failed to fetch events"))
+            return
 
+        count = len(tournaments)
         self.stdout.write(self.style.SUCCESS(f"Fetched {count} events"))
 
         # Create events
