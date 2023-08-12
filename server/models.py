@@ -82,6 +82,7 @@ class Player(models.Model):
     )
     educational_institution = models.CharField(max_length=100, null=True, blank=True)
     india_ultimate_profile = models.URLField(null=True, blank=True)
+    ultimate_central_id = models.PositiveIntegerField(unique=True, null=True, blank=True)
 
 
 class Guardianship(models.Model):
