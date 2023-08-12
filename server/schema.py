@@ -19,6 +19,12 @@ class Credentials(Schema):
     password: str
 
 
+class TopScoreCredentials(Schema):
+    username: str
+    password: str
+    player_id: int
+
+
 class FirebaseCredentials(Schema):
     token: str
     uid: str

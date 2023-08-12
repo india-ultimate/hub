@@ -52,6 +52,7 @@ from server.schema import (
     RegistrationSchema,
     RegistrationWardSchema,
     Response,
+    TopScoreCredentials,
     TransactionSchema,
     UserFormSchema,
     UserSchema,
@@ -59,6 +60,7 @@ from server.schema import (
     VaccinationSchema,
     WaiverFormSchema,
 )
+from server.top_score_utils import TopScoreClient
 from server.utils import (
     create_razorpay_order,
     verify_razorpay_payment,
@@ -493,5 +495,29 @@ def waiver(
     membership.waiver_signed_at = now()
     membership.waiver_valid = True
     membership.save(update_fields=["waiver_signed_by", "waiver_signed_at", "waiver_valid"])
+
+    return 200, player
+
+
+# UPAI ID ##########
+
+
+@api.post("/upai/me", response={200: PlayerSchema, 400: Response, 404: Response})
+def upai_person(
+    request: AuthenticatedHttpRequest, credentials: TopScoreCredentials
+) -> tuple[int, Player] | tuple[int, message_response]:
+    try:
+        player = Player.objects.get(id=credentials.player_id)
+    except Player.DoesNotExist:
+        return 400, {"message": "Player does not exist"}
+
+    client = TopScoreClient(credentials.username, credentials.password)
+    person = client.get_person()
+    if person is None or person["person_id"] is None:
+        return 404, {"message": "Failed to fetch person information from UPAI Ultimate Central"}
+    person_id = person["person_id"]
+    if person_id:
+        player.ultimate_central_id = person_id
+        player.save()
 
     return 200, player

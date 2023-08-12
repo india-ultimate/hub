@@ -67,6 +67,10 @@ jobs:
         run: poetry install --no-root --with=dev
 
       - name: Run Django unit tests
+        env:
+          TOPSCORE_CLIENT_ID: "fake-client-id"
+          TOPSCORE_CLIENT_SECRET: "fake-client-secret"
+          TOPSCORE_SITE_SLUG: "upai"
         run: |
           poetry run pytest --disable-warnings --ds=hub.test_settings -k 'not Integration'
 
