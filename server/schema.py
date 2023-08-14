@@ -223,6 +223,12 @@ class UserSchema(ModelSchema):
     def resolve_full_name(user: User) -> str:
         return user.get_full_name()
 
+    is_staff: bool
+
+    @staticmethod
+    def resolve_is_staff(user: User) -> bool:
+        return user.is_staff
+
     player: PlayerSchema | None
 
     @staticmethod
