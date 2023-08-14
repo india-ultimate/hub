@@ -77,8 +77,9 @@ class TestIntegration(BaseCase):
             player_id = Player.objects.get(user_id=user_id).id
 
             self.assert_element('a[href="#/"] svg')
-            self.assert_element(f'a[href="#/membership/{player_id}"]')
             self.assert_element(f'a[href="#/vaccination/{player_id}"]')
+            self.assert_element(f'a[href="#/uc-login/{player_id}"]')
+            self.assert_element(f'a[href="#/membership/{player_id}"]')
             self.assert_element(f'a[href="#/waiver/{player_id}"]')
             print("Successfully registered!")
 
