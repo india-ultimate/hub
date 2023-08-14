@@ -13,7 +13,6 @@ import { createForm, required } from "@modular-forms/solid";
 import StatusStepper from "./StatusStepper";
 import TextInput from "./TextInput";
 import { Spinner } from "../icons";
-import { initFlowbite } from "flowbite";
 
 const UltimateCentralLogin = () => {
   const [store, { setLoggedIn, setData, setPlayerById }] = useStore();
@@ -39,7 +38,6 @@ const UltimateCentralLogin = () => {
     if (!store.loggedIn) {
       fetchUserData(setLoggedIn, setData);
     }
-    initFlowbite();
   });
 
   const handleSubmit = async values => {
