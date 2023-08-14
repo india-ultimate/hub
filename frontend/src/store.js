@@ -4,7 +4,11 @@ import { createStore } from "solid-js/store";
 const StoreContext = createContext();
 
 export const StoreProvider = props => {
-  const [store, setStore] = createStore({ loggedIn: false, data: {}, theme: getDefaultTheme() });
+  const [store, setStore] = createStore({
+    loggedIn: false,
+    data: {},
+    theme: getDefaultTheme()
+  });
   const setLoggedIn = flag => setStore("loggedIn", flag);
   const setData = data => setStore("data", data);
   const setPlayer = player => {
@@ -28,10 +32,18 @@ export const StoreProvider = props => {
   const setTheme = theme => {
     setStore("theme", theme);
     localStorage.setItem("theme", theme);
-  }
+  };
   const data = [
     store,
-    { setStore, setLoggedIn, setData, setPlayer, setPlayerById, addWard, setTheme }
+    {
+      setStore,
+      setLoggedIn,
+      setData,
+      setPlayer,
+      setPlayerById,
+      addWard,
+      setTheme
+    }
   ];
 
   return (
@@ -55,4 +67,4 @@ const getDefaultTheme = () => {
     localStorage.setItem("theme", "light");
   }
   return theme;
-}
+};

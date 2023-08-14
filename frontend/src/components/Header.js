@@ -26,7 +26,7 @@ export default function Header() {
   const toggleTheme = () => {
     if (store.theme === "dark") setTheme("light");
     else setTheme("dark");
-  }
+  };
 
   return (
     <div>
@@ -44,22 +44,26 @@ export default function Header() {
           </A>
           <div>
             <button
-                type="button"
-                className="inline-flex items-center p-2 w-10 h-10 justify-center text-sm text-gray-500 rounded-lg md:hidden hover:bg-gray-100 focus:outline-none dark:text-gray-400 dark:hover:bg-gray-700 dark:focus:ring-gray-600"
-                onClick={toggleTheme}>
-              <Show when={store.theme === "dark"} fallback={<Icon path={moon} style={{width: "24px"}}/>}>
-                <Icon path={sun} style={{width: "24px"}}/>
+              type="button"
+              className="inline-flex items-center p-2 w-10 h-10 justify-center text-sm text-gray-500 rounded-lg md:hidden hover:bg-gray-100 focus:outline-none dark:text-gray-400 dark:hover:bg-gray-700 dark:focus:ring-gray-600"
+              onClick={toggleTheme}
+            >
+              <Show
+                when={store.theme === "dark"}
+                fallback={<Icon path={moon} style={{ width: "24px" }} />}
+              >
+                <Icon path={sun} style={{ width: "24px" }} />
               </Show>
             </button>
             <button
-                data-collapse-toggle="navbar-solid-bg"
-                type="button"
-                className="inline-flex items-center p-2 w-10 h-10 justify-center text-sm text-gray-500 rounded-lg md:hidden hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 dark:focus:ring-gray-600"
-                aria-controls="navbar-solid-bg"
-                aria-expanded="false"
+              data-collapse-toggle="navbar-solid-bg"
+              type="button"
+              className="inline-flex items-center p-2 w-10 h-10 justify-center text-sm text-gray-500 rounded-lg md:hidden hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 dark:focus:ring-gray-600"
+              aria-controls="navbar-solid-bg"
+              aria-expanded="false"
             >
               <span className="sr-only">Open main menu</span>
-              <Icon path={bars_3} style={{width: "24px"}}/>
+              <Icon path={bars_3} style={{ width: "24px" }} />
             </button>
           </div>
           <div class="hidden w-full md:block md:w-auto" id="navbar-solid-bg">
@@ -96,12 +100,16 @@ export default function Header() {
               </li>
               <li>
                 <button
-                    type="button"
-                    className="hidden md:block py-2 pl-3 pr-4 text-gray-900 rounded md:border-0 md:hover:text-blue-700 md:p-0 dark:text-white md:dark:hover:text-blue-500 focus:outline-none"
-                    onClick={toggleTheme}
+                  type="button"
+                  className="hidden md:block py-2 pl-3 pr-4 text-gray-900 rounded md:border-0 md:hover:text-blue-700 md:p-0 dark:text-white md:dark:hover:text-blue-500 focus:outline-none"
+                  onClick={toggleTheme}
                 >
-                  <Show when={store.theme === "dark"} fallback={<Icon path={moon} style={{width: "24px"}}/>}><Icon
-                      path={sun} style={{width: "24px"}}/></Show>
+                  <Show
+                    when={store.theme === "dark"}
+                    fallback={<Icon path={moon} style={{ width: "24px" }} />}
+                  >
+                    <Icon path={sun} style={{ width: "24px" }} />
+                  </Show>
                 </button>
               </li>
             </ul>
