@@ -292,16 +292,26 @@ class Command(BaseCommand):
                     explain_not_vaccinated=explanation,
                 )
                 vaccination.full_clean()
-                vaccination.save()
-                certificate_url = row[columns["certificate"]]
-                cert_filename, content = self.find_vaccination_file(certificate_url, gdrive_map)
-                if cert_filename and content:
-                    vaccination.certificate.save(cert_filename, content)
-                uploading_media = bool(name)
+                media_upload = False
+                if is_vaccinated:
+                    certificate_url = row[columns["certificate"]]
+                    cert_filename, content = self.find_vaccination_file(certificate_url, gdrive_map)
+                    if cert_filename and content:
+                        vaccination.save()
+                        vaccination.certificate.save(cert_filename, content)
+                        media_upload = True
+                    else:
+                        self.stdout.write(
+                            self.style.ERROR(
+                                f"Not saving vaccination info; missing certificate: {player.user.username}"
+                            )
+                        )
+                else:
+                    vaccination.save()
 
                 msg = (
                     "Data imported successfully."
-                    if uploading_media
+                    if media_upload
                     else "Data imported successfully (without media)."
                 )
                 self.stdout.write(self.style.SUCCESS(msg))
