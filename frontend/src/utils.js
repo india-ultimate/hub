@@ -218,3 +218,12 @@ export const getLabel = (choices, value) => {
   const choice = choices.find(item => item.value === value);
   return choice?.label;
 };
+
+export const playerMatches = (player, text) => {
+  const term = text.toLowerCase();
+  return (
+    player.full_name.toLowerCase().includes(term) ||
+    player.team_name.toLowerCase().includes(term) ||
+    player.city.toLowerCase().includes(term)
+  );
+};

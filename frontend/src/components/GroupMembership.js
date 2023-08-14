@@ -5,7 +5,8 @@ import {
   displayDate,
   fetchUrl,
   membershipYearOptions,
-  purchaseMembership
+  purchaseMembership,
+  playerMatches
 } from "../utils";
 import {
   membershipStartDate,
@@ -110,15 +111,6 @@ const GroupMembership = () => {
   createEffect(() => {
     setPayDisabled(payingPlayers().length === 0);
   });
-
-  const playerMatches = (player, text) => {
-    const term = text.toLowerCase();
-    return (
-      player.full_name.toLowerCase().includes(term) ||
-      player.team_name.toLowerCase().includes(term) ||
-      player.city.toLowerCase().includes(term)
-    );
-  };
 
   return (
     <div>
