@@ -8,7 +8,8 @@ import {
   shieldExclamation,
   shieldCheck,
   handThumbUp,
-  handThumbDown
+  handThumbDown,
+  arrowTopRightOnSquare
 } from "solid-heroicons/solid-mini";
 
 const Step = props => {
@@ -51,6 +52,11 @@ const StatusStepper = props => {
         icon={props?.player?.vaccination ? shieldCheck : shieldExclamation}
         link={`/vaccination/${props.player.id}`}
         color={props?.player?.vaccination ? "green" : "red"}
+      />
+      <Step
+        icon={arrowTopRightOnSquare}
+        link={`/uc-login/${props.player.id}`}
+        color={props?.player?.ultimate_central_id ? "green" : "red"}
       />
       <Step
         icon={currencyRupee}

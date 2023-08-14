@@ -82,6 +82,7 @@ const UltimateCentralLogin = () => {
         </Match>
         <Match when={player()?.ultimate_central_id}>
           <p>Ultimate Central Profile ID: {player()?.ultimate_central_id}</p>
+          <StatusStepper player={player()} />
         </Match>
         <Match when={!player()?.ultimate_central_id}>
           <Form
