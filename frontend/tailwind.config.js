@@ -22,5 +22,6 @@ module.exports = {
     "bg-gray-700",
     "after:border-gray-100",
     "dark:after:border-gray-700"
-  ]
+  ],
+  darkMode: 'media'
 };

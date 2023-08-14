@@ -21,9 +21,9 @@ const filters = {
 
 export default function App() {
   return (
-    <div>
+    <div class="bg-white dark:bg-gray-900 min-h-screen">
       <Header />
-      <section class="bg-white dark:bg-gray-900">
+      <section>
         <div class="py-8 px-4 mx-auto max-w-screen-xl lg:py-16 lg:px-6">
           <div class="max-w-screen-lg text-gray-500 sm:text-lg dark:text-gray-400">
             <Routes>
