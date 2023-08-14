@@ -120,7 +120,7 @@ jobs:
 
       - name: Upload selenium base logs as artifacts
         if: failure()  # Upload the artifact even if a previous step fails
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: sbase-logs
           path: latest_logs/
