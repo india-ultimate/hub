@@ -48,15 +48,14 @@ const StatusStepper = props => {
         color={props?.player ? "green" : "red"}
       />
       <Step
-        icon={currencyRupee}
-        link={`/membership/${props.player.id}`}
-        color={props?.player?.membership?.is_active ? "green" : "red"}
-      />
-
-      <Step
         icon={props?.player?.vaccination ? shieldCheck : shieldExclamation}
         link={`/vaccination/${props.player.id}`}
         color={props?.player?.vaccination ? "green" : "red"}
+      />
+      <Step
+        icon={currencyRupee}
+        link={`/membership/${props.player.id}`}
+        color={props?.player?.membership?.is_active ? "green" : "red"}
       />
       <Step
         icon={
