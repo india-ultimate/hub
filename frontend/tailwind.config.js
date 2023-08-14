@@ -23,5 +23,5 @@ module.exports = {
     "after:border-gray-100",
     "dark:after:border-gray-700"
   ],
-  darkMode: 'media'
+  darkMode: 'class'
 };
