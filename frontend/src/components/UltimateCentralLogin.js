@@ -85,6 +85,36 @@ const UltimateCentralLogin = () => {
           <StatusStepper player={player()} />
         </Match>
         <Match when={!player()?.ultimate_central_id}>
+          <details>
+            <summary
+              class="p-4 text-sm text-blue-800 rounded-lg bg-blue-50 dark:bg-gray-800 dark:text-blue-400"
+              role="alert"
+            >
+              We only use your Ultimate Central (indiaultimate.org) credentials
+              to authenticate against the Ultimate Central site, and fetch your
+              profile information.
+            </summary>
+            <p class="p-4 mb-4 text-sm text-blue-800 rounded-lg bg-blue-50 dark:bg-gray-800 dark:text-blue-400">
+              Ultimate Central has a beta implementation of OAuth2, and requires
+              us to ask for your password, unlike the OAuth2 implementations by
+              other providers like Google or Facebook. The API spec provided by
+              Ultimate Central is{" "}
+              <a
+                href="https://docs.google.com/document/d/148SFmTpsdon5xoGpAeNCokrpaPKKOSDtrLNBHOIq5c4/edit#heading=h.px865pu3sfvw"
+                class="underline"
+              >
+                here
+              </a>
+              , and our code for authentication is{" "}
+              <a
+                href="https://github.com/india-ultimate/hub/blob/admin-views/server/api.py#L505"
+                class="underline"
+              >
+                here
+              </a>
+              , in case you are curious.
+            </p>
+          </details>
           <Form
             class="mt-12 space-y-12 md:space-y-14 lg:space-y-16"
             onSubmit={values => handleSubmit(values)}
