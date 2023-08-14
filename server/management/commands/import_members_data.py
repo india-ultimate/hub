@@ -185,9 +185,9 @@ class Command(BaseCommand):
                 phone = clean_phone(row[columns["phone"]])
                 # Create or get the User instance
                 user, created = User.objects.get_or_create(
-                    username=email,
+                    username=email.lower(),
                     defaults={
-                        "email": email,
+                        "email": email.lower(),
                         "phone": phone,
                         "first_name": first_name,
                         "last_name": last_name,
@@ -246,9 +246,9 @@ class Command(BaseCommand):
                     guardian_phone = clean_phone(row[columns["guardian_phone"]])
                     first_name, last_name = ([*guardian_name.strip().split(), "", ""])[:2]
                     guardian_user, created = User.objects.get_or_create(
-                        username=guardian_email,
+                        username=guardian_email.lower(),
                         defaults={
-                            "email": guardian_email,
+                            "email": guardian_email.lower(),
                             "phone": guardian_phone,
                             "first_name": first_name,
                             "last_name": last_name,
