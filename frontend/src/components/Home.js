@@ -40,6 +40,19 @@ const Actions = props => {
   );
 };
 
+const StaffActions = () => {
+  return (
+    <div class="w-90 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+      <A
+        href="/players"
+        class="block w-full px-4 py-2 border-b border-gray-200 cursor-pointer hover:bg-gray-100 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 focus:text-blue-700 dark:border-gray-600 dark:hover:bg-gray-600 dark:hover:text-white dark:focus:ring-gray-500 dark:focus:text-white"
+      >
+        View Registered players
+      </A>
+    </div>
+  );
+};
+
 const Home = () => {
   const [store, { setLoggedIn, setData }] = useStore();
 
@@ -94,6 +107,29 @@ const Home = () => {
             <Actions player={store.data.player} />
           </div>
         </div>
+        <Show when={store.data.is_staff}>
+          <h2 id="accordion-heading-staff">
+            <button
+              type="button"
+              class="flex items-center justify-between w-full py-5 font-medium text-left text-gray-500 border-b border-gray-200 dark:border-gray-700 dark:text-gray-400"
+              data-accordion-target="#accordion-body-staff"
+              aria-expanded="true"
+              aria-controls="accordion-body-staff"
+            >
+              <span>Staff Actions</span>
+              <AccordionDownIcon />
+            </button>
+          </h2>
+          <div
+            id="accordion-body-staff"
+            class="hidden"
+            aria-labelledby="accordion-heading-staff"
+          >
+            <div class="py-5 border-b border-gray-200 dark:border-gray-700">
+              <StaffActions player={store.data.player} />
+            </div>
+          </div>
+        </Show>
         <Show when={store.data.player}>
           <h2 id="accordion-heading-player">
             <button

@@ -13,6 +13,7 @@ const GroupMembership = lazy(() => import("./GroupMembership"));
 const Vaccination = lazy(() => import("./Vaccination"));
 const Waiver = lazy(() => import("./Waiver"));
 const UltimateCentralLogin = lazy(() => import("./UltimateCentralLogin"));
+const RegisteredPlayerList = lazy(() => import("./RegisteredPlayerList"));
 
 const filters = {
   id: /^\d+$/ // only allow numbers
@@ -64,6 +65,8 @@ export default function App() {
                 component={UltimateCentralLogin}
                 matchFilters={filters}
               />
+              {/* Admin routes */}
+              <Route path="/players" component={RegisteredPlayerList} />
             </Routes>
           </div>
         </div>
