@@ -116,7 +116,7 @@ const UltimateCentralLogin = () => {
                   error={field.error}
                   type="password"
                   label="Ultimate Central password"
-                  placeholder="*****"
+                  placeholder="**********"
                   required
                 />
               )}
