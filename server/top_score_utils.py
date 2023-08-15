@@ -19,7 +19,7 @@ class TopScoreClient:
         client_id: str | None = None,
         client_secret: str | None = None,
         site_slug: str | None = None,
-        per_page: int = 200,
+        per_page: int = 500,
     ) -> None:
         self.username = username
         self.password = password
