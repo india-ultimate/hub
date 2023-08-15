@@ -48,10 +48,14 @@ const Membership = () => {
     setMembership(player?.membership);
   });
 
+  const isShortEvent = event =>
+    (new Date(event.end_date) - new Date(event.start_date)) / (1000 * 86400) <=
+    5;
+
   const eventsSuccessHandler = async response => {
     const data = await response.json();
     if (response.ok) {
-      setEvents(data);
+      setEvents(data.filter(isShortEvent));
     } else {
       console.log(data);
     }
