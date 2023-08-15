@@ -91,6 +91,23 @@ class TopScoreClient:
             logger.error("Failed to fetch events")
         return events
 
+    def get_registrations(
+        self,
+        event_id: int,
+        fields: str = "Person,Team",
+        n: int | None = None,
+        order_by: str = "date_desc",
+    ) -> list[dict[str, Any]] | None:
+        if self.headers is None:
+            self.refresh_access_token()
+        url = f"{self.site_url}/api/registrations?event_id={event_id}"
+        for each in fields.split(","):
+            url += f"&fields[]={each}"
+        registrations = self._paginated_request(url, n)
+        if registrations is None:
+            logger.error("Failed to fetch events")
+        return registrations
+
     def _request(self, url: str) -> Any | None:
         try:
             response = requests.get(url, headers=self.headers, timeout=30)
@@ -121,7 +138,7 @@ class TopScoreClient:
         page = 1
         all_results = []
         while True:
-            qs["page"] = str(page)
+            qs["page"] = [str(page)]
             q = urlencode(qs, doseq=True)
             url = urlunparse(
                 (parsed.scheme, parsed.netloc, parsed.path, parsed.params, q, parsed.fragment)
