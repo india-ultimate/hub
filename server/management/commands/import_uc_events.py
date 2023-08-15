@@ -5,11 +5,9 @@ from django.core.management.base import BaseCommand, CommandParser
 from server.models import Event
 from server.top_score_utils import TopScoreClient
 
-BASE_URL = "https://upai.usetopscore.com"
-
 
 class Command(BaseCommand):
-    help = "Import data from UC"
+    help = "Import events from Ultimate Central"
 
     def add_arguments(self, parser: CommandParser) -> None:
         parser.add_argument(
