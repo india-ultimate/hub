@@ -2,6 +2,7 @@ import logging
 import os
 from json import JSONDecodeError
 from typing import Any
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 import requests
 
@@ -84,19 +85,10 @@ class TopScoreClient:
     def get_events(
         self, n: int | None = None, order_by: str = "date_desc"
     ) -> list[dict[str, Any]] | None:
-        if n is None:
-            n = self.per_page
-        url = f"{self.site_url}/api/events?per_page={n}&order_by={order_by}"
-        data = self._request(url)
-        if data is None:
-            logger.error("Failed to events")
-            return None
-
-        count = min(data["count"], n)
-        events = data["result"]
-        if len(events) < count:
-            print("WARNING: Need to add pagination")
-
+        url = f"{self.site_url}/api/events?order_by={order_by}"
+        events = self._paginated_request(url, n)
+        if events is None:
+            logger.error("Failed to fetch events")
         return events
 
     def _request(self, url: str) -> Any | None:
@@ -117,3 +109,32 @@ class TopScoreClient:
             return None
 
         return data
+
+    def _paginated_request(self, url: str, page_size: int | None = None) -> Any | None:
+        if page_size is None:
+            page_size = self.per_page
+
+        parsed = urlparse(url)
+        qs = parse_qs(parsed.query)
+        qs["per_page"] = [str(page_size)]
+
+        page = 1
+        all_results = []
+        while True:
+            qs["page"] = str(page)
+            q = urlencode(qs, doseq=True)
+            url = urlunparse(
+                (parsed.scheme, parsed.netloc, parsed.path, parsed.params, q, parsed.fragment)
+            )
+            data = self._request(url)
+            if data is None:
+                return data
+
+            results = data["result"]
+            all_results.extend(results)
+            n = len(all_results)
+            count = data.get("count", n)
+            if n < count:
+                page += 1
+            else:
+                return all_results
