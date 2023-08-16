@@ -6,7 +6,7 @@ from django.core.management import CommandError, call_command
 from django.test import TestCase
 from django.utils.timezone import now
 
-from server.models import Membership, Player
+from server.models import Membership, Player, UCPerson
 
 User = get_user_model()
 
@@ -15,6 +15,10 @@ class TestImportData(TestCase):
     def setUp(self) -> None:
         super().setUp()
         self.fixtures_dir = Path(__file__).parent.joinpath("fixtures")
+        # Create a bunch of UCPerson objects to pretend data import from UC
+        UCPerson.objects.create(slug="kannan")
+        UCPerson.objects.create(slug="rath")
+        UCPerson.objects.create(slug="ben-p-n")
 
     def test_import_members_data(self) -> None:
         with self.assertRaisesRegex(CommandError, "'foo' does not exist"):

@@ -11,7 +11,7 @@ from django.utils.dateparse import parse_date
 from django.utils.regex_helper import _lazy_re_compile
 from django.utils.text import slugify
 
-from server.models import Guardianship, Membership, Player, Vaccination
+from server.models import Guardianship, Membership, Player, UCPerson, Vaccination
 
 User = get_user_model()
 
@@ -161,6 +161,11 @@ class Command(BaseCommand):
                 reader = csv.DictReader(file)
                 gdrive_map = {row["File ID"]: download_path / row["File Path"] for row in reader}
 
+        if UCPerson.objects.count() == 0:
+            raise CommandError(
+                "No UC profiles found; Linking to UC profiles will not work correctly."
+            )
+
         minors = options["minors"]
         csv_file = options["csv_file"]
         columns = MINORS_COLUMNS if minors else ADULTS_COLUMNS
@@ -171,6 +176,19 @@ class Command(BaseCommand):
             for row_ in reader:
                 row = {key.strip(): value.strip() for key, value in row_.items()}
                 email = row[columns["email"]] if not minors else ""
+                iu_profile = clean_india_ultimate_profile(row[columns["india_ultimate_profile"]])
+
+                uc_person = None
+                if iu_profile:
+                    uc_slug = urlparse(iu_profile).path.strip("/").rsplit("/", 1)[-1]
+                    try:
+                        uc_person = UCPerson.objects.get(slug=uc_slug)
+                    except UCPerson.DoesNotExist:
+                        uc_person = None
+
+                if not email and uc_person:
+                    email = uc_person.email
+
                 first_name = row[columns["first_name"]]
                 last_name = row[columns["last_name"]]
                 name = f"{first_name} {last_name}"
@@ -216,8 +234,6 @@ class Command(BaseCommand):
 
                 occupation = clean_occupation(row[columns["occupation"]]) if not minors else None
 
-                _iu_profile = clean_india_ultimate_profile(row[columns["india_ultimate_profile"]])
-
                 # Create the Player instance
                 player = Player(
                     user=user,
@@ -232,6 +248,7 @@ class Command(BaseCommand):
                     educational_institution=row[columns["educational_institution"]]
                     if minors
                     else None,
+                    ultimate_central_id=uc_person.id if uc_person else None,
                 )
                 player.full_clean()
                 player.save()
