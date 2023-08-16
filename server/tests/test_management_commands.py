@@ -35,15 +35,6 @@ class TestImportData(TestCase):
         self.assertEqual(User.objects.count(), n - 1)
         self.assertEqual(Player.objects.count(), n - 1)
 
-        # Import Minors form data
-        minors_csv = self.fixtures_dir.joinpath("form-data-minors.csv")
-        with minors_csv.open() as f:
-            reader = csv.DictReader(f)
-            list(reader)
-        call_command("import_members_data", "--minors", minors_csv)
-        self.assertEqual(User.objects.count(), n - 1)
-        self.assertEqual(Player.objects.count(), n - 1)
-
 
 class TestInvalidateMemberships(TestCase):
     def test_invalidate_memberships(self) -> None:

@@ -30,8 +30,6 @@ python manage.py migrate
 python manage.py import_uc_events
 python manage.py import_uc_registrations --since=2022-06-01
 
-python manage.py import_members_data "${IMPORT_DATA_DIR}/minors.csv" --minors  --download-path "${IMPORT_DATA_DIR}/minors-uploads/" --gdrive-map-csv "${IMPORT_DATA_DIR}/FileMapping-minors.csv"
-
 python manage.py import_members_data "${IMPORT_DATA_DIR}/members.csv" --download-path "${IMPORT_DATA_DIR}/members-uploads/" --gdrive-map-csv "${IMPORT_DATA_DIR}/FileMapping-members.csv"
 
 # Make a tarball to copy to production
