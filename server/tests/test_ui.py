@@ -8,7 +8,7 @@ from seleniumbase import BaseCase
 
 from server.models import Event, Player, User
 from server.tests.localserver import running_test_server
-from server.utils import zulip_get_email_link
+from server.tests.utils import zulip_get_email_link
 
 
 def create_login_user() -> tuple[str, str, int]:
