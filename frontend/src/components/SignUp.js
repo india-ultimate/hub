@@ -22,7 +22,7 @@ const SignUp = props => {
 
   const submitFormData = async formData => {
     // Send a post request to the api
-    const url = "/api/firebase-login"; // FIXME: fix URL
+    const url = "/api/firebase-login";
     try {
       const response = await fetch(url, {
         method: "POST",

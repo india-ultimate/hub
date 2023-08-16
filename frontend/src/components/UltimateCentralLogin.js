@@ -156,7 +156,6 @@ const UltimateCentralLogin = () => {
               Submit
             </button>
           </Form>
-          {/* FIXME: Add a note about how the username and password are used. */}
           <Show when={error()}>
             <p class="my-2 text-sm text-red-600 dark:text-red-500">
               <span class="font-medium">Oops!</span> {error()}
