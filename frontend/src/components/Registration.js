@@ -125,7 +125,7 @@ const RegistrationForm = props => {
         <Switch>
           <Match when={props.others}>
             <div
-              class="p-4 mb-4 text-sm text-blue-800 rounded-lg bg-blue-50 dark:bg-gray-800 dark:text-blue-400"
+              class="px-8 lg:px-10 p-4 mb-4 text-sm text-blue-800 rounded-lg bg-blue-50 dark:bg-gray-800 dark:text-blue-400"
               role="alert"
             >
               {/* FIXME: Fix the wording and presentation here. */}
@@ -137,7 +137,7 @@ const RegistrationForm = props => {
           </Match>
           <Match when={props.ward}>
             <div
-              class="p-4 mb-4 text-sm text-blue-800 rounded-lg bg-blue-50 dark:bg-gray-800 dark:text-blue-400"
+              class="px-8 lg:px-10 p-4 mb-4 text-sm text-blue-800 rounded-lg bg-blue-50 dark:bg-gray-800 dark:text-blue-400"
               role="alert"
             >
               {/* FIXME: Fix the wording and presentation here. */}
