@@ -48,7 +48,8 @@ const RegisteredPlayerList = () => {
         class="text-4xl font-bold text-blue-500"
         id="accordion-collapse-heading-1"
       >
-        Registered Players
+        Registered Players{" "}
+        {players()?.length > 0 ? `(${players().length})` : ""}
       </h2>
       <div class="my-4 p-5 border border-gray-200 dark:border-gray-700 dark:bg-gray-900">
         <div class="relative overflow-x-auto">
