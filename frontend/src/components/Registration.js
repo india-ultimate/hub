@@ -193,6 +193,22 @@ const RegistrationForm = props => {
                   />
                 )}
               </Field>
+              <Show when={props.ward}>
+                <div
+                  class="px-8 lg:px-10 p-4 mb-4 text-sm text-blue-800 rounded-lg bg-blue-50 dark:bg-gray-800 dark:text-blue-400"
+                  role="alert"
+                >
+                  Entering an email address for your ward will allow them to
+                  edit their profile information or for a smooth transition when
+                  they become an adult. If they don't have their own email
+                  address you can use a modified version of your own email
+                  address with a <code>+tag</code> suffix. For example, if you
+                  address is <code>uncle.ben@gmail.com</code>, you can use{" "}
+                  <code>uncle.ben+peter@gmail.com</code> as your wards' email.
+                  This <code>+</code> suffix email address is supported by most
+                  popular Email services.
+                </div>
+              </Show>
             </Show>
             <Field
               name="first_name"
