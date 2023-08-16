@@ -86,6 +86,9 @@ class Player(models.Model):
     ultimate_central_id = models.PositiveIntegerField(unique=True, null=True, blank=True)
     sponsored = models.BooleanField(default=False)
 
+    def __str__(self) -> str:
+        return self.user.get_full_name()
+
     @property
     def membership_amount(self) -> int:
         return SPONSORED_ANNUAL_MEMBERSHIP_AMOUNT if self.sponsored else ANNUAL_MEMBERSHIP_AMOUNT
