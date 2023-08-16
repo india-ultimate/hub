@@ -192,13 +192,18 @@ class Command(BaseCommand):
                 first_name = row[columns["first_name"]]
                 last_name = row[columns["last_name"]]
                 name = f"{first_name} {last_name}"
+                if not email:
+                    self.stdout.write(
+                        self.style.WARNING(
+                            f"Skipping import of user with missing email: {slugify(name)}."
+                        )
+                    )
+                    continue
+
                 date_of_birth = parse_date_custom(row[columns["dob"]])
                 if date_of_birth is None:
                     print(f"Couldn't parse date of birth for {name}. Skipping")
                     continue
-                if not email.strip():
-                    email = slugify(name)
-                    print(f"Adding user with slugified username: {email}")
 
                 phone = clean_phone(row[columns["phone"]])
                 # Create or get the User instance

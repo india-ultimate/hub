@@ -31,18 +31,18 @@ class TestImportData(TestCase):
             rows = list(reader)
         call_command("import_members_data", adults_csv)
         n = len(rows)
-        self.assertEqual(User.objects.count(), n)
-        self.assertEqual(Player.objects.count(), n)
+        # One user without email is skipped
+        self.assertEqual(User.objects.count(), n - 1)
+        self.assertEqual(Player.objects.count(), n - 1)
 
         # Import Minors form data
         minors_csv = self.fixtures_dir.joinpath("form-data-minors.csv")
         with minors_csv.open() as f:
             reader = csv.DictReader(f)
-            m_rows = list(reader)
+            list(reader)
         call_command("import_members_data", "--minors", minors_csv)
-        m = len(m_rows)
-        self.assertEqual(User.objects.count(), m * 2 + n)
-        self.assertEqual(Player.objects.count(), m + n)
+        self.assertEqual(User.objects.count(), n - 1)
+        self.assertEqual(Player.objects.count(), n - 1)
 
 
 class TestInvalidateMemberships(TestCase):
