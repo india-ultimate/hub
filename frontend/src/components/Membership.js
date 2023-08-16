@@ -21,7 +21,8 @@ import {
   membershipStartDate,
   membershipEndDate,
   annualMembershipFee,
-  eventMembershipFee
+  eventMembershipFee,
+  sponsoredAnnualMembershipFee
 } from "../constants";
 
 const Membership = () => {
@@ -183,8 +184,11 @@ const Membership = () => {
               </For>
             </select>
             <p>
-              Pay UPAI membership fee (₹ {annualMembershipFee / 100}) valid for
-              the period from {displayDate(startDate())} to{" "}
+              Pay UPAI membership fee (₹{" "}
+              {(player()?.sponsored
+                ? sponsoredAnnualMembershipFee
+                : annualMembershipFee) / 100}
+              ) valid for the period from {displayDate(startDate())} to{" "}
               {displayDate(endDate())}
             </p>
           </Show>

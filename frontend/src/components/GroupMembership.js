@@ -11,7 +11,8 @@ import {
 import {
   membershipStartDate,
   membershipEndDate,
-  annualMembershipFee
+  annualMembershipFee,
+  sponsoredAnnualMembershipFee
 } from "../constants";
 import MembershipPlayerList from "./MembershipPlayerList";
 import { initFlowbite } from "flowbite";
@@ -214,7 +215,16 @@ const GroupMembership = () => {
         </div>
         <MembershipPlayerList
           players={payingPlayers()}
-          fee={(payingPlayers().length * annualMembershipFee) / 100}
+          fee={
+            payingPlayers().reduce(
+              (acc, player) =>
+                acc +
+                (player?.sponsored
+                  ? sponsoredAnnualMembershipFee
+                  : annualMembershipFee),
+              0
+            ) / 100
+          }
           startDate={displayDate(startDate())}
           endDate={displayDate(endDate())}
         />
