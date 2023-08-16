@@ -11,10 +11,10 @@ class Command(BaseCommand):
 
     def handle(self, *args: Any, **options: Any) -> None:
         today = now().date()
-        active_memberships = Membership.objects.filter(end_date__lt=today, is_active=True)
-        n = active_memberships.count()
+        stale_memberships = Membership.objects.filter(end_date__lt=today)
+        n = stale_memberships.count()
         if n > 0:
-            active_memberships.update(is_active=False, waiver_valid=False)
+            stale_memberships.update(is_active=False, waiver_valid=False)
             self.stdout.write(self.style.SUCCESS(f"Invalidated {n} memberships"))
         else:
             self.stdout.write(self.style.NOTICE("No outdated memberships found"))
