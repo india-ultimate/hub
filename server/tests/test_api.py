@@ -377,7 +377,7 @@ class TestPayment(ApiBaseTestCase):
         self.assertEqual(event.start_date, transaction.start_date)
         self.assertEqual(event.end_date, transaction.end_date)
 
-    def test_create_order_group_membership(self) -> None:
+    def test_create_order_group_membership_missing_players(self) -> None:
         c = self.client
 
         player_ids = [200, 220, 230, 225]
@@ -401,7 +401,10 @@ class TestPayment(ApiBaseTestCase):
             response.json()["message"],
         )
 
-        # Players exist
+    def test_create_order_group_membership(self) -> None:
+        c = self.client
+        player_ids = [200, 220, 230, 225]
+
         for id_ in player_ids:
             username = str(uuid.uuid4())[:8]
             user = User.objects.create(username=username)
