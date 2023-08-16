@@ -216,7 +216,7 @@ class Command(BaseCommand):
 
                 occupation = clean_occupation(row[columns["occupation"]]) if not minors else None
 
-                iu_profile = clean_india_ultimate_profile(row[columns["india_ultimate_profile"]])
+                _iu_profile = clean_india_ultimate_profile(row[columns["india_ultimate_profile"]])
 
                 # Create the Player instance
                 player = Player(
@@ -232,7 +232,6 @@ class Command(BaseCommand):
                     educational_institution=row[columns["educational_institution"]]
                     if minors
                     else None,
-                    india_ultimate_profile=iu_profile,
                 )
                 player.full_clean()
                 player.save()
