@@ -42,7 +42,9 @@ class TestInvalidateMemberships(TestCase):
         end_date = "2001-12-31"
         for i in range(10):
             user = User.objects.create(username=f"user-{i}")
-            player = Player.objects.create(user=user, date_of_birth=start_date)
+            player = Player.objects.create(
+                user=user, date_of_birth=start_date, sponsored=i % 2 == 0
+            )
             Membership.objects.create(
                 player=player,
                 start_date=start_date,
@@ -56,5 +58,6 @@ class TestInvalidateMemberships(TestCase):
         for membership in Membership.objects.filter():
             self.assertFalse(membership.is_active)
             self.assertFalse(membership.waiver_valid)
+            self.assertFalse(membership.player.sponsored)
             self.assertIsNotNone(membership.waiver_signed_at)
             self.assertIsNotNone(membership.waiver_signed_by)
