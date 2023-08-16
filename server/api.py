@@ -18,7 +18,6 @@ from ninja import File, NinjaAPI, UploadedFile
 from ninja.security import django_auth
 
 from server.constants import (
-    ANNUAL_MEMBERSHIP_AMOUNT,
     EVENT_MEMBERSHIP_AMOUNT,
     MEMBERSHIP_END,
     MEMBERSHIP_START,
@@ -274,9 +273,9 @@ def create_order(
         is_annual = True
         event = None
         amount = (
-            ANNUAL_MEMBERSHIP_AMOUNT * len(order.player_ids)
+            sum(player.membership_amount for player in players)
             if isinstance(order, GroupMembershipSchema)
-            else ANNUAL_MEMBERSHIP_AMOUNT
+            else player.membership_amount
         )
 
     elif isinstance(order, EventMembershipSchema):

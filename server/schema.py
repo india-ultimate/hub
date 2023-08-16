@@ -213,7 +213,14 @@ class PlayerTinySchema(ModelSchema):
 
     class Config:
         model = Player
-        model_fields = ["id", "city", "state_ut", "team_name", "educational_institution"]
+        model_fields = [
+            "id",
+            "city",
+            "state_ut",
+            "team_name",
+            "educational_institution",
+            "sponsored",
+        ]
 
 
 class UserSchema(ModelSchema):

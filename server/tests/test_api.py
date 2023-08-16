@@ -6,7 +6,11 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client
 from django.test.client import MULTIPART_CONTENT
 
-from server.constants import ANNUAL_MEMBERSHIP_AMOUNT, EVENT_MEMBERSHIP_AMOUNT
+from server.constants import (
+    ANNUAL_MEMBERSHIP_AMOUNT,
+    EVENT_MEMBERSHIP_AMOUNT,
+    SPONSORED_ANNUAL_MEMBERSHIP_AMOUNT,
+)
 from server.models import Event, Guardianship, Membership, Player, RazorpayTransaction, User
 from server.tests.base import ApiBaseTestCase, fake_id, fake_order
 
@@ -261,9 +265,43 @@ class TestPayment(ApiBaseTestCase):
 
     def test_create_order_player_exists(self) -> None:
         c = self.client
-        # Player exists, membership does not exist
         player = self.player
         amount = ANNUAL_MEMBERSHIP_AMOUNT
+        with mock.patch(
+            "server.api.create_razorpay_order",
+            return_value=fake_order(amount),
+        ) as f:
+            response = c.post(
+                "/api/create-order",
+                data={
+                    "player_id": player.id,
+                    "year": 2023,
+                },
+                content_type="application/json",
+            )
+        f.assert_called_once_with(amount, receipt=mock.ANY, notes=mock.ANY)
+        self.assertEqual(200, response.status_code)
+        order_data = response.json()
+        self.assertIn("amount", order_data)
+        self.assertIn("order_id", order_data)
+        order_id = order_data["order_id"]
+        transaction = RazorpayTransaction.objects.get(order_id=order_id)
+        self.assertEqual(self.user, transaction.user)
+        self.assertEqual(amount, transaction.amount)
+        self.assertIn(player, transaction.players.all())
+        self.assertEqual(
+            RazorpayTransaction.TransactionStatusChoices.PENDING,
+            transaction.status,
+        )
+        self.assertEqual("2023-06-01", transaction.start_date.strftime("%Y-%m-%d"))
+        self.assertEqual("2024-05-31", transaction.end_date.strftime("%Y-%m-%d"))
+
+    def test_create_order_sponsored_player_exists(self) -> None:
+        c = self.client
+        player = self.player
+        player.sponsored = True
+        player.save()
+        amount = SPONSORED_ANNUAL_MEMBERSHIP_AMOUNT
         with mock.patch(
             "server.api.create_razorpay_order",
             return_value=fake_order(amount),

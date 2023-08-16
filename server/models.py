@@ -7,6 +7,8 @@ from django.db.models.signals import pre_save
 from django.dispatch import receiver
 from django.utils.translation import gettext_lazy as _
 
+from server.constants import ANNUAL_MEMBERSHIP_AMOUNT, SPONSORED_ANNUAL_MEMBERSHIP_AMOUNT
+
 
 class User(AbstractUser):
     phone = models.CharField(max_length=20)
@@ -83,6 +85,10 @@ class Player(models.Model):
     educational_institution = models.CharField(max_length=100, null=True, blank=True)
     ultimate_central_id = models.PositiveIntegerField(unique=True, null=True, blank=True)
     sponsored = models.BooleanField(default=False)
+
+    @property
+    def membership_amount(self) -> int:
+        return SPONSORED_ANNUAL_MEMBERSHIP_AMOUNT if self.sponsored else ANNUAL_MEMBERSHIP_AMOUNT
 
 
 class Guardianship(models.Model):
