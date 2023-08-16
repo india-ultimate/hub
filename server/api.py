@@ -473,6 +473,25 @@ def vaccination(
     return 200, vaccine
 
 
+@api.delete("/vaccination/{player_id}", response={200: None, 400: Response, 500: Response})
+def update_vaccination(
+    request: AuthenticatedHttpRequest, player_id: int
+) -> tuple[int, None | dict[str, str]]:
+    try:
+        player = Player.objects.get(id=player_id)
+    except Player.DoesNotExist:
+        return 400, {"message": "Player does not exist"}
+
+    try:
+        vaccination = Vaccination.objects.get(player=player)
+        vaccination.delete()
+        return 200, None
+    except Vaccination.DoesNotExist:
+        return 400, {"message": "Player's vaccination information does not exist"}
+    except Exception:
+        return 500, {"message": "Could not reset vaccination information"}
+
+
 # Waiver ##########
 
 

@@ -170,7 +170,7 @@ const Player = props => {
             </tr>
           </Show>
           <Show when={props.player?.vaccination}>
-            <VaccinationInformation vaccination={props.player?.vaccination} />
+            <VaccinationInformation player={props.player} />
           </Show>
           <Show when={!props.player?.vaccination}>
             <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
