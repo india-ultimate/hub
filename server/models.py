@@ -105,6 +105,32 @@ class Event(models.Model):
     ultimate_central_slug = models.SlugField(default="unknown")
 
 
+class Team(models.Model):
+    ultimate_central_id = models.PositiveIntegerField(
+        unique=True, null=True, blank=True, db_index=True
+    )
+    ultimate_central_creator_id = models.PositiveIntegerField(null=True, blank=True)
+    facebook_url = models.URLField(null=True, blank=True)
+    image_url = models.URLField(null=True, blank=True)
+    name = models.CharField(max_length=100)
+
+
+class UCPerson(models.Model):
+    email = models.EmailField(db_index=True)
+    dominant_hand = models.CharField(max_length=10, blank=True)
+    first_name = models.CharField(max_length=255)
+    last_name = models.CharField(max_length=255, blank=True)
+    slug = models.SlugField(db_index=True)
+    image_url = models.URLField(null=True, blank=True)
+
+
+class UCRegistration(models.Model):
+    event = models.ForeignKey(Event, on_delete=models.CASCADE)
+    team = models.ForeignKey(Team, on_delete=models.CASCADE)
+    person = models.ForeignKey(UCPerson, on_delete=models.CASCADE)
+    roles = models.JSONField()
+
+
 class Membership(models.Model):
     player = models.OneToOneField(Player, on_delete=models.CASCADE)
     membership_number = models.CharField(max_length=20, unique=True)
