@@ -12,7 +12,7 @@ fi
 
 python manage.py migrate -v 0
 
-COUNT=$(python manage.py shell -c 'from server.models import Player; print(Player.objects.count())')
+COUNT=$(python manage.py shell -c 'from server.models import Player, UCPerson; print(Player.objects.count() or UCPerson.objects.count())')
 
 if [ ! "${COUNT}" == "0" ];
 then
@@ -26,6 +26,9 @@ rm -rf "${DATA_DIR:?}/uploads/"
 rm -f "${DATA_DIR:?}/db.sqlite3"
 
 python manage.py migrate
+
+python manage.py import_uc_events
+python manage.py import_uc_registrations --since=2022-06-01
 
 python manage.py import_members_data "${IMPORT_DATA_DIR}/minors.csv" --minors  --download-path "${IMPORT_DATA_DIR}/minors-uploads/" --gdrive-map-csv "${IMPORT_DATA_DIR}/FileMapping-minors.csv"
 
