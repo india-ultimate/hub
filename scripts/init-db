@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -euo pipefail
+
 IMPORT_DATA_DIR="${1:-.data}"
 
 if [ ! -d "${IMPORT_DATA_DIR}" ];
