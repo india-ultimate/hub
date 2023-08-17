@@ -17,11 +17,7 @@ from firebase_admin import auth
 from ninja import File, NinjaAPI, UploadedFile
 from ninja.security import django_auth
 
-from server.constants import (
-    EVENT_MEMBERSHIP_AMOUNT,
-    MEMBERSHIP_END,
-    MEMBERSHIP_START,
-)
+from server.constants import EVENT_MEMBERSHIP_AMOUNT, MEMBERSHIP_END, MEMBERSHIP_START
 from server.firebase_middleware import firebase_to_django_user
 from server.models import (
     Event,
@@ -36,6 +32,7 @@ from server.schema import (
     AnnualMembershipSchema,
     Credentials,
     EventMembershipSchema,
+    EventRegistrationSchema,
     EventSchema,
     FirebaseCredentials,
     FirebaseSignUpCredentials,
@@ -240,6 +237,17 @@ def register_ward(
 def list_events(request: AuthenticatedHttpRequest, include_all: bool = False) -> QuerySet[Event]:
     today = now().date()
     return Event.objects.all() if include_all else Event.objects.filter(start_date__gte=today)
+
+
+@api.get("/event/{event_id}", response={200: EventRegistrationSchema, 404: Response})
+def get_event(
+    request: AuthenticatedHttpRequest, event_id: int
+) -> tuple[int, Event | dict[str, str]]:
+    try:
+        event = Event.objects.get(id=event_id)
+    except Event.DoesNotExist:
+        return 404, {"message": f"Event with {event_id} not found."}
+    return 200, event
 
 
 # Payments ##########

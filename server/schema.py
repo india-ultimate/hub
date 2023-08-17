@@ -1,5 +1,6 @@
 from typing import Any
 
+from django.db.models import QuerySet
 from ninja import ModelSchema, Schema
 
 from server.models import (
@@ -8,6 +9,9 @@ from server.models import (
     Membership,
     Player,
     RazorpayTransaction,
+    Team,
+    UCPerson,
+    UCRegistration,
     User,
     Vaccination,
 )
@@ -221,6 +225,48 @@ class PlayerTinySchema(ModelSchema):
             "educational_institution",
             "sponsored",
         ]
+
+
+class TeamSchema(ModelSchema):
+    class Config:
+        model = Team
+        model_fields = "__all__"
+
+
+class PersonSchema(ModelSchema):
+    player: PlayerSchema | None
+
+    @staticmethod
+    def resolve_player(person: UCPerson) -> Player | None:
+        try:
+            return Player.objects.get(ultimate_central_id=person.id)
+        except Player.DoesNotExist:
+            return None
+
+    class Config:
+        model = UCPerson
+        model_fields = "__all__"
+
+
+class UCRegistrationSchema(ModelSchema):
+    team: TeamSchema
+    person: PersonSchema
+
+    class Config:
+        model = UCRegistration
+        model_fields = "__all__"
+
+
+class EventRegistrationSchema(ModelSchema):
+    registrations: list[UCRegistrationSchema]
+
+    @staticmethod
+    def resolve_registrations(event: Event) -> QuerySet[UCRegistration]:
+        return UCRegistration.objects.filter(event=event)
+
+    class Config:
+        model = Event
+        model_fields = "__all__"
 
 
 class UserSchema(ModelSchema):
