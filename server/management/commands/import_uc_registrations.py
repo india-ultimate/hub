@@ -119,6 +119,7 @@ class Command(BaseCommand):
                     event=event,
                     team_id=uc_id_to_team_id[registration["Team"]["id"]],
                     person_id=registration["Person"]["id"],
+                    roles=registration["roles"],
                 )
                 for registration in registrations
                 if registration["Team"] is not None
