@@ -15,6 +15,7 @@ const Vaccination = lazy(() => import("./Vaccination"));
 const Waiver = lazy(() => import("./Waiver"));
 const UltimateCentralLogin = lazy(() => import("./UltimateCentralLogin"));
 const RegisteredPlayerList = lazy(() => import("./RegisteredPlayerList"));
+const ValidateRoster = lazy(() => import("./ValidateRoster"));
 
 const filters = {
   id: /^\d+$/ // only allow numbers
@@ -70,6 +71,7 @@ export default function App() {
                 />
                 {/* Admin routes */}
                 <Route path="/players" component={RegisteredPlayerList} />
+                <Route path="/validate-rosters" component={ValidateRoster} />
               </Routes>
             </div>
           </div>
