@@ -34,7 +34,11 @@ export default function Header() {
         <div class="max-w-screen-xl flex flex-wrap items-center justify-between mx-auto p-4">
           <A href="/" class="flex items-center">
             <img
-              src="/assets/logo-vertical.png"
+              src={
+                process.env.NODE_ENV === "production" // eslint-disable-line no-undef
+                  ? "/static/assets/logo-vertical.png"
+                  : "/assets/logo-vertical.png"
+              }
               class="h-8 mr-3"
               alt="UPAI Logo"
             />
