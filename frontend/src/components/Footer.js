@@ -1,6 +1,7 @@
 import { A } from "@solidjs/router";
 
 export default function Footer() {
+  const email = "operations+hub@indiaultimate.org";
   return (
     <div>
       <footer class="bg-white rounded-lg shadow m-4 dark:bg-gray-800">
@@ -23,10 +24,7 @@ export default function Footer() {
               </A>
             </li>
             <li>
-              <a
-                href="mailto:operations+hub@indiaultimate.org"
-                class="hover:underline"
-              >
+              <a title={email} href={`mailto:${email}`} class="hover:underline">
                 Contact
               </a>
             </li>
