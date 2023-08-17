@@ -34,7 +34,7 @@ export default function Header() {
         <div class="max-w-screen-xl flex flex-wrap items-center justify-between mx-auto p-4">
           <A href="/" class="flex items-center">
             <img
-              src="https://d36m266ykvepgv.cloudfront.net/uploads/media/o4G97mT9vR/s-448-250/upai-2.png"
+              src="/assets/logo-vertical.png"
               class="h-8 mr-3"
               alt="UPAI Logo"
             />
