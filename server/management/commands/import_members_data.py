@@ -186,6 +186,12 @@ class Command(BaseCommand):
                     except UCPerson.DoesNotExist:
                         uc_person = None
 
+                elif email:
+                    try:
+                        uc_person = UCPerson.objects.get(email=email)
+                    except (UCPerson.DoesNotExist, UCPerson.MultipleObjectsReturned):
+                        uc_person = None
+
                 if not email and uc_person:
                     email = uc_person.email
 
