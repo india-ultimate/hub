@@ -109,7 +109,7 @@ const PasswordLogin = props => {
 const SendEmailLink = props => {
   const [email, setEmail] = createSignal("");
   let url = new URL(window.location);
-  url.hash = "#/email-link";
+  url.pathname = "/email-link";
   const sendFirebaseEmailLink = e => {
     e.preventDefault();
     const actionCodeSettings = {
