@@ -1,13 +1,11 @@
-import { getCookie, loginWithFirebaseResponse, firebaseConfig } from "../utils";
+import { getCookie, firebaseConfig } from "../utils";
 import { useStore } from "../store";
-import { createSignal, createEffect, onMount, Show } from "solid-js";
+import { createSignal, createEffect, onMount } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 import { initializeApp } from "firebase/app";
 import {
   getAuth,
-  RecaptchaVerifier,
-  sendSignInLinkToEmail,
-  signInWithPhoneNumber
+  sendSignInLinkToEmail
 } from "firebase/auth";
 import { initFlowbite } from "flowbite";
 
@@ -167,130 +165,6 @@ const SendEmailLink = props => {
   );
 };
 
-const SendPhoneConfirmation = props => {
-  const [phone, setPhone] = createSignal("+91");
-  const [code, setCode] = createSignal("");
-  const [verifier, setVerifier] = createSignal();
-  const [confirmationResult, setConfirmationResult] = createSignal();
-  const [_, { setLoggedIn, setData }] = useStore();
-
-  const auth = getAuth();
-  auth.useDeviceLanguage();
-  createEffect(() => {
-    setVerifier(new RecaptchaVerifier("recaptcha-container", {}, auth));
-  });
-
-  const onSignInSubmit = e => {
-    e.preventDefault();
-    signInWithPhoneNumber(auth, phone(), verifier())
-      .then(confirmationResult => {
-        setConfirmationResult(confirmationResult);
-        props.setStatus(`Confirmation code has been sent to ${phone()}`);
-      })
-      .catch(error => {
-        // Error; SMS not sent
-        console.log(error);
-        props.setStatus(`Failed to send code: ${error}`);
-        verifier()
-          .render()
-          .then(function (widgetId) {
-            window.grecaptcha.reset(widgetId);
-          });
-        setConfirmationResult();
-      });
-  };
-
-  const onSuccess = async response => {
-    props.setStatus("Successfully logged in!");
-    setLoggedIn(true);
-    setData(await response.json());
-  };
-
-  const onFailure = async response => {
-    setLoggedIn(false);
-    try {
-      const data = await response.json();
-      props.setStatus(`Login failed with error: ${data.message}`);
-    } catch {
-      props.setStatus(
-        `Login failed with error: ${response.statusText} (${response.status})`
-      );
-    }
-  };
-
-  const confirmResult = e => {
-    e.preventDefault();
-    console.log(e);
-    confirmationResult()
-      .confirm(code())
-      .then(async response =>
-        loginWithFirebaseResponse(response, onSuccess, onFailure)
-      )
-      .catch(error => {
-        props.setStatus(`Login failed: ${error}`);
-        console.log(error);
-      });
-  };
-
-  return (
-    <>
-      <Show when={!confirmationResult()}>
-        <form onSubmit={onSignInSubmit}>
-          <div class="grid gap-3 mb-6">
-            <label
-              for="phone-number-input"
-              class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
-            >
-              Mobile Number
-            </label>
-
-            <input
-              id="phone-number-input"
-              class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-              placeholder="Phone Number"
-              value={phone()}
-              onInput={e => setPhone(e.currentTarget.value)}
-            />
-            <button
-              id="phone-signin-button"
-              type="submit"
-              class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
-            >
-              Send Confirmation Code
-            </button>
-            <div class="py-2.5" id="recaptcha-container" />
-          </div>
-        </form>
-      </Show>
-      <Show when={confirmationResult()}>
-        <form onSubmit={confirmResult}>
-          <div class="grid gap-3 mb-6">
-            <label
-              for="confirmation-code-input"
-              class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
-            >
-              Enter Confirmation Code sent via SMS
-            </label>
-            <input
-              id="confirmation-code-input"
-              class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-              placeholder="Confirmation Code"
-              value={code()}
-              onInput={e => setCode(e.currentTarget.value)}
-            />
-            <button
-              type="submit"
-              class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
-            >
-              Verify Confirmation Code
-            </button>
-          </div>
-        </form>
-      </Show>
-    </>
-  );
-};
-
 const Login = () => {
   const [status, setStatus] = createSignal("");
   const [store, _] = useStore();
@@ -357,18 +231,6 @@ const Login = () => {
           aria-labelledby="email-link-tab"
         >
           <SendEmailLink setStatus={setStatus} />
-        </div>
-        <div
-          class="hidden p-4 rounded-lg bg-gray-50 dark:bg-gray-800"
-          id="phone"
-          role="tabpanel"
-          aria-labelledby="phone-tab"
-        >
-          <SendPhoneConfirmation setStatus={setStatus} />
-          <p>
-            Note: The free Firebase plan only allows for 10 SMS/day. Use the
-            email login feature, if you can.
-          </p>
         </div>
         <div
           class="hidden p-4 rounded-lg bg-gray-50 dark:bg-gray-800"
