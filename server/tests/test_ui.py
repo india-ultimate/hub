@@ -125,6 +125,7 @@ class TestIntegration(BaseCase):
 
         with running_test_server() as base_url:
             self.open(base_url)
+            self.click("button#email-link-tab")
             self.type("input#email-link-input", username)
             self.click("div#email-link form div button")
 
@@ -138,6 +139,7 @@ class TestIntegration(BaseCase):
         username = get_zulip_stream_email()
         with running_test_server() as base_url:
             self.open(base_url)
+            self.click("button#email-link-tab")
             self.type("input#email-link-input", username)
             self.click("div#email-link form div button")
 

@@ -1,13 +1,16 @@
-import { getCookie, firebaseConfig } from "../utils";
+import { getCookie, firebaseConfig, loginWithFirebaseResponse } from "../utils";
 import { useStore } from "../store";
-import { createSignal, createEffect, onMount } from "solid-js";
+import { createSignal, createEffect, onMount, Switch, Match } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 import { initializeApp } from "firebase/app";
 import {
   getAuth,
-  sendSignInLinkToEmail
+  sendSignInLinkToEmail,
+  signInWithPopup,
+  GoogleAuthProvider
 } from "firebase/auth";
 import { initFlowbite } from "flowbite";
+import SignUp from "./SignUp";
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
@@ -104,6 +107,82 @@ const PasswordLogin = props => {
   );
 };
 
+const GoogleLogin = props => {
+  const [store, { setLoggedIn, setData }] = useStore();
+  const [creds, setCreds] = createSignal();
+  const [showSignUp, setShowSignUp] = createSignal(false);
+
+  createEffect(() => {
+    if (store.loggedIn) {
+      const navigate = useNavigate();
+      navigate("/", { replace: true });
+    }
+  });
+
+  const onSuccess = async response => {
+    props.setStatus("Successfully logged in!");
+    setLoggedIn(true);
+    setData(await response.json());
+  };
+
+  const onFailure = async response => {
+    setLoggedIn(false);
+    if (response.status === 404) {
+      setShowSignUp(true);
+      return;
+    }
+    try {
+      const data = await response.json();
+      props.setStatus(`Login failed with error: ${data.message}`);
+      setShowSignUp(false);
+    } catch {
+      props.setStatus(
+        `Login failed with error: ${response.statusText} (${response.status})`
+      );
+      setShowSignUp(false);
+    }
+  };
+
+  const loginWithGoogle = e => {
+    e.preventDefault();
+
+    const provider = new GoogleAuthProvider();
+
+    signInWithPopup(auth, provider)
+      .then(result => {
+        setCreds(result);
+        loginWithFirebaseResponse(result, onSuccess, onFailure);
+      })
+      .catch(error => {
+        props.setStatus(
+          `Failed to login using Google: ${error.code}; ${error.message}`
+        );
+      });
+  };
+
+  return (
+    <Switch>
+      <Match when={!showSignUp()}>
+        <div class="grid gap-3 mb-6">
+          <button
+            class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+            onClick={loginWithGoogle}
+          >
+            Login with Google
+          </button>
+        </div>
+      </Match>
+      <Match when={showSignUp()}>
+        <SignUp
+          emailId={creds()?.user?.email}
+          uid={creds()?.user?.uid}
+          token={creds()?.user?.stsTokenManager?.accessToken}
+        />
+      </Match>
+    </Switch>
+  );
+};
+
 const SendEmailLink = props => {
   const [email, setEmail] = createSignal("");
   let url = new URL(window.location);
@@ -117,8 +196,6 @@ const SendEmailLink = props => {
       // This must be true.
       handleCodeInApp: true
     };
-
-    // console.log(auth, email, actionCodeSettings);
 
     sendSignInLinkToEmail(auth, email(), actionCodeSettings)
       .then(() => {
@@ -198,6 +275,19 @@ const Login = () => {
           <li class="mr-2" role="presentation">
             <button
               class="inline-block p-4 border-b-2 rounded-t-lg"
+              id="google-tab"
+              data-tabs-target="#google"
+              type="button"
+              role="tab"
+              aria-controls="google"
+              aria-selected="false"
+            >
+              Google Login
+            </button>
+          </li>
+          <li class="mr-2" role="presentation">
+            <button
+              class="inline-block p-4 border-b-2 rounded-t-lg"
               id="email-link-tab"
               data-tabs-target="#email-link"
               type="button"
@@ -224,6 +314,14 @@ const Login = () => {
         </ul>
       </div>
       <div id="signinTabContent">
+        <div
+          class="hidden p-4 rounded-lg bg-gray-50 dark:bg-gray-800"
+          id="google"
+          role="tabpanel"
+          aria-labelledby="google-tab"
+        >
+          <GoogleLogin setStatus={setStatus} />
+        </div>
         <div
           class="hidden p-4 rounded-lg bg-gray-50 dark:bg-gray-800"
           id="email-link"
