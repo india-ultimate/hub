@@ -1,6 +1,14 @@
 import { getCookie, firebaseConfig, loginWithFirebaseResponse } from "../utils";
 import { useStore } from "../store";
-import { createSignal, createEffect, onMount, Switch, Match } from "solid-js";
+import { Spinner } from "../icons";
+import {
+  createSignal,
+  createEffect,
+  onMount,
+  Switch,
+  Match,
+  Show
+} from "solid-js";
 import { useNavigate } from "@solidjs/router";
 import { initializeApp } from "firebase/app";
 import {
@@ -111,6 +119,7 @@ const GoogleLogin = props => {
   const [store, { setLoggedIn, setData }] = useStore();
   const [creds, setCreds] = createSignal();
   const [showSignUp, setShowSignUp] = createSignal(false);
+  const [loading, setLoading] = createSignal(false);
 
   createEffect(() => {
     if (store.loggedIn) {
@@ -121,11 +130,13 @@ const GoogleLogin = props => {
 
   const onSuccess = async response => {
     props.setStatus("Successfully logged in!");
+    setLoading(false);
     setLoggedIn(true);
     setData(await response.json());
   };
 
   const onFailure = async response => {
+    setLoading(false);
     setLoggedIn(false);
     if (response.status === 404) {
       setShowSignUp(true);
@@ -151,6 +162,7 @@ const GoogleLogin = props => {
     signInWithPopup(auth, provider)
       .then(result => {
         setCreds(result);
+        setLoading(true);
         loginWithFirebaseResponse(result, onSuccess, onFailure);
       })
       .catch(error => {
@@ -179,6 +191,9 @@ const GoogleLogin = props => {
           "Enhanced Tracking Protection" for this site (Use the shield icon (🛡)
           in the address bar) or use the "Email Link" based sign-in.
         </div>
+        <Show when={loading()}>
+          <Spinner />
+        </Show>
       </Match>
       <Match when={showSignUp()}>
         <SignUp
