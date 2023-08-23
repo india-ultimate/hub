@@ -17,7 +17,7 @@ import { Spinner } from "../icons";
 const UltimateCentralLogin = () => {
   const [store, { setLoggedIn, setData, setPlayerById }] = useStore();
 
-  const initialValues = { is_vaccinated: true };
+  const initialValues = {};
   const [_form, { Form, Field }] = createForm({
     initialValues,
     validateOn: "touched",
@@ -65,7 +65,9 @@ const UltimateCentralLogin = () => {
         setError(`${text}`);
       }
     } catch (error) {
-      setError(`An error occurred while submitting vaccination data: ${error}`);
+      setError(
+        `An error occurred while logging into Ultimate central: ${error}`
+      );
     }
   };
 
