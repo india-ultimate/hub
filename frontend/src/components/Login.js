@@ -171,6 +171,14 @@ const GoogleLogin = props => {
             Login with Google
           </button>
         </div>
+        <div
+          class="p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-yellow-50 dark:bg-gray-800 dark:text-yellow-300"
+          role="alert"
+        >
+          If you have issues logging in using Google on Firefox, disable
+          "Enhanced Tracking Protection" for this site. (Click on the shield
+          icon (🛡) in the address bar).
+        </div>
       </Match>
       <Match when={showSignUp()}>
         <SignUp
