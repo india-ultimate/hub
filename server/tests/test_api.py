@@ -819,6 +819,11 @@ class TestUPAI(ApiBaseTestCase):
         c = self.client
         c.force_login(self.user)
         player_id = self.user.player_profile.id
+        player = self.user.player_profile
+        player.team_name = "TIKS"
+        player.gender = "M"
+        player.city = "Mysore"
+        player.save()
 
         upai_id = 463579
         with mock.patch(

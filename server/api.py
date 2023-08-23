@@ -525,6 +525,11 @@ def upai_person(
     person_id = person["person_id"]
     if person_id:
         player.ultimate_central_id = person_id
-        player.save()
+        try:
+            player.full_clean()
+        except ValidationError as e:
+            return 400, {"message": e.messages[0]}
+        else:
+            player.save()
 
     return 200, player
