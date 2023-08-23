@@ -176,8 +176,8 @@ const GoogleLogin = props => {
           role="alert"
         >
           If you have issues logging in using Google on Firefox, disable
-          "Enhanced Tracking Protection" for this site. (Click on the shield
-          icon (🛡) in the address bar).
+          "Enhanced Tracking Protection" for this site (Use the shield icon (🛡)
+          in the address bar) or use the "Email Link" based sign-in.
         </div>
       </Match>
       <Match when={showSignUp()}>
