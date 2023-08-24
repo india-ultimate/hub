@@ -80,7 +80,6 @@ const Player = props => {
               {getLabel(stateChoices, props.player?.state_ut)}
             </td>
           </tr>
-          {/* FIXME: Add more rows with other player information */}
           <Show when={props.player?.membership}>
             <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
               <th
