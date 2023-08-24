@@ -53,6 +53,9 @@ const Vaccination = () => {
     formData.append("vaccination", JSON.stringify(data));
     formData.append("certificate", certificate);
 
+    setStatus("");
+    setError("");
+
     try {
       const response = await fetch("/api/vaccination", {
         method: "POST",
