@@ -47,7 +47,7 @@ const RegistrationForm = props => {
   };
 
   const validateMinAge = value => {
-    return getAge(value) >= 13;
+    return getAge(value) >= minAge;
   };
 
   const validateDateOfBirth = value => {
@@ -246,7 +246,10 @@ const RegistrationForm = props => {
               name="date_of_birth"
               validate={[
                 required("Please enter date of birth."),
-                custom(validateMinAge, "Players need to be 13 years or older"),
+                custom(
+                  validateMinAge,
+                  `Players need to be ${minAge} years or older`
+                ),
                 custom(
                   validateDateOfBirth,
                   props.ward
