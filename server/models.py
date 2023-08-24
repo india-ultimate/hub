@@ -83,7 +83,9 @@ class Player(models.Model):
         max_length=25, choices=OccupationTypes.choices, null=True, blank=True
     )
     educational_institution = models.CharField(max_length=100, null=True, blank=True)
-    ultimate_central_id = models.PositiveIntegerField(unique=True, null=True, blank=True)
+    ultimate_central_id = models.PositiveIntegerField(
+        unique=True, null=True, blank=True, db_index=True
+    )
     sponsored = models.BooleanField(default=False)
 
     def __str__(self) -> str:
