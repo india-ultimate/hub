@@ -515,7 +515,9 @@ def waiver(
 # UPAI ID ##########
 
 
-@api.post("/upai/me", response={200: PlayerSchema, 400: Response, 404: Response})
+@api.post(
+    "/upai/me", response={200: PlayerSchema, 403: PlayerTinySchema, 400: Response, 404: Response}
+)
 def upai_person(
     request: AuthenticatedHttpRequest, credentials: TopScoreCredentials
 ) -> tuple[int, Player] | tuple[int, message_response]:
@@ -534,7 +536,11 @@ def upai_person(
         try:
             player.full_clean()
         except ValidationError as e:
-            return 400, {"message": e.messages[0]}
+            other_player = Player.objects.filter(ultimate_central_id=person_id).first()
+            if other_player is None:
+                return 400, {"message": e.messages[0]}
+            else:
+                return 403, other_player
         else:
             player.save()
 

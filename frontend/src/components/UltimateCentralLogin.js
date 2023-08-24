@@ -61,7 +61,10 @@ const UltimateCentralLogin = () => {
         setPlayerById({ data });
       } else {
         const message = await response.json();
-        const text = message?.message || JSON.stringify(message);
+        const text =
+          response.status === 403
+            ? `Ultimate Central profile already linked to ${message.full_name} (${message.id}) [${message.email}]`
+            : message?.message || JSON.stringify(message);
         setError(`${text}`);
       }
     } catch (error) {
