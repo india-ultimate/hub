@@ -458,18 +458,24 @@ def vaccination(
         return 400, {"message": "Player does not exist"}
 
     try:
-        _vaccination = player.vaccination
-        return 400, {"message": "Player's vaccination information is already available"}
+        vaccine = player.vaccination
+        edit = True
     except Vaccination.DoesNotExist:
-        pass
+        edit = False
 
     vaccination_data = vaccination.dict()
     vaccination_data["certificate"] = certificate
     vaccination_data["player"] = player
-    vaccine = Vaccination(**vaccination_data)
+    if not edit:
+        vaccine = Vaccination(**vaccination_data)
+    else:
+        vaccine.certificate = certificate
+        vaccine.is_vaccinated = vaccination_data.get("is_vaccinated", False)
+        vaccine.name = vaccination_data.get("name")
+        vaccine.explain_not_vaccinated = vaccination_data.get("explain_not_vaccinated", "")
+
     vaccine.full_clean()
     vaccine.save()
-
     return 200, vaccine
 
 

@@ -17,6 +17,8 @@ import TextInput from "./TextInput";
 import Select from "./Select";
 import Checkbox from "./Checkbox";
 import FileInput from "./FileInput";
+import { Icon } from "solid-heroicons";
+import { pencilSquare } from "solid-heroicons/solid-mini";
 
 const Vaccination = () => {
   const [store, { setLoggedIn, setData, setPlayerById }] = useStore();
@@ -28,6 +30,7 @@ const Vaccination = () => {
     revalidateOn: "touched"
   });
 
+  const [edit, setEdit] = createSignal(false);
   const [player, setPlayer] = createSignal();
   const [status, setStatus] = createSignal("");
   const [error, setError] = createSignal("");
@@ -68,6 +71,7 @@ const Vaccination = () => {
         setStatus("Player vaccination information saved!");
         const data = await response.json();
         setPlayerById({ ...player(), vaccination: data });
+        setEdit(false);
       } else {
         const message = await response.json();
         const text = message?.message || JSON.stringify(message);
@@ -91,15 +95,25 @@ const Vaccination = () => {
         <h1 class="text-2xl font-bold text-blue-500">
           Vaccination details for {player()?.full_name}
         </h1>
-        <Show when={player()?.vaccination}>
+        <Show when={player()?.vaccination && !edit()}>
           <table>
             <tbody>
               <VaccinationInformation vaccination={player()?.vaccination} />
             </tbody>
           </table>
+          <button
+            class="block my-4 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+            onClick={() => setEdit(!edit())}
+          >
+            <Icon
+              path={pencilSquare}
+              style={{ width: "20px", display: "inline" }}
+            />{" "}
+            Edit
+          </button>
           <StatusStepper player={player()} />
         </Show>
-        <Show when={player() && !player()?.vaccination}>
+        <Show when={player() && (!player()?.vaccination || edit())}>
           <Form
             class="mt-12 space-y-12 md:space-y-14 lg:space-y-16"
             onSubmit={values => handleSubmit(values)}
