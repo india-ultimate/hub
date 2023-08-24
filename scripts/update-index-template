@@ -11,7 +11,7 @@ OUTPUT = ROOT / "server/templates/index.html"
 
 
 def make_static(name):
-    return f"{{% static '{name}' %}}"
+    return f"{{% static '{name.strip('/')}' %}}"
 
 
 def main():
