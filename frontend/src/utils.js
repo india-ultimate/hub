@@ -137,7 +137,11 @@ const handlePaymentSuccess = (
         if (successCallback) {
           successCallback();
         }
-        setStatus("Payment successfully completed!");
+        setStatus(
+          <span class="text-green-500 dark:text-green-400">
+            Payment successfully completed! 🎉
+          </span>
+        );
       } else {
         if (response.status === 422) {
           const error = await response.json();
