@@ -288,7 +288,6 @@ const RegistrationForm = props => {
               <Field
                 name="other_gender"
                 validate={[
-                  required("Please enter the name of the other gender"),
                   maxLength(30, "Gender cannot be more than 30 chars")
                 ]}
               >
@@ -300,7 +299,6 @@ const RegistrationForm = props => {
                     type="text"
                     label="Other Gender:"
                     placeholder="Non-Binary"
-                    required
                   />
                 )}
               </Field>
