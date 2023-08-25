@@ -177,6 +177,12 @@ def do_register(
         player.full_clean()
     except ValidationError as e:
         return 400, {"message": str(e)}
+
+    if player.is_minor and not guardian:
+        return 400, {"message": "Minors need to have a guardian! Use the form for minors"}
+    if not player.is_minor and guardian:
+        return 400, {"message": "Only minors can have a guardian! Use the form for adults"}
+
     player.save()
 
     user_data = UserFormSchema(**registration.dict()).dict()

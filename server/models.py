@@ -5,9 +5,10 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.db.models.signals import pre_save
 from django.dispatch import receiver
+from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 
-from server.constants import ANNUAL_MEMBERSHIP_AMOUNT, SPONSORED_ANNUAL_MEMBERSHIP_AMOUNT
+from server.constants import ANNUAL_MEMBERSHIP_AMOUNT, MAJOR_AGE, SPONSORED_ANNUAL_MEMBERSHIP_AMOUNT
 
 
 class User(AbstractUser):
@@ -94,6 +95,13 @@ class Player(models.Model):
     @property
     def membership_amount(self) -> int:
         return SPONSORED_ANNUAL_MEMBERSHIP_AMOUNT if self.sponsored else ANNUAL_MEMBERSHIP_AMOUNT
+
+    @property
+    def is_minor(self) -> bool:
+        today = now().date()
+        dob = self.date_of_birth
+        age = (today.year - dob.year) + (today.month - dob.month) / 12 + (today.day - dob.day) / 365
+        return age < MAJOR_AGE
 
 
 class Guardianship(models.Model):

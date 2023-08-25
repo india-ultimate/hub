@@ -1,3 +1,4 @@
+import datetime
 import json
 import uuid
 from unittest import mock
@@ -5,6 +6,7 @@ from unittest import mock
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client
 from django.test.client import MULTIPART_CONTENT
+from django.utils.timezone import now
 
 from server.constants import (
     ANNUAL_MEMBERSHIP_AMOUNT,
@@ -166,11 +168,56 @@ class TestRegistration(ApiBaseTestCase):
         self.assertEqual(user.username, data["email"])
         self.assertEqual(user.email, data["email"])
 
-    def test_register_ward(self) -> None:
+    def test_register_others_minor_fail(self) -> None:
+        c = self.client
+
+        dob = now() - datetime.timedelta(days=15 * 365)
+
+        data = {
+            "email": "foo@email.com",
+            "phone": "+1234567890",
+            "date_of_birth": dob.date(),
+            "gender": "F",
+            "city": "Bangalore",
+            "team_name": "TIKS",
+            "first_name": "Nora",
+            "last_name": "Quinn",
+        }
+        response = c.post(
+            "/api/registration/others",
+            data=data,
+            content_type="application/json",
+        )
+        self.assertEqual(400, response.status_code)
+
+    def test_register_ward_non_minor_fail(self) -> None:
         c = self.client
         data = {
             "phone": "+1234567890",
             "date_of_birth": "1990-01-01",
+            "gender": "F",
+            "city": "Bangalore",
+            "team_name": "TIKS",
+            "first_name": "Nora",
+            "last_name": "Quinn",
+            "relation": "MO",
+        }
+        response = c.post(
+            "/api/registration/ward",
+            data=data,
+            content_type="application/json",
+        )
+        self.assertEqual(400, response.status_code)
+
+    def test_register_ward(self) -> None:
+        c = self.client
+
+        # ~15 years old
+        dob = now() - datetime.timedelta(days=15 * 365)
+
+        data = {
+            "phone": "+1234567890",
+            "date_of_birth": str(dob.date()),
             "gender": "F",
             "city": "Bangalore",
             "team_name": "TIKS",
