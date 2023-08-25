@@ -71,9 +71,10 @@ class TestIntegration(BaseCase):
             self.type("input#city", "Bengaluru")
             self.select_option_by_text("select#state_ut", "Karnataka")
             self.assert_element('button:contains("Submit")')
-            self.click('button:contains("Submit")')
             self.save_screenshot_to_logs("form.png")
 
+            self.click('button:contains("Submit")')
+            self.assert_text("Successful Registration")
             player_id = Player.objects.get(user_id=user_id).id
 
             self.assert_element('a[href="/"] svg')
@@ -94,9 +95,10 @@ class TestIntegration(BaseCase):
             self.switch_to_frame('iframe[class="razorpay-checkout-frame"]')
             self.click('button[method="upi"]')
             self.click("div#new-vpa-field-upi div")
-            self.type("input#vpa-upi", "punchagan@upi")
-            self.click("button#redesign-v15-cta")
+            self.type("input#vpa-upi", "punchagan@upi\n")
+            self.click("button#redesign-v15-cta", delay=2)
             self.switch_to_default_content()
+            self.save_screenshot_to_logs("pay-clicked.png")
 
             self.click(f'a[href="/vaccination/{player_id}"]', timeout=60)
             self.select_option_by_text("select#name", "Covishield")
