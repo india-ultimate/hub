@@ -1,5 +1,14 @@
 import { useStore } from "../store";
-import { createSignal, createEffect, onCleanup, onMount, For } from "solid-js";
+import {
+  createSignal,
+  createEffect,
+  onCleanup,
+  onMount,
+  For,
+  Switch,
+  Match,
+  Show
+} from "solid-js";
 import {
   fetchUserData,
   displayDate,
@@ -120,6 +129,7 @@ const GroupMembership = () => {
 
   const [players, setPlayers] = createSignal([]);
   const [payingPlayers, setPayingPlayers] = createSignal([]);
+  const [paymentSuccess, setPaymentSuccess] = createSignal(false);
 
   const playersSuccessHandler = async response => {
     const data = await response.json();
@@ -175,12 +185,17 @@ const GroupMembership = () => {
     }
   };
 
+  const paymentSuccessCallback = () => {
+    fetchPlayers();
+    setPaymentSuccess(true);
+  };
+
   const triggerPurchase = () => {
     const data = {
       player_ids: payingPlayers().map(p => p.id),
       year: year()
     };
-    purchaseMembership(data, setStatus, setPlayerById, fetchPlayers);
+    purchaseMembership(data, setStatus, setPlayerById, paymentSuccessCallback);
   };
 
   const formatDate = dateArray => {
@@ -220,10 +235,12 @@ const GroupMembership = () => {
             )}
           </For>
         </select>
-        <PlayerSearchDropdown
-          players={players()}
-          onPlayerChecked={handlePlayerChecked}
-        />
+        <Show when={!paymentSuccess()}>
+          <PlayerSearchDropdown
+            players={players()}
+            onPlayerChecked={handlePlayerChecked}
+          />
+        </Show>
         <MembershipPlayerList
           players={payingPlayers()}
           fee={
@@ -240,15 +257,34 @@ const GroupMembership = () => {
           endDate={displayDate(endDate())}
         />
         <div>
-          <button
-            class={`my-2 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 ${
-              payDisabled() ? "cursor-not-allowed" : ""
-            } `}
-            onClick={triggerPurchase}
-            disabled={payDisabled()}
-          >
-            Pay
-          </button>
+          <Switch>
+            <Match when={!paymentSuccess()}>
+              <button
+                class={`my-2 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 ${
+                  payDisabled() ? "cursor-not-allowed" : ""
+                } `}
+                onClick={triggerPurchase}
+                disabled={payDisabled()}
+              >
+                Pay
+              </button>
+            </Match>
+            <Match when={paymentSuccess()}>
+              <button
+                class={`my-2 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 ${
+                  payDisabled() ? "cursor-not-allowed" : ""
+                } `}
+                onClick={() => {
+                  setPaymentSuccess(false);
+                  setPayingPlayers([]);
+                  setStatus("");
+                }}
+                disabled={!paymentSuccess()}
+              >
+                Make another Payment
+              </button>
+            </Match>
+          </Switch>
         </div>
       </div>
       <p>{status()}</p>
