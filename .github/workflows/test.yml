@@ -157,3 +157,14 @@ jobs:
         run: |
           npx eslint .
           git diff --exit-code
+
+  docker_image_test:
+    name: Build docker image to ensure everything works
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - uses: whoan/docker-build-with-cache-action@v5
+        with:
+          image_name: india-ultimate/hub
+          push_image_and_stages: false
