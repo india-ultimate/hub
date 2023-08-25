@@ -5,6 +5,11 @@ import { A } from "@solidjs/router";
 import { Icon } from "solid-heroicons";
 import { bars_3, moon, sun } from "solid-heroicons/solid-mini";
 
+const assetURL = name =>
+  process.env.NODE_ENV === "production" // eslint-disable-line no-undef
+    ? `/static/assets/${name}`
+    : `/assets/${name}`;
+
 export default function Header() {
   const [store, { setLoggedIn, setData, setTheme }] = useStore();
 
@@ -34,12 +39,13 @@ export default function Header() {
         <div class="max-w-screen-xl flex flex-wrap items-center justify-between mx-auto p-4">
           <A href="/" class="flex items-center">
             <img
-              src={
-                process.env.NODE_ENV === "production" // eslint-disable-line no-undef
-                  ? "/static/assets/logo-vertical.png"
-                  : "/assets/logo-vertical.png"
-              }
-              class="h-8 mr-3"
+              src={assetURL("logo-vertical.png")}
+              class="h-8 mr-3 block dark:hidden"
+              alt="UPAI Logo"
+            />
+            <img
+              src={assetURL("logo-vertical.jpg")}
+              class="h-8 mr-3 hidden dark:block"
               alt="UPAI Logo"
             />
             <span class="self-center text-2xl font-semibold whitespace-nowrap dark:text-white">
