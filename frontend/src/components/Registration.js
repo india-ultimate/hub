@@ -404,7 +404,7 @@ const RegistrationForm = props => {
                   checked={field.value}
                   value={field.value}
                   error={field.error}
-                  label="Not in India"
+                  label={selfForm ? "I'm not in India" : "Player not in India"}
                 />
               )}
             </Field>
