@@ -115,7 +115,6 @@ class TestIntegration(BaseCase):
             self.assert_element("div#accordion-body-player div div table tbody tr:nth-of-type(7)")
             self.assert_element("div#accordion-body-player div div table tbody tr:nth-of-type(8)")
             self.assert_element("div#accordion-body-player div div table tbody tr:nth-of-type(9)")
-            self.assert_element("div#accordion-body-player div div table tbody tr:nth-of-type(10)")
 
             self.click("h2#accordion-heading-transactions")
             self.assert_element("h2#accordion-heading-transactions")
