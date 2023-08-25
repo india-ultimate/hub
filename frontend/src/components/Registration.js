@@ -55,14 +55,15 @@ const RegistrationForm = props => {
     return props.ward ? age < 18 : age >= 18;
   };
 
-  const initialValues =
-    !props.ward && !props.others
-      ? {
-          first_name: store.data.first_name,
-          last_name: store.data.last_name,
-          phone: store.data.phone
-        }
-      : {};
+  const selfForm = !props.ward && !props.others;
+
+  const initialValues = selfForm
+    ? {
+        first_name: store.data.first_name,
+        last_name: store.data.last_name,
+        phone: store.data.phone
+      }
+    : {};
   const [registrationForm, { Form, Field }] = createForm({
     initialValues,
     validateOn: "touched",
@@ -90,7 +91,7 @@ const RegistrationForm = props => {
         console.log("Player created successfully");
         const player = await response.json();
         setPlayer(player);
-        if (!props.others && !props.ward) {
+        if (selfForm) {
           setStorePlayer(player);
         } else if (props.ward) {
           addWard(player);
@@ -151,7 +152,7 @@ const RegistrationForm = props => {
           onSubmit={values => submitFormData(values)}
         >
           <div class="space-y-8">
-            <Show when={props.others || props.ward}>
+            <Show when={!selfForm}>
               <Show when={props.ward}>
                 <Field
                   name="relation"
