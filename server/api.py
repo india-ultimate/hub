@@ -109,6 +109,7 @@ def api_login(
 
 
 @api.post("/logout", response={200: Response})
+@csrf_exempt
 def api_logout(request: AuthenticatedHttpRequest) -> tuple[int, message_response]:
     logout(request)
     return 200, {"message": "Logged out"}
