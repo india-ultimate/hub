@@ -244,3 +244,13 @@ export const playerMatches = (player, text) => {
     player.city.toLowerCase().includes(term)
   );
 };
+
+const today = new Date();
+
+export const getAge = (value, on = today) => {
+  const dobDate = new Date(value);
+  const yearDiff = on.getFullYear() - dobDate.getFullYear();
+  const monthDiff = on.getMonth() - dobDate.getMonth();
+  const dayDiff = on.getDate() - dobDate.getDate();
+  return yearDiff + monthDiff / 12 + dayDiff / 365;
+};

@@ -1,4 +1,4 @@
-import { getCookie } from "../utils";
+import { getCookie, getAge } from "../utils";
 import { useStore } from "../store";
 import { createSignal, Show, Switch, Match } from "solid-js";
 import {
@@ -38,14 +38,6 @@ const RegistrationForm = props => {
   const maxDate = new Date(new Date().setFullYear(today.getFullYear() - minAge))
     .toISOString()
     .split("T")[0];
-
-  const getAge = (value, on = today) => {
-    const dobDate = new Date(value);
-    const yearDiff = on.getFullYear() - dobDate.getFullYear();
-    const monthDiff = on.getMonth() - dobDate.getMonth();
-    const dayDiff = on.getDate() - dobDate.getDate();
-    return yearDiff + monthDiff / 12 + dayDiff / 365;
-  };
 
   const validateMinAge = value => {
     const yearEnd = new Date(today.getFullYear(), 11, 31);
