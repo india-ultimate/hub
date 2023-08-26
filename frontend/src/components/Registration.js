@@ -48,7 +48,8 @@ const RegistrationForm = props => {
   };
 
   const validateMinAge = value => {
-    return getAge(value) >= minAge;
+    const yearEnd = new Date(today.getFullYear(), 11, 31);
+    return getAge(value, yearEnd) >= minAge;
   };
 
   const validateDateOfBirth = value => {
@@ -250,7 +251,7 @@ const RegistrationForm = props => {
                 required("Please enter date of birth."),
                 custom(
                   validateMinAge,
-                  `Players need to be ${minAge} years or older`
+                  `Players need to be at least ${minAge} years old by the end of the calendar year to register. They will be allowed to participate in UPAI events only if they are ${minAge} years old on the start day of the event.`
                 ),
                 custom(
                   validateDateOfBirth,
