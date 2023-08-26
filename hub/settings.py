@@ -154,7 +154,7 @@ STORAGES = {
 
 # App settings
 APP_NAME = "UPAI Hub"
-LOGO_URL = "https://d36m266ykvepgv.cloudfront.net/uploads/media/o4G97mT9vR/s-448-250/upai-2.png"
+LOGO_URL = "https://hub.indiaultimate.org/static/assets/favico.png"
 
 # Razorpay settings
 RAZORPAY_KEY_ID = os.environ.get("RAZORPAY_KEY_ID", "")
