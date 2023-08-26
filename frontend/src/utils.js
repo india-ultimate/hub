@@ -2,7 +2,7 @@ import { membershipStartDate } from "./constants";
 
 export const getCookie = name => {
   const cookies = document.cookie.split(";").reduce((acc, x) => {
-    const [key, val] = x.split("=");
+    const [key, val] = x.trim().split("=");
     return { ...acc, [key]: val };
   }, {});
   return cookies[name];
