@@ -1,4 +1,9 @@
-import { getCookie, firebaseConfig, loginWithFirebaseResponse } from "../utils";
+import {
+  getCookie,
+  firebaseConfig,
+  loginWithFirebaseResponse,
+  clearCookie
+} from "../utils";
 import { useStore } from "../store";
 import { Spinner } from "../icons";
 import {
@@ -59,6 +64,7 @@ const PasswordLogin = props => {
       setLoggedIn(true);
     } else {
       setLoggedIn(false);
+      props.setError(true);
       try {
         const data = await response.json();
         props.setStatus(`Login failed with error: ${data.message}`);
@@ -138,6 +144,7 @@ const GoogleLogin = props => {
   const onFailure = async response => {
     setLoading(false);
     setLoggedIn(false);
+    props.setError(true);
     if (response.status === 404) {
       setShowSignUp(true);
       return;
@@ -267,11 +274,13 @@ const SendEmailLink = props => {
 
 const Login = () => {
   const [status, setStatus] = createSignal("");
+  const [error, setError] = createSignal(false);
   const [store, _] = useStore();
 
   const signInFailed = window.localStorage.getItem("emailSignInFailed");
   if (signInFailed) {
     setStatus(signInFailed);
+    setError(true);
     window.localStorage.removeItem("emailSignInFailed");
   }
 
@@ -343,7 +352,7 @@ const Login = () => {
           role="tabpanel"
           aria-labelledby="google-tab"
         >
-          <GoogleLogin setStatus={setStatus} />
+          <GoogleLogin setStatus={setStatus} setError={setError} />
         </div>
         <div
           class="hidden p-4 rounded-lg bg-gray-50 dark:bg-gray-800"
@@ -351,7 +360,7 @@ const Login = () => {
           role="tabpanel"
           aria-labelledby="email-link-tab"
         >
-          <SendEmailLink setStatus={setStatus} />
+          <SendEmailLink setStatus={setStatus} setError={setError} />
         </div>
         <div
           class="hidden p-4 rounded-lg bg-gray-50 dark:bg-gray-800"
@@ -359,10 +368,23 @@ const Login = () => {
           role="tabpanel"
           aria-labelledby="password-tab"
         >
-          <PasswordLogin setStatus={setStatus} />
+          <PasswordLogin setStatus={setStatus} setError={setError} />
         </div>
       </div>
       <p>{status()}</p>
+      <Show when={error()}>
+        <button
+          type="submit"
+          class="mx-2 text-white bg-gray-700 hover:bg-gray-800 focus:ring-4 focus:outline-none focus:ring-gray-300 font-small rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-gray-600 dark:hover:bg-gray-700 dark:focus:ring-gray-800"
+          onClick={() => {
+            setError(false);
+            clearCookie("csrftoken");
+          }}
+        >
+          Clear cookies
+        </button>{" "}
+        if you are having trouble signing in...
+      </Show>
     </>
   );
 };
