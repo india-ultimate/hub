@@ -134,7 +134,8 @@ const Membership = () => {
 
   const [payDisabled, setPayDisabled] = createSignal(false);
   createEffect(() => {
-    setPayDisabled(!(annual() && year()) && !(!annual() && event()));
+    const noSelection = annual() ? !year() : !event();
+    setPayDisabled(noSelection);
   });
 
   return (
