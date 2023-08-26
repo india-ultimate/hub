@@ -6,7 +6,8 @@ import {
   stateChoices,
   occupationChoices,
   relationChoices,
-  minAge
+  minAge,
+  majorAge
 } from "../constants";
 import {
   createForm,
@@ -52,7 +53,7 @@ const RegistrationForm = props => {
 
   const validateDateOfBirth = value => {
     const age = getAge(value);
-    return props.ward ? age < 18 : age >= 18;
+    return props.ward ? age < majorAge : age >= majorAge;
   };
 
   const selfForm = !props.ward && !props.others;
@@ -254,8 +255,8 @@ const RegistrationForm = props => {
                 custom(
                   validateDateOfBirth,
                   props.ward
-                    ? "Minors need to be under-18. Use the adults form, otherwise"
-                    : "Use the minors form if the player is less than 18 years old"
+                    ? `Minors need to be under ${majorAge}. Use the adults form, otherwise`
+                    : `Use the minors form if the player is less than ${majorAge} years old`
                 )
               ]}
             >
