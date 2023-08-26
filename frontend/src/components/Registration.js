@@ -39,11 +39,11 @@ const RegistrationForm = props => {
     .toISOString()
     .split("T")[0];
 
-  const getAge = value => {
+  const getAge = (value, on = today) => {
     const dobDate = new Date(value);
-    const yearDiff = today.getFullYear() - dobDate.getFullYear();
-    const monthDiff = today.getMonth() - dobDate.getMonth();
-    const dayDiff = today.getDate() - dobDate.getDate();
+    const yearDiff = on.getFullYear() - dobDate.getFullYear();
+    const monthDiff = on.getMonth() - dobDate.getMonth();
+    const dayDiff = on.getDate() - dobDate.getDate();
     return yearDiff + monthDiff / 12 + dayDiff / 365;
   };
 
