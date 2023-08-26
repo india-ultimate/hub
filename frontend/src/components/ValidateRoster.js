@@ -153,7 +153,10 @@ const ValidateRoster = () => {
                             {registration.person.last_name}
                             <Switch>
                               <Match when={!registration?.person?.player}>
-                                <span class={clsx("mx-4", redText)}>
+                                <span
+                                  class={clsx("mx-4", redText)}
+                                  title="No Hub player linked with UC Profile"
+                                >
                                   <Icon
                                     path={noSymbol}
                                     style={{ width: "20px", display: "inline" }}
@@ -162,6 +165,7 @@ const ValidateRoster = () => {
                               </Match>
                               <Match when={registration?.person?.player}>
                                 <span
+                                  title="Membership fee paid?"
                                   class={clsx(
                                     "mx-2",
                                     registration.person.player?.membership
@@ -176,6 +180,7 @@ const ValidateRoster = () => {
                                   />
                                 </span>
                                 <span
+                                  title="Liability Waiver signed?"
                                   class={clsx(
                                     "mx-2",
                                     registration.person.player?.membership
@@ -195,6 +200,7 @@ const ValidateRoster = () => {
                                   />
                                 </span>
                                 <span
+                                  title="Vaccinated?"
                                   class={clsx(
                                     "mx-2",
                                     registration.person.player?.vaccination
