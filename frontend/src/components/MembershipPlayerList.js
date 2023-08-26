@@ -49,7 +49,7 @@ const MembershipPlayerList = props => {
                         scope="row"
                         class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
                       >
-                        {player.full_name}
+                        {player.full_name} {player.is_minor ? "*" : ""}
                       </th>
                       <td class="px-6 py-4">{player.team_name}</td>
                       <td class="px-6 py-4">{player.city}</td>

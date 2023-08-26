@@ -15,14 +15,17 @@ import {
   fetchUrl,
   membershipYearOptions,
   findPlayerById,
-  purchaseMembership
+  purchaseMembership,
+  getAge
 } from "../utils";
 import {
   membershipStartDate,
   membershipEndDate,
   annualMembershipFee,
   eventMembershipFee,
-  sponsoredAnnualMembershipFee
+  sponsoredAnnualMembershipFee,
+  minAge,
+  minAgeWarning
 } from "../constants";
 
 const Membership = () => {
@@ -37,6 +40,7 @@ const Membership = () => {
   const [startDate, setStartDate] = createSignal("");
   const [endDate, setEndDate] = createSignal("");
   const [annual, setAnnual] = createSignal(true);
+  const [ageRestricted, setAgeRestricted] = createSignal(false);
 
   const [events, setEvents] = createSignal([]);
 
@@ -134,8 +138,15 @@ const Membership = () => {
 
   const [payDisabled, setPayDisabled] = createSignal(false);
   createEffect(() => {
+    const dob = player()?.date_of_birth;
+    const [endDay, endMonth] = membershipEndDate;
+    const seasonEnd = new Date(year() + 1, endMonth - 1, endDay);
+    const age = annual()
+      ? getAge(dob, seasonEnd)
+      : getAge(dob, new Date(event()?.start_date));
     const noSelection = annual() ? !year() : !event();
-    setPayDisabled(noSelection);
+    setAgeRestricted(age < minAge);
+    setPayDisabled(noSelection || age < minAge);
   });
 
   return (
@@ -214,6 +225,14 @@ const Membership = () => {
           </Show>
           <Show when={!annual() && events()?.length === 0}>
             <p>No upcoming events found, for membership...</p>
+          </Show>
+          <Show when={ageRestricted()}>
+            <div
+              class="p-4 mb-4 text-sm text-red-800 rounded-lg bg-red-50 dark:bg-gray-800 dark:text-red-400"
+              role="alert"
+            >
+              {minAgeWarning}
+            </div>
           </Show>
           <div>
             <button

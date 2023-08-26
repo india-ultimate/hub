@@ -80,3 +80,4 @@ export const eventMembershipFee = 375 * 100; // needs to be in Paise, not Rupees
 
 export const minAge = 12; // Minimum age to register a player
 export const majorAge = 18;
+export const minAgeWarning = `Players need to be atleast ${minAge} years old to participate in UPAI events, as on the start date of an event.`;

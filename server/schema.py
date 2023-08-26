@@ -215,6 +215,8 @@ class PlayerTinySchema(ModelSchema):
         except Membership.DoesNotExist:
             return False
 
+    is_minor: bool
+
     class Config:
         model = Player
         model_fields = [

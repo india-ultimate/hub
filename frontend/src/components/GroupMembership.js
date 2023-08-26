@@ -21,7 +21,9 @@ import {
   membershipStartDate,
   membershipEndDate,
   annualMembershipFee,
-  sponsoredAnnualMembershipFee
+  sponsoredAnnualMembershipFee,
+  minAge,
+  minAgeWarning
 } from "../constants";
 import MembershipPlayerList from "./MembershipPlayerList";
 import { initFlowbite } from "flowbite";
@@ -256,6 +258,15 @@ const GroupMembership = () => {
           startDate={displayDate(startDate())}
           endDate={displayDate(endDate())}
         />
+        <Show when={payingPlayers()?.find(p => p.is_minor)}>
+          <div
+            class="p-4 mb-4 text-sm text-red-800 rounded-lg bg-red-50 dark:bg-gray-800 dark:text-red-400"
+            role="alert"
+          >
+            * {minAgeWarning} Please ensure that all the players are atleast{" "}
+            {minAge} years old before {displayDate(endDate())}.
+          </div>
+        </Show>
         <div>
           <Switch>
             <Match when={!paymentSuccess()}>
