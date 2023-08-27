@@ -92,50 +92,6 @@ const Home = () => {
         data-active-classes="bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
         data-inactive-classes="text-gray-500 dark:text-gray-400"
       >
-        <h2 id="accordion-heading-actions">
-          <button
-            type="button"
-            class="flex items-center justify-between w-full py-5 font-medium text-left text-gray-500 border-b border-gray-200 dark:border-gray-700 dark:text-gray-400"
-            data-accordion-target="#accordion-body-actions"
-            aria-expanded="true"
-            aria-controls="accordion-body-actions"
-          >
-            <span>User Actions</span>
-            <AccordionDownIcon />
-          </button>
-        </h2>
-        <div
-          id="accordion-body-actions"
-          class="hidden"
-          aria-labelledby="accordion-heading-actions"
-        >
-          <div class="py-5 border-b border-gray-200 dark:border-gray-700">
-            <Actions player={store.data.player} />
-          </div>
-        </div>
-        <Show when={store.data.is_staff}>
-          <h2 id="accordion-heading-staff">
-            <button
-              type="button"
-              class="flex items-center justify-between w-full py-5 font-medium text-left text-gray-500 border-b border-gray-200 dark:border-gray-700 dark:text-gray-400"
-              data-accordion-target="#accordion-body-staff"
-              aria-expanded="true"
-              aria-controls="accordion-body-staff"
-            >
-              <span>Staff Actions</span>
-              <AccordionDownIcon />
-            </button>
-          </h2>
-          <div
-            id="accordion-body-staff"
-            class="hidden"
-            aria-labelledby="accordion-heading-staff"
-          >
-            <div class="py-5 border-b border-gray-200 dark:border-gray-700">
-              <StaffActions player={store.data.player} />
-            </div>
-          </div>
-        </Show>
         <Show when={store.data.player}>
           <h2 id="accordion-heading-player">
             <button
@@ -187,6 +143,50 @@ const Home = () => {
               </>
             )}
           </For>
+        </Show>
+        <h2 id="accordion-heading-actions">
+          <button
+            type="button"
+            class="flex items-center justify-between w-full py-5 font-medium text-left text-gray-500 border-b border-gray-200 dark:border-gray-700 dark:text-gray-400"
+            data-accordion-target="#accordion-body-actions"
+            aria-expanded="false"
+            aria-controls="accordion-body-actions"
+          >
+            <span>User Actions</span>
+            <AccordionDownIcon />
+          </button>
+        </h2>
+        <div
+          id="accordion-body-actions"
+          class="hidden"
+          aria-labelledby="accordion-heading-actions"
+        >
+          <div class="py-5 border-b border-gray-200 dark:border-gray-700">
+            <Actions player={store.data.player} />
+          </div>
+        </div>
+        <Show when={store.data.is_staff}>
+          <h2 id="accordion-heading-staff">
+            <button
+              type="button"
+              class="flex items-center justify-between w-full py-5 font-medium text-left text-gray-500 border-b border-gray-200 dark:border-gray-700 dark:text-gray-400"
+              data-accordion-target="#accordion-body-staff"
+              aria-expanded="false"
+              aria-controls="accordion-body-staff"
+            >
+              <span>Staff Actions</span>
+              <AccordionDownIcon />
+            </button>
+          </h2>
+          <div
+            id="accordion-body-staff"
+            class="hidden"
+            aria-labelledby="accordion-heading-staff"
+          >
+            <div class="py-5 border-b border-gray-200 dark:border-gray-700">
+              <StaffActions player={store.data.player} />
+            </div>
+          </div>
         </Show>
         <h2 id="accordion-heading-transactions">
           <button
