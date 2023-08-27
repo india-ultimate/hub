@@ -215,6 +215,7 @@ const GoogleLogin = props => {
 
 const SendEmailLink = props => {
   const [email, setEmail] = createSignal("");
+  const [checkSpam, setCheckSpam] = createSignal(false);
   let url = new URL(window.location);
   url.pathname = "/email-link";
   const sendFirebaseEmailLink = e => {
@@ -234,8 +235,10 @@ const SendEmailLink = props => {
         // Save the email locally so you don't need to ask the user for it
         // again if they open the link on the same device.
         window.localStorage.setItem("emailForSignIn", email());
+        setCheckSpam(true);
       })
       .catch(error => {
+        setCheckSpam(false);
         props.setStatus(
           `Failed to send email to ${email()}: ${error.code}; ${error.message}`
         );
@@ -260,13 +263,22 @@ const SendEmailLink = props => {
             onInput={e => setEmail(e.currentTarget.value)}
           />
         </div>
-
         <button
           type="submit"
           class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
         >
           Send Email
         </button>
+        <Show when={checkSpam()}>
+          <div
+            class="p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-yellow-50 dark:bg-gray-800 dark:text-yellow-300"
+            role="alert"
+          >
+            Please check the Junk folder if you are unable to find the email in
+            your Inbox. You should see an email with the subject "Sign in to
+            India Ultimate Hub".
+          </div>
+        </Show>
       </div>
     </form>
   );
