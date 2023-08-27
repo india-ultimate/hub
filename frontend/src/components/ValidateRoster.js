@@ -84,7 +84,7 @@ const ValidateRoster = () => {
   onMount(() => {
     console.log("Fetching events info...");
     setLoading(true);
-    fetchUrl("/api/events?include_all=1", eventsSuccessHandler, error => {
+    fetchUrl("/api/events", eventsSuccessHandler, error => {
       console.log(error);
       setLoading(false);
     });
