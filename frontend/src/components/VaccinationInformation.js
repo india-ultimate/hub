@@ -5,7 +5,7 @@ import { vaccinationChoices } from "../constants";
 const VaccinationInformation = props => {
   const url = (
     <a href={props?.vaccination?.certificate} target="_blank">
-      Certificate
+      View Certificate
     </a>
   );
   return (
