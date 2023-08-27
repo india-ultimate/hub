@@ -25,9 +25,9 @@ export default function App() {
   const [store] = useStore();
   return (
     <div class={store.theme === "dark" ? "dark" : ""}>
-      <div class="bg-white dark:bg-gray-900 min-h-screen">
+      <div class="bg-white dark:bg-gray-900 min-h-screen flex flex-col">
         <Header />
-        <section>
+        <section class="grow">
           <div class="py-8 px-4 mx-auto max-w-screen-xl lg:py-16 lg:px-6">
             <div class="max-w-screen-lg text-gray-500 sm:text-lg dark:text-gray-400">
               <Routes>
