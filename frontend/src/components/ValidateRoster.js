@@ -11,8 +11,7 @@ import {
   handThumbUp,
   handThumbDown,
   shieldCheck,
-  shieldExclamation,
-  exclamationCircle
+  shieldExclamation
 } from "solid-heroicons/solid-mini";
 
 const groupByTeam = registrations => {
@@ -35,7 +34,6 @@ const groupByTeam = registrations => {
 };
 
 const isPlayer = registration => {
-  console.log(registration?.roles);
   return registration?.roles?.indexOf("player") > -1;
 };
 
@@ -153,9 +151,18 @@ const ValidateRoster = () => {
                           new Date(registration.person.player?.date_of_birth),
                           new Date(eventData()?.start_date)
                         );
+                        const displayAge = Math.round(age * 100) / 100;
+                        console.log(displayAge);
                         return (
                           <Show when={isPlayer(registration)}>
-                            <li class="w-full px-4 py-2 border-b border-gray-200 rounded-t-lg dark:border-gray-600">
+                            <li
+                              class={clsx(
+                                "w-full px-4 py-2 border-b border-gray-200 rounded-t-lg dark:border-gray-600",
+                                displayAge < minAge
+                                  ? "bg-gray-100 dark:bg-gray-800"
+                                  : ""
+                              )}
+                            >
                               {registration.person.first_name}{" "}
                               {registration.person.last_name}
                               <Switch>
@@ -238,24 +245,16 @@ const ValidateRoster = () => {
                                       }}
                                     />
                                   </span>
-                                  <Show when={age < minAge}>
-                                    <span
-                                      title={`Age restricted: ${
-                                        Math.round(age * 100) / 100
-                                      }`}
-                                      class={clsx("mx-2", redText)}
-                                    >
-                                      <Icon
-                                        path={exclamationCircle}
-                                        style={{
-                                          width: "20px",
-                                          display: "inline"
-                                        }}
-                                      />
-                                    </span>
-                                  </Show>
                                 </Match>
                               </Switch>
+                              <Show when={displayAge < minAge}>
+                                <p
+                                  class="text-sm text-red-800 rounded-lg bg-red-50 dark:bg-gray-800 dark:text-red-400"
+                                  role="alert"
+                                >
+                                  Under age: {displayAge} years old
+                                </p>
+                              </Show>
                             </li>
                           </Show>
                         );
