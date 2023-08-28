@@ -77,6 +77,7 @@ const PasswordLogin = props => {
   };
   return (
     <form onSubmit={login}>
+      <h3 class="text-3xl font-extrabold dark:text-white">Admin login</h3>
       <div class="grid gap-3 mb-6">
         <label
           for="username-input"
@@ -116,6 +117,16 @@ const PasswordLogin = props => {
         >
           Login
         </button>
+      </div>
+      <div
+        class="p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-yellow-50 dark:bg-gray-800 dark:text-yellow-300"
+        role="alert"
+      >
+        Please note that this is an Admin username login page. If you are
+        attempting to log in using your Ultimate Central credentials, please be
+        aware that the Hub account login is not linked to it. To access your
+        account, kindly proceed with the Google Login option or request the
+        Email-Link for logging in.
       </div>
     </form>
   );
