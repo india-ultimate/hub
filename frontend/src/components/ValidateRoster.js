@@ -13,6 +13,7 @@ import {
   shieldCheck,
   shieldExclamation
 } from "solid-heroicons/solid-mini";
+import { A } from "@solidjs/router";
 
 const groupByTeam = registrations => {
   const teamsMap = registrations?.reduce(
@@ -141,6 +142,34 @@ const ValidateRoster = () => {
           >
             {status()}
           </div>
+          <Switch>
+            <Match when={!store?.data?.player?.id && !store?.data?.is_staff}>
+              You need to{" "}
+              <A
+                class="text-blue-500 hover:text-blue-700 dark:text-blue-600 dark:hover:text-blue-400"
+                href="/registration/me"
+              >
+                register yourself
+              </A>{" "}
+              as a player and link your Ultimate Central profile to validate
+              your team's roster.
+            </Match>
+            <Match
+              when={
+                !store?.data?.player?.ultimate_central_id &&
+                !store?.data?.is_staff
+              }
+            >
+              You need to{" "}
+              <A
+                class="text-blue-500 hover:text-blue-700 dark:text-blue-600 dark:hover:text-blue-400"
+                href={`/uc-login/${store.data.player.id}`}
+              >
+                link your Ultimate Central
+              </A>{" "}
+              profile from here.
+            </Match>
+          </Switch>
         </Match>
         <Match when={eventData()?.ultimate_central_slug}>
           <h2 class="text-2xl font-bold text-blue-500">{eventData()?.title}</h2>
