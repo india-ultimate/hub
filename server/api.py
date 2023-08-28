@@ -25,6 +25,7 @@ from server.models import (
     Membership,
     Player,
     RazorpayTransaction,
+    UCRegistration,
     User,
     Vaccination,
 )
@@ -32,7 +33,6 @@ from server.schema import (
     AnnualMembershipSchema,
     Credentials,
     EventMembershipSchema,
-    EventRegistrationSchema,
     EventSchema,
     FirebaseCredentials,
     FirebaseSignUpCredentials,
@@ -50,6 +50,7 @@ from server.schema import (
     Response,
     TopScoreCredentials,
     TransactionSchema,
+    UCRegistrationSchema,
     UserFormSchema,
     UserSchema,
     VaccinatedFormSchema,
@@ -246,15 +247,19 @@ def list_events(request: AuthenticatedHttpRequest, include_all: bool = False) ->
     return Event.objects.all() if include_all else Event.objects.filter(start_date__gte=today)
 
 
-@api.get("/event/{event_id}", response={200: EventRegistrationSchema, 404: Response})
-def get_event(
+# Registrations ##########
+
+
+@api.get("/registrations/{event_id}", response={200: list[UCRegistrationSchema], 404: Response})
+def list_registrations(
     request: AuthenticatedHttpRequest, event_id: int
-) -> tuple[int, Event | dict[str, str]]:
+) -> tuple[int, QuerySet[UCRegistration] | dict[str, str]]:
     try:
         event = Event.objects.get(id=event_id)
     except Event.DoesNotExist:
         return 404, {"message": f"Event with {event_id} not found."}
-    return 200, event
+
+    return 200, UCRegistration.objects.filter(event=event)
 
 
 # Payments ##########

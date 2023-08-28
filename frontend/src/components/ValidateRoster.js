@@ -59,15 +59,14 @@ const ValidateRoster = () => {
 
   const eventDataFetched = async response => {
     setLoading(false);
-    let data;
+    let registrations;
     if (response.ok) {
-      data = await response.json();
-      const groupedData = groupByTeam(data?.registrations);
-      console.log(groupedData, "grouped");
-      setEventData({ ...data, ...groupedData });
+      registrations = await response.json();
+      const groupedData = groupByTeam(registrations);
+      setEventData({ ...event(), ...groupedData });
     } else {
-      data = await response.text();
-      console.log(data);
+      registrations = await response.text();
+      console.log(registrations);
     }
   };
 
@@ -94,7 +93,7 @@ const ValidateRoster = () => {
     if (event()?.id) {
       const eventID = event()?.id;
       setLoading(true);
-      fetchUrl(`/api/event/${eventID}`, eventDataFetched, error => {
+      fetchUrl(`/api/registrations/${eventID}`, eventDataFetched, error => {
         console.log(error);
         setLoading(false);
       });

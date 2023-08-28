@@ -1,6 +1,5 @@
 from typing import Any
 
-from django.db.models import QuerySet
 from ninja import ModelSchema, Schema
 
 from server.models import (
@@ -256,18 +255,6 @@ class UCRegistrationSchema(ModelSchema):
 
     class Config:
         model = UCRegistration
-        model_fields = "__all__"
-
-
-class EventRegistrationSchema(ModelSchema):
-    registrations: list[UCRegistrationSchema]
-
-    @staticmethod
-    def resolve_registrations(event: Event) -> QuerySet[UCRegistration]:
-        return UCRegistration.objects.filter(event=event)
-
-    class Config:
-        model = Event
         model_fields = "__all__"
 
 
