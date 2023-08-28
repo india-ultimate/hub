@@ -250,7 +250,10 @@ def list_events(request: AuthenticatedHttpRequest, include_all: bool = False) ->
 # Registrations ##########
 
 
-@api.get("/registrations/{event_id}", response={200: list[UCRegistrationSchema], 404: Response})
+@api.get(
+    "/registrations/{event_id}",
+    response={200: list[UCRegistrationSchema], 400: Response, 404: Response},
+)
 def list_registrations(
     request: AuthenticatedHttpRequest, event_id: int
 ) -> tuple[int, QuerySet[UCRegistration] | dict[str, str]]:
@@ -259,7 +262,26 @@ def list_registrations(
     except Event.DoesNotExist:
         return 404, {"message": f"Event with {event_id} not found."}
 
-    return 200, UCRegistration.objects.filter(event=event)
+    if request.user.is_staff:
+        registrations = UCRegistration.objects.filter(event=event)
+    else:
+        no_uc_profile = (400, {"message": "Need a linked UC profile"})
+        try:
+            player = request.user.player_profile
+        except Player.DoesNotExist:
+            return no_uc_profile
+
+        if player.ultimate_central_id is None:
+            return no_uc_profile
+
+        team_ids = set(
+            UCRegistration.objects.filter(
+                event=event, person_id=player.ultimate_central_id
+            ).values_list("team_id", flat=True)
+        )
+        registrations = UCRegistration.objects.filter(event=event, team_id__in=team_ids)
+
+    return 200, registrations
 
 
 # Payments ##########

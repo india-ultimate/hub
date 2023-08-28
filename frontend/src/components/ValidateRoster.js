@@ -43,6 +43,7 @@ const ValidateRoster = () => {
   const [eventData, setEventData] = createSignal();
   const [events, setEvents] = createSignal([]);
   const [loading, setLoading] = createSignal(false);
+  const [status, setStatus] = createSignal("");
 
   const eventsSuccessHandler = async response => {
     let data;
@@ -59,14 +60,17 @@ const ValidateRoster = () => {
 
   const eventDataFetched = async response => {
     setLoading(false);
-    let registrations;
     if (response.ok) {
-      registrations = await response.json();
+      const registrations = await response.json();
       const groupedData = groupByTeam(registrations);
       setEventData({ ...event(), ...groupedData });
     } else {
-      registrations = await response.text();
-      console.log(registrations);
+      if (response.status / 100 === 4) {
+        const responseBody = await response.json();
+        setStatus(responseBody.message);
+      } else {
+        setStatus(`Error: ${response.statusText}`);
+      }
     }
   };
 
@@ -93,6 +97,7 @@ const ValidateRoster = () => {
     if (event()?.id) {
       const eventID = event()?.id;
       setLoading(true);
+      setStatus("");
       fetchUrl(`/api/registrations/${eventID}`, eventDataFetched, error => {
         console.log(error);
         setLoading(false);
@@ -128,6 +133,14 @@ const ValidateRoster = () => {
       <Switch>
         <Match when={loading()}>
           <p>Fetching event information ...</p>
+        </Match>
+        <Match when={!loading() && !eventData() && status()}>
+          <div
+            class="p-4 mb-4 text-sm text-red-800 rounded-lg bg-red-50 dark:bg-gray-800 dark:text-red-400"
+            role="alert"
+          >
+            {status()}
+          </div>
         </Match>
         <Match when={eventData()?.ultimate_central_slug}>
           <h2 class="text-2xl font-bold text-blue-500">{eventData()?.title}</h2>
