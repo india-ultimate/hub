@@ -383,6 +383,7 @@ const WaiverForm = props => {
   const [partA, setPartA] = createSignal(false);
   const [partB, setPartB] = createSignal(false);
   const [enableSubmit, setEnableSubmit] = createSignal(false);
+  const [detailed, setDetailed] = createSignal(!props.signed);
 
   createEffect(() => {
     setEnableSubmit(mediaConsent() && partA() && partB() && isLegal());
@@ -425,23 +426,35 @@ const WaiverForm = props => {
             {props.player?.membership?.waiver_signed_by} on{" "}
             {displayDate(props.player?.membership?.waiver_signed_at)}.
           </div>
+          <button
+            class="my-4 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+            onClick={() => setDetailed(!detailed())}
+          >
+            Show full text
+          </button>
           <StatusStepper player={props.player} />
         </Show>
-        <PartA
-          signed={props.signed}
-          minor={props.minor}
-          onChange={setPartA}
-          startDate={props?.player?.membership?.start_date}
-          endDate={props?.player?.membership?.end_date}
-        />
-        <PartB signed={props.signed} minor={props.minor} onChange={setPartB} />
-        <MediaConsent
-          signed={props.signed}
-          minor={props.minor}
-          onChange={setMediaConsent}
-        />
-        <Disclaimer date={props?.player?.membership?.waiver_signed_at} />
-        <Legal signed={props.signed} onChange={setIsLegal} />
+        <Show when={detailed()}>
+          <PartA
+            signed={props.signed}
+            minor={props.minor}
+            onChange={setPartA}
+            startDate={props?.player?.membership?.start_date}
+            endDate={props?.player?.membership?.end_date}
+          />
+          <PartB
+            signed={props.signed}
+            minor={props.minor}
+            onChange={setPartB}
+          />
+          <MediaConsent
+            signed={props.signed}
+            minor={props.minor}
+            onChange={setMediaConsent}
+          />
+          <Disclaimer date={props?.player?.membership?.waiver_signed_at} />
+          <Legal signed={props.signed} onChange={setIsLegal} />
+        </Show>
         <Show when={!props.signed}>
           <button
             class={`my-4 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 ${
