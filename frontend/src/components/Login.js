@@ -117,6 +117,15 @@ const PasswordLogin = props => {
           Login
         </button>
       </div>
+      <div
+        class="p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-yellow-50 dark:bg-gray-800 dark:text-yellow-300"
+        role="alert"
+      >
+        Kindly use the Google Login option or request an Email-Link for logging
+        in. This is a login page for admins or users having trouble using other
+        methods to login. Your Ultimate Central credentials cannot be used to
+        login from this page.
+      </div>
     </form>
   );
 };
