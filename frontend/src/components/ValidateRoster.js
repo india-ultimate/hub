@@ -38,6 +38,71 @@ const isPlayer = registration => {
   return registration?.roles?.indexOf("player") > -1;
 };
 
+const ValidationLegend = () => (
+  <ul class="w-80 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+    <li class="w-full px-4 py-2 border-b border-gray-200 rounded-t-lg dark:border-gray-600">
+      <Icon
+        path={noSymbol}
+        style={{
+          width: "20px",
+          display: "inline"
+        }}
+      />{" "}
+      — Ultimate Central profile not linked to the Hub
+    </li>
+    <li class="w-full px-4 py-2 border-b border-gray-200 dark:border-gray-600">
+      <Icon
+        path={currencyRupee}
+        style={{
+          width: "20px",
+          display: "inline"
+        }}
+      />
+      — Membership Fee status
+    </li>
+    <li class="w-full px-4 py-2 border-b border-gray-200 dark:border-gray-600">
+      <Icon
+        path={handThumbUp}
+        style={{
+          width: "20px",
+          display: "inline"
+        }}
+      />{" "}
+      — Liability Waiver Signed
+    </li>
+    <li class="w-full px-4 py-2 border-b border-gray-200 dark:border-gray-600">
+      <Icon
+        path={handThumbDown}
+        style={{
+          width: "20px",
+          display: "inline"
+        }}
+      />{" "}
+      — Liability Waiver Not Signed
+    </li>
+    <li class="w-full px-4 py-2 border-b border-gray-200 dark:border-gray-600">
+      <Icon
+        path={shieldCheck}
+        style={{
+          width: "20px",
+          display: "inline"
+        }}
+      />{" "}
+      — Player Vaccinated
+    </li>
+    <li class="w-full px-4 py-2 rounded-b-lg">
+      <Icon
+        path={shieldExclamation}
+        style={{
+          width: "20px",
+          display: "inline"
+        }}
+      />{" "}
+      — Player Not Vaccinated
+    </li>
+  </ul>
+);
+
 const ValidateRoster = () => {
   const [store, { setLoggedIn, setData }] = useStore();
   const [event, setEvent] = createSignal();
@@ -306,6 +371,7 @@ const ValidateRoster = () => {
               )}
             </For>
           </div>
+          <ValidationLegend />
         </Match>
       </Switch>
     </div>
