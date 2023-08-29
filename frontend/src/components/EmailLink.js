@@ -135,7 +135,7 @@ const EmailLink = () => {
 
   createEffect(() => {
     if (store.loggedIn) {
-      navigate("/", { replace: true });
+      navigate("/dashboard", { replace: true });
     }
   });
 

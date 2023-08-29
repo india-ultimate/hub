@@ -39,7 +39,7 @@ const PasswordLogin = props => {
   createEffect(() => {
     if (store.loggedIn) {
       const navigate = useNavigate();
-      navigate("/", { replace: true });
+      navigate("/dashboard", { replace: true });
     }
   });
 
@@ -139,7 +139,7 @@ const GoogleLogin = props => {
   createEffect(() => {
     if (store.loggedIn) {
       const navigate = useNavigate();
-      navigate("/", { replace: true });
+      navigate("/dashboard", { replace: true });
     }
   });
 
@@ -308,7 +308,7 @@ const Login = () => {
   createEffect(() => {
     if (store.loggedIn) {
       const navigate = useNavigate();
-      navigate("/", { replace: true });
+      navigate("/dashboard", { replace: true });
     }
   });
 

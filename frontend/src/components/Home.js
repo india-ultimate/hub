@@ -1,223 +1,122 @@
-import { useNavigate, A } from "@solidjs/router";
-import { createEffect, onMount, Show, For } from "solid-js";
-import { fetchUserData } from "../utils";
-import { useStore } from "../store";
-import Player from "./Player";
-import TransactionList from "./TransactionList";
-import { AccordionDownIcon } from "../icons";
-import { initFlowbite } from "flowbite";
-
-const Actions = props => {
-  return (
-    <div class="w-90 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-      <Show when={!props.player}>
-        <A
-          href="/registration/me"
-          class="block w-full px-4 py-2 border-b border-gray-200 cursor-pointer hover:bg-gray-100 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 focus:text-blue-700 dark:border-gray-600 dark:hover:bg-gray-600 dark:hover:text-white dark:focus:ring-gray-500 dark:focus:text-white"
-        >
-          Register yourself as a player
-        </A>
-      </Show>
-      <A
-        href="/registration/ward"
-        class="block w-full px-4 py-2 border-b border-gray-200 cursor-pointer hover:bg-gray-100 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 focus:text-blue-700 dark:border-gray-600 dark:hover:bg-gray-600 dark:hover:text-white dark:focus:ring-gray-500 dark:focus:text-white"
-      >
-        Fill the membership form for a minor player as Guardian
-      </A>
-      <A
-        href="/registration/others"
-        class="block w-full px-4 py-2 border-b border-gray-200 cursor-pointer hover:bg-gray-100 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 focus:text-blue-700 dark:border-gray-600 dark:hover:bg-gray-600 dark:hover:text-white dark:focus:ring-gray-500 dark:focus:text-white"
-      >
-        Fill the membership form for another player
-      </A>
-      <A
-        href="/membership/group"
-        class="block w-full px-4 py-2 border-b border-gray-200 cursor-pointer hover:bg-gray-100 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 focus:text-blue-700 dark:border-gray-600 dark:hover:bg-gray-600 dark:hover:text-white dark:focus:ring-gray-500 dark:focus:text-white"
-      >
-        Pay the membership fee for a group
-      </A>
-      <A
-        href="/validate-rosters"
-        class="block w-full px-4 py-2 border-b border-gray-200 cursor-pointer hover:bg-gray-100 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 focus:text-blue-700 dark:border-gray-600 dark:hover:bg-gray-600 dark:hover:text-white dark:focus:ring-gray-500 dark:focus:text-white"
-      >
-        Validate your Team Roster for an event
-      </A>
-    </div>
-  );
-};
-
-const StaffActions = () => {
-  return (
-    <div class="w-90 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-      <A
-        href="/players"
-        class="block w-full px-4 py-2 border-b border-gray-200 cursor-pointer hover:bg-gray-100 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 focus:text-blue-700 dark:border-gray-600 dark:hover:bg-gray-600 dark:hover:text-white dark:focus:ring-gray-500 dark:focus:text-white"
-      >
-        View Registered players
-      </A>
-      <A
-        href="/validate-rosters"
-        class="block w-full px-4 py-2 border-b border-gray-200 cursor-pointer hover:bg-gray-100 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 focus:text-blue-700 dark:border-gray-600 dark:hover:bg-gray-600 dark:hover:text-white dark:focus:ring-gray-500 dark:focus:text-white"
-      >
-        Validate Event Roster
-      </A>
-    </div>
-  );
-};
+import { createSignal, For, onMount } from "solid-js";
+import { fetchUrl } from "../utils";
 
 const Home = () => {
-  const [store, { setLoggedIn, setData }] = useStore();
+  const [contributors, setContributors] = createSignal([]);
 
-  createEffect(() => {
-    if (!store.loggedIn) {
-      const navigate = useNavigate();
-      navigate("/login", { replace: true });
+  const features = [
+    {
+      title: "Membership",
+      description: "All in one place to keep track of your UPAI membership"
+    },
+    {
+      title: "Payments",
+      description:
+        "Direct integrated payment system for easy individual or group membership payments"
+    },
+    {
+      title: "Roster",
+      description: "Validate your Team Roster for any events"
+    },
+    {
+      title: "Tournaments",
+      description: "Shhhhh... Coming Soon!"
     }
-  });
+  ];
+
+  const userSuccessHandler = async response => {
+    const data = await response.json();
+    if (response.ok) {
+      setContributors([...contributors(), data]);
+    } else {
+      console.log(data);
+    }
+  };
+
+  const repoSuccessHandler = async response => {
+    const data = await response.json();
+    if (response.ok) {
+      data.map(user =>
+        fetchUrl(
+          "https://api.github.com/users/" + user.login,
+          userSuccessHandler,
+          error => console.log(error)
+        )
+      );
+    } else {
+      console.log(data);
+    }
+  };
+
+  const fetchContributors = () => {
+    console.log("Fetching Contributors info...");
+    fetchUrl(
+      "https://api.github.com/repos/india-ultimate/hub/contributors",
+      repoSuccessHandler,
+      error => console.log(error)
+    );
+  };
 
   onMount(() => {
-    if (!store?.data?.username) {
-      fetchUserData(setLoggedIn, setData);
-    }
-  });
-
-  createEffect(() => {
-    if (store?.data?.player || store?.data?.wards) {
-      initFlowbite();
-    }
+    fetchContributors();
   });
 
   return (
     <div>
-      <h1 class="text-4xl font-bold mb-4 text-red-500">
-        Welcome {store?.data?.full_name || store?.data?.username}!
+      <h1 class="text-center">India Ultimate</h1>
+      <h1 class="text-center">
+        <span class="font-extrabold text-transparent text-8xl bg-clip-text bg-gradient-to-r from-blue-500 to-green-500 w-fit">
+          Hub
+        </span>
       </h1>
-      <div
-        id="accordion-flush"
-        data-accordion="collapse"
-        data-active-classes="bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
-        data-inactive-classes="text-gray-500 dark:text-gray-400"
-      >
-        <Show when={store.data.player}>
-          <h2 id="accordion-heading-player">
-            <button
-              type="button"
-              class="flex items-center justify-between w-full py-5 font-medium text-left text-gray-500 border-b border-gray-200 dark:border-gray-700 dark:text-gray-400"
-              data-accordion-target="#accordion-body-player"
-              aria-expanded="true"
-              aria-controls="accordion-body-player"
-            >
-              <span>Player Information: {store.data.player.full_name}</span>
-              <AccordionDownIcon />
-            </button>
-          </h2>
-          <div
-            id="accordion-body-player"
-            class="hidden"
-            aria-labelledby="accordion-heading-player"
-          >
-            <div class="py-5 border-b border-gray-200 dark:border-gray-700">
-              <Player player={store.data.player} />
-            </div>
-          </div>
-        </Show>
-        <Show when={store.data.wards}>
-          <For each={store.data.wards}>
-            {ward => (
-              <>
-                <h2 id={`accordion-heading-ward-${ward.id}`}>
-                  <button
-                    type="button"
-                    class="flex items-center justify-between w-full py-5 font-medium text-left text-gray-500 border-b border-gray-200 dark:border-gray-700 dark:text-gray-400"
-                    data-accordion-target={`#accordion-body-ward-${ward.id}`}
-                    aria-expanded={store?.data?.player ? "false" : "true"}
-                    aria-controls={`accordion-body-ward-${ward.id}`}
-                  >
-                    <span>Player Information: {ward.full_name}</span>
-                    <AccordionDownIcon />
-                  </button>
-                </h2>
-                <div
-                  id={`accordion-body-ward-${ward.id}`}
-                  class="hidden"
-                  aria-labelledby={`accordion-heading-ward-${ward.id}`}
-                >
-                  <div class="py-5 border-b border-gray-200 dark:border-gray-700">
-                    <Player player={ward} />
-                  </div>
-                </div>
-              </>
+      <h2 class="text-center">By UPAI</h2>
+      <div class="mt-5">
+        <h3 class="text-2xl font-extrabold text-center">Features</h3>
+        <div
+          class={
+            "grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3 justify-items-center mt-5 "
+          }
+        >
+          <For each={features}>
+            {feature => (
+              <div class="block p-4 bg-white border border-blue-600 rounded-lg shadow dark:bg-gray-800 dark:border-blue-400 w-full">
+                <h5 class="mb-2 text-xl font-bold tracking-tight text-blue-600 dark:text-blue-400">
+                  {feature.title}
+                </h5>
+                <p class="font-normal text-gray-700 dark:text-gray-400">
+                  {feature.description}
+                </p>
+              </div>
             )}
           </For>
-        </Show>
-        <h2 id="accordion-heading-actions">
-          <button
-            type="button"
-            class="flex items-center justify-between w-full py-5 font-medium text-left text-gray-500 border-b border-gray-200 dark:border-gray-700 dark:text-gray-400"
-            data-accordion-target="#accordion-body-actions"
-            aria-expanded={
-              store?.data?.player || store?.data?.wards?.length > 0
-                ? "false"
-                : "true"
-            }
-            aria-controls="accordion-body-actions"
-          >
-            <span>User Actions</span>
-            <AccordionDownIcon />
-          </button>
-        </h2>
-        <div
-          id="accordion-body-actions"
-          class="hidden"
-          aria-labelledby="accordion-heading-actions"
-        >
-          <div class="py-5 border-b border-gray-200 dark:border-gray-700">
-            <Actions player={store.data.player} />
-          </div>
         </div>
-        <Show when={store.data.is_staff}>
-          <h2 id="accordion-heading-staff">
-            <button
-              type="button"
-              class="flex items-center justify-between w-full py-5 font-medium text-left text-gray-500 border-b border-gray-200 dark:border-gray-700 dark:text-gray-400"
-              data-accordion-target="#accordion-body-staff"
-              aria-expanded="false"
-              aria-controls="accordion-body-staff"
-            >
-              <span>Staff Actions</span>
-              <AccordionDownIcon />
-            </button>
-          </h2>
-          <div
-            id="accordion-body-staff"
-            class="hidden"
-            aria-labelledby="accordion-heading-staff"
-          >
-            <div class="py-5 border-b border-gray-200 dark:border-gray-700">
-              <StaffActions player={store.data.player} />
-            </div>
-          </div>
-        </Show>
-        <h2 id="accordion-heading-transactions">
-          <button
-            type="button"
-            class="flex items-center justify-between w-full py-5 font-medium text-left text-gray-500 border-b border-gray-200 dark:border-gray-700 dark:text-gray-400"
-            data-accordion-target="#accordion-body-transactions"
-            aria-expanded="false"
-            aria-controls="accordion-body-transactions"
-          >
-            <span>Transactions</span>
-            <AccordionDownIcon />
-          </button>
-        </h2>
-        <div
-          id="accordion-body-transactions"
-          class="hidden"
-          aria-labelledby="accordion-heading-transactions"
-        >
-          <div class="py-5 border-b border-gray-200 dark:border-gray-700">
-            <TransactionList />
-          </div>
+      </div>
+      <div class="mt-10">
+        <h3 class="text-2xl font-extrabold text-center">
+          <a href="https://github.com/india-ultimate/hub" target="_blank">
+            <mark class="px-2 text-white bg-blue-600 rounded dark:bg-blue-500">
+              Made
+            </mark>{" "}
+            with 💙 by...
+          </a>
+        </h3>
+        <div class="w-fit mx-auto mt-5">
+          <For each={contributors()}>
+            {contributor => (
+              <div class="flex items-center space-x-4 my-3 w-full">
+                <img
+                  class="w-10 h-10 rounded-full p-0.5 ring-2 ring-blue-600 dark:ring-blue-500"
+                  src={contributor["avatar_url"]}
+                  alt=""
+                />
+                <div class="font-medium hover:text-blue-600 dark:hover:text-blue-500">
+                  <div>
+                    <a href={contributor["html_url"]}>{contributor.name}</a>
+                  </div>
+                </div>
+              </div>
+            )}
+          </For>
         </div>
       </div>
     </div>
