@@ -155,7 +155,11 @@ const Home = () => {
             type="button"
             class="flex items-center justify-between w-full py-5 font-medium text-left text-gray-500 border-b border-gray-200 dark:border-gray-700 dark:text-gray-400"
             data-accordion-target="#accordion-body-actions"
-            aria-expanded="false"
+            aria-expanded={
+              store?.data?.player || store?.data?.wards?.length > 0
+                ? "false"
+                : "true"
+            }
             aria-controls="accordion-body-actions"
           >
             <span>User Actions</span>

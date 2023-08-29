@@ -56,7 +56,6 @@ class TestIntegration(BaseCase):
             self.type("input#username-input", username)
             self.type("input#password-input", f"{password}\n")
             self.assert_element("h2#accordion-heading-actions")
-            self.click("h2#accordion-heading-actions")
             self.assert_element('a[href="/registration/me"]')
             print("Successfully logged in!")
 
