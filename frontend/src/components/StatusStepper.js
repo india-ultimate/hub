@@ -84,34 +84,30 @@ const StatusStepper = props => {
           title="Profile Info"
           link="/"
           icon={identification}
-          color={props?.player ? "green" : "red"}
+          color={status.profile ? "green" : "red"}
         />
         <Step
           title="Vaccine Info"
-          icon={props?.player?.vaccination ? shieldCheck : shieldExclamation}
+          icon={status.vaccine ? shieldCheck : shieldExclamation}
           link={`/vaccination/${props.player.id}`}
-          color={props?.player?.vaccination ? "green" : "red"}
+          color={status.vaccine ? "green" : "red"}
         />
         <Step
           title="Ultimate Central profile"
           icon={arrowTopRightOnSquare}
           link={`/uc-login/${props.player.id}`}
-          color={props?.player?.ultimate_central_id ? "green" : "red"}
+          color={status.ucLink ? "green" : "red"}
         />
         <Step
           title="Membership info"
           icon={currencyRupee}
           link={`/membership/${props.player.id}`}
-          color={props?.player?.membership?.is_active ? "green" : "red"}
+          color={status.membership ? "green" : "red"}
         />
         <Step
           title="Liability Waiver"
-          icon={
-            props?.player?.membership?.waiver_valid
-              ? handThumbUp
-              : handThumbDown
-          }
-          color={props?.player?.membership?.waiver_valid ? "green" : "red"}
+          icon={status.waiver ? handThumbUp : handThumbDown}
+          color={status.waiver ? "green" : "red"}
           link={`/waiver/${props.player.id}`}
           last={true}
         />
