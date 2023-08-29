@@ -115,7 +115,6 @@ class TestIntegration(BaseCase):
             self.click('button:contains("I Agree")')
 
             self.click('a[href="/"]')
-            self.click("h2#accordion-heading-player")
             self.assert_element("div#accordion-body-player div div table tbody tr:nth-of-type(7)")
             self.assert_element("div#accordion-body-player div div table tbody tr:nth-of-type(8)")
             self.assert_element("div#accordion-body-player div div table tbody tr:nth-of-type(9)")
