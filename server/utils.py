@@ -9,6 +9,9 @@ from requests.exceptions import RequestException
 
 CLIENT = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
 
+RAZORPAY_NOTES_MAX = 512
+RAZORPAY_DESCRIPTION_MAX = 255
+
 
 def create_razorpay_order(
     amount: int,

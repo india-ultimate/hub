@@ -61,6 +61,8 @@ from server.schema import (
 )
 from server.top_score_utils import TopScoreClient
 from server.utils import (
+    RAZORPAY_DESCRIPTION_MAX,
+    RAZORPAY_NOTES_MAX,
     create_razorpay_order,
     verify_razorpay_payment,
     verify_razorpay_webhook_payload,
@@ -353,6 +355,8 @@ def create_order(
     }
     if group_payment:
         player_names = ", ".join(sorted([player.user.get_full_name() for player in players]))
+        if len(player_names) > RAZORPAY_NOTES_MAX:
+            player_names = player_names[:500] + "..."
         notes = {
             "user_id": user.id,
             "player_ids": str(player_ids),
@@ -393,6 +397,8 @@ def create_order(
         if not group_payment
         else f"Membership group payment by {transaction_user_name} for {player_names}"
     )
+    if len(description) > RAZORPAY_DESCRIPTION_MAX:
+        description = description[:250] + "..."
     extra_data = {
         "name": settings.APP_NAME,
         "image": settings.LOGO_URL,
