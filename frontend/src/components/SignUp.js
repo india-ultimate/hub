@@ -46,7 +46,7 @@ const SignUp = props => {
         setLoggedIn(true);
         window.localStorage.removeItem("firebaseCreds");
         const navigate = useNavigate();
-        navigate("/", { replace: true });
+        navigate("/dashboard", { replace: true });
       } else {
         if (response.status == 400) {
           const error = await response.json();

@@ -52,6 +52,7 @@ class TestIntegration(BaseCase):
 
         with running_test_server() as base_url:
             self.open(base_url)
+            self.click('a[href="/login"]')
             self.click("button#password-tab")
             self.type("input#username-input", username)
             self.type("input#password-input", f"{password}\n")
@@ -112,7 +113,7 @@ class TestIntegration(BaseCase):
             self.js_click("div#root section div div:nth-of-type(5) label span")
             self.click('button:contains("I Agree")')
 
-            self.click('a[href="/"]')
+            self.click('a[href="/dashboard"]')
             self.assert_element("div#accordion-body-player div div table tbody tr:nth-of-type(7)")
             self.assert_element("div#accordion-body-player div div table tbody tr:nth-of-type(8)")
             self.assert_element("div#accordion-body-player div div table tbody tr:nth-of-type(9)")
@@ -125,6 +126,7 @@ class TestIntegration(BaseCase):
 
         with running_test_server() as base_url:
             self.open(base_url)
+            self.click('a[href="/login"]')
             self.click("button#email-link-tab")
             self.type("input#email-link-input", username)
             self.click("div#email-link form div button")
@@ -139,6 +141,7 @@ class TestIntegration(BaseCase):
         username = get_zulip_stream_email()
         with running_test_server() as base_url:
             self.open(base_url)
+            self.click('a[href="/login"]')
             self.click("button#email-link-tab")
             self.type("input#email-link-input", username)
             self.click("div#email-link form div button")

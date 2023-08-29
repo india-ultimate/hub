@@ -5,8 +5,9 @@ import Footer from "./Footer";
 import { useStore } from "../store";
 
 const About = lazy(() => import("./About"));
-const Home = lazy(() => import("./Home"));
+const Dashboard = lazy(() => import("./Dashboard"));
 const EmailLink = lazy(() => import("./EmailLink"));
+const Home = lazy(() => import("./Home"));
 const Login = lazy(() => import("./Login"));
 const Registration = lazy(() => import("./Registration"));
 const Membership = lazy(() => import("./Membership"));
@@ -33,6 +34,7 @@ export default function App() {
               <Routes>
                 {/* Simple pages */}
                 <Route path="/" component={Home} />
+                <Route path="/dashboard" component={Dashboard} />
                 <Route path="/about" component={About} />
                 {/* Login related routes */}
                 <Route path="/login" component={Login} />
