@@ -84,16 +84,16 @@ const TransactionList = () => {
                 let bgColor;
                 switch (transaction.status) {
                   case "completed":
-                    bgColor = "bg-green-200";
+                    bgColor = "bg-green-200 dark:bg-green-800";
                     break;
                   case "failed":
-                    bgColor = "bg-red-300";
+                    bgColor = "bg-red-300 dark:bg-red-700";
                     break;
                   case "created":
-                    bgColor = "bg-orange-100";
+                    bgColor = "bg-orange-100 dark:bg-orange-900";
                     break;
                   default:
-                    bgColor = "bg-white";
+                    bgColor = "bg-white dark:bg-gray-900";
                     break;
                 }
 
