@@ -32,6 +32,33 @@ import { magnifyingGlass } from "solid-heroicons/solid-mini";
 
 const PlayerSearchDropdown = props => {
   const [searchText, setSearchText] = createSignal("");
+  const [selectedTeam, setSelectedTeam] = createSignal("");
+  const [selectAll, setSelectAll] = createSignal(false);
+  const [checkedPlayers, setCheckedPlayers] = createSignal({});
+
+  let searchInput;
+
+  const handleSelectAll = e => {
+    props.players
+      .filter(p => playerMatches(p, searchText(), selectedTeam()))
+      .map(p => props.onPlayerChecked(e, p));
+
+    setSelectAll(e.target.checked);
+  };
+
+  createEffect(() => {
+    setSelectAll(false);
+  });
+
+  createEffect(() => {
+    let newCheckedPlayers = {};
+
+    props.payingPlayers.map(p => {
+      newCheckedPlayers[p.id] = true;
+    });
+
+    setCheckedPlayers(newCheckedPlayers);
+  });
 
   return (
     <>
@@ -74,33 +101,71 @@ const PlayerSearchDropdown = props => {
           class="hidden"
           aria-labelledby="accordion-flush-heading-1"
         >
-          <div class="p-3">
-            <label for="input-group-search" class="sr-only">
+          <div class="flex p-3 flex-wrap">
+            <select
+              id="countries"
+              class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 w-1/4 min-w-fit mr-5 mb-4 md:mb-0"
+              onChange={e => setSelectedTeam(e.target.value)}
+              value={selectedTeam()}
+            >
+              <option value="" selected>
+                All Teams
+              </option>
+              <For each={props.teams}>
+                {team => <option value={team.id}>{team.name}</option>}
+              </For>
+            </select>
+            <label
+              for="default-search"
+              class="mb-2 text-sm font-medium text-gray-900 sr-only dark:text-white"
+            >
               Search
             </label>
-            <div class="relative">
+            <div class="relative flex-grow">
               <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                <Icon path={magnifyingGlass} style={{ width: "24px" }} />
+                <Icon path={magnifyingGlass} style={{ width: "20px" }} />
               </div>
               <input
-                type="text"
-                id="input-group-search"
-                class="block w-full p-2 pl-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                placeholder="Search player"
-                onInput={e => setSearchText(e.target.value)}
+                type="search"
+                id="default-search"
+                ref={searchInput}
+                class="block w-full p-4 pl-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                placeholder="Search Player Names"
               />
+              <button
+                type="submit"
+                onClick={() => setSearchText(searchInput.value)}
+                class="text-white absolute right-2.5 bottom-2.5 bg-blue-700 hover:bg-blue-800 focus:outline-none font-medium rounded-lg text-sm px-4 py-2 dark:bg-blue-600 dark:hover:bg-blue-700"
+              >
+                Search
+              </button>
             </div>
           </div>
           <ul
             class="h-48 px-3 pb-3 overflow-y-auto text-sm text-gray-700 dark:text-gray-200"
             aria-labelledby="playerSearchButton"
           >
+            <li>
+              <div class="flex items-center pl-2 rounded hover:bg-gray-100 dark:hover:bg-gray-600">
+                <input
+                  id={"checkbox-item-0"}
+                  type="checkbox"
+                  class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500"
+                  onChange={handleSelectAll}
+                  checked={selectAll()}
+                />
+                <label
+                  for={"checkbox-item-0"}
+                  class="w-full py-2 ml-2 text-sm font-medium text-gray-600 rounded dark:text-gray-400"
+                >
+                  <div class="w-full pl-3">Select All</div>
+                </label>
+              </div>
+            </li>
             <For
-              each={
-                searchText()
-                  ? props.players.filter(p => playerMatches(p, searchText()))
-                  : props.players
-              }
+              each={props.players.filter(p =>
+                playerMatches(p, searchText(), selectedTeam())
+              )}
             >
               {player => (
                 <li>
@@ -110,7 +175,9 @@ const PlayerSearchDropdown = props => {
                       type="checkbox"
                       class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500"
                       onChange={e => props.onPlayerChecked(e, player)}
-                      checked={player.has_membership}
+                      checked={
+                        player.has_membership || checkedPlayers()[player.id]
+                      }
                       disabled={player.has_membership}
                     />
                     <label
@@ -157,6 +224,7 @@ const GroupMembership = () => {
   const [endDate, setEndDate] = createSignal("");
 
   const [players, setPlayers] = createSignal([]);
+  const [teams, setTeams] = createSignal([]);
   const [payingPlayers, setPayingPlayers] = createSignal([]);
   const [paymentSuccess, setPaymentSuccess] = createSignal(false);
 
@@ -176,12 +244,29 @@ const GroupMembership = () => {
     );
   };
 
+  const teamsSuccessHandler = async response => {
+    const data = await response.json();
+    if (response.ok) {
+      setTeams(
+        data.sort((a, b) => a.name.toLowerCase() > b.name.toLowerCase())
+      );
+    } else {
+      console.log(data);
+    }
+  };
+
+  const fetchTeams = () => {
+    console.log("Fetching teams info...");
+    fetchUrl("/api/teams", teamsSuccessHandler, error => console.log(error));
+  };
+
   onMount(() => {
     initFlowbite();
     if (!store.loggedIn) {
       fetchUserData(setLoggedIn, setData);
     }
     fetchPlayers();
+    fetchTeams();
   });
 
   let rzpScript;
@@ -205,9 +290,16 @@ const GroupMembership = () => {
   };
 
   const handlePlayerChecked = (e, player) => {
+    // Don't perform any actions on a player who already has a membership
+    if (player?.has_membership) {
+      return;
+    }
     if (e.target.checked) {
       // Add player to paying Players
-      setPayingPlayers([...payingPlayers(), player]);
+      setPayingPlayers([
+        ...payingPlayers().filter(p => p.id !== player.id),
+        player
+      ]);
     } else {
       // Remove player from paying Players
       setPayingPlayers(payingPlayers().filter(p => p.id !== player.id));
@@ -267,6 +359,8 @@ const GroupMembership = () => {
         <Show when={!paymentSuccess()}>
           <PlayerSearchDropdown
             players={players()}
+            teams={teams()}
+            payingPlayers={payingPlayers()}
             onPlayerChecked={handlePlayerChecked}
           />
         </Show>
@@ -316,6 +410,7 @@ const GroupMembership = () => {
                   setPaymentSuccess(false);
                   setPayingPlayers([]);
                   setStatus("");
+                  initFlowbite();
                 }}
                 disabled={!paymentSuccess()}
               >

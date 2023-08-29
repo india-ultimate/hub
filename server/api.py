@@ -25,6 +25,7 @@ from server.models import (
     Membership,
     Player,
     RazorpayTransaction,
+    Team,
     UCRegistration,
     User,
     Vaccination,
@@ -48,6 +49,7 @@ from server.schema import (
     RegistrationSchema,
     RegistrationWardSchema,
     Response,
+    TeamSchema,
     TopScoreCredentials,
     TransactionSchema,
     UCRegistrationSchema,
@@ -92,6 +94,12 @@ def list_players(request: AuthenticatedHttpRequest) -> list[PlayerTinySchema | P
         return [PlayerSchema.from_orm(p) for p in players]
     else:
         return [PlayerTinySchema.from_orm(p) for p in players]
+
+
+# Teams #########
+@api.get("/teams", response={200: list[TeamSchema]})
+def list_teams(request: AuthenticatedHttpRequest) -> QuerySet[Team]:
+    return Team.objects.all()
 
 
 # Login #########
