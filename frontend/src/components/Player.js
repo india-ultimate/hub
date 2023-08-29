@@ -99,7 +99,7 @@ const Player = props => {
                 <Show when={!props.player?.membership?.is_active}>
                   <p class="mb-4">
                     You need a valid UPAI membership to participate in UPAI
-                    tournaments.
+                    events.
                   </p>
                   <button
                     type="submit"
@@ -147,7 +147,7 @@ const Player = props => {
               </th>
               <td class="px-6 py-4">
                 <p class="mb-4">
-                  You need a UPAI membership to participate in UPAI tournaments.
+                  You need a UPAI membership to participate in UPAI events.
                 </p>
                 <button
                   type="submit"
