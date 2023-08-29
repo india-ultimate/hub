@@ -240,7 +240,11 @@ export const playerMatches = (player, text) => {
   const term = text.toLowerCase();
   return (
     player.full_name.toLowerCase().includes(term) ||
-    player.team_name.toLowerCase().includes(term) ||
+    player.teams
+      .map(team => team["name"])
+      .join(",")
+      .toLowerCase()
+      .includes(term) ||
     player.city.toLowerCase().includes(term)
   );
 };

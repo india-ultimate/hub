@@ -67,7 +67,6 @@ class TestIntegration(BaseCase):
             self.type("input#date_of_birth", "1985-10-01")
             self.select_option_by_text("select#gender", "Male")
             self.type("input#phone", "+919876543210")
-            self.type("input#team_name", "TIKS")
             self.select_option_by_text("select#occupation", "Government")
             self.type("input#city", "Bengaluru")
             self.select_option_by_text("select#state_ut", "Karnataka")

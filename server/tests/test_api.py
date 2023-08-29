@@ -125,7 +125,6 @@ class TestRegistration(ApiBaseTestCase):
             "date_of_birth": "1990-01-01",
             "gender": "F",
             "city": "Bangalore",
-            "team_name": "TIKS",
             "first_name": "Nora",
             "last_name": "Quinn",
         }
@@ -149,7 +148,6 @@ class TestRegistration(ApiBaseTestCase):
             "date_of_birth": "1990-01-01",
             "gender": "F",
             "city": "Bangalore",
-            "team_name": "TIKS",
             "first_name": "Nora",
             "last_name": "Quinn",
         }
@@ -179,7 +177,6 @@ class TestRegistration(ApiBaseTestCase):
             "date_of_birth": dob.date(),
             "gender": "F",
             "city": "Bangalore",
-            "team_name": "TIKS",
             "first_name": "Nora",
             "last_name": "Quinn",
         }
@@ -197,7 +194,6 @@ class TestRegistration(ApiBaseTestCase):
             "date_of_birth": "1990-01-01",
             "gender": "F",
             "city": "Bangalore",
-            "team_name": "TIKS",
             "first_name": "Nora",
             "last_name": "Quinn",
             "relation": "MO",
@@ -220,7 +216,6 @@ class TestRegistration(ApiBaseTestCase):
             "date_of_birth": str(dob.date()),
             "gender": "F",
             "city": "Bangalore",
-            "team_name": "TIKS",
             "first_name": "Nora",
             "last_name": "Quinn",
             "relation": "MO",
@@ -257,7 +252,6 @@ class TestPlayers(ApiBaseTestCase):
         data = response.json()
         self.assertEqual(1, len(data))
         user_data = data[0]
-        self.assertIn("team_name", user_data)
         self.assertIn("city", user_data)
         self.assertIn("state_ut", user_data)
         self.assertEqual("usxxxxme@foo.com", user_data["email"])
@@ -276,7 +270,6 @@ class TestPlayers(ApiBaseTestCase):
         data = response.json()
         self.assertEqual(1, len(data))
         user_data = data[0]
-        self.assertIn("team_name", user_data)
         self.assertIn("city", user_data)
         self.assertIn("state_ut", user_data)
         self.assertEqual("username@foo.com", user_data["email"])
@@ -867,7 +860,6 @@ class TestUPAI(ApiBaseTestCase):
         c.force_login(self.user)
         player_id = self.user.player_profile.id
         player = self.user.player_profile
-        player.team_name = "TIKS"
         player.gender = "M"
         player.city = "Mysore"
         player.save()

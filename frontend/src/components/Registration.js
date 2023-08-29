@@ -321,22 +321,6 @@ const RegistrationForm = props => {
                 />
               )}
             </Field>
-            <Field
-              name="team_name"
-              validate={required("Please enter Team name.")}
-            >
-              {(field, props) => (
-                <TextInput
-                  {...props}
-                  value={field.value}
-                  error={field.error}
-                  type="text"
-                  label="Team Name (Association with UPAI)"
-                  placeholder="Thatte Idli Kaal Soup"
-                  required
-                />
-              )}
-            </Field>
             <Show when={!props.ward}>
               <Field
                 name="occupation"

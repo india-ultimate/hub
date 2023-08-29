@@ -51,7 +51,9 @@ const MembershipPlayerList = props => {
                       >
                         {player.full_name} {player.is_minor ? "*" : ""}
                       </th>
-                      <td class="px-6 py-4">{player.team_name}</td>
+                      <td class="px-6 py-4">
+                        {player.teams.map(team => team["name"]).join(", ")}
+                      </td>
                       <td class="px-6 py-4">{player.city}</td>
                     </tr>
                   )}

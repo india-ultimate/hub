@@ -5,7 +5,7 @@ from typing import Any
 from django.core.management.base import BaseCommand, CommandError, CommandParser
 from django.utils.timezone import now
 
-from server.models import Event, Team, UCPerson, UCRegistration
+from server.models import Event, Player, Team, UCPerson, UCRegistration
 from server.top_score_utils import TopScoreClient
 
 
@@ -125,3 +125,17 @@ class Command(BaseCommand):
                 if registration["Team"] is not None
             ]
             UCRegistration.objects.bulk_create(registration_objs, ignore_conflicts=True)
+
+            # Add Team to registered Players
+            player_uc_ids_to_team_uc_ids = {
+                registration["person_id"]: registration["team_id"]
+                for registration in registrations
+                if registration["team_id"] is not None
+            }
+            players = Player.objects.filter(
+                ultimate_central_id__in=list(player_uc_ids_to_team_uc_ids.keys())
+            )
+            for player in players:
+                team_uc_id = player_uc_ids_to_team_uc_ids[player.ultimate_central_id]
+                team_id = uc_id_to_team_id[team_uc_id]
+                player.teams.add(team_id)

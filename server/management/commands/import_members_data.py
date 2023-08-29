@@ -11,7 +11,7 @@ from django.utils.dateparse import parse_date
 from django.utils.regex_helper import _lazy_re_compile
 from django.utils.text import slugify
 
-from server.models import Guardianship, Membership, Player, UCPerson, Vaccination
+from server.models import Guardianship, Membership, Player, UCPerson, UCRegistration, Vaccination
 
 User = get_user_model()
 
@@ -254,7 +254,6 @@ class Command(BaseCommand):
                     city=row[columns["city"]],
                     state_ut=state_ut,
                     not_in_india=not_in_india,
-                    team_name=row[columns["team_name"]],
                     occupation=occupation,
                     educational_institution=row[columns["educational_institution"]]
                     if minors
@@ -263,6 +262,13 @@ class Command(BaseCommand):
                 )
                 player.full_clean()
                 player.save()
+                # Populate teams information to players
+                if uc_person:
+                    team_ids = UCRegistration.objects.filter(person_id=uc_person.id).values_list(
+                        "team_id", flat=True
+                    )
+                    for team_id in team_ids:
+                        player.teams.add(team_id)
 
                 # Create or get the Guardian instance if applicable
                 if minors:

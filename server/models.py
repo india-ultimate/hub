@@ -16,6 +16,16 @@ class User(AbstractUser):
     email = models.EmailField()
 
 
+class Team(models.Model):
+    ultimate_central_id = models.PositiveIntegerField(
+        unique=True, null=True, blank=True, db_index=True
+    )
+    ultimate_central_creator_id = models.PositiveIntegerField(null=True, blank=True)
+    facebook_url = models.URLField(null=True, blank=True)
+    image_url = models.URLField(null=True, blank=True)
+    name = models.CharField(max_length=100)
+
+
 class Player(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="player_profile")
     date_of_birth = models.DateField()
@@ -70,7 +80,7 @@ class Player(models.Model):
 
     state_ut = models.CharField(max_length=5, choices=StatesUTs.choices, null=True, blank=True)
     not_in_india = models.BooleanField(default=False)
-    team_name = models.CharField(max_length=100)
+    teams = models.ManyToManyField(Team, related_name="players")
 
     class OccupationTypes(models.TextChoices):
         STUDENT = "Student", _("Student")
@@ -122,16 +132,6 @@ class Event(models.Model):
     end_date = models.DateField()
     ultimate_central_id = models.PositiveIntegerField(unique=True, null=True, blank=True)
     ultimate_central_slug = models.SlugField(default="unknown")
-
-
-class Team(models.Model):
-    ultimate_central_id = models.PositiveIntegerField(
-        unique=True, null=True, blank=True, db_index=True
-    )
-    ultimate_central_creator_id = models.PositiveIntegerField(null=True, blank=True)
-    facebook_url = models.URLField(null=True, blank=True)
-    image_url = models.URLField(null=True, blank=True)
-    name = models.CharField(max_length=100)
 
 
 class UCPerson(models.Model):

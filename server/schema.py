@@ -132,6 +132,12 @@ class VaccinationSchema(ModelSchema):
         model_fields = "__all__"
 
 
+class TeamSchema(ModelSchema):
+    class Config:
+        model = Team
+        model_fields = "__all__"
+
+
 class PlayerSchema(ModelSchema):
     full_name: str
 
@@ -179,6 +185,8 @@ class PlayerSchema(ModelSchema):
         except Guardianship.DoesNotExist:
             return None
 
+    teams: list[TeamSchema]
+
     class Config:
         model = Player
         model_fields = "__all__"
@@ -216,22 +224,18 @@ class PlayerTinySchema(ModelSchema):
 
     is_minor: bool
 
+    teams: list[TeamSchema]
+
     class Config:
         model = Player
         model_fields = [
             "id",
             "city",
             "state_ut",
-            "team_name",
+            "teams",
             "educational_institution",
             "sponsored",
         ]
-
-
-class TeamSchema(ModelSchema):
-    class Config:
-        model = Team
-        model_fields = "__all__"
 
 
 class PersonSchema(ModelSchema):
@@ -321,7 +325,7 @@ class UserWardFormSchema(ModelSchema):
 class PlayerFormSchema(ModelSchema):
     class Config:
         model = Player
-        model_exclude = ["user"]
+        model_exclude = ["user", "teams"]
         model_fields_optional = "__all__"
 
 
