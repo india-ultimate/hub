@@ -36,8 +36,6 @@ const PlayerSearchDropdown = props => {
   const [selectAll, setSelectAll] = createSignal(false);
   const [checkedPlayers, setCheckedPlayers] = createSignal({});
 
-  let searchInput;
-
   const handleSelectAll = e => {
     props.players
       .filter(p => playerMatches(p, searchText(), selectedTeam()))
@@ -59,6 +57,16 @@ const PlayerSearchDropdown = props => {
 
     setCheckedPlayers(newCheckedPlayers);
   });
+
+  const [timer, setTimer] = createSignal();
+
+  const onSearchInput = e => {
+    if (timer()) {
+      clearTimeout(timer());
+    }
+    const timeout = setTimeout(() => setSearchText(e.target.value), 700);
+    setTimer(timeout);
+  };
 
   return (
     <>
@@ -128,13 +136,12 @@ const PlayerSearchDropdown = props => {
               <input
                 type="search"
                 id="default-search"
-                ref={searchInput}
                 class="block w-full p-4 pl-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
                 placeholder="Search Player Names"
+                onInput={onSearchInput}
               />
               <button
                 type="submit"
-                onClick={() => setSearchText(searchInput.value)}
                 class="text-white absolute right-2.5 bottom-2.5 bg-blue-700 hover:bg-blue-800 focus:outline-none font-medium rounded-lg text-sm px-4 py-2 dark:bg-blue-600 dark:hover:bg-blue-700"
               >
                 Search
