@@ -83,9 +83,14 @@ class TopScoreClient:
         return info[0]
 
     def get_events(
-        self, n: int | None = None, order_by: str = "date_desc"
+        self,
+        n: int | None = None,
+        order_by: str = "date_desc",
+        fields: str = "Location",
     ) -> list[dict[str, Any]] | None:
         url = f"{self.site_url}/api/events?order_by={order_by}"
+        for each in fields.split(","):
+            url += f"&fields[]={each}"
         events = self._paginated_request(url, n)
         if events is None:
             logger.error("Failed to fetch events")

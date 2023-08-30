@@ -85,7 +85,14 @@ class PaymentFormSchema(Schema):
 class EventSchema(ModelSchema):
     class Config:
         model = Event
-        model_fields = ["id", "title", "start_date", "end_date", "ultimate_central_slug"]
+        model_fields = [
+            "id",
+            "title",
+            "start_date",
+            "end_date",
+            "ultimate_central_slug",
+            "location",
+        ]
 
 
 class TransactionSchema(ModelSchema):
