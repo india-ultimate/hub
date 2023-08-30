@@ -148,7 +148,15 @@ class Command(BaseCommand):
                 for registration in registrations
                 if registration["Team"] is not None
             ]
-            UCRegistration.objects.bulk_create(registration_objs, ignore_conflicts=True)
+            UCRegistration.objects.bulk_create(
+                registration_objs,
+                update_conflicts=True,
+                update_fields=[
+                    "team_id",
+                    "roles",
+                ],
+                unique_fields=["id"],
+            )
 
             # Add Team to registered Players
             player_uc_ids_to_team_uc_ids = {
