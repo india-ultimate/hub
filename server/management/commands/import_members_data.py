@@ -259,6 +259,7 @@ class Command(BaseCommand):
                     if minors
                     else None,
                     ultimate_central_id=uc_person.id if uc_person else None,
+                    imported_data=True,
                 )
                 player.full_clean()
                 player.save()

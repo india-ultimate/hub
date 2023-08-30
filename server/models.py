@@ -99,6 +99,7 @@ class Player(models.Model):
         unique=True, null=True, blank=True, db_index=True
     )
     sponsored = models.BooleanField(default=False)
+    imported_data = models.BooleanField(default=False)
 
     def __str__(self) -> str:
         return self.user.get_full_name()

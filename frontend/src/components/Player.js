@@ -32,6 +32,15 @@ const Player = props => {
   return (
     <div class="relative overflow-x-auto">
       <StatusStepper player={props.player} />
+      <Show when={props.player?.imported_data}>
+        <div
+          class="p-4 mb-4 text-sm text-blue-800 rounded-lg bg-blue-50 dark:bg-gray-800 dark:text-blue-400"
+          role="alert"
+        >
+          Your profile information has been imported from the UPAI Membership
+          form for 2022-2023.
+        </div>
+      </Show>
       <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
         <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
           <tr>
