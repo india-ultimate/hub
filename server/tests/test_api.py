@@ -115,11 +115,11 @@ class TestLogin(ApiBaseTestCase):
 class TestRegistration(ApiBaseTestCase):
     def setUp(self) -> None:
         super().setUp()
-        self.user.player_profile.delete()
         self.client.force_login(self.user)
 
     def test_register_me(self) -> None:
         c = self.client
+        self.user.player_profile.delete()
         data = {
             "phone": "+1234567890",
             "date_of_birth": "1990-01-01",
@@ -140,8 +140,37 @@ class TestRegistration(ApiBaseTestCase):
                 self.assertEqual(value, response_data[key])
         self.assertEqual(self.user.id, response_data["user"])
 
+    def test_edit_registration(self) -> None:
+        c = self.client
+
+        self.assertEqual("", self.player.user.phone)
+        self.assertEqual("", self.player.user.first_name)
+        self.assertEqual("", self.player.city)
+
+        data = {
+            "player_id": self.player.id,
+            "phone": "+1234567890",
+            "date_of_birth": "1990-01-01",
+            "gender": "F",
+            "city": "Bangalore",
+            "first_name": "Nora",
+            "last_name": "Quinn",
+        }
+        response = c.put(
+            "/api/registration",
+            data=data,
+            content_type="application/json",
+        )
+        response_data = response.json()
+        self.assertEqual(200, response.status_code)
+        for key, value in data.items():
+            if key in response_data:
+                self.assertEqual(value, response_data[key])
+        self.assertEqual(self.user.id, response_data["user"])
+
     def test_register_others(self) -> None:
         c = self.client
+        self.user.player_profile.delete()
         data = {
             "email": "foo@email.com",
             "phone": "+1234567890",
@@ -168,6 +197,7 @@ class TestRegistration(ApiBaseTestCase):
 
     def test_register_others_minor_fail(self) -> None:
         c = self.client
+        self.user.player_profile.delete()
 
         dob = now() - datetime.timedelta(days=15 * 365)
 
@@ -189,6 +219,8 @@ class TestRegistration(ApiBaseTestCase):
 
     def test_register_ward_non_minor_fail(self) -> None:
         c = self.client
+        self.user.player_profile.delete()
+
         data = {
             "phone": "+1234567890",
             "date_of_birth": "1990-01-01",
@@ -207,6 +239,7 @@ class TestRegistration(ApiBaseTestCase):
 
     def test_register_ward(self) -> None:
         c = self.client
+        self.user.player_profile.delete()
 
         # ~15 years old
         dob = now() - datetime.timedelta(days=15 * 365)

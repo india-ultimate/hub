@@ -172,6 +172,39 @@ def register_self(
     return do_register(request.user, registration)
 
 
+@api.put("/registration", response={200: PlayerSchema, 400: Response})
+def edit_registration(
+    request: AuthenticatedHttpRequest, registration: RegistrationSchema
+) -> tuple[int, Player | message_response]:
+    if not registration.player_id:
+        return 400, {"message": "Need a player ID to edit profile information"}
+
+    try:
+        player = Player.objects.get(id=registration.player_id)
+    except Player.DoesNotExist:
+        return 400, {"message": "Player does not exist"}
+
+    player_data = PlayerFormSchema(**registration.dict()).dict()
+    player_data["id"] = registration.player_id
+    for key, value in player_data.items():
+        setattr(player, key, value)
+
+    try:
+        player.full_clean()
+    except ValidationError as e:
+        return 400, {"message": str(e)}
+    else:
+        player.save()
+        player.refresh_from_db()
+
+    user_data = UserFormSchema(**registration.dict()).dict()
+    for attr, value in user_data.items():
+        setattr(player.user, attr, value)
+    player.user.save()
+
+    return 200, player
+
+
 def do_register(
     user: User,
     registration: RegistrationSchema | RegistrationOthersSchema | RegistrationWardSchema,

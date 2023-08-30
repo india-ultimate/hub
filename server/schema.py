@@ -337,7 +337,7 @@ class UserWardFormSchema(ModelSchema):
 class PlayerFormSchema(ModelSchema):
     class Config:
         model = Player
-        model_exclude = ["user", "teams"]
+        model_exclude = ["user", "teams", "id"]
         model_fields_optional = "__all__"
 
 
@@ -364,6 +364,8 @@ class WaiverFormSchema(Schema):
 
 
 class RegistrationSchema(UserFormSchema, PlayerFormSchema):
+    player_id: int | None
+
     class Config:
         pass
 
