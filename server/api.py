@@ -595,7 +595,7 @@ def upai_person(
             team_ids = UCRegistration.objects.filter(person_id=person_id).values_list(
                 "team_id", flat=True
             )
-            for team_id in team_ids:
+            for team_id in set(team_ids):
                 player.teams.add(team_id)
 
     return 200, player

@@ -267,7 +267,7 @@ class Command(BaseCommand):
                     team_ids = UCRegistration.objects.filter(person_id=uc_person.id).values_list(
                         "team_id", flat=True
                     )
-                    for team_id in team_ids:
+                    for team_id in set(team_ids):
                         player.teams.add(team_id)
 
                 # Create or get the Guardian instance if applicable
