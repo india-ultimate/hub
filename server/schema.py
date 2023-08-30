@@ -139,6 +139,18 @@ class TeamSchema(ModelSchema):
 
 
 class PlayerSchema(ModelSchema):
+    first_name: str
+
+    @staticmethod
+    def resolve_first_name(player: Player) -> str:
+        return player.user.first_name
+
+    last_name: str
+
+    @staticmethod
+    def resolve_last_name(player: Player) -> str:
+        return player.user.last_name
+
     full_name: str
 
     @staticmethod
