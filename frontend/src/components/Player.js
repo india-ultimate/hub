@@ -4,7 +4,7 @@ import { displayDate } from "../utils";
 import VaccinationInformation from "./VaccinationInformation";
 import StatusStepper from "./StatusStepper";
 import { getLabel } from "../utils";
-import { stateChoices } from "../constants";
+import { genderChoices, occupationChoices, stateChoices } from "../constants";
 
 const Player = props => {
   const navigate = useNavigate();
@@ -24,6 +24,11 @@ const Player = props => {
     navigate(`/vaccination/${playerId}`);
   };
 
+  const navUltimateCentral = (e, playerId) => {
+    e.preventDefault();
+    navigate(`/uc-login/${playerId}`);
+  };
+
   return (
     <div class="relative overflow-x-auto">
       <StatusStepper player={props.player} />
@@ -39,6 +44,28 @@ const Player = props => {
           </tr>
         </thead>
         <tbody>
+          <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+            <th
+              scope="row"
+              class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+            >
+              Phone number
+            </th>
+            <td class="px-6 py-4">
+              {props.player?.phone}
+            </td>
+          </tr>
+          <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+            <th
+              scope="row"
+              class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+            >
+              Email
+            </th>
+            <td class="px-6 py-4">
+              {props.player?.email}
+            </td>
+          </tr>
           <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
             <th
               scope="row"
@@ -65,12 +92,90 @@ const Player = props => {
               scope="row"
               class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
             >
+              Teams
+            </th>
+            <Show
+              when={!props.player?.teams?.teams}
+              fallback={
+                <td class="px-6 py-4">
+                  {props.player?.teams?.map(team => (
+                    <div>{team.name}</div>
+                  ))}
+                </td>
+              }
+            >
+                <td class="px-6 py-4">
+                  <p class="mb-4">Your Ultimate Central profile is not linked</p>
+                  <button
+                    type="submit"
+                    class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+                    onClick={e => navUltimateCentral(e, props.player?.id)}
+                  >
+                    Link profile
+                  </button>
+                </td>
+            </Show>
+          </tr>
+          <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+            <th
+              scope="row"
+              class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+            >
               State
             </th>
             <td class="px-6 py-4">
               {getLabel(stateChoices, props.player?.state_ut)}
             </td>
           </tr>
+          <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+            <th
+              scope="row"
+              class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+            >
+              Gender
+            </th>
+            <Show
+              when={props.player?.gender != "O"}
+              fallback={
+                <td class="px-6 py-4">
+                  {props.player?.other_gender}
+                </td>
+              }
+            >
+              <td class="px-6 py-4">
+                {getLabel(genderChoices, props.player?.gender)}
+              </td>
+            </Show>
+          </tr>
+
+          <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+            <th
+              scope="row"
+              class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+            >
+              Occupation
+            </th>
+            <td class="px-6 py-4">
+              {getLabel(occupationChoices, props.player?.occupation)}
+            </td>
+          </tr>
+
+
+          <Show
+            when={props.player?.occupation === "Student"}
+          >
+            <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+              <th
+                scope="row"
+                class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+              >
+                Educational Institution
+              </th>
+              <td class="px-6 py-4">
+                {props.player?.educational_institution}
+              </td>
+            </tr>
+          </Show>
           <Show when={props.player?.membership}>
             <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
               <th
