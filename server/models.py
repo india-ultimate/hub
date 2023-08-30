@@ -134,6 +134,7 @@ class Event(models.Model):
     end_date = models.DateField()
     ultimate_central_id = models.PositiveIntegerField(unique=True, null=True, blank=True)
     ultimate_central_slug = models.SlugField(default="unknown")
+    location = models.CharField(max_length=255, default="unknown")
 
 
 class UCPerson(models.Model):

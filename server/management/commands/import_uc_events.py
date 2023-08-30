@@ -36,6 +36,7 @@ class Command(BaseCommand):
                 start_date=tournament["start"],
                 end_date=tournament["end"],
                 ultimate_central_slug=tournament["slug"],
+                location=tournament["Location"]["formatted_address"],
             )
             for tournament in tournaments
         ]
@@ -47,6 +48,7 @@ class Command(BaseCommand):
                 "start_date",
                 "end_date",
                 "ultimate_central_slug",
+                "location",
             ],
             unique_fields=["ultimate_central_id"],
         )
