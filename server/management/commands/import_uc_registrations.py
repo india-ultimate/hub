@@ -90,7 +90,19 @@ class Command(BaseCommand):
                 )
                 for person in persons_data
             ]
-            persons = UCPerson.objects.bulk_create(persons, ignore_conflicts=True)
+            persons = UCPerson.objects.bulk_create(
+                persons,
+                update_conflicts=True,
+                update_fields=[
+                    "first_name",
+                    "last_name",
+                    "image_url",
+                    "email",
+                    "slug",
+                    "dominant_hand",
+                ],
+                unique_fields=["id"],
+            )
 
             teams_data = [registration["Team"] for registration in registrations]
             # NOTE: We ignore registrations without an associated team
