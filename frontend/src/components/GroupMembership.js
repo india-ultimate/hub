@@ -123,12 +123,6 @@ const PlayerSearchDropdown = props => {
                 {team => <option value={team.id}>{team.name}</option>}
               </For>
             </select>
-            <label
-              for="default-search"
-              class="mb-2 text-sm font-medium text-gray-900 sr-only dark:text-white"
-            >
-              Search
-            </label>
             <div class="relative flex-grow">
               <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                 <Icon path={magnifyingGlass} style={{ width: "20px" }} />
@@ -140,12 +134,6 @@ const PlayerSearchDropdown = props => {
                 placeholder="Search Player Names"
                 onInput={onSearchInput}
               />
-              <button
-                type="submit"
-                class="text-white absolute right-2.5 bottom-2.5 bg-blue-700 hover:bg-blue-800 focus:outline-none font-medium rounded-lg text-sm px-4 py-2 dark:bg-blue-600 dark:hover:bg-blue-700"
-              >
-                Search
-              </button>
             </div>
           </div>
           <ul
