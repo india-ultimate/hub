@@ -1,6 +1,13 @@
-import { getCookie, getAge } from "../utils";
+import { getCookie, getAge, fetchUserData, findPlayerById } from "../utils";
 import { useStore } from "../store";
-import { createSignal, Show, Switch, Match } from "solid-js";
+import {
+  createSignal,
+  Show,
+  Switch,
+  Match,
+  onMount,
+  createEffect
+} from "solid-js";
 import {
   genderChoices,
   stateChoices,
@@ -12,6 +19,8 @@ import {
 import {
   createForm,
   getValue,
+  setValue,
+  reset,
   // validators
   email,
   pattern,
@@ -20,6 +29,7 @@ import {
   minLength,
   custom
 } from "@modular-forms/solid";
+import { useParams } from "@solidjs/router";
 import RegistrationSuccess from "./RegistrationSuccess";
 import TextInput from "./TextInput";
 import Select from "./Select";
@@ -32,7 +42,10 @@ const RegistrationForm = props => {
   const [error, setError] = createSignal("");
   const [player, setPlayer] = createSignal();
 
-  const [store, { setPlayer: setStorePlayer, addWard }] = useStore();
+  const [
+    store,
+    { setPlayer: setStorePlayer, addWard, setLoggedIn, setData, setPlayerById }
+  ] = useStore();
 
   const today = new Date();
   const maxDate = new Date(new Date().setFullYear(today.getFullYear() - minAge))
@@ -44,24 +57,50 @@ const RegistrationForm = props => {
     return getAge(value, yearEnd) >= minAge;
   };
 
+  const [ward, setWard] = createSignal(props.ward);
+
   const validateDateOfBirth = value => {
     const age = getAge(value);
-    return props.ward ? age < majorAge : age >= majorAge;
+    return ward() ? age < majorAge : age >= majorAge;
   };
 
-  const selfForm = !props.ward && !props.others;
+  const [selfForm, setSelfForm] = createSignal(!props.ward && !props.others);
+  createEffect(() => {
+    setSelfForm(!ward() && !props.others);
+  });
 
-  const initialValues = selfForm
-    ? {
-        first_name: store.data.first_name,
-        last_name: store.data.last_name,
-        phone: store.data.phone
-      }
-    : {};
+  const initialValues = {};
+
+  const params = useParams();
+  const [editForm, setEditForm] = createSignal(!!params.playerId);
+
   const [registrationForm, { Form, Field }] = createForm({
     initialValues,
     validateOn: "touched",
     revalidateOn: "touched"
+  });
+
+  onMount(() => {
+    if (!store?.data?.username) {
+      fetchUserData(setLoggedIn, setData);
+    }
+  });
+
+  createEffect(() => {
+    if (store.data.id) {
+      const playerData = findPlayerById(store.data, Number(params.playerId));
+      setWard(props.ward || !!playerData?.guardian);
+      reset(registrationForm, {
+        initialValues: playerData
+      });
+      // NOTE: reset above doesn't seem to set this field by default.
+      setValue(
+        registrationForm,
+        "educational_institution",
+        playerData?.educational_institution,
+        { shouldTouched: true }
+      );
+    }
   });
 
   const submitFormData = async formData => {
@@ -73,23 +112,28 @@ const RegistrationForm = props => {
       : "/api/registration";
     try {
       const response = await fetch(url, {
-        method: "POST",
+        method: editForm() ? "PUT" : "POST",
         headers: {
           "Content-Type": "application/json",
           "X-CSRFToken": csrftoken
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(
+          editForm()
+            ? { ...formData, player_id: Number(params.playerId) }
+            : formData
+        )
       });
 
       if (response.ok) {
         console.log("Player created successfully");
-        const player = await response.json();
-        setPlayer(player);
-        if (selfForm) {
-          setStorePlayer(player);
-        } else if (props.ward) {
-          addWard(player);
+        const playerData = await response.json();
+        setPlayer(playerData);
+        if (selfForm()) {
+          setStorePlayer(playerData);
+        } else if (ward()) {
+          editForm() ? setPlayerById(playerData) : addWard(playerData);
         }
+        setEditForm(false);
       } else {
         if (response.status == 400) {
           const error = await response.json();
@@ -113,7 +157,7 @@ const RegistrationForm = props => {
           <RegistrationSuccess
             player={player()}
             others={props.others}
-            ward={props.ward}
+            ward={ward()}
           />
         }
       >
@@ -130,7 +174,7 @@ const RegistrationForm = props => {
               the email address mentioned here.
             </div>
           </Match>
-          <Match when={props.ward}>
+          <Match when={ward()}>
             <div
               class="px-8 lg:px-10 p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-yellow-50 dark:bg-gray-800 dark:text-yellow-300"
               role="alert"
@@ -146,8 +190,8 @@ const RegistrationForm = props => {
           onSubmit={values => submitFormData(values)}
         >
           <div class="space-y-8">
-            <Show when={!selfForm}>
-              <Show when={props.ward}>
+            <Show when={!editForm() && !selfForm()}>
+              <Show when={ward()}>
                 <Field
                   name="relation"
                   validate={required(
@@ -188,7 +232,7 @@ const RegistrationForm = props => {
                   />
                 )}
               </Field>
-              <Show when={props.ward}>
+              <Show when={ward()}>
                 <div
                   class="px-8 lg:px-10 p-4 mb-4 text-sm text-blue-800 rounded-lg bg-blue-50 dark:bg-gray-800 dark:text-blue-400"
                   role="alert"
@@ -247,7 +291,9 @@ const RegistrationForm = props => {
                 ),
                 custom(
                   validateDateOfBirth,
-                  props.ward
+                  editForm()
+                    ? "Minors need to have a guardian and adults cannot. Use the correct age!"
+                    : ward()
                     ? `Minors need to be under ${majorAge}. Use the adults form, otherwise`
                     : `Use the minors form if the player is less than ${majorAge} years old`
                 )
@@ -321,7 +367,7 @@ const RegistrationForm = props => {
                 />
               )}
             </Field>
-            <Show when={!props.ward}>
+            <Show when={!ward()}>
               <Field
                 name="occupation"
                 validate={required("Please select your occupation.")}
@@ -341,8 +387,7 @@ const RegistrationForm = props => {
             </Show>
             <Show
               when={
-                props.ward ||
-                getValue(registrationForm, "occupation") === "Student"
+                ward() || getValue(registrationForm, "occupation") === "Student"
               }
             >
               <Field
@@ -382,7 +427,9 @@ const RegistrationForm = props => {
                   checked={field.value}
                   value={field.value}
                   error={field.error}
-                  label={selfForm ? "I'm not in India" : "Player not in India"}
+                  label={
+                    selfForm() ? "I'm not in India" : "Player not in India"
+                  }
                 />
               )}
             </Field>

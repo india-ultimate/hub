@@ -42,6 +42,11 @@ export default function App() {
                 {/* Registration routes */}
                 <Route path="/registration/me" component={Registration} />
                 <Route
+                  path="/edit/registration/:playerId"
+                  component={Registration}
+                  matchFilters={filters}
+                />
+                <Route
                   path="/registration/others"
                   element={<Registration others={true} />}
                 />

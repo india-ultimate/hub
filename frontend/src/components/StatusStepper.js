@@ -86,7 +86,7 @@ const StatusStepper = props => {
       <ol class="items-center w-full sm:flex sm:space-x-8">
         <Step
           title="Profile Info"
-          link="/dashboard"
+          link={`/edit/registration/${props.player.id}`}
           icon={identification}
           color={status.profile ? "green" : "red"}
         />
