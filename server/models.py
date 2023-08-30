@@ -24,6 +24,7 @@ class Team(models.Model):
     facebook_url = models.URLField(null=True, blank=True)
     image_url = models.URLField(null=True, blank=True)
     name = models.CharField(max_length=100)
+    ultimate_central_slug = models.SlugField(default="unknown")
 
 
 class Player(models.Model):
