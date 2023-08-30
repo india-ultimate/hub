@@ -99,13 +99,25 @@ class Command(BaseCommand):
                 Team(
                     ultimate_central_id=team["id"],
                     ultimate_central_creator_id=team["creator_id"],
+                    ultimate_central_slug=team["slug"],
                     facebook_url=team["facebook_url"],
                     image_url=team["images"]["200"],
                     name=team["name"],
                 )
                 for team in teams_data
             ]
-            teams = Team.objects.bulk_create(teams, ignore_conflicts=True)
+            teams = Team.objects.bulk_create(
+                teams,
+                update_conflicts=True,
+                update_fields=[
+                    "name",
+                    "image_url",
+                    "facebook_url",
+                    "ultimate_central_slug",
+                    "ultimate_central_creator_id",
+                ],
+                unique_fields=["ultimate_central_id"],
+            )
             team_ids = {team.ultimate_central_id for team in teams}
             uc_id_to_team_id = dict(
                 Team.objects.filter(ultimate_central_id__in=team_ids).values_list(
