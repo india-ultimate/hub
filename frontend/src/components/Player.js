@@ -159,19 +159,26 @@ const Player = props => {
             </Show>
           </tr>
 
-          <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-            <th
-              scope="row"
-              class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
-            >
-              Occupation
-            </th>
-            <td class="px-6 py-4">
-              {getLabel(occupationChoices, props.player?.occupation)}
-            </td>
-          </tr>
+          <Show when={props.player?.occupation}>
+            <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+              <th
+                scope="row"
+                class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+              >
+                Occupation
+              </th>
+              <td class="px-6 py-4">
+                {getLabel(occupationChoices, props.player?.occupation)}
+              </td>
+            </tr>
+          </Show>
 
-          <Show when={props.player?.occupation === "Student"}>
+          <Show
+            when={
+              props.player?.occupation === "Student" ||
+              !props.player?.occupation
+            }
+          >
             <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
               <th
                 scope="row"
