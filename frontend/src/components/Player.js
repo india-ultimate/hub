@@ -171,7 +171,7 @@ const Player = props => {
             </td>
           </tr>
 
-          <Show when={props.player?.occupation === "Student"}>
+          <Show when={props.player?.educational_institution}>
             <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
               <th
                 scope="row"
@@ -182,6 +182,7 @@ const Player = props => {
               <td class="px-6 py-4">{props.player?.educational_institution}</td>
             </tr>
           </Show>
+
           <Show when={props.player?.membership}>
             <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
               <th
