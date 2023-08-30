@@ -60,14 +60,6 @@ const StatusStepper = props => {
           of the profile is complete
         </span>
         <div class="w-full">
-          <Switch>
-            <Match when={percent < 100}>
-              <p>Complete the profile to participate in UPAI events</p>
-            </Match>
-            <Match when={percent === 100}>
-              <p>Profile complete! 🎉</p>
-            </Match>
-          </Switch>
           <div class="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
             <div
               class={clsx(
@@ -77,6 +69,18 @@ const StatusStepper = props => {
               style={`width: ${percent}%`}
             />
           </div>
+          <Switch>
+            <Match when={percent < 100}>
+              <p>Complete the profile to participate in UPAI events</p>
+              <p class="text-sm">
+                You can click on the incomplete steps (indicated in red) below,
+                to complete those steps.
+              </p>
+            </Match>
+            <Match when={percent === 100}>
+              <p>Profile complete! 🎉</p>
+            </Match>
+          </Switch>
         </div>
       </div>
       <ol class="items-center w-full sm:flex sm:space-x-8">
