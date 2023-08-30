@@ -86,7 +86,7 @@ const StatusStepper = props => {
       <ol class="items-center w-full sm:flex sm:space-x-8">
         <Step
           title="Profile Info"
-          link="/"
+          link="/dashboard"
           icon={identification}
           color={status.profile ? "green" : "red"}
         />
