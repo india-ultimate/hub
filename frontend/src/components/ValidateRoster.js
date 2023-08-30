@@ -245,6 +245,19 @@ const ValidateRoster = () => {
           >
             View event on Ultimate Central
           </a>
+          <Show
+            when={
+              !store?.data?.is_staff && (eventData()?.teams || []).length === 0
+            }
+          >
+            <div
+              class="p-4 mb-4 text-sm text-red-800 rounded-lg bg-red-50 dark:bg-gray-800 dark:text-red-400"
+              role="alert"
+            >
+              You do not have access to view any teams participating in this
+              event!
+            </div>
+          </Show>
           <div class="my-4 grid grid-cols-2 md:grid-cols-3 gap-4">
             <For each={eventData()?.teams}>
               {team => (
