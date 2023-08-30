@@ -91,7 +91,9 @@ const RegistrationForm = props => {
       const playerData = findPlayerById(store.data, Number(params.playerId));
       setWard(props.ward || !!playerData?.guardian);
       reset(registrationForm, {
-        initialValues: playerData
+        initialValues: selfForm()
+          ? { ...store.data, ...playerData }
+          : playerData
       });
       // NOTE: reset above doesn't seem to set this field by default.
       setValue(

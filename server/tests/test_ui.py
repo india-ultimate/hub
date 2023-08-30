@@ -155,3 +155,13 @@ class TestIntegration(BaseCase):
             self.type("input#phone", "+919876543210\n")
 
             self.assert_text("Welcome Jagdeep Chatterjee")
+            self.click('a[href="/registration/me"]')
+
+            self.assert_text("Jagdeep", "input#first_name")
+            self.assert_text("Chatterjee", "input#last_name")
+            self.assert_text("+919876543210", "input#phone")
+
+            self.click('a[href="/dashboard"]')
+            self.click('a[href="/registration/ward"]')
+            self.assert_text("", "input#first_name")
+            self.assert_text("", "input#last_name")
