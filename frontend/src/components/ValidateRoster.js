@@ -260,128 +260,134 @@ const ValidateRoster = () => {
           </Show>
           <div class="my-4 grid grid-cols-2 md:grid-cols-3 gap-4">
             <For each={eventData()?.teams}>
-              {team => (
-                <div>
-                  <h3 class="text-xl font-bold text-blue-500">{team.name}</h3>
-                  <ul class="my-4 w-200 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                    <For each={eventData()?.registrationsByTeam[team.id]}>
-                      {registration => {
-                        const age = getAge(
-                          new Date(registration.person.player?.date_of_birth),
-                          new Date(eventData()?.start_date)
-                        );
-                        const displayAge = Math.round(age * 100) / 100;
-                        console.log(displayAge);
-                        return (
-                          <Show when={isPlayer(registration)}>
-                            <li
-                              class={clsx(
-                                "w-full px-4 py-2 border-b border-gray-200 rounded-t-lg dark:border-gray-600",
-                                displayAge < minAge
-                                  ? "bg-gray-100 dark:bg-gray-800"
-                                  : ""
-                              )}
-                            >
-                              {registration.person.first_name}{" "}
-                              {registration.person.last_name}
-                              <Switch>
-                                <Match when={!registration?.person?.player}>
-                                  <span
-                                    class={clsx("mx-4", redText)}
-                                    title="No Hub player linked with UC Profile"
-                                  >
-                                    <Icon
-                                      path={noSymbol}
-                                      style={{
-                                        width: "20px",
-                                        display: "inline"
-                                      }}
-                                    />
-                                  </span>
-                                </Match>
-                                <Match when={registration?.person?.player}>
-                                  <span
-                                    title="Membership fee paid?"
-                                    class={clsx(
-                                      "mx-2",
-                                      registration.person.player?.membership
-                                        ?.is_active
-                                        ? greenText
-                                        : redText
-                                    )}
-                                  >
-                                    <Icon
-                                      path={currencyRupee}
-                                      style={{
-                                        width: "20px",
-                                        display: "inline"
-                                      }}
-                                    />
-                                  </span>
-                                  <span
-                                    title="Liability Waiver signed?"
-                                    class={clsx(
-                                      "mx-2",
-                                      registration.person.player?.membership
-                                        ?.waiver_valid
-                                        ? greenText
-                                        : redText
-                                    )}
-                                  >
-                                    <Icon
-                                      path={
+              {team => {
+                const teamRegistrations =
+                  eventData()?.registrationsByTeam[team.id];
+                return (
+                  <div>
+                    <h3 class="text-xl font-bold text-blue-500">
+                      {team.name} ({teamRegistrations.length})
+                    </h3>
+                    <ul class="my-4 w-200 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                      <For each={teamRegistrations}>
+                        {registration => {
+                          const age = getAge(
+                            new Date(registration.person.player?.date_of_birth),
+                            new Date(eventData()?.start_date)
+                          );
+                          const displayAge = Math.round(age * 100) / 100;
+                          console.log(displayAge);
+                          return (
+                            <Show when={isPlayer(registration)}>
+                              <li
+                                class={clsx(
+                                  "w-full px-4 py-2 border-b border-gray-200 rounded-t-lg dark:border-gray-600",
+                                  displayAge < minAge
+                                    ? "bg-gray-100 dark:bg-gray-800"
+                                    : ""
+                                )}
+                              >
+                                {registration.person.first_name}{" "}
+                                {registration.person.last_name}
+                                <Switch>
+                                  <Match when={!registration?.person?.player}>
+                                    <span
+                                      class={clsx("mx-4", redText)}
+                                      title="No Hub player linked with UC Profile"
+                                    >
+                                      <Icon
+                                        path={noSymbol}
+                                        style={{
+                                          width: "20px",
+                                          display: "inline"
+                                        }}
+                                      />
+                                    </span>
+                                  </Match>
+                                  <Match when={registration?.person?.player}>
+                                    <span
+                                      title="Membership fee paid?"
+                                      class={clsx(
+                                        "mx-2",
+                                        registration.person.player?.membership
+                                          ?.is_active
+                                          ? greenText
+                                          : redText
+                                      )}
+                                    >
+                                      <Icon
+                                        path={currencyRupee}
+                                        style={{
+                                          width: "20px",
+                                          display: "inline"
+                                        }}
+                                      />
+                                    </span>
+                                    <span
+                                      title="Liability Waiver signed?"
+                                      class={clsx(
+                                        "mx-2",
                                         registration.person.player?.membership
                                           ?.waiver_valid
-                                          ? handThumbUp
-                                          : handThumbDown
-                                      }
-                                      style={{
-                                        width: "20px",
-                                        display: "inline"
-                                      }}
-                                    />
-                                  </span>
-                                  <span
-                                    title="Vaccinated?"
-                                    class={clsx(
-                                      "mx-2",
-                                      registration.person.player?.vaccination
-                                        ?.is_vaccinated
-                                        ? greenText
-                                        : redText
-                                    )}
-                                  >
-                                    <Icon
-                                      path={
+                                          ? greenText
+                                          : redText
+                                      )}
+                                    >
+                                      <Icon
+                                        path={
+                                          registration.person.player?.membership
+                                            ?.waiver_valid
+                                            ? handThumbUp
+                                            : handThumbDown
+                                        }
+                                        style={{
+                                          width: "20px",
+                                          display: "inline"
+                                        }}
+                                      />
+                                    </span>
+                                    <span
+                                      title="Vaccinated?"
+                                      class={clsx(
+                                        "mx-2",
                                         registration.person.player?.vaccination
                                           ?.is_vaccinated
-                                          ? shieldCheck
-                                          : shieldExclamation
-                                      }
-                                      style={{
-                                        width: "20px",
-                                        display: "inline"
-                                      }}
-                                    />
-                                  </span>
-                                </Match>
-                              </Switch>
-                              <Show when={displayAge < minAge}>
-                                <p
-                                  class="text-sm text-red-800 rounded-lg bg-red-50 dark:bg-gray-800 dark:text-red-400"
-                                  role="alert"
-                                >
-                                  Under age: {displayAge} years old
-                                </p>
-                              </Show>
-                            </li>
-                          </Show>
-                        );
-                      }}
-                    </For>
-                  </ul>
-                </div>
-              )}
+                                          ? greenText
+                                          : redText
+                                      )}
+                                    >
+                                      <Icon
+                                        path={
+                                          registration.person.player
+                                            ?.vaccination?.is_vaccinated
+                                            ? shieldCheck
+                                            : shieldExclamation
+                                        }
+                                        style={{
+                                          width: "20px",
+                                          display: "inline"
+                                        }}
+                                      />
+                                    </span>
+                                  </Match>
+                                </Switch>
+                                <Show when={displayAge < minAge}>
+                                  <p
+                                    class="text-sm text-red-800 rounded-lg bg-red-50 dark:bg-gray-800 dark:text-red-400"
+                                    role="alert"
+                                  >
+                                    Under age: {displayAge} years old
+                                  </p>
+                                </Show>
+                              </li>
+                            </Show>
+                          );
+                        }}
+                      </For>
+                    </ul>
+                  </div>
+                );
+              }}
             </For>
           </div>
           <ValidationLegend />
