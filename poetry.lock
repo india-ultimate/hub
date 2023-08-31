@@ -473,6 +473,21 @@ files = [
 ]
 
 [[package]]
+name = "dj-database-url"
+version = "2.1.0"
+description = "Use Database URLs in your Django Application."
+optional = false
+python-versions = "*"
+files = [
+    {file = "dj-database-url-2.1.0.tar.gz", hash = "sha256:f2042cefe1086e539c9da39fad5ad7f61173bf79665e69bf7e4de55fa88b135f"},
+    {file = "dj_database_url-2.1.0-py3-none-any.whl", hash = "sha256:04bc34b248d4c21aaa13e4ab419ae6575ef5f10f3df735ce7da97722caa356e0"},
+]
+
+[package.dependencies]
+Django = ">=3.2"
+typing-extensions = ">=3.10.0.0"
+
+[[package]]
 name = "django"
 version = "4.2.2"
 description = "A high-level Python web framework that encourages rapid development and clean, pragmatic design."
@@ -1542,6 +1557,26 @@ files = [
 ]
 
 [[package]]
+name = "psycopg2"
+version = "2.9.7"
+description = "psycopg2 - Python-PostgreSQL Database Adapter"
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "psycopg2-2.9.7-cp310-cp310-win32.whl", hash = "sha256:1a6a2d609bce44f78af4556bea0c62a5e7f05c23e5ea9c599e07678995609084"},
+    {file = "psycopg2-2.9.7-cp310-cp310-win_amd64.whl", hash = "sha256:b22ed9c66da2589a664e0f1ca2465c29b75aaab36fa209d4fb916025fb9119e5"},
+    {file = "psycopg2-2.9.7-cp311-cp311-win32.whl", hash = "sha256:44d93a0109dfdf22fe399b419bcd7fa589d86895d3931b01fb321d74dadc68f1"},
+    {file = "psycopg2-2.9.7-cp311-cp311-win_amd64.whl", hash = "sha256:91e81a8333a0037babfc9fe6d11e997a9d4dac0f38c43074886b0d9dead94fe9"},
+    {file = "psycopg2-2.9.7-cp37-cp37m-win32.whl", hash = "sha256:d1210fcf99aae6f728812d1d2240afc1dc44b9e6cba526a06fb8134f969957c2"},
+    {file = "psycopg2-2.9.7-cp37-cp37m-win_amd64.whl", hash = "sha256:e9b04cbef584310a1ac0f0d55bb623ca3244c87c51187645432e342de9ae81a8"},
+    {file = "psycopg2-2.9.7-cp38-cp38-win32.whl", hash = "sha256:d5c5297e2fbc8068d4255f1e606bfc9291f06f91ec31b2a0d4c536210ac5c0a2"},
+    {file = "psycopg2-2.9.7-cp38-cp38-win_amd64.whl", hash = "sha256:8275abf628c6dc7ec834ea63f6f3846bf33518907a2b9b693d41fd063767a866"},
+    {file = "psycopg2-2.9.7-cp39-cp39-win32.whl", hash = "sha256:c7949770cafbd2f12cecc97dea410c514368908a103acf519f2a346134caa4d5"},
+    {file = "psycopg2-2.9.7-cp39-cp39-win_amd64.whl", hash = "sha256:b6bd7d9d3a7a63faae6edf365f0ed0e9b0a1aaf1da3ca146e6b043fb3eb5d723"},
+    {file = "psycopg2-2.9.7.tar.gz", hash = "sha256:f00cc35bd7119f1fed17b85bd1007855194dde2cbd8de01ab8ebb17487440ad8"},
+]
+
+[[package]]
 name = "ptyprocess"
 version = "0.7.0"
 description = "Run a subprocess in a pseudo terminal"
@@ -2426,4 +2461,4 @@ typing-extensions = ">=3.7"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "54386fded322271a3820dd9a30504b993dbcadce80f8775a7d68a3c42b0d8c1e"
+content-hash = "1b42505a7557e01c31fd522975910fb07757defc31b16fcb2038e5980efe8ea0"
