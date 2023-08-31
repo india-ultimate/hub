@@ -34,7 +34,7 @@ export default function App() {
           <Header />
           <section class="grow">
             <div class="py-8 px-4 mx-auto max-w-screen-xl lg:py-16 lg:px-6">
-              <div class="max-w-screen-lg text-gray-500 sm:text-lg dark:text-gray-400">
+              <div class="text-gray-500 sm:text-lg dark:text-gray-400">
                 <Routes>
                   {/* Simple pages */}
                   <Route path="/" component={Home} />
