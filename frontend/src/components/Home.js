@@ -37,11 +37,7 @@ const Home = () => {
     const data = await response.json();
     if (response.ok) {
       data.map(user =>
-        fetchUrl(
-          "https://api.github.com/users/" + user.login,
-          userSuccessHandler,
-          error => console.log(error)
-        )
+        fetchUrl(user.url, userSuccessHandler, error => console.log(error))
       );
     } else {
       console.log(data);
