@@ -1,8 +1,12 @@
-import { createSignal, For, onMount } from "solid-js";
-import { fetchUrl } from "../utils";
+import { For, Suspense } from "solid-js";
+import { createQuery } from "@tanstack/solid-query";
+import { fetchContributors } from "../queries";
+import ContributorsSkeleton from "../skeletons/Contributors";
 
 const Home = () => {
-  const [contributors, setContributors] = createSignal([]);
+  const query = createQuery(() => ["contributors"], fetchContributors, {
+    refetchOnWindowFocus: false
+  });
 
   const features = [
     {
@@ -23,39 +27,6 @@ const Home = () => {
       description: "Shhhhh... Coming Soon!"
     }
   ];
-
-  const userSuccessHandler = async response => {
-    const data = await response.json();
-    if (response.ok) {
-      setContributors([...contributors(), data]);
-    } else {
-      console.log(data);
-    }
-  };
-
-  const repoSuccessHandler = async response => {
-    const data = await response.json();
-    if (response.ok) {
-      data.map(user =>
-        fetchUrl(user.url, userSuccessHandler, error => console.log(error))
-      );
-    } else {
-      console.log(data);
-    }
-  };
-
-  const fetchContributors = () => {
-    console.log("Fetching Contributors info...");
-    fetchUrl(
-      "https://api.github.com/repos/india-ultimate/hub/contributors",
-      repoSuccessHandler,
-      error => console.log(error)
-    );
-  };
-
-  onMount(() => {
-    fetchContributors();
-  });
 
   return (
     <div>
@@ -97,22 +68,24 @@ const Home = () => {
           </a>
         </h3>
         <div class="w-fit mx-auto mt-5">
-          <For each={contributors()}>
-            {contributor => (
-              <div class="flex items-center space-x-4 my-3 w-full">
-                <img
-                  class="w-10 h-10 rounded-full p-0.5 ring-2 ring-blue-600 dark:ring-blue-500"
-                  src={contributor["avatar_url"]}
-                  alt=""
-                />
-                <div class="font-medium hover:text-blue-600 dark:hover:text-blue-500">
-                  <div>
-                    <a href={contributor["html_url"]}>{contributor.name}</a>
+          <Suspense fallback={<ContributorsSkeleton />}>
+            <For each={query.data}>
+              {contributor => (
+                <div class="flex items-center space-x-4 my-3 w-full">
+                  <img
+                    class="w-10 h-10 rounded-full p-0.5 ring-2 ring-blue-600 dark:ring-blue-500"
+                    src={contributor["avatar_url"]}
+                    alt=""
+                  />
+                  <div class="font-medium hover:text-blue-600 dark:hover:text-blue-500">
+                    <div>
+                      <a href={contributor["html_url"]}>{contributor.name}</a>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
-          </For>
+              )}
+            </For>
+          </Suspense>
         </div>
       </div>
     </div>
