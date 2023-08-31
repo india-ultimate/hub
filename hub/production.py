@@ -13,7 +13,7 @@ SECRET_KEY = os.environ.get("SECRET_KEY", SECRET_KEY)  # noqa: F405
 
 DATA_DIR = Path("/data")
 if os.environ.get("DATABASE_URL"):
-    DATABASES["default"] = dj_database_url.config()  # noqa: F405
+    DATABASES["default"] = dj_database_url.config()  # type: ignore[assignment]  # noqa: F405
 else:
     DATABASES["default"]["NAME"] = DATA_DIR / "production.db.sqlite"  # noqa: F405
 MEDIA_ROOT = DATA_DIR / "media"
