@@ -78,6 +78,7 @@ class Command(BaseCommand):
                 )
             )
             persons_data = [registration["Person"] for registration in registrations]
+            persons_data_by_id = {person["id"]: person for person in persons_data}
             persons = [
                 UCPerson(
                     id=person["id"],
@@ -88,7 +89,7 @@ class Command(BaseCommand):
                     last_name=person["last_name"],
                     slug=person["slug"],
                 )
-                for person in persons_data
+                for person_id, person in persons_data_by_id.items()
             ]
             persons = UCPerson.objects.bulk_create(
                 persons,
@@ -107,16 +108,17 @@ class Command(BaseCommand):
             teams_data = [registration["Team"] for registration in registrations]
             # NOTE: We ignore registrations without an associated team
             teams_data = [t for t in teams_data if t is not None]
+            teams_data_by_id = {t["id"]: t for t in teams_data}
             teams = [
                 Team(
-                    ultimate_central_id=team["id"],
+                    ultimate_central_id=team_id,
                     ultimate_central_creator_id=team["creator_id"],
                     ultimate_central_slug=team["slug"],
                     facebook_url=team["facebook_url"],
                     image_url=team["images"]["200"],
                     name=team["name"],
                 )
-                for team in teams_data
+                for team_id, team in teams_data_by_id.items()
             ]
             teams = Team.objects.bulk_create(
                 teams,
