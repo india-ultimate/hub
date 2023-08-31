@@ -112,6 +112,15 @@ const RegistrationForm = props => {
       : props.ward
       ? "/api/registration/ward"
       : "/api/registration";
+
+    const bodyData = editForm()
+      ? { ...formData, player_id: Number(params.playerId) }
+      : formData;
+
+    if (ward()) {
+      formData.occupation = "Student";
+    }
+
     try {
       const response = await fetch(url, {
         method: editForm() ? "PUT" : "POST",
@@ -119,11 +128,7 @@ const RegistrationForm = props => {
           "Content-Type": "application/json",
           "X-CSRFToken": csrftoken
         },
-        body: JSON.stringify(
-          editForm()
-            ? { ...formData, player_id: Number(params.playerId) }
-            : formData
-        )
+        body: JSON.stringify(bodyData)
       });
 
       if (response.ok) {

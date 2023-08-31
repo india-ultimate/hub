@@ -243,7 +243,9 @@ class Command(BaseCommand):
                     not_in_india = True
                     state_ut = None
 
-                occupation = clean_occupation(row[columns["occupation"]]) if not minors else None
+                occupation = (
+                    clean_occupation(row[columns["occupation"]]) if not minors else "Student"
+                )
 
                 # Create the Player instance
                 player = Player(
