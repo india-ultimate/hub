@@ -29,19 +29,27 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f"Fetched {count} events"))
 
         # Create events
-        count = 0
-        for tournament in tournaments:
-            _, created = Event.objects.get_or_create(
+        events = [
+            Event(
                 ultimate_central_id=tournament["id"],
-                defaults={
-                    "title": tournament["name"],
-                    "start_date": tournament["start"],
-                    "end_date": tournament["end"],
-                    "ultimate_central_slug": tournament["slug"],
-                },
+                title=tournament["name"],
+                start_date=tournament["start"],
+                end_date=tournament["end"],
+                ultimate_central_slug=tournament["slug"],
             )
-            if created:
-                count += 1
+            for tournament in tournaments
+        ]
+        Event.objects.bulk_create(
+            events,
+            update_conflicts=True,
+            update_fields=[
+                "title",
+                "start_date",
+                "end_date",
+                "ultimate_central_slug",
+            ],
+            unique_fields=["ultimate_central_id"],
+        )
 
         style = self.style.SUCCESS if count > 0 else self.style.NOTICE
-        self.stdout.write(style(f"Created {count} events"))
+        self.stdout.write(style(f"Updated {len(events)} events"))
