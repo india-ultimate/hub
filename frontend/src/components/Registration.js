@@ -34,6 +34,8 @@ import RegistrationSuccess from "./RegistrationSuccess";
 import TextInput from "./TextInput";
 import Select from "./Select";
 import Checkbox from "./Checkbox";
+import Breadcrumbs from "./Breadcrumbs";
+import { inboxStack } from "solid-heroicons/solid";
 
 const RegistrationForm = props => {
   const csrftoken = getCookie("csrftoken");
@@ -158,6 +160,13 @@ const RegistrationForm = props => {
 
   return (
     <div>
+      <Breadcrumbs
+        icon={inboxStack}
+        pageList={[
+          { url: "/dashboard", name: "Dashboard" },
+          { name: "Registration" }
+        ]}
+      />
       <Show
         when={!player()}
         fallback={

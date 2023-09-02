@@ -12,6 +12,8 @@ import {
 import { A } from "@solidjs/router";
 import { getCookie, fetchUserData, displayDate, getPlayer } from "../utils";
 import StatusStepper from "./StatusStepper";
+import Breadcrumbs from "./Breadcrumbs";
+import { inboxStack } from "solid-heroicons/solid";
 
 const Legal = props => (
   <div class="my-10">
@@ -520,6 +522,13 @@ const Waiver = () => {
 
   return (
     <>
+      <Breadcrumbs
+        icon={inboxStack}
+        pageList={[
+          { url: "/dashboard", name: "Dashboard" },
+          { name: "Waiver" }
+        ]}
+      />
       <Switch>
         <Match when={!player()}>
           <p>Waiver information for player {params.playerId} not accessible.</p>

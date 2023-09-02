@@ -29,6 +29,8 @@ import MembershipPlayerList from "./MembershipPlayerList";
 import { initFlowbite } from "flowbite";
 import { Icon } from "solid-heroicons";
 import { magnifyingGlass } from "solid-heroicons/solid-mini";
+import { inboxStack } from "solid-heroicons/solid";
+import Breadcrumbs from "./Breadcrumbs";
 
 const PlayerSearchDropdown = props => {
   const [searchText, setSearchText] = createSignal("");
@@ -333,6 +335,13 @@ const GroupMembership = () => {
 
   return (
     <div>
+      <Breadcrumbs
+        icon={inboxStack}
+        pageList={[
+          { url: "/dashboard", name: "Dashboard" },
+          { name: "Group Membership" }
+        ]}
+      />
       <h1 class="text-2xl font-bold text-blue-500">Group Membership</h1>
       <h3>Renew membership for a group</h3>
       <div class="my-2">
