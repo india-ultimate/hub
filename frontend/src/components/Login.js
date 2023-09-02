@@ -24,6 +24,8 @@ import {
 } from "firebase/auth";
 import { initFlowbite } from "flowbite";
 import SignUp from "./SignUp";
+import Breadcrumbs from "./Breadcrumbs";
+import { home } from "solid-heroicons/solid";
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
@@ -318,6 +320,10 @@ const Login = () => {
 
   return (
     <>
+      <Breadcrumbs
+        icon={home}
+        pageList={[{ url: "/", name: "Home" }, { name: "Login" }]}
+      />
       <div class="mb-4 border-b border-gray-200 dark:border-gray-700">
         <ul
           class="flex flex-wrap -mb-px text-sm font-medium text-center"

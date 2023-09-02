@@ -6,6 +6,8 @@ import Player from "./Player";
 import TransactionList from "./TransactionList";
 import { AccordionDownIcon } from "../icons";
 import { initFlowbite } from "flowbite";
+import { inboxStack } from "solid-heroicons/solid";
+import { Icon } from "solid-heroicons";
 
 const Actions = props => {
   return (
@@ -89,6 +91,13 @@ const Dashboard = () => {
 
   return (
     <div>
+      <div class="w-full">
+        <h2 class="flex items-center text-lg font-bold text-gray-900 text-center dark:text-white mb-5 mx-auto w-fit">
+          <Icon class="w-6 h-6 mr-2.5" path={inboxStack} />
+          Dashboard
+        </h2>
+      </div>
+
       <h1 class="text-4xl font-bold mb-4 text-red-500">
         Welcome {store?.data?.full_name || store?.data?.username}!
       </h1>

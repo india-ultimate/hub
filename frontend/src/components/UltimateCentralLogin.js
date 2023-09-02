@@ -13,6 +13,8 @@ import { createForm, required } from "@modular-forms/solid";
 import StatusStepper from "./StatusStepper";
 import TextInput from "./TextInput";
 import { Spinner } from "../icons";
+import Breadcrumbs from "./Breadcrumbs";
+import { inboxStack } from "solid-heroicons/solid";
 
 const UltimateCentralLogin = () => {
   const [store, { setLoggedIn, setData, setPlayerById }] = useStore();
@@ -76,6 +78,13 @@ const UltimateCentralLogin = () => {
 
   return (
     <div>
+      <Breadcrumbs
+        icon={inboxStack}
+        pageList={[
+          { url: "/dashboard", name: "Dashboard" },
+          { name: "Ultimate Central" }
+        ]}
+      />
       <h1 class="text-2xl font-bold text-blue-500">
         Ultimate Central profile details for {player()?.full_name}
       </h1>

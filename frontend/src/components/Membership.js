@@ -27,6 +27,8 @@ import {
   minAge,
   minAgeWarning
 } from "../constants";
+import Breadcrumbs from "./Breadcrumbs";
+import { inboxStack } from "solid-heroicons/solid";
 
 const Membership = () => {
   const [store, { setLoggedIn, setData, setPlayerById }] = useStore();
@@ -151,6 +153,13 @@ const Membership = () => {
 
   return (
     <div>
+      <Breadcrumbs
+        icon={inboxStack}
+        pageList={[
+          { url: "/dashboard", name: "Dashboard" },
+          { name: "Membership" }
+        ]}
+      />
       <h1 class="text-2xl font-bold text-blue-500">Membership</h1>
       <Show
         when={!membership()?.is_active}
