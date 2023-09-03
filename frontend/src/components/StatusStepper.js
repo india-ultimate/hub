@@ -71,8 +71,10 @@ const StatusStepper = props => {
           </div>
           <Switch>
             <Match when={percent < 100}>
-              <p>Complete the profile to participate in UPAI events</p>
-              <p class="text-sm">
+              <p class="text-md mt-2">
+                Complete the profile to participate in UPAI events
+              </p>
+              <p class="text-xs mt-2">
                 You can click on the incomplete steps (indicated in red) below,
                 to complete those steps.
               </p>
@@ -83,7 +85,7 @@ const StatusStepper = props => {
           </Switch>
         </div>
       </div>
-      <ol class="items-center w-full sm:flex sm:space-x-8">
+      <ol class="items-center w-full md:flex md:space-x-8 space-y-4 md:space-y-0 mt-2">
         <Step
           title="Profile Info"
           link={`/edit/registration/${props.player.id}`}

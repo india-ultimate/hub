@@ -41,7 +41,7 @@ const Player = props => {
           form for 2022-2023.
         </div>
       </Show>
-      <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+      <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400 break-all">
         <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
           <tr>
             <th scope="col" class="px-6 py-3">
