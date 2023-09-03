@@ -98,8 +98,8 @@ const Dashboard = () => {
         </h2>
       </div>
 
-      <h1 class="text-4xl font-bold mb-4 text-red-500">
-        Welcome {store?.data?.full_name || store?.data?.username}!
+      <h1 class="text-2xl md:text-4xl font-bold mb-4 text-blue-500">
+        Welcome <span>{store?.data?.full_name || store?.data?.username}</span>!
       </h1>
       <div
         id="accordion-flush"
