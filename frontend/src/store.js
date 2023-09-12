@@ -6,19 +6,23 @@ const StoreContext = createContext();
 export const StoreProvider = props => {
   const [store, setStore] = createStore({
     loggedIn: false,
+    userFetched: false,
     data: {},
     theme: getDefaultTheme()
   });
   const setLoggedIn = flag => setStore("loggedIn", flag);
+  const setUserFetched = flag => setStore("userFetched", flag);
   const setData = data => setStore("data", data);
 
   const userFetchSuccess = data => {
     setData(data);
     setLoggedIn(true);
+    setUserFetched(true);
   };
 
   const userFetchFailure = () => {
     setLoggedIn(false);
+    setUserFetched(true);
   };
 
   const setPlayer = player => {

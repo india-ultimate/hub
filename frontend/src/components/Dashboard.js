@@ -71,14 +71,14 @@ const Dashboard = () => {
   const [store, { userFetchSuccess, userFetchFailure }] = useStore();
 
   createEffect(() => {
-    if (!store.loggedIn) {
+    if (store.userFetched && !store?.data?.username) {
       const navigate = useNavigate();
       navigate("/login", { replace: true });
     }
   });
 
   onMount(() => {
-    if (!store?.data?.username) {
+    if (!store.userFetched) {
       fetchUserData(userFetchSuccess, userFetchFailure);
     }
   });

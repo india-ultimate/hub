@@ -27,7 +27,7 @@ const RegisteredPlayerList = () => {
   };
 
   onMount(() => {
-    if (!store.loggedIn) {
+    if (!store.userFetched) {
       fetchUserData(userFetchSuccess, userFetchFailure);
     }
   });

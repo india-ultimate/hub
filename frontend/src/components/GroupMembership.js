@@ -260,7 +260,7 @@ const GroupMembership = () => {
 
   onMount(() => {
     initFlowbite();
-    if (!store.loggedIn) {
+    if (!store.userFetched) {
       fetchUserData(userFetchSuccess, userFetchFailure);
     }
     fetchPlayers();

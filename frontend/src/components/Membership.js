@@ -71,7 +71,7 @@ const Membership = () => {
   };
 
   onMount(() => {
-    if (!store.loggedIn) {
+    if (!store.userFetched) {
       fetchUserData(userFetchSuccess, userFetchFailure);
     }
     fetchUrl("/api/events", eventsSuccessHandler, error => console.log(error));

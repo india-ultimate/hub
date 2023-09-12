@@ -45,7 +45,7 @@ const Vaccination = () => {
   });
 
   onMount(() => {
-    if (!store.loggedIn) {
+    if (!store.userFetched) {
       fetchUserData(userFetchSuccess, userFetchFailure);
     }
   });
