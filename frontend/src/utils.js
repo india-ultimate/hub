@@ -56,7 +56,7 @@ export const firebaseConfig = {
   appId: "1:677703680955:web:9014c1e57b3e04e7873a9e"
 };
 
-export const fetchUserData = (setLoggedIn, setData) => {
+export const fetchUserData = (successCallback, failureCallback) => {
   fetch("/api/me", {
     method: "GET",
     headers: { "Content-Type": "application/json" },
@@ -64,17 +64,16 @@ export const fetchUserData = (setLoggedIn, setData) => {
   })
     .then(response => {
       if (response.status == 200) {
-        setLoggedIn(true);
         response.json().then(data => {
-          setData(data);
+          successCallback(data);
         });
       } else {
-        setLoggedIn(false);
+        failureCallback();
       }
     })
     .catch(error => {
       console.log(error);
-      setLoggedIn(false);
+      failureCallback();
     });
 };
 

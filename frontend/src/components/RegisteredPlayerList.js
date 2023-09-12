@@ -11,7 +11,7 @@ import {
 } from "solid-heroicons/solid-mini";
 
 const RegisteredPlayerList = () => {
-  const [store, { setLoggedIn, setData }] = useStore();
+  const [store, { userFetchSuccess, userFetchFailure }] = useStore();
   const [players, setPlayers] = createSignal([]);
   const [loading, setLoading] = createSignal(false);
   const [searchText, setSearchText] = createSignal("");
@@ -28,7 +28,7 @@ const RegisteredPlayerList = () => {
 
   onMount(() => {
     if (!store.loggedIn) {
-      fetchUserData(setLoggedIn, setData);
+      fetchUserData(userFetchSuccess, userFetchFailure);
     }
   });
 

@@ -211,7 +211,8 @@ const PlayerSearchDropdown = props => {
 };
 
 const GroupMembership = () => {
-  const [store, { setLoggedIn, setData, setPlayerById }] = useStore();
+  const [store, { userFetchSuccess, userFetchFailure, setPlayerById }] =
+    useStore();
 
   const [status, setStatus] = createSignal();
 
@@ -260,7 +261,7 @@ const GroupMembership = () => {
   onMount(() => {
     initFlowbite();
     if (!store.loggedIn) {
-      fetchUserData(setLoggedIn, setData);
+      fetchUserData(userFetchSuccess, userFetchFailure);
     }
     fetchPlayers();
     fetchTeams();

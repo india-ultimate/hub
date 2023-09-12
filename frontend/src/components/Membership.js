@@ -31,7 +31,9 @@ import Breadcrumbs from "./Breadcrumbs";
 import { inboxStack } from "solid-heroicons/solid";
 
 const Membership = () => {
-  const [store, { setLoggedIn, setData, setPlayerById }] = useStore();
+  const [store, { userFetchSuccess, userFetchFailure, setPlayerById }] =
+    useStore();
+
   const [player, setPlayer] = createSignal();
   const [membership, setMembership] = createSignal();
 
@@ -70,7 +72,7 @@ const Membership = () => {
 
   onMount(() => {
     if (!store.loggedIn) {
-      fetchUserData(setLoggedIn, setData);
+      fetchUserData(userFetchSuccess, userFetchFailure);
     }
     fetchUrl("/api/events", eventsSuccessHandler, error => console.log(error));
   });

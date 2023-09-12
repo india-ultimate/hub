@@ -17,7 +17,8 @@ import Breadcrumbs from "./Breadcrumbs";
 import { inboxStack } from "solid-heroicons/solid";
 
 const UltimateCentralLogin = () => {
-  const [store, { setLoggedIn, setData, setPlayerById }] = useStore();
+  const [store, { userFetchSuccess, userFetchFailure, setPlayerById }] =
+    useStore();
 
   const initialValues = {};
   const [_form, { Form, Field }] = createForm({
@@ -38,7 +39,7 @@ const UltimateCentralLogin = () => {
 
   onMount(() => {
     if (!store.loggedIn) {
-      fetchUserData(setLoggedIn, setData);
+      fetchUserData(userFetchSuccess, userFetchFailure);
     }
   });
 

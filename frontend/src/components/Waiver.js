@@ -476,7 +476,8 @@ const WaiverForm = props => {
 const Waiver = () => {
   const csrftoken = getCookie("csrftoken");
 
-  const [store, { setLoggedIn, setData, setPlayerById }] = useStore();
+  const [store, { userFetchSuccess, userFetchFailure, setPlayerById }] =
+    useStore();
 
   const [player, setPlayer] = createSignal();
   const [status, setStatus] = createSignal("");
@@ -491,7 +492,7 @@ const Waiver = () => {
 
   onMount(() => {
     if (!store.loggedIn) {
-      fetchUserData(setLoggedIn, setData);
+      fetchUserData(userFetchSuccess, userFetchFailure);
     }
   });
 

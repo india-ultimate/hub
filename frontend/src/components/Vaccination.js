@@ -23,7 +23,8 @@ import Breadcrumbs from "./Breadcrumbs";
 import { inboxStack } from "solid-heroicons/solid";
 
 const Vaccination = () => {
-  const [store, { setLoggedIn, setData, setPlayerById }] = useStore();
+  const [store, { userFetchSuccess, userFetchFailure, setPlayerById }] =
+    useStore();
 
   const initialValues = { is_vaccinated: true };
   const [vaccinationForm, { Form, Field }] = createForm({
@@ -45,7 +46,7 @@ const Vaccination = () => {
 
   onMount(() => {
     if (!store.loggedIn) {
-      fetchUserData(setLoggedIn, setData);
+      fetchUserData(userFetchSuccess, userFetchFailure);
     }
   });
 

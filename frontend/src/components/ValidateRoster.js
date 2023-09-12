@@ -104,7 +104,7 @@ const ValidationLegend = () => (
 );
 
 const ValidateRoster = () => {
-  const [store, { setLoggedIn, setData }] = useStore();
+  const [store, { userFetchSuccess, userFetchFailure }] = useStore();
   const [event, setEvent] = createSignal();
   const [eventData, setEventData] = createSignal();
   const [events, setEvents] = createSignal([]);
@@ -146,7 +146,7 @@ const ValidateRoster = () => {
 
   onMount(() => {
     if (!store.loggedIn) {
-      fetchUserData(setLoggedIn, setData);
+      fetchUserData(userFetchSuccess, userFetchFailure);
     }
   });
 

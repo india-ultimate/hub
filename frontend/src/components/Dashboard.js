@@ -68,7 +68,7 @@ const StaffActions = () => {
 };
 
 const Dashboard = () => {
-  const [store, { setLoggedIn, setData }] = useStore();
+  const [store, { userFetchSuccess, userFetchFailure }] = useStore();
 
   createEffect(() => {
     if (!store.loggedIn) {
@@ -79,7 +79,7 @@ const Dashboard = () => {
 
   onMount(() => {
     if (!store?.data?.username) {
-      fetchUserData(setLoggedIn, setData);
+      fetchUserData(userFetchSuccess, userFetchFailure);
     }
   });
 

@@ -46,7 +46,13 @@ const RegistrationForm = props => {
 
   const [
     store,
-    { setPlayer: setStorePlayer, addWard, setLoggedIn, setData, setPlayerById }
+    {
+      setPlayer: setStorePlayer,
+      addWard,
+      userFetchSuccess,
+      userFetchFailure,
+      setPlayerById
+    }
   ] = useStore();
 
   const today = new Date();
@@ -84,7 +90,7 @@ const RegistrationForm = props => {
 
   onMount(() => {
     if (!store?.data?.username) {
-      fetchUserData(setLoggedIn, setData);
+      fetchUserData(userFetchSuccess, userFetchFailure);
     }
   });
 

@@ -11,6 +11,16 @@ export const StoreProvider = props => {
   });
   const setLoggedIn = flag => setStore("loggedIn", flag);
   const setData = data => setStore("data", data);
+
+  const userFetchSuccess = data => {
+    setData(data);
+    setLoggedIn(true);
+  };
+
+  const userFetchFailure = () => {
+    setLoggedIn(false);
+  };
+
   const setPlayer = player => {
     setStore("data", "player", player);
   };
@@ -42,7 +52,9 @@ export const StoreProvider = props => {
       setPlayer,
       setPlayerById,
       addWard,
-      setTheme
+      setTheme,
+      userFetchFailure,
+      userFetchSuccess
     }
   ];
 
