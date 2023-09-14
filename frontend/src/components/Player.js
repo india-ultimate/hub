@@ -58,45 +58,6 @@ const Player = props => {
               scope="row"
               class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
             >
-              Phone number
-            </th>
-            <td class="px-6 py-4">{props.player?.phone}</td>
-          </tr>
-          <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-            <th
-              scope="row"
-              class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
-            >
-              Email
-            </th>
-            <td class="px-6 py-4">{props.player?.email}</td>
-          </tr>
-          <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-            <th
-              scope="row"
-              class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
-            >
-              Date of Birth
-            </th>
-            <td class="px-6 py-4">
-              {props.player?.date_of_birth &&
-                displayDate(props.player.date_of_birth)}
-            </td>
-          </tr>
-          <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-            <th
-              scope="row"
-              class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
-            >
-              City
-            </th>
-            <td class="px-6 py-4">{props.player?.city}</td>
-          </tr>
-          <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-            <th
-              scope="row"
-              class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
-            >
               Teams
             </th>
             <td class="px-6 py-4">
@@ -131,58 +92,6 @@ const Player = props => {
               </Switch>
             </td>
           </tr>
-          <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-            <th
-              scope="row"
-              class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
-            >
-              State
-            </th>
-            <td class="px-6 py-4">
-              {getLabel(stateChoices, props.player?.state_ut)}
-            </td>
-          </tr>
-          <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-            <th
-              scope="row"
-              class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
-            >
-              Gender
-            </th>
-            <Show
-              when={props.player?.gender != "O"}
-              fallback={<td class="px-6 py-4">{props.player?.other_gender}</td>}
-            >
-              <td class="px-6 py-4">
-                {getLabel(genderChoices, props.player?.gender)}
-              </td>
-            </Show>
-          </tr>
-
-          <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-            <th
-              scope="row"
-              class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
-            >
-              Occupation
-            </th>
-            <td class="px-6 py-4">
-              {getLabel(occupationChoices, props.player?.occupation)}
-            </td>
-          </tr>
-
-          <Show when={props.player?.educational_institution}>
-            <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-              <th
-                scope="row"
-                class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
-              >
-                Educational Institution
-              </th>
-              <td class="px-6 py-4">{props.player?.educational_institution}</td>
-            </tr>
-          </Show>
-
           <Show when={props.player?.membership}>
             <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
               <th
@@ -281,6 +190,95 @@ const Player = props => {
                   Update
                 </button>
               </td>
+            </tr>
+          </Show>
+          <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+            <th
+              scope="row"
+              class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+            >
+              Phone number
+            </th>
+            <td class="px-6 py-4">{props.player?.phone}</td>
+          </tr>
+          <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+            <th
+              scope="row"
+              class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+            >
+              Email
+            </th>
+            <td class="px-6 py-4">{props.player?.email}</td>
+          </tr>
+          <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+            <th
+              scope="row"
+              class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+            >
+              Date of Birth
+            </th>
+            <td class="px-6 py-4">
+              {props.player?.date_of_birth &&
+                displayDate(props.player.date_of_birth)}
+            </td>
+          </tr>
+          <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+            <th
+              scope="row"
+              class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+            >
+              City
+            </th>
+            <td class="px-6 py-4">{props.player?.city}</td>
+          </tr>
+          <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+            <th
+              scope="row"
+              class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+            >
+              State
+            </th>
+            <td class="px-6 py-4">
+              {getLabel(stateChoices, props.player?.state_ut)}
+            </td>
+          </tr>
+          <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+            <th
+              scope="row"
+              class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+            >
+              Gender
+            </th>
+            <Show
+              when={props.player?.gender != "O"}
+              fallback={<td class="px-6 py-4">{props.player?.other_gender}</td>}
+            >
+              <td class="px-6 py-4">
+                {getLabel(genderChoices, props.player?.gender)}
+              </td>
+            </Show>
+          </tr>
+
+          <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+            <th
+              scope="row"
+              class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+            >
+              Occupation
+            </th>
+            <td class="px-6 py-4">
+              {getLabel(occupationChoices, props.player?.occupation)}
+            </td>
+          </tr>
+          <Show when={props.player?.educational_institution}>
+            <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+              <th
+                scope="row"
+                class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+              >
+                Educational Institution
+              </th>
+              <td class="px-6 py-4">{props.player?.educational_institution}</td>
             </tr>
           </Show>
         </tbody>
