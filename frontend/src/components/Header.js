@@ -11,7 +11,7 @@ const assetURL = name =>
     : `/assets/${name}`;
 
 export default function Header() {
-  const [store, { setLoggedIn, setData, setTheme }] = useStore();
+  const [store, { userFetchFailure, setTheme }] = useStore();
 
   const logout = async () => {
     const response = await fetch("/api/logout", {
@@ -23,8 +23,10 @@ export default function Header() {
       credentials: "same-origin"
     });
     if (response.status == 200) {
-      setLoggedIn(false);
-      setData({});
+      userFetchFailure();
+      // NOTE: we reload the page to ensure the store is empty. Doesn't seem to
+      // happen with just setData, for some reason?!
+      window.location = "/";
     }
   };
 
