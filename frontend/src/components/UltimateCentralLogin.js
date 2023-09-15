@@ -1,14 +1,7 @@
 import { useStore } from "../store";
 import { useParams } from "@solidjs/router";
-import {
-  createSignal,
-  createEffect,
-  onMount,
-  Show,
-  Switch,
-  Match
-} from "solid-js";
-import { getCookie, fetchUserData, getPlayer } from "../utils";
+import { createSignal, createEffect, Show, Switch, Match } from "solid-js";
+import { getCookie, getPlayer } from "../utils";
 import { createForm, required } from "@modular-forms/solid";
 import StatusStepper from "./StatusStepper";
 import TextInput from "./TextInput";
@@ -17,9 +10,7 @@ import Breadcrumbs from "./Breadcrumbs";
 import { inboxStack } from "solid-heroicons/solid";
 
 const UltimateCentralLogin = () => {
-  const [store, { userFetchSuccess, userFetchFailure, setPlayerById }] =
-    useStore();
-
+  const [store, { setPlayerById }] = useStore();
   const initialValues = {};
   const [_form, { Form, Field }] = createForm({
     initialValues,
@@ -35,12 +26,6 @@ const UltimateCentralLogin = () => {
   createEffect(() => {
     const player = getPlayer(store.data, Number(params.playerId));
     setPlayer(player);
-  });
-
-  onMount(() => {
-    if (!store.userFetched) {
-      fetchUserData(userFetchSuccess, userFetchFailure);
-    }
   });
 
   const handleSubmit = async values => {

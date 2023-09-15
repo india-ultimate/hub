@@ -57,7 +57,7 @@ export const firebaseConfig = {
 };
 
 export const fetchUserData = (successCallback, failureCallback) => {
-  fetch("/api/me", {
+  return fetch("/api/me", {
     method: "GET",
     headers: { "Content-Type": "application/json" },
     credentials: "same-origin"

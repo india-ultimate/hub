@@ -3,14 +3,13 @@ import { useParams } from "@solidjs/router";
 import {
   createSignal,
   createEffect,
-  onMount,
   Show,
   Switch,
   Match,
   mergeProps
 } from "solid-js";
 import { A } from "@solidjs/router";
-import { getCookie, fetchUserData, displayDate, getPlayer } from "../utils";
+import { getCookie, displayDate, getPlayer } from "../utils";
 import StatusStepper from "./StatusStepper";
 import Breadcrumbs from "./Breadcrumbs";
 import { inboxStack } from "solid-heroicons/solid";
@@ -476,9 +475,7 @@ const WaiverForm = props => {
 const Waiver = () => {
   const csrftoken = getCookie("csrftoken");
 
-  const [store, { userFetchSuccess, userFetchFailure, setPlayerById }] =
-    useStore();
-
+  const [store, { setPlayerById }] = useStore();
   const [player, setPlayer] = createSignal();
   const [status, setStatus] = createSignal("");
   const [error, setError] = createSignal("");
@@ -488,12 +485,6 @@ const Waiver = () => {
   createEffect(() => {
     const player = getPlayer(store.data, Number(params.playerId));
     setPlayer(player);
-  });
-
-  onMount(() => {
-    if (!store.userFetched) {
-      fetchUserData(userFetchSuccess, userFetchFailure);
-    }
   });
 
   const submitConsent = async () => {

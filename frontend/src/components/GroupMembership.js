@@ -10,7 +10,6 @@ import {
   Show
 } from "solid-js";
 import {
-  fetchUserData,
   displayDate,
   fetchUrl,
   membershipYearOptions,
@@ -26,7 +25,6 @@ import {
   minAgeWarning
 } from "../constants";
 import MembershipPlayerList from "./MembershipPlayerList";
-import { initFlowbite } from "flowbite";
 import { Icon } from "solid-heroicons";
 import { magnifyingGlass } from "solid-heroicons/solid-mini";
 import { inboxStack } from "solid-heroicons/solid";
@@ -211,8 +209,7 @@ const PlayerSearchDropdown = props => {
 };
 
 const GroupMembership = () => {
-  const [store, { userFetchSuccess, userFetchFailure, setPlayerById }] =
-    useStore();
+  const [_, { setPlayerById }] = useStore();
 
   const [status, setStatus] = createSignal();
 
@@ -259,10 +256,6 @@ const GroupMembership = () => {
   };
 
   onMount(() => {
-    initFlowbite();
-    if (!store.userFetched) {
-      fetchUserData(userFetchSuccess, userFetchFailure);
-    }
     fetchPlayers();
     fetchTeams();
   });
@@ -415,7 +408,6 @@ const GroupMembership = () => {
                   setPaymentSuccess(false);
                   setPayingPlayers([]);
                   setStatus("");
-                  initFlowbite();
                 }}
                 disabled={!paymentSuccess()}
               >

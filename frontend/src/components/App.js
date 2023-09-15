@@ -2,6 +2,7 @@ import { lazy } from "solid-js";
 import { Routes, Route } from "@solidjs/router";
 import Header from "./Header";
 import Footer from "./Footer";
+import UserRoute from "./UserRoute";
 import { useStore } from "../store";
 import { QueryClient, QueryClientProvider } from "@tanstack/solid-query";
 
@@ -38,51 +39,57 @@ export default function App() {
                 <Routes>
                   {/* Simple pages */}
                   <Route path="/" component={Home} />
-                  <Route path="/dashboard" component={Dashboard} />
                   <Route path="/about" component={About} />
+                  <UserRoute path="/dashboard" component={Dashboard} />
                   {/* Login related routes */}
                   <Route path="/login" component={Login} />
                   <Route path="/email-link" component={EmailLink} />
                   {/* Registration routes */}
-                  <Route path="/registration/me" component={Registration} />
-                  <Route
+                  <UserRoute path="/registration/me" component={Registration} />
+                  <UserRoute
                     path="/edit/registration/:playerId"
                     component={Registration}
                     matchFilters={filters}
                   />
-                  <Route
+                  <UserRoute
                     path="/registration/others"
                     element={<Registration others={true} />}
                   />
-                  <Route
+                  <UserRoute
                     path="/registration/ward"
                     element={<Registration ward={true} />}
                   />
                   {/* Membership, vaccination, waiver, etc. */}
-                  <Route path="/membership/group" component={GroupMembership} />
-                  <Route
+                  <UserRoute
+                    path="/membership/group"
+                    component={GroupMembership}
+                  />
+                  <UserRoute
                     path="/membership/:playerId"
                     component={Membership}
                     matchFilters={filters}
                   />
-                  <Route
+                  <UserRoute
                     path="/vaccination/:playerId"
                     component={Vaccination}
                     matchFilters={filters}
                   />
-                  <Route
+                  <UserRoute
                     path="/waiver/:playerId"
                     component={Waiver}
                     matchFilters={filters}
                   />
-                  <Route
+                  <UserRoute
                     path="/uc-login/:playerId"
                     component={UltimateCentralLogin}
                     matchFilters={filters}
                   />
                   {/* Admin routes */}
-                  <Route path="/players" component={RegisteredPlayerList} />
-                  <Route path="/validate-rosters" component={ValidateRoster} />
+                  <UserRoute path="/players" component={RegisteredPlayerList} />
+                  <UserRoute
+                    path="/validate-rosters"
+                    component={ValidateRoster}
+                  />
                 </Routes>
               </div>
             </div>

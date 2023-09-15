@@ -1,13 +1,6 @@
-import { getCookie, getAge, fetchUserData, findPlayerById } from "../utils";
+import { getCookie, getAge, findPlayerById } from "../utils";
 import { useStore } from "../store";
-import {
-  createSignal,
-  Show,
-  Switch,
-  Match,
-  onMount,
-  createEffect
-} from "solid-js";
+import { createSignal, Show, Switch, Match, createEffect } from "solid-js";
 import {
   genderChoices,
   stateChoices,
@@ -44,16 +37,8 @@ const RegistrationForm = props => {
   const [error, setError] = createSignal("");
   const [player, setPlayer] = createSignal();
 
-  const [
-    store,
-    {
-      setPlayer: setStorePlayer,
-      addWard,
-      userFetchSuccess,
-      userFetchFailure,
-      setPlayerById
-    }
-  ] = useStore();
+  const [store, { setPlayer: setStorePlayer, addWard, setPlayerById }] =
+    useStore();
 
   const today = new Date();
   const maxDate = new Date(new Date().setFullYear(today.getFullYear() - minAge))
@@ -86,12 +71,6 @@ const RegistrationForm = props => {
     initialValues,
     validateOn: "touched",
     revalidateOn: "touched"
-  });
-
-  onMount(() => {
-    if (!store?.data?.username) {
-      fetchUserData(userFetchSuccess, userFetchFailure);
-    }
   });
 
   createEffect(() => {

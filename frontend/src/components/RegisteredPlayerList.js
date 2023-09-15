@@ -1,7 +1,7 @@
 import { For, createSignal, Switch, Match } from "solid-js";
 import { Spinner } from "../icons";
 import { onMount } from "solid-js";
-import { fetchUserData, fetchUrl, playerMatches } from "../utils";
+import { fetchUrl, playerMatches } from "../utils";
 import { useStore } from "../store";
 import { Icon } from "solid-heroicons";
 import {
@@ -11,7 +11,7 @@ import {
 } from "solid-heroicons/solid-mini";
 
 const RegisteredPlayerList = () => {
-  const [store, { userFetchSuccess, userFetchFailure }] = useStore();
+  const [store] = useStore();
   const [players, setPlayers] = createSignal([]);
   const [loading, setLoading] = createSignal(false);
   const [searchText, setSearchText] = createSignal("");
@@ -25,12 +25,6 @@ const RegisteredPlayerList = () => {
       console.log(data);
     }
   };
-
-  onMount(() => {
-    if (!store.userFetched) {
-      fetchUserData(userFetchSuccess, userFetchFailure);
-    }
-  });
 
   onMount(() => {
     console.log("Fetching players info...");

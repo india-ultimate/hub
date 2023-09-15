@@ -1,6 +1,5 @@
 import { fetchUrl } from "../utils";
 import { createSignal, onMount, Show, For } from "solid-js";
-import { initFlowbite } from "flowbite";
 
 const PlayersList = props => {
   return (
@@ -27,10 +26,6 @@ const TransactionList = () => {
       console.log(data);
     }
   };
-
-  onMount(async () => {
-    initFlowbite();
-  });
 
   onMount(() => {
     fetchUrl("/api/transactions", transactionsSuccessHandler, error =>

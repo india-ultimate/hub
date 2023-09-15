@@ -1,7 +1,7 @@
 import clsx from "clsx";
 import { For, createSignal, createEffect, Show, Match, Switch } from "solid-js";
 import { onMount } from "solid-js";
-import { fetchUserData, fetchUrl, getAge } from "../utils";
+import { fetchUrl, getAge } from "../utils";
 import { useStore } from "../store";
 import { Icon } from "solid-heroicons";
 import { minAge } from "../constants";
@@ -104,7 +104,7 @@ const ValidationLegend = () => (
 );
 
 const ValidateRoster = () => {
-  const [store, { userFetchSuccess, userFetchFailure }] = useStore();
+  const [store] = useStore();
   const [event, setEvent] = createSignal();
   const [eventData, setEventData] = createSignal();
   const [events, setEvents] = createSignal([]);
@@ -143,12 +143,6 @@ const ValidateRoster = () => {
   const handleEventChange = e => {
     setEvent(events().find(ev => ev.id === Number(e.target.value)));
   };
-
-  onMount(() => {
-    if (!store.userFetched) {
-      fetchUserData(userFetchSuccess, userFetchFailure);
-    }
-  });
 
   onMount(() => {
     console.log("Fetching events info...");

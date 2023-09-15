@@ -10,7 +10,6 @@ import {
   For
 } from "solid-js";
 import {
-  fetchUserData,
   displayDate,
   fetchUrl,
   membershipYearOptions,
@@ -31,8 +30,7 @@ import Breadcrumbs from "./Breadcrumbs";
 import { inboxStack } from "solid-heroicons/solid";
 
 const Membership = () => {
-  const [store, { userFetchSuccess, userFetchFailure, setPlayerById }] =
-    useStore();
+  const [store, { setPlayerById }] = useStore();
 
   const [player, setPlayer] = createSignal();
   const [membership, setMembership] = createSignal();
@@ -71,9 +69,6 @@ const Membership = () => {
   };
 
   onMount(() => {
-    if (!store.userFetched) {
-      fetchUserData(userFetchSuccess, userFetchFailure);
-    }
     fetchUrl("/api/events", eventsSuccessHandler, error => console.log(error));
   });
 

@@ -1,16 +1,9 @@
 import VaccinationInformation from "./VaccinationInformation";
 import { useStore } from "../store";
 import { useParams } from "@solidjs/router";
-import {
-  createSignal,
-  createEffect,
-  onMount,
-  Show,
-  Switch,
-  Match
-} from "solid-js";
+import { createSignal, createEffect, Show, Switch, Match } from "solid-js";
 import { vaccinationChoices } from "../constants";
-import { getCookie, fetchUserData, getPlayer } from "../utils";
+import { getCookie, getPlayer } from "../utils";
 import { createForm, getValue, required } from "@modular-forms/solid";
 import StatusStepper from "./StatusStepper";
 import TextInput from "./TextInput";
@@ -23,8 +16,7 @@ import Breadcrumbs from "./Breadcrumbs";
 import { inboxStack } from "solid-heroicons/solid";
 
 const Vaccination = () => {
-  const [store, { userFetchSuccess, userFetchFailure, setPlayerById }] =
-    useStore();
+  const [store, { setPlayerById }] = useStore();
 
   const initialValues = { is_vaccinated: true };
   const [vaccinationForm, { Form, Field }] = createForm({
@@ -42,12 +34,6 @@ const Vaccination = () => {
   createEffect(() => {
     const player = getPlayer(store.data, Number(params.playerId));
     setPlayer(player);
-  });
-
-  onMount(() => {
-    if (!store.userFetched) {
-      fetchUserData(userFetchSuccess, userFetchFailure);
-    }
   });
 
   // handleSubmit function to handle form submission

@@ -1,11 +1,9 @@
-import { useNavigate, A } from "@solidjs/router";
-import { createEffect, onMount, Show, For } from "solid-js";
-import { fetchUserData } from "../utils";
+import { A } from "@solidjs/router";
+import { Show, For } from "solid-js";
 import { useStore } from "../store";
 import Player from "./Player";
 import TransactionList from "./TransactionList";
 import { AccordionDownIcon } from "../icons";
-import { initFlowbite } from "flowbite";
 import { inboxStack } from "solid-heroicons/solid";
 import { Icon } from "solid-heroicons";
 
@@ -68,27 +66,7 @@ const StaffActions = () => {
 };
 
 const Dashboard = () => {
-  const [store, { userFetchSuccess, userFetchFailure }] = useStore();
-
-  createEffect(() => {
-    if (store.userFetched && !store?.data?.username) {
-      const navigate = useNavigate();
-      navigate("/login", { replace: true });
-    }
-  });
-
-  onMount(() => {
-    if (!store.userFetched) {
-      fetchUserData(userFetchSuccess, userFetchFailure);
-    }
-  });
-
-  createEffect(() => {
-    if (store?.data?.player || store?.data?.wards) {
-      initFlowbite();
-    }
-  });
-
+  const [store] = useStore();
   return (
     <div>
       <div class="w-full">
