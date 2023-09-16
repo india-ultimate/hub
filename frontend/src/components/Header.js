@@ -6,7 +6,7 @@ import { Icon } from "solid-heroicons";
 import { bars_3, moon, sun } from "solid-heroicons/solid-mini";
 
 const assetURL = name =>
-  process.env.NODE_ENV === "production" // eslint-disable-line no-undef
+  process.env.NODE_ENV === "production"
     ? `/static/assets/${name}`
     : `/assets/${name}`;
 
