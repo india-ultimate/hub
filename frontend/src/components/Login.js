@@ -359,7 +359,7 @@ const Login = () => {
           </li>
           <li class="mr-2" role="presentation">
             <button
-              class="inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300"
+              class="inline-block p-4 border-b-2 rounded-t-lg"
               id="password-tab"
               data-tabs-target="#password"
               type="button"
