@@ -168,7 +168,6 @@ const RegistrationForm = props => {
               class="px-8 lg:px-10 p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-yellow-50 dark:bg-gray-800 dark:text-yellow-300"
               role="alert"
             >
-              {/* FIXME: Fix the wording and presentation here. */}
               You are filling up the registration form for a different player.
               Please make sure you enter their details correctly! You will be
               unable to edit the details submitted, unless you have access to
@@ -180,7 +179,6 @@ const RegistrationForm = props => {
               class="px-8 lg:px-10 p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-yellow-50 dark:bg-gray-800 dark:text-yellow-300"
               role="alert"
             >
-              {/* FIXME: Fix the wording and presentation here. */}
               You are filling up the registration form for a ward. Please be
               sure that you are legally eligible to fill-up this form!
             </div>
