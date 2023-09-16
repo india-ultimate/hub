@@ -1,5 +1,7 @@
-import { fetchUrl } from "../utils";
-import { createSignal, onMount, Show, For } from "solid-js";
+import { Show, For, Suspense } from "solid-js";
+import { createQuery } from "@tanstack/solid-query";
+import { fetchTransactions } from "../queries";
+import TransactionsSkeleton from "../skeletons/Transactions";
 
 const PlayersList = props => {
   return (
@@ -16,22 +18,7 @@ const PlayersList = props => {
 };
 
 const TransactionList = () => {
-  const [transactions, setTransactions] = createSignal([]);
-
-  const transactionsSuccessHandler = async response => {
-    const data = await response.json();
-    if (response.ok) {
-      setTransactions(data);
-    } else {
-      console.log(data);
-    }
-  };
-
-  onMount(() => {
-    fetchUrl("/api/transactions", transactionsSuccessHandler, error =>
-      console.log(error)
-    );
-  });
+  const query = createQuery(() => ["transactions"], fetchTransactions);
 
   return (
     <div class="p-5 border border-gray-200 dark:border-gray-700 dark:bg-gray-900">
@@ -66,62 +53,64 @@ const TransactionList = () => {
             </tr>
           </thead>
           <tbody>
-            <For each={transactions()}>
-              {transaction => {
-                let date = new Date(
-                  transaction.payment_date
-                ).toLocaleDateString("en-IN", {
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric"
-                });
-                let nPlayers = transaction.players?.length;
-                let bgColor;
-                switch (transaction.status) {
-                  case "completed":
-                    bgColor = "bg-green-200 dark:bg-green-800";
-                    break;
-                  case "failed":
-                    bgColor = "bg-red-300 dark:bg-red-700";
-                    break;
-                  case "created":
-                    bgColor = "bg-orange-100 dark:bg-orange-900";
-                    break;
-                  default:
-                    bgColor = "bg-white dark:bg-gray-900";
-                    break;
-                }
+            <Suspense fallback={<TransactionsSkeleton />}>
+              <For each={query.data}>
+                {transaction => {
+                  let date = new Date(
+                    transaction.payment_date
+                  ).toLocaleDateString("en-IN", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric"
+                  });
+                  let nPlayers = transaction.players?.length;
+                  let bgColor;
+                  switch (transaction.status) {
+                    case "completed":
+                      bgColor = "bg-green-200 dark:bg-green-800";
+                      break;
+                    case "failed":
+                      bgColor = "bg-red-300 dark:bg-red-700";
+                      break;
+                    case "created":
+                      bgColor = "bg-orange-100 dark:bg-orange-900";
+                      break;
+                    default:
+                      bgColor = "bg-white dark:bg-gray-900";
+                      break;
+                  }
 
-                return (
-                  <tr
-                    class={`${bgColor} border-b dark:bg-gray-800 dark:border-gray-700`}
-                  >
-                    <th
-                      scope="row"
-                      class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+                  return (
+                    <tr
+                      class={`${bgColor} border-b dark:bg-gray-800 dark:border-gray-700`}
                     >
-                      {date}
-                    </th>
-                    <td class="px-6 py-4">{transaction.status}</td>
-                    <td class="px-6 py-4">₹ {transaction.amount / 100}</td>
-                    <td class="px-6 py-4">{transaction.user}</td>
-                    <td class="px-6 py-4">
-                      <Show
-                        when={nPlayers !== 1}
-                        fallback={transaction.players[0]}
+                      <th
+                        scope="row"
+                        class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
                       >
-                        <PlayersList players={transaction.players} />
-                      </Show>
-                    </td>
-                    <td class="px-6 py-4">
-                      {transaction.event?.title || "Annual"}
-                    </td>
-                    <td class="px-6 py-4">{transaction.order_id}</td>
-                    <td class="px-6 py-4">{transaction.payment_id}</td>
-                  </tr>
-                );
-              }}
-            </For>
+                        {date}
+                      </th>
+                      <td class="px-6 py-4">{transaction.status}</td>
+                      <td class="px-6 py-4">₹ {transaction.amount / 100}</td>
+                      <td class="px-6 py-4">{transaction.user}</td>
+                      <td class="px-6 py-4">
+                        <Show
+                          when={nPlayers !== 1}
+                          fallback={transaction.players[0]}
+                        >
+                          <PlayersList players={transaction.players} />
+                        </Show>
+                      </td>
+                      <td class="px-6 py-4">
+                        {transaction.event?.title || "Annual"}
+                      </td>
+                      <td class="px-6 py-4">{transaction.order_id}</td>
+                      <td class="px-6 py-4">{transaction.payment_id}</td>
+                    </tr>
+                  );
+                }}
+              </For>
+            </Suspense>
           </tbody>
         </table>
       </div>

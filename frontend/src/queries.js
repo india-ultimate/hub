@@ -14,3 +14,12 @@ export const fetchContributors = async () => {
 
   return contributors;
 };
+
+export const fetchTransactions = async () => {
+  const response = await fetch("/api/transactions", {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin"
+  });
+  return await response.json();
+};
