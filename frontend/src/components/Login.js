@@ -334,19 +334,6 @@ const Login = () => {
           <li class="mr-2" role="presentation">
             <button
               class="inline-block p-4 border-b-2 rounded-t-lg"
-              id="google-tab"
-              data-tabs-target="#google"
-              type="button"
-              role="tab"
-              aria-controls="google"
-              aria-selected="false"
-            >
-              Google Login
-            </button>
-          </li>
-          <li class="mr-2" role="presentation">
-            <button
-              class="inline-block p-4 border-b-2 rounded-t-lg"
               id="email-link-tab"
               data-tabs-target="#email-link"
               type="button"
@@ -355,6 +342,19 @@ const Login = () => {
               aria-selected="false"
             >
               Email-Link
+            </button>
+          </li>
+          <li class="mr-2" role="presentation">
+            <button
+              class="inline-block p-4 border-b-2 rounded-t-lg"
+              id="google-tab"
+              data-tabs-target="#google"
+              type="button"
+              role="tab"
+              aria-controls="google"
+              aria-selected="false"
+            >
+              Google Login
             </button>
           </li>
           <li class="mr-2" role="presentation">
