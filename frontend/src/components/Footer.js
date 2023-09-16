@@ -24,8 +24,20 @@ export default function Footer() {
               </A>
             </li>
             <li>
-              <a title={email} href={`mailto:${email}`} class="hover:underline">
-                Contact
+              <a
+                class="mr-4 hover:underline md:mr-6"
+                title={email}
+                href={`mailto:${email}`}
+              >
+                Email Us
+              </a>
+            </li>
+            <li>
+              <a
+                href="https://chat.whatsapp.com/L1LkrLGuqFdIiRh5kuuAnz"
+                class="mr-4 hover:underline md:mr-6"
+              >
+                WhatsApp Us
               </a>
             </li>
           </ul>
