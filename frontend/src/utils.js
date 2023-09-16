@@ -1,4 +1,7 @@
 import { membershipStartDate } from "./constants";
+import { Icon } from "solid-heroicons";
+import { checkCircle, exclamationCircle } from "solid-heroicons/solid-mini";
+import clsx from "clsx";
 
 export const getCookie = name => {
   const cookies = document.cookie.split(";").reduce((acc, x) => {
@@ -260,4 +263,33 @@ export const getAge = (value, on = today) => {
   const monthDiff = on.getMonth() - dobDate.getMonth();
   const dayDiff = on.getDate() - dobDate.getDate();
   return yearDiff + monthDiff / 12 + dayDiff / 365;
+};
+
+export const getStatusAndPercent = player => {
+  const status = {
+    profile: !!player?.id,
+    vaccine: !!player?.vaccination,
+    ucLink: !!player?.ultimate_central_id,
+    membership: player?.membership?.is_active,
+    waiver: player?.membership?.waiver_valid
+  };
+  const percent = Math.round(
+    (Object.values(status).filter(x => x).length * 100) /
+      Object.keys(status).length
+  );
+  return { status, percent };
+};
+
+export const showPlayerStatus = player => {
+  const { percent } = getStatusAndPercent(player);
+  const incomplete = percent < 100;
+  const color = incomplete ? "red" : "green";
+  return (
+    <span class={clsx(`text-${color}-600 dark:text-${color}-500`)}>
+      <Icon
+        path={incomplete ? exclamationCircle : checkCircle}
+        style={{ width: "24px", display: "inline-block" }}
+      />
+    </span>
+  );
 };

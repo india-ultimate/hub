@@ -2,6 +2,7 @@ import clsx from "clsx";
 import { Icon } from "solid-heroicons";
 import { A } from "@solidjs/router";
 import { Switch, Match } from "solid-js";
+import { getStatusAndPercent } from "../utils";
 
 import {
   identification,
@@ -39,17 +40,7 @@ const Step = props => {
 };
 
 const StatusStepper = props => {
-  const status = {
-    profile: !!props?.player,
-    vaccine: !!props?.player?.vaccination,
-    ucLink: !!props?.player?.ultimate_central_id,
-    membership: props?.player?.membership?.is_active,
-    waiver: props?.player?.membership?.waiver_valid
-  };
-  const percent = Math.round(
-    (Object.values(status).filter(x => x).length * 100) /
-      Object.keys(status).length
-  );
+  const { status, percent } = getStatusAndPercent(props?.player);
   return (
     <div class="my-8">
       <div class="flex justify-between my-4">

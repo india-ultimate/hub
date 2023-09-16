@@ -6,6 +6,7 @@ import TransactionList from "./TransactionList";
 import { AccordionDownIcon } from "../icons";
 import { inboxStack } from "solid-heroicons/solid";
 import { Icon } from "solid-heroicons";
+import { showPlayerStatus } from "../utils";
 
 const Actions = props => {
   return (
@@ -94,8 +95,12 @@ const Dashboard = () => {
               aria-expanded="true"
               aria-controls="accordion-body-player"
             >
-              <span>Player Information: {store.data.player.full_name}</span>
-              <AccordionDownIcon />
+              <span>Player Information: {store.data.player.full_name} </span>
+              <span class="flex">
+                {showPlayerStatus(store.data.player)}
+
+                <AccordionDownIcon />
+              </span>
             </button>
           </h2>
           <div
@@ -120,8 +125,11 @@ const Dashboard = () => {
                     aria-expanded={store?.data?.player ? "false" : "true"}
                     aria-controls={`accordion-body-ward-${ward.id}`}
                   >
-                    <span>Player Information: {ward.full_name}</span>
-                    <AccordionDownIcon />
+                    <span>Player Information: {ward.full_name} </span>
+                    <span class="flex">
+                      {showPlayerStatus(store.data.player)}
+                      <AccordionDownIcon />
+                    </span>
                   </button>
                 </h2>
                 <div
