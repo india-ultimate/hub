@@ -172,9 +172,12 @@ const handlePaymentSuccess = (
     .catch(error => setStatus(`Error: ${error}`));
 };
 
+const isRazorpayTestMode = key => key.indexOf("test_") > -1;
+
 const openRazorpayUI = (data, setStatus, setPlayerById, successCallback) => {
   const options = {
     ...data,
+    theme: { color: isRazorpayTestMode(data.key) ? "#ed953a" : "#005bf2" },
     handler: e =>
       handlePaymentSuccess(e, setStatus, setPlayerById, successCallback)
   };
