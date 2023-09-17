@@ -1,20 +1,12 @@
 import StatusStepper from "./StatusStepper";
 import { useStore } from "../store";
 import { useParams } from "@solidjs/router";
-import {
-  createSignal,
-  createEffect,
-  onCleanup,
-  onMount,
-  Show,
-  For
-} from "solid-js";
+import { createSignal, createEffect, onMount, Show, For } from "solid-js";
 import {
   displayDate,
   fetchUrl,
   membershipYearOptions,
   findPlayerById,
-  purchaseMembership,
   getAge
 } from "../utils";
 import {
@@ -30,12 +22,10 @@ import Breadcrumbs from "./Breadcrumbs";
 import { inboxStack } from "solid-heroicons/solid";
 
 const Membership = () => {
-  const [store, { setPlayerById }] = useStore();
+  const [store] = useStore();
 
   const [player, setPlayer] = createSignal();
   const [membership, setMembership] = createSignal();
-
-  const [status, setStatus] = createSignal();
 
   const years = membershipYearOptions();
   const [year, setYear] = createSignal(years?.[0]);
@@ -72,42 +62,12 @@ const Membership = () => {
     fetchUrl("/api/events", eventsSuccessHandler, error => console.log(error));
   });
 
-  let rzpScript;
-  onMount(() => {
-    rzpScript = document.createElement("script");
-    rzpScript.src = "https://checkout.razorpay.com/v1/checkout.js";
-    rzpScript.async = true;
-    document.body.appendChild(rzpScript);
-  });
-  onCleanup(() => {
-    if (rzpScript && document.body.contains(rzpScript)) {
-      document.body.removeChild(rzpScript);
-      document
-        .querySelectorAll(".razorpay-container")
-        .forEach(el => document.body.removeChild(el));
-    }
-  });
-
   const handleYearChange = e => {
     setYear(Number(e.target.value));
   };
 
   const handleEventChange = e => {
     setEvent(events().find(ev => ev.id === Number(e.target.value)));
-  };
-
-  const triggerPurchase = () => {
-    const data = annual()
-      ? {
-          player_id: player().id,
-          year: year()
-        }
-      : {
-          player_id: player().id,
-          event_id: event().id
-        };
-
-    purchaseMembership(data, setStatus, setPlayerById);
   };
 
   const formatDate = dateArray => {
@@ -245,7 +205,7 @@ const Membership = () => {
               class={`my-2 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 ${
                 payDisabled() ? "cursor-not-allowed" : ""
               } `}
-              onClick={triggerPurchase}
+              onClick={() => alert("Payment feature not implemented")}
               disabled={payDisabled()}
             >
               Pay
