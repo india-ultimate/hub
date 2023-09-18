@@ -19,6 +19,7 @@ const Waiver = lazy(() => import("./Waiver"));
 const UltimateCentralLogin = lazy(() => import("./UltimateCentralLogin"));
 const RegisteredPlayerList = lazy(() => import("./RegisteredPlayerList"));
 const ValidateRoster = lazy(() => import("./ValidateRoster"));
+const ValidateTransactions = lazy(() => import("./ValidateTransactions"));
 
 const filters = {
   id: /^\d+$/ // only allow numbers
@@ -89,6 +90,10 @@ export default function App() {
                   <UserRoute
                     path="/validate-rosters"
                     component={ValidateRoster}
+                  />
+                  <UserRoute
+                    path="/validate-transactions"
+                    component={ValidateTransactions}
                   />
                 </Routes>
               </div>

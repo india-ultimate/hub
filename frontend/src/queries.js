@@ -23,3 +23,24 @@ export const fetchTransactions = async () => {
   });
   return await response.json();
 };
+
+export const fetchAllTransactions = async () => {
+  const response = await fetch("/api/transactions?include_all=1", {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin"
+  });
+  return await response.json();
+};
+
+export const fetchAllInvalidTransactions = async () => {
+  const response = await fetch(
+    "/api/transactions?include_all=1&only_invalid=1",
+    {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin"
+    }
+  );
+  return await response.json();
+};

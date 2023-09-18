@@ -1,6 +1,10 @@
-import { Show, For, Suspense } from "solid-js";
+import { Show, For, Suspense, createSignal, createEffect } from "solid-js";
 import { createQuery } from "@tanstack/solid-query";
-import { fetchTransactions } from "../queries";
+import {
+  fetchTransactions,
+  fetchAllTransactions,
+  fetchAllInvalidTransactions
+} from "../queries";
 import TransactionsSkeleton from "../skeletons/Transactions";
 
 const PlayersList = props => {
@@ -17,9 +21,25 @@ const PlayersList = props => {
   );
 };
 
-const TransactionList = () => {
-  const query = createQuery(() => ["transactions"], fetchTransactions);
-  const getPaidBy = user => `${user.first_name} ${user.last_name}`;
+const TransactionList = props => {
+  const [query, setQuery] = createSignal();
+
+  createEffect(() => {
+    const q = createQuery(
+      () => ["transactions"],
+      props.admin
+        ? props.onlyInvalid
+          ? fetchAllInvalidTransactions
+          : fetchAllTransactions
+        : fetchTransactions
+    );
+    setQuery(q);
+  });
+
+  const getPaidBy = user =>
+    props.admin
+      ? `${user.first_name} ${user.last_name} (${user.phone})`
+      : `${user.first_name} ${user.last_name}`;
 
   return (
     <div class="p-5 border border-gray-200 dark:border-gray-700 dark:bg-gray-900">
@@ -49,7 +69,7 @@ const TransactionList = () => {
           </thead>
           <tbody>
             <Suspense fallback={<TransactionsSkeleton />}>
-              <For each={query.data}>
+              <For each={query()?.data}>
                 {transaction => {
                   let date = new Date(
                     transaction.payment_date
