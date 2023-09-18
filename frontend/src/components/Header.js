@@ -1,14 +1,9 @@
 import { Show } from "solid-js";
 import { useStore } from "../store";
-import { getCookie } from "../utils";
+import { getCookie, assetURL } from "../utils";
 import { A } from "@solidjs/router";
 import { Icon } from "solid-heroicons";
 import { bars_3, moon, sun } from "solid-heroicons/solid-mini";
-
-const assetURL = name =>
-  process.env.NODE_ENV === "production"
-    ? `/static/assets/${name}`
-    : `/assets/${name}`;
 
 export default function Header() {
   const [store, { userFetchFailure, setTheme }] = useStore();

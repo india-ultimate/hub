@@ -196,3 +196,8 @@ export const showPlayerStatus = player => {
     </span>
   );
 };
+
+export const assetURL = name =>
+  process.env.NODE_ENV === "production"
+    ? `/static/assets/${name}`
+    : `/assets/${name}`;
