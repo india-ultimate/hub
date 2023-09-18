@@ -26,6 +26,8 @@ import { Icon } from "solid-heroicons";
 import { magnifyingGlass } from "solid-heroicons/solid-mini";
 import { inboxStack } from "solid-heroicons/solid";
 import Breadcrumbs from "./Breadcrumbs";
+import ManualPaymentModal from "./ManualPaymentModal";
+import { initFlowbite } from "flowbite";
 
 const PlayerSearchDropdown = props => {
   const [searchText, setSearchText] = createSignal("");
@@ -250,6 +252,11 @@ const GroupMembership = () => {
     fetchUrl("/api/teams", teamsSuccessHandler, error => console.log(error));
   };
 
+  const paymentSuccessCallback = () => {
+    fetchPlayers();
+    setPaymentSuccess(true);
+  };
+
   onMount(() => {
     fetchPlayers();
     fetchTeams();
@@ -293,6 +300,16 @@ const GroupMembership = () => {
     setPayDisabled(payingPlayers().length === 0);
   });
 
+  const getAmount = () =>
+    payingPlayers().reduce(
+      (acc, player) =>
+        acc +
+        (player?.sponsored
+          ? sponsoredAnnualMembershipFee
+          : annualMembershipFee),
+      0
+    ) / 100;
+
   return (
     <div>
       <Breadcrumbs
@@ -330,16 +347,7 @@ const GroupMembership = () => {
         </Show>
         <MembershipPlayerList
           players={payingPlayers()}
-          fee={
-            payingPlayers().reduce(
-              (acc, player) =>
-                acc +
-                (player?.sponsored
-                  ? sponsoredAnnualMembershipFee
-                  : annualMembershipFee),
-              0
-            ) / 100
-          }
+          fee={getAmount()}
           startDate={displayDate(startDate())}
           endDate={displayDate(endDate())}
         />
@@ -355,15 +363,15 @@ const GroupMembership = () => {
         <div>
           <Switch>
             <Match when={!paymentSuccess()}>
-              <button
-                class={`my-2 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 ${
-                  payDisabled() ? "cursor-not-allowed" : ""
-                } `}
-                onClick={() => alert("Payment feature not implemented")}
+              <ManualPaymentModal
                 disabled={payDisabled()}
-              >
-                Pay
-              </button>
+                annual={true}
+                year={year()}
+                player_ids={payingPlayers().map(p => p.id)}
+                amount={getAmount()}
+                setStatus={setStatus}
+                successCallback={paymentSuccessCallback}
+              />
             </Match>
             <Match when={paymentSuccess()}>
               <button
@@ -374,6 +382,7 @@ const GroupMembership = () => {
                   setPaymentSuccess(false);
                   setPayingPlayers([]);
                   setStatus("");
+                  initFlowbite();
                 }}
                 disabled={!paymentSuccess()}
               >

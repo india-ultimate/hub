@@ -19,6 +19,7 @@ import {
   minAgeWarning
 } from "../constants";
 import Breadcrumbs from "./Breadcrumbs";
+import ManualPaymentModal from "./ManualPaymentModal";
 import { inboxStack } from "solid-heroicons/solid";
 
 const Membership = () => {
@@ -37,6 +38,8 @@ const Membership = () => {
   const [events, setEvents] = createSignal([]);
 
   const [event, setEvent] = createSignal();
+
+  const [status, setStatus] = createSignal();
 
   const params = useParams();
   createEffect(() => {
@@ -108,6 +111,10 @@ const Membership = () => {
     setPayDisabled(noSelection || age < minAge);
   });
 
+  const getAmount = () =>
+    (player()?.sponsored ? sponsoredAnnualMembershipFee : annualMembershipFee) /
+    100;
+
   return (
     <div>
       <Breadcrumbs
@@ -162,12 +169,8 @@ const Membership = () => {
               </For>
             </select>
             <p>
-              Pay UPAI membership fee (₹{" "}
-              {(player()?.sponsored
-                ? sponsoredAnnualMembershipFee
-                : annualMembershipFee) / 100}
-              ) valid for the period from {displayDate(startDate())} to{" "}
-              {displayDate(endDate())}
+              Pay UPAI membership fee (₹ {getAmount()}) valid for the period
+              from {displayDate(startDate())} to {displayDate(endDate())}
             </p>
           </Show>
 
@@ -200,17 +203,15 @@ const Membership = () => {
               {minAgeWarning}
             </div>
           </Show>
-          <div>
-            <button
-              class={`my-2 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 ${
-                payDisabled() ? "cursor-not-allowed" : ""
-              } `}
-              onClick={() => alert("Payment feature not implemented")}
-              disabled={payDisabled()}
-            >
-              Pay
-            </button>
-          </div>
+          <ManualPaymentModal
+            disabled={payDisabled()}
+            annual={annual()}
+            year={year()}
+            event={event()}
+            player_id={player().id}
+            amount={getAmount()}
+            setStatus={setStatus}
+          />
         </div>
         <p>{status()}</p>
       </Show>
