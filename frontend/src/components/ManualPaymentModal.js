@@ -124,14 +124,34 @@ const ManualPaymentModal = props => {
               </h3>
               <img ref={qrElement} />
               <div class="text-sm mb-4 space-y-4">
-                <p>UPI: {upiID}</p>
+                <ul>
+                  <li>
+                    UPI: <span class="font-bold">{upiID}</span>
+                  </li>
+                  <li>
+                    Amount: <span class="font-bold">₹ {props.amount}</span>
+                  </li>
+                </ul>
                 <details>
                   <summary>Bank account details</summary>
                   <ul class="pl-5">
-                    <li>Account Name: Flying Disc Sports Federation (India)</li>
-                    <li>Account Number: 50200061651517 </li>
-                    <li>Bank & Branch: HDFC, Bank DLF-Ramapuram</li>
-                    <li>IFSC: HDFC0001869</li>
+                    <li>
+                      Account Name:{" "}
+                      <span class="font-bold">
+                        Flying Disc Sports Federation (India)
+                      </span>
+                    </li>
+                    <li>
+                      Account Number:{" "}
+                      <span class="font-bold">50200061651517</span>{" "}
+                    </li>
+                    <li>
+                      IFSC: <span class="font-bold">HDFC0001869</span>
+                    </li>
+                    <li>
+                      Bank & Branch:{" "}
+                      <span class="font-bold">HDFC Bank, DLF-Ramapuram</span>
+                    </li>
                   </ul>
                 </details>
               </div>
