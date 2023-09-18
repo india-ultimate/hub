@@ -166,6 +166,16 @@ class Membership(models.Model):
     waiver_signed_at = models.DateTimeField(blank=True, null=True)
 
 
+def create_transaction_from_order_data(cls: Any, data: dict[str, Any]) -> Any:
+    fields = {f.name for f in cls._meta.fields}
+    attrs_data = {key: value for key, value in data.items() if key in fields}
+    transaction = cls.objects.create(**attrs_data)
+    players = data.get("players", [])
+    for player in players:
+        transaction.players.add(player)
+    return transaction
+
+
 class RazorpayTransaction(models.Model):
     class TransactionStatusChoices(models.TextChoices):
         PENDING = "pending", _("Pending")
@@ -199,13 +209,25 @@ class RazorpayTransaction(models.Model):
 
     @classmethod
     def create_from_order_data(cls, data: dict[str, Any]) -> "RazorpayTransaction":
-        fields = {f.name for f in RazorpayTransaction._meta.fields}
-        attrs_data = {key: value for key, value in data.items() if key in fields}
-        transaction = cls.objects.create(**attrs_data)
-        players = data.get("players", [])
-        for player in players:
-            transaction.players.add(player)
-        return transaction
+        return create_transaction_from_order_data(cls, data)
+
+
+class ManualTransaction(models.Model):
+    transaction_id = models.CharField(primary_key=True, max_length=255)
+    amount = models.IntegerField()
+    currency = models.CharField(max_length=5)
+    payment_date = models.DateTimeField(auto_now_add=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    players = models.ManyToManyField(Player)
+    event = models.ForeignKey(Event, on_delete=models.SET_NULL, blank=True, null=True)
+    validated = models.BooleanField(default=False)
+
+    def __str__(self) -> str:
+        return self.transaction_id
+
+    @classmethod
+    def create_from_order_data(cls, data: dict[str, Any]) -> "ManualTransaction":
+        return create_transaction_from_order_data(cls, data)
 
 
 class Vaccination(models.Model):
