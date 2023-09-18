@@ -5,6 +5,7 @@ from ninja import ModelSchema, Schema
 from server.models import (
     Event,
     Guardianship,
+    ManualTransaction,
     Membership,
     Player,
     RazorpayTransaction,
@@ -117,7 +118,7 @@ class TransactionSchema(ModelSchema):
         return None
 
     class Config:
-        model = RazorpayTransaction
+        model = ManualTransaction
         model_fields = "__all__"
 
 

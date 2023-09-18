@@ -30,9 +30,6 @@ const TransactionList = () => {
                 Date
               </th>
               <th scope="col" class="px-6 py-3">
-                Status
-              </th>
-              <th scope="col" class="px-6 py-3">
                 Amount
               </th>
               <th scope="col" class="px-6 py-3">
@@ -45,10 +42,7 @@ const TransactionList = () => {
                 Annual / Event
               </th>
               <th scope="col" class="px-6 py-3">
-                Order ID
-              </th>
-              <th scope="col" class="px-6 py-3">
-                Payment ID
+                Transaction ID
               </th>
             </tr>
           </thead>
@@ -64,21 +58,9 @@ const TransactionList = () => {
                     day: "numeric"
                   });
                   let nPlayers = transaction.players?.length;
-                  let bgColor;
-                  switch (transaction.status) {
-                    case "completed":
-                      bgColor = "bg-green-200 dark:bg-green-800";
-                      break;
-                    case "failed":
-                      bgColor = "bg-red-300 dark:bg-red-700";
-                      break;
-                    case "created":
-                      bgColor = "bg-orange-100 dark:bg-orange-900";
-                      break;
-                    default:
-                      bgColor = "bg-white dark:bg-gray-900";
-                      break;
-                  }
+                  const bgColor = transaction.validated
+                    ? "bg-green-200 dark:bg-green-800"
+                    : "bg-orange-100 dark:bg-orange-900";
 
                   return (
                     <tr
@@ -90,7 +72,6 @@ const TransactionList = () => {
                       >
                         {date}
                       </th>
-                      <td class="px-6 py-4">{transaction.status}</td>
                       <td class="px-6 py-4">₹ {transaction.amount / 100}</td>
                       <td class="px-6 py-4">{transaction.user}</td>
                       <td class="px-6 py-4">
@@ -104,8 +85,7 @@ const TransactionList = () => {
                       <td class="px-6 py-4">
                         {transaction.event?.title || "Annual"}
                       </td>
-                      <td class="px-6 py-4">{transaction.order_id}</td>
-                      <td class="px-6 py-4">{transaction.payment_id}</td>
+                      <td class="px-6 py-4">{transaction.transaction_id}</td>
                     </tr>
                   );
                 }}

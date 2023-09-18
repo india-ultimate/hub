@@ -854,26 +854,26 @@ class TestPayment(ApiBaseTestCase):
 
         # Create transaction made by current user
         order = fake_order(ANNUAL_MEMBERSHIP_AMOUNT * 2)
-        order.update(user=self.user, players=players[2:])
-        RazorpayTransaction.create_from_order_data(order)
+        order.update(user=self.user, players=players[2:], transaction_id=order["order_id"])
+        ManualTransaction.create_from_order_data(order)
         orders.add(order["order_id"])
 
         # Create transaction for current user's player
         order = fake_order(ANNUAL_MEMBERSHIP_AMOUNT)
-        order.update(user=users[0], players=players[:1])
-        RazorpayTransaction.create_from_order_data(order)
+        order.update(user=users[0], players=players[:1], transaction_id=order["order_id"])
+        ManualTransaction.create_from_order_data(order)
         orders.add(order["order_id"])
 
         # Create transaction for current user's ward
         order = fake_order(ANNUAL_MEMBERSHIP_AMOUNT)
-        order.update(user=users[2], players=players[1:2])
-        RazorpayTransaction.create_from_order_data(order)
+        order.update(user=users[2], players=players[1:2], transaction_id=order["order_id"])
+        ManualTransaction.create_from_order_data(order)
         orders.add(order["order_id"])
 
         # Create transaction made by another user
         order = fake_order(ANNUAL_MEMBERSHIP_AMOUNT * 2)
-        order.update(user=users[2], players=players[2:])
-        RazorpayTransaction.create_from_order_data(order)
+        order.update(user=users[2], players=players[2:], transaction_id=order["order_id"])
+        ManualTransaction.create_from_order_data(order)
 
         response = c.get(
             "/api/transactions",
@@ -883,7 +883,7 @@ class TestPayment(ApiBaseTestCase):
         response_data = response.json()
 
         self.assertEqual(len(orders), len(response_data))
-        self.assertEqual(orders, {t["order_id"] for t in response_data})
+        self.assertEqual(orders, {t["transaction_id"] for t in response_data})
 
     def test_razorpay_failures(self) -> None:
         player = self.player

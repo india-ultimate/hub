@@ -541,7 +541,7 @@ def payment_webhook(request: HttpRequest) -> message_response:
 
 
 @api.get("/transactions", response={200: list[TransactionSchema]})
-def list_transactions(request: AuthenticatedHttpRequest) -> QuerySet[RazorpayTransaction]:
+def list_transactions(request: AuthenticatedHttpRequest) -> QuerySet[ManualTransaction]:
     user = request.user
 
     # Get ids of all associated players of a user (player + wards)
@@ -550,7 +550,7 @@ def list_transactions(request: AuthenticatedHttpRequest) -> QuerySet[RazorpayTra
     player_ids = ward_ids.union(player_id)
 
     query = Q(user=request.user) | Q(players__in=player_ids)
-    return RazorpayTransaction.objects.filter(query).distinct().order_by("-payment_date")
+    return ManualTransaction.objects.filter(query).distinct().order_by("-payment_date")
 
 
 # Vaccination ##########
