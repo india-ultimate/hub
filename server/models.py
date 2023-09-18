@@ -5,7 +5,7 @@ from typing import Any
 from dateutil.relativedelta import relativedelta
 from django.contrib.auth.models import AbstractUser
 from django.db import models
-from django.db.models.signals import pre_save
+from django.db.models.signals import m2m_changed, pre_save
 from django.dispatch import receiver
 from django.utils.crypto import get_random_string
 from django.utils.timezone import now
@@ -144,6 +144,112 @@ class Event(models.Model):
     ultimate_central_id = models.PositiveIntegerField(unique=True, null=True, blank=True)
     ultimate_central_slug = models.SlugField(default="unknown")
     location = models.CharField(max_length=255, default="unknown")
+
+
+class Tournament(models.Model):
+    class Status(models.TextChoices):
+        DRAFT = "DFT", _("Draft")
+        LIVE = "LIV", _("Live")
+        COMPLETED = "COM", _("Completed")
+
+    event = models.OneToOneField(Event, on_delete=models.CASCADE, unique=True)
+    teams = models.ManyToManyField(Team, related_name="tournaments")
+    status = models.CharField(max_length=3, choices=Status.choices, default=Status.DRAFT)
+
+    initial_seeding = models.JSONField(default=dict)
+    current_seeding = models.JSONField(default=dict)
+
+
+@receiver(m2m_changed, sender=Tournament.teams.through)
+def update_seeding_on_teams_change(
+    sender: Any, instance: Tournament, action: str, **kwargs: Any
+) -> None:
+    if action == "post_add":
+        seeding = {}
+
+        for i, team in enumerate(instance.teams.all(), start=1):
+            seeding[i] = team.id
+
+        instance.initial_seeding = seeding
+        instance.current_seeding = seeding
+        instance.save()
+
+
+class Pool(models.Model):
+    sequence_number = models.PositiveIntegerField()
+    name = models.CharField(max_length=2, default="NA")
+    tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE)
+
+    initial_seeding = models.JSONField()
+    results = models.JSONField()
+
+    class Meta:
+        unique_together = ["name", "tournament"]
+
+
+class CrossPool(models.Model):
+    tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE)
+
+    initial_seeding = models.JSONField(default=dict)
+    current_seeding = models.JSONField(default=dict)
+
+
+class Bracket(models.Model):
+    sequence_number = models.PositiveIntegerField()
+    name = models.CharField(max_length=5, default="1-8")
+    tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE)
+
+    initial_seeding = models.JSONField()
+    current_seeding = models.JSONField()
+
+    class Meta:
+        unique_together = ["name", "tournament"]
+
+
+class PositionPool(models.Model):
+    sequence_number = models.PositiveIntegerField()
+    name = models.CharField(max_length=2, default="NA")
+    tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE)
+
+    initial_seeding = models.JSONField()
+    results = models.JSONField()
+
+    class Meta:
+        unique_together = ["name", "tournament"]
+
+
+class Match(models.Model):
+    class Status(models.TextChoices):
+        YET_TO_FIX = "YTF", _("Yet To Fix")
+        SCHEDULED = "SCH", _("Scheduled")
+        COMPLETED = "COM", _("Completed")
+
+    tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE)
+    pool = models.ForeignKey(Pool, on_delete=models.CASCADE, blank=True, null=True)
+    cross_pool = models.ForeignKey(CrossPool, on_delete=models.CASCADE, blank=True, null=True)
+    bracket = models.ForeignKey(Bracket, on_delete=models.CASCADE, blank=True, null=True)
+    position_pool = models.ForeignKey(PositionPool, on_delete=models.CASCADE, blank=True, null=True)
+    sequence_number = (
+        models.PositiveIntegerField()
+    )  # For Cross Pool and Brackets to have round number
+
+    status = models.CharField(max_length=3, choices=Status.choices, default=Status.YET_TO_FIX)
+    time = models.DateTimeField(null=True, blank=True)
+    field = models.CharField(max_length=25, null=True, blank=True)
+
+    team_1 = models.ForeignKey(
+        Team, on_delete=models.CASCADE, related_name="team_1", blank=True, null=True
+    )
+    team_2 = models.ForeignKey(
+        Team, on_delete=models.CASCADE, related_name="team_2", blank=True, null=True
+    )
+    placeholder_seed_1 = models.PositiveIntegerField()
+    placeholder_seed_2 = models.PositiveIntegerField()
+    score_team_1 = models.PositiveIntegerField(default=0)
+    score_team_2 = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        unique_together = ["tournament", "time", "field"]
 
 
 class UCPerson(models.Model):
