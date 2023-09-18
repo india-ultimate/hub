@@ -542,20 +542,29 @@ def payment_webhook(request: HttpRequest) -> message_response:
 
 @api.get("/transactions", response={200: list[TransactionSchema]})
 def list_transactions(
-    request: AuthenticatedHttpRequest, include_all: bool = False
+    request: AuthenticatedHttpRequest, include_all: bool = False, only_invalid: bool = False
 ) -> QuerySet[ManualTransaction]:
     user = request.user
 
     if include_all and user.is_staff:
-        return ManualTransaction.objects.all().distinct().order_by("-payment_date")
+        transactions = (
+            ManualTransaction.objects.filter(validated=False)
+            if only_invalid
+            else ManualTransaction.objects.all()
+        )
 
-    # Get ids of all associated players of a user (player + wards)
-    ward_ids = set(user.guardianship_set.values_list("player_id", flat=True))
-    player_id = set(Player.objects.filter(user=user).values_list("id", flat=True))
-    player_ids = ward_ids.union(player_id)
+    else:
+        # Get ids of all associated players of a user (player + wards)
+        ward_ids = set(user.guardianship_set.values_list("player_id", flat=True))
+        player_id = set(Player.objects.filter(user=user).values_list("id", flat=True))
+        player_ids = ward_ids.union(player_id)
 
-    query = Q(user=request.user) | Q(players__in=player_ids)
-    return ManualTransaction.objects.filter(query).distinct().order_by("-payment_date")
+        query = Q(user=request.user) | Q(players__in=player_ids)
+        transactions = ManualTransaction.objects.filter(query)
+        if only_invalid:
+            transactions = transactions.filter(validated=False)
+
+    return transactions.distinct().order_by("-payment_date")
 
 
 # Vaccination ##########
