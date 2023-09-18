@@ -144,7 +144,7 @@ const ManualPaymentModal = props => {
                 </li>
               </ol>
               <Form
-                class="mt-12 space-y-12 md:space-y-14 lg:space-y-16"
+                class="mt-4 space-y-4 md:space-y-4 lg:space-y-6"
                 onSubmit={values => submitTransactionDetails(values)}
               >
                 <Field
