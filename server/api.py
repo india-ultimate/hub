@@ -541,8 +541,13 @@ def payment_webhook(request: HttpRequest) -> message_response:
 
 
 @api.get("/transactions", response={200: list[TransactionSchema]})
-def list_transactions(request: AuthenticatedHttpRequest) -> QuerySet[ManualTransaction]:
+def list_transactions(
+    request: AuthenticatedHttpRequest, include_all: bool = False
+) -> QuerySet[ManualTransaction]:
     user = request.user
+
+    if include_all and user.is_staff:
+        return ManualTransaction.objects.all().distinct().order_by("-payment_date")
 
     # Get ids of all associated players of a user (player + wards)
     ward_ids = set(user.guardianship_set.values_list("player_id", flat=True))

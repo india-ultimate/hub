@@ -19,6 +19,7 @@ const PlayersList = props => {
 
 const TransactionList = () => {
   const query = createQuery(() => ["transactions"], fetchTransactions);
+  const getPaidBy = user => `${user.first_name} ${user.last_name}`;
 
   return (
     <div class="p-5 border border-gray-200 dark:border-gray-700 dark:bg-gray-900">
@@ -73,7 +74,7 @@ const TransactionList = () => {
                         {date}
                       </th>
                       <td class="px-6 py-4">₹ {transaction.amount / 100}</td>
-                      <td class="px-6 py-4">{transaction.user}</td>
+                      <td class="px-6 py-4">{getPaidBy(transaction.user)}</td>
                       <td class="px-6 py-4">
                         <Show
                           when={nPlayers !== 1}

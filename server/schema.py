@@ -96,12 +96,18 @@ class EventSchema(ModelSchema):
         ]
 
 
+class UserFormSchema(ModelSchema):
+    class Config:
+        model = User
+        model_fields = ["first_name", "last_name", "phone"]
+
+
 class TransactionSchema(ModelSchema):
-    user: str
+    user: UserFormSchema
 
     @staticmethod
-    def resolve_user(transaction: RazorpayTransaction) -> str:
-        return transaction.user.get_full_name()
+    def resolve_user(transaction: RazorpayTransaction) -> User:
+        return transaction.user
 
     players: list[str]
 
@@ -327,12 +333,6 @@ class UserSchema(ModelSchema):
             "first_name",
             "last_name",
         ]
-
-
-class UserFormSchema(ModelSchema):
-    class Config:
-        model = User
-        model_fields = ["first_name", "last_name", "phone"]
 
 
 class UserOtherFormSchema(ModelSchema):
