@@ -24,6 +24,7 @@
     "postcss": "^8.4.24",
     "postcss-loader": "^7.3.3",
     "prettier": "^3.0.0",
+    "qrious": "^4.0.2",
     "raw-loader": "^4.0.2",
     "solid-heroicons": "^3.2.4",
     "solid-hot-loader": "^0.0.5",
