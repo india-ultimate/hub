@@ -13,7 +13,15 @@ from server.constants import (
     EVENT_MEMBERSHIP_AMOUNT,
     SPONSORED_ANNUAL_MEMBERSHIP_AMOUNT,
 )
-from server.models import Event, Guardianship, Membership, Player, RazorpayTransaction, User
+from server.models import (
+    Event,
+    Guardianship,
+    ManualTransaction,
+    Membership,
+    Player,
+    RazorpayTransaction,
+    User,
+)
 from server.tests.base import ApiBaseTestCase, fake_id, fake_order
 
 
@@ -336,6 +344,30 @@ class TestPayment(ApiBaseTestCase):
         self.assertEqual(400, response.status_code)
         self.assertEqual("Player does not exist!", response.json()["message"])
 
+    def test_create_manual_transaction_player_exists(self) -> None:
+        c = self.client
+        player = self.player
+        amount = ANNUAL_MEMBERSHIP_AMOUNT
+        transaction_id = "123123123"
+        response = c.post(
+            f"/api/manual-transaction/{transaction_id}",
+            data={
+                "player_id": player.id,
+                "year": 2023,
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(200, response.status_code)
+        order_data = response.json()
+        self.assertIn("amount", order_data)
+        self.assertIn("transaction_id", order_data)
+        transaction_id = order_data["transaction_id"]
+        transaction = ManualTransaction.objects.get(transaction_id=transaction_id)
+        self.assertEqual(self.user, transaction.user)
+        self.assertEqual(amount, transaction.amount)
+        self.assertIn(player, transaction.players.all())
+        self.assertFalse(transaction.validated)
+
     def test_create_order_player_exists(self) -> None:
         c = self.client
         player = self.player
@@ -488,6 +520,39 @@ class TestPayment(ApiBaseTestCase):
         self.assertEqual(event.start_date, transaction.start_date)
         self.assertEqual(event.end_date, transaction.end_date)
 
+    def test_create_manual_transaction_event_membership(self) -> None:
+        c = self.client
+        # Player exists, event exists, membership does not exist
+        player = self.player
+        event = Event.objects.create(
+            start_date="2023-09-08", end_date="2023-09-10", title="South Regionals"
+        )
+        event.refresh_from_db()
+        transaction_id = "1231231234"
+
+        response = c.post(
+            f"/api/manual-transaction/{transaction_id}",
+            data={
+                "player_id": player.id,
+                "event_id": event.id,
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(200, response.status_code)
+        order_data = response.json()
+        self.assertIn("amount", order_data)
+        self.assertIn("transaction_id", order_data)
+        transaction_id = order_data["transaction_id"]
+        transaction = ManualTransaction.objects.get(transaction_id=transaction_id)
+        self.assertEqual(self.user, transaction.user)
+        self.assertIn(player, transaction.players.all())
+        self.assertEqual(player.membership.start_date, event.start_date)
+        self.assertEqual(player.membership.end_date, event.end_date)
+        self.assertFalse(player.membership.is_annual)
+        self.assertEqual(player.membership.event, event)
+        self.assertEqual(transaction.event, event)
+        self.assertFalse(transaction.validated)
+
     def test_create_order_group_membership_missing_players(self) -> None:
         c = self.client
 
@@ -555,6 +620,39 @@ class TestPayment(ApiBaseTestCase):
             RazorpayTransaction.TransactionStatusChoices.PENDING,
             transaction.status,
         )
+
+    def test_create_manual_transaction_group_membership(self) -> None:
+        c = self.client
+        player_ids = [200, 220, 230, 225]
+
+        for id_ in player_ids:
+            username = str(uuid.uuid4())[:8]
+            user = User.objects.create(username=username)
+            date_of_birth = "2001-01-01"
+            player = Player.objects.create(id=id_, user=user, date_of_birth=date_of_birth)
+
+        ANNUAL_MEMBERSHIP_AMOUNT * len(player_ids)
+        transaction_id = "432198765"
+        response = c.post(
+            f"/api/manual-transaction/{transaction_id}",
+            data={
+                "player_ids": player_ids,
+                "year": 2023,
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(200, response.status_code)
+        order_data = response.json()
+        self.assertIn("amount", order_data)
+        self.assertIn("transaction_id", order_data)
+        transaction_id = order_data["transaction_id"]
+        transaction = ManualTransaction.objects.get(transaction_id=transaction_id)
+        self.assertEqual(self.user, transaction.user)
+        for player_id in player_ids:
+            player = Player.objects.get(id=player_id)
+            self.assertIn(player, transaction.players.all())
+            self.assertTrue(player.membership.is_annual)
+        self.assertFalse(transaction.validated)
 
     def test_payment_success(self) -> None:
         c = self.client

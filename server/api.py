@@ -22,6 +22,7 @@ from server.firebase_middleware import firebase_to_django_user
 from server.models import (
     Event,
     Guardianship,
+    ManualTransaction,
     Membership,
     Player,
     RazorpayTransaction,
@@ -39,6 +40,7 @@ from server.schema import (
     FirebaseSignUpCredentials,
     GroupMembershipSchema,
     GuardianshipFormSchema,
+    ManualTransactionSchema,
     NotVaccinatedFormSchema,
     OrderSchema,
     PaymentFormSchema,
@@ -330,10 +332,30 @@ def list_registrations(
 # Payments ##########
 
 
+@api.post(
+    "/manual-transaction/{transaction_id}",
+    response={200: ManualTransactionSchema, 400: Response, 502: str},
+)
+def create_manual_transaction(
+    request: AuthenticatedHttpRequest,
+    transaction_id: str,
+    order: AnnualMembershipSchema | EventMembershipSchema | GroupMembershipSchema,
+) -> tuple[int, str | message_response | dict[str, Any]]:
+    return create_transaction(request, order, transaction_id)
+
+
 @api.post("/create-order", response={200: OrderSchema, 400: Response, 502: str})
-def create_order(
+def create_razorpay_transaction(
     request: AuthenticatedHttpRequest,
     order: AnnualMembershipSchema | EventMembershipSchema | GroupMembershipSchema,
+) -> tuple[int, str | message_response | dict[str, Any]]:
+    return create_transaction(request, order)
+
+
+def create_transaction(
+    request: AuthenticatedHttpRequest,
+    order: AnnualMembershipSchema | EventMembershipSchema | GroupMembershipSchema,
+    transaction_id: str | None = None,
 ) -> tuple[int, str | message_response | dict[str, Any]]:
     if isinstance(order, GroupMembershipSchema):
         group_payment = True
@@ -410,9 +432,12 @@ def create_order(
         }
         receipt = f"{membership.membership_number}:{start_date}:{ts}"
 
-    data = create_razorpay_order(amount, receipt=receipt, notes=notes)
-    if data is None:
-        return 502, "Failed to connect to Razorpay."
+    if transaction_id is None:
+        data = create_razorpay_order(amount, receipt=receipt, notes=notes)
+        if data is None:
+            return 502, "Failed to connect to Razorpay."
+    else:
+        data = {"amount": amount, "currency": "INR", "transaction_id": transaction_id}
 
     data.update(
         {
@@ -423,22 +448,29 @@ def create_order(
             "event": event,
         }
     )
-    RazorpayTransaction.create_from_order_data(data)
-    transaction_user_name = user.get_full_name()
-    description = (
-        f"Membership for {player.user.get_full_name()}"
-        if not group_payment
-        else f"Membership group payment by {transaction_user_name} for {player_names}"
-    )
-    if len(description) > RAZORPAY_DESCRIPTION_MAX:
-        description = description[:250] + "..."
-    extra_data = {
-        "name": settings.APP_NAME,
-        "image": settings.LOGO_URL,
-        "description": description,
-        "prefill": {"name": user.get_full_name(), "email": user.email, "contact": user.phone},
-    }
-    data.update(extra_data)
+    if not transaction_id:
+        RazorpayTransaction.create_from_order_data(data)
+        transaction_user_name = user.get_full_name()
+        description = (
+            f"Membership for {player.user.get_full_name()}"
+            if not group_payment
+            else f"Membership group payment by {transaction_user_name} for {player_names}"
+        )
+        if len(description) > RAZORPAY_DESCRIPTION_MAX:
+            description = description[:250] + "..."
+        extra_data = {
+            "name": settings.APP_NAME,
+            "image": settings.LOGO_URL,
+            "description": description,
+            "prefill": {"name": user.get_full_name(), "email": user.email, "contact": user.phone},
+        }
+        data.update(extra_data)
+    else:
+        ManualTransaction.create_from_order_data(data)
+        memberships = Membership.objects.filter(
+            player__in=player_ids if group_payment else [player.id]
+        )
+        memberships.update(is_active=True)
     return 200, data
 
 

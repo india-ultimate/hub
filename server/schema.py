@@ -121,6 +121,12 @@ class TransactionSchema(ModelSchema):
         model_fields = "__all__"
 
 
+class ManualTransactionSchema(Schema):
+    transaction_id: str
+    amount: int
+    currency: str
+
+
 class OrderSchema(Schema):
     order_id: str
     amount: int
