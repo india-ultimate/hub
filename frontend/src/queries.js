@@ -101,6 +101,15 @@ export const fetchCrossPool = async tournament_id => {
   return await response.json();
 };
 
+export const fetchBrackets = async tournament_id => {
+  const response = await fetch(`/api/tournament/${tournament_id}/brackets`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin"
+  });
+  return await response.json();
+};
+
 // Mutations ----------------
 
 export const createTournament = async body => {
@@ -171,6 +180,22 @@ export const createCrossPool = async ({ tournament_id }) => {
       "X-CSRFToken": getCookie("csrftoken")
     },
     credentials: "same-origin"
+  });
+  return await response.json();
+};
+
+export const createBracket = async ({ tournament_id, seq_num, name }) => {
+  const response = await fetch(`/api/tournament/${tournament_id}/bracket`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin",
+    body: JSON.stringify({
+      sequence_number: parseInt(seq_num),
+      name: name
+    })
   });
   return await response.json();
 };
