@@ -92,7 +92,16 @@ export const fetchPools = async tournament_id => {
   return await response.json();
 };
 
-// Mutations
+export const fetchCrossPool = async tournament_id => {
+  const response = await fetch(`/api/tournament/${tournament_id}/cross-pool`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin"
+  });
+  return await response.json();
+};
+
+// Mutations ----------------
 
 export const createTournament = async body => {
   const response = await fetch("/api/tournament", {
@@ -150,6 +159,18 @@ export const createPool = async ({
       sequence_number: parseInt(seq_num),
       name: name
     })
+  });
+  return await response.json();
+};
+
+export const createCrossPool = async ({ tournament_id }) => {
+  const response = await fetch(`/api/tournament/${tournament_id}/cross-pool`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin"
   });
   return await response.json();
 };
