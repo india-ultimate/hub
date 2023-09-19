@@ -4,6 +4,7 @@ from ninja import ModelSchema, Schema
 
 from server.models import (
     Accreditation,
+    CrossPool,
     Event,
     Guardianship,
     ManualTransaction,
@@ -471,3 +472,11 @@ class PoolCreateSchema(Schema):
     seeding: list[int]
     sequence_number: int
     name: str
+
+
+class CrossPoolSchema(ModelSchema):
+    tournament: TournamentSchema
+
+    class Config:
+        model = CrossPool
+        model_fields = "__all__"
