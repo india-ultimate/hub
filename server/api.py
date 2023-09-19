@@ -33,6 +33,7 @@ from server.models import (
     Membership,
     Player,
     Pool,
+    PositionPool,
     RazorpayTransaction,
     Team,
     Tournament,
@@ -65,6 +66,8 @@ from server.schema import (
     PlayerTinySchema,
     PoolCreateSchema,
     PoolSchema,
+    PositionPoolCreateSchema,
+    PositionPoolSchema,
     RegistrationGuardianSchema,
     RegistrationOthersSchema,
     RegistrationSchema,
@@ -1009,3 +1012,51 @@ def get_brackets(
         return 400, {"message": "Tournament does not exist"}
 
     return 200, Bracket.objects.filter(tournament=tournament)
+
+
+@api.post(
+    "/tournament/{tournament_id}/position-pool",
+    response={200: PositionPoolSchema, 400: Response, 401: Response},
+)
+def create_position_pool(
+    request: AuthenticatedHttpRequest,
+    tournament_id: int,
+    position_pool_details: PositionPoolCreateSchema,
+) -> tuple[int, PositionPool] | tuple[int, message_response]:
+    if not request.user.is_staff:
+        return 401, {"message": "Only Admins can create position pools"}
+
+    try:
+        tournament = Tournament.objects.get(id=tournament_id)
+    except Tournament.DoesNotExist:
+        return 400, {"message": "Tournament does not exist"}
+
+    pool_seeding = {}
+    for seed in position_pool_details.seeding:
+        pool_seeding[seed] = 0
+
+    pool = PositionPool(
+        sequence_number=position_pool_details.sequence_number,
+        name=position_pool_details.name,
+        tournament=tournament,
+        initial_seeding=dict(sorted(pool_seeding.items())),
+        results={},
+    )
+    pool.save()
+
+    return 200, pool
+
+
+@api.get(
+    "/tournament/{tournament_id}/position-pools",
+    response={200: list[PositionPoolSchema], 400: Response},
+)
+def get_position_pools(
+    request: AuthenticatedHttpRequest, tournament_id: int
+) -> tuple[int, QuerySet[PositionPool]] | tuple[int, message_response]:
+    try:
+        tournament = Tournament.objects.get(id=tournament_id)
+    except Tournament.DoesNotExist:
+        return 400, {"message": "Tournament does not exist"}
+
+    return 200, PositionPool.objects.filter(tournament=tournament)
