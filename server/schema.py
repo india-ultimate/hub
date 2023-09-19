@@ -9,6 +9,7 @@ from server.models import (
     Event,
     Guardianship,
     ManualTransaction,
+    Match,
     Membership,
     Player,
     Pool,
@@ -509,3 +510,27 @@ class PositionPoolCreateSchema(Schema):
     seeding: list[int]
     sequence_number: int
     name: str
+
+
+class MatchSchema(ModelSchema):
+    tournament: TournamentSchema
+    pool: PoolSchema | None
+    cross_pool: CrossPoolSchema | None
+    bracket: BracketSchema | None
+    position_pool: PositionPoolSchema | None
+    team_1: TeamSchema | None
+    team_2: TeamSchema | None
+
+    class Config:
+        model = Match
+        model_fields = "__all__"
+
+
+class MatchCreateSchema(Schema):
+    stage: str
+    stage_id: int
+    seq_num: int
+    time: str
+    field: str
+    seed_1: int
+    seed_2: int
