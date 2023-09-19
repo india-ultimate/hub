@@ -5,10 +5,12 @@ import {
   useQueryClient
 } from "@tanstack/solid-query";
 import {
+  createBracket,
   createCrossPool,
   createPool,
   createTournament,
   deleteTournament,
+  fetchBrackets,
   fetchCrossPool,
   fetchEvents,
   fetchPools,
@@ -28,6 +30,7 @@ const TournamentManager = () => {
   const [teamsMap, setTeamsMap] = createSignal({});
   const [enteredPoolName, setEnteredPoolName] = createSignal("");
   const [enteredSeedingList, setEnteredSeedingList] = createSignal("[]");
+  const [enteredBracketName, setEnteredBracketName] = createSignal("1-8");
 
   createEffect(() => {
     if (tournamentsQuery.status === "success") {
@@ -61,6 +64,10 @@ const TournamentManager = () => {
     () => ["cross-pool", selectedTournament()],
     () => fetchCrossPool(selectedTournament())
   );
+  const bracketQuery = createQuery(
+    () => ["brackets", selectedTournament()],
+    () => fetchBrackets(selectedTournament())
+  );
 
   const createTournamentMutation = createMutation({
     mutationFn: createTournament,
@@ -93,6 +100,14 @@ const TournamentManager = () => {
     onSuccess: () =>
       queryClient.invalidateQueries({
         queryKey: ["cross-pool", selectedTournament()]
+      })
+  });
+
+  const createBracketMutation = createMutation({
+    mutationFn: createBracket,
+    onSuccess: () =>
+      queryClient.invalidateQueries({
+        queryKey: ["brackets", selectedTournament()]
       })
   });
 
@@ -373,6 +388,79 @@ const TournamentManager = () => {
             >
               Create Cross Pool
             </button>
+          </Show>
+        </div>
+        <div>
+          <h2>Brackets</h2>
+          <Show
+            when={!bracketQuery.data?.message}
+            fallback={<p>Select Tournament to see/add Bracket</p>}
+          >
+            <div class="grid grid-cols-3 gap-4">
+              <For each={bracketQuery.data}>
+                {bracket => (
+                  <div>
+                    <h3>Bracket - {bracket.name}</h3>{" "}
+                    <div class="relative overflow-x-auto">
+                      <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                        <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                          <tr>
+                            <th scope="col" class="px-6 py-3">
+                              Seeds in Bracket
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <For each={Object.keys(bracket.initial_seeding)}>
+                            {seed => (
+                              <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+                                <th
+                                  scope="row"
+                                  class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+                                >
+                                  {seed}
+                                </th>
+                              </tr>
+                            )}
+                          </For>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </For>
+              <div class="border border-blue-600 rounded-lg p-5">
+                <h3>Add New Bracket</h3>
+                <div>
+                  <label
+                    for="bracket-name"
+                    class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                  >
+                    Bracket Name
+                  </label>
+                  <input
+                    type="text"
+                    id="bracket-name"
+                    value={enteredBracketName()}
+                    onChange={e => setEnteredBracketName(e.target.value)}
+                    class="block w-full p-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 sm:text-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    createBracketMutation.mutate({
+                      tournament_id: selectedTournament(),
+                      name: enteredBracketName(),
+                      seq_num: bracketQuery.data.length + 1
+                    })
+                  }
+                  class="text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700"
+                >
+                  Create Bracket
+                </button>
+              </div>
+            </div>
           </Show>
         </div>
       </div>
