@@ -25,6 +25,7 @@ from server.firebase_middleware import firebase_to_django_user
 from server.manual_transactions import validate_manual_transactions
 from server.models import (
     Accreditation,
+    Bracket,
     CrossPool,
     Event,
     Guardianship,
@@ -44,6 +45,8 @@ from server.schema import (
     AccreditationFormSchema,
     AccreditationSchema,
     AnnualMembershipSchema,
+    BracketCreateSchema,
+    BracketSchema,
     Credentials,
     CrossPoolSchema,
     EventMembershipSchema,
@@ -962,3 +965,47 @@ def get_cross_pool(
         return 400, {"message": "Cross Pool does not exist"}
 
     return 200, cross_pool
+
+
+@api.post(
+    "/tournament/{tournament_id}/bracket",
+    response={200: BracketSchema, 400: Response, 401: Response},
+)
+def create_bracket(
+    request: AuthenticatedHttpRequest, tournament_id: int, bracket_details: BracketCreateSchema
+) -> tuple[int, Bracket] | tuple[int, message_response]:
+    if not request.user.is_staff:
+        return 401, {"message": "Only Admins can create brackets"}
+
+    try:
+        tournament = Tournament.objects.get(id=tournament_id)
+    except Tournament.DoesNotExist:
+        return 400, {"message": "Tournament does not exist"}
+
+    bracket_seeding = {}
+    start, end = map(int, bracket_details.name.split("-"))
+    for i in range(start, end + 1):
+        bracket_seeding[i] = 0
+
+    bracket = Bracket(
+        sequence_number=bracket_details.sequence_number,
+        name=bracket_details.name,
+        tournament=tournament,
+        initial_seeding=dict(sorted(bracket_seeding.items())),
+        current_seeding=dict(sorted(bracket_seeding.items())),
+    )
+    bracket.save()
+
+    return 200, bracket
+
+
+@api.get("/tournament/{tournament_id}/brackets", response={200: list[BracketSchema], 400: Response})
+def get_brackets(
+    request: AuthenticatedHttpRequest, tournament_id: int
+) -> tuple[int, QuerySet[Bracket]] | tuple[int, message_response]:
+    try:
+        tournament = Tournament.objects.get(id=tournament_id)
+    except Tournament.DoesNotExist:
+        return 400, {"message": "Tournament does not exist"}
+
+    return 200, Bracket.objects.filter(tournament=tournament)

@@ -4,6 +4,7 @@ from ninja import ModelSchema, Schema
 
 from server.models import (
     Accreditation,
+    Bracket,
     CrossPool,
     Event,
     Guardianship,
@@ -480,3 +481,16 @@ class CrossPoolSchema(ModelSchema):
     class Config:
         model = CrossPool
         model_fields = "__all__"
+
+
+class BracketSchema(ModelSchema):
+    tournament: TournamentSchema
+
+    class Config:
+        model = Bracket
+        model_fields = "__all__"
+
+
+class BracketCreateSchema(Schema):
+    sequence_number: int
+    name: str
