@@ -25,6 +25,7 @@ from server.firebase_middleware import firebase_to_django_user
 from server.manual_transactions import validate_manual_transactions
 from server.models import (
     Accreditation,
+    CrossPool,
     Event,
     Guardianship,
     ManualTransaction,
@@ -44,6 +45,7 @@ from server.schema import (
     AccreditationSchema,
     AnnualMembershipSchema,
     Credentials,
+    CrossPoolSchema,
     EventMembershipSchema,
     EventSchema,
     FirebaseCredentials,
@@ -925,3 +927,38 @@ def get_pools(
         return 400, {"message": "Tournament does not exist"}
 
     return 200, Pool.objects.filter(tournament=tournament)
+
+
+@api.post(
+    "/tournament/{tournament_id}/cross-pool",
+    response={200: CrossPoolSchema, 400: Response, 401: Response},
+)
+def create_cross_pool(
+    request: AuthenticatedHttpRequest, tournament_id: int
+) -> tuple[int, CrossPool] | tuple[int, message_response]:
+    if not request.user.is_staff:
+        return 401, {"message": "Only Admins can create pools"}
+
+    try:
+        tournament = Tournament.objects.get(id=tournament_id)
+    except Tournament.DoesNotExist:
+        return 400, {"message": "Tournament does not exist"}
+
+    cross_pool = CrossPool(tournament=tournament)
+    cross_pool.save()
+
+    return 200, cross_pool
+
+
+@api.get("/tournament/{tournament_id}/cross-pool", response={200: CrossPoolSchema, 400: Response})
+def get_cross_pool(
+    request: AuthenticatedHttpRequest, tournament_id: int
+) -> tuple[int, CrossPool] | tuple[int, message_response]:
+    try:
+        cross_pool = CrossPool.objects.get(tournament=tournament_id)
+    except Tournament.DoesNotExist:
+        return 400, {"message": "Tournament does not exist"}
+    except CrossPool.DoesNotExist:
+        return 400, {"message": "Cross Pool does not exist"}
+
+    return 200, cross_pool
