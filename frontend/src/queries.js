@@ -1,3 +1,5 @@
+import { getCookie } from "./utils";
+
 export const fetchContributors = async () => {
   const repoResp = await fetch(
     "https://api.github.com/repos/india-ultimate/hub/contributors"
@@ -33,6 +35,15 @@ export const fetchAllTransactions = async () => {
   return await response.json();
 };
 
+export const fetchEvents = async () => {
+  const response = await fetch("/api/events", {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin"
+  });
+  return await response.json();
+};
+
 export const fetchAllInvalidTransactions = async () => {
   const response = await fetch(
     "/api/transactions?include_all=1&only_invalid=1",
@@ -49,6 +60,64 @@ export const fetchPlayers = async () => {
   const response = await fetch("/api/players", {
     method: "GET",
     headers: { "Content-Type": "application/json" },
+    credentials: "same-origin"
+  });
+  return await response.json();
+};
+
+export const fetchTeams = async () => {
+  const response = await fetch("/api/teams", {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin"
+  });
+  return await response.json();
+};
+
+export const fetchTournaments = async () => {
+  const response = await fetch("/api/tournaments", {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin"
+  });
+  return await response.json();
+};
+
+// Mutations
+
+export const createTournament = async body => {
+  const response = await fetch("/api/tournament", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin",
+    body: JSON.stringify(body)
+  });
+  return await response.json();
+};
+
+export const updateSeeding = async ({ id, body }) => {
+  const response = await fetch(`/api/tournament/${id}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin",
+    body: JSON.stringify(body)
+  });
+  return await response.json();
+};
+
+export const deleteTournament = async ({ id }) => {
+  const response = await fetch(`/api/tournament/${id}`, {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
     credentials: "same-origin"
   });
   return await response.json();
