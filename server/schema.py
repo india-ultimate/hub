@@ -12,6 +12,7 @@ from server.models import (
     Membership,
     Player,
     Pool,
+    PositionPool,
     RazorpayTransaction,
     Team,
     Tournament,
@@ -492,5 +493,19 @@ class BracketSchema(ModelSchema):
 
 
 class BracketCreateSchema(Schema):
+    sequence_number: int
+    name: str
+
+
+class PositionPoolSchema(ModelSchema):
+    tournament: TournamentSchema
+
+    class Config:
+        model = PositionPool
+        model_fields = "__all__"
+
+
+class PositionPoolCreateSchema(Schema):
+    seeding: list[int]
     sequence_number: int
     name: str
