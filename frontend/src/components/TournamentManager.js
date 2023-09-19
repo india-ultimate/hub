@@ -8,12 +8,14 @@ import {
   createBracket,
   createCrossPool,
   createPool,
+  createPositionPool,
   createTournament,
   deleteTournament,
   fetchBrackets,
   fetchCrossPool,
   fetchEvents,
   fetchPools,
+  fetchPositionPools,
   fetchTeams,
   fetchTournaments,
   updateSeeding
@@ -31,6 +33,10 @@ const TournamentManager = () => {
   const [enteredPoolName, setEnteredPoolName] = createSignal("");
   const [enteredSeedingList, setEnteredSeedingList] = createSignal("[]");
   const [enteredBracketName, setEnteredBracketName] = createSignal("1-8");
+  const [enteredPositionPoolName, setEnteredPositionPoolName] =
+    createSignal("");
+  const [enteredPositionPoolSeedingList, setEnteredPositionPoolSeedingList] =
+    createSignal("[]");
 
   createEffect(() => {
     if (tournamentsQuery.status === "success") {
@@ -67,6 +73,10 @@ const TournamentManager = () => {
   const bracketQuery = createQuery(
     () => ["brackets", selectedTournament()],
     () => fetchBrackets(selectedTournament())
+  );
+  const postionPoolsQuery = createQuery(
+    () => ["position-pools", selectedTournament()],
+    () => fetchPositionPools(selectedTournament())
   );
 
   const createTournamentMutation = createMutation({
@@ -108,6 +118,14 @@ const TournamentManager = () => {
     onSuccess: () =>
       queryClient.invalidateQueries({
         queryKey: ["brackets", selectedTournament()]
+      })
+  });
+
+  const createPositionPoolMutation = createMutation({
+    mutationFn: createPositionPool,
+    onSuccess: () =>
+      queryClient.invalidateQueries({
+        queryKey: ["position-pools", selectedTournament()]
       })
   });
 
@@ -458,6 +476,97 @@ const TournamentManager = () => {
                   className="text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700"
                 >
                   Create Bracket
+                </button>
+              </div>
+            </div>
+          </Show>
+        </div>
+        <div>
+          <h2>Position Pools</h2>
+          <Show
+            when={!postionPoolsQuery.data?.message}
+            fallback={<p>Select Tournament to see/add Position Pools</p>}
+          >
+            <div className="grid grid-cols-3 gap-4">
+              <For each={postionPoolsQuery.data}>
+                {pool => (
+                  <div>
+                    <h3>Position Pool - {pool.name}</h3>{" "}
+                    <div className="relative overflow-x-auto">
+                      <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                        <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                          <tr>
+                            <th scope="col" className="px-6 py-3">
+                              Seeding
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <For each={Object.keys(pool.initial_seeding)}>
+                            {seed => (
+                              <tr className="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+                                <th
+                                  scope="row"
+                                  className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+                                >
+                                  {seed}
+                                </th>
+                              </tr>
+                            )}
+                          </For>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </For>
+              <div className="border border-blue-600 rounded-lg p-5">
+                <h3>Add New Positon Pool</h3>
+                <div>
+                  <label
+                    htmlFor="position-pool-name"
+                    className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                  >
+                    Pool Name
+                  </label>
+                  <input
+                    type="text"
+                    id="position-pool-name"
+                    value={enteredPositionPoolName()}
+                    onChange={e => setEnteredPositionPoolName(e.target.value)}
+                    className="block w-full p-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 sm:text-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="seedings-position-pool"
+                    className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                  >
+                    Seedings List
+                  </label>
+                  <input
+                    type="text"
+                    id="seedings-position-pool"
+                    value={enteredPositionPoolSeedingList()}
+                    onChange={e =>
+                      setEnteredPositionPoolSeedingList(e.target.value)
+                    }
+                    className="block w-full p-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 sm:text-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    createPositionPoolMutation.mutate({
+                      tournament_id: selectedTournament(),
+                      name: enteredPositionPoolName(),
+                      seq_num: postionPoolsQuery.data.length + 1,
+                      seeding_list: enteredPositionPoolSeedingList()
+                    })
+                  }
+                  className="text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700"
+                >
+                  Create Position Pool
                 </button>
               </div>
             </div>
