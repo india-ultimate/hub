@@ -5,9 +5,11 @@ import {
   useQueryClient
 } from "@tanstack/solid-query";
 import {
+  createPool,
   createTournament,
   deleteTournament,
   fetchEvents,
+  fetchPools,
   fetchTeams,
   fetchTournaments,
   updateSeeding
@@ -19,9 +21,11 @@ const TournamentManager = () => {
   const [store] = useStore();
   const [event, setEvent] = createSignal(0);
   const [selectedTeams, setSelectedTeams] = createSignal([]);
-  const [selectedTournament, setSelectedTournament] = createSignal();
+  const [selectedTournament, setSelectedTournament] = createSignal(0);
   const [tournamentSeeding, setTournamentSeeding] = createSignal([]);
   const [teamsMap, setTeamsMap] = createSignal({});
+  const [enteredPoolName, setEnteredPoolName] = createSignal("");
+  const [enteredSeedingList, setEnteredSeedingList] = createSignal("[]");
 
   createEffect(() => {
     if (tournamentsQuery.status === "success") {
@@ -47,6 +51,10 @@ const TournamentManager = () => {
   const eventsQuery = createQuery(() => ["events"], fetchEvents);
   const teamsQuery = createQuery(() => ["teams"], fetchTeams);
   const tournamentsQuery = createQuery(() => ["tournaments"], fetchTournaments);
+  const poolsQuery = createQuery(
+    () => ["pools", selectedTournament()],
+    () => fetchPools(selectedTournament())
+  );
 
   const createTournamentMutation = createMutation({
     mutationFn: createTournament,
@@ -64,6 +72,14 @@ const TournamentManager = () => {
     mutationFn: deleteTournament,
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ["tournaments"] })
+  });
+
+  const createPoolMutation = createMutation({
+    mutationFn: createPool,
+    onSuccess: () =>
+      queryClient.invalidateQueries({
+        queryKey: ["pools", selectedTournament()]
+      })
   });
 
   return (
@@ -223,6 +239,107 @@ const TournamentManager = () => {
           >
             Delete Tournament
           </button>
+        </div>
+        <div>
+          <h2>Pools</h2>
+          <Show
+            when={!poolsQuery.data?.message}
+            fallback={<p>Select Tournament to see/add Pools</p>}
+          >
+            <div class="grid grid-cols-3 gap-4">
+              <For each={poolsQuery.data}>
+                {pool => (
+                  <div>
+                    <h3>Pool - {pool.name}</h3>{" "}
+                    <div class="relative overflow-x-auto">
+                      <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                        <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                          <tr>
+                            <th scope="col" class="px-6 py-3">
+                              Seeding
+                            </th>
+                            <th scope="col" class="px-6 py-3">
+                              Team Name
+                            </th>
+                            <th scope="col" class="px-6 py-3">
+                              Team ID
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <For each={Object.keys(pool.initial_seeding)}>
+                            {seed => (
+                              <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+                                <th
+                                  scope="row"
+                                  class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+                                >
+                                  {seed}
+                                </th>
+                                <td class="px-6 py-4">
+                                  {teamsMap()[pool.initial_seeding[seed]]}
+                                </td>
+                                <td class="px-6 py-4">
+                                  {pool.initial_seeding[seed]}
+                                </td>
+                              </tr>
+                            )}
+                          </For>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </For>
+              <div class="border border-blue-600 rounded-lg p-5">
+                <h3>Add New Pool</h3>
+                <div>
+                  <label
+                    for="pool-name"
+                    class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                  >
+                    Pool Name
+                  </label>
+                  <input
+                    type="text"
+                    id="pool-name"
+                    value={enteredPoolName()}
+                    onChange={e => setEnteredPoolName(e.target.value)}
+                    class="block w-full p-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 sm:text-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label
+                    for="seedings-pool"
+                    class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                  >
+                    Seedings List
+                  </label>
+                  <input
+                    type="text"
+                    id="seedings-pool"
+                    value={enteredSeedingList()}
+                    onChange={e => setEnteredSeedingList(e.target.value)}
+                    class="block w-full p-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 sm:text-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    createPoolMutation.mutate({
+                      tournament_id: selectedTournament(),
+                      name: enteredPoolName(),
+                      seq_num: poolsQuery.data.length + 1,
+                      seeding_list: enteredSeedingList()
+                    })
+                  }
+                  class="text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700"
+                >
+                  Create Pool
+                </button>
+              </div>
+            </div>
+          </Show>
         </div>
       </div>
     </Show>
