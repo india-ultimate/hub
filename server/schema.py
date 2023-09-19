@@ -49,6 +49,12 @@ class Response(Schema):
     message: str
 
 
+class ValidationStatsSchema(Schema):
+    total: int
+    invalid_found: int
+    validated: int
+
+
 class MembershipSchema(ModelSchema):
     waiver_signed_by: str | None
 

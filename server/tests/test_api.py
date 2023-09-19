@@ -1,6 +1,7 @@
 import datetime
 import json
 import uuid
+from pathlib import Path
 from unittest import mock
 
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -1008,3 +1009,39 @@ class TestUPAI(ApiBaseTestCase):
         response_data = response.json()
         self.assertEqual(200, response.status_code)
         self.assertEqual(upai_id, response_data["ultimate_central_id"])
+
+
+class TestValidateTransactions(ApiBaseTestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        self.client.force_login(self.user)
+        self.fixtures_dir = Path(__file__).parent.joinpath("fixtures")
+        self.fixture = self.fixtures_dir / "bank-statement.csv"
+        transactions = {
+            "33680091811DC": 600,
+            "326013145864": 1,
+        }
+        for tid, amount in transactions.items():
+            ManualTransaction.objects.create(transaction_id=tid, amount=amount, user=self.user)
+
+    def test_validate_transactions(self) -> None:
+        c = self.client
+
+        with open(self.fixture, "rb") as f:
+            content = f.read()
+
+        bank_statement = SimpleUploadedFile(
+            self.fixture.name, content, content_type="application/csv"
+        )
+        response = c.post(
+            path="/api/validate-transactions",
+            data={"bank_statement": bank_statement},
+            content_type=MULTIPART_CONTENT,
+        )
+        self.assertEqual(200, response.status_code)
+        stats = response.json()
+        self.assertEqual(4, stats["total"])
+        self.assertEqual(2, stats["invalid_found"])
+        self.assertEqual(1, stats["validated"])
+        self.assertEqual(1, ManualTransaction.objects.filter(validated=False).count())
+        self.assertFalse(ManualTransaction.objects.get(transaction_id="33680091811DC").validated)

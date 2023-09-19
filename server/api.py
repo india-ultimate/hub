@@ -1,4 +1,5 @@
 import datetime
+import io
 import json
 import time
 from typing import Any, cast
@@ -19,6 +20,7 @@ from ninja.security import django_auth
 
 from server.constants import EVENT_MEMBERSHIP_AMOUNT, MEMBERSHIP_END, MEMBERSHIP_START
 from server.firebase_middleware import firebase_to_django_user
+from server.manual_transactions import validate_manual_transactions
 from server.models import (
     Event,
     Guardianship,
@@ -59,6 +61,7 @@ from server.schema import (
     UserSchema,
     VaccinatedFormSchema,
     VaccinationSchema,
+    ValidationStatsSchema,
     WaiverFormSchema,
 )
 from server.top_score_utils import TopScoreClient
@@ -565,6 +568,19 @@ def list_transactions(
             transactions = transactions.filter(validated=False)
 
     return transactions.distinct().order_by("-payment_date")
+
+
+@api.post("/validate-transactions", response={200: ValidationStatsSchema, 400: Response})
+def validate_transactions(
+    request: AuthenticatedHttpRequest,
+    bank_statement: UploadedFile = File(...),  # noqa: B008
+) -> tuple[int, message_response] | tuple[int, dict[str, int]]:
+    if not bank_statement.name or not bank_statement.name.endswith(".csv"):
+        return 400, {"message": "Please upload a CSV file!"}
+
+    text = bank_statement.read().decode("utf-8")
+    stats = validate_manual_transactions(io.StringIO(text))
+    return 200, stats
 
 
 # Vaccination ##########
