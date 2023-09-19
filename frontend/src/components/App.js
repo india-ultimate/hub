@@ -22,6 +22,7 @@ const UltimateCentralLogin = lazy(() => import("./UltimateCentralLogin"));
 const RegisteredPlayerList = lazy(() => import("./RegisteredPlayerList"));
 const ValidateRoster = lazy(() => import("./ValidateRoster"));
 const ValidateTransactions = lazy(() => import("./ValidateTransactions"));
+const TournamentManager = lazy(() => import("./TournamentManager"));
 
 const filters = {
   id: /^\d+$/ // only allow numbers
@@ -102,6 +103,10 @@ export default function App() {
                   <UserRoute
                     path="/validate-transactions"
                     component={ValidateTransactions}
+                  />
+                  <UserRoute
+                    path="/tournament-manager"
+                    component={TournamentManager}
                   />
                 </Routes>
               </div>
