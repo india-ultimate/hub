@@ -32,6 +32,7 @@ from server.models import (
     Player,
     RazorpayTransaction,
     Team,
+    Tournament,
     UCPerson,
     UCRegistration,
     User,
@@ -63,6 +64,9 @@ from server.schema import (
     Response,
     TeamSchema,
     TopScoreCredentials,
+    TournamentCreateSchema,
+    TournamentSchema,
+    TournamentUpdateSeedingSchema,
     TransactionSchema,
     UCRegistrationSchema,
     UserFormSchema,
@@ -89,6 +93,7 @@ class AuthenticatedHttpRequest(HttpRequest):
 
 
 message_response = dict[str, str]
+
 
 # User #########
 
@@ -792,3 +797,76 @@ def upai_person(
                 player.teams.add(team_id)
 
     return 200, player
+
+
+# Tournaments ##########
+
+
+@api.get("/tournaments", response={200: list[TournamentSchema]})
+def get_all_tournaments(request: AuthenticatedHttpRequest) -> tuple[int, QuerySet[Tournament]]:
+    return 200, Tournament.objects.all()
+
+
+@api.post("/tournament", response={200: TournamentSchema, 400: Response, 401: Response})
+def create_tournament(
+    request: AuthenticatedHttpRequest, tournament_details: TournamentCreateSchema
+) -> tuple[int, Tournament] | tuple[int, message_response]:
+    if not request.user.is_staff:
+        return 401, {"message": "Only Admins can create tournament"}
+
+    try:
+        event = Event.objects.get(id=tournament_details.event_id)
+    except Event.DoesNotExist:
+        return 400, {"message": "Event does not exist"}
+
+    tournament, created = Tournament.objects.get_or_create(event=event)
+
+    if not created:
+        return 400, {"message": "Tournament already exists"}
+
+    for team_id in tournament_details.team_ids:
+        tournament.teams.add(team_id)
+
+    return 200, tournament
+
+
+@api.put(
+    "/tournament/{tournament_id}", response={200: TournamentSchema, 400: Response, 401: Response}
+)
+def update_standings(
+    request: AuthenticatedHttpRequest,
+    tournament_id: int,
+    tournament_details: TournamentUpdateSeedingSchema,
+) -> tuple[int, Tournament] | tuple[int, message_response]:
+    if not request.user.is_staff:
+        return 401, {"message": "Only Admins can update tournament"}
+
+    try:
+        tournament = Tournament.objects.get(id=tournament_id)
+    except Tournament.DoesNotExist:
+        return 400, {"message": "Tournament does not exist"}
+
+    # FIXME Check if all teams in standings are there in rostered teams
+
+    tournament.initial_seeding = tournament_details.seeding
+    tournament.current_seeding = tournament_details.seeding
+    tournament.save()
+
+    return 200, tournament
+
+
+@api.delete("/tournament/{tournament_id}", response={200: Response, 400: Response, 401: Response})
+def delete_tournament(
+    request: AuthenticatedHttpRequest, tournament_id: int
+) -> tuple[int, message_response]:
+    if not request.user.is_staff:
+        return 401, {"message": "Only Admins can delete tournament"}
+
+    try:
+        tournament = Tournament.objects.get(id=tournament_id)
+    except Tournament.DoesNotExist:
+        return 400, {"message": "Tournament does not exist"}
+
+    tournament.delete()
+
+    return 200, {"message": "Tournament successfully deleted"}

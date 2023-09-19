@@ -11,6 +11,7 @@ from server.models import (
     Player,
     RazorpayTransaction,
     Team,
+    Tournament,
     UCPerson,
     UCRegistration,
     User,
@@ -437,3 +438,21 @@ class RegistrationOthersSchema(UserOtherFormSchema, PlayerFormSchema):
 class RegistrationWardSchema(UserWardFormSchema, PlayerFormSchema, GuardianshipFormSchema):
     class Config:
         pass
+
+
+class TournamentSchema(ModelSchema):
+    event: EventSchema
+    teams: list[TeamSchema]
+
+    class Config:
+        model = Tournament
+        model_fields = "__all__"
+
+
+class TournamentCreateSchema(Schema):
+    event_id: int
+    team_ids: list[int]
+
+
+class TournamentUpdateSeedingSchema(Schema):
+    seeding: dict[int, int]
