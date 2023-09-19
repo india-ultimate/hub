@@ -25,6 +25,7 @@ const TransactionList = props => {
   const [query, setQuery] = createSignal();
 
   createEffect(() => {
+    const _ts = props.ts; // Added to trigger a refetch if required
     const q = createQuery(
       () => ["transactions"],
       props.admin
