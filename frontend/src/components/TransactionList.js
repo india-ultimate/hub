@@ -31,7 +31,10 @@ const TransactionList = props => {
         ? props.onlyInvalid
           ? fetchAllInvalidTransactions
           : fetchAllTransactions
-        : fetchTransactions
+        : fetchTransactions,
+      {
+        refetchOnWindowFocus: false
+      }
     );
     setQuery(q);
   });
