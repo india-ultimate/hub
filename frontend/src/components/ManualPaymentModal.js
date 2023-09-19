@@ -158,7 +158,7 @@ const ManualPaymentModal = props => {
               <ol class="pl-5 mt-2 space-y-1 list-decimal text-sm">
                 <li>Pay the membership fee using UPI or a Bank Transaction</li>
                 <li>
-                  Submit the transaction ID of your transaction. Please make
+                  Submit the UPI transaction ID of your transaction. Please make
                   sure that you submit the correct Transaction ID so that your
                   payment can be validated by the UPAI Operations team.
                 </li>
@@ -177,7 +177,7 @@ const ManualPaymentModal = props => {
                       value={field.value}
                       error={field.error}
                       type="text"
-                      label="Transaction ID"
+                      label="UPI Transaction ID"
                       placeholder="1234567890"
                       required
                     />
@@ -187,7 +187,7 @@ const ManualPaymentModal = props => {
                   type="submit"
                   class="w-full text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
                 >
-                  Submit Transaction ID
+                  Submit UPI Transaction ID
                 </button>
               </Form>
               <div
