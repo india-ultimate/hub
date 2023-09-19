@@ -30,6 +30,7 @@ from server.models import (
     ManualTransaction,
     Membership,
     Player,
+    Pool,
     RazorpayTransaction,
     Team,
     Tournament,
@@ -57,6 +58,8 @@ from server.schema import (
     PlayerFormSchema,
     PlayerSchema,
     PlayerTinySchema,
+    PoolCreateSchema,
+    PoolSchema,
     RegistrationGuardianSchema,
     RegistrationOthersSchema,
     RegistrationSchema,
@@ -848,8 +851,8 @@ def update_standings(
 
     # FIXME Check if all teams in standings are there in rostered teams
 
-    tournament.initial_seeding = tournament_details.seeding
-    tournament.current_seeding = tournament_details.seeding
+    tournament.initial_seeding = dict(sorted(tournament_details.seeding.items()))
+    tournament.current_seeding = dict(sorted(tournament_details.seeding.items()))
     tournament.save()
 
     return 200, tournament
@@ -870,3 +873,55 @@ def delete_tournament(
     tournament.delete()
 
     return 200, {"message": "Tournament successfully deleted"}
+
+
+@api.post(
+    "/tournament/{tournament_id}/pool", response={200: PoolSchema, 400: Response, 401: Response}
+)
+def create_pool(
+    request: AuthenticatedHttpRequest, tournament_id: int, pool_details: PoolCreateSchema
+) -> tuple[int, Pool] | tuple[int, message_response]:
+    if not request.user.is_staff:
+        return 401, {"message": "Only Admins can create pools"}
+
+    try:
+        tournament = Tournament.objects.get(id=tournament_id)
+    except Tournament.DoesNotExist:
+        return 400, {"message": "Tournament does not exist"}
+
+    pool_seeding = {}
+    pool_results = {}
+    for seed in pool_details.seeding:
+        team_id = tournament.initial_seeding[str(seed)]
+
+        pool_seeding[seed] = team_id
+        pool_results[team_id] = {
+            "wins": 0,
+            "losses": 0,
+            "draws": 0,
+            "GF": 0,  # Goals For
+            "GA": 0,  # Goals Against
+        }
+
+    pool = Pool(
+        sequence_number=pool_details.sequence_number,
+        name=pool_details.name,
+        tournament=tournament,
+        initial_seeding=dict(sorted(pool_seeding.items())),
+        results=pool_results,
+    )
+    pool.save()
+
+    return 200, pool
+
+
+@api.get("/tournament/{tournament_id}/pools", response={200: list[PoolSchema], 400: Response})
+def get_pools(
+    request: AuthenticatedHttpRequest, tournament_id: int
+) -> tuple[int, QuerySet[Pool]] | tuple[int, message_response]:
+    try:
+        tournament = Tournament.objects.get(id=tournament_id)
+    except Tournament.DoesNotExist:
+        return 400, {"message": "Tournament does not exist"}
+
+    return 200, Pool.objects.filter(tournament=tournament)

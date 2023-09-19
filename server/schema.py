@@ -9,6 +9,7 @@ from server.models import (
     ManualTransaction,
     Membership,
     Player,
+    Pool,
     RazorpayTransaction,
     Team,
     Tournament,
@@ -456,3 +457,17 @@ class TournamentCreateSchema(Schema):
 
 class TournamentUpdateSeedingSchema(Schema):
     seeding: dict[int, int]
+
+
+class PoolSchema(ModelSchema):
+    tournament: TournamentSchema
+
+    class Config:
+        model = Pool
+        model_fields = "__all__"
+
+
+class PoolCreateSchema(Schema):
+    seeding: list[int]
+    sequence_number: int
+    name: str
