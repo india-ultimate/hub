@@ -122,6 +122,15 @@ export const fetchPositionPools = async tournament_id => {
   return await response.json();
 };
 
+export const fetchMatches = async tournament_id => {
+  const response = await fetch(`/api/tournament/${tournament_id}/matches`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin"
+  });
+  return await response.json();
+};
+
 // Mutations ----------------
 
 export const createTournament = async body => {
@@ -234,5 +243,18 @@ export const createPositionPool = async ({
       })
     }
   );
+  return await response.json();
+};
+
+export const createMatch = async ({ tournament_id, body }) => {
+  const response = await fetch(`/api/tournament/${tournament_id}/match`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin",
+    body: JSON.stringify(body)
+  });
   return await response.json();
 };
