@@ -30,6 +30,7 @@ from server.models import (
     Event,
     Guardianship,
     ManualTransaction,
+    Match,
     Membership,
     Player,
     Pool,
@@ -58,6 +59,8 @@ from server.schema import (
     GuardianshipFormSchema,
     ManualTransactionSchema,
     ManualTransactionValidationFormSchema,
+    MatchCreateSchema,
+    MatchSchema,
     NotVaccinatedFormSchema,
     OrderSchema,
     PaymentFormSchema,
@@ -1060,3 +1063,77 @@ def get_position_pools(
         return 400, {"message": "Tournament does not exist"}
 
     return 200, PositionPool.objects.filter(tournament=tournament)
+
+
+@api.post(
+    "/tournament/{tournament_id}/match", response={200: MatchSchema, 400: Response, 401: Response}
+)
+def create_match(
+    request: AuthenticatedHttpRequest, tournament_id: int, match_details: MatchCreateSchema
+) -> tuple[int, Match] | tuple[int, message_response]:
+    if not request.user.is_staff:
+        return 401, {"message": "Only Admins can create matches"}
+
+    try:
+        tournament = Tournament.objects.get(id=tournament_id)
+    except Tournament.DoesNotExist:
+        return 400, {"message": "Tournament does not exist"}
+
+    ind_tz = datetime.timezone(datetime.timedelta(hours=5, minutes=30), name="IND")
+    match_datetime = datetime.datetime.strptime(match_details.time, "%Y-%m-%dT%H:%M").astimezone(
+        ind_tz
+    )
+
+    match = Match(
+        tournament=tournament,
+        sequence_number=match_details.seq_num,
+        time=match_datetime,
+        field=match_details.field,
+        placeholder_seed_1=match_details.seed_1,
+        placeholder_seed_2=match_details.seed_2,
+    )
+
+    if match_details.stage == "pool":
+        try:
+            pool = Pool.objects.get(id=match_details.stage_id)
+        except Pool.DoesNotExist:
+            return 400, {"message": "Pool does not exist"}
+
+        match.pool = pool
+    elif match_details.stage == "bracket":
+        try:
+            bracket = Bracket.objects.get(id=match_details.stage_id)
+        except Bracket.DoesNotExist:
+            return 400, {"message": "Bracket does not exist"}
+
+        match.bracket = bracket
+    elif match_details.stage == "cross_pool":
+        try:
+            cross_pool = CrossPool.objects.get(id=match_details.stage_id)
+        except CrossPool.DoesNotExist:
+            return 400, {"message": "Cross Pool does not exist"}
+
+        match.cross_pool = cross_pool
+    elif match_details.stage == "position_pool":
+        try:
+            position_pool = PositionPool.objects.get(id=match_details.stage_id)
+        except PositionPool.DoesNotExist:
+            return 400, {"message": "Position Pool does not exist"}
+
+        match.position_pool = position_pool
+
+    match.save()
+
+    return 200, match
+
+
+@api.get("/tournament/{tournament_id}/matches", response={200: list[MatchSchema], 400: Response})
+def get_matches(
+    request: AuthenticatedHttpRequest, tournament_id: int
+) -> tuple[int, QuerySet[Match]] | tuple[int, message_response]:
+    try:
+        tournament = Tournament.objects.get(id=tournament_id)
+    except Tournament.DoesNotExist:
+        return 400, {"message": "Tournament does not exist"}
+
+    return 200, Match.objects.filter(tournament=tournament).order_by("time__hour", "time__minute")
