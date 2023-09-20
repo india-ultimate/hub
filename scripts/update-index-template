@@ -23,7 +23,7 @@ def main():
         link.attrs["href"] = make_static(href)
 
     for link in soup.find_all("script"):
-        src = link.attrs["src"]
+        src = link.attrs.get("src")
         if src:
             link.attrs["src"] = make_static(src)
 
