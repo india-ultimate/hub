@@ -368,6 +368,38 @@ class TestPayment(ApiBaseTestCase):
         self.assertEqual(amount, transaction.amount)
         self.assertIn(player, transaction.players.all())
         self.assertFalse(transaction.validated)
+        self.assertEqual("2023-06-01", player.membership.start_date.strftime("%Y-%m-%d"))
+        self.assertEqual("2024-05-31", player.membership.end_date.strftime("%Y-%m-%d"))
+
+    def test_create_manual_transaction_membership_exists(self) -> None:
+        c = self.client
+        player = self.player
+        membership = Membership.objects.create(
+            player=player, start_date="2022-01-01", end_date="2022-12-31"
+        )
+        amount = ANNUAL_MEMBERSHIP_AMOUNT
+        transaction_id = "123123123"
+        response = c.post(
+            f"/api/manual-transaction/{transaction_id}",
+            data={
+                "player_id": player.id,
+                "year": 2023,
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(200, response.status_code)
+        order_data = response.json()
+        self.assertIn("amount", order_data)
+        self.assertIn("transaction_id", order_data)
+        transaction_id = order_data["transaction_id"]
+        transaction = ManualTransaction.objects.get(transaction_id=transaction_id)
+        self.assertEqual(self.user, transaction.user)
+        self.assertEqual(amount, transaction.amount)
+        self.assertIn(player, transaction.players.all())
+        self.assertFalse(transaction.validated)
+        membership.refresh_from_db()
+        self.assertEqual("2023-06-01", membership.start_date.strftime("%Y-%m-%d"))
+        self.assertEqual("2024-05-31", membership.end_date.strftime("%Y-%m-%d"))
 
     def test_create_order_player_exists(self) -> None:
         c = self.client

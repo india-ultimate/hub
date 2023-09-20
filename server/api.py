@@ -473,7 +473,7 @@ def create_transaction(
         memberships = Membership.objects.filter(
             player__in=player_ids if group_payment else [player.id]
         )
-        memberships.update(is_active=True)
+        memberships.update(is_active=True, start_date=start_date, end_date=end_date)
     return 200, data
 
 
