@@ -5,7 +5,8 @@ import {
   For,
   Switch,
   Match,
-  Show
+  Show,
+  Suspense
 } from "solid-js";
 import {
   displayDate,
@@ -28,15 +29,21 @@ import { inboxStack } from "solid-heroicons/solid";
 import Breadcrumbs from "./Breadcrumbs";
 import ManualPaymentModal from "./ManualPaymentModal";
 import { initFlowbite } from "flowbite";
+import { createQuery } from "@tanstack/solid-query";
+import { fetchPlayers } from "../queries";
+import PlayersSkeleton from "../skeletons/Players";
 
 const PlayerSearchDropdown = props => {
+  const query = createQuery(() => ["players"], fetchPlayers, {
+    refetchOnWindowFocus: false
+  });
   const [searchText, setSearchText] = createSignal("");
   const [selectedTeam, setSelectedTeam] = createSignal("");
   const [selectAll, setSelectAll] = createSignal(false);
   const [checkedPlayers, setCheckedPlayers] = createSignal({});
 
   const handleSelectAll = e => {
-    props.players
+    query?.data
       .filter(p => playerMatches(p, searchText(), selectedTeam()))
       .map(p => props.onPlayerChecked(e, p));
 
@@ -156,50 +163,52 @@ const PlayerSearchDropdown = props => {
                 </label>
               </div>
             </li>
-            <For
-              each={props.players.filter(p =>
-                playerMatches(p, searchText(), selectedTeam())
-              )}
-            >
-              {player => (
-                <li>
-                  <div class="flex items-center pl-2 rounded hover:bg-gray-100 dark:hover:bg-gray-600">
-                    <input
-                      id={`checkbox-item-${player.id}`}
-                      type="checkbox"
-                      class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500"
-                      onChange={e => props.onPlayerChecked(e, player)}
-                      checked={
-                        player.has_membership || checkedPlayers()[player.id]
-                      }
-                      disabled={player.has_membership}
-                    />
-                    <label
-                      for={`checkbox-item-${player.id}`}
-                      class="w-full py-2 ml-2 text-sm font-medium text-gray-900 rounded dark:text-gray-300"
-                    >
-                      <div class="w-full pl-3">
-                        <div class="text-gray-500 text-sm mb-1.5 dark:text-gray-400">
-                          <span
-                            class={`font-semibold ${
-                              player.has_membership
-                                ? "text-gray-300 dark:text-gray-400"
-                                : "text-gray-900 dark:text-white"
-                            }`}
-                          >
-                            {player.full_name}
-                          </span>
+            <Suspense fallback={<PlayersSkeleton n={10} />}>
+              <For
+                each={query?.data?.filter(p =>
+                  playerMatches(p, searchText(), selectedTeam())
+                )}
+              >
+                {player => (
+                  <li>
+                    <div class="flex items-center pl-2 rounded hover:bg-gray-100 dark:hover:bg-gray-600">
+                      <input
+                        id={`checkbox-item-${player.id}`}
+                        type="checkbox"
+                        class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500"
+                        onChange={e => props.onPlayerChecked(e, player)}
+                        checked={
+                          player.has_membership || checkedPlayers()[player.id]
+                        }
+                        disabled={player.has_membership}
+                      />
+                      <label
+                        for={`checkbox-item-${player.id}`}
+                        class="w-full py-2 ml-2 text-sm font-medium text-gray-900 rounded dark:text-gray-300"
+                      >
+                        <div class="w-full pl-3">
+                          <div class="text-gray-500 text-sm mb-1.5 dark:text-gray-400">
+                            <span
+                              class={`font-semibold ${
+                                player.has_membership
+                                  ? "text-gray-300 dark:text-gray-400"
+                                  : "text-gray-900 dark:text-white"
+                              }`}
+                            >
+                              {player.full_name}
+                            </span>
+                          </div>
+                          <div class="text-xs text-blue-600 dark:text-blue-500">
+                            {player.teams.map(team => team["name"]).join(", ")}{" "}
+                            ({player.city})
+                          </div>
                         </div>
-                        <div class="text-xs text-blue-600 dark:text-blue-500">
-                          {player.teams.map(team => team["name"]).join(", ")} (
-                          {player.city})
-                        </div>
-                      </div>
-                    </label>
-                  </div>
-                </li>
-              )}
-            </For>
+                      </label>
+                    </div>
+                  </li>
+                )}
+              </For>
+            </Suspense>
           </ul>
         </div>
       </div>
@@ -229,13 +238,6 @@ const GroupMembership = () => {
     }
   };
 
-  const fetchPlayers = () => {
-    console.log("Fetching players info...");
-    fetchUrl("/api/players", playersSuccessHandler, error =>
-      console.log(error)
-    );
-  };
-
   const teamsSuccessHandler = async response => {
     const data = await response.json();
     if (response.ok) {
@@ -253,12 +255,10 @@ const GroupMembership = () => {
   };
 
   const paymentSuccessCallback = () => {
-    fetchPlayers();
     setPaymentSuccess(true);
   };
 
   onMount(() => {
-    fetchPlayers();
     fetchTeams();
   });
 

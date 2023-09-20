@@ -44,3 +44,12 @@ export const fetchAllInvalidTransactions = async () => {
   );
   return await response.json();
 };
+
+export const fetchPlayers = async () => {
+  const response = await fetch("/api/players", {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin"
+  });
+  return await response.json();
+};
