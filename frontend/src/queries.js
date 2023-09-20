@@ -83,6 +83,15 @@ export const fetchTournaments = async () => {
   return await response.json();
 };
 
+export const fetchTournament = async tournament_id => {
+  const response = await fetch(`/api/tournament/${tournament_id}`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin"
+  });
+  return await response.json();
+};
+
 export const fetchPools = async tournament_id => {
   const response = await fetch(`/api/tournament/${tournament_id}/pools`, {
     method: "GET",
@@ -255,6 +264,18 @@ export const createMatch = async ({ tournament_id, body }) => {
     },
     credentials: "same-origin",
     body: JSON.stringify(body)
+  });
+  return await response.json();
+};
+
+export const startTournament = async ({ tournament_id }) => {
+  const response = await fetch(`/api/tournament/${tournament_id}/start`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin"
   });
   return await response.json();
 };
