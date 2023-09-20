@@ -36,6 +36,7 @@ from server.models import (
     ManualTransaction,
     Match,
     Membership,
+    PhonePeTransaction,
     Player,
     Pool,
     PositionPool,
@@ -48,6 +49,7 @@ from server.models import (
     User,
     Vaccination,
 )
+from server.phonepe_utils import initiate_payment
 from server.schema import (
     AccreditationFormSchema,
     AccreditationSchema,
@@ -73,6 +75,7 @@ from server.schema import (
     OTPRequestResponse,
     PaymentFormSchema,
     PersonSchema,
+    PhonePePaymentSchema,
     PlayerFormSchema,
     PlayerSchema,
     PlayerTinySchema,
@@ -439,6 +442,7 @@ def list_registrations(
 
 class PaymentGateway(enum.Enum):
     RAZORPAY = "R"
+    PHONEPE = "P"
     MANUAL = "M"
 
 
@@ -460,6 +464,17 @@ def create_razorpay_transaction(
     order: AnnualMembershipSchema | EventMembershipSchema | GroupMembershipSchema,
 ) -> tuple[int, str | message_response | dict[str, Any]]:
     return create_transaction(request, order, PaymentGateway.RAZORPAY)
+
+
+@api.post(
+    "/initiate-payment",
+    response={200: PhonePePaymentSchema, 400: Response, 422: Response, 502: str},
+)
+def initiate_phonepe_payment(
+    request: AuthenticatedHttpRequest,
+    order: AnnualMembershipSchema | EventMembershipSchema | GroupMembershipSchema,
+) -> tuple[int, str | message_response | dict[str, Any]]:
+    return create_transaction(request, order, PaymentGateway.PHONEPE)
 
 
 def create_transaction(
@@ -547,6 +562,12 @@ def create_transaction(
         data = create_razorpay_order(amount, receipt=receipt, notes=notes)
         if data is None:
             return 502, "Failed to connect to Razorpay."
+    elif gateway == PaymentGateway.PHONEPE:
+        host = f"{request.scheme}://{request.get_host()}"
+        next_url = "/membership/group" if group_payment else f"membership/{player.id}"
+        data = initiate_payment(amount, user, host, next_url)
+        if data is None:
+            return 502, "Failed to connect to PhonePe."
     else:
         data = {"amount": amount, "currency": "INR", "transaction_id": transaction_id}
 
@@ -576,6 +597,8 @@ def create_transaction(
             "prefill": {"name": user.get_full_name(), "email": user.email, "contact": user.phone},
         }
         data.update(extra_data)
+    elif gateway == PaymentGateway.PHONEPE:
+        PhonePeTransaction.create_from_order_data(data)
     elif gateway == PaymentGateway.MANUAL:
         ManualTransaction.create_from_order_data(data)
         memberships = Membership.objects.filter(
