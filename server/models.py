@@ -1,10 +1,12 @@
 import uuid
+from pathlib import Path
 from typing import Any
 
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.db.models.signals import pre_save
 from django.dispatch import receiver
+from django.utils.crypto import get_random_string
 from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 
@@ -230,6 +232,13 @@ class ManualTransaction(models.Model):
         return create_transaction_from_order_data(cls, data)
 
 
+def upload_vaccination_certificates(instance, filename):
+    parent = Path("vaccination_certificates")
+    path = Path(filename)
+    new_name = f"{path.stem}-{get_random_string(12)}{path.suffix}"
+    return parent / new_name
+
+
 class Vaccination(models.Model):
     player = models.OneToOneField(Player, on_delete=models.CASCADE)
     is_vaccinated = models.BooleanField()
@@ -247,7 +256,7 @@ class Vaccination(models.Model):
         blank=True,
         null=True,
     )
-    certificate = models.FileField(upload_to="vaccination_certificates/", blank=True)
+    certificate = models.FileField(upload_to=upload_vaccination_certificates, blank=True)
     explain_not_vaccinated = models.TextField(blank=True, null=True)
 
 
