@@ -20,8 +20,13 @@ const WithUserData = props => {
   );
   createEffect(() => {
     if (!fetch.loading) {
-      // HACK: to ensure initflowbite is called post-render?
+      // HACK: to ensure initflowbite is actually initialized!!!
       setTimeout(() => initFlowbite(), 100);
+      setTimeout(() => initFlowbite(), 500);
+      setTimeout(() => initFlowbite(), 1000);
+      setTimeout(() => initFlowbite(), 3000);
+      setTimeout(() => initFlowbite(), 5000);
+      setTimeout(() => initFlowbite(), 8000);
     }
   });
 
