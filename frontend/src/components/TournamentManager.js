@@ -20,6 +20,7 @@ import {
   fetchPositionPools,
   fetchTeams,
   fetchTournaments,
+  startTournament,
   updateSeeding
 } from "../queries";
 import { createEffect, createSignal, For, Match, Show, Switch } from "solid-js";
@@ -30,7 +31,8 @@ const TournamentManager = () => {
   const [store] = useStore();
   const [event, setEvent] = createSignal(0);
   const [selectedTeams, setSelectedTeams] = createSignal([]);
-  const [selectedTournament, setSelectedTournament] = createSignal(0);
+  const [selectedTournament, setSelectedTournament] = createSignal();
+  const [selectedTournamentID, setSelectedTournamentID] = createSignal(0);
   const [tournamentSeeding, setTournamentSeeding] = createSignal([]);
   const [teamsMap, setTeamsMap] = createSignal({});
   const [enteredPoolName, setEnteredPoolName] = createSignal("");
@@ -45,8 +47,9 @@ const TournamentManager = () => {
   createEffect(() => {
     if (tournamentsQuery.status === "success") {
       const tournament = tournamentsQuery.data?.filter(
-        t => t.id === selectedTournament()
+        t => t.id === selectedTournamentID()
       )[0];
+      setSelectedTournament(tournament);
       const seeding = tournament?.initial_seeding;
 
       if (seeding) setTournamentSeeding(seeding);
@@ -67,24 +70,24 @@ const TournamentManager = () => {
   const teamsQuery = createQuery(() => ["teams"], fetchTeams);
   const tournamentsQuery = createQuery(() => ["tournaments"], fetchTournaments);
   const poolsQuery = createQuery(
-    () => ["pools", selectedTournament()],
-    () => fetchPools(selectedTournament())
+    () => ["pools", selectedTournamentID()],
+    () => fetchPools(selectedTournamentID())
   );
   const crossPoolQuery = createQuery(
-    () => ["cross-pool", selectedTournament()],
-    () => fetchCrossPool(selectedTournament())
+    () => ["cross-pool", selectedTournamentID()],
+    () => fetchCrossPool(selectedTournamentID())
   );
   const bracketQuery = createQuery(
-    () => ["brackets", selectedTournament()],
-    () => fetchBrackets(selectedTournament())
+    () => ["brackets", selectedTournamentID()],
+    () => fetchBrackets(selectedTournamentID())
   );
   const postionPoolsQuery = createQuery(
-    () => ["position-pools", selectedTournament()],
-    () => fetchPositionPools(selectedTournament())
+    () => ["position-pools", selectedTournamentID()],
+    () => fetchPositionPools(selectedTournamentID())
   );
   const matchesQuery = createQuery(
-    () => ["matches", selectedTournament()],
-    () => fetchMatches(selectedTournament())
+    () => ["matches", selectedTournamentID()],
+    () => fetchMatches(selectedTournamentID())
   );
 
   const createTournamentMutation = createMutation({
@@ -109,7 +112,7 @@ const TournamentManager = () => {
     mutationFn: createPool,
     onSuccess: () =>
       queryClient.invalidateQueries({
-        queryKey: ["pools", selectedTournament()]
+        queryKey: ["pools", selectedTournamentID()]
       })
   });
 
@@ -117,7 +120,7 @@ const TournamentManager = () => {
     mutationFn: createCrossPool,
     onSuccess: () =>
       queryClient.invalidateQueries({
-        queryKey: ["cross-pool", selectedTournament()]
+        queryKey: ["cross-pool", selectedTournamentID()]
       })
   });
 
@@ -125,7 +128,7 @@ const TournamentManager = () => {
     mutationFn: createBracket,
     onSuccess: () =>
       queryClient.invalidateQueries({
-        queryKey: ["brackets", selectedTournament()]
+        queryKey: ["brackets", selectedTournamentID()]
       })
   });
 
@@ -133,7 +136,7 @@ const TournamentManager = () => {
     mutationFn: createPositionPool,
     onSuccess: () =>
       queryClient.invalidateQueries({
-        queryKey: ["position-pools", selectedTournament()]
+        queryKey: ["position-pools", selectedTournamentID()]
       })
   });
 
@@ -141,7 +144,16 @@ const TournamentManager = () => {
     mutationFn: createMatch,
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["matches", selectedTournament()]
+        queryKey: ["matches", selectedTournamentID()]
+      });
+    }
+  });
+
+  const startTournamentMutation = createMutation({
+    mutationFn: startTournament,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["tournaments"]
       });
     }
   });
@@ -224,7 +236,7 @@ const TournamentManager = () => {
         </h1>
         <select
           id="tournaments"
-          onChange={e => setSelectedTournament(parseInt(e.target.value))}
+          onChange={e => setSelectedTournamentID(parseInt(e.target.value))}
           class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
         >
           <option value={0} selected>
@@ -235,7 +247,7 @@ const TournamentManager = () => {
           </For>
         </select>
 
-        <Show when={selectedTournament() > 0}>
+        <Show when={selectedTournamentID() > 0 && selectedTournament()}>
           <div class="relative overflow-x-auto my-5">
             <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
               <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
@@ -290,11 +302,12 @@ const TournamentManager = () => {
               type="button"
               onClick={() =>
                 updateSeedingMutation.mutate({
-                  id: selectedTournament(),
+                  id: selectedTournamentID(),
                   body: { seeding: tournamentSeeding() }
                 })
               }
-              class="text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700"
+              disabled={selectedTournament()?.status !== "DFT"}
+              class="text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
             >
               Update Seeding
             </button>
@@ -302,7 +315,7 @@ const TournamentManager = () => {
               type="button"
               onClick={() =>
                 deleteTournamentMutation.mutate({
-                  id: selectedTournament()
+                  id: selectedTournamentID()
                 })
               }
               class="text-white bg-red-700 hover:bg-red-800 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-red-600 dark:hover:bg-red-700"
@@ -397,13 +410,14 @@ const TournamentManager = () => {
                     type="button"
                     onClick={() =>
                       createPoolMutation.mutate({
-                        tournament_id: selectedTournament(),
+                        tournament_id: selectedTournamentID(),
                         name: enteredPoolName(),
                         seq_num: poolsQuery.data.length + 1,
                         seeding_list: enteredSeedingList()
                       })
                     }
-                    class="text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700"
+                    disabled={selectedTournament()?.status !== "DFT"}
+                    class="text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400 mt-5"
                   >
                     Create Pool
                   </button>
@@ -422,10 +436,11 @@ const TournamentManager = () => {
                 type="button"
                 onClick={() =>
                   createCrossPoolMutation.mutate({
-                    tournament_id: selectedTournament()
+                    tournament_id: selectedTournamentID()
                   })
                 }
-                class="text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700"
+                disabled={selectedTournament()?.status !== "DFT"}
+                class="text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400 mt-5"
               >
                 Create Cross Pool
               </button>
@@ -491,12 +506,13 @@ const TournamentManager = () => {
                     type="button"
                     onClick={() =>
                       createBracketMutation.mutate({
-                        tournament_id: selectedTournament(),
+                        tournament_id: selectedTournamentID(),
                         name: enteredBracketName(),
                         seq_num: bracketQuery.data.length + 1
                       })
                     }
-                    class="text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700"
+                    disabled={selectedTournament()?.status !== "DFT"}
+                    class="text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400 mt-5"
                   >
                     Create Bracket
                   </button>
@@ -581,13 +597,14 @@ const TournamentManager = () => {
                     type="button"
                     onClick={() =>
                       createPositionPoolMutation.mutate({
-                        tournament_id: selectedTournament(),
+                        tournament_id: selectedTournamentID(),
                         name: enteredPositionPoolName(),
                         seq_num: postionPoolsQuery.data.length + 1,
                         seeding_list: enteredPositionPoolSeedingList()
                       })
                     }
-                    class="text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700"
+                    disabled={selectedTournament()?.status !== "DFT"}
+                    class="text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400 mt-5"
                   >
                     Create Position Pool
                   </button>
@@ -691,16 +708,8 @@ const TournamentManager = () => {
                     type="datetime-local"
                     id="match-time"
                     onChange={e => setMatchFields("time", e.target.value)}
-                    min={
-                      tournamentsQuery.data?.filter(
-                        t => t.id === selectedTournament()
-                      )[0]?.event?.start_date + "T00:00"
-                    }
-                    max={
-                      tournamentsQuery.data?.filter(
-                        t => t.id === selectedTournament()
-                      )[0]?.event?.end_date + "T23:59"
-                    }
+                    min={selectedTournament()?.event?.start_date + "T00:00"}
+                    max={selectedTournament()?.event?.end_date + "T23:59"}
                     class="block w-full p-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 sm:text-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:placeholder-white dark:border-gray-600 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 mb-3"
                   />
                 </div>
@@ -755,11 +764,12 @@ const TournamentManager = () => {
                   type="button"
                   onClick={() =>
                     createMatchMutation.mutate({
-                      tournament_id: selectedTournament(),
+                      tournament_id: selectedTournamentID(),
                       body: matchFields
                     })
                   }
-                  class="text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 mb-5"
+                  disabled={selectedTournament()?.status !== "DFT"}
+                  class="text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 mb-5 disabled:dark:bg-gray-400"
                 >
                   Add Match
                 </button>
@@ -769,7 +779,13 @@ const TournamentManager = () => {
               <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
                 <tr>
                   <th scope="col" class="px-6 py-3">
-                    Teams
+                    Seeds
+                  </th>
+                  <th scope="col" class="px-6 py-3">
+                    Team 1
+                  </th>
+                  <th scope="col" class="px-6 py-3">
+                    Team 2
                   </th>
                   <th scope="col" class="px-6 py-3">
                     Stage
@@ -794,8 +810,38 @@ const TournamentManager = () => {
                           " vs " +
                           match.placeholder_seed_2}
                       </th>
-                      <td class="px-6 py-4">Pool</td>
-                      <td class="px-6 py-4">{match.time}</td>
+                      <td class="px-6 py-4">
+                        {match.team_1 ? match.team_1.name : "-"}
+                      </td>
+                      <td class="px-6 py-4">
+                        {match.team_2 ? match.team_2.name : "-"}
+                      </td>
+                      <td class="px-6 py-4">
+                        <Switch>
+                          <Match when={match.pool}>
+                            Pool - {match.pool.name}
+                          </Match>
+                          <Match when={match.bracket}>
+                            Bracket - {match.bracket.name}
+                          </Match>
+                          <Match when={match.cross_pool}>Cross Pool</Match>
+                          <Match when={match.position_pool}>
+                            Position Pool - {match.position_pool.name}
+                          </Match>
+                        </Switch>
+                      </td>
+                      <td class="px-6 py-4">
+                        {new Date(Date.parse(match.time)).toLocaleDateString(
+                          "en-US",
+                          {
+                            year: "numeric",
+                            month: "short",
+                            day: "numeric",
+                            hour: "numeric",
+                            minute: "numeric"
+                          }
+                        )}
+                      </td>
                       <td class="px-6 py-4">{match.field}</td>
                     </tr>
                   )}
@@ -803,6 +849,19 @@ const TournamentManager = () => {
               </tbody>
             </table>
           </div>
+          <Show when={selectedTournament()?.status === "DFT"}>
+            <button
+              type="button"
+              onClick={() =>
+                startTournamentMutation.mutate({
+                  tournament_id: selectedTournamentID()
+                })
+              }
+              class="text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 my-5"
+            >
+              Start Tournament
+            </button>
+          </Show>
         </Show>
       </div>
     </Show>
