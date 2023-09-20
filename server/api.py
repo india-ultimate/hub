@@ -43,6 +43,7 @@ from server.schema import (
     GroupMembershipSchema,
     GuardianshipFormSchema,
     ManualTransactionSchema,
+    ManualTransactionValidationFormSchema,
     NotVaccinatedFormSchema,
     OrderSchema,
     PaymentFormSchema,
@@ -583,6 +584,21 @@ def validate_transactions(
     text = bank_statement.read().decode("utf-8")
     stats = validate_manual_transactions(io.StringIO(text))
     return 200, stats
+
+
+@api.post("/validate-transaction", response={200: TransactionSchema, 400: Response})
+def validate_transaction(
+    request: AuthenticatedHttpRequest, data: ManualTransactionValidationFormSchema
+) -> tuple[int, message_response] | tuple[int, ManualTransaction]:
+    try:
+        transaction = ManualTransaction.objects.get(transaction_id=data.transaction_id)
+    except Player.DoesNotExist:
+        return 400, {"message": "Transaction does not exist"}
+
+    transaction.validation_comment = data.validation_comment
+    transaction.validated = True
+    transaction.save(update_fields=["validation_comment", "validated"])
+    return 200, transaction
 
 
 # Vaccination ##########

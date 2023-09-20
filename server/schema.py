@@ -134,6 +134,11 @@ class TransactionSchema(ModelSchema):
         model_fields = "__all__"
 
 
+class ManualTransactionValidationFormSchema(Schema):
+    transaction_id: str
+    validation_comment: str
+
+
 class ManualTransactionSchema(ModelSchema):
     class Config:
         model = ManualTransaction

@@ -223,6 +223,7 @@ class ManualTransaction(models.Model):
     players = models.ManyToManyField(Player)
     event = models.ForeignKey(Event, on_delete=models.SET_NULL, blank=True, null=True)
     validated = models.BooleanField(default=False)
+    validation_comment = models.TextField(null=True, blank=True)
 
     def __str__(self) -> str:
         return self.transaction_id
