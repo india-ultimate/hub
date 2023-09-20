@@ -30,7 +30,7 @@ const RegisteredPlayerList = () => {
     console.log("Fetching players info...");
     setLoading(true);
     // FIXME: Paginate
-    fetchUrl("/api/players", playersSuccessHandler, error => {
+    fetchUrl("/api/players?full_schema=1", playersSuccessHandler, error => {
       console.log(error);
       setLoading(false);
     });

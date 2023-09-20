@@ -304,10 +304,7 @@ class TestPlayers(ApiBaseTestCase):
         c = self.client
         self.user.is_staff = True
         self.user.save()
-        response = c.get(
-            "/api/players",
-            content_type="application/json",
-        )
+        response = c.get("/api/players?full_schema=1", content_type="application/json")
         self.assertEqual(200, response.status_code)
         data = response.json()
         self.assertEqual(1, len(data))
@@ -317,6 +314,17 @@ class TestPlayers(ApiBaseTestCase):
         self.assertEqual("username@foo.com", user_data["email"])
         self.assertIn("membership", user_data)
         self.assertIn("guardian", user_data)
+
+        response = c.get("/api/players", content_type="application/json")
+        self.assertEqual(200, response.status_code)
+        data = response.json()
+        self.assertEqual(1, len(data))
+        user_data = data[0]
+        self.assertIn("city", user_data)
+        self.assertIn("state_ut", user_data)
+        self.assertEqual("usxxxxme@foo.com", user_data["email"])
+        self.assertNotIn("membership", user_data)
+        self.assertNotIn("guardian", user_data)
 
 
 class TestPayment(ApiBaseTestCase):

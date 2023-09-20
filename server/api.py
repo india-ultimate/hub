@@ -94,10 +94,12 @@ def me(request: AuthenticatedHttpRequest) -> User:
 
 
 @api.get("/players")
-def list_players(request: AuthenticatedHttpRequest) -> list[PlayerTinySchema | PlayerSchema]:
+def list_players(
+    request: AuthenticatedHttpRequest, full_schema: bool = False
+) -> list[PlayerTinySchema | PlayerSchema]:
     players = Player.objects.all()
     is_staff = request.user.is_staff
-    if is_staff:
+    if is_staff and full_schema:
         return [PlayerSchema.from_orm(p) for p in players]
     else:
         return [PlayerTinySchema.from_orm(p) for p in players]
