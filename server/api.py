@@ -61,6 +61,7 @@ from server.schema import (
     ManualTransactionValidationFormSchema,
     MatchCreateSchema,
     MatchSchema,
+    MatchScoreSchema,
     NotVaccinatedFormSchema,
     OrderSchema,
     PaymentFormSchema,
@@ -91,6 +92,7 @@ from server.schema import (
     WaiverFormSchema,
 )
 from server.top_score_utils import TopScoreClient
+from server.tournament import get_new_bracket_seeding, get_new_pool_results, populate_fixtures
 from server.utils import (
     RAZORPAY_DESCRIPTION_MAX,
     RAZORPAY_NOTES_MAX,
@@ -914,11 +916,12 @@ def create_pool(
 
     pool_seeding = {}
     pool_results = {}
-    for seed in pool_details.seeding:
+    for i, seed in enumerate(pool_details.seeding):
         team_id = tournament.initial_seeding[str(seed)]
 
         pool_seeding[seed] = team_id
         pool_results[team_id] = {
+            "rank": i + 1,
             "wins": 0,
             "losses": 0,
             "draws": 0,
@@ -1105,34 +1108,27 @@ def create_match(
         placeholder_seed_2=match_details.seed_2,
     )
 
-    if match_details.stage == "pool":
-        try:
+    try:
+        if match_details.stage == "pool":
             pool = Pool.objects.get(id=match_details.stage_id)
-        except Pool.DoesNotExist:
-            return 400, {"message": "Pool does not exist"}
-
-        match.pool = pool
-    elif match_details.stage == "bracket":
-        try:
+            match.pool = pool
+        elif match_details.stage == "bracket":
             bracket = Bracket.objects.get(id=match_details.stage_id)
-        except Bracket.DoesNotExist:
-            return 400, {"message": "Bracket does not exist"}
-
-        match.bracket = bracket
-    elif match_details.stage == "cross_pool":
-        try:
+            match.bracket = bracket
+        elif match_details.stage == "cross_pool":
             cross_pool = CrossPool.objects.get(id=match_details.stage_id)
-        except CrossPool.DoesNotExist:
-            return 400, {"message": "Cross Pool does not exist"}
-
-        match.cross_pool = cross_pool
-    elif match_details.stage == "position_pool":
-        try:
+            match.cross_pool = cross_pool
+        elif match_details.stage == "position_pool":
             position_pool = PositionPool.objects.get(id=match_details.stage_id)
-        except PositionPool.DoesNotExist:
-            return 400, {"message": "Position Pool does not exist"}
+            match.position_pool = position_pool
 
-        match.position_pool = position_pool
+    except (
+        Pool.DoesNotExist,
+        Bracket.DoesNotExist,
+        CrossPool.DoesNotExist,
+        PositionPool.DoesNotExist,
+    ):
+        return 400, {"message": "Stage does not exist"}
 
     match.save()
 
@@ -1185,3 +1181,103 @@ def start_tournament(
     tournament.save()
 
     return 200, tournament
+
+
+@api.post(
+    "/tournament/{tournament_id}/generate-fixtures",
+    response={200: Response, 400: Response, 401: Response},
+)
+def generate_tournament_fixtures(
+    request: AuthenticatedHttpRequest, tournament_id: int
+) -> tuple[int, message_response]:
+    if not request.user.is_staff:
+        return 401, {"message": "Only Admins can start tournament"}
+
+    try:
+        tournament = Tournament.objects.get(id=tournament_id)
+    except Tournament.DoesNotExist:
+        return 400, {"message": "Tournament does not exist"}
+
+    populate_fixtures(tournament.id)
+
+    return 200, {"message": "Tournament fixtures populated"}
+
+
+@api.post("/match/{match_id}/score", response={200: MatchSchema, 400: Response, 401: Response})
+def add_match_score(
+    request: AuthenticatedHttpRequest, match_id: int, match_scores: MatchScoreSchema
+) -> tuple[int, Match | message_response]:
+    if not request.user.is_staff:
+        return 401, {"message": "Only Admins can add scores"}
+
+    try:
+        match = Match.objects.get(id=match_id)
+    except Match.DoesNotExist:
+        return 400, {"message": "Match does not exist"}
+
+    if match.status in {Match.Status.COMPLETED, Match.Status.YET_TO_FIX}:
+        return 400, {"message": "Match score cant be added in current status"}
+
+    match.score_team_1 = match_scores.team_1_score
+    match.score_team_2 = match_scores.team_2_score
+
+    if match.pool is not None:
+        results = match.pool.results
+        results = {int(k): v for k, v in results.items()}
+
+        pool_seeding_list = list(match.pool.initial_seeding.keys())
+        pool_seeding_list.sort()
+        tournament_seeding = match.tournament.current_seeding
+
+        new_results, new_tournament_seeding = get_new_pool_results(
+            results, match, pool_seeding_list, tournament_seeding
+        )
+
+        match.pool.results = new_results
+        match.pool.save()
+
+        match.tournament.current_seeding = new_tournament_seeding
+        match.tournament.save()
+
+    elif match.cross_pool is not None:
+        seeding = match.cross_pool.current_seeding
+        match.cross_pool.current_seeding = get_new_bracket_seeding(seeding, match)
+        match.cross_pool.save()
+
+        tournament_seeding = match.tournament.current_seeding
+        match.tournament.current_seeding = get_new_bracket_seeding(tournament_seeding, match)
+        match.tournament.save()
+
+    elif match.bracket is not None:
+        seeding = match.bracket.current_seeding
+        match.bracket.current_seeding = get_new_bracket_seeding(seeding, match)
+        match.bracket.save()
+
+        tournament_seeding = match.tournament.current_seeding
+        match.tournament.current_seeding = get_new_bracket_seeding(tournament_seeding, match)
+        match.tournament.save()
+
+    elif match.position_pool is not None:
+        results = match.position_pool.results
+        results = {int(k): v for k, v in results.items()}
+
+        pool_seeding_list = list(match.position_pool.initial_seeding.keys())
+        pool_seeding_list.sort()
+        tournament_seeding = match.tournament.current_seeding
+
+        new_results, new_tournament_seeding = get_new_pool_results(
+            results, match, pool_seeding_list, tournament_seeding
+        )
+
+        match.position_pool.results = new_results
+        match.position_pool.save()
+
+        match.tournament.current_seeding = new_tournament_seeding
+        match.tournament.save()
+
+    match.status = Match.Status.COMPLETED
+    match.save()
+
+    populate_fixtures(match.tournament.id)
+
+    return 200, match

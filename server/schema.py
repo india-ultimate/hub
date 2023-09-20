@@ -534,3 +534,8 @@ class MatchCreateSchema(Schema):
     field: str
     seed_1: int
     seed_2: int
+
+
+class MatchScoreSchema(Schema):
+    team_1_score: int
+    team_2_score: int
