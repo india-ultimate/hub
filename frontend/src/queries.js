@@ -279,3 +279,31 @@ export const startTournament = async ({ tournament_id }) => {
   });
   return await response.json();
 };
+
+export const generateTournamentFixtures = async ({ tournament_id }) => {
+  const response = await fetch(
+    `/api/tournament/${tournament_id}/generate-fixtures`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCookie("csrftoken")
+      },
+      credentials: "same-origin"
+    }
+  );
+  return await response.json();
+};
+
+export const addMatchScore = async ({ match_id, body }) => {
+  const response = await fetch(`/api/match/${match_id}/score`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin",
+    body: JSON.stringify(body)
+  });
+  return await response.json();
+};

@@ -5,6 +5,7 @@ import {
   useQueryClient
 } from "@tanstack/solid-query";
 import {
+  addMatchScore,
   createBracket,
   createCrossPool,
   createMatch,
@@ -20,6 +21,7 @@ import {
   fetchPositionPools,
   fetchTeams,
   fetchTournaments,
+  generateTournamentFixtures,
   startTournament,
   updateSeeding
 } from "../queries";
@@ -43,6 +45,7 @@ const TournamentManager = () => {
   const [enteredPositionPoolSeedingList, setEnteredPositionPoolSeedingList] =
     createSignal("[]");
   const [matchFields, setMatchFields] = createStore();
+  const [matchScoreFields, setMatchStoreFields] = createStore();
 
   createEffect(() => {
     if (tournamentsQuery.status === "success") {
@@ -154,6 +157,27 @@ const TournamentManager = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["tournaments"]
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["matches", selectedTournamentID()]
+      });
+    }
+  });
+
+  const generateTournamentFixturesMutation = createMutation({
+    mutationFn: generateTournamentFixtures,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["matches", selectedTournamentID()]
+      });
+    }
+  });
+
+  const addMatchScoreMutation = createMutation({
+    mutationFn: addMatchScore,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["matches", selectedTournamentID()]
       });
     }
   });
@@ -796,6 +820,9 @@ const TournamentManager = () => {
                   <th scope="col" class="px-6 py-3">
                     Field
                   </th>
+                  <th scope="col" class="px-6 py-3">
+                    Score
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -810,11 +837,49 @@ const TournamentManager = () => {
                           " vs " +
                           match.placeholder_seed_2}
                       </th>
-                      <td class="px-6 py-4">
+                      <td class="px-6 py-4 text-center">
                         {match.team_1 ? match.team_1.name : "-"}
+                        <Show when={match.status === "SCH"}>
+                          <label
+                            for="match-score-1"
+                            class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                          >
+                            Score
+                          </label>
+                          <input
+                            type="number"
+                            id="match-score-1"
+                            onChange={e =>
+                              setMatchStoreFields(match.id, {
+                                ...matchScoreFields[match.id],
+                                team_1_score: parseInt(e.target.value)
+                              })
+                            }
+                            class="block w-full p-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 sm:text-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 mb-3"
+                          />
+                        </Show>
                       </td>
-                      <td class="px-6 py-4">
+                      <td class="px-6 py-4 text-center">
                         {match.team_2 ? match.team_2.name : "-"}
+                        <Show when={match.status === "SCH"}>
+                          <label
+                            for="match-score-2"
+                            class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                          >
+                            Score
+                          </label>
+                          <input
+                            type="number"
+                            id="match-score-2"
+                            onChange={e =>
+                              setMatchStoreFields(match.id, {
+                                ...matchScoreFields[match.id],
+                                team_2_score: parseInt(e.target.value)
+                              })
+                            }
+                            class="block w-full p-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 sm:text-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 mb-3"
+                          />
+                        </Show>
                       </td>
                       <td class="px-6 py-4">
                         <Switch>
@@ -843,25 +908,65 @@ const TournamentManager = () => {
                         )}
                       </td>
                       <td class="px-6 py-4">{match.field}</td>
+                      <td class="px-6 py-4">
+                        <Switch>
+                          <Match when={match.status === "YTF"}>-</Match>
+                          <Match when={match.status === "SCH"}>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                addMatchScoreMutation.mutate({
+                                  match_id: match.id,
+                                  body: matchScoreFields[match.id]
+                                })
+                              }
+                              class="text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 mb-5 disabled:dark:bg-gray-400"
+                            >
+                              Add Score
+                            </button>
+                          </Match>
+                          <Match when={match.status === "COM"}>
+                            {match.score_team_1 + " - " + match.score_team_2}
+                          </Match>
+                        </Switch>
+                      </td>
                     </tr>
                   )}
                 </For>
               </tbody>
             </table>
           </div>
-          <Show when={selectedTournament()?.status === "DFT"}>
-            <button
-              type="button"
-              onClick={() =>
-                startTournamentMutation.mutate({
-                  tournament_id: selectedTournamentID()
-                })
-              }
-              class="text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 my-5"
-            >
-              Start Tournament
-            </button>
-          </Show>
+          <Switch>
+            <Match when={selectedTournament()?.status === "DFT"}>
+              <button
+                type="button"
+                onClick={() =>
+                  startTournamentMutation.mutate({
+                    tournament_id: selectedTournamentID()
+                  })
+                }
+                class="text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 my-5"
+              >
+                Start Tournament
+              </button>
+            </Match>
+            <Match when={selectedTournament()?.status === "LIV"}>
+              <button
+                type="button"
+                onClick={() =>
+                  generateTournamentFixturesMutation.mutate({
+                    tournament_id: selectedTournamentID()
+                  })
+                }
+                class="text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 my-5"
+              >
+                Populate Fixtures
+              </button>
+            </Match>
+            <Match when={selectedTournament()?.status === "COM"}>
+              Completed!!!
+            </Match>
+          </Switch>
         </Show>
       </div>
     </Show>
