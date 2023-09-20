@@ -1,3 +1,4 @@
+import { A } from "@solidjs/router";
 import { For, Suspense } from "solid-js";
 import { createQuery } from "@tanstack/solid-query";
 import { fetchContributors } from "../queries";
@@ -13,19 +14,23 @@ const Home = () => {
   const features = [
     {
       title: "Membership",
+      link: "/dashboard",
       description: "All in one place to keep track of your UPAI membership"
     },
     {
       title: "Payments",
+      link: "/dashboard",
       description:
         "Direct integrated payment system for easy individual or group membership payments"
     },
     {
       title: "Roster",
+      link: "/dashboard",
       description: "Validate your Team Roster for any events"
     },
     {
       title: "Tournaments",
+      link: "/",
       description: "Shhhhh... Coming Soon!"
     }
   ];
@@ -48,14 +53,17 @@ const Home = () => {
         >
           <For each={features}>
             {feature => (
-              <div class="block p-4 bg-white border border-blue-600 rounded-lg shadow dark:bg-gray-800 dark:border-blue-400 w-full">
+              <A
+                href={feature.link}
+                class="block p-4 bg-white border border-blue-600 rounded-lg shadow dark:bg-gray-800 dark:border-blue-400 w-full"
+              >
                 <h5 class="mb-2 text-xl font-bold tracking-tight text-blue-600 dark:text-blue-400">
                   {feature.title}
                 </h5>
                 <p class="font-normal text-gray-700 dark:text-gray-400">
                   {feature.description}
                 </p>
-              </div>
+              </A>
             )}
           </For>
         </div>
