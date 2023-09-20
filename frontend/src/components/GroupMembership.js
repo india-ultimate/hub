@@ -224,19 +224,9 @@ const GroupMembership = () => {
   const [startDate, setStartDate] = createSignal("");
   const [endDate, setEndDate] = createSignal("");
 
-  const [players, setPlayers] = createSignal([]);
   const [teams, setTeams] = createSignal([]);
   const [payingPlayers, setPayingPlayers] = createSignal([]);
   const [paymentSuccess, setPaymentSuccess] = createSignal(false);
-
-  const playersSuccessHandler = async response => {
-    const data = await response.json();
-    if (response.ok) {
-      setPlayers(data);
-    } else {
-      console.log(data);
-    }
-  };
 
   const teamsSuccessHandler = async response => {
     const data = await response.json();
@@ -339,7 +329,6 @@ const GroupMembership = () => {
         </select>
         <Show when={!paymentSuccess()}>
           <PlayerSearchDropdown
-            players={players()}
             teams={teams()}
             payingPlayers={payingPlayers()}
             onPlayerChecked={handlePlayerChecked}
