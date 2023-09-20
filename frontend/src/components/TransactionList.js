@@ -69,6 +69,11 @@ const TransactionList = props => {
               <th scope="col" class="px-6 py-3">
                 Transaction ID
               </th>
+              <Show when={props.admin}>
+                <th scope="col" class="px-6 py-3">
+                  Validate
+                </th>
+              </Show>
             </tr>
           </thead>
           <tbody>
@@ -111,6 +116,18 @@ const TransactionList = props => {
                         {transaction.event?.title || "Annual"}
                       </td>
                       <td class="px-6 py-4">{transaction.transaction_id}</td>
+                      <Show when={props.admin}>
+                        <td class="px-6 py-4">
+                          <button
+                            data-modal-target="validationModal"
+                            data-modal-toggle="validationModal"
+                            class="text-sm text-white bg-gray-700 hover:bg-gray-800 focus:ring-4 focus:outline-none focus:ring-gray-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-gray-600 dark:hover:bg-gray-700 dark:focus:ring-gray-800"
+                            onClick={() => props.setTransaction(transaction)}
+                          >
+                            Validate
+                          </button>
+                        </td>
+                      </Show>
                     </tr>
                   );
                 }}

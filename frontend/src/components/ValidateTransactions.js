@@ -1,11 +1,11 @@
 import { createSignal } from "solid-js";
 import TransactionList from "./TransactionList";
+import ValidateTransaction from "./ValidateTransaction";
 import { createForm, required } from "@modular-forms/solid";
 import FileInput from "./FileInput";
 import { getCookie } from "../utils";
 
 const TransactionStats = props => {
-  console.log(props.data);
   return (
     <ul>
       <li>
@@ -27,6 +27,8 @@ const ValidateTransactions = () => {
   const [invalid, setInvalid] = createSignal(true);
   const [status, setStatus] = createSignal("");
   const [ts, setTs] = createSignal(new Date());
+
+  const [transaction, setTransaction] = createSignal();
 
   const initialValues = {};
   const [_bankStatementForm, { Form, Field }] = createForm({
@@ -110,7 +112,13 @@ const ValidateTransactions = () => {
         </div>
         <p>{status()}</p>
       </Form>
-      <TransactionList admin={true} onlyInvalid={invalid()} ts={ts()} />
+      <TransactionList
+        admin={true}
+        onlyInvalid={invalid()}
+        ts={ts()}
+        setTransaction={setTransaction}
+      />
+      <ValidateTransaction transaction={transaction()} setTs={setTs} />
     </>
   );
 };
