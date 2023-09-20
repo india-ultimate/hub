@@ -17,3 +17,4 @@ if os.environ.get("DATABASE_URL"):
 else:
     DATABASES["default"]["NAME"] = DATA_DIR / "production.db.sqlite"  # noqa: F405
 MEDIA_ROOT = DATA_DIR / "media"
+MEDIA_URL = "/media/"
