@@ -821,6 +821,18 @@ def get_all_tournaments(request: AuthenticatedHttpRequest) -> tuple[int, QuerySe
     return 200, Tournament.objects.all()
 
 
+@api.get("/tournament/{tournament_id}", response={200: TournamentSchema, 400: Response})
+def get_tournament(
+    request: AuthenticatedHttpRequest, tournament_id: int
+) -> tuple[int, Tournament | message_response]:
+    try:
+        tournament = Tournament.objects.get(id=tournament_id)
+    except Tournament.DoesNotExist:
+        return 400, {"message": "Tournament does not exist"}
+
+    return 200, tournament
+
+
 @api.post("/tournament", response={200: TournamentSchema, 400: Response, 401: Response})
 def create_tournament(
     request: AuthenticatedHttpRequest, tournament_details: TournamentCreateSchema
@@ -1137,3 +1149,39 @@ def get_matches(
         return 400, {"message": "Tournament does not exist"}
 
     return 200, Match.objects.filter(tournament=tournament).order_by("time")
+
+
+@api.post(
+    "/tournament/{tournament_id}/start",
+    response={200: TournamentSchema, 400: Response, 401: Response},
+)
+def start_tournament(
+    request: AuthenticatedHttpRequest, tournament_id: int
+) -> tuple[int, Tournament] | tuple[int, message_response]:
+    if not request.user.is_staff:
+        return 401, {"message": "Only Admins can start tournament"}
+
+    try:
+        tournament = Tournament.objects.get(id=tournament_id)
+    except Tournament.DoesNotExist:
+        return 400, {"message": "Tournament does not exist"}
+
+    matches = Match.objects.filter(tournament=tournament).exclude(pool__isnull=True)
+
+    for match in matches:
+        team_1_id = tournament.initial_seeding[str(match.placeholder_seed_1)]
+        team_2_id = tournament.initial_seeding[str(match.placeholder_seed_2)]
+
+        team_1 = Team.objects.get(id=team_1_id)
+        team_2 = Team.objects.get(id=team_2_id)
+
+        match.team_1 = team_1
+        match.team_2 = team_2
+        match.status = Match.Status.SCHEDULED
+
+        match.save()
+
+    tournament.status = Tournament.Status.LIVE
+    tournament.save()
+
+    return 200, tournament
