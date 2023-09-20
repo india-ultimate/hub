@@ -232,11 +232,11 @@ class ManualTransaction(models.Model):
         return create_transaction_from_order_data(cls, data)
 
 
-def upload_vaccination_certificates(instance, filename):
+def upload_vaccination_certificates(instance: "Vaccination", filename: str) -> str:
     parent = Path("vaccination_certificates")
     path = Path(filename)
     new_name = f"{path.stem}-{get_random_string(12)}{path.suffix}"
-    return parent / new_name
+    return str(parent / new_name)
 
 
 class Vaccination(models.Model):
