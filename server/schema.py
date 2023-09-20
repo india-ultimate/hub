@@ -151,6 +151,11 @@ class ManualTransactionSchema(ModelSchema):
         model_fields = ["transaction_id", "amount", "currency"]
 
 
+class PhonePePaymentSchema(Schema):
+    redirect_url: str
+    amount: int
+
+
 class OrderSchema(Schema):
     order_id: str
     amount: int
