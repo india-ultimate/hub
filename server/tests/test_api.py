@@ -1058,8 +1058,8 @@ class TestValidateTransactions(ApiBaseTestCase):
         self.fixtures_dir = Path(__file__).parent.joinpath("fixtures")
         self.fixture = self.fixtures_dir / "bank-statement.csv"
         transactions = {
-            "33680091811DC": 600,
-            "326013145864": 1,
+            "33680091811DC": 60000,
+            "326013145864": 100,
         }
         for tid, amount in transactions.items():
             ManualTransaction.objects.create(transaction_id=tid, amount=amount, user=self.user)

@@ -42,9 +42,9 @@ def validate_manual_transactions(bank_statement: Path | StringIO) -> dict[str, i
 
         if tid in bank_statement_data:
             invalid_found += 1
-            bank_amount = bank_statement_data[tid]
-            user_amount = transaction.amount
-            if bank_amount == user_amount:
+            bank_amount = bank_statement_data[tid]  # Amount in rupees (float)
+            user_amount = transaction.amount  # Amount in paise
+            if bank_amount * 100 == user_amount:
                 transaction.validated = True
                 transaction.save(update_fields=["validated"])
                 validated += 1
