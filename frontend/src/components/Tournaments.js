@@ -22,7 +22,7 @@ const Tournaments = () => {
           {tournament => (
             <Show when={tournament.status !== "DFT"}>
               <A
-                href={`/tournament/${tournament.id}`}
+                href={`/tournament/${tournament.event?.ultimate_central_slug}`}
                 class="block p-4 bg-white border border-blue-600 rounded-lg shadow dark:bg-gray-800 dark:border-blue-400 w-full"
               >
                 <h5 className="mb-2 text-xl font-bold tracking-tight text-blue-600 dark:text-blue-400 capitalize">

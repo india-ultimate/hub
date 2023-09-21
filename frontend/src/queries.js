@@ -92,6 +92,15 @@ export const fetchTournament = async tournament_id => {
   return await response.json();
 };
 
+export const fetchTournamentBySlug = async tournament_slug => {
+  const response = await fetch(`/api/tournament/slug/${tournament_slug}`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin"
+  });
+  return await response.json();
+};
+
 export const fetchPools = async tournament_id => {
   const response = await fetch(`/api/tournament/${tournament_id}/pools`, {
     method: "GET",
