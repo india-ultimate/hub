@@ -235,6 +235,12 @@ const TournamentManager = () => {
                   class="w-full py-4 ml-2 text-sm font-medium text-gray-900 dark:text-gray-300"
                 >
                   {t.name}
+
+                  <img
+                    class="w-8 h-8 p-1 rounded-full ring-2 ring-gray-300 dark:ring-gray-500 inline-block ml-3"
+                    src={t.image_url}
+                    alt="Bordered avatar"
+                  />
                 </label>
               </div>
             )}
