@@ -23,6 +23,7 @@ const RegisteredPlayerList = lazy(() => import("./RegisteredPlayerList"));
 const ValidateRoster = lazy(() => import("./ValidateRoster"));
 const ValidateTransactions = lazy(() => import("./ValidateTransactions"));
 const TournamentManager = lazy(() => import("./TournamentManager"));
+const Tournaments = lazy(() => import("./Tournaments"));
 
 const filters = {
   id: /^\d+$/ // only allow numbers
@@ -48,6 +49,8 @@ export default function App() {
                   {/* Login related routes */}
                   <Route path="/login" component={Login} />
                   <Route path="/email-link" component={EmailLink} />
+                  {/* Tournament Public Routes */}
+                  <Route path={"/tournaments"} component={Tournaments} />
                   {/* Registration routes */}
                   <UserRoute path="/registration/me" component={Registration} />
                   <UserRoute
