@@ -135,7 +135,7 @@ def list_players(
 # Teams #########
 @api.get("/teams", response={200: list[TeamSchema]})
 def list_teams(request: AuthenticatedHttpRequest) -> QuerySet[Team]:
-    return Team.objects.all()
+    return Team.objects.all().order_by("name")
 
 
 # Login #########
