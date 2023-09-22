@@ -44,7 +44,7 @@ const Home = () => {
           Hub
         </span>
       </h1>
-      <h2 class="text-center">By UPAI</h2>
+      <h2 class="text-center">By UPAI & FDSF(I)</h2>
       <div class="mt-5">
         <h3 class="text-2xl font-extrabold text-center">Features</h3>
         <div
