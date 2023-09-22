@@ -148,7 +148,7 @@ class Command(BaseCommand):
                     roles=registration["roles"],
                 )
                 for registration in registrations
-                if registration["Team"] is not None
+                if (registration["Team"] is not None and registration["Person"] is not None)
             ]
             UCRegistration.objects.bulk_create(
                 registration_objs,
