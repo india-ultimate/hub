@@ -971,12 +971,18 @@ def create_pool(
     return 200, pool
 
 
-@api.get("/tournament/{tournament_id}/pools", response={200: list[PoolSchema], 400: Response})
+@api.get("/tournament/pools", response={200: list[PoolSchema], 400: Response})
 def get_pools(
-    request: AuthenticatedHttpRequest, tournament_id: int
+    request: AuthenticatedHttpRequest, id: int | None = None, slug: str | None = None
 ) -> tuple[int, QuerySet[Pool]] | tuple[int, message_response]:
+    if id is None and slug is None:
+        return 400, {"message": "Need either tournament id or slug"}
     try:
-        tournament = Tournament.objects.get(id=tournament_id)
+        if id is not None:
+            tournament = Tournament.objects.get(id=id)
+        else:
+            event = Event.objects.get(ultimate_central_slug=slug)
+            tournament = Tournament.objects.get(event=event)
     except Tournament.DoesNotExist:
         return 400, {"message": "Tournament does not exist"}
 
@@ -1004,12 +1010,19 @@ def create_cross_pool(
     return 200, cross_pool
 
 
-@api.get("/tournament/{tournament_id}/cross-pool", response={200: CrossPoolSchema, 400: Response})
+@api.get("/tournament/cross-pool", response={200: CrossPoolSchema, 400: Response})
 def get_cross_pool(
-    request: AuthenticatedHttpRequest, tournament_id: int
+    request: AuthenticatedHttpRequest, id: int | None = None, slug: str | None = None
 ) -> tuple[int, CrossPool] | tuple[int, message_response]:
+    if id is None and slug is None:
+        return 400, {"message": "Need either tournament id or slug"}
     try:
-        cross_pool = CrossPool.objects.get(tournament=tournament_id)
+        if id is not None:
+            tournament = Tournament.objects.get(id=id)
+        else:
+            event = Event.objects.get(ultimate_central_slug=slug)
+            tournament = Tournament.objects.get(event=event)
+        cross_pool = CrossPool.objects.get(tournament=tournament)
     except Tournament.DoesNotExist:
         return 400, {"message": "Tournament does not exist"}
     except CrossPool.DoesNotExist:
@@ -1050,13 +1063,19 @@ def create_bracket(
     return 200, bracket
 
 
-@api.get("/tournament/{tournament_id}/brackets", response={200: list[BracketSchema], 400: Response})
+@api.get("/tournament/brackets", response={200: list[BracketSchema], 400: Response})
 def get_brackets(
-    request: AuthenticatedHttpRequest, tournament_id: int
+    request: AuthenticatedHttpRequest, id: int | None = None, slug: str | None = None
 ) -> tuple[int, QuerySet[Bracket]] | tuple[int, message_response]:
+    if id is None and slug is None:
+        return 400, {"message": "Need either tournament id or slug"}
     try:
-        tournament = Tournament.objects.get(id=tournament_id)
-    except Tournament.DoesNotExist:
+        if id is not None:
+            tournament = Tournament.objects.get(id=id)
+        else:
+            event = Event.objects.get(ultimate_central_slug=slug)
+            tournament = Tournament.objects.get(event=event)
+    except (Tournament.DoesNotExist, Event.DoesNotExist):
         return 400, {"message": "Tournament does not exist"}
 
     return 200, Bracket.objects.filter(tournament=tournament)
@@ -1096,15 +1115,21 @@ def create_position_pool(
 
 
 @api.get(
-    "/tournament/{tournament_id}/position-pools",
+    "/tournament/position-pools",
     response={200: list[PositionPoolSchema], 400: Response},
 )
 def get_position_pools(
-    request: AuthenticatedHttpRequest, tournament_id: int
+    request: AuthenticatedHttpRequest, id: int | None = None, slug: str | None = None
 ) -> tuple[int, QuerySet[PositionPool]] | tuple[int, message_response]:
+    if id is None and slug is None:
+        return 400, {"message": "Need either tournament id or slug"}
     try:
-        tournament = Tournament.objects.get(id=tournament_id)
-    except Tournament.DoesNotExist:
+        if id is not None:
+            tournament = Tournament.objects.get(id=id)
+        else:
+            event = Event.objects.get(ultimate_central_slug=slug)
+            tournament = Tournament.objects.get(event=event)
+    except (Tournament.DoesNotExist, Event.DoesNotExist):
         return 400, {"message": "Tournament does not exist"}
 
     return 200, PositionPool.objects.filter(tournament=tournament)
