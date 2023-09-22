@@ -909,7 +909,8 @@ const TournamentManager = () => {
                             month: "short",
                             day: "numeric",
                             hour: "numeric",
-                            minute: "numeric"
+                            minute: "numeric",
+                            timeZone: "UTC"
                           }
                         )}
                       </td>
