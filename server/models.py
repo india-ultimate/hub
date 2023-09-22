@@ -257,7 +257,9 @@ class Vaccination(models.Model):
         blank=True,
         null=True,
     )
-    certificate = models.FileField(upload_to=upload_vaccination_certificates, blank=True)
+    certificate = models.FileField(
+        upload_to=upload_vaccination_certificates, blank=True, max_length=256
+    )
     explain_not_vaccinated = models.TextField(blank=True, null=True)
 
 
