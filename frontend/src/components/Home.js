@@ -15,7 +15,8 @@ const Home = () => {
     {
       title: "Membership",
       link: "/dashboard",
-      description: "All in one place to keep track of your UPAI membership"
+      description:
+        "India Ultimate’s Membership process made easier - one place to keep track of it all!"
     },
     {
       title: "Payments",
