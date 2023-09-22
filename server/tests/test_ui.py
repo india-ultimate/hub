@@ -102,10 +102,8 @@ class TestIntegration(BaseCase):
             self.click('button:contains("Submit")')
             self.click("div#root section div")
             self.click(f'a[href="/waiver/{player_id}"]')
-            self.js_click('span:contains("I acknowledge and agree to the above.")')
-            self.js_click("div#root section div div:nth-of-type(2) label span")
-            self.js_click("div#root section div div:nth-of-type(3) label span")
-            self.js_click("div#root section div div:nth-of-type(5) label span")
+            self.js_click("input#waiver")
+            self.js_click("input#legal")
             self.click('button:contains("I Agree")')
 
             self.click('a[href="/dashboard"]')
