@@ -65,6 +65,7 @@ from server.schema import (
     NotVaccinatedFormSchema,
     OrderSchema,
     PaymentFormSchema,
+    PersonSchema,
     PlayerFormSchema,
     PlayerSchema,
     PlayerTinySchema,
@@ -138,6 +139,18 @@ def list_players(
 @api.get("/teams", response={200: list[TeamSchema]})
 def list_teams(request: AuthenticatedHttpRequest) -> QuerySet[Team]:
     return Team.objects.all().order_by("name")
+
+
+@api.get("/team/{team_slug}", response={200: TeamSchema, 400: Response})
+def get_team(
+    request: AuthenticatedHttpRequest, team_slug: str
+) -> tuple[int, Team | message_response]:
+    try:
+        team = Team.objects.get(ultimate_central_slug=team_slug)
+    except Team.DoesNotExist:
+        return 400, {"message": "Team does not exist"}
+
+    return 200, team
 
 
 # Login #########
@@ -823,31 +836,40 @@ def get_all_tournaments(request: AuthenticatedHttpRequest) -> tuple[int, QuerySe
     return 200, Tournament.objects.all()
 
 
-@api.get("/tournament/{tournament_id}", response={200: TournamentSchema, 400: Response})
+@api.get("/tournament", response={200: TournamentSchema, 400: Response})
 def get_tournament(
-    request: AuthenticatedHttpRequest, tournament_id: int
+    request: AuthenticatedHttpRequest, id: int | None = None, slug: str | None = None
 ) -> tuple[int, Tournament | message_response]:
+    if id is None and slug is None:
+        return 400, {"message": "Need either tournament id or slug"}
     try:
-        tournament = Tournament.objects.get(id=tournament_id)
-    except Tournament.DoesNotExist:
+        if id is not None:
+            tournament = Tournament.objects.get(id=id)
+        else:
+            event = Event.objects.get(ultimate_central_slug=slug)
+            tournament = Tournament.objects.get(event=event)
+    except (Tournament.DoesNotExist, Event.DoesNotExist):
         return 400, {"message": "Tournament does not exist"}
 
     return 200, tournament
 
 
-@api.get("/tournament/slug/{slug}", response={200: TournamentSchema, 400: Response})
-def get_tournament_by_slug(
-    request: AuthenticatedHttpRequest, slug: str
-) -> tuple[int, Tournament | message_response]:
+@api.get("/tournament/roster", response={200: list[PersonSchema], 400: Response})
+def get_tournament_team_roster(
+    request: AuthenticatedHttpRequest, tournament_slug: str, team_slug: str
+) -> tuple[int, QuerySet[UCPerson] | message_response]:
     try:
-        event = Event.objects.get(ultimate_central_slug=slug)
-        tournament = Tournament.objects.get(event=event)
-    except Tournament.DoesNotExist:
-        return 400, {"message": "Tournament does not exist"}
-    except Event.DoesNotExist:
-        return 400, {"message": "Event does not exist"}
-
-    return 200, tournament
+        event = Event.objects.get(ultimate_central_slug=tournament_slug)
+        team = Team.objects.get(ultimate_central_slug=team_slug)
+        persons_list = (
+            UCRegistration.objects.filter(team=team, event=event)
+            .values_list("person", flat=True)
+            .distinct()
+        )
+        players = UCPerson.objects.filter(id__in=persons_list).order_by("first_name")
+        return 200, players
+    except (Event.DoesNotExist, Team.DoesNotExist):
+        return 400, {"message": "Tournament/Team does not exist"}
 
 
 @api.get("/tournament/slug/{slug}/matches", response={200: list[MatchSchema], 400: Response})
@@ -889,7 +911,8 @@ def create_tournament(
 
 
 @api.put(
-    "/tournament/{tournament_id}", response={200: TournamentSchema, 400: Response, 401: Response}
+    "/tournament/update/{tournament_id}",
+    response={200: TournamentSchema, 400: Response, 401: Response},
 )
 def update_standings(
     request: AuthenticatedHttpRequest,
@@ -913,7 +936,9 @@ def update_standings(
     return 200, tournament
 
 
-@api.delete("/tournament/{tournament_id}", response={200: Response, 400: Response, 401: Response})
+@api.delete(
+    "/tournament/delete/{tournament_id}", response={200: Response, 400: Response, 401: Response}
+)
 def delete_tournament(
     request: AuthenticatedHttpRequest, tournament_id: int
 ) -> tuple[int, message_response]:
@@ -931,7 +956,7 @@ def delete_tournament(
 
 
 @api.post(
-    "/tournament/{tournament_id}/pool", response={200: PoolSchema, 400: Response, 401: Response}
+    "/tournament/pool/{tournament_id}", response={200: PoolSchema, 400: Response, 401: Response}
 )
 def create_pool(
     request: AuthenticatedHttpRequest, tournament_id: int, pool_details: PoolCreateSchema
@@ -973,12 +998,12 @@ def create_pool(
 
 @api.get("/tournament/pools", response={200: list[PoolSchema], 400: Response})
 def get_pools(
-    request: AuthenticatedHttpRequest, id: int | None = None, slug: str | None = None
+    request: AuthenticatedHttpRequest, id: int = 0, slug: str = ""
 ) -> tuple[int, QuerySet[Pool]] | tuple[int, message_response]:
-    if id is None and slug is None:
+    if id == 0 and slug == "":
         return 400, {"message": "Need either tournament id or slug"}
     try:
-        if id is not None:
+        if id != 0:
             tournament = Tournament.objects.get(id=id)
         else:
             event = Event.objects.get(ultimate_central_slug=slug)
@@ -990,7 +1015,7 @@ def get_pools(
 
 
 @api.post(
-    "/tournament/{tournament_id}/cross-pool",
+    "/tournament/cross-pool/{tournament_id}",
     response={200: CrossPoolSchema, 400: Response, 401: Response},
 )
 def create_cross_pool(
@@ -1032,7 +1057,7 @@ def get_cross_pool(
 
 
 @api.post(
-    "/tournament/{tournament_id}/bracket",
+    "/tournament/bracket/{tournament_id}",
     response={200: BracketSchema, 400: Response, 401: Response},
 )
 def create_bracket(
@@ -1082,7 +1107,7 @@ def get_brackets(
 
 
 @api.post(
-    "/tournament/{tournament_id}/position-pool",
+    "/tournament/position-pool/{tournament_id}",
     response={200: PositionPoolSchema, 400: Response, 401: Response},
 )
 def create_position_pool(
@@ -1136,7 +1161,7 @@ def get_position_pools(
 
 
 @api.post(
-    "/tournament/{tournament_id}/match", response={200: MatchSchema, 400: Response, 401: Response}
+    "/tournament/match/{tournament_id}", response={200: MatchSchema, 400: Response, 401: Response}
 )
 def create_match(
     request: AuthenticatedHttpRequest, tournament_id: int, match_details: MatchCreateSchema
@@ -1203,7 +1228,7 @@ def get_matches(
 
 
 @api.post(
-    "/tournament/{tournament_id}/start",
+    "/tournament/start/{tournament_id}",
     response={200: TournamentSchema, 400: Response, 401: Response},
 )
 def start_tournament(
@@ -1239,7 +1264,7 @@ def start_tournament(
 
 
 @api.post(
-    "/tournament/{tournament_id}/generate-fixtures",
+    "/tournament/generate-fixtures/{tournament_id}",
     response={200: Response, 400: Response, 401: Response},
 )
 def generate_tournament_fixtures(
@@ -1280,7 +1305,7 @@ def add_match_score(
         results = match.pool.results
         results = {int(k): v for k, v in results.items()}
 
-        pool_seeding_list = list(match.pool.initial_seeding.keys())
+        pool_seeding_list = list(map(int, list(match.pool.initial_seeding.keys())))
         pool_seeding_list.sort()
         tournament_seeding = match.tournament.current_seeding
 
@@ -1316,7 +1341,7 @@ def add_match_score(
         results = match.position_pool.results
         results = {int(k): v for k, v in results.items()}
 
-        pool_seeding_list = list(match.position_pool.initial_seeding.keys())
+        pool_seeding_list = list(map(int, list(match.position_pool.initial_seeding.keys())))
         pool_seeding_list.sort()
         tournament_seeding = match.tournament.current_seeding
 

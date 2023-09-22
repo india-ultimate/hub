@@ -14,7 +14,7 @@ const TournamentSchedule = () => {
   const params = useParams();
   const [teamsMap, setTeamsMap] = createSignal({});
   const [tournamentDays, setTournamentDays] = createSignal([]);
-  const [_, setDateTimeMatchMap] = createSignal({});
+  // const [_, setDateTimeMatchMap] = createSignal({});
 
   const tournamentQuery = createQuery(
     () => ["tournament", params.slug],
@@ -63,21 +63,21 @@ const TournamentSchedule = () => {
     }
   });
 
-  createEffect(() => {
-    if (matchesQuery.status === "success" && !matchesQuery.data?.message) {
-      let dateMatchMap = {};
-
-      for (const match of matchesQuery.data) {
-        if (dateMatchMap[new Date(match.time)]) {
-          dateMatchMap[new Date(match.time)].push(match);
-        } else {
-          dateMatchMap[new Date(match.time)] = [match];
-        }
-      }
-
-      setDateTimeMatchMap(dateMatchMap);
-    }
-  });
+  // createEffect(() => {
+  //   if (matchesQuery.status === "success" && !matchesQuery.data?.message) {
+  //     let dateMatchMap = {};
+  //
+  //     for (const match of matchesQuery.data) {
+  //       if (dateMatchMap[new Date(match.time)]) {
+  //         dateMatchMap[new Date(match.time)].push(match);
+  //       } else {
+  //         dateMatchMap[new Date(match.time)] = [match];
+  //       }
+  //     }
+  //
+  //     setDateTimeMatchMap(dateMatchMap);
+  //   }
+  // });
 
   return (
     <Show
@@ -176,7 +176,9 @@ const TournamentSchedule = () => {
                         <Show
                           when={match.team_1}
                           fallback={
-                            <span class="w-1/3 text-center font-bold">TBD</span>
+                            <span class="w-1/3 text-center font-bold">
+                              {match.placeholder_seed_1}
+                            </span>
                           }
                         >
                           <img
@@ -185,18 +187,22 @@ const TournamentSchedule = () => {
                             alt="Bordered avatar"
                           />
                           <span class="w-1/3 text-center font-bold dark:text-blue-400 text-blue-500">
-                            {match.team_1.name}
+                            {match.team_1.name +
+                              ` (${match.placeholder_seed_1})`}
                           </span>
                         </Show>
                         <span class="mx-2">VS</span>
                         <Show
                           when={match.team_2}
                           fallback={
-                            <span class="w-1/3 text-center font-bold">TBD</span>
+                            <span class="w-1/3 text-center font-bold">
+                              {match.placeholder_seed_2}
+                            </span>
                           }
                         >
                           <span class="w-1/3 text-center font-bold dark:text-blue-400 text-blue-500">
-                            {match.team_2.name}
+                            {match.team_2.name +
+                              ` (${match.placeholder_seed_2})`}
                           </span>
                           <img
                             className="w-6 h-6 p-1 rounded-full ring-2 ring-blue-500 dark:ring-blue-400 inline-block ml-1"

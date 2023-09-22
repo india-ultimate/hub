@@ -143,13 +143,19 @@ const Tournament = () => {
                   >
                     {rank}
                   </th>
-                  <td className="px-6 py-4">
-                    <img
-                      className="w-8 h-8 p-1 rounded-full ring-2 ring-gray-300 dark:ring-gray-500 inline-block mr-3"
-                      src={teamsMap()[team_id]?.image_url}
-                      alt="Bordered avatar"
-                    />
-                    {teamsMap()[team_id]?.name}
+                  <td class="px-6 py-4">
+                    <A
+                      href={`/tournament/${params.slug}/team/${
+                        teamsMap()[team_id]?.ultimate_central_slug
+                      }`}
+                    >
+                      <img
+                        class="w-8 h-8 p-1 rounded-full ring-2 ring-gray-300 dark:ring-gray-500 inline-block mr-3"
+                        src={teamsMap()[team_id]?.image_url}
+                        alt="Bordered avatar"
+                      />
+                      {teamsMap()[team_id]?.name}
+                    </A>
                   </td>
                 </tr>
               )}
