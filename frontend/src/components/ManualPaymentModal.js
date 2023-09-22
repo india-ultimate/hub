@@ -120,7 +120,7 @@ const ManualPaymentModal = props => {
             </button>
             <div class="px-6 py-6 lg:px-8">
               <h3 class="mb-4 text-xl font-medium text-gray-900 dark:text-white">
-                Pay ₹ {props.amount} to UPAI
+                Pay ₹ {props.amount} to India Ultimate
               </h3>
               <img ref={qrElement} />
               <div class="text-sm mb-4 space-y-4">
@@ -160,7 +160,8 @@ const ManualPaymentModal = props => {
                 <li>
                   Submit the UPI transaction ID of your transaction. Please make
                   sure that you submit the correct Transaction ID so that your
-                  payment can be validated by the UPAI Operations team.
+                  payment can be validated by the India Ultimate Operations
+                  team.
                 </li>
               </ol>
               <Form

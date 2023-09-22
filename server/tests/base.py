@@ -21,7 +21,7 @@ def fake_order(amount: int) -> dict[str, Any]:
         "currency": "INR",
         "receipt": "78e1cdbe:2023-06-01:1689402191",
         "key": "rzp_test_2wH8PYPLML64BA",
-        "name": "UPAI Hub",
+        "name": "India Ultimate Hub",
         "image": "https://d36m266ykvepgv.cloudfront.net/uploads/media/o4G97mT9vR/s-448-250/upai-2.png",
         "description": "Membership for ",
         "prefill": {"name": "", "email": "username@foo.com", "contact": ""},

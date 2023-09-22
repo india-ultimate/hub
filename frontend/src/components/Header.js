@@ -38,12 +38,12 @@ export default function Header() {
             <img
               src={assetURL("logo-vertical.png")}
               class="h-8 mr-3 block dark:hidden"
-              alt="UPAI Logo"
+              alt="India Ultimate Logo"
             />
             <img
               src={assetURL("logo-vertical.jpg")}
               class="h-8 mr-3 hidden dark:block"
-              alt="UPAI Logo"
+              alt="India Ultimate Logo"
             />
             <span class="self-center text-2xl font-semibold whitespace-nowrap dark:text-white">
               Hub

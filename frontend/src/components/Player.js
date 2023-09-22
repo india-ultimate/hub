@@ -37,8 +37,8 @@ const Player = props => {
           class="p-4 mb-4 text-sm text-blue-800 rounded-lg bg-blue-50 dark:bg-gray-800 dark:text-blue-400"
           role="alert"
         >
-          Your profile information has been imported from the UPAI Membership
-          form for 2022-2023.
+          Your profile information has been imported from the India Ultimate
+          Membership form for 2022-2023.
         </div>
       </Show>
       <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400 break-all">
@@ -108,8 +108,8 @@ const Player = props => {
                   displayDate(props.player.membership.end_date)}
                 <Show when={!props.player?.membership?.is_active}>
                   <p class="mb-4">
-                    You need a valid UPAI membership to participate in UPAI
-                    events.
+                    You need a valid India Ultimate membership to participate in
+                    India Ultimate events.
                   </p>
                   <button
                     type="submit"
@@ -157,7 +157,8 @@ const Player = props => {
               </th>
               <td class="px-6 py-4">
                 <p class="mb-4">
-                  You need a UPAI membership to participate in UPAI events.
+                  You need a India Ultimate membership to participate in India
+                  Ultimate events.
                 </p>
                 <button
                   type="submit"

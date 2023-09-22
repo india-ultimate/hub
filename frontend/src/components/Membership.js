@@ -169,8 +169,8 @@ const Membership = () => {
               </For>
             </select>
             <p>
-              Pay UPAI membership fee (₹ {getAmount()}) valid for the period
-              from {displayDate(startDate())} to {displayDate(endDate())}
+              Pay India Ultimate membership fee (₹ {getAmount()}) valid for the
+              period from {displayDate(startDate())} to {displayDate(endDate())}
             </p>
           </Show>
 
@@ -187,8 +187,8 @@ const Membership = () => {
               </For>
             </select>
             <p>
-              Pay UPAI membership fee (₹ {eventMembershipFee / 100}) for the{" "}
-              {event().title} ({displayDate(startDate())} to{" "}
+              Pay India Ultimate membership fee (₹ {eventMembershipFee / 100})
+              for the {event().title} ({displayDate(startDate())} to{" "}
               {displayDate(endDate())})
             </p>
           </Show>

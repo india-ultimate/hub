@@ -63,7 +63,7 @@ const StatusStepper = props => {
           <Switch>
             <Match when={percent < 100}>
               <p class="text-md mt-2">
-                Complete the profile to participate in UPAI events
+                Complete the profile to participate in India Ultimate events
               </p>
               <p class="text-xs mt-2">
                 You can click on the incomplete steps (indicated in red) below,

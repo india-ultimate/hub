@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "hub"
 version = "0.1.0"
-description = "Hub for managing player information, membership, etc for UPAI"
+description = "Hub for managing player information, membership, etc for India Ultimate"
 authors = ["Puneeth Chaganti <punchagan@muse-amuse.in>"]
 readme = "README.md"
 

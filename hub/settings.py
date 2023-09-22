@@ -153,7 +153,7 @@ STORAGES = {
 }
 
 # App settings
-APP_NAME = "UPAI Hub"
+APP_NAME = "India Ultimate Hub"
 LOGO_URL = "https://hub.indiaultimate.org/static/assets/favico.png"
 
 # Razorpay settings

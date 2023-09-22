@@ -690,7 +690,7 @@ def upai_person(
     client = TopScoreClient(credentials.username, credentials.password)
     person = client.get_person()
     if person is None or person["person_id"] is None:
-        return 404, {"message": "Failed to fetch person information from UPAI Ultimate Central"}
+        return 404, {"message": "Failed to fetch person information from Ultimate Central"}
     person_id = person["person_id"]
     if person_id:
         player.ultimate_central_id = person_id

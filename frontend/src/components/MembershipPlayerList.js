@@ -13,7 +13,8 @@ const MembershipPlayerList = props => {
           aria-controls="accordion-collapse-body-1"
         >
           <span>
-            Paying UPAI membership fee for {props.players.length} players (₹
+            Paying India Ultimate membership fee for {props.players.length}{" "}
+            players (₹
             {props.fee}) valid for the period from {props.startDate} to{" "}
             {props.endDate}
           </span>
