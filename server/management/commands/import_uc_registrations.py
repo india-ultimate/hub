@@ -78,7 +78,7 @@ class Command(BaseCommand):
                 )
             )
             persons_data = [registration["Person"] for registration in registrations]
-            persons_data_by_id = {person["id"]: person for person in persons_data}
+            persons_data_by_id = {person["id"]: person for person in persons_data if person}
             persons = [
                 UCPerson(
                     id=person["id"],
