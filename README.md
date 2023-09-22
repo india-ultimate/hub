@@ -5,7 +5,7 @@
 <!-- All the content from about:start to about:end appears in the About page -->
 <!-- about:start -->
 
-This is UPAI's membership and payment management portal
+This is India ultimate's Membership and Payment Management Portal
 
 The site is built using [Django](https://www.djangoproject.com/), [Django
 Ninja](https://django-ninja.rest-framework.com/) and
