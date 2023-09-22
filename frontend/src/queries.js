@@ -74,6 +74,15 @@ export const fetchTeams = async () => {
   return await response.json();
 };
 
+export const fetchTeamBySlug = async team_slug => {
+  const response = await fetch(`/api/team/${team_slug}`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin"
+  });
+  return await response.json();
+};
+
 export const fetchTournaments = async () => {
   const response = await fetch("/api/tournaments", {
     method: "GET",
@@ -84,7 +93,7 @@ export const fetchTournaments = async () => {
 };
 
 export const fetchTournament = async tournament_id => {
-  const response = await fetch(`/api/tournament/${tournament_id}`, {
+  const response = await fetch(`/api/tournament?id=${tournament_id}`, {
     method: "GET",
     headers: { "Content-Type": "application/json" },
     credentials: "same-origin"
@@ -93,7 +102,7 @@ export const fetchTournament = async tournament_id => {
 };
 
 export const fetchTournamentBySlug = async tournament_slug => {
-  const response = await fetch(`/api/tournament/slug/${tournament_slug}`, {
+  const response = await fetch(`/api/tournament?slug=${tournament_slug}`, {
     method: "GET",
     headers: { "Content-Type": "application/json" },
     credentials: "same-origin"
@@ -110,9 +119,33 @@ export const fetchPools = async tournament_id => {
   return await response.json();
 };
 
+export const fetchPoolsBySlug = async tournament_slug => {
+  const response = await fetch(
+    `/api/tournament/pools?slug=${tournament_slug}`,
+    {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin"
+    }
+  );
+  return await response.json();
+};
+
 export const fetchCrossPool = async tournament_id => {
   const response = await fetch(
     `/api/tournament/cross-pool?id=${tournament_id}`,
+    {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin"
+    }
+  );
+  return await response.json();
+};
+
+export const fetchCrossPoolBySlug = async tournament_slug => {
+  const response = await fetch(
+    `/api/tournament/cross-pool?slug=${tournament_slug}`,
     {
       method: "GET",
       headers: { "Content-Type": "application/json" },
@@ -131,9 +164,33 @@ export const fetchBrackets = async tournament_id => {
   return await response.json();
 };
 
+export const fetchBracketsBySlug = async tournament_slug => {
+  const response = await fetch(
+    `/api/tournament/brackets?slug=${tournament_slug}`,
+    {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin"
+    }
+  );
+  return await response.json();
+};
+
 export const fetchPositionPools = async tournament_id => {
   const response = await fetch(
     `/api/tournament/position-pools?id=${tournament_id}`,
+    {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin"
+    }
+  );
+  return await response.json();
+};
+
+export const fetchPositionPoolsBySlug = async tournament_slug => {
+  const response = await fetch(
+    `/api/tournament/position-pools?slug=${tournament_slug}`,
     {
       method: "GET",
       headers: { "Content-Type": "application/json" },
@@ -164,6 +221,18 @@ export const fetchMatchesBySlug = async tournament_slug => {
   return await response.json();
 };
 
+export const fetchTournamentTeamBySlug = async (tournament_slug, team_slug) => {
+  const response = await fetch(
+    `/api/tournament/roster?tournament_slug=${tournament_slug}&team_slug=${team_slug}`,
+    {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin"
+    }
+  );
+  return await response.json();
+};
+
 // Mutations ----------------
 
 export const createTournament = async body => {
@@ -180,7 +249,7 @@ export const createTournament = async body => {
 };
 
 export const updateSeeding = async ({ id, body }) => {
-  const response = await fetch(`/api/tournament/${id}`, {
+  const response = await fetch(`/api/tournament/update/${id}`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
@@ -193,7 +262,7 @@ export const updateSeeding = async ({ id, body }) => {
 };
 
 export const deleteTournament = async ({ id }) => {
-  const response = await fetch(`/api/tournament/${id}`, {
+  const response = await fetch(`/api/tournament/delete/${id}`, {
     method: "DELETE",
     headers: {
       "Content-Type": "application/json",
@@ -210,7 +279,7 @@ export const createPool = async ({
   name,
   seeding_list
 }) => {
-  const response = await fetch(`/api/tournament/${tournament_id}/pool`, {
+  const response = await fetch(`/api/tournament/pool/${tournament_id}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -227,7 +296,7 @@ export const createPool = async ({
 };
 
 export const createCrossPool = async ({ tournament_id }) => {
-  const response = await fetch(`/api/tournament/${tournament_id}/cross-pool`, {
+  const response = await fetch(`/api/tournament/cross-pool/${tournament_id}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -239,7 +308,7 @@ export const createCrossPool = async ({ tournament_id }) => {
 };
 
 export const createBracket = async ({ tournament_id, seq_num, name }) => {
-  const response = await fetch(`/api/tournament/${tournament_id}/bracket`, {
+  const response = await fetch(`/api/tournament/bracket/${tournament_id}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -261,7 +330,7 @@ export const createPositionPool = async ({
   seeding_list
 }) => {
   const response = await fetch(
-    `/api/tournament/${tournament_id}/position-pool`,
+    `/api/tournament/position-pool/${tournament_id}`,
     {
       method: "POST",
       headers: {
@@ -280,7 +349,7 @@ export const createPositionPool = async ({
 };
 
 export const createMatch = async ({ tournament_id, body }) => {
-  const response = await fetch(`/api/tournament/${tournament_id}/match`, {
+  const response = await fetch(`/api/tournament/match/${tournament_id}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -293,7 +362,7 @@ export const createMatch = async ({ tournament_id, body }) => {
 };
 
 export const startTournament = async ({ tournament_id }) => {
-  const response = await fetch(`/api/tournament/${tournament_id}/start`, {
+  const response = await fetch(`/api/tournament/start/${tournament_id}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -306,7 +375,7 @@ export const startTournament = async ({ tournament_id }) => {
 
 export const generateTournamentFixtures = async ({ tournament_id }) => {
   const response = await fetch(
-    `/api/tournament/${tournament_id}/generate-fixtures`,
+    `/api/tournament/generate-fixtures/${tournament_id}`,
     {
       method: "POST",
       headers: {

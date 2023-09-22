@@ -26,6 +26,8 @@ const TournamentManager = lazy(() => import("./TournamentManager"));
 const Tournaments = lazy(() => import("./Tournaments"));
 const Tournament = lazy(() => import("./Tournament"));
 const TournamentSchedule = lazy(() => import("./TournamentSchedule"));
+const TournamentStandings = lazy(() => import("./TournamentStandings"));
+const TournamentTeam = lazy(() => import("./TournamentTeam"));
 
 const filters = {
   id: /^\d+$/ // only allow numbers
@@ -57,6 +59,14 @@ export default function App() {
                   <Route
                     path={"/tournament/:slug/schedule"}
                     component={TournamentSchedule}
+                  />
+                  <Route
+                    path={"/tournament/:slug/standings"}
+                    component={TournamentStandings}
+                  />
+                  <Route
+                    path={"/tournament/:tournament_slug/team/:team_slug"}
+                    component={TournamentTeam}
                   />
                   {/* Registration routes */}
                   <UserRoute path="/registration/me" component={Registration} />
