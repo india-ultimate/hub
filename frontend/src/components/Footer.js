@@ -9,7 +9,7 @@ export default function Footer() {
           <span class="text-sm text-gray-500 sm:text-center dark:text-gray-400">
             ©{" "}
             <A href="/" class="hover:underline">
-              UPAI
+              UPAI & FDSF(I)
             </A>
           </span>
           <ul class="flex flex-wrap items-center mt-3 text-sm font-medium text-gray-500 dark:text-gray-400 sm:mt-0">
