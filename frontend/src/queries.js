@@ -102,7 +102,7 @@ export const fetchTournamentBySlug = async tournament_slug => {
 };
 
 export const fetchPools = async tournament_id => {
-  const response = await fetch(`/api/tournament/${tournament_id}/pools`, {
+  const response = await fetch(`/api/tournament/pools?id=${tournament_id}`, {
     method: "GET",
     headers: { "Content-Type": "application/json" },
     credentials: "same-origin"
@@ -111,16 +111,19 @@ export const fetchPools = async tournament_id => {
 };
 
 export const fetchCrossPool = async tournament_id => {
-  const response = await fetch(`/api/tournament/${tournament_id}/cross-pool`, {
-    method: "GET",
-    headers: { "Content-Type": "application/json" },
-    credentials: "same-origin"
-  });
+  const response = await fetch(
+    `/api/tournament/cross-pool?id=${tournament_id}`,
+    {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin"
+    }
+  );
   return await response.json();
 };
 
 export const fetchBrackets = async tournament_id => {
-  const response = await fetch(`/api/tournament/${tournament_id}/brackets`, {
+  const response = await fetch(`/api/tournament/brackets?id=${tournament_id}`, {
     method: "GET",
     headers: { "Content-Type": "application/json" },
     credentials: "same-origin"
@@ -130,7 +133,7 @@ export const fetchBrackets = async tournament_id => {
 
 export const fetchPositionPools = async tournament_id => {
   const response = await fetch(
-    `/api/tournament/${tournament_id}/position-pools`,
+    `/api/tournament/position-pools?id=${tournament_id}`,
     {
       method: "GET",
       headers: { "Content-Type": "application/json" },
