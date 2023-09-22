@@ -51,7 +51,8 @@ const Tournaments = () => {
                   ).toLocaleDateString("en-US", {
                     year: "numeric",
                     month: "short",
-                    day: "numeric"
+                    day: "numeric",
+                    timeZone: "UTC"
                   })}
                   <Show
                     when={
@@ -65,7 +66,8 @@ const Tournaments = () => {
                     ).toLocaleDateString("en-US", {
                       year: "numeric",
                       month: "short",
-                      day: "numeric"
+                      day: "numeric",
+                      timeZone: "UTC"
                     })}
                   </Show>
                 </p>

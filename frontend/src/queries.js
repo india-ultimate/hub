@@ -149,6 +149,18 @@ export const fetchMatches = async tournament_id => {
   return await response.json();
 };
 
+export const fetchMatchesBySlug = async tournament_slug => {
+  const response = await fetch(
+    `/api/tournament/slug/${tournament_slug}/matches`,
+    {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin"
+    }
+  );
+  return await response.json();
+};
+
 // Mutations ----------------
 
 export const createTournament = async body => {
