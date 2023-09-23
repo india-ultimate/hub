@@ -5,6 +5,7 @@ import { fetchContributors } from "../queries";
 import ContributorsSkeleton from "../skeletons/Contributors";
 import { chatBubbleBottomCenterText } from "solid-heroicons/solid";
 import { Icon } from "solid-heroicons";
+import { WALink } from "../constants";
 
 const Home = () => {
   const query = createQuery(() => ["contributors"], fetchContributors, {
@@ -100,7 +101,7 @@ const Home = () => {
         </div>
         <div class="w-full mt-8">
           <a
-            href="https://chat.whatsapp.com/L1LkrLGuqFdIiRh5kuuAnz"
+            href={WALink}
             target="_blank"
             type="button"
             class="text-blue-600 bg-white hover:bg-gray-100 border border-blue-600 font-medium rounded-lg text-sm px-5 py-2.5 text-center flex items-center dark:bg-gray-800 dark:border-blue-400 dark:text-blue-400 dark:hover:bg-gray-700 mb-2 mx-auto w-fit"

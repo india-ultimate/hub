@@ -83,3 +83,5 @@ export const majorAge = 18;
 export const minAgeWarning = `Players need to be atleast ${minAge} years old to participate in India Ultimate events, as on the start date of an event.`;
 
 export const upiID = "indiaultimate@ibl";
+
+export const WALink = "https://chat.whatsapp.com/L1LkrLGuqFdIiRh5kuuAnz";

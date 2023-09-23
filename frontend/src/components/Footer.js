@@ -1,4 +1,5 @@
 import { A } from "@solidjs/router";
+import { WALink } from "../constants";
 
 export default function Footer() {
   const email = "operations+hub@indiaultimate.org";
@@ -33,10 +34,7 @@ export default function Footer() {
               </a>
             </li>
             <li>
-              <a
-                href="https://chat.whatsapp.com/L1LkrLGuqFdIiRh5kuuAnz"
-                class="mr-4 hover:underline md:mr-6"
-              >
+              <a href={WALink} class="mr-4 hover:underline md:mr-6">
                 WhatsApp Us
               </a>
             </li>
