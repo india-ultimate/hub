@@ -54,7 +54,7 @@ const PasswordLogin = props => {
         "X-CSRFToken": csrftoken
       },
       body: JSON.stringify({
-        username: username(),
+        username: username()?.trim(),
         password: password()
       })
     });
@@ -239,7 +239,7 @@ const SendEmailLink = props => {
       handleCodeInApp: true
     };
 
-    sendSignInLinkToEmail(auth, email(), actionCodeSettings)
+    sendSignInLinkToEmail(auth, email()?.trim(), actionCodeSettings)
       .then(() => {
         // The link was successfully sent. Inform the user.
         props.setStatus(`Email was successfully sent to ${email()}`);

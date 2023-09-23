@@ -70,7 +70,7 @@ const SignInForm = props => {
   const signIn = e => {
     e.preventDefault();
     // The client SDK will parse the code from the link for you.
-    signInWithEmailLink(auth, email(), window.location.href)
+    signInWithEmailLink(auth, email()?.trim(), window.location.href)
       .then(async result => {
         // Clear email from storage.
         window.localStorage.removeItem("emailForSignIn");
