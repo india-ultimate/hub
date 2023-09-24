@@ -143,19 +143,16 @@ export const getLabel = (choices, value) => {
 
 export const playerMatches = (player, text, selectedTeam) => {
   const term = text.toLowerCase();
-
-  if (selectedTeam) {
-    return (
-      player.teams.map(team => team["id"].toString()).includes(selectedTeam) &&
-      (player.full_name.toLowerCase().includes(term) ||
-        player.city.toLowerCase().includes(term))
-    );
-  } else {
-    return (
-      player.full_name.toLowerCase().includes(term) ||
-      player.city.toLowerCase().includes(term)
-    );
+  if (
+    selectedTeam &&
+    !player.teams.map(team => team["id"].toString()).includes(selectedTeam)
+  ) {
+    return false;
   }
+  return (
+    player.full_name.toLowerCase().includes(term) ||
+    player.city.toLowerCase().includes(term)
+  );
 };
 
 const today = new Date();
