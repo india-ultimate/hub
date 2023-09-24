@@ -233,6 +233,15 @@ const PlayerSearchDropdown = props => {
                 search, they need to link their Ultimate Central account.
               </div>
             </Show>
+            <Show when={searchResults()?.length == 0}>
+              <div
+                class="p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-yellow-50 dark:bg-gray-800 dark:text-yellow-300"
+                role="alert"
+              >
+                Could not find any player matching "{searchText()}"; Make sure
+                that the player has registered on The Hub.
+              </div>
+            </Show>
           </ul>
         </div>
       </div>
