@@ -41,6 +41,8 @@ const PlayerSearchDropdown = props => {
   const [selectedTeam, setSelectedTeam] = createSignal("");
   const [selectAll, setSelectAll] = createSignal(false);
   const [checkedPlayers, setCheckedPlayers] = createSignal({});
+  const [allTeamsSearch, setAllTeamsSearch] = createSignal(false);
+  const [searchResults, setSearchResults] = createSignal([]);
 
   const handleSelectAll = e => {
     query?.data
@@ -73,6 +75,19 @@ const PlayerSearchDropdown = props => {
     const timeout = setTimeout(() => setSearchText(e.target.value), 700);
     setTimer(timeout);
   };
+
+  createEffect(() => {
+    let results = query?.data?.filter(p =>
+      playerMatches(p, searchText(), selectedTeam())
+    );
+    if (results?.length > 0) {
+      setAllTeamsSearch(false);
+    } else if (query?.data?.length > 0) {
+      setAllTeamsSearch(true);
+      results = query?.data?.filter(p => playerMatches(p, searchText()));
+    }
+    setSearchResults(results);
+  });
 
   return (
     <>
@@ -164,11 +179,7 @@ const PlayerSearchDropdown = props => {
               </div>
             </li>
             <Suspense fallback={<PlayersSkeleton n={10} />}>
-              <For
-                each={query?.data?.filter(p =>
-                  playerMatches(p, searchText(), selectedTeam())
-                )}
-              >
+              <For each={searchResults()}>
                 {player => (
                   <li>
                     <div class="flex items-center pl-2 rounded hover:bg-gray-100 dark:hover:bg-gray-600">
@@ -209,6 +220,19 @@ const PlayerSearchDropdown = props => {
                 )}
               </For>
             </Suspense>
+            <Show when={allTeamsSearch() && searchResults()?.length > 0}>
+              <div
+                class="p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-yellow-50 dark:bg-gray-800 dark:text-yellow-300"
+                role="alert"
+              >
+                Searching for players across all teams, since no player was
+                found in "
+                {props?.teams?.find(t => t.id === Number(selectedTeam()))?.name}
+                " with the current search text. If the player is rostered with
+                the team on Ultimate Central but not showing up in the team's
+                search, they need to link their Ultimate Central account.
+              </div>
+            </Show>
           </ul>
         </div>
       </div>
