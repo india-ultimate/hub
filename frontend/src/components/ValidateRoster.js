@@ -147,7 +147,7 @@ const ValidateRoster = () => {
   onMount(() => {
     console.log("Fetching events info...");
     setLoading(true);
-    fetchUrl("/api/events", eventsSuccessHandler, error => {
+    fetchUrl("/api/events?include_all=1", eventsSuccessHandler, error => {
       console.log(error);
       setLoading(false);
     });
@@ -168,6 +168,8 @@ const ValidateRoster = () => {
   const greenText = "text-green-600 dark:text-green-500";
   const redText = "text-red-600 dark:text-red-500";
 
+  const today = new Date().toISOString().split("T")[0];
+
   return (
     <div id="accordion-collapse" data-accordion="collapse">
       <h2
@@ -186,7 +188,13 @@ const ValidateRoster = () => {
         <option value="" placeholder disabled>
           Select event
         </option>
-        <For each={events()}>
+        <For each={events()?.filter(e => e.end_date >= today)}>
+          {event => <option value={event?.id}>{event?.title}</option>}
+        </For>
+        <option value="" placeholder disabled>
+          Past events
+        </option>
+        <For each={events()?.filter(e => e.end_date < today)}>
           {event => <option value={event?.id}>{event?.title}</option>}
         </For>
       </select>
