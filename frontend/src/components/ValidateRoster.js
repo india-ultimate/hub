@@ -171,33 +171,35 @@ const ValidateRoster = () => {
   const today = new Date().toISOString().split("T")[0];
 
   return (
-    <div id="accordion-collapse" data-accordion="collapse">
-      <h2
-        class="text-4xl font-bold text-blue-500"
-        id="accordion-collapse-heading-1"
-      >
-        Upcoming Events
-      </h2>
-      <select
-        id="event"
-        class="my-4 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-        value={event()?.id}
-        onInput={handleEventChange}
-        required
-      >
-        <option value="" placeholder disabled>
-          Select event
-        </option>
-        <For each={events()?.filter(e => e.end_date >= today)}>
-          {event => <option value={event?.id}>{event?.title}</option>}
-        </For>
-        <option value="" placeholder disabled>
-          Past events
-        </option>
-        <For each={events()?.filter(e => e.end_date < today)}>
-          {event => <option value={event?.id}>{event?.title}</option>}
-        </For>
-      </select>
+    <div>
+      <div class="mb-12">
+        <h2
+          class="text-2xl font-bold text-red-500"
+          id="accordion-collapse-heading-1"
+        >
+          Select Event
+        </h2>
+        <select
+          id="event"
+          class="my-4 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+          value={event()?.id}
+          onInput={handleEventChange}
+          required
+        >
+          <option value="" placeholder disabled>
+            Select event
+          </option>
+          <For each={events()?.filter(e => e.end_date >= today)}>
+            {event => <option value={event?.id}>{event?.title}</option>}
+          </For>
+          <option value="" placeholder disabled>
+            Past events
+          </option>
+          <For each={events()?.filter(e => e.end_date < today)}>
+            {event => <option value={event?.id}>{event?.title}</option>}
+          </For>
+        </select>
+      </div>
       <Switch>
         <Match when={loading()}>
           <p>Fetching event information ...</p>
