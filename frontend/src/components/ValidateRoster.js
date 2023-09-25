@@ -116,7 +116,7 @@ const ValidateRoster = () => {
     setLoading(false);
     if (response.ok) {
       data = await response.json();
-      setEvents(data);
+      setEvents(data.sort((a, b) => a.start_date < b.start_date));
       setEvent(data[0]);
     } else {
       data = await response.text();
