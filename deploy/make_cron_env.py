@@ -5,7 +5,16 @@ from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
 
-ENV = ["PATH", "DJANGO_SETTINGS_MODULE"]
+ENV = [
+    "PATH",
+    "DATABASE_URL",
+    "DJANGO_SETTINGS_MODULE",
+    "TOPSCORE_CLIENT_ID",
+    "TOPSCORE_CLIENT_SECRET",
+    "TOPSCORE_SITE_SLUG",
+    "TOPSCORE_USERNAME",
+    "TOPSCORE_PASSWORD",
+]
 
 
 def main() -> None:
