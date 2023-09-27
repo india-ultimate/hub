@@ -54,7 +54,7 @@ const RegistrationForm = props => {
 
   const validateDateOfBirth = value => {
     const age = getAge(value);
-    return ward() ? age < majorAge : age >= majorAge;
+    return ward() ? age < majorAge : true;
   };
 
   const [selfForm, setSelfForm] = createSignal(!props.ward && !props.others);
@@ -98,6 +98,8 @@ const RegistrationForm = props => {
       ? "/api/registration/others"
       : props.ward
       ? "/api/registration/ward"
+      : getAge(formData.date_of_birth) < majorAge
+      ? "/api/registration/guardian"
       : "/api/registration";
 
     const bodyData = editForm()
@@ -247,6 +249,105 @@ const RegistrationForm = props => {
                   popular Email services.
                 </div>
               </Show>
+            </Show>
+            <Show
+              when={
+                getAge(getValue(registrationForm, "date_of_birth")) <
+                  majorAge && !editForm()
+              }
+            >
+              <Field
+                name="guardian_first_name"
+                validate={required("Please enter guardian's first name.")}
+              >
+                {(field, props) => (
+                  <TextInput
+                    {...props}
+                    value={field.value}
+                    error={field.error}
+                    type="text"
+                    label="Guardian's First Name"
+                    placeholder="Jane"
+                    required
+                  />
+                )}
+              </Field>
+              <Field
+                name="guardian_last_name"
+                validate={required("Please enter guardian's last name.")}
+              >
+                {(field, props) => (
+                  <TextInput
+                    {...props}
+                    value={field.value}
+                    error={field.error}
+                    type="text"
+                    label="Guardian's Last Name"
+                    placeholder="Doe"
+                    required
+                  />
+                )}
+              </Field>
+              <Field
+                name="guardian_email"
+                type="string"
+                validate={[
+                  required("Please enter your Guardian's email address."),
+                  email("Please enter a valid email address.")
+                ]}
+              >
+                {(field, props) => (
+                  <TextInput
+                    {...props}
+                    value={field.value}
+                    error={field.error}
+                    type="text"
+                    label="Guardian's Email"
+                    placeholder="guardian.name@email.com"
+                    required
+                  />
+                )}
+              </Field>
+              <Field
+                name="guardian_phone"
+                validate={[
+                  required("Please enter a phone number for Guardian."),
+                  pattern(
+                    /^\+\d+$/,
+                    "Enter a phone number along with the country code"
+                  ),
+                  minLength(8, "Phone number must be at least 8 digits long")
+                ]}
+              >
+                {(field, props) => (
+                  <TextInput
+                    {...props}
+                    value={field.value}
+                    error={field.error}
+                    type="text"
+                    label="Guardian's Phone number"
+                    placeholder="+919998887776"
+                    required
+                  />
+                )}
+              </Field>
+              <Field
+                name="relation"
+                validate={required("Please select your guardian's relation.")}
+              >
+                {(field, props) => (
+                  <Select
+                    {...props}
+                    value={field.value}
+                    error={field.error}
+                    options={relationChoices}
+                    type="text"
+                    label="Guardian's relation"
+                    placeholder="Parent / Legal Guardian ?"
+                    required
+                  />
+                )}
+              </Field>
             </Show>
             <Field
               name="first_name"
