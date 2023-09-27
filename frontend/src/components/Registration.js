@@ -223,7 +223,21 @@ const RegistrationForm = props => {
                 type="string"
                 validate={[
                   required("Please enter email address of the player."),
-                  email("Please enter a valid email address.")
+                  email("Please enter a valid email address."),
+                  custom(
+                    notUserEmail,
+                    <p>
+                      The player's email ID cannot be the same as the guardian's
+                      email. If you are a player, please use the players' form,{" "}
+                      <A
+                        class="font-medium text-blue-600 underline dark:text-blue-500 hover:no-underline"
+                        href="/registration/me"
+                      >
+                        here
+                      </A>
+                      .
+                    </p>
+                  )
                 ]}
               >
                 {(field, props) => (
