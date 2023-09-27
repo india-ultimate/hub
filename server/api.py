@@ -276,6 +276,9 @@ def register_ward(
     request: AuthenticatedHttpRequest, registration: RegistrationWardSchema
 ) -> tuple[int, Player | message_response]:
     email = registration.email  # type: ignore[attr-defined]
+    if request.user.email == email:
+        return 400, {"message": "Use the players form instead of the guardians form"}
+
     if email is None:
         email = slugify(f"{registration.first_name} {registration.last_name}")  # type: ignore[attr-defined]
     user, created = User.objects.get_or_create(
@@ -295,6 +298,9 @@ def register_guardian(
     request: AuthenticatedHttpRequest, registration: RegistrationGuardianSchema
 ) -> tuple[int, Player | message_response]:
     email = registration.guardian_email
+    if request.user.email == email:
+        return 400, {"message": "Use the guardians form instead of the players form"}
+
     user, _ = User.objects.get_or_create(
         username=email,
         defaults={
