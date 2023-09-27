@@ -29,6 +29,7 @@ import Select from "./Select";
 import Checkbox from "./Checkbox";
 import Breadcrumbs from "./Breadcrumbs";
 import { inboxStack } from "solid-heroicons/solid";
+import { A } from "@solidjs/router";
 
 const RegistrationForm = props => {
   const csrftoken = getCookie("csrftoken");
@@ -48,6 +49,10 @@ const RegistrationForm = props => {
   const validateMinAge = value => {
     const yearEnd = new Date(today.getFullYear(), 11, 31);
     return getAge(value, yearEnd) >= minAge;
+  };
+
+  const notUserEmail = value => {
+    return store?.data?.email !== value;
   };
 
   const [ward, setWard] = createSignal(props.ward);
@@ -293,7 +298,20 @@ const RegistrationForm = props => {
                 type="string"
                 validate={[
                   required("Please enter your Guardian's email address."),
-                  email("Please enter a valid email address.")
+                  email("Please enter a valid email address."),
+                  custom(
+                    notUserEmail,
+                    <p>
+                      If you are a guardian filling up the form for a ward,
+                      please use the form{" "}
+                      <A
+                        class="font-medium text-blue-600 underline dark:text-blue-500 hover:no-underline"
+                        href="/registration/ward"
+                      >
+                        here
+                      </A>
+                    </p>
+                  )
                 ]}
               >
                 {(field, props) => (
