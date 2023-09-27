@@ -395,6 +395,16 @@ class RegistrationSchema(UserFormSchema, PlayerFormSchema):
         pass
 
 
+class RegistrationGuardianSchema(RegistrationSchema, GuardianshipFormSchema):
+    guardian_first_name: str
+    guardian_last_name: str
+    guardian_email: str
+    guardian_phone: str
+
+    class Config:
+        pass
+
+
 class RegistrationOthersSchema(UserOtherFormSchema, PlayerFormSchema):
     class Config:
         pass

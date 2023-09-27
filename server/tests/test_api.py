@@ -278,6 +278,71 @@ class TestRegistration(ApiBaseTestCase):
         self.assertEqual(user.username, "nora-quinn")
         self.assertEqual(user.email, "nora-quinn")
 
+    def test_register_guardian_non_minor_fail(self) -> None:
+        c = self.client
+        self.user.player_profile.delete()
+
+        data = {
+            "phone": "+1234567890",
+            "date_of_birth": "1990-01-01",
+            "gender": "F",
+            "city": "Bangalore",
+            "first_name": "Nora",
+            "last_name": "Quinn",
+            "guardian_first_name": "Mora",
+            "guardian_last_name": "Saiyyan",
+            "guardian_email": "mora@gmail.com",
+            "guardian_phone": "+123321456654",
+            "relation": "MO",
+        }
+        response = c.post(
+            "/api/registration/guardian",
+            data=data,
+            content_type="application/json",
+        )
+        print(response.json())
+        self.assertEqual(400, response.status_code)
+
+    def test_register_guardian(self) -> None:
+        c = self.client
+        self.user.player_profile.delete()
+
+        # ~15 years old
+        dob = now() - datetime.timedelta(days=15 * 365)
+
+        data = {
+            "phone": "+1234567890",
+            "date_of_birth": str(dob.date()),
+            "gender": "F",
+            "city": "Bangalore",
+            "first_name": "Nora",
+            "last_name": "Quinn",
+            "guardian_first_name": "Mora",
+            "guardian_last_name": "Saiyyan",
+            "guardian_email": "mora@gmail.com",
+            "guardian_phone": "+123321456654",
+            "relation": "MO",
+        }
+        response = c.post(
+            "/api/registration/guardian",
+            data=data,
+            content_type="application/json",
+        )
+        self.assertEqual(200, response.status_code)
+        response_data = response.json()
+        print(response_data)
+        for key, value in data.items():
+            if key in response_data:
+                self.assertEqual(value, response_data[key])
+        self.assertEqual(self.user.id, response_data["user"])
+        self.assertLess(self.user.id, response_data["guardian"])
+        self.user.refresh_from_db()
+        guardian_user = self.user.player_profile.guardianship.user
+        self.assertEqual(guardian_user.email, data["guardian_email"])
+        self.assertEqual(guardian_user.phone, data["guardian_phone"])
+        self.assertEqual(guardian_user.first_name, data["guardian_first_name"])
+        self.assertEqual(guardian_user.last_name, data["guardian_last_name"])
+
 
 class TestPlayers(ApiBaseTestCase):
     def setUp(self) -> None:

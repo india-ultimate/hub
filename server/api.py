@@ -50,6 +50,7 @@ from server.schema import (
     PlayerFormSchema,
     PlayerSchema,
     PlayerTinySchema,
+    RegistrationGuardianSchema,
     RegistrationOthersSchema,
     RegistrationSchema,
     RegistrationWardSchema,
@@ -287,6 +288,23 @@ def register_ward(
         },
     )
     return do_register(user, registration, guardian=request.user)
+
+
+@api.post("/registration/guardian", response={200: PlayerSchema, 400: Response})
+def register_guardian(
+    request: AuthenticatedHttpRequest, registration: RegistrationGuardianSchema
+) -> tuple[int, Player | message_response]:
+    email = registration.guardian_email
+    user, _ = User.objects.get_or_create(
+        username=email,
+        defaults={
+            "email": email,
+            "phone": registration.guardian_phone,
+            "first_name": registration.guardian_first_name,
+            "last_name": registration.guardian_last_name,
+        },
+    )
+    return do_register(request.user, registration, guardian=user)
 
 
 # Events ##########
