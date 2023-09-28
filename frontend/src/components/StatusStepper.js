@@ -3,7 +3,6 @@ import { Icon } from "solid-heroicons";
 import { A } from "@solidjs/router";
 import { Switch, Match } from "solid-js";
 import { getStatusAndPercent } from "../utils";
-
 import {
   identification,
   currencyRupee,
@@ -11,7 +10,10 @@ import {
   shieldCheck,
   handThumbUp,
   handThumbDown,
-  arrowTopRightOnSquare
+  arrowTopRightOnSquare,
+  document,
+  documentCheck,
+  xCircle
 } from "solid-heroicons/solid-mini";
 
 const Step = props => {
@@ -106,6 +108,18 @@ const StatusStepper = props => {
           icon={status.waiver ? handThumbUp : handThumbDown}
           color={status.waiver ? "green" : "red"}
           link={`/waiver/${props.player.id}`}
+        />
+        <Step
+          title="Accreditation"
+          icon={
+            status.accreditation
+              ? props?.player?.accreditation?.level == "ADV"
+                ? documentCheck
+                : document
+              : xCircle
+          }
+          color={status.accreditation ? "green" : "red"}
+          link={`/accreditation/${props.player.id}`}
           last={true}
         />
       </ol>

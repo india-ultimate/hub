@@ -11,7 +11,10 @@ import {
   handThumbUp,
   handThumbDown,
   shieldCheck,
-  shieldExclamation
+  shieldExclamation,
+  document,
+  documentCheck,
+  xCircle
 } from "solid-heroicons/solid-mini";
 import { A } from "@solidjs/router";
 
@@ -90,7 +93,7 @@ const ValidationLegend = () => (
       />{" "}
       — Player Vaccinated
     </li>
-    <li class="w-full px-4 py-2 rounded-b-lg">
+    <li class="w-full px-4 py-2 border-b border-gray-200 dark:border-gray-600">
       <Icon
         path={shieldExclamation}
         style={{
@@ -99,6 +102,36 @@ const ValidationLegend = () => (
         }}
       />{" "}
       — Player Not Vaccinated
+    </li>
+    <li class="w-full px-4 py-2 border-b border-gray-200 dark:border-gray-600">
+      <Icon
+        path={documentCheck}
+        style={{
+          width: "20px",
+          display: "inline"
+        }}
+      />{" "}
+      — Advanced Accreditation
+    </li>
+    <li class="w-full px-4 py-2 border-b border-gray-200 dark:border-gray-600">
+      <Icon
+        path={document}
+        style={{
+          width: "20px",
+          display: "inline"
+        }}
+      />{" "}
+      — Standard Accreditation
+    </li>
+    <li class="w-full px-4 py-2 rounded-b-lg">
+      <Icon
+        path={xCircle}
+        style={{
+          width: "20px",
+          display: "inline"
+        }}
+      />{" "}
+      — No Accreditation
     </li>
   </ul>
 );
@@ -365,6 +398,32 @@ const ValidateRoster = () => {
                                           ?.is_vaccinated
                                           ? shieldCheck
                                           : shieldExclamation
+                                      }
+                                      style={{
+                                        width: "20px",
+                                        display: "inline"
+                                      }}
+                                    />
+                                  </span>
+                                  <span
+                                    title="Accreditation?"
+                                    class={clsx(
+                                      "mx-2",
+                                      registration.person.player?.accreditation
+                                        ?.is_valid
+                                        ? greenText
+                                        : redText
+                                    )}
+                                  >
+                                    <Icon
+                                      path={
+                                        registration.person.player?.vaccination
+                                          ?.is_valid
+                                          ? registration.person.player
+                                              ?.vaccination?.level === "ADV"
+                                            ? documentCheck
+                                            : document
+                                          : xCircle
                                       }
                                       style={{
                                         width: "20px",

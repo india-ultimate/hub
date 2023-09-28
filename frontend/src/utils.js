@@ -171,7 +171,8 @@ export const getStatusAndPercent = player => {
     vaccine: !!player?.vaccination,
     ucLink: !!player?.ultimate_central_id,
     membership: player?.membership?.is_active,
-    waiver: player?.membership?.waiver_valid
+    waiver: player?.membership?.waiver_valid,
+    accreditation: player?.accreditation?.is_valid
   };
   const percent = Math.round(
     (Object.values(status).filter(x => x).length * 100) /
