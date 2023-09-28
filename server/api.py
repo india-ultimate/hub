@@ -22,6 +22,7 @@ from server.constants import EVENT_MEMBERSHIP_AMOUNT, MEMBERSHIP_END, MEMBERSHIP
 from server.firebase_middleware import firebase_to_django_user
 from server.manual_transactions import validate_manual_transactions
 from server.models import (
+    Accreditation,
     Event,
     Guardianship,
     ManualTransaction,
@@ -34,6 +35,8 @@ from server.models import (
     Vaccination,
 )
 from server.schema import (
+    AccreditationFormSchema,
+    AccreditationSchema,
     AnnualMembershipSchema,
     Credentials,
     EventMembershipSchema,
@@ -662,6 +665,46 @@ def vaccination(
     vaccine.full_clean()
     vaccine.save()
     return 200, vaccine
+
+
+# Accreditation ##########
+
+
+@api.post("/accreditation", response={200: AccreditationSchema, 400: Response})
+def accreditation(
+    request: AuthenticatedHttpRequest,
+    accreditation: AccreditationFormSchema,
+    certificate: UploadedFile = File(...),  # noqa: B008
+) -> tuple[int, Accreditation | message_response]:
+    if not certificate:
+        return 400, {"message": "Certificate needs to be uploaded!"}
+
+    try:
+        player = Player.objects.get(id=accreditation.player_id)
+    except Player.DoesNotExist:
+        return 400, {"message": "Player does not exist"}
+
+    try:
+        acc = player.accreditation
+        edit = True
+    except Accreditation.DoesNotExist:
+        edit = False
+
+    accreditation_data = accreditation.dict()
+    accreditation_data["certificate"] = certificate
+    accreditation_data["player"] = player
+    accreditation_data["is_valid"] = False
+
+    if not edit:
+        acc = Accreditation(**accreditation_data)
+    else:
+        acc.certificate = certificate
+        acc.date = accreditation_data.get("date", None)
+        acc.level = accreditation_data.get("level", Accreditation.AccreditationLevel.STANDARD)
+
+    acc.full_clean()
+    acc.save()
+    return 200, acc
 
 
 # Waiver ##########

@@ -1056,6 +1056,59 @@ class TestVaccination(ApiBaseTestCase):
         self.assertEqual(self.player.id, response_data["player"])
 
 
+class TestAccreditation(ApiBaseTestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        self.client.force_login(self.user)
+
+    def test_accreditation_not_valid(self) -> None:
+        c = self.client
+
+        certificate = SimpleUploadedFile(
+            "certificate.pdf", b"file content", content_type="application/pdf"
+        )
+        data = {"date": "2018-01-01", "level": "ADV", "player_id": self.player.id}
+        response = c.post(
+            path="/api/accreditation",
+            data={"accreditation": json.dumps(data), "certificate": certificate},
+            content_type=MULTIPART_CONTENT,
+        )
+        response_data = response.json()
+        self.assertEqual(200, response.status_code)
+        for key, value in data.items():
+            if key in response_data:
+                if key != "certificate":
+                    self.assertEqual(value, response_data[key])
+                else:
+                    self.assertTrue(len(response_data[key]) > 0)
+        self.assertFalse(response_data["is_valid"])
+        self.assertEqual(self.player.id, response_data["player"])
+
+    def test_accreditation_valid(self) -> None:
+        c = self.client
+
+        certificate = SimpleUploadedFile(
+            "certificate.pdf", b"file content", content_type="application/pdf"
+        )
+        date = str((now() - datetime.timedelta(days=15)).date())
+        data = {"date": date, "level": "ADV", "player_id": self.player.id}
+        response = c.post(
+            path="/api/accreditation",
+            data={"accreditation": json.dumps(data), "certificate": certificate},
+            content_type=MULTIPART_CONTENT,
+        )
+        response_data = response.json()
+        self.assertEqual(200, response.status_code)
+        for key, value in data.items():
+            if key in response_data:
+                if key != "certificate":
+                    self.assertEqual(value, response_data[key])
+                else:
+                    self.assertTrue(len(response_data[key]) > 0)
+        self.assertEqual(self.player.id, response_data["player"])
+        self.assertTrue(response_data["is_valid"])
+
+
 class TestWaiver(ApiBaseTestCase):
     def setUp(self) -> None:
         super().setUp()

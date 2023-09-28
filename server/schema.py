@@ -3,6 +3,7 @@ from typing import Any
 from ninja import ModelSchema, Schema
 
 from server.models import (
+    Accreditation,
     Event,
     Guardianship,
     ManualTransaction,
@@ -160,6 +161,12 @@ class OrderSchema(Schema):
 class VaccinationSchema(ModelSchema):
     class Config:
         model = Vaccination
+        model_fields = "__all__"
+
+
+class AccreditationSchema(ModelSchema):
+    class Config:
+        model = Accreditation
         model_fields = "__all__"
 
 
@@ -382,6 +389,14 @@ class VaccinatedFormSchema(Schema):
     player_id: int
     is_vaccinated: bool
     name: str
+
+
+class AccreditationFormSchema(ModelSchema):
+    player_id: int
+
+    class Config:
+        model = Accreditation
+        model_fields = ["level", "date"]
 
 
 class WaiverFormSchema(Schema):

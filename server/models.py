@@ -1,3 +1,4 @@
+import datetime
 import uuid
 from pathlib import Path
 from typing import Any
@@ -263,10 +264,34 @@ class Vaccination(models.Model):
     explain_not_vaccinated = models.TextField(blank=True, null=True)
 
 
+class Accreditation(models.Model):
+    player = models.OneToOneField(Player, on_delete=models.CASCADE)
+    is_valid = models.BooleanField()
+
+    class AccreditationLevel(models.TextChoices):
+        STANDARD = "STD", _("Standard")
+        ADVANCED = "ADV", _("Advanced")
+
+    level = models.CharField(max_length=10, choices=AccreditationLevel.choices)
+    date = models.DateField()
+    certificate = models.FileField(upload_to="accreditation_certificates/", max_length=256)
+
+
 @receiver(pre_save, sender=Membership)
 def create_membership_number(sender: Any, instance: Membership, raw: bool, **kwargs: Any) -> None:
     if raw or instance.membership_number:
         return
 
     instance.membership_number = str(uuid.uuid4())[:8]
+    return
+
+
+@receiver(pre_save, sender=Accreditation)
+def update_accreditation_validity(
+    sender: Any, instance: Accreditation, raw: bool, **kwargs: Any
+) -> None:
+    if raw:
+        return
+
+    instance.is_valid = instance.date > (now() - datetime.timedelta(days=18 * 30)).date()
     return
