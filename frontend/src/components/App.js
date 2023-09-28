@@ -16,6 +16,7 @@ const HelpImport = lazy(() => import("./HelpImport"));
 const Membership = lazy(() => import("./Membership"));
 const GroupMembership = lazy(() => import("./GroupMembership"));
 const Vaccination = lazy(() => import("./Vaccination"));
+const Accreditation = lazy(() => import("./Accreditation"));
 const Waiver = lazy(() => import("./Waiver"));
 const UltimateCentralLogin = lazy(() => import("./UltimateCentralLogin"));
 const RegisteredPlayerList = lazy(() => import("./RegisteredPlayerList"));
@@ -75,6 +76,11 @@ export default function App() {
                   <UserRoute
                     path="/vaccination/:playerId"
                     component={Vaccination}
+                    matchFilters={filters}
+                  />
+                  <UserRoute
+                    path="/accreditation/:playerId"
+                    component={Accreditation}
                     matchFilters={filters}
                   />
                   <UserRoute

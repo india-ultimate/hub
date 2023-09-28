@@ -71,6 +71,11 @@ export const vaccinationChoices = [
   { value: "JNJ", label: "Johnson & Johnson" }
 ];
 
+export const accreditationChoices = [
+  { value: "STD", label: "Standard" },
+  { value: "ADV", label: "Advanced" }
+];
+
 // NOTE: Memberships go from 1st June to 31st May
 export const membershipStartDate = [1, 6];
 export const membershipEndDate = [31, 5];

@@ -225,6 +225,15 @@ class PlayerSchema(ModelSchema):
         except Vaccination.DoesNotExist:
             return None
 
+    accreditation: AccreditationSchema | None
+
+    @staticmethod
+    def resolve_accreditation(player: Player) -> Accreditation | None:
+        try:
+            return player.accreditation
+        except Accreditation.DoesNotExist:
+            return None
+
     guardian: int | None
 
     @staticmethod
