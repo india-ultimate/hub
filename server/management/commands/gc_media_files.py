@@ -3,17 +3,19 @@ from typing import Any
 from django.conf import settings
 from django.core.management.base import BaseCommand
 
-from server.models import Vaccination
+from server.models import Accreditation, Vaccination
 
 
 class Command(BaseCommand):
-    help = "GC vaccination certificate files not referenced in the DB"
+    help = "GC files not referenced in the DB"
 
     def handle(self, *args: Any, **options: Any) -> None:
-        all_certificates = set(settings.MEDIA_ROOT.glob("vaccination_certificates/*"))
+        all_certificates = set(settings.MEDIA_ROOT.glob("vaccination_certificates/*")) | set(
+            settings.MEDIA_ROOT.glob("accreditation_certificates/*")
+        )
         certificates = set(
             Vaccination.objects.exclude(certificate="").values_list("certificate", flat=True)
-        )
+        ) | set(Accreditation.objects.exclude(certificate="").values_list("certificate", flat=True))
 
         gc_files = {
             path
