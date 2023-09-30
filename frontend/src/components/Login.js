@@ -27,11 +27,6 @@ import SignUp from "./SignUp";
 import Breadcrumbs from "./Breadcrumbs";
 import { home } from "solid-heroicons/solid";
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-auth.useDeviceLanguage();
-
 const PasswordLogin = props => {
   const csrftoken = getCookie("csrftoken");
   const [username, setUsername] = createSignal("");
@@ -176,6 +171,14 @@ const GoogleLogin = props => {
     e.preventDefault();
 
     const provider = new GoogleAuthProvider();
+    provider.addScope("https://www.googleapis.com/auth/userinfo.email");
+    provider.addScope("https://www.googleapis.com/auth/userinfo.profile");
+    provider.addScope("openid");
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    auth.useDeviceLanguage();
 
     signInWithPopup(auth, provider)
       .then(result => {
@@ -238,6 +241,11 @@ const SendEmailLink = props => {
       // This must be true.
       handleCodeInApp: true
     };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    auth.useDeviceLanguage();
 
     sendSignInLinkToEmail(auth, email()?.trim(), actionCodeSettings)
       .then(() => {
