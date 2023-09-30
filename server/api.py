@@ -1,3 +1,4 @@
+import contextlib
 import datetime
 import io
 import json
@@ -10,6 +11,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.base_user import AbstractBaseUser
 from django.core.exceptions import ValidationError
 from django.db.models import Q, QuerySet
+from django.db.utils import IntegrityError
 from django.http import HttpRequest
 from django.utils.text import slugify
 from django.utils.timezone import now
@@ -30,6 +32,7 @@ from server.models import (
     Player,
     RazorpayTransaction,
     Team,
+    UCPerson,
     UCRegistration,
     User,
     Vaccination,
@@ -246,6 +249,16 @@ def do_register(
     for attr, value in user_data.items():
         setattr(user, attr, value)
     user.save()
+
+    if player.ultimate_central_id is None:
+        try:
+            person = UCPerson.objects.get(email=user.email)
+        except UCPerson.DoesNotExist:
+            pass
+        else:
+            player.ultimate_central_id = person.id
+            with contextlib.suppress(IntegrityError):
+                player.save(update_fields=["ultimate_central_id"])
 
     if guardian:
         g = cast(GuardianshipFormSchema, registration)
