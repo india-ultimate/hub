@@ -1,8 +1,10 @@
+import contextlib
 import datetime
 import os
 from typing import Any
 
 from django.core.management.base import BaseCommand, CommandError, CommandParser
+from django.db.utils import IntegrityError
 from django.utils.timezone import now
 
 from server.models import Event, Player, Team, UCPerson, UCRegistration
@@ -79,6 +81,9 @@ class Command(BaseCommand):
             )
             persons_data = [registration["Person"] for registration in registrations]
             persons_data_by_id = {person["id"]: person for person in persons_data if person}
+            email_id_map = {
+                person["email_canonical"]: person["id"] for person in persons_data if person
+            }
             persons = [
                 UCPerson(
                     id=person["id"],
@@ -104,6 +109,13 @@ class Command(BaseCommand):
                 ],
                 unique_fields=["id"],
             )
+            no_link_players = Player.objects.filter(
+                user__email__in=email_id_map, ultimate_central_id=None
+            )
+            for player in no_link_players:
+                player.ultimate_central_id = email_id_map[player.user.email]
+                with contextlib.suppress(IntegrityError):
+                    player.save(update_fields=["ultimate_central_id"])
 
             teams_data = [registration["Team"] for registration in registrations]
             # NOTE: We ignore registrations without an associated team
