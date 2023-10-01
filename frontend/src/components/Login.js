@@ -355,19 +355,6 @@ const Login = () => {
           <li class="mr-2" role="presentation">
             <button
               class="inline-block p-4 border-b-2 rounded-t-lg"
-              id="google-tab"
-              data-tabs-target="#google"
-              type="button"
-              role="tab"
-              aria-controls="google"
-              aria-selected="false"
-            >
-              Google Login
-            </button>
-          </li>
-          <li class="mr-2" role="presentation">
-            <button
-              class="inline-block p-4 border-b-2 rounded-t-lg"
               id="password-tab"
               data-tabs-target="#password"
               type="button"
