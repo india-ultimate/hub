@@ -23,16 +23,25 @@ import {
   fetchTournaments,
   generateTournamentFixtures,
   startTournament,
+  updateMatch,
   updateSeeding
 } from "../queries";
-import { createEffect, createSignal, For, Match, Show, Switch } from "solid-js";
-import { createStore } from "solid-js/store";
+import {
+  createEffect,
+  createSignal,
+  For,
+  Match,
+  onMount,
+  Show,
+  Switch
+} from "solid-js";
+import { createStore, reconcile } from "solid-js/store";
+import MatchCard from "./tournament/MatchCard";
 
 const TournamentManager = () => {
   const queryClient = useQueryClient();
   const [store] = useStore();
   const [event, setEvent] = createSignal(0);
-  const [selectedTeams, setSelectedTeams] = createSignal([]);
   const [selectedTournament, setSelectedTournament] = createSignal();
   const [selectedTournamentID, setSelectedTournamentID] = createSignal(0);
   const [tournamentSeeding, setTournamentSeeding] = createSignal([]);
@@ -46,6 +55,23 @@ const TournamentManager = () => {
     createSignal("[]");
   const [matchFields, setMatchFields] = createStore();
   const [matchScoreFields, setMatchStoreFields] = createStore();
+  const [matchDayTimeFieldMap, setMatchDayTimeFieldMap] = createStore({});
+  const [fieldMap, setFieldMap] = createStore({});
+  const [datesList, setDatesList] = createSignal([]);
+  const [timesList, setTimesList] = createSignal([]);
+  const [updateMatchFields, setUpdateMatchFields] = createStore();
+
+  onMount(() => {
+    const dt = new Date(1970, 0, 1, 6, 0);
+    let newTimesList = [];
+    while (dt.getHours() < 22) {
+      newTimesList.push(
+        dt.toLocaleTimeString("en-US", { hour: "numeric", minute: "numeric" })
+      );
+      dt.setMinutes(dt.getMinutes() + 15);
+    }
+    setTimesList(newTimesList);
+  });
 
   createEffect(() => {
     if (tournamentsQuery.status === "success") {
@@ -56,6 +82,16 @@ const TournamentManager = () => {
       const seeding = tournament?.initial_seeding;
 
       if (seeding) setTournamentSeeding(seeding);
+
+      let newDatesList = [];
+      for (
+        let d = new Date(Date.parse(tournament?.event?.start_date));
+        d <= new Date(Date.parse(tournament?.event?.end_date));
+        d.setDate(d.getDate() + 1)
+      ) {
+        newDatesList.push(new Date(d));
+      }
+      setDatesList(newDatesList);
     }
   });
 
@@ -66,6 +102,35 @@ const TournamentManager = () => {
         newTeamsMap[team.id] = team.name;
       });
       setTeamsMap(newTeamsMap);
+    }
+  });
+
+  createEffect(() => {
+    if (matchesQuery.status === "success" && !matchesQuery.data?.message) {
+      setMatchDayTimeFieldMap(reconcile({}));
+      setFieldMap(reconcile({}));
+      matchesQuery.data?.map(match => {
+        if (match.time && match.field) {
+          const day = new Date(Date.parse(match.time)).toLocaleDateString(
+            "en-US",
+            {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+              timeZone: "UTC"
+            }
+          );
+          const time = new Date(Date.parse(match.time));
+          setMatchDayTimeFieldMap(day, {});
+          setMatchDayTimeFieldMap(day, time, {});
+          setMatchDayTimeFieldMap(day, time, match.field, match);
+
+          setFieldMap(day, {});
+          setFieldMap(day, match.field, true);
+        }
+      });
+
+      console.log(matchDayTimeFieldMap);
     }
   });
 
@@ -113,10 +178,14 @@ const TournamentManager = () => {
 
   const createPoolMutation = createMutation({
     mutationFn: createPool,
-    onSuccess: () =>
+    onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["pools", selectedTournamentID()]
-      })
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["matches", selectedTournamentID()]
+      });
+    }
   });
 
   const createCrossPoolMutation = createMutation({
@@ -129,22 +198,39 @@ const TournamentManager = () => {
 
   const createBracketMutation = createMutation({
     mutationFn: createBracket,
-    onSuccess: () =>
+    onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["brackets", selectedTournamentID()]
-      })
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["matches", selectedTournamentID()]
+      });
+    }
   });
 
   const createPositionPoolMutation = createMutation({
     mutationFn: createPositionPool,
-    onSuccess: () =>
+    onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["position-pools", selectedTournamentID()]
-      })
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["matches", selectedTournamentID()]
+      });
+    }
   });
 
   const createMatchMutation = createMutation({
     mutationFn: createMatch,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["matches", selectedTournamentID()]
+      });
+    }
+  });
+
+  const updateMatchMutation = createMutation({
+    mutationFn: updateMatch,
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["matches", selectedTournamentID()]
@@ -182,6 +268,33 @@ const TournamentManager = () => {
     }
   });
 
+  Date.prototype.yyyymmdd = function () {
+    var mm = this.getMonth() + 1; // getMonth() is zero-based
+    var dd = this.getDate();
+
+    return [
+      this.getFullYear(),
+      (mm > 9 ? "" : "0") + mm,
+      (dd > 9 ? "" : "0") + dd
+    ].join("-");
+  };
+
+  const convertTime12to24 = time12h => {
+    const [time, modifier] = time12h.split(" ");
+
+    let [hours, minutes] = time.split(":");
+
+    if (hours === "12") {
+      hours = "00";
+    }
+
+    if (modifier === "PM") {
+      hours = parseInt(hours, 10) + 12;
+    }
+
+    return `${hours}:${minutes}`;
+  };
+
   return (
     <Show when={store?.data?.is_staff} fallback={<p>Not Authorised!</p>}>
       <div>
@@ -206,55 +319,54 @@ const TournamentManager = () => {
             {e => <option value={e.id}>{e.title}</option>}
           </For>
         </select>
-        <div class="grid grid-cols-4 gap-4 my-5">
-          <For each={teamsQuery.data}>
-            {t => (
-              <div class="flex items-center pl-4 border border-gray-200 rounded dark:border-gray-700">
-                <input
-                  id={"team-" + t.id}
-                  type="checkbox"
-                  value={t.id}
-                  onChange={e =>
-                    e.target.checked
-                      ? setSelectedTeams([
-                          ...selectedTeams().filter(
-                            t => t !== parseInt(e.target.value)
-                          ),
-                          parseInt(e.target.value)
-                        ])
-                      : setSelectedTeams(
-                          selectedTeams().filter(
-                            t => t !== parseInt(e.target.value)
-                          )
-                        )
-                  }
-                  class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                />
-                <label
-                  for={"team-" + t.id}
-                  class="w-full py-4 ml-2 text-sm font-medium text-gray-900 dark:text-gray-300"
-                >
-                  {t.name}
+        {/*<div class="grid grid-cols-4 gap-4 my-5">*/}
+        {/*  <For each={teamsQuery.data}>*/}
+        {/*    {t => (*/}
+        {/*      <div class="flex items-center pl-4 border border-gray-200 rounded dark:border-gray-700">*/}
+        {/*        <input*/}
+        {/*          id={"team-" + t.id}*/}
+        {/*          type="checkbox"*/}
+        {/*          value={t.id}*/}
+        {/*          onChange={e =>*/}
+        {/*            e.target.checked*/}
+        {/*              ? setSelectedTeams([*/}
+        {/*                  ...selectedTeams().filter(*/}
+        {/*                    t => t !== parseInt(e.target.value)*/}
+        {/*                  ),*/}
+        {/*                  parseInt(e.target.value)*/}
+        {/*                ])*/}
+        {/*              : setSelectedTeams(*/}
+        {/*                  selectedTeams().filter(*/}
+        {/*                    t => t !== parseInt(e.target.value)*/}
+        {/*                  )*/}
+        {/*                )*/}
+        {/*          }*/}
+        {/*          class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"*/}
+        {/*        />*/}
+        {/*        <label*/}
+        {/*          for={"team-" + t.id}*/}
+        {/*          class="w-full py-4 ml-2 text-sm font-medium text-gray-900 dark:text-gray-300"*/}
+        {/*        >*/}
+        {/*          {t.name}*/}
 
-                  <img
-                    class="w-8 h-8 p-1 rounded-full ring-2 ring-gray-300 dark:ring-gray-500 inline-block ml-3"
-                    src={t.image_url}
-                    alt="Bordered avatar"
-                  />
-                </label>
-              </div>
-            )}
-          </For>
-        </div>
+        {/*          <img*/}
+        {/*            class="w-8 h-8 p-1 rounded-full ring-2 ring-gray-300 dark:ring-gray-500 inline-block ml-3"*/}
+        {/*            src={t.image_url}*/}
+        {/*            alt="Bordered avatar"*/}
+        {/*          />*/}
+        {/*        </label>*/}
+        {/*      </div>*/}
+        {/*    )}*/}
+        {/*  </For>*/}
+        {/*</div>*/}
         <button
           type="button"
           onClick={() =>
             createTournamentMutation.mutate({
-              event_id: event(),
-              team_ids: selectedTeams()
+              event_id: event()
             })
           }
-          class="text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700"
+          class="text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 my-5"
         >
           Create Tournament
         </button>
@@ -755,7 +867,7 @@ const TournamentManager = () => {
                     onChange={e => setMatchFields("field", e.target.value)}
                     class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 mb-3"
                   >
-                    <option selected>Choose a stage</option>
+                    <option selected>Choose a field</option>
                     <option value="Field 1">Field 1</option>
                     <option value="Field 2">Field 2</option>
                     <option value="Field 3">Field 3</option>
@@ -792,12 +904,12 @@ const TournamentManager = () => {
                 </div>
                 <button
                   type="button"
-                  onClick={() =>
+                  onClick={() => {
                     createMatchMutation.mutate({
                       tournament_id: selectedTournamentID(),
                       body: matchFields
-                    })
-                  }
+                    });
+                  }}
                   disabled={selectedTournament()?.status !== "DFT"}
                   class="text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 mb-5 disabled:dark:bg-gray-400"
                 >
@@ -888,20 +1000,9 @@ const TournamentManager = () => {
                         </Show>
                       </td>
                       <td class="px-6 py-4">
-                        <Switch>
-                          <Match when={match.pool}>
-                            Pool - {match.pool.name}
-                          </Match>
-                          <Match when={match.bracket}>
-                            Bracket - {match.bracket.name}
-                          </Match>
-                          <Match when={match.cross_pool}>Cross Pool</Match>
-                          <Match when={match.position_pool}>
-                            Position Pool - {match.position_pool.name}
-                          </Match>
-                        </Switch>
+                        <MatchCard match={match} />
                       </td>
-                      <td class="px-6 py-4">
+                      <td class="px-6 py-4 w-fit">
                         {new Date(Date.parse(match.time)).toLocaleDateString(
                           "en-US",
                           {
@@ -913,23 +1014,154 @@ const TournamentManager = () => {
                             timeZone: "UTC"
                           }
                         )}
+                        <Show when={match.status !== "COM"}>
+                          <div class="mt-2">
+                            <select
+                              onChange={e => {
+                                setUpdateMatchFields(match.id, {});
+                                setUpdateMatchFields(
+                                  match.id,
+                                  "date",
+                                  e.target.value
+                                );
+                              }}
+                              class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 mb-2"
+                            >
+                              <option selected>Choose new date</option>
+                              <For each={datesList()}>
+                                {date => (
+                                  <option value={date}>
+                                    {date.toLocaleDateString("en-US", {
+                                      month: "short",
+                                      day: "numeric",
+                                      timeZone: "UTC"
+                                    })}
+                                  </option>
+                                )}
+                              </For>
+                            </select>
+                            <select
+                              onChange={e => {
+                                setUpdateMatchFields(match.id, {});
+                                setUpdateMatchFields(
+                                  match.id,
+                                  "time",
+                                  e.target.value
+                                );
+                              }}
+                              class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                            >
+                              <option selected>Choose new time</option>
+                              <For each={timesList()}>
+                                {time => <option value={time}>{time}</option>}
+                              </For>
+                            </select>
+                          </div>
+                        </Show>
                       </td>
-                      <td class="px-6 py-4">{match.field}</td>
+                      <td class="px-6 py-4">
+                        {match.field}
+                        <Show when={match.status !== "COM"}>
+                          <select
+                            onChange={e => {
+                              setUpdateMatchFields(match.id, {});
+                              setUpdateMatchFields(
+                                match.id,
+                                "field",
+                                e.target.value
+                              );
+                            }}
+                            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 mb-3"
+                          >
+                            <option selected>Update Field</option>
+                            <option value="Field 1">Field 1</option>
+                            <option value="Field 2">Field 2</option>
+                            <option value="Field 3">Field 3</option>
+                            <option value="Field 4">Field 4</option>
+                          </select>
+                        </Show>
+                      </td>
                       <td class="px-6 py-4">
                         <Switch>
-                          <Match when={match.status === "YTF"}>-</Match>
+                          <Match when={match.status === "YTF"}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (
+                                  updateMatchFields[match.id]["date"] &&
+                                  updateMatchFields[match.id]["time"] &&
+                                  updateMatchFields[match.id]["field"]
+                                ) {
+                                  const date = new Date(
+                                    updateMatchFields[match.id]["date"]
+                                  );
+                                  updateMatchMutation.mutate({
+                                    match_id: match.id,
+                                    body: {
+                                      time:
+                                        date.yyyymmdd() +
+                                        "T" +
+                                        convertTime12to24(
+                                          updateMatchFields[match.id]["time"]
+                                        ),
+                                      field:
+                                        updateMatchFields[match.id]["field"]
+                                    }
+                                  });
+                                }
+                              }}
+                              class="text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 mb-5 disabled:dark:bg-gray-400"
+                            >
+                              Update
+                            </button>
+                          </Match>
                           <Match when={match.status === "SCH"}>
                             <button
                               type="button"
-                              onClick={() =>
-                                addMatchScoreMutation.mutate({
-                                  match_id: match.id,
-                                  body: matchScoreFields[match.id]
-                                })
-                              }
+                              onClick={() => {
+                                if (
+                                  matchScoreFields[match.id]["team_1_score"] >
+                                    0 &&
+                                  matchScoreFields[match.id]["team_2_score"] > 0
+                                )
+                                  addMatchScoreMutation.mutate({
+                                    match_id: match.id,
+                                    body: matchScoreFields[match.id]
+                                  });
+                              }}
                               class="text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 mb-5 disabled:dark:bg-gray-400"
                             >
                               Add Score
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (
+                                  updateMatchFields[match.id]["date"] &&
+                                  updateMatchFields[match.id]["time"] &&
+                                  updateMatchFields[match.id]["field"]
+                                ) {
+                                  const date = new Date(
+                                    updateMatchFields[match.id]["date"]
+                                  );
+                                  updateMatchMutation.mutate({
+                                    match_id: match.id,
+                                    body: {
+                                      time:
+                                        date.yyyymmdd() +
+                                        "T" +
+                                        convertTime12to24(
+                                          updateMatchFields[match.id]["time"]
+                                        ),
+                                      field:
+                                        updateMatchFields[match.id]["field"]
+                                    }
+                                  });
+                                }
+                              }}
+                              class="text-white bg-green-700 hover:bg-green-800 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-green-600 dark:hover:bg-green-700 mb-5 disabled:dark:bg-gray-400"
+                            >
+                              Update
                             </button>
                           </Match>
                           <Match when={match.status === "COM"}>
@@ -942,6 +1174,73 @@ const TournamentManager = () => {
                 </For>
               </tbody>
             </table>
+          </div>
+          <div>
+            <For each={Object.keys(matchDayTimeFieldMap).sort()}>
+              {day => (
+                <div>
+                  <h6 class="text-center my-5">Schedule - {day}</h6>
+                  <div class="relative overflow-x-auto">
+                    <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                      <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                        <tr>
+                          <th scope="col" class="px-6 py-3 text-center">
+                            Time
+                          </th>
+                          <For each={Object.keys(fieldMap[day]).sort()}>
+                            {field => (
+                              <th scope="col" class="px-6 py-3 text-center">
+                                {field}
+                              </th>
+                            )}
+                          </For>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <For
+                          each={Object.keys(matchDayTimeFieldMap[day]).sort(
+                            (a, b) => new Date(a) - new Date(b)
+                          )}
+                        >
+                          {time => (
+                            <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+                              <th
+                                scope="row"
+                                class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white text-center"
+                              >
+                                {new Date(time).toLocaleTimeString("en-US", {
+                                  hour: "numeric",
+                                  minute: "numeric",
+                                  timeZone: "UTC"
+                                })}
+                              </th>
+                              <For each={Object.keys(fieldMap[day]).sort()}>
+                                {field => (
+                                  <td class="px-6 py-4">
+                                    <Show
+                                      when={
+                                        matchDayTimeFieldMap[day][time][field]
+                                      }
+                                    >
+                                      <MatchCard
+                                        match={
+                                          matchDayTimeFieldMap[day][time][field]
+                                        }
+                                        showSeed={true}
+                                      />
+                                    </Show>
+                                  </td>
+                                )}
+                              </For>
+                            </tr>
+                          )}
+                        </For>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </For>
           </div>
           <Switch>
             <Match when={selectedTournament()?.status === "DFT"}>
