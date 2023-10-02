@@ -36,7 +36,7 @@ export const fetchAllTransactions = async () => {
 };
 
 export const fetchEvents = async () => {
-  const response = await fetch("/api/events", {
+  const response = await fetch("/api/events?include_all=true", {
     method: "GET",
     headers: { "Content-Type": "application/json" },
     credentials: "same-origin"
@@ -350,6 +350,19 @@ export const createPositionPool = async ({
 
 export const createMatch = async ({ tournament_id, body }) => {
   const response = await fetch(`/api/tournament/match/${tournament_id}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin",
+    body: JSON.stringify(body)
+  });
+  return await response.json();
+};
+
+export const updateMatch = async ({ match_id, body }) => {
+  const response = await fetch(`/api/match/${match_id}/update`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

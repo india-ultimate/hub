@@ -456,7 +456,6 @@ class TournamentSchema(ModelSchema):
 
 class TournamentCreateSchema(Schema):
     event_id: int
-    team_ids: list[int]
 
 
 class TournamentUpdateSeedingSchema(Schema):
@@ -534,6 +533,11 @@ class MatchCreateSchema(Schema):
     field: str
     seed_1: int
     seed_2: int
+
+
+class MatchUpdateSchema(Schema):
+    time: str
+    field: str
 
 
 class MatchScoreSchema(Schema):

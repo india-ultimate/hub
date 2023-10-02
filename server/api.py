@@ -62,6 +62,7 @@ from server.schema import (
     MatchCreateSchema,
     MatchSchema,
     MatchScoreSchema,
+    MatchUpdateSchema,
     NotVaccinatedFormSchema,
     OrderSchema,
     PaymentFormSchema,
@@ -93,7 +94,14 @@ from server.schema import (
     WaiverFormSchema,
 )
 from server.top_score_utils import TopScoreClient
-from server.tournament import get_new_bracket_seeding, get_new_pool_results, populate_fixtures
+from server.tournament import (
+    create_bracket_matches,
+    create_pool_matches,
+    create_position_pool_matches,
+    get_new_bracket_seeding,
+    get_new_pool_results,
+    populate_fixtures,
+)
 from server.utils import (
     RAZORPAY_DESCRIPTION_MAX,
     RAZORPAY_NOTES_MAX,
@@ -904,7 +912,8 @@ def create_tournament(
     if not created:
         return 400, {"message": "Tournament already exists"}
 
-    for team_id in tournament_details.team_ids:
+    team_list = UCRegistration.objects.filter(event=event).values_list("team", flat=True).distinct()
+    for team_id in team_list:
         tournament.teams.add(team_id)
 
     return 200, tournament
@@ -992,6 +1001,8 @@ def create_pool(
         results=pool_results,
     )
     pool.save()
+
+    create_pool_matches(tournament, pool)
 
     return 200, pool
 
@@ -1085,6 +1096,8 @@ def create_bracket(
     )
     bracket.save()
 
+    create_bracket_matches(tournament, bracket)
+
     return 200, bracket
 
 
@@ -1135,6 +1148,8 @@ def create_position_pool(
         results={},
     )
     pool.save()
+
+    create_position_pool_matches(tournament, pool)
 
     return 200, pool
 
@@ -1359,5 +1374,30 @@ def add_match_score(
     match.save()
 
     populate_fixtures(match.tournament.id)
+
+    return 200, match
+
+
+@api.post("/match/{match_id}/update", response={200: MatchSchema, 400: Response, 401: Response})
+def update_match(
+    request: AuthenticatedHttpRequest, match_id: int, match_details: MatchUpdateSchema
+) -> tuple[int, Match] | tuple[int, message_response]:
+    if not request.user.is_staff:
+        return 401, {"message": "Only Admins can update matches"}
+
+    try:
+        match = Match.objects.get(id=match_id)
+    except Tournament.DoesNotExist:
+        return 400, {"message": "Match does not exist"}
+
+    ind_tz = datetime.timezone(datetime.timedelta(hours=5, minutes=30), name="IND")
+    match_datetime = datetime.datetime.strptime(match_details.time, "%Y-%m-%dT%H:%M").astimezone(
+        ind_tz
+    )
+
+    match.time = match_datetime
+    match.field = match_details.field
+
+    match.save()
 
     return 200, match
