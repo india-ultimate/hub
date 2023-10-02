@@ -112,8 +112,11 @@ const Membership = () => {
   });
 
   const getAmount = () =>
-    (player()?.sponsored ? sponsoredAnnualMembershipFee : annualMembershipFee) /
-    100;
+    (annual()
+      ? player()?.sponsored
+        ? sponsoredAnnualMembershipFee
+        : annualMembershipFee
+      : eventMembershipFee) / 100;
 
   return (
     <div>
