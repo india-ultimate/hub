@@ -21,7 +21,17 @@ module.exports = {
     "bg-gray-100",
     "bg-gray-700",
     "after:border-gray-100",
-    "dark:after:border-gray-700"
+    "dark:after:border-gray-700",
+    {
+      pattern:
+        /bg-(red|green|blue|violet|yellow|cyan|rose|lime|indigo|purple|pink|sky)-(100|900)/,
+      variants: ["dark"]
+    },
+    {
+      pattern:
+        /text-(red|green|blue|violet|yellow|cyan|rose|lime|indigo|purple|pink|sky)-(300|800)/,
+      variants: ["dark"]
+    }
   ],
-  darkMode: 'class'
+  darkMode: "class"
 };

@@ -4,6 +4,7 @@
 #
 # FIXME: Remove this after writing good/type safe code
 
+
 from functools import cmp_to_key
 
 from django.db.models import Q
@@ -11,79 +12,92 @@ from django.db.models import Q
 from server.models import Bracket, CrossPool, Match, Pool, PositionPool, Team, Tournament
 
 
+# Exported Functions ####################
+
+
+def create_pool_matches(tournament, pool):
+    pool_seeding_list = list(map(int, pool.initial_seeding.keys()))
+
+    for i, x in enumerate(pool_seeding_list):
+        for j, y in enumerate(pool_seeding_list[i + 1 :], i + 1):
+            match = Match(
+                tournament=tournament,
+                pool=pool,
+                sequence_number=1,
+                placeholder_seed_1=x,
+                placeholder_seed_2=y,
+            )
+
+            match.save()
+
+
+def create_bracket_matches(tournament, bracket):
+    start, end = map(int, bracket.name.split("-"))
+    if ((end - start) + 1) % 2 == 0:
+        create_bracket_sequence_matches(tournament, bracket, start, end, 1)
+
+
+def create_position_pool_matches(tournament, position_pool):
+    position_pool_seeding_list = list(map(int, position_pool.initial_seeding.keys()))
+
+    for i, x in enumerate(position_pool_seeding_list):
+        for j, y in enumerate(position_pool_seeding_list[i + 1 :], i + 1):
+            match = Match(
+                tournament=tournament,
+                position_pool=position_pool,
+                sequence_number=1,
+                placeholder_seed_1=x,
+                placeholder_seed_2=y,
+            )
+
+            match.save()
+
+
 def compare_pool_results(
     result1: dict[str, int], result2: dict[str, int], tournament_id: int
 ) -> int:
+    """
+    This is the comparator function for comparing pool results
+    The order of precedence is as follows:
+    1. Games won in pool
+    2. Games won counting only games between tied teams
+    3. Goal Difference only games between tied teams
+    4. Goal Difference counting all pool games
+    5. Goals Scored only games between tied teams
+    6. Goals Scored counting all pool games
+    """
+
+    # Rule 1
     if result1["wins"] != result2["wins"]:
         return result2["wins"] - result1["wins"]
 
-    matches = Match.objects.filter(
-        Q(
-            team_1=result1["id"],
-            team_2=result2["id"],
-            tournament=tournament_id,
-            status=Match.Status.COMPLETED,
-        )
-        | Q(
-            team_2=result1["id"],
-            team_1=result2["id"],
-            tournament=tournament_id,
-            status=Match.Status.COMPLETED,
-        )
-    )
+    # Calculate Head-to-Head Data
+    wins, goal_diff, goal_for = calculate_head_to_head_stats(result1, result2, tournament_id)
 
-    wins = {result1["id"]: 0, result2["id"]: 0}
-    GD = {result1["id"]: 0, result2["id"]: 0}  # Goal Diff
-    GF = {result1["id"]: 0, result2["id"]: 0}  # Goals For
-
-    for match in matches:
-        if match.team_1.id == result1["id"]:
-            if match.score_team_1 > match.score_team_2:
-                wins[result1["id"]] += 1
-            elif match.score_team_2 > match.score_team_1:
-                wins[result2["id"]] += 1
-
-            GD[result1["id"]] += match.score_team_1 - match.score_team_2
-            GD[result2["id"]] += match.score_team_2 - match.score_team_1
-
-            GF[result1["id"]] += match.score_team_1
-            GF[result2["id"]] += match.score_team_2
-        else:
-            if match.score_team_2 > match.score_team_1:
-                wins[result1["id"]] += 1
-            elif match.score_team_1 > match.score_team_2:
-                wins[result2["id"]] += 1
-
-            GD[result1["id"]] += match.score_team_2 - match.score_team_1
-            GD[result2["id"]] += match.score_team_1 - match.score_team_2
-
-            GF[result1["id"]] += match.score_team_2
-            GF[result2["id"]] += match.score_team_1
-
+    # Rule 2
     if wins[result1["id"]] != wins[result2["id"]]:
         return wins[result2["id"]] - wins[result1["id"]]
 
-    if GD[result1["id"]] != GD[result2["id"]]:
-        return GD[result2["id"]] - GD[result1["id"]]
+    # Rule 3
+    if goal_diff[result1["id"]] != goal_diff[result2["id"]]:
+        return goal_diff[result2["id"]] - goal_diff[result1["id"]]
 
-    overall_GD_1 = result1["GF"] - result1["GA"]
-    overall_GD_2 = result2["GF"] - result2["GA"]
+    overall_gd_1 = result1["GF"] - result1["GA"]
+    overall_gd_2 = result2["GF"] - result2["GA"]
 
-    if overall_GD_1 != overall_GD_2:
-        return overall_GD_2 - overall_GD_1
+    # Rule 4
+    if overall_gd_1 != overall_gd_2:
+        return overall_gd_2 - overall_gd_1
 
-    if GF[result1["id"]] != GF[result2["id"]]:
-        return GF[result2["id"]] - GF[result1["id"]]
+    # Rule 5
+    if goal_for[result1["id"]] != goal_for[result2["id"]]:
+        return goal_for[result2["id"]] - goal_for[result1["id"]]
 
+    # Rule 6
     return result2["GF"] - result1["GF"]
 
 
-def get_new_pool_results(
-    old_results: dict[int, dict[str, int]],
-    match: Match,
-    pool_seeding_list: list[int],
-    tournament_seeding: dict[int, int],
-) -> tuple[dict[int, dict[str, int]], dict]:
+def get_new_pool_results(old_results, match, pool_seeding_list, tournament_seeding):
     old_results[match.team_1.id]["GF"] += match.score_team_1
     old_results[match.team_1.id]["GA"] += match.score_team_2
 
@@ -123,7 +137,7 @@ def get_new_pool_results(
     return new_results, tournament_seeding
 
 
-def get_new_bracket_seeding(seeding: dict[int, int], match: Match) -> dict:
+def get_new_bracket_seeding(seeding: dict, match: Match) -> dict:
     if (
         match.placeholder_seed_2 > match.placeholder_seed_1
         and match.score_team_2 > match.score_team_1
@@ -416,3 +430,79 @@ def populate_fixtures(tournament_id: int) -> None:
     ):
         tournament.status = Tournament.Status.COMPLETED
         tournament.save()
+
+
+# Helper Functions #####################
+
+
+def calculate_head_to_head_stats(
+    result1: dict[str, int], result2: dict[str, int], tournament_id: int
+) -> (dict[str, int], dict[str, int], dict[str, int]):
+    matches = Match.objects.filter(
+        Q(
+            team_1=result1["id"],
+            team_2=result2["id"],
+            tournament=tournament_id,
+            status=Match.Status.COMPLETED,
+        )
+        | Q(
+            team_2=result1["id"],
+            team_1=result2["id"],
+            tournament=tournament_id,
+            status=Match.Status.COMPLETED,
+        )
+    )
+
+    wins = {result1["id"]: 0, result2["id"]: 0}
+    goal_diff = {result1["id"]: 0, result2["id"]: 0}  # Goal Diff
+    goal_for = {result1["id"]: 0, result2["id"]: 0}  # Goals For
+
+    for match in matches:
+        if match.team_1 is None or match.team_2 is None:
+            continue
+
+        if match.team_1.id == result1["id"]:
+            if match.score_team_1 > match.score_team_2:
+                wins[result1["id"]] += 1
+            elif match.score_team_2 > match.score_team_1:
+                wins[result2["id"]] += 1
+
+            goal_diff[result1["id"]] += match.score_team_1 - match.score_team_2
+            goal_diff[result2["id"]] += match.score_team_2 - match.score_team_1
+
+            goal_for[result1["id"]] += match.score_team_1
+            goal_for[result2["id"]] += match.score_team_2
+        else:
+            if match.score_team_2 > match.score_team_1:
+                wins[result1["id"]] += 1
+            elif match.score_team_1 > match.score_team_2:
+                wins[result2["id"]] += 1
+
+            goal_diff[result1["id"]] += match.score_team_2 - match.score_team_1
+            goal_diff[result2["id"]] += match.score_team_1 - match.score_team_2
+
+            goal_for[result1["id"]] += match.score_team_2
+            goal_for[result2["id"]] += match.score_team_1
+
+    return wins, goal_diff, goal_for
+
+
+def create_bracket_sequence_matches(tournament, bracket, start, end, seq_num):
+    for i in range(0, ((end - start) + 1) // 2):
+        match = Match(
+            tournament=tournament,
+            bracket=bracket,
+            sequence_number=seq_num,
+            placeholder_seed_1=start + i,
+            placeholder_seed_2=end - i,
+        )
+
+        match.save()
+
+    if end - start > 1:
+        create_bracket_sequence_matches(
+            tournament, bracket, start, start + (((end - start) + 1) // 2) - 1, seq_num + 1
+        )
+        create_bracket_sequence_matches(
+            tournament, bracket, start + (((end - start) + 1) // 2), end, seq_num + 1
+        )
