@@ -417,10 +417,10 @@ const ValidateRoster = () => {
                                   >
                                     <Icon
                                       path={
-                                        registration.person.player?.vaccination
-                                          ?.is_valid
+                                        registration.person.player
+                                          ?.accreditation?.is_valid
                                           ? registration.person.player
-                                              ?.vaccination?.level === "ADV"
+                                              ?.accreditation?.level === "ADV"
                                             ? documentCheck
                                             : document
                                           : xCircle
