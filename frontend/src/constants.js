@@ -9,8 +9,8 @@ export const genderChoices = [
 ];
 
 export const matchUpChoices = [
-  { value: "M", label: "Male-matching" },
-  { value: "F", label: "Female-matching" }
+  { value: "F", label: "Female-matching" },
+  { value: "M", label: "Male-matching" }
 ];
 
 export const stateChoices = [
