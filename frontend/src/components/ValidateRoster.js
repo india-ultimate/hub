@@ -1,10 +1,10 @@
 import clsx from "clsx";
 import { For, createSignal, createEffect, Show, Match, Switch } from "solid-js";
 import { onMount } from "solid-js";
-import { fetchUrl, getAge } from "../utils";
+import { fetchUrl, getAge, getLabel } from "../utils";
 import { useStore } from "../store";
 import { Icon } from "solid-heroicons";
-import { minAge } from "../constants";
+import { minAge, accreditationChoices } from "../constants";
 import {
   noSymbol,
   currencyRupee,
@@ -406,7 +406,16 @@ const ValidateRoster = () => {
                                     />
                                   </span>
                                   <span
-                                    title="Accreditation?"
+                                    title={`Accreditation - ${
+                                      registration.person.player?.accreditation
+                                        ?.is_valid
+                                        ? getLabel(
+                                            accreditationChoices,
+                                            registration.person.player
+                                              ?.accreditation?.level
+                                          )
+                                        : "Not valid"
+                                    }`}
                                     class={clsx(
                                       "mx-2",
                                       registration.person.player?.accreditation
