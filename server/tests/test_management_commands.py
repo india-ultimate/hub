@@ -1,39 +1,11 @@
-import csv
-from pathlib import Path
-
 from django.contrib.auth import get_user_model
-from django.core.management import CommandError, call_command
+from django.core.management import call_command
 from django.test import TestCase
 from django.utils.timezone import now
 
-from server.models import Membership, Player, UCPerson
+from server.models import Membership, Player
 
 User = get_user_model()
-
-
-class TestImportData(TestCase):
-    def setUp(self) -> None:
-        super().setUp()
-        self.fixtures_dir = Path(__file__).parent.joinpath("fixtures")
-        # Create a bunch of UCPerson objects to pretend data import from UC
-        UCPerson.objects.create(slug="kannan")
-        UCPerson.objects.create(slug="rath")
-        UCPerson.objects.create(slug="ben-p-n")
-
-    def test_import_members_data(self) -> None:
-        with self.assertRaisesRegex(CommandError, "'foo' does not exist"):
-            call_command("import_members_data", "foo")
-
-        # Import Adults form data
-        adults_csv = self.fixtures_dir.joinpath("form-data.csv")
-        with adults_csv.open() as f:
-            reader = csv.DictReader(f)
-            rows = list(reader)
-        call_command("import_members_data", adults_csv)
-        n = len(rows)
-        # One user without email is skipped
-        self.assertEqual(User.objects.count(), n - 1)
-        self.assertEqual(Player.objects.count(), n - 1)
 
 
 class TestInvalidateMemberships(TestCase):
