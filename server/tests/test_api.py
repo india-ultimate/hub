@@ -132,10 +132,12 @@ class TestRegistration(ApiBaseTestCase):
         data = {
             "phone": "+1234567890",
             "date_of_birth": "1990-01-01",
-            "gender": "F",
+            "gender": "O",
+            "other_gender": "Non-Binary",
             "city": "Bangalore",
             "first_name": "Nora",
             "last_name": "Quinn",
+            "match_up": "F",
         }
         response = c.post(
             "/api/registration",
@@ -148,6 +150,7 @@ class TestRegistration(ApiBaseTestCase):
             if key in response_data:
                 self.assertEqual(value, response_data[key])
         self.assertEqual(self.user.id, response_data["user"])
+        self.user.refresh_from_db()
 
     def test_edit_registration(self) -> None:
         c = self.client
@@ -161,6 +164,7 @@ class TestRegistration(ApiBaseTestCase):
             "phone": "+1234567890",
             "date_of_birth": "1990-01-01",
             "gender": "F",
+            "match_up": "F",
             "city": "Bangalore",
             "first_name": "Nora",
             "last_name": "Quinn",
@@ -185,6 +189,7 @@ class TestRegistration(ApiBaseTestCase):
             "phone": "+1234567890",
             "date_of_birth": "1990-01-01",
             "gender": "F",
+            "match_up": "F",
             "city": "Bangalore",
             "first_name": "Nora",
             "last_name": "Quinn",
@@ -234,6 +239,7 @@ class TestRegistration(ApiBaseTestCase):
             "phone": "+1234567890",
             "date_of_birth": "1990-01-01",
             "gender": "F",
+            "match_up": "F",
             "city": "Bangalore",
             "first_name": "Nora",
             "last_name": "Quinn",
@@ -257,6 +263,7 @@ class TestRegistration(ApiBaseTestCase):
             "phone": "+1234567890",
             "date_of_birth": str(dob.date()),
             "gender": "F",
+            "match_up": "F",
             "city": "Bangalore",
             "first_name": "Nora",
             "last_name": "Quinn",
@@ -286,6 +293,7 @@ class TestRegistration(ApiBaseTestCase):
             "phone": "+1234567890",
             "date_of_birth": "1990-01-01",
             "gender": "F",
+            "match_up": "F",
             "city": "Bangalore",
             "first_name": "Nora",
             "last_name": "Quinn",
@@ -314,6 +322,7 @@ class TestRegistration(ApiBaseTestCase):
             "phone": "+1234567890",
             "date_of_birth": str(dob.date()),
             "gender": "F",
+            "match_up": "F",
             "city": "Bangalore",
             "first_name": "Nora",
             "last_name": "Quinn",
@@ -1151,6 +1160,7 @@ class TestUPAI(ApiBaseTestCase):
         player_id = self.user.player_profile.id
         player = self.user.player_profile
         player.gender = "M"
+        player.match_up = "M"
         player.city = "Mysore"
         player.save()
 

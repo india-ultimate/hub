@@ -8,6 +8,11 @@ export const genderChoices = [
   { value: "O", label: "Other" }
 ];
 
+export const matchUpChoices = [
+  { value: "M", label: "Male-matching" },
+  { value: "F", label: "Female-matching" }
+];
+
 export const stateChoices = [
   { value: "AN", label: "Andaman and Nicobar Islands" },
   { value: "AP", label: "Andhra Pradesh" },

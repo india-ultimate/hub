@@ -2,6 +2,7 @@ import { getCookie, getAge, findPlayerById } from "../utils";
 import { useStore } from "../store";
 import { createSignal, Show, Switch, Match, createEffect } from "solid-js";
 import {
+  matchUpChoices,
   genderChoices,
   stateChoices,
   occupationChoices,
@@ -106,6 +107,11 @@ const RegistrationForm = props => {
       : getAge(formData.date_of_birth) < majorAge
       ? "/api/registration/guardian"
       : "/api/registration";
+
+    // If match_up field is not shown, use gender as match_up
+    if (!formData.match_up) {
+      formData.match_up = formData.gender;
+    }
 
     const bodyData = editForm()
       ? { ...formData, player_id: Number(params.playerId) }
@@ -472,6 +478,24 @@ const RegistrationForm = props => {
                     type="text"
                     label="Other Gender:"
                     placeholder="Non-Binary"
+                  />
+                )}
+              </Field>
+              <Field
+                name="match_up"
+                validate={required(
+                  "Please select players you'd like to match-up against."
+                )}
+              >
+                {(field, props) => (
+                  <Select
+                    {...props}
+                    value={field.value}
+                    options={matchUpChoices}
+                    error={field.error}
+                    label="Match-up against"
+                    placeholder="male-matching/female-matching?"
+                    required
                   />
                 )}
               </Field>
