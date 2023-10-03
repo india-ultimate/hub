@@ -151,6 +151,11 @@ class Command(BaseCommand):
                 )
             )
 
+            # Delete existing registration objects, since some incorrect
+            # registrations may be removed
+            UCRegistration.objects.filter(event=event).delete()
+
+            # Add Registration objects
             registration_objs = [
                 UCRegistration(
                     id=registration["id"],
@@ -162,15 +167,7 @@ class Command(BaseCommand):
                 for registration in registrations
                 if (registration["Team"] is not None and registration["Person"] is not None)
             ]
-            UCRegistration.objects.bulk_create(
-                registration_objs,
-                update_conflicts=True,
-                update_fields=[
-                    "team_id",
-                    "roles",
-                ],
-                unique_fields=["id"],
-            )
+            UCRegistration.objects.bulk_create(registration_objs)
 
             # Add Team to registered Players
             player_uc_ids_to_team_uc_ids = {
