@@ -11,12 +11,15 @@ STATE_UT = {t.label: t for t in Player.StatesUTs}
 OCCUPATIONS = {t.label: t for t in Player.OccupationTypes}
 RELATIONS = {t.label: str(t) for t in Guardianship.Relation}
 
+DATE_FORMAT = "%Y-%m-%d"
+
 
 class Command(BaseCommand):
     help = "Import data from CSV file and create Player and User objects"
 
     def add_arguments(self, parser: CommandParser) -> None:
         parser.add_argument("csv_file", type=str, help="Path to the CSV file")
+        parser.add_argument("--date-format", "-d", default=DATE_FORMAT, help="Date format used")
 
     def handle(self, *args: Any, **options: Any) -> None:
         csv_file = options["csv_file"]
@@ -39,7 +42,7 @@ class Command(BaseCommand):
                 date_of_birth = row["date_of_birth"]
 
                 try:
-                    dob = datetime.strptime(date_of_birth, "%d/%m/%Y")  # noqa: DTZ007
+                    dob = datetime.strptime(date_of_birth, options["date_format"])  # noqa: DTZ007
                 except ValueError:
                     self.stderr.write(self.style.ERROR(f"Invalid date format: {date_of_birth}"))
                     continue
