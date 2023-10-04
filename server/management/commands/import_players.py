@@ -7,14 +7,14 @@ from django.core.files.base import ContentFile
 from django.core.management.base import BaseCommand, CommandParser
 from django.utils.text import slugify
 
-from server.models import Accreditation, Guardianship, Player, UCPerson, User
+from server.models import Accreditation, Guardianship, Player, UCPerson, User, Vaccination
 
 GENDERS = {t.label: t for t in Player.GenderTypes}
 STATE_UT = {t.label: t for t in Player.StatesUTs}
 OCCUPATIONS = {t.label: t for t in Player.OccupationTypes}
 RELATIONS = {t.label: str(t) for t in Guardianship.Relation}
 ACCREDITATIONS = {t.label: str(t) for t in Accreditation.AccreditationLevel}
-
+VACCINATIONS = {t.label: str(t) for t in Vaccination.VaccinationName}
 DATE_FORMAT = "%Y-%m-%d"
 
 
@@ -34,6 +34,7 @@ class Command(BaseCommand):
     def handle(self, *args: Any, **options: Any) -> None:
         csv_file = options["csv_file"]
         certificate_dir = csv_file.parent.joinpath("certificates")
+        vaccination_dir = csv_file.parent.joinpath("vaccinations")
 
         with open(csv_file) as file:
             csv_reader = csv.DictReader(file)
@@ -134,6 +135,7 @@ class Command(BaseCommand):
 
                     guardianship.save()
 
+                # Import accreditation information
                 accreditation_fields = ("date", "level", "wfdf_id")
                 accreditation_data = {
                     field: row.get(f"accreditation.{field}") for field in accreditation_fields
@@ -163,6 +165,39 @@ class Command(BaseCommand):
                     if name and contents:
                         accreditation.certificate.save(name, contents)
 
+                # Import vaccination information
+                has_vaccination_data = "vaccination.is_vaccinated" in row
+                if has_vaccination_data:
+                    is_vaccinated = row["vaccination.is_vaccinated"].upper() == "Y"
+                    vaccination_data = (
+                        {
+                            "is_vaccinated": is_vaccinated,
+                            "name": VACCINATIONS.get(row["vaccination.name"], None),
+                        }
+                        if is_vaccinated
+                        else {
+                            "is_vaccinated": is_vaccinated,
+                            "explain_not_vaccinated": VACCINATIONS.get(
+                                row["vaccination.explain_not_vaccinated"], "No explanation"
+                            ),
+                        }
+                    )
+                    filename, contents = self.find_vaccination_file(
+                        row["vaccination.certificate_file_name"], vaccination_dir
+                    )
+                    if is_vaccinated and not filename:
+                        self.stderr.write(self.style.ERROR(f"Missing vaccination file: {email}"))
+                        continue
+                    vaccination, created = Vaccination.objects.get_or_create(
+                        player=player, defaults=vaccination_data
+                    )
+                    if not created:
+                        for key, value in vaccination_data.items():
+                            setattr(vaccination, key, value)
+                        vaccination.save()
+                    if filename and contents:
+                        vaccination.certificate.save(filename, contents)
+
                 self.stdout.write(
                     self.style.SUCCESS(
                         f"Successfully imported data for user {user.get_full_name()}"
@@ -191,3 +226,16 @@ class Command(BaseCommand):
         with certificate_path.open("rb") as f:
             name = slugify(certificate_path.stem) + certificate_path.suffix
             return name, ContentFile(f.read())
+
+    def find_vaccination_file(
+        self, filename: str, vaccination_dir: Path
+    ) -> tuple[str | None, ContentFile[bytes] | None]:
+        if not filename:
+            return None, None
+        else:
+            vaccination_path = vaccination_dir.joinpath(filename)
+            if not vaccination_path.exists():
+                return None, None
+
+        with vaccination_path.open("rb") as f:
+            return filename, ContentFile(f.read())
