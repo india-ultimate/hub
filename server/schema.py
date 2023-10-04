@@ -405,7 +405,7 @@ class AccreditationFormSchema(ModelSchema):
 
     class Config:
         model = Accreditation
-        model_fields = ["level", "date"]
+        model_fields = ["level", "date", "wfdf_id"]
 
 
 class WaiverFormSchema(Schema):

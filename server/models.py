@@ -281,6 +281,7 @@ class Accreditation(models.Model):
     level = models.CharField(max_length=10, choices=AccreditationLevel.choices)
     date = models.DateField()
     certificate = models.FileField(upload_to="accreditation_certificates/", max_length=256)
+    wfdf_id = models.PositiveIntegerField(unique=True, null=True, blank=True)
 
 
 @receiver(pre_save, sender=Membership)
