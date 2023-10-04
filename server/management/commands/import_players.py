@@ -3,10 +3,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from django.core.files.base import ContentFile
 from django.core.management.base import BaseCommand, CommandParser
 from django.utils.text import slugify
 
-from server.models import Guardianship, Player, User
+from server.models import Accreditation, Guardianship, Player, User
 
 GENDERS = {t.label: t for t in Player.GenderTypes}
 STATE_UT = {t.label: t for t in Player.StatesUTs}
@@ -31,6 +32,7 @@ class Command(BaseCommand):
 
     def handle(self, *args: Any, **options: Any) -> None:
         csv_file = options["csv_file"]
+        certificate_dir = csv_file.parent.joinpath("certificates")
 
         with open(csv_file) as file:
             csv_reader = csv.DictReader(file)
@@ -124,8 +126,57 @@ class Command(BaseCommand):
 
                     guardianship.save()
 
+                accreditation_fields = ("date", "level", "wfdf_id")
+                accreditation_data = {
+                    field: row.get(f"accreditation.{field}") for field in accreditation_fields
+                }
+                has_accreditation_data = all(accreditation_data.values())
+                doa = accreditation_data["date"]
+                if has_accreditation_data and doa is not None:
+                    try:
+                        acc_date = datetime.strptime(doa, options["date_format"])  # noqa: DTZ007
+                        accreditation_data["date"] = acc_date.date()
+                    except ValueError:
+                        self.stderr.write(self.style.ERROR(f"Invalid date: {doa}"))
+                        continue
+
+                    accreditation, created = Accreditation.objects.get_or_create(
+                        player=player, defaults=accreditation_data
+                    )
+                    if not created:
+                        for key, value in accreditation_data.items():
+                            setattr(accreditation, key, value)
+                        accreditation.save()
+
+                    name, contents = self.find_certificate_file(row, certificate_dir)
+                    if name and contents:
+                        accreditation.certificate.save(name, contents)
+
                 self.stdout.write(
                     self.style.SUCCESS(
                         f"Successfully imported data for user {user.get_full_name()}"
                     )
                 )
+
+    def find_certificate_file(
+        self, row: dict[str, str], certificate_dir: Path
+    ) -> tuple[str | None, ContentFile[bytes] | None]:
+        filename = row.get("accreditation.certificate_file_name")
+        wfdf_id = row.get("accreditation.wfdf_id")
+
+        if not filename and not wfdf_id:
+            return None, None
+        elif not filename:
+            certificates = list(certificate_dir.glob(f"{wfdf_id}.*"))
+            if not certificates:
+                return None, None
+            certificate_path = certificates[0]
+            filename = certificate_path.name
+        elif filename:
+            certificate_path = certificate_path.joinpath(filename)
+            if not certificate_path.exists():
+                return None, None
+
+        with certificate_path.open("rb") as f:
+            name = slugify(certificate_path.stem) + certificate_path.suffix
+            return name, ContentFile(f.read())
