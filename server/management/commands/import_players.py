@@ -58,6 +58,8 @@ class Command(BaseCommand):
                     "occupation": OCCUPATIONS.get(row["occupation"], None),
                     "educational_institution": row["educational_institution"],
                 }
+                if player_data["gender"] != Player.GenderTypes.OTHER:
+                    player_data["match_up"] = player_data["gender"]
 
                 try:
                     player = Player.objects.get(user=user)
