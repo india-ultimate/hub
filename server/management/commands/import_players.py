@@ -103,21 +103,25 @@ class Command(BaseCommand):
                         "email": guardian_email,
                         "phone": row["guardian.phone"],
                     }
-                    guardian_user, _ = User.objects.get_or_create(
+                    guardian_user, created = User.objects.get_or_create(
                         username=guardian_email, defaults=guardian_data
                     )
+                    if not created:
+                        for key, value in guardian_data.items():
+                            setattr(guardian_user, key, value)
+                        guardian_user.save()
 
                     relation = RELATIONS.get(row["guardian.relation"], None)
                     guardianship_data = {"relation": relation, "user": guardian_user}
                     try:
-                        guardian = Guardianship.objects.get(player=player)
+                        guardianship = Guardianship.objects.get(player=player)
                         for key, value in guardianship_data.items():
-                            setattr(guardian, key, value)
+                            setattr(guardianship, key, value)
                     except Guardianship.DoesNotExist:
-                        guardian = Guardianship(user=guardian_user, player=player, relation=relation)  # type: ignore[misc]
-                        guardian.full_clean()
+                        guardianship = Guardianship(user=guardian_user, player=player, relation=relation)  # type: ignore[misc]
+                        guardianship.full_clean()
 
-                    guardian.save()
+                    guardianship.save()
 
                 self.stdout.write(
                     self.style.SUCCESS(
