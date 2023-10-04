@@ -13,6 +13,7 @@ GENDERS = {t.label: t for t in Player.GenderTypes}
 STATE_UT = {t.label: t for t in Player.StatesUTs}
 OCCUPATIONS = {t.label: t for t in Player.OccupationTypes}
 RELATIONS = {t.label: str(t) for t in Guardianship.Relation}
+ACCREDITATIONS = {t.label: str(t) for t in Accreditation.AccreditationLevel}
 
 DATE_FORMAT = "%Y-%m-%d"
 
@@ -140,6 +141,9 @@ class Command(BaseCommand):
                 has_accreditation_data = all(accreditation_data.values())
                 doa = accreditation_data["date"]
                 if has_accreditation_data and doa is not None:
+                    accreditation_data["level"] = ACCREDITATIONS.get(
+                        row["accreditation.level"], None
+                    )
                     try:
                         acc_date = datetime.strptime(doa, options["date_format"])  # noqa: DTZ007
                         accreditation_data["date"] = acc_date.date()
