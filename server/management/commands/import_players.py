@@ -7,7 +7,7 @@ from django.core.files.base import ContentFile
 from django.core.management.base import BaseCommand, CommandParser
 from django.utils.text import slugify
 
-from server.models import Accreditation, Guardianship, Player, User
+from server.models import Accreditation, Guardianship, Player, UCPerson, User
 
 GENDERS = {t.label: t for t in Player.GenderTypes}
 STATE_UT = {t.label: t for t in Player.StatesUTs}
@@ -93,6 +93,13 @@ class Command(BaseCommand):
                 has_guardian = guardian_email and row["guardian.relation"]
                 if player.is_minor and not has_guardian:
                     raise RuntimeError(f"Missing Guardian information for {email}")
+
+                if row["uc.email"]:
+                    try:
+                        uc_person = UCPerson.objects.get(email=row["uc.email"].strip())
+                        player.ultimate_central_id = uc_person.id
+                    except UCPerson.DoesNotExist:
+                        pass
 
                 player.save()
 
