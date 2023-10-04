@@ -1,5 +1,6 @@
 import csv
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 from django.core.management.base import BaseCommand, CommandParser
@@ -19,7 +20,7 @@ class Command(BaseCommand):
     help = "Import data from CSV file and create Player and User objects"
 
     def add_arguments(self, parser: CommandParser) -> None:
-        parser.add_argument("csv_file", type=str, help="Path to the CSV file")
+        parser.add_argument("csv_file", type=Path, help="Path to the CSV file")
         parser.add_argument("--date-format", "-d", default=DATE_FORMAT, help="Date format used")
         parser.add_argument(
             "--guardian-email-optional",
