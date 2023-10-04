@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Any
 
 from django.core.management.base import BaseCommand, CommandParser
+from django.utils.text import slugify
 
 from server.models import Guardianship, Player, User
 
@@ -20,6 +21,12 @@ class Command(BaseCommand):
     def add_arguments(self, parser: CommandParser) -> None:
         parser.add_argument("csv_file", type=str, help="Path to the CSV file")
         parser.add_argument("--date-format", "-d", default=DATE_FORMAT, help="Date format used")
+        parser.add_argument(
+            "--guardian-email-optional",
+            default=False,
+            action="store_true",
+            help="Make Guardian email an optional value",
+        )
 
     def handle(self, *args: Any, **options: Any) -> None:
         csv_file = options["csv_file"]
@@ -70,7 +77,17 @@ class Command(BaseCommand):
 
                 player.full_clean()
 
-                has_guardian = row["guardian.email"] and row["guardian.relation"]
+                guardian_email = row["guardian.email"]
+                if (
+                    not guardian_email
+                    and row["guardian.relation"]
+                    and options["guardian_email_optional"]
+                ):
+                    guardian_first_name = row["guardian.first_name"]
+                    guardian_last_name = row["guardian.last_name"]
+                    guardian_email = slugify(f"{guardian_first_name} {guardian_last_name}")
+
+                has_guardian = guardian_email and row["guardian.relation"]
                 if player.is_minor and not has_guardian:
                     raise RuntimeError(f"Missing Guardian information for {email}")
 
@@ -83,12 +100,11 @@ class Command(BaseCommand):
                     guardian_data = {
                         "first_name": row["guardian.first_name"],
                         "last_name": row["guardian.last_name"],
-                        "email": row["guardian.email"],
+                        "email": guardian_email,
                         "phone": row["guardian.phone"],
                     }
-                    guardian_email = guardian_data["email"]
                     guardian_user, _ = User.objects.get_or_create(
-                        username=guardian_email, email=guardian_email, defaults=guardian_data
+                        username=guardian_email, defaults=guardian_data
                     )
 
                     relation = RELATIONS.get(row["guardian.relation"], None)
