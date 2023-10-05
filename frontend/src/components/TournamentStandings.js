@@ -1,5 +1,5 @@
 import { A, useParams } from "@solidjs/router";
-import { createEffect, createSignal, For, Show } from "solid-js";
+import { createEffect, createSignal, For, onMount, Show } from "solid-js";
 import { createQuery } from "@tanstack/solid-query";
 import {
   fetchBracketsBySlug,
@@ -11,6 +11,7 @@ import {
 } from "../queries";
 import { trophy } from "solid-heroicons/solid";
 import Breadcrumbs from "./Breadcrumbs";
+import { initFlowbite } from "flowbite";
 
 const TournamentStandings = () => {
   const params = useParams();
@@ -96,6 +97,15 @@ const TournamentStandings = () => {
 
       setPositionPoolsMap(newPoolsMap);
     }
+  });
+
+  onMount(() => {
+    setTimeout(() => initFlowbite(), 100);
+    setTimeout(() => initFlowbite(), 500);
+    setTimeout(() => initFlowbite(), 1000);
+    setTimeout(() => initFlowbite(), 3000);
+    setTimeout(() => initFlowbite(), 5000);
+    setTimeout(() => initFlowbite(), 8000);
   });
 
   return (
