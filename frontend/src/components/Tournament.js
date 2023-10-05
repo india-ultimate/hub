@@ -43,42 +43,64 @@ const Tournament = () => {
         icon={trophy}
         pageList={[{ url: "/tournaments", name: "All Tournaments" }]}
       />
+
       <h1 class="text-center mb-5">
         <span class="font-extrabold text-transparent text-2xl bg-clip-text bg-gradient-to-r from-blue-500 to-green-500 w-fit">
           {tournamentQuery.data?.event?.title}
         </span>
       </h1>
 
-      <p class="text-sm text-center mt-2">
-        {tournamentQuery.data?.event?.location}
-      </p>
-      <p class="text-sm text-center mt-2">
-        {new Date(
-          Date.parse(tournamentQuery.data?.event.start_date)
-        ).toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "short",
-          day: "numeric",
-          timeZone: "UTC"
-        })}
-        <Show
-          when={
-            tournamentQuery.data?.event.start_date !==
-            tournamentQuery.data?.event.end_date
-          }
-        >
-          {" "}
-          to{" "}
-          {new Date(
-            Date.parse(tournamentQuery.data?.event.end_date)
-          ).toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-            timeZone: "UTC"
-          })}
-        </Show>
-      </p>
+      <Show
+        when={tournamentQuery.data?.logo_dark}
+        fallback={
+          <div>
+            <p class="text-sm text-center mt-2">
+              {tournamentQuery.data?.event?.location}
+            </p>
+            <p class="text-sm text-center mt-2">
+              {new Date(
+                Date.parse(tournamentQuery.data?.event.start_date)
+              ).toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+                timeZone: "UTC"
+              })}
+              <Show
+                when={
+                  tournamentQuery.data?.event.start_date !==
+                  tournamentQuery.data?.event.end_date
+                }
+              >
+                {" "}
+                to{" "}
+                {new Date(
+                  Date.parse(tournamentQuery.data?.event.end_date)
+                ).toLocaleDateString("en-US", {
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                  timeZone: "UTC"
+                })}
+              </Show>
+            </p>
+          </div>
+        }
+      >
+        <div class="flex justify-center">
+          <img
+            src={tournamentQuery.data?.logo_dark}
+            alt="Tournament logo"
+            class="w-3/4 hidden dark:block"
+          />
+          <img
+            src={tournamentQuery.data?.logo_light}
+            alt="Tournament logo"
+            class="w-3/4 block dark:hidden"
+          />
+        </div>
+      </Show>
+
       <div class="flex justify-center mt-5">
         <Switch>
           <Match when={tournamentQuery.data?.status === "COM"}>
