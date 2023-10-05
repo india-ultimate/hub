@@ -864,6 +864,9 @@ const TournamentManager = () => {
                   <th scope="col" class="px-6 py-3">
                     Score
                   </th>
+                  <th scope="col" class="px-6 py-3">
+                    Video Link
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -1091,6 +1094,49 @@ const TournamentManager = () => {
                             {match.score_team_1 + " - " + match.score_team_2}
                           </Match>
                         </Switch>
+                      </td>
+                      <td class="px-6 py-4">
+                        <Show
+                          when={match?.video_url}
+                          fallback={
+                            <div>
+                              <input
+                                class="block w-full p-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 sm:text-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 mb-3"
+                                onChange={e => {
+                                  setUpdateMatchFields(match.id, {});
+                                  setUpdateMatchFields(
+                                    match.id,
+                                    "video_url",
+                                    e.target.value
+                                  );
+                                }}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (
+                                    updateMatchFields[match.id]["video_url"]
+                                  ) {
+                                    updateMatchMutation.mutate({
+                                      match_id: match.id,
+                                      body: {
+                                        video_url:
+                                          updateMatchFields[match.id][
+                                            "video_url"
+                                          ]
+                                      }
+                                    });
+                                  }
+                                }}
+                                class="text-white bg-green-700 hover:bg-green-800 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-green-600 dark:hover:bg-green-700 mb-5 disabled:dark:bg-gray-400"
+                              >
+                                Update
+                              </button>
+                            </div>
+                          }
+                        >
+                          {match?.video_url}
+                        </Show>
                       </td>
                     </tr>
                   )}
