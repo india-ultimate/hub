@@ -15,6 +15,10 @@ def code(apps: StateApps, schema_editor: BaseDatabaseSchemaEditor) -> None:
     Player.objects.filter(id__in=female_matching_ids).update(match_up="F")
 
 
+def reverse_code(apps: StateApps, schema_editor: BaseDatabaseSchemaEditor) -> None:
+    """Allow reverse migrations to work seemlessly."""
+
+
 class Migration(migrations.Migration):
     dependencies = [
         ("server", "0031_accreditation"),
@@ -26,7 +30,7 @@ class Migration(migrations.Migration):
             name="match_up",
             field=models.CharField(max_length=30, default="M", null=True),
         ),
-        migrations.RunPython(code=code),
+        migrations.RunPython(code=code, reverse_code=reverse_code),
         migrations.AlterField(
             model_name="player",
             name="match_up",
