@@ -9,11 +9,15 @@ import {
 import Breadcrumbs from "./Breadcrumbs";
 import { trophy } from "solid-heroicons/solid";
 import { initFlowbite } from "flowbite";
+import MatchCard from "./tournament/MatchCard";
+import { createStore, reconcile } from "solid-js/store";
 
 const TournamentSchedule = () => {
   const params = useParams();
   const [teamsMap, setTeamsMap] = createSignal({});
   const [tournamentDays, setTournamentDays] = createSignal([]);
+  const [matchDayTimeFieldMap, setMatchDayTimeFieldMap] = createStore({});
+  const [fieldMap, setFieldMap] = createStore({});
   // const [_, setDateTimeMatchMap] = createSignal({});
 
   const tournamentQuery = createQuery(
@@ -27,6 +31,7 @@ const TournamentSchedule = () => {
   );
 
   function sameDay(d1, d2) {
+    console.log(d1, d2);
     return (
       d1.getFullYear() === d2.getUTCFullYear() &&
       d1.getMonth() === d2.getUTCMonth() &&
@@ -60,6 +65,35 @@ const TournamentSchedule = () => {
       setTournamentDays(days);
 
       setTimeout(() => initFlowbite(), 500);
+    }
+  });
+
+  createEffect(() => {
+    if (matchesQuery.status === "success" && !matchesQuery.data?.message) {
+      setMatchDayTimeFieldMap(reconcile({}));
+      setFieldMap(reconcile({}));
+      matchesQuery.data?.map(match => {
+        if (match.time && match.field) {
+          const day = new Date(Date.parse(match.time)).toLocaleDateString(
+            "en-US",
+            {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+              timeZone: "UTC"
+            }
+          );
+          const time = new Date(Date.parse(match.time));
+          setMatchDayTimeFieldMap(day, {});
+          setMatchDayTimeFieldMap(day, time, {});
+          setMatchDayTimeFieldMap(day, time, match.field, match);
+
+          setFieldMap(day, {});
+          setFieldMap(day, match.field, true);
+        }
+      });
+
+      console.log(matchDayTimeFieldMap);
     }
   });
 
@@ -148,6 +182,79 @@ const TournamentSchedule = () => {
               role="tabpanel"
               aria-labelledby={"day-tab-" + (i() + 1)}
             >
+              <For each={Object.keys(matchDayTimeFieldMap).sort()}>
+                {day2 => (
+                  <Show
+                    when={sameDay(day, new Date(Date.parse(day2 + " GMT")))}
+                  >
+                    <div class="relative overflow-x-auto mb-8">
+                      <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400 table-fixed">
+                        <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                          <tr>
+                            <th scope="col" class="px-2 py-3 text-center">
+                              Time
+                            </th>
+                            <For each={Object.keys(fieldMap[day2]).sort()}>
+                              {field => (
+                                <th scope="col" class="px-1 py-3 text-center">
+                                  {field}
+                                </th>
+                              )}
+                            </For>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <For
+                            each={Object.keys(matchDayTimeFieldMap[day2]).sort(
+                              (a, b) => new Date(a) - new Date(b)
+                            )}
+                          >
+                            {time => (
+                              <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+                                <th
+                                  scope="row"
+                                  class="px-2 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white text-center text-xs"
+                                >
+                                  {new Date(time).toLocaleTimeString("en-US", {
+                                    hour: "numeric",
+                                    minute: "numeric",
+                                    timeZone: "UTC"
+                                  })}
+                                </th>
+                                <For each={Object.keys(fieldMap[day2]).sort()}>
+                                  {field => (
+                                    <td class="px-1 py-4 text-xs">
+                                      <Show
+                                        when={
+                                          matchDayTimeFieldMap[day2][time][
+                                            field
+                                          ]
+                                        }
+                                      >
+                                        <MatchCard
+                                          match={
+                                            matchDayTimeFieldMap[day2][time][
+                                              field
+                                            ]
+                                          }
+                                          showSeed={true}
+                                        />
+                                      </Show>
+                                    </td>
+                                  )}
+                                </For>
+                              </tr>
+                            )}
+                          </For>
+                        </tbody>
+                      </table>
+                      <p class="text-sm mt-2">
+                        * CP - Cross Pool | B - Brackets
+                      </p>
+                    </div>
+                  </Show>
+                )}
+              </For>
               <For each={matchesQuery.data}>
                 {match => (
                   <Show when={sameDay(day, new Date(Date.parse(match.time)))}>
