@@ -1399,13 +1399,19 @@ def update_match(
     except Tournament.DoesNotExist:
         return 400, {"message": "Match does not exist"}
 
-    ind_tz = datetime.timezone(datetime.timedelta(hours=5, minutes=30), name="IND")
-    match_datetime = datetime.datetime.strptime(match_details.time, "%Y-%m-%dT%H:%M").astimezone(
-        ind_tz
-    )
+    if match_details.time:
+        ind_tz = datetime.timezone(datetime.timedelta(hours=5, minutes=30), name="IND")
+        match_datetime = datetime.datetime.strptime(
+            match_details.time, "%Y-%m-%dT%H:%M"
+        ).astimezone(ind_tz)
 
-    match.time = match_datetime
-    match.field = match_details.field
+        match.time = match_datetime
+
+    if match_details.field:
+        match.field = match_details.field
+
+    if match_details.video_url:
+        match.video_url = match_details.video_url
 
     match.save()
 

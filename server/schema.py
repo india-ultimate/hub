@@ -536,8 +536,9 @@ class MatchCreateSchema(Schema):
 
 
 class MatchUpdateSchema(Schema):
-    time: str
-    field: str
+    time: str | None
+    field: str | None
+    video_url: str | None
 
 
 class MatchScoreSchema(Schema):
