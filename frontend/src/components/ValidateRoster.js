@@ -347,6 +347,9 @@ const ValidateRoster = () => {
                                 const accreditationDate =
                                   registration?.person?.player?.accreditation
                                     ?.date;
+                                const accreditationLevel =
+                                  registration?.person?.player?.accreditation
+                                    ?.level;
                                 return (
                                   <li
                                     class={clsx(
@@ -449,8 +452,7 @@ const ValidateRoster = () => {
                                             )
                                               ? `${getLabel(
                                                   accreditationChoices,
-                                                  registration.person.player
-                                                    ?.accreditation?.level
+                                                  accreditationLevel
                                                 )} (${accreditationDate})`
                                               : !accreditationDate
                                               ? "No accreditation"
@@ -470,9 +472,7 @@ const ValidateRoster = () => {
                                               playerAccreditationValid(
                                                 registration.person.player
                                               )
-                                                ? registration.person.player
-                                                    ?.accreditation?.level ===
-                                                  "ADV"
+                                                ? accreditationLevel === "ADV"
                                                   ? documentCheck
                                                   : document
                                                 : xCircle
