@@ -203,6 +203,18 @@ const ValidateRoster = () => {
 
   const today = new Date().toISOString().split("T")[0];
 
+  const playerAccreditationValid = player => {
+    if (!player?.accreditation?.is_valid) {
+      return false;
+    }
+    if (!event()) {
+      return player?.accreditation?.is_valid;
+    }
+    let lastValid = new Date(event()?.end_date);
+    lastValid.setMonth(lastValid.getMonth() - 18); // 18 months validity for accreditations
+    return new Date(player?.accreditation?.date) > lastValid;
+  };
+
   return (
     <div>
       <div class="mb-12">
@@ -429,8 +441,9 @@ const ValidateRoster = () => {
                                         </span>
                                         <span
                                           title={`Accreditation - ${
-                                            registration.person.player
-                                              ?.accreditation?.is_valid
+                                            playerAccreditationValid(
+                                              registration.person.player
+                                            )
                                               ? getLabel(
                                                   accreditationChoices,
                                                   registration.person.player
@@ -440,16 +453,18 @@ const ValidateRoster = () => {
                                           }`}
                                           class={clsx(
                                             "mx-2",
-                                            registration.person.player
-                                              ?.accreditation?.is_valid
+                                            playerAccreditationValid(
+                                              registration.person.player
+                                            )
                                               ? greenText
                                               : redText
                                           )}
                                         >
                                           <Icon
                                             path={
-                                              registration.person.player
-                                                ?.accreditation?.is_valid
+                                              playerAccreditationValid(
+                                                registration.person.player
+                                              )
                                                 ? registration.person.player
                                                     ?.accreditation?.level ===
                                                   "ADV"
