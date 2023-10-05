@@ -1076,7 +1076,8 @@ class TestAccreditation(ApiBaseTestCase):
         certificate = SimpleUploadedFile(
             "certificate.pdf", b"file content", content_type="application/pdf"
         )
-        data = {"date": "2018-01-01", "level": "ADV", "player_id": self.player.id, "wfdf_id": 100}
+        date = str((now() - datetime.timedelta(days=18 * 31)).date())
+        data = {"date": date, "level": "ADV", "player_id": self.player.id, "wfdf_id": 100}
         response = c.post(
             path="/api/accreditation",
             data={"accreditation": json.dumps(data), "certificate": certificate},
@@ -1099,7 +1100,7 @@ class TestAccreditation(ApiBaseTestCase):
         certificate = SimpleUploadedFile(
             "certificate.pdf", b"file content", content_type="application/pdf"
         )
-        date = str((now() - datetime.timedelta(days=15)).date())
+        date = str((now() - datetime.timedelta(days=18 * 30)).date())
         data = {"date": date, "level": "ADV", "player_id": self.player.id, "wfdf_id": 100}
         response = c.post(
             path="/api/accreditation",

@@ -1,8 +1,8 @@
-import datetime
 import uuid
 from pathlib import Path
 from typing import Any
 
+from dateutil.relativedelta import relativedelta
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.db.models.signals import pre_save
@@ -300,5 +300,6 @@ def update_accreditation_validity(
     if raw:
         return
 
-    instance.is_valid = instance.date > (now() - datetime.timedelta(days=18 * 30)).date()
+    instance.full_clean()  # Ensure instance.date is a datetime.date object
+    instance.is_valid = instance.date > (now() - relativedelta(months=18)).date()
     return
