@@ -19,3 +19,11 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS(f"Invalidated {n} accreditations"))
         else:
             self.stdout.write(self.style.NOTICE("No outdated accreditations found"))
+
+        valid_accreditations = Accreditation.objects.filter(date__gt=start_date)
+        n = valid_accreditations.count()
+        if n > 0:
+            valid_accreditations.update(is_valid=True)
+            self.stdout.write(self.style.SUCCESS(f"Validated {n} accreditations"))
+        else:
+            self.stdout.write(self.style.NOTICE("No valid accreditations found"))
