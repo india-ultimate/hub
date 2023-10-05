@@ -238,6 +238,7 @@ class Match(models.Model):
     status = models.CharField(max_length=3, choices=Status.choices, default=Status.YET_TO_FIX)
     time = models.DateTimeField(null=True, blank=True)
     field = models.CharField(max_length=25, null=True, blank=True)
+    video_url = models.URLField(max_length=255, null=True, blank=True)
 
     team_1 = models.ForeignKey(
         Team, on_delete=models.CASCADE, related_name="team_1", blank=True, null=True
