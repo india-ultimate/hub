@@ -235,17 +235,23 @@ export const fetchTournamentTeamBySlug = async (tournament_slug, team_slug) => {
 
 // Mutations ----------------
 
-export const createTournament = async body => {
+export const createTournament = async formData => {
   const response = await fetch("/api/tournament", {
     method: "POST",
     headers: {
-      "Content-Type": "application/json",
       "X-CSRFToken": getCookie("csrftoken")
     },
     credentials: "same-origin",
-    body: JSON.stringify(body)
+    body: formData
   });
-  return await response.json();
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.message || JSON.stringify(data));
+  }
+
+  return data;
 };
 
 export const updateSeeding = async ({ id, body }) => {

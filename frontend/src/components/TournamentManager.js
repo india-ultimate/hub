@@ -11,11 +11,9 @@ import {
   createMatch,
   createPool,
   createPositionPool,
-  createTournament,
   deleteTournament,
   fetchBrackets,
   fetchCrossPool,
-  fetchEvents,
   fetchMatches,
   fetchPools,
   fetchPositionPools,
@@ -37,11 +35,11 @@ import {
 } from "solid-js";
 import { createStore, reconcile } from "solid-js/store";
 import MatchCard from "./tournament/MatchCard";
+import CreateTournamentForm from "./tournament/CreateTournamentForm";
 
 const TournamentManager = () => {
   const queryClient = useQueryClient();
   const [store] = useStore();
-  const [event, setEvent] = createSignal(0);
   const [selectedTournament, setSelectedTournament] = createSignal();
   const [selectedTournamentID, setSelectedTournamentID] = createSignal(0);
   const [tournamentSeeding, setTournamentSeeding] = createSignal([]);
@@ -134,7 +132,6 @@ const TournamentManager = () => {
     }
   });
 
-  const eventsQuery = createQuery(() => ["events"], fetchEvents);
   const teamsQuery = createQuery(() => ["teams"], fetchTeams);
   const tournamentsQuery = createQuery(() => ["tournaments"], fetchTournaments);
   const poolsQuery = createQuery(
@@ -157,12 +154,6 @@ const TournamentManager = () => {
     () => ["matches", selectedTournamentID()],
     () => fetchMatches(selectedTournamentID())
   );
-
-  const createTournamentMutation = createMutation({
-    mutationFn: createTournament,
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["tournaments"] })
-  });
 
   const updateSeedingMutation = createMutation({
     mutationFn: updateSeeding,
@@ -301,75 +292,7 @@ const TournamentManager = () => {
         <h1 class="text-center font-bold text-2xl text-blue-500">
           New Tournament
         </h1>
-        <label
-          for="events"
-          class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
-        >
-          Select an Event
-        </label>
-        <select
-          id="events"
-          onChange={e => setEvent(parseInt(e.target.value))}
-          class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-        >
-          <option value={0} selected>
-            Choose an event
-          </option>
-          <For each={eventsQuery.data}>
-            {e => <option value={e.id}>{e.title}</option>}
-          </For>
-        </select>
-        {/*<div class="grid grid-cols-4 gap-4 my-5">*/}
-        {/*  <For each={teamsQuery.data}>*/}
-        {/*    {t => (*/}
-        {/*      <div class="flex items-center pl-4 border border-gray-200 rounded dark:border-gray-700">*/}
-        {/*        <input*/}
-        {/*          id={"team-" + t.id}*/}
-        {/*          type="checkbox"*/}
-        {/*          value={t.id}*/}
-        {/*          onChange={e =>*/}
-        {/*            e.target.checked*/}
-        {/*              ? setSelectedTeams([*/}
-        {/*                  ...selectedTeams().filter(*/}
-        {/*                    t => t !== parseInt(e.target.value)*/}
-        {/*                  ),*/}
-        {/*                  parseInt(e.target.value)*/}
-        {/*                ])*/}
-        {/*              : setSelectedTeams(*/}
-        {/*                  selectedTeams().filter(*/}
-        {/*                    t => t !== parseInt(e.target.value)*/}
-        {/*                  )*/}
-        {/*                )*/}
-        {/*          }*/}
-        {/*          class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"*/}
-        {/*        />*/}
-        {/*        <label*/}
-        {/*          for={"team-" + t.id}*/}
-        {/*          class="w-full py-4 ml-2 text-sm font-medium text-gray-900 dark:text-gray-300"*/}
-        {/*        >*/}
-        {/*          {t.name}*/}
-
-        {/*          <img*/}
-        {/*            class="w-8 h-8 p-1 rounded-full ring-2 ring-gray-300 dark:ring-gray-500 inline-block ml-3"*/}
-        {/*            src={t.image_url}*/}
-        {/*            alt="Bordered avatar"*/}
-        {/*          />*/}
-        {/*        </label>*/}
-        {/*      </div>*/}
-        {/*    )}*/}
-        {/*  </For>*/}
-        {/*</div>*/}
-        <button
-          type="button"
-          onClick={() =>
-            createTournamentMutation.mutate({
-              event_id: event()
-            })
-          }
-          class="text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 my-5"
-        >
-          Create Tournament
-        </button>
+        <CreateTournamentForm />
       </div>
       <hr class="h-px my-8 bg-gray-200 border-0 dark:bg-gray-700" />
       <div>
