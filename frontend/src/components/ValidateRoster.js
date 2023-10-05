@@ -344,6 +344,9 @@ const ValidateRoster = () => {
                                   new Date(eventData()?.start_date)
                                 );
                                 const displayAge = Math.round(age * 100) / 100;
+                                const accreditationDate =
+                                  registration?.person?.player?.accreditation
+                                    ?.date;
                                 return (
                                   <li
                                     class={clsx(
@@ -444,12 +447,14 @@ const ValidateRoster = () => {
                                             playerAccreditationValid(
                                               registration.person.player
                                             )
-                                              ? getLabel(
+                                              ? `${getLabel(
                                                   accreditationChoices,
                                                   registration.person.player
                                                     ?.accreditation?.level
-                                                )
-                                              : "Not valid"
+                                                )} (${accreditationDate})`
+                                              : !accreditationDate
+                                              ? "No accreditation"
+                                              : `Outdated: ${accreditationDate}`
                                           }`}
                                           class={clsx(
                                             "mx-2",
