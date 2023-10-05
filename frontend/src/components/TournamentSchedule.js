@@ -1,5 +1,13 @@
 import { A, useParams } from "@solidjs/router";
-import { createEffect, createSignal, For, Match, Show, Switch } from "solid-js";
+import {
+  createEffect,
+  createSignal,
+  For,
+  Match,
+  onMount,
+  Show,
+  Switch
+} from "solid-js";
 import { createQuery } from "@tanstack/solid-query";
 import {
   fetchMatchesBySlug,
@@ -31,7 +39,6 @@ const TournamentSchedule = () => {
   );
 
   function sameDay(d1, d2) {
-    console.log(d1, d2);
     return (
       d1.getFullYear() === d2.getUTCFullYear() &&
       d1.getMonth() === d2.getUTCMonth() &&
@@ -63,8 +70,6 @@ const TournamentSchedule = () => {
       }
 
       setTournamentDays(days);
-
-      setTimeout(() => initFlowbite(), 500);
     }
   });
 
@@ -92,9 +97,16 @@ const TournamentSchedule = () => {
           setFieldMap(day, match.field, true);
         }
       });
-
-      console.log(matchDayTimeFieldMap);
     }
+  });
+
+  onMount(() => {
+    setTimeout(() => initFlowbite(), 100);
+    setTimeout(() => initFlowbite(), 500);
+    setTimeout(() => initFlowbite(), 1000);
+    setTimeout(() => initFlowbite(), 3000);
+    setTimeout(() => initFlowbite(), 5000);
+    setTimeout(() => initFlowbite(), 8000);
   });
 
   // createEffect(() => {
