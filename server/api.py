@@ -897,7 +897,10 @@ def get_tournament_matches_by_slug(
 
 @api.post("/tournament", response={200: TournamentSchema, 400: Response, 401: Response})
 def create_tournament(
-    request: AuthenticatedHttpRequest, tournament_details: TournamentCreateSchema
+    request: AuthenticatedHttpRequest,
+    tournament_details: TournamentCreateSchema,
+    logo_light: UploadedFile | None = File(None),  # noqa: B008
+    logo_dark: UploadedFile | None = File(None),  # noqa: B008
 ) -> tuple[int, Tournament] | tuple[int, message_response]:
     if not request.user.is_staff:
         return 401, {"message": "Only Admins can create tournament"}
@@ -915,6 +918,12 @@ def create_tournament(
     team_list = UCRegistration.objects.filter(event=event).values_list("team", flat=True).distinct()
     for team_id in team_list:
         tournament.teams.add(team_id)
+
+    if logo_light:
+        tournament.logo_light = logo_light
+    if logo_dark:
+        tournament.logo_dark = logo_dark
+    tournament.save()
 
     return 200, tournament
 

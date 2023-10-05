@@ -155,6 +155,8 @@ class Tournament(models.Model):
     event = models.OneToOneField(Event, on_delete=models.CASCADE, unique=True)
     teams = models.ManyToManyField(Team, related_name="tournaments")
     status = models.CharField(max_length=3, choices=Status.choices, default=Status.DRAFT)
+    logo_light = models.FileField(upload_to="tournament_logos/", blank=True, max_length=256)
+    logo_dark = models.FileField(upload_to="tournament_logos/", blank=True, max_length=256)
 
     initial_seeding = models.JSONField(default=dict)
     current_seeding = models.JSONField(default=dict)
