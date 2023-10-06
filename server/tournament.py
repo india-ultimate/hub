@@ -1,25 +1,17 @@
-# mypy: ignore-errors
-#
-# ruff: noqa
-#
-# FIXME: Remove this after writing good/type safe code
-
-
-from functools import cmp_to_key
+from functools import cmp_to_key, partial
 
 from django.db.models import Q
 
 from server.models import Bracket, CrossPool, Match, Pool, PositionPool, Team, Tournament
 
-
 # Exported Functions ####################
 
 
-def create_pool_matches(tournament, pool):
+def create_pool_matches(tournament: Tournament, pool: Pool) -> None:
     pool_seeding_list = list(map(int, pool.initial_seeding.keys()))
 
     for i, x in enumerate(pool_seeding_list):
-        for j, y in enumerate(pool_seeding_list[i + 1 :], i + 1):
+        for _j, y in enumerate(pool_seeding_list[i + 1 :], i + 1):
             match = Match(
                 tournament=tournament,
                 pool=pool,
@@ -31,17 +23,17 @@ def create_pool_matches(tournament, pool):
             match.save()
 
 
-def create_bracket_matches(tournament, bracket):
+def create_bracket_matches(tournament: Tournament, bracket: Bracket) -> None:
     start, end = map(int, bracket.name.split("-"))
     if ((end - start) + 1) % 2 == 0:
         create_bracket_sequence_matches(tournament, bracket, start, end, 1)
 
 
-def create_position_pool_matches(tournament, position_pool):
+def create_position_pool_matches(tournament: Tournament, position_pool: PositionPool) -> None:
     position_pool_seeding_list = list(map(int, position_pool.initial_seeding.keys()))
 
     for i, x in enumerate(position_pool_seeding_list):
-        for j, y in enumerate(position_pool_seeding_list[i + 1 :], i + 1):
+        for _j, y in enumerate(position_pool_seeding_list[i + 1 :], i + 1):
             match = Match(
                 tournament=tournament,
                 position_pool=position_pool,
@@ -97,7 +89,15 @@ def compare_pool_results(
     return result2["GF"] - result1["GF"]
 
 
-def get_new_pool_results(old_results, match, pool_seeding_list, tournament_seeding):
+def get_new_pool_results(
+    old_results: dict[int, dict[str, int]],
+    match: Match,
+    pool_seeding_list: list[int],
+    tournament_seeding: dict[int, int],
+) -> tuple[dict[int, dict[str, int]], dict[int, int]]:
+    if match.team_1 is None or match.team_2 is None:
+        return old_results, tournament_seeding
+
     old_results[match.team_1.id]["GF"] += match.score_team_1
     old_results[match.team_1.id]["GA"] += match.score_team_2
 
@@ -121,9 +121,7 @@ def get_new_pool_results(old_results, match, pool_seeding_list, tournament_seedi
 
     ranked_results = sorted(
         results_list,
-        key=cmp_to_key(
-            lambda result1, result2: compare_pool_results(result1, result2, match.tournament.id)
-        ),
+        key=cmp_to_key(partial(compare_pool_results, tournament_id=match.tournament.id)),
     )
 
     new_results = {}
@@ -137,7 +135,9 @@ def get_new_pool_results(old_results, match, pool_seeding_list, tournament_seedi
     return new_results, tournament_seeding
 
 
-def get_new_bracket_seeding(seeding: dict, match: Match) -> dict:
+def get_new_bracket_seeding(seeding: dict[int, int], match: Match) -> dict[int, int]:
+    if match.team_1 is None or match.team_2 is None:
+        return seeding
     if (
         match.placeholder_seed_2 > match.placeholder_seed_1
         and match.score_team_2 > match.score_team_1
@@ -499,7 +499,7 @@ def populate_fixtures(tournament_id: int) -> None:
         tournament.save()
 
 
-def update_tournament_spirit_rankings(tournament):
+def update_tournament_spirit_rankings(tournament: Tournament) -> None:
     spirit_ranking = []
     for team in tournament.teams.all():
         team_matches = Match.objects.filter(tournament=tournament).filter(
@@ -509,6 +509,9 @@ def update_tournament_spirit_rankings(tournament):
         matches_count = 0
 
         for match in team_matches:
+            if match.team_1 is None or match.team_2 is None:
+                continue
+
             if match.team_1.id == team.id and match.spirit_score_team_1:
                 spirit_score = match.spirit_score_team_1
                 points += (
@@ -545,7 +548,7 @@ def update_tournament_spirit_rankings(tournament):
 
 def calculate_head_to_head_stats(
     result1: dict[str, int], result2: dict[str, int], tournament_id: int
-) -> (dict[str, int], dict[str, int], dict[str, int]):
+) -> tuple[dict[int, int], dict[int, int], dict[int, int]]:
     matches = Match.objects.filter(
         Q(
             team_1=result1["id"],
@@ -595,7 +598,9 @@ def calculate_head_to_head_stats(
     return wins, goal_diff, goal_for
 
 
-def create_bracket_sequence_matches(tournament, bracket, start, end, seq_num):
+def create_bracket_sequence_matches(
+    tournament: Tournament, bracket: Bracket, start: int, end: int, seq_num: int
+) -> None:
     for i in range(0, ((end - start) + 1) // 2):
         match = Match(
             tournament=tournament,
