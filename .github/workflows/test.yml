@@ -40,11 +40,14 @@ jobs:
       - name: Run linters
         run: poetry run ./scripts/lint
 
-      - name: Ensure requirements.txt and pyproject.toml in sync
+      - name: Ensure requirements.txt and pyproject.toml
         run: |
-          poetry lock --no-update
           poetry export --without-hashes -o requirements.txt
           git diff --exit-code
+
+      - name: Ensure pyproject.toml and poetry.lock are in sync
+        run: |
+          poetry check
 
       - name: Ensure server/templates/index.html is in sync with the frontend
         run: |
