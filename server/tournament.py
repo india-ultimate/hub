@@ -499,6 +499,47 @@ def populate_fixtures(tournament_id: int) -> None:
         tournament.save()
 
 
+def update_tournament_spirit_rankings(tournament):
+    spirit_ranking = []
+    for team in tournament.teams.all():
+        team_matches = Match.objects.filter(tournament=tournament).filter(
+            Q(team_1=team) | Q(team_2=team)
+        )
+        points = 0.0
+        matches_count = 0
+
+        for match in team_matches:
+            if match.team_1.id == team.id and match.spirit_score_team_1:
+                spirit_score = match.spirit_score_team_1
+                points += (
+                    float(spirit_score.rules)
+                    + float(spirit_score.fouls)
+                    + float(spirit_score.fair)
+                    + float(spirit_score.positive)
+                    + float(spirit_score.communication)
+                )
+                matches_count += 1
+            elif match.team_2.id == team.id and match.spirit_score_team_2:
+                spirit_score = match.spirit_score_team_2
+                points += (
+                    float(spirit_score.rules)
+                    + float(spirit_score.fouls)
+                    + float(spirit_score.fair)
+                    + float(spirit_score.positive)
+                    + float(spirit_score.communication)
+                )
+                matches_count += 1
+
+        spirit_ranking.append(
+            {"team_id": team.id, "points": points / matches_count if matches_count > 0 else points}
+        )
+
+    spirit_ranking.sort(key=lambda x: x["points"], reverse=True)
+
+    tournament.spirit_ranking = spirit_ranking
+    tournament.save()
+
+
 # Helper Functions #####################
 
 

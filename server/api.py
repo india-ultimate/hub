@@ -102,6 +102,7 @@ from server.tournament import (
     get_new_bracket_seeding,
     get_new_pool_results,
     populate_fixtures,
+    update_tournament_spirit_rankings,
 )
 from server.utils import (
     RAZORPAY_DESCRIPTION_MAX,
@@ -1455,6 +1456,9 @@ def update_match(
         spirit_score.save()
 
         match.spirit_score_team_2 = spirit_score
+
+    if match_details.spirit_score_team_1 or match_details.spirit_score_team_2:
+        update_tournament_spirit_rankings(match.tournament)
 
     match.save()
 
