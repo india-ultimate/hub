@@ -181,6 +181,53 @@ const Tournament = () => {
           </tbody>
         </table>
       </div>
+
+      <Switch>
+        <Match when={tournamentQuery.data?.status === "COM"}>
+          <h2 class="text-center mt-5 text-xl font-bold">
+            Final Spirit Rankings
+          </h2>
+        </Match>
+        <Match when={tournamentQuery.data?.status === "LIV"}>
+          <h2 class="text-center mt-5 text-xl font-bold">
+            Current Spirit Rankings
+          </h2>
+        </Match>
+      </Switch>
+
+      <div class="relative overflow-x-auto shadow-md rounded-lg mt-5">
+        <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+          <tbody>
+            <For each={tournamentQuery.data?.spirit_ranking}>
+              {(spirit, i) => (
+                <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+                  <th
+                    scope="row"
+                    class="pr-6 pl-10 py-4 whitespace-nowrap font-normal"
+                  >
+                    {i() + 1}
+                  </th>
+                  <td class="px-6 py-4">
+                    <A
+                      href={`/tournament/${params.slug}/team/${
+                        teamsMap()[spirit.team_id]?.ultimate_central_slug
+                      }`}
+                    >
+                      <img
+                        class="w-8 h-8 p-1 rounded-full ring-2 ring-gray-300 dark:ring-gray-500 inline-block mr-3"
+                        src={teamsMap()[spirit.team_id]?.image_url}
+                        alt="Bordered avatar"
+                      />
+                      {teamsMap()[spirit.team_id]?.name}
+                    </A>
+                  </td>
+                  <td class="px-6 py-4">{spirit.points}</td>
+                </tr>
+              )}
+            </For>
+          </tbody>
+        </table>
+      </div>
     </Show>
   );
 };
