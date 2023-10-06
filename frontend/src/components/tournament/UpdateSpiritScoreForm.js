@@ -174,7 +174,7 @@ const UpdateSpiritScoreForm = props => {
                 options={rosterQueryTeam1.data?.map(r => {
                   return {
                     value: r.id.toString(),
-                    label: r.first_name + r.last_name
+                    label: r.first_name + " " + r.last_name
                   };
                 })}
                 type="text"
@@ -192,7 +192,7 @@ const UpdateSpiritScoreForm = props => {
                 options={rosterQueryTeam1.data?.map(r => {
                   return {
                     value: r.id.toString(),
-                    label: r.first_name + r.last_name
+                    label: r.first_name + " " + r.last_name
                   };
                 })}
                 type="text"
@@ -289,7 +289,7 @@ const UpdateSpiritScoreForm = props => {
                 options={rosterQueryTeam2.data?.map(r => {
                   return {
                     value: r.id.toString(),
-                    label: r.first_name + r.last_name
+                    label: r.first_name + " " + r.last_name
                   };
                 })}
                 type="text"
@@ -307,7 +307,7 @@ const UpdateSpiritScoreForm = props => {
                 options={rosterQueryTeam2.data?.map(r => {
                   return {
                     value: r.id.toString(),
-                    label: r.first_name + r.last_name
+                    label: r.first_name + " " + r.last_name
                   };
                 })}
                 type="text"
