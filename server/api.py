@@ -36,6 +36,7 @@ from server.models import (
     Pool,
     PositionPool,
     RazorpayTransaction,
+    SpiritScore,
     Team,
     Tournament,
     UCPerson,
@@ -1412,6 +1413,48 @@ def update_match(
 
     if match_details.video_url:
         match.video_url = match_details.video_url
+
+    if match_details.spirit_score_team_1:
+        spirit_score = SpiritScore(
+            rules=match_details.spirit_score_team_1.rules,
+            fouls=match_details.spirit_score_team_1.fouls,
+            fair=match_details.spirit_score_team_1.fair,
+            positive=match_details.spirit_score_team_1.positive,
+            communication=match_details.spirit_score_team_1.communication,
+        )
+
+        if match_details.spirit_score_team_1.mvp_id:
+            mvp = UCPerson.objects.get(id=match_details.spirit_score_team_1.mvp_id)
+            spirit_score.mvp = mvp
+
+        if match_details.spirit_score_team_1.msp_id:
+            msp = UCPerson.objects.get(id=match_details.spirit_score_team_1.msp_id)
+            spirit_score.msp = msp
+
+        spirit_score.save()
+
+        match.spirit_score_team_1 = spirit_score
+
+    if match_details.spirit_score_team_2:
+        spirit_score = SpiritScore(
+            rules=match_details.spirit_score_team_2.rules,
+            fouls=match_details.spirit_score_team_2.fouls,
+            fair=match_details.spirit_score_team_2.fair,
+            positive=match_details.spirit_score_team_2.positive,
+            communication=match_details.spirit_score_team_2.communication,
+        )
+
+        if match_details.spirit_score_team_2.mvp_id:
+            mvp = UCPerson.objects.get(id=match_details.spirit_score_team_2.mvp_id)
+            spirit_score.mvp = mvp
+
+        if match_details.spirit_score_team_2.msp_id:
+            msp = UCPerson.objects.get(id=match_details.spirit_score_team_2.msp_id)
+            spirit_score.msp = msp
+
+        spirit_score.save()
+
+        match.spirit_score_team_2 = spirit_score
 
     match.save()
 
