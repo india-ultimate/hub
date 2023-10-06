@@ -118,8 +118,8 @@ const TournamentTeam = () => {
         {match => (
           <Show
             when={
-              match.team_1.ultimate_central_slug === params.team_slug ||
-              match.team_2.ultimate_central_slug === params.team_slug
+              match.team_1?.ultimate_central_slug === params.team_slug ||
+              match.team_2?.ultimate_central_slug === params.team_slug
             }
           >
             <div class="block py-2 px-1 bg-white border border-blue-600 rounded-lg shadow dark:bg-gray-800 dark:border-blue-400 w-full mb-5">
