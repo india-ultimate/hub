@@ -14,6 +14,17 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: Set up Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          cache: "yarn"
+          cache-dependency-path: frontend/yarn.lock
+
+      - name: Install dependencies
+        working-directory: "./frontend"
+        run: yarn install --production=false
+
       - name: Install poetry
         run: pipx install poetry
 
@@ -23,6 +34,12 @@ jobs:
           python-version: "3.10"
           cache: "poetry"
 
+      - name: Install Python dependencies
+        run: poetry install --no-root --with=dev
+
+      - name: Run linters
+        run: poetry run ./scripts/lint
+
       - name: Ensure requirements.txt and pyproject.toml in sync
         run: |
           poetry lock --no-update
@@ -31,18 +48,8 @@ jobs:
 
       - name: Ensure server/templates/index.html is in sync with the frontend
         run: |
-          poetry install --no-root
           poetry run ./scripts/update-index-template
           git diff --exit-code
-
-      - name: Ensure code has been blackened
-        run: poetry run black hub/ server/ scripts/ deploy/ --check
-
-      - name: Ensure no Python lint errors
-        run: poetry run ruff check .
-
-      - name: Ensure no Python static type errors
-        run: poetry run mypy .
 
       - name: Ensure models and migrations are in sync
         run: |
@@ -146,16 +153,6 @@ jobs:
       - name: Run Build
         working-directory: "./frontend"
         run: yarn build
-
-      - name: Run Prettier
-        working-directory: "./frontend"
-        run: |
-          npx prettier --check src/**/*.js src/*.js
-
-      - name: Run eslint
-        working-directory: "./frontend"
-        run: |
-          npx eslint .
 
   docker_image_test:
     name: Build docker image to ensure everything works
