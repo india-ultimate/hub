@@ -7,7 +7,7 @@ module.exports = {
       "/api": "http://localhost:9981",
       "/admin": "http://localhost:9981",
       "/static": "http://localhost:9981",
-      "/uploads": "http://localhost:9981",
-    },
-  },
+      "/uploads": "http://localhost:9981"
+    }
+  }
 };
