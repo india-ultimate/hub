@@ -169,6 +169,7 @@ class Tournament(models.Model):
 
     initial_seeding = models.JSONField(default=dict)
     current_seeding = models.JSONField(default=dict)
+    spirit_ranking = models.JSONField(default=list)
 
 
 @receiver(m2m_changed, sender=Tournament.teams.through)
