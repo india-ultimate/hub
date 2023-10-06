@@ -1338,7 +1338,7 @@ def add_match_score(
         results = match.pool.results
         results = {int(k): v for k, v in results.items()}
 
-        pool_seeding_list = list(map(int, list(match.pool.initial_seeding.keys())))
+        pool_seeding_list = list(map(int, match.pool.initial_seeding.keys()))
         pool_seeding_list.sort()
         tournament_seeding = match.tournament.current_seeding
 
@@ -1374,7 +1374,7 @@ def add_match_score(
         results = match.position_pool.results
         results = {int(k): v for k, v in results.items()}
 
-        pool_seeding_list = list(map(int, list(match.position_pool.initial_seeding.keys())))
+        pool_seeding_list = list(map(int, match.position_pool.initial_seeding.keys()))
         pool_seeding_list.sort()
         tournament_seeding = match.tournament.current_seeding
 
