@@ -231,7 +231,14 @@ const TournamentStandings = () => {
                           <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
                             <td class="px-4 py-4">{result.seed}</td>
                             <td class="px-4 py-4">
-                              {teamsMap()[result.team_id]?.name}
+                              <A
+                                href={`/tournament/${params.slug}/team/${
+                                  teamsMap()[result.team_id]
+                                    ?.ultimate_central_slug
+                                }`}
+                              >
+                                {teamsMap()[result.team_id]?.name}
+                              </A>
                             </td>
                             <td class="px-4 py-4">{result.wins}</td>
                             <td class="px-4 py-4">{result.losses}</td>
@@ -289,7 +296,13 @@ const TournamentStandings = () => {
                               src={teamsMap()[team_id]?.image_url}
                               alt="Bordered avatar"
                             />
-                            {teamsMap()[team_id]?.name}
+                            <A
+                              href={`/tournament/${params.slug}/team/${
+                                teamsMap()[team_id]?.ultimate_central_slug
+                              }`}
+                            >
+                              {teamsMap()[team_id]?.name}
+                            </A>
                           </td>
                         </tr>
                       )}
@@ -322,7 +335,13 @@ const TournamentStandings = () => {
                               src={teamsMap()[team_id]?.image_url}
                               alt="Bordered avatar"
                             />
-                            {teamsMap()[team_id]?.name}
+                            <A
+                              href={`/tournament/${params.slug}/team/${
+                                teamsMap()[team_id]?.ultimate_central_slug
+                              }`}
+                            >
+                              {teamsMap()[team_id]?.name}
+                            </A>
                           </td>
                         </tr>
                       )}
@@ -380,7 +399,13 @@ const TournamentStandings = () => {
                                     src={teamsMap()[team_id]?.image_url}
                                     alt="Bordered avatar"
                                   />
-                                  {teamsMap()[team_id]?.name}
+                                  <A
+                                    href={`/tournament/${params.slug}/team/${
+                                      teamsMap()[team_id]?.ultimate_central_slug
+                                    }`}
+                                  >
+                                    {teamsMap()[team_id]?.name}
+                                  </A>
                                 </td>
                               </Show>
                             </tr>
@@ -411,7 +436,13 @@ const TournamentStandings = () => {
                                     src={teamsMap()[team_id]?.image_url}
                                     alt="Bordered avatar"
                                   />
-                                  {teamsMap()[team_id]?.name}
+                                  <A
+                                    href={`/tournament/${params.slug}/team/${
+                                      teamsMap()[team_id]?.ultimate_central_slug
+                                    }`}
+                                  >
+                                    {teamsMap()[team_id]?.name}
+                                  </A>
                                 </td>
                               </Show>
                             </tr>
@@ -456,7 +487,14 @@ const TournamentStandings = () => {
                           <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
                             <td class="px-4 py-4">{result.seed}</td>
                             <td class="px-4 py-4">
-                              {teamsMap()[result.team_id]?.name}
+                              <A
+                                href={`/tournament/${params.slug}/team/${
+                                  teamsMap()[result.team_id]
+                                    ?.ultimate_central_slug
+                                }`}
+                              >
+                                {teamsMap()[result.team_id]?.name}
+                              </A>
                             </td>
                             <td class="px-4 py-4">{result.wins}</td>
                             <td class="px-4 py-4">{result.losses}</td>

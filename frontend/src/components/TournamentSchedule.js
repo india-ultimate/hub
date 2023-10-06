@@ -307,10 +307,13 @@ const TournamentSchedule = () => {
                             src={teamsMap()[match.team_1.id]?.image_url}
                             alt="Bordered avatar"
                           />
-                          <span class="w-1/3 text-center font-bold dark:text-blue-400 text-blue-500">
+                          <A
+                            href={`/tournament/${params.slug}/team/${match.team_1.ultimate_central_slug}`}
+                            class="w-1/3 text-center font-bold dark:text-blue-400 text-blue-500"
+                          >
                             {match.team_1.name +
                               ` (${match.placeholder_seed_1})`}
-                          </span>
+                          </A>
                         </Show>
                         <span class="mx-2">VS</span>
                         <Show
@@ -321,10 +324,13 @@ const TournamentSchedule = () => {
                             </span>
                           }
                         >
-                          <span class="w-1/3 text-center font-bold dark:text-blue-400 text-blue-500">
+                          <A
+                            href={`/tournament/${params.slug}/team/${match.team_2.ultimate_central_slug}`}
+                            class="w-1/3 text-center font-bold dark:text-blue-400 text-blue-500"
+                          >
                             {match.team_2.name +
                               ` (${match.placeholder_seed_2})`}
-                          </span>
+                          </A>
                           <img
                             class="w-6 h-6 p-1 rounded-full ring-2 ring-blue-500 dark:ring-blue-400 inline-block ml-1"
                             src={teamsMap()[match.team_2.id]?.image_url}
