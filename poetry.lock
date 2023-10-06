@@ -1638,6 +1638,17 @@ files = [
 pyasn1 = ">=0.4.6,<0.6.0"
 
 [[package]]
+name = "pycodestyle"
+version = "2.11.0"
+description = "Python style guide checker"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "pycodestyle-2.11.0-py2.py3-none-any.whl", hash = "sha256:5d1013ba8dc7895b548be5afb05740ca82454fd899971563d2ef625d090326f8"},
+    {file = "pycodestyle-2.11.0.tar.gz", hash = "sha256:259bcc17857d8a8b3b4a2327324b79e5f020a13c16074670f9c8c8f872ea76d0"},
+]
+
+[[package]]
 name = "pycparser"
 version = "2.21"
 description = "C parser in Python"
@@ -1699,6 +1710,17 @@ typing-extensions = ">=4.2.0"
 [package.extras]
 dotenv = ["python-dotenv (>=0.10.4)"]
 email = ["email-validator (>=1.0.3)"]
+
+[[package]]
+name = "pyflakes"
+version = "3.1.0"
+description = "passive checker of Python programs"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "pyflakes-3.1.0-py2.py3-none-any.whl", hash = "sha256:4132f6d49cb4dae6819e5379898f2b8cce3c5f23994194c24b77d5da2e36f774"},
+    {file = "pyflakes-3.1.0.tar.gz", hash = "sha256:a0aae034c444db0071aa077972ba4768d40c830d9539fd45bf4cd3f8f6992efc"},
+]
 
 [[package]]
 name = "pygments"
@@ -2466,6 +2488,26 @@ files = [
 h11 = ">=0.9.0,<1"
 
 [[package]]
+name = "zulint"
+version = "1.0.0"
+description = ""
+optional = false
+python-versions = ">=3.5"
+files = []
+develop = false
+
+[package.dependencies]
+pycodestyle = "*"
+pyflakes = "*"
+typing-extensions = "*"
+
+[package.source]
+type = "git"
+url = "https://github.com/zulip/zulint.git"
+reference = "HEAD"
+resolved_reference = "85de0cbadbba3f498deba32f861bb9a478faa3b4"
+
+[[package]]
 name = "zulip"
 version = "0.8.2"
 description = "Bindings for the Zulip message API"
@@ -2486,4 +2528,4 @@ typing-extensions = ">=3.7"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "8b433025c9dfaa6994a6d2996ba4e510a349398677cbc841b1bbab3d24292767"
+content-hash = "15ebf69fa867b330cb6f208bdeec655943972d130d0cc2b8ae526f11256a729f"
