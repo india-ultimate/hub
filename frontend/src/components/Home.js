@@ -32,8 +32,9 @@ const Home = () => {
     },
     {
       title: "Tournaments",
-      link: "/",
-      description: "Shhhhh... Coming Soon!"
+      link: "/tournaments",
+      description:
+        "View Schedule, Standings etc. of the various India Ultimate Tournaments around you!"
     }
   ];
 
