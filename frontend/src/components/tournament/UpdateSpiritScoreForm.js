@@ -2,10 +2,7 @@ import { createForm, required } from "@modular-forms/solid";
 import { createSignal, Show } from "solid-js";
 import TextInput from "../TextInput";
 import Select from "../Select";
-import {
-  createMutation,
-  createQuery
-} from "@tanstack/solid-query";
+import { createMutation, createQuery } from "@tanstack/solid-query";
 import { fetchTournamentTeamBySlug, updateMatch } from "../../queries";
 import { initFlowbite } from "flowbite";
 
