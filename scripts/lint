@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import os
+import re
 from pathlib import Path
 
 from zulint.command import LinterConfig, add_default_linter_arguments
@@ -68,6 +69,29 @@ def run() -> None:
         ["css", "flow", "js", "json", "md", "ts", "yaml", "yml"],
         fix_arg=["--write"],
         description="Formats CSS, JavaScript, YAML",
+    )
+    linter_config.external_linter(
+        "ruff",
+        ["ruff", "--quiet"],
+        ["py", "pyi"],
+        fix_arg="--fix",
+        description="Python linter",
+    )
+    linter_config.external_linter(
+        "black",
+        ["black"],
+        ["py", "pyi"],
+        description="Reformats Python code",
+        check_arg=["--check"],
+        suppress_line=lambda line: line == "All done! ✨ 🍰 ✨\n"
+        or re.fullmatch(r"\d+ files? would be left unchanged\.\n", line) is not None,
+    )
+    linter_config.external_linter(
+        "mypy",
+        ["mypy", ".", "--no-error-summary"],
+        ["py", "pyi"],
+        pass_targets=False,
+        description="Static type checker for Python (config: pyproject.toml)",
     )
     linter_config.do_lint()
 
