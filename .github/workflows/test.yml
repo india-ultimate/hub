@@ -150,14 +150,12 @@ jobs:
       - name: Run Prettier
         working-directory: './frontend'
         run: |
-          npx prettier --write src/**/*.js src/*.js
-          git diff --exit-code
+          npx prettier --check src/**/*.js src/*.js
 
       - name: Run eslint
         working-directory: './frontend'
         run: |
           npx eslint .
-          git diff --exit-code
 
   docker_image_test:
     name: Build docker image to ensure everything works
