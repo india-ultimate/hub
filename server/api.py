@@ -146,12 +146,12 @@ def list_players(
 
 
 # Teams #########
-@api.get("/teams", response={200: list[TeamSchema]})
+@api.get("/teams", auth=None, response={200: list[TeamSchema]})
 def list_teams(request: AuthenticatedHttpRequest) -> QuerySet[Team]:
     return Team.objects.all().order_by("name")
 
 
-@api.get("/team/{team_slug}", response={200: TeamSchema, 400: Response})
+@api.get("/team/{team_slug}", auth=None, response={200: TeamSchema, 400: Response})
 def get_team(
     request: AuthenticatedHttpRequest, team_slug: str
 ) -> tuple[int, Team | message_response]:
@@ -376,7 +376,7 @@ def register_guardian(
 # Events ##########
 
 
-@api.get("/events", response={200: list[EventSchema]})
+@api.get("/events", auth=None, response={200: list[EventSchema]})
 def list_events(request: AuthenticatedHttpRequest, include_all: bool = False) -> QuerySet[Event]:
     today = now().date()
     return Event.objects.all() if include_all else Event.objects.filter(start_date__gte=today)
@@ -841,12 +841,12 @@ def upai_person(
 # Tournaments ##########
 
 
-@api.get("/tournaments", response={200: list[TournamentSchema]})
+@api.get("/tournaments", auth=None, response={200: list[TournamentSchema]})
 def get_all_tournaments(request: AuthenticatedHttpRequest) -> tuple[int, QuerySet[Tournament]]:
     return 200, Tournament.objects.all()
 
 
-@api.get("/tournament", response={200: TournamentSchema, 400: Response})
+@api.get("/tournament", auth=None, response={200: TournamentSchema, 400: Response})
 def get_tournament(
     request: AuthenticatedHttpRequest, id: int | None = None, slug: str | None = None
 ) -> tuple[int, Tournament | message_response]:
@@ -864,7 +864,7 @@ def get_tournament(
     return 200, tournament
 
 
-@api.get("/tournament/roster", response={200: list[PersonSchema], 400: Response})
+@api.get("/tournament/roster", auth=None, response={200: list[PersonSchema], 400: Response})
 def get_tournament_team_roster(
     request: AuthenticatedHttpRequest, tournament_slug: str, team_slug: str
 ) -> tuple[int, QuerySet[UCPerson] | message_response]:
@@ -882,7 +882,9 @@ def get_tournament_team_roster(
         return 400, {"message": "Tournament/Team does not exist"}
 
 
-@api.get("/tournament/slug/{slug}/matches", response={200: list[MatchSchema], 400: Response})
+@api.get(
+    "/tournament/slug/{slug}/matches", auth=None, response={200: list[MatchSchema], 400: Response}
+)
 def get_tournament_matches_by_slug(
     request: AuthenticatedHttpRequest, slug: str
 ) -> tuple[int, QuerySet[Match] | message_response]:
@@ -1018,7 +1020,7 @@ def create_pool(
     return 200, pool
 
 
-@api.get("/tournament/pools", response={200: list[PoolSchema], 400: Response})
+@api.get("/tournament/pools", auth=None, response={200: list[PoolSchema], 400: Response})
 def get_pools(
     request: AuthenticatedHttpRequest, id: int = 0, slug: str = ""
 ) -> tuple[int, QuerySet[Pool]] | tuple[int, message_response]:
@@ -1057,7 +1059,7 @@ def create_cross_pool(
     return 200, cross_pool
 
 
-@api.get("/tournament/cross-pool", response={200: CrossPoolSchema, 400: Response})
+@api.get("/tournament/cross-pool", auth=None, response={200: CrossPoolSchema, 400: Response})
 def get_cross_pool(
     request: AuthenticatedHttpRequest, id: int | None = None, slug: str | None = None
 ) -> tuple[int, CrossPool] | tuple[int, message_response]:
@@ -1112,7 +1114,7 @@ def create_bracket(
     return 200, bracket
 
 
-@api.get("/tournament/brackets", response={200: list[BracketSchema], 400: Response})
+@api.get("/tournament/brackets", auth=None, response={200: list[BracketSchema], 400: Response})
 def get_brackets(
     request: AuthenticatedHttpRequest, id: int | None = None, slug: str | None = None
 ) -> tuple[int, QuerySet[Bracket]] | tuple[int, message_response]:
@@ -1167,6 +1169,7 @@ def create_position_pool(
 
 @api.get(
     "/tournament/position-pools",
+    auth=None,
     response={200: list[PositionPoolSchema], 400: Response},
 )
 def get_position_pools(
@@ -1241,7 +1244,11 @@ def create_match(
     return 200, match
 
 
-@api.get("/tournament/{tournament_id}/matches", response={200: list[MatchSchema], 400: Response})
+@api.get(
+    "/tournament/{tournament_id}/matches",
+    auth=None,
+    response={200: list[MatchSchema], 400: Response},
+)
 def get_matches(
     request: AuthenticatedHttpRequest, tournament_id: int
 ) -> tuple[int, QuerySet[Match]] | tuple[int, message_response]:
