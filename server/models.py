@@ -125,6 +125,15 @@ class Player(models.Model):
         return age < MAJOR_AGE
 
 
+class UCPerson(models.Model):
+    email = models.EmailField(db_index=True)
+    dominant_hand = models.CharField(max_length=10, blank=True)
+    first_name = models.CharField(max_length=255)
+    last_name = models.CharField(max_length=255, blank=True)
+    slug = models.SlugField(db_index=True)
+    image_url = models.URLField(null=True, blank=True)
+
+
 class Guardianship(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     player = models.OneToOneField(Player, on_delete=models.CASCADE, unique=True)
@@ -220,6 +229,21 @@ class PositionPool(models.Model):
         unique_together = ["name", "tournament"]
 
 
+class SpiritScore(models.Model):
+    rules = models.PositiveIntegerField()
+    fouls = models.PositiveIntegerField()
+    fair = models.PositiveIntegerField()
+    positive = models.PositiveIntegerField()
+    communication = models.PositiveIntegerField()
+
+    mvp = models.ForeignKey(
+        UCPerson, on_delete=models.CASCADE, related_name="mvp", blank=True, null=True
+    )
+    msp = models.ForeignKey(
+        UCPerson, on_delete=models.CASCADE, related_name="msp", blank=True, null=True
+    )
+
+
 class Match(models.Model):
     class Status(models.TextChoices):
         YET_TO_FIX = "YTF", _("Yet To Fix")
@@ -250,18 +274,23 @@ class Match(models.Model):
     placeholder_seed_2 = models.PositiveIntegerField()
     score_team_1 = models.PositiveIntegerField(default=0)
     score_team_2 = models.PositiveIntegerField(default=0)
+    spirit_score_team_1 = models.OneToOneField(
+        SpiritScore,
+        on_delete=models.CASCADE,
+        related_name="spirit_score_team_1",
+        blank=True,
+        null=True,
+    )
+    spirit_score_team_2 = models.OneToOneField(
+        SpiritScore,
+        on_delete=models.CASCADE,
+        related_name="spirit_score_team_2",
+        blank=True,
+        null=True,
+    )
 
     class Meta:
         unique_together = ["tournament", "time", "field"]
-
-
-class UCPerson(models.Model):
-    email = models.EmailField(db_index=True)
-    dominant_hand = models.CharField(max_length=10, blank=True)
-    first_name = models.CharField(max_length=255)
-    last_name = models.CharField(max_length=255, blank=True)
-    slug = models.SlugField(db_index=True)
-    image_url = models.URLField(null=True, blank=True)
 
 
 class UCRegistration(models.Model):

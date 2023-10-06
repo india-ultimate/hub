@@ -15,6 +15,7 @@ from server.models import (
     Pool,
     PositionPool,
     RazorpayTransaction,
+    SpiritScore,
     Team,
     Tournament,
     UCPerson,
@@ -511,6 +512,15 @@ class PositionPoolCreateSchema(Schema):
     name: str
 
 
+class SpiritScoreSchema(ModelSchema):
+    mvp: PersonSchema | None
+    msp: PersonSchema | None
+
+    class Config:
+        model = SpiritScore
+        model_fields = "__all__"
+
+
 class MatchSchema(ModelSchema):
     tournament: TournamentSchema
     pool: PoolSchema | None
@@ -519,6 +529,8 @@ class MatchSchema(ModelSchema):
     position_pool: PositionPoolSchema | None
     team_1: TeamSchema | None
     team_2: TeamSchema | None
+    spirit_score_team_1: SpiritScoreSchema | None
+    spirit_score_team_2: SpiritScoreSchema | None
 
     class Config:
         model = Match
@@ -535,10 +547,23 @@ class MatchCreateSchema(Schema):
     seed_2: int
 
 
+class SpiritScoreUpdateSchema(Schema):
+    rules: int
+    fouls: int
+    fair: int
+    positive: int
+    communication: int
+
+    mvp_id: str | None
+    msp_id: str | None
+
+
 class MatchUpdateSchema(Schema):
     time: str | None
     field: str | None
     video_url: str | None
+    spirit_score_team_1: SpiritScoreUpdateSchema | None
+    spirit_score_team_2: SpiritScoreUpdateSchema | None
 
 
 class MatchScoreSchema(Schema):
