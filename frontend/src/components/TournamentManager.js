@@ -1047,9 +1047,10 @@ const TournamentManager = () => {
                               type="button"
                               onClick={() => {
                                 if (
-                                  matchScoreFields[match.id]["team_1_score"] >
+                                  matchScoreFields[match.id]["team_1_score"] >=
                                     0 &&
-                                  matchScoreFields[match.id]["team_2_score"] > 0
+                                  matchScoreFields[match.id]["team_2_score"] >=
+                                    0
                                 )
                                   addMatchScoreMutation.mutate({
                                     match_id: match.id,
