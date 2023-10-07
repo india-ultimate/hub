@@ -55,6 +55,8 @@ const TournamentSchedule = () => {
         newTeamsMap[team.id] = team;
       });
       setTeamsMap(newTeamsMap);
+
+      setTimeout(() => initFlowbite(), 500);
     }
   });
 
@@ -72,6 +74,8 @@ const TournamentSchedule = () => {
       }
 
       setTournamentDays(days);
+
+      setTimeout(() => initFlowbite(), 500);
     }
   });
 
@@ -99,6 +103,8 @@ const TournamentSchedule = () => {
           setFieldMap(day, match.field, true);
         }
       });
+
+      setTimeout(() => initFlowbite(), 500);
     }
   });
 

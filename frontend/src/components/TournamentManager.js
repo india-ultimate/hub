@@ -37,6 +37,7 @@ import { createStore, reconcile } from "solid-js/store";
 import MatchCard from "./tournament/MatchCard";
 import CreateTournamentForm from "./tournament/CreateTournamentForm";
 import UpdateSpiritScoreForm from "./tournament/UpdateSpiritScoreForm";
+import { initFlowbite } from "flowbite";
 
 const TournamentManager = () => {
   const queryClient = useQueryClient();
@@ -91,6 +92,8 @@ const TournamentManager = () => {
         newDatesList.push(new Date(d));
       }
       setDatesList(newDatesList);
+
+      setTimeout(() => initFlowbite(), 500);
     }
   });
 
@@ -101,6 +104,8 @@ const TournamentManager = () => {
         newTeamsMap[team.id] = team.name;
       });
       setTeamsMap(newTeamsMap);
+
+      setTimeout(() => initFlowbite(), 500);
     }
   });
 
@@ -129,7 +134,7 @@ const TournamentManager = () => {
         }
       });
 
-      console.log(matchDayTimeFieldMap);
+      setTimeout(() => initFlowbite(), 500);
     }
   });
 
