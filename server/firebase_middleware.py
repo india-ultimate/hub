@@ -69,7 +69,7 @@ class FirebaseAuthenticationMiddleware:
         if credentials_file.exists():
             with credentials_file.open() as f:
                 credentials_data = json.load(f)
-        elif env_var in os.environ:
+        elif os.environ.get(env_var):
             credentials_data = json.loads(base64.b64decode(os.environ[env_var]))
         else:
             credentials_data = None
