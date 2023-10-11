@@ -21,6 +21,18 @@ You can report issues on
 
 ## Development
 
+To run migrations and load sample data:
+
+```bash
+python manage.py migrate
+python manage.py loaddata server/fixtures/sample_data.json
+```
+
+Super User Dev Creds which gets created from sample_data:
+
+email: developer@example.com |
+password: password
+
 To run the webserver, run the Django local server:
 
 ```bash
