@@ -532,9 +532,12 @@ def update_tournament_spirit_rankings(tournament: Tournament) -> None:
                     + float(spirit_score.communication)
                 )
                 matches_count += 1
-        
+
         spirit_ranking.append(
-            {"team_id": team.id, "points": round(points / matches_count, ndigits=1) if matches_count > 0 else points}
+            {
+                "team_id": team.id,
+                "points": round(points / matches_count, ndigits=1) if matches_count > 0 else points,
+            }
         )
 
     spirit_ranking.sort(key=lambda x: x["points"], reverse=True)
