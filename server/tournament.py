@@ -532,7 +532,7 @@ def update_tournament_spirit_rankings(tournament: Tournament) -> None:
                     + float(spirit_score.communication)
                 )
                 matches_count += 1
-        
+
         spirit_ranking.append(
             {
                 "team_id": team.id,
