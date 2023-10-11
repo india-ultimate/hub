@@ -114,6 +114,7 @@ class TestIntegration(BaseCase):
             self.click("h2#accordion-heading-transactions")
             self.assert_element("h2#accordion-heading-transactions")
 
+    @pytest.mark.skipif(not os.environ.get("ZULIP_SITE"), reason="no zulip configuration found")
     def test_login_with_email(self) -> None:
         username, user_id = create_email_link_user()
 
@@ -130,6 +131,7 @@ class TestIntegration(BaseCase):
 
             self.assert_text("Welcome Jagdeep Chatterjee")
 
+    @pytest.mark.skipif(not os.environ.get("ZULIP_SITE"), reason="no zulip configuration found")
     def test_signup_with_email(self) -> None:
         username = get_zulip_stream_email()
         with running_test_server() as base_url:
