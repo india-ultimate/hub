@@ -8,7 +8,17 @@ BASE=$(git ls-remote ${GIT_SOURCE} ${REF_PATH} | awk -F' ' '{print $1}')
 
 git fetch ${GIT_SOURCE} ${REF_PATH} > /dev/null 2>&1
 
-COMMITS=$(git rev-list --count "${BASE}..HEAD")
+if [[ -n ${GITHUB_REF:-} ]];
+then
+    HEAD=${GITHUB_REF/\/merge/\/head}
+    HEAD=$(git ls-remote ${GIT_SOURCE} ${HEAD} | awk -F' ' '{print $1}')
+    git fetch ${GIT_SOURCE} "${HEAD}" > /dev/null 2>&1
+else
+    HEAD="HEAD"
+fi
+
+
+COMMITS=$(git rev-list --count "${BASE}..${HEAD}")
 if [[ "$COMMITS" -gt 0 ]]; then
-    gitlint --commits "$BASE..HEAD"
+    gitlint --commits "${BASE}..${HEAD}"
 fi
