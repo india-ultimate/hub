@@ -25,7 +25,13 @@ SECRET_KEY = "django-insecure-22ea##0-ih5e#&6q*5c@l@(bd_@fg^5l6796l!p17@9-nu5!@9
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["hub.indiaultimate.org", "upai-hub.fly.dev", "127.0.0.1", "localhost"]
+ALLOWED_HOSTS = [
+    "hub.indiaultimate.org",
+    "upai-hub.fly.dev",
+    "upai-hub-staging.fly.dev",
+    "127.0.0.1",
+    "localhost",
+]
 
 # Application definition
 
