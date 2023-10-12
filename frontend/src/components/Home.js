@@ -14,6 +14,12 @@ const Home = () => {
 
   const features = [
     {
+      title: "Tournaments",
+      link: "/tournaments",
+      description:
+        "View Schedule, Standings etc. of the various India Ultimate Tournaments around you!"
+    },
+    {
       title: "Membership",
       link: "/dashboard",
       description:
@@ -29,12 +35,6 @@ const Home = () => {
       title: "Roster",
       link: "/dashboard",
       description: "Validate your Team Roster for any events"
-    },
-    {
-      title: "Tournaments",
-      link: "/tournaments",
-      description:
-        "View Schedule, Standings etc. of the various India Ultimate Tournaments around you!"
     }
   ];
 
