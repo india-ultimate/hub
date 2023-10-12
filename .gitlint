@@ -1,6 +1,8 @@
 [general]
 ignore=body-min-length, body-is-missing
 
+extra-path=scripts/lib/gitlint_rules.py
+
 [title-match-regex]
 regex=^(.+:\ )?[A-Z].+$
 
