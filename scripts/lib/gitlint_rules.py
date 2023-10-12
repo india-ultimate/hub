@@ -113,3 +113,51 @@ class ImperativeMood(LineRule):
             violations.append(violation)
 
         return violations
+
+
+class FeatureNamePrefix(LineRule):
+    """Rule to enforce correct feature names as title prefixes."""
+
+    name = "title-check-prefix"
+    id = "Z2"
+    target = CommitMessageTitle
+
+    error_identifier = (
+        'The prefix in commit title should a hyphenated identifier ("{prefix}"): "{title}"'
+    )
+    error_conventional = (
+        "The prefix in commit title should a feature name, not a conventional commit prefix "
+        '("{prefix}"): "{title}"'
+    )
+    conventional_commit_prefixes = {
+        "build",
+        "chore",
+        "ci",
+        "docs",
+        "feat",
+        "fix",
+        "perf",
+        "refactor",
+        "revert",
+        "style",
+        "test",
+    }
+
+    def validate(self, line: str, commit: GitCommit) -> list[RuleViolation]:
+        violations = []
+
+        prefix = line.split(": ", 1)[0].lower()
+        if not prefix.replace("-", "_").isidentifier():
+            violation = RuleViolation(
+                self.id,
+                self.error_identifier.format(prefix=prefix, title=line),
+            )
+            violations.append(violation)
+        elif prefix in self.conventional_commit_prefixes:
+            violation = RuleViolation(
+                self.id,
+                self.error_conventional.format(prefix=prefix, title=line),
+            )
+            violations.append(violation)
+
+        return violations
