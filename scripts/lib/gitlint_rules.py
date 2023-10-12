@@ -123,7 +123,8 @@ class FeatureNamePrefix(LineRule):
     target = CommitMessageTitle
 
     error_identifier = (
-        'The prefix in commit title should a hyphenated identifier ("{prefix}"): "{title}"'
+        "The prefix in commit title should a valid identifier (only [a-z-_])"
+        '("{prefix}"): "{title}"'
     )
     error_conventional = (
         "The prefix in commit title should a feature name, not a conventional commit prefix "
