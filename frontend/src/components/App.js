@@ -12,7 +12,7 @@ const EmailLink = lazy(() => import("./EmailLink"));
 const Home = lazy(() => import("./Home"));
 const Login = lazy(() => import("./Login"));
 const Registration = lazy(() => import("./Registration"));
-const HelpImport = lazy(() => import("./HelpImport"));
+const Help = lazy(() => import("./Help"));
 const Membership = lazy(() => import("./Membership"));
 const GroupMembership = lazy(() => import("./GroupMembership"));
 const Vaccination = lazy(() => import("./Vaccination"));
@@ -83,7 +83,7 @@ export default function App() {
                     path="/registration/ward"
                     element={<Registration ward={true} />}
                   />
-                  <Route path="/help/import" component={HelpImport} />
+                  <Route path="/help" component={Help} />
                   {/* Membership, vaccination, waiver, etc. */}
                   <UserRoute
                     path="/membership/group"
