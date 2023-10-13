@@ -26,6 +26,7 @@
     "prettier": "^3.0.0",
     "qrious": "^4.0.2",
     "raw-loader": "^4.0.2",
+    "slug": "^8.2.3",
     "solid-heroicons": "^3.2.4",
     "solid-hot-loader": "^0.0.5",
     "solid-js": "^1.7.7",
