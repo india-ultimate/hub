@@ -10,4 +10,4 @@ regex=^(.+:\ )?[A-Z].+$
 line-length=72
 
 [body-max-line-length]
-line-length=76
+line-length=79
