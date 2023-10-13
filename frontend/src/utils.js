@@ -195,6 +195,16 @@ export const showPlayerStatus = player => {
   );
 };
 
+export const reverseChronologicalOrder = tournaments => {
+  const latest_tournament_first = (a, b) => {
+    if (a.event.end_date > b.event.end_date) {
+      return -1;
+    }
+  };
+  tournaments.sort(latest_tournament_first);
+  return tournaments;
+};
+
 export const assetURL = name =>
   process.env.NODE_ENV === "production"
     ? `/static/assets/${name}`

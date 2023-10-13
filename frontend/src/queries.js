@@ -1,4 +1,4 @@
-import { getCookie } from "./utils";
+import { getCookie, reverseChronologicalOrder } from "./utils";
 
 export const fetchContributors = async () => {
   const repoResp = await fetch(
@@ -90,6 +90,16 @@ export const fetchTournaments = async () => {
     credentials: "same-origin"
   });
   return await response.json();
+};
+
+export const fetchTournamentsReverseChronological = async () => {
+  const response = await fetch("/api/tournaments", {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin"
+  });
+  let tournaments = await response.json();
+  return reverseChronologicalOrder(tournaments);
 };
 
 export const fetchTournament = async tournament_id => {

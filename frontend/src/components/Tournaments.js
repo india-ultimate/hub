@@ -1,10 +1,13 @@
 import { createQuery } from "@tanstack/solid-query";
-import { fetchTournaments } from "../queries";
+import { fetchTournamentsReverseChronological } from "../queries";
 import { For, Match, Show, Switch } from "solid-js";
 import { A } from "@solidjs/router";
 
 const Tournaments = () => {
-  const tournamentsQuery = createQuery(() => ["tournaments"], fetchTournaments);
+  const tournamentsQuery = createQuery(
+    () => ["tournaments"],
+    fetchTournamentsReverseChronological
+  );
 
   return (
     <div>
