@@ -1,0 +1,59 @@
+#!/bin/bash
+
+# Parse command line arguments
+while [[ $# -gt 0 ]]; do
+    key="$1"
+    case $key in
+        -t|--target)
+            TARGET="$2"
+            shift
+            shift
+            ;;
+        *)
+            echo "Error: Unknown option $1"
+            exit 1
+            ;;
+    esac
+done
+
+# Check if the target is specified
+if [[ -z $TARGET ]]; then
+    echo "Error: Deployment target not specified. Use -t or --target option to specify the target (production or staging)."
+    exit 1
+fi
+
+# Get the current branch name
+CURRENT_BRANCH=$(git symbolic-ref --short HEAD)
+# Check if deploying to production and the current branch is not main
+if [[ $TARGET == "production" && $CURRENT_BRANCH != "main" ]]; then
+    echo "Error: You can only deploy to production from the 'main' branch."
+    exit 1
+fi
+
+# Check if there are uncommitted changes
+if [[ $(git diff --shortstat 2> /dev/null | tail -n1) != "" ]]; then
+    if [[ $TARGET == "production" ]]; then
+        echo "ERROR: There are uncommitted changes in your current branch."
+        exit 1
+    else
+        echo "WARN: There are uncommitted changes in your current branch."
+    fi
+fi
+
+# Deploy the app based on the specified target
+case $TARGET in
+    production)
+        CONFIG_FILE="fly.toml"
+        ;;
+    staging)
+        CONFIG_FILE="fly.staging.toml"
+        ;;
+    *)
+        echo "Error: Invalid deployment target. Supported targets are 'production' and 'staging'."
+        exit 1
+        ;;
+esac
+
+# Deploy the app using flyctl
+echo "Deploying to $TARGET..."
+flyctl deploy -c $CONFIG_FILE --local-only
