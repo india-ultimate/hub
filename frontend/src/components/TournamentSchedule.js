@@ -278,7 +278,10 @@ const TournamentSchedule = () => {
               <For each={matchesQuery.data}>
                 {match => (
                   <Show when={sameDay(day, new Date(Date.parse(match.time)))}>
-                    <div class="block py-2 px-1 bg-white border border-blue-600 rounded-lg shadow dark:bg-gray-800 dark:border-blue-400 w-full mb-5">
+                    <div
+                      id={match.id}
+                      class="block py-2 px-1 bg-white border border-blue-600 rounded-lg shadow dark:bg-gray-800 dark:border-blue-400 w-full mb-5"
+                    >
                       <Switch>
                         <Match when={match.pool}>
                           <p class="text-center text-sm mb-2">
