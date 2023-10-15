@@ -21,11 +21,13 @@ import MatchCard from "./tournament/MatchCard";
 import { createStore, reconcile } from "solid-js/store";
 import { Icon } from "solid-heroicons";
 import { play } from "solid-heroicons/solid";
+import clsx from "clsx";
 
 const TournamentSchedule = () => {
   const params = useParams();
   const [teamsMap, setTeamsMap] = createSignal({});
   const [tournamentDays, setTournamentDays] = createSignal([]);
+  const [flash, setFlash] = createSignal(-1);
   const [matchDayTimeFieldMap, setMatchDayTimeFieldMap] = createStore({});
   const [fieldMap, setFieldMap] = createStore({});
   // const [_, setDateTimeMatchMap] = createSignal({});
@@ -258,6 +260,7 @@ const TournamentSchedule = () => {
                                             ]
                                           }
                                           showSeed={true}
+                                          setFlash={setFlash}
                                         />
                                       </Show>
                                     </td>
@@ -280,7 +283,12 @@ const TournamentSchedule = () => {
                   <Show when={sameDay(day, new Date(Date.parse(match.time)))}>
                     <div
                       id={match.id}
-                      class="block py-2 px-1 bg-white border border-blue-600 rounded-lg shadow dark:bg-gray-800 dark:border-blue-400 w-full mb-5"
+                      class={clsx(
+                        flash() == match.id
+                          ? "bg-yellow-100 dark:bg-yellow-900"
+                          : "bg-white dark:bg-gray-800",
+                        "transition block py-2 px-1 border border-blue-600 rounded-lg shadow dark:border-blue-400 w-full mb-5"
+                      )}
                     >
                       <Switch>
                         <Match when={match.pool}>
