@@ -89,7 +89,23 @@ export const fetchTournaments = async () => {
     headers: { "Content-Type": "application/json" },
     credentials: "same-origin"
   });
-  return await response.json();
+
+  let tournaments = await response.json();
+
+  tournaments.sort((a, b) => {
+    if (a.status === "LIV" && b.status !== "LIV") {
+      return -1;
+    } else if (a.status !== "LIV" && b.status === "LIV") {
+      return 1;
+    } else if (
+      (a.status === "LIV" && b.status === "LIV") ||
+      (a.status !== "LIV" && b.status !== "LIV")
+    ) {
+      return 0;
+    }
+  });
+
+  return tournaments;
 };
 
 export const fetchTournament = async tournament_id => {
