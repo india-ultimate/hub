@@ -500,7 +500,7 @@ def populate_fixtures(tournament_id: int) -> None:
 
 
 def update_tournament_spirit_rankings(tournament: Tournament) -> None:
-    spirit_ranking = []
+    spirit_ranking: list[dict[str, int | float]] = []
     for team in tournament.teams.all():
         team_matches = Match.objects.filter(tournament=tournament).filter(
             Q(team_1=team) | Q(team_2=team)
@@ -540,9 +540,7 @@ def update_tournament_spirit_rankings(tournament: Tournament) -> None:
             }
         )
 
-    spirit_ranking.sort(key=lambda x: x["points"], reverse=True)
-
-    tournament.spirit_ranking = spirit_ranking
+    tournament.spirit_ranking = rank_spirit_scores(spirit_ranking)
     tournament.save()
 
 
@@ -622,3 +620,14 @@ def create_bracket_sequence_matches(
         create_bracket_sequence_matches(
             tournament, bracket, start + (((end - start) + 1) // 2), end, seq_num + 1
         )
+
+
+def rank_spirit_scores(scores: list[dict[str, int | float]]) -> list[dict[str, int | float]]:
+    spirit_points = sorted({r["points"] for r in scores}, reverse=True)
+
+    # Assign the ranks to teams based on points - use the same rank for teams
+    # with same number of points.
+    for score in scores:
+        score["rank"] = spirit_points.index(score["points"]) + 1
+
+    return sorted(scores, key=lambda x: x["rank"])

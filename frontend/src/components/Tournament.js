@@ -199,13 +199,13 @@ const Tournament = () => {
         <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
           <tbody>
             <For each={tournamentQuery.data?.spirit_ranking}>
-              {(spirit, i) => (
+              {spirit => (
                 <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
                   <th
                     scope="row"
                     class="pr-6 pl-10 py-4 whitespace-nowrap font-normal"
                   >
-                    {i() + 1}
+                    {spirit.rank}
                   </th>
                   <td class="px-6 py-4">
                     <A
