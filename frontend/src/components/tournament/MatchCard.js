@@ -36,7 +36,10 @@ const MatchCard = props => {
     const resultCard = document.getElementById(matchId);
     if (resultCard) {
       resultCard.scrollIntoView({ behavior: "smooth" });
-      resultCard;
+      props.setFlash(matchId);
+      setTimeout(() => {
+        props.setFlash(-1);
+      }, 1500);
     }
   };
 
