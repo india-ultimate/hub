@@ -843,8 +843,8 @@ def upai_person(
 
 @api.get("/tournaments", auth=None, response={200: list[TournamentSchema]})
 def get_all_tournaments(request: AuthenticatedHttpRequest) -> tuple[int, QuerySet[Tournament]]:
-    """Get tournaments in reverse chronological order"""
-    return 200, Tournament.objects.all().order_by("-event__end_date")
+    """Get tournaments, most recently started tournament first"""
+    return 200, Tournament.objects.all().order_by("-event__start_date")
 
 
 @api.get("/tournament", auth=None, response={200: TournamentSchema, 400: Response})
