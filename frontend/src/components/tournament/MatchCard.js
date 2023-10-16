@@ -35,11 +35,16 @@ const MatchCard = props => {
   const handleMatchCardClick = matchId => {
     const resultCard = document.getElementById(matchId);
     if (resultCard) {
-      resultCard.scrollIntoView({ behavior: "smooth" });
-      props.setFlash(matchId);
-      setTimeout(() => {
-        props.setFlash(-1);
-      }, 1500);
+      resultCard.scrollIntoView({
+        behavior: "smooth",
+        block: "center"
+      });
+      if (props.setFlash) {
+        props.setFlash(matchId);
+        setTimeout(() => {
+          props.setFlash(-1);
+        }, 1500);
+      }
     }
   };
 
@@ -48,7 +53,7 @@ const MatchCard = props => {
       <Switch>
         <Match when={props.match.pool}>
           <div
-            class={`flex justify-center flex-wrap bg-${color()}-100 text-${color()}-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded dark:bg-${color()}-900 dark:text-${color()}-300`}
+            class={`w-full flex justify-center flex-wrap bg-${color()}-100 text-${color()}-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded dark:bg-${color()}-900 dark:text-${color()}-300`}
           >
             <h6 class="text-center w-full">Pool {props.match.pool.name}</h6>
             <Show when={props.showSeed}>
@@ -62,7 +67,7 @@ const MatchCard = props => {
         </Match>
         <Match when={props.match.cross_pool}>
           <div
-            class={`flex justify-center flex-wrap bg-${color()}-100 text-${color()}-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded dark:bg-${color()}-900 dark:text-${color()}-300`}
+            class={`w-full flex justify-center flex-wrap bg-${color()}-100 text-${color()}-800 text-xs font-medium px-2.5 py-0.5 rounded dark:bg-${color()}-900 dark:text-${color()}-300`}
           >
             <h6 class="text-center w-full">CP</h6>
             <Show when={props.showSeed}>
@@ -76,7 +81,7 @@ const MatchCard = props => {
         </Match>
         <Match when={props.match.bracket}>
           <div
-            class={`flex justify-center flex-wrap bg-${color()}-100 text-${color()}-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded dark:bg-${color()}-900 dark:text-${color()}-300`}
+            class={`w-full flex justify-center flex-wrap bg-${color()}-100 text-${color()}-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded dark:bg-${color()}-900 dark:text-${color()}-300`}
           >
             <h6 class="text-center w-full">B {props.match.bracket.name}</h6>
             <Show when={props.showSeed}>
@@ -90,7 +95,7 @@ const MatchCard = props => {
         </Match>
         <Match when={props.match.position_pool}>
           <div
-            class={`flex justify-center flex-wrap bg-${color()}-100 text-${color()}-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded dark:bg-${color()}-900 dark:text-${color()}-300`}
+            class={`w-full flex justify-center flex-wrap bg-${color()}-100 text-${color()}-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded dark:bg-${color()}-900 dark:text-${color()}-300`}
           >
             <h6 class="text-center w-full">
               Pos. Pool {props.match.position_pool.name}

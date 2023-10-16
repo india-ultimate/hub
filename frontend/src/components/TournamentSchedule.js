@@ -245,7 +245,7 @@ const TournamentSchedule = () => {
                                 </th>
                                 <For each={Object.keys(fieldMap[day2]).sort()}>
                                   {field => (
-                                    <td class="px-1 py-4 text-xs">
+                                    <td class="px-2 py-4 text-xs">
                                       <Show
                                         when={
                                           matchDayTimeFieldMap[day2][time][
@@ -285,7 +285,7 @@ const TournamentSchedule = () => {
                       id={match.id}
                       class={clsx(
                         flash() == match.id
-                          ? "bg-yellow-100 dark:bg-yellow-900"
+                          ? "bg-blue-100 dark:bg-slate-700 dark:text-white text-black"
                           : "bg-white dark:bg-gray-800",
                         "transition block py-2 px-1 border border-blue-600 rounded-lg shadow dark:border-blue-400 w-full mb-5"
                       )}
