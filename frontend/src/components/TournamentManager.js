@@ -38,6 +38,7 @@ import MatchCard from "./tournament/MatchCard";
 import CreateTournamentForm from "./tournament/CreateTournamentForm";
 import UpdateSpiritScoreForm from "./tournament/UpdateSpiritScoreForm";
 import { initFlowbite } from "flowbite";
+import clsx from "clsx";
 
 const TournamentManager = () => {
   const queryClient = useQueryClient();
@@ -53,6 +54,7 @@ const TournamentManager = () => {
     createSignal("");
   const [enteredPositionPoolSeedingList, setEnteredPositionPoolSeedingList] =
     createSignal("[]");
+  const [flash, setFlash] = createSignal(-1);
   const [matchFields, setMatchFields] = createStore();
   const [matchScoreFields, setMatchStoreFields] = createStore();
   const [matchDayTimeFieldMap, setMatchDayTimeFieldMap] = createStore({});
@@ -878,7 +880,15 @@ const TournamentManager = () => {
               <tbody>
                 <For each={matchesQuery.data}>
                   {match => (
-                    <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+                    <tr
+                      id={match.id}
+                      class={clsx(
+                        flash() == match.id
+                          ? "bg-gray-100 text-black dark:text-white dark:bg-slate-700"
+                          : "bg-white dark:bg-gray-800",
+                        "border-b dark:border-gray-700"
+                      )}
+                    >
                       <th
                         scope="row"
                         class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
@@ -1263,6 +1273,7 @@ const TournamentManager = () => {
                                           matchDayTimeFieldMap[day][time][field]
                                         }
                                         showSeed={true}
+                                        setFlash={setFlash}
                                       />
                                     </Show>
                                   </td>
