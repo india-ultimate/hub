@@ -1,4 +1,4 @@
-import { useParams } from "@solidjs/router";
+import { A, useParams } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
 import {
   fetchMatchesBySlug,
@@ -42,6 +42,22 @@ const TournamentTeam = () => {
     () => fetchMatchesBySlug(params.tournament_slug)
   );
   const teamsQuery = createQuery(() => ["teams"], fetchTeams);
+
+  /** attribute can only be
+   * team
+   * score_team
+   * placeholder_seed
+   * spirit_score_team
+   */
+  const currentTeamAttribute = (match, attribute) =>
+    match.team_1.ultimate_central_slug === params.team_slug
+      ? match[`${attribute}_${1}`]
+      : match[`${attribute}_${2}`];
+
+  const opponentTeamAttribute = (match, attribute) =>
+    match.team_1.ultimate_central_slug === params.team_slug
+      ? match[`${attribute}_${2}`]
+      : match[`${attribute}_${1}`];
 
   createEffect(() => {
     if (teamsQuery.status === "success") {
@@ -144,38 +160,56 @@ const TournamentTeam = () => {
                 </Match>
               </Switch>
               <div class="flex justify-center text-sm">
+                {/* find whether team 1 or 2 is same as params.team_slug */}
+                {/* Show current team page as first */}
+                {/* Current team page doesn't need to be clickable, we're already on that page */}
                 <Show
-                  when={match.team_1}
+                  when={currentTeamAttribute(match, "team")}
                   fallback={
                     <span class="w-1/3 text-center font-bold">
-                      {match.placeholder_seed_1}
+                      {currentTeamAttribute(match, "placeholder_seed")}
                     </span>
                   }
                 >
                   <img
                     class="w-6 h-6 p-1 rounded-full ring-2 ring-blue-500 dark:ring-blue-400 inline-block mr-1"
-                    src={teamsMap()[match.team_1.id]?.image_url}
+                    src={
+                      teamsMap()[currentTeamAttribute(match, "team").id]
+                        ?.image_url
+                    }
                     alt="Bordered avatar"
                   />
                   <span class="w-1/3 text-center font-bold dark:text-blue-400 text-blue-500">
-                    {match.team_1.name + ` (${match.placeholder_seed_1})`}
+                    {currentTeamAttribute(match, "team").name +
+                      ` (${currentTeamAttribute(match, "placeholder_seed")})`}
                   </span>
                 </Show>
                 <span class="mx-2">VS</span>
                 <Show
-                  when={match.team_2}
+                  when={opponentTeamAttribute(match, "team")}
                   fallback={
                     <span class="w-1/3 text-center font-bold">
-                      {match.placeholder_seed_2}
+                      {opponentTeamAttribute(match, "placeholder_seed")}
                     </span>
                   }
                 >
                   <span class="w-1/3 text-center font-bold dark:text-blue-400 text-blue-500">
-                    {match.team_2.name + ` (${match.placeholder_seed_2})`}
+                    <A
+                      href={`/tournament/${params.tournament_slug}/team/${
+                        opponentTeamAttribute(match, "team")
+                          .ultimate_central_slug
+                      }`}
+                    >
+                      {opponentTeamAttribute(match, "team").name +
+                        ` (${opponentTeamAttribute(match, "placeholder_seed")})`}
+                    </A>
                   </span>
                   <img
                     class="w-6 h-6 p-1 rounded-full ring-2 ring-blue-500 dark:ring-blue-400 inline-block ml-1"
-                    src={teamsMap()[match.team_2.id]?.image_url}
+                    src={
+                      teamsMap()[opponentTeamAttribute(match, "team").id]
+                        ?.image_url
+                    }
                     alt="Bordered avatar"
                   />
                 </Show>
@@ -183,31 +217,46 @@ const TournamentTeam = () => {
               <Show when={match.status === "COM"}>
                 <p class="text-center font-bold">
                   <Switch>
-                    <Match when={match.score_team_1 > match.score_team_2}>
+                    <Match
+                      when={
+                        currentTeamAttribute(match, "score_team") >
+                        opponentTeamAttribute(match, "score_team")
+                      }
+                    >
                       <span class="text-green-500 dark:text-green-400">
-                        {match.score_team_1}
+                        {currentTeamAttribute(match, "score_team")}
                       </span>
                       <span>{" - "}</span>
                       <span class="text-red-500 dark:text-red-400">
-                        {match.score_team_2}
+                        {opponentTeamAttribute(match, "score_team")}
                       </span>
                     </Match>
-                    <Match when={match.score_team_1 < match.score_team_2}>
+                    <Match
+                      when={
+                        currentTeamAttribute(match, "score_team") <
+                        opponentTeamAttribute(match, "score_team")
+                      }
+                    >
                       <span class="text-red-500 dark:text-red-400">
-                        {match.score_team_1}
+                        {currentTeamAttribute(match, "score_team")}
                       </span>
                       <span>{" - "}</span>
                       <span class="text-green-500 dark:text-green-400">
-                        {match.score_team_2}
+                        {opponentTeamAttribute(match, "score_team")}
                       </span>
                     </Match>
-                    <Match when={match.score_team_1 === match.score_team_2}>
+                    <Match
+                      when={
+                        currentTeamAttribute(match, "score_team") ===
+                        opponentTeamAttribute(match, "score_team")
+                      }
+                    >
                       <span class="text-blue-500 dark:text-blue-400">
-                        {match.score_team_1}
+                        {currentTeamAttribute(match, "score_team")}
                       </span>
                       <span>{" - "}</span>
                       <span class="text-blue-500 dark:text-blue-400">
-                        {match.score_team_2}
+                        {opponentTeamAttribute(match, "score_team")}
                       </span>
                     </Match>
                   </Switch>
