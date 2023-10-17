@@ -22,7 +22,7 @@ def read_bank_statement(bank_statement: Path | StringIO) -> dict[str, Any]:
 
         reader = csv.DictReader(csvfile, skipinitialspace=True)
         for row_ in reader:
-            row = {key.strip(): val.strip() for key, val in row_.items()}
+            row = {key.strip(): val.strip() for key, val in row_.items() if key is not None}
             reference_number = row["Chq/Ref Number"].lstrip(
                 "0"
             )  # FIXME: Should we strip the DC chars on the right?
