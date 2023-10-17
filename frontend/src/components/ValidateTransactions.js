@@ -62,7 +62,7 @@ const ValidateTransactions = () => {
       }
     } catch (error) {
       setStatus(
-        `An error occurred while submitting vaccination data: ${error}`
+        `An error occurred while processing transactions data: ${error}`
       );
     }
   };

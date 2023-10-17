@@ -45,9 +45,7 @@ const ValidateTransaction = props => {
         setStatus(`${text}`);
       }
     } catch (error) {
-      setStatus(
-        `An error occurred while submitting vaccination data: ${error}`
-      );
+      setStatus(`An error occurred while validating transaction: ${error}`);
     }
   };
 
