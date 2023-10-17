@@ -1,9 +1,29 @@
-import { Match, Switch, Show } from "solid-js";
+import { Match, Switch, Show, createEffect, createSignal } from "solid-js";
 import { A } from "@solidjs/router";
 import { arrowRight, play } from "solid-heroicons/solid";
 import { Icon } from "solid-heroicons";
 
+/**
+ * Returns a match block between 2 teams.
+ * If a team should appear first, pass `currentTeamNo` = team id in match object (1 or 2).
+ * If both team names should link to the team name, pass the `bothTeamsClickable` prop.
+ *
+ * @param {object} props
+ * @param {object} props.match
+ * @param {string} props.tournamentSlug
+ * @param {number} [props.currentTeamNo]
+ * @param {number} [props.opponentTeamNo]
+ * @param {boolean} [props.bothTeamsClickable]
+ */
 const TournamentMatch = props => {
+  const [currTeamNo, setCurrTeamNo] = createSignal(1);
+  const [oppTeamNo, setOppTeamNo] = createSignal(2);
+
+  createEffect(() => {
+    setCurrTeamNo(props.currentTeamNo || 1);
+    setOppTeamNo(props.opponentTeamNo || 2);
+  });
+
   return (
     <div class="block py-2 px-1 bg-white border border-blue-600 rounded-lg shadow dark:bg-gray-800 dark:border-blue-400 w-full mb-5">
       <Switch>
@@ -25,54 +45,66 @@ const TournamentMatch = props => {
         </Match>
       </Switch>
       <div class="flex justify-center text-sm">
-        {/* Show current team page as first */}
-        {/* Current team page doesn't need to be clickable, we're already on that page */}
         <Show
-          when={props.match[`team_${props.currentTeamNo}`]}
+          when={props.match[`team_${currTeamNo()}`]}
           fallback={
             <span class="w-1/3 text-center font-bold">
-              {props.match[`placeholder_seed_${props.currentTeamNo}`]}
+              {props.match[`placeholder_seed_${currTeamNo()}`]}
             </span>
           }
         >
           <img
             class="w-6 h-6 p-1 rounded-full ring-2 ring-blue-500 dark:ring-blue-400 inline-block mr-1"
             src={
-              props.teamsMap()[props.match[`team_${props.currentTeamNo}`].id]
+              props.teamsMap()[props.match[`team_${currTeamNo()}`].id]
                 ?.image_url
             }
             alt="Bordered avatar"
           />
           <span class="w-1/3 text-center font-bold dark:text-blue-400 text-blue-500">
-            {props.match[`team_${props.currentTeamNo}`].name +
-              ` (${props.match[`placeholder_seed_${props.currentTeamNo}`]})`}
+            <Show
+              when={props.bothTeamsClickable}
+              fallback={
+                props.match[`team_${currTeamNo()}`].name +
+                ` (${props.match[`placeholder_seed_${currTeamNo()}`]})`
+              }
+            >
+              <A
+                href={`/tournament/${props.tournamentSlug}/team/${
+                  props.match[`team_${currTeamNo()}`].ultimate_central_slug
+                }`}
+              >
+                {props.match[`team_${currTeamNo()}`].name +
+                  ` (${props.match[`placeholder_seed_${currTeamNo()}`]})`}
+              </A>
+            </Show>
           </span>
         </Show>
+
         <span class="mx-2">VS</span>
         <Show
-          when={props.match[`team_${props.opponentTeamNo}`]}
+          when={props.match[`team_${oppTeamNo()}`]}
           fallback={
             <span class="w-1/3 text-center font-bold">
-              {props.match[`placeholder_seed_${props.opponentTeamNo}`]}
+              {props.match[`placeholder_seed_${oppTeamNo()}`]}
             </span>
           }
         >
           <span class="w-1/3 text-center font-bold dark:text-blue-400 text-blue-500">
             <A
               href={`/tournament/${props.tournamentSlug}/team/${
-                props.match[`team_${props.opponentTeamNo}`]
-                  .ultimate_central_slug
+                props.match[`team_${oppTeamNo()}`].ultimate_central_slug
               }`}
             >
-              {props.match[`team_${props.opponentTeamNo}`].name +
-                ` (${props.match[`placeholder_seed_${props.opponentTeamNo}`]})`}
+              {props.match[`team_${oppTeamNo()}`].name +
+                ` (${props.match[`placeholder_seed_${oppTeamNo()}`]})`}
             </A>
           </span>
+
           <img
             class="w-6 h-6 p-1 rounded-full ring-2 ring-blue-500 dark:ring-blue-400 inline-block ml-1"
             src={
-              props.teamsMap()[props.match[`team_${props.opponentTeamNo}`].id]
-                ?.image_url
+              props.teamsMap()[props.match[`team_${oppTeamNo()}`].id]?.image_url
             }
             alt="Bordered avatar"
           />
@@ -81,49 +113,46 @@ const TournamentMatch = props => {
       <Show when={props.match.status === "COM"}>
         <p class="text-center font-bold">
           <Switch>
-            {/* current > opponent */}
             <Match
               when={
-                props.match[`score_team_${props.currentTeamNo}`] >
-                props.match[`score_team_${props.opponentTeamNo}`]
+                props.match[`score_team_${currTeamNo()}`] >
+                props.match[`score_team_${oppTeamNo()}`]
               }
             >
               <span class="text-green-500 dark:text-green-400">
-                {props.match[`score_team_${props.currentTeamNo}`]}
+                {props.match[`score_team_${currTeamNo()}`]}
               </span>
               <span>{" - "}</span>
               <span class="text-red-500 dark:text-red-400">
-                {props.match[`score_team_${props.opponentTeamNo}`]}
+                {props.match[`score_team_${oppTeamNo()}`]}
               </span>
             </Match>
-            {/* current < opponent */}
             <Match
               when={
-                props.match[`score_team_${props.currentTeamNo}`] <
-                props.match[`score_team_${props.opponentTeamNo}`]
+                props.match[`score_team_${currTeamNo()}`] <
+                props.match[`score_team_${oppTeamNo()}`]
               }
             >
               <span class="text-red-500 dark:text-red-400">
-                {props.match[`score_team_${props.currentTeamNo}`]}
+                {props.match[`score_team_${currTeamNo()}`]}
               </span>
               <span>{" - "}</span>
               <span class="text-green-500 dark:text-green-400">
-                {props.match[`score_team_${props.opponentTeamNo}`]}
+                {props.match[`score_team_${oppTeamNo()}`]}
               </span>
             </Match>
-            {/* current == opponent */}
             <Match
               when={
-                props.match[`score_team_${props.currentTeamNo}`] ===
-                props.match[`score_team_${props.opponentTeamNo}`]
+                props.match[`score_team_${currTeamNo()}`] ===
+                props.match[`score_team_${oppTeamNo()}`]
               }
             >
               <span class="text-blue-500 dark:text-blue-400">
-                {props.match[`score_team_${props.currentTeamNo}`]}
+                {props.match[`score_team_${currTeamNo()}`]}
               </span>
               <span>{" - "}</span>
               <span class="text-blue-500 dark:text-blue-400">
-                {props.match[`score_team_${props.opponentTeamNo}`]}
+                {props.match[`score_team_${oppTeamNo()}`]}
               </span>
             </Match>
           </Switch>
@@ -153,7 +182,7 @@ const TournamentMatch = props => {
           </button>
         </a>
       </Show>
-      <Show when={props.match[`spirit_score_team_${props.currentTeamNo}`]}>
+      <Show when={props.match[`spirit_score_team_${currTeamNo()}`]}>
         <div class="flex justify-center mt-5">
           <button
             data-modal-target={`modal-${props.match.id}`}
@@ -214,10 +243,10 @@ const TournamentMatch = props => {
                           Spirit Criteria
                         </th>
                         <th scope="col" class="px-2 py-3">
-                          {props.match[`team_${props.currentTeamNo}`].name}
+                          {props.match[`team_${currTeamNo()}`].name}
                         </th>
                         <th scope="col" class="px-2 py-3">
-                          {props.match[`team_${props.opponentTeamNo}`].name}
+                          {props.match[`team_${oppTeamNo()}`].name}
                         </th>
                       </tr>
                     </thead>
@@ -231,16 +260,14 @@ const TournamentMatch = props => {
                         </th>
                         <td class="px-2 py-4">
                           {
-                            props.match[
-                              `spirit_score_team_${props.currentTeamNo}`
-                            ].rules
+                            props.match[`spirit_score_team_${currTeamNo()}`]
+                              .rules
                           }
                         </td>
                         <td class="px-2 py-4">
                           {
-                            props.match[
-                              `spirit_score_team_${props.opponentTeamNo}`
-                            ].rules
+                            props.match[`spirit_score_team_${oppTeamNo()}`]
+                              .rules
                           }
                         </td>
                       </tr>
@@ -253,16 +280,14 @@ const TournamentMatch = props => {
                         </th>
                         <td class="px-2 py-4">
                           {
-                            props.match[
-                              `spirit_score_team_${props.currentTeamNo}`
-                            ].fouls
+                            props.match[`spirit_score_team_${currTeamNo()}`]
+                              .fouls
                           }
                         </td>
                         <td class="px-2 py-4">
                           {
-                            props.match[
-                              `spirit_score_team_${props.opponentTeamNo}`
-                            ].fouls
+                            props.match[`spirit_score_team_${oppTeamNo()}`]
+                              .fouls
                           }
                         </td>
                       </tr>
@@ -275,17 +300,12 @@ const TournamentMatch = props => {
                         </th>
                         <td class="px-2 py-4">
                           {
-                            props.match[
-                              `spirit_score_team_${props.currentTeamNo}`
-                            ].fair
+                            props.match[`spirit_score_team_${currTeamNo()}`]
+                              .fair
                           }
                         </td>
                         <td class="px-2 py-4">
-                          {
-                            props.match[
-                              `spirit_score_team_${props.opponentTeamNo}`
-                            ].fair
-                          }
+                          {props.match[`spirit_score_team_${oppTeamNo()}`].fair}
                         </td>
                       </tr>
                       <tr class="bg-white border-b dark:bg-gray-700 dark:border-gray-700">
@@ -297,16 +317,14 @@ const TournamentMatch = props => {
                         </th>
                         <td class="px-2 py-4">
                           {
-                            props.match[
-                              `spirit_score_team_${props.currentTeamNo}`
-                            ].positive
+                            props.match[`spirit_score_team_${currTeamNo()}`]
+                              .positive
                           }
                         </td>
                         <td class="px-2 py-4">
                           {
-                            props.match[
-                              `spirit_score_team_${props.opponentTeamNo}`
-                            ].positive
+                            props.match[`spirit_score_team_${oppTeamNo()}`]
+                              .positive
                           }
                         </td>
                       </tr>
@@ -319,16 +337,14 @@ const TournamentMatch = props => {
                         </th>
                         <td class="px-2 py-4">
                           {
-                            props.match[
-                              `spirit_score_team_${props.currentTeamNo}`
-                            ].communication
+                            props.match[`spirit_score_team_${currTeamNo()}`]
+                              .communication
                           }
                         </td>
                         <td class="px-2 py-4">
                           {
-                            props.match[
-                              `spirit_score_team_${props.opponentTeamNo}`
-                            ].communication
+                            props.match[`spirit_score_team_${oppTeamNo()}`]
+                              .communication
                           }
                         </td>
                       </tr>
@@ -339,60 +355,53 @@ const TournamentMatch = props => {
                   MVPs
                 </h2>
                 <Show
-                  when={
-                    props.match[`spirit_score_team_${props.currentTeamNo}`].mvp
-                  }
+                  when={props.match[`spirit_score_team_${currTeamNo()}`].mvp}
                 >
                   <div class="flex items-center space-x-4 mx-5">
                     <img
                       class="w-10 h-10 rounded-full ring-2 ring-gray-300 dark:ring-gray-500 p-1"
                       src={
-                        props.match[`spirit_score_team_${props.currentTeamNo}`]
-                          .mvp?.image_url
+                        props.match[`spirit_score_team_${currTeamNo()}`].mvp
+                          ?.image_url
                       }
                       alt="Image"
                     />
                     <div class="font-medium dark:text-white">
                       <div>
-                        {props.match[`spirit_score_team_${props.currentTeamNo}`]
-                          .mvp?.first_name +
+                        {props.match[`spirit_score_team_${currTeamNo()}`].mvp
+                          ?.first_name +
                           " " +
-                          props.match[
-                            `spirit_score_team_${props.currentTeamNo}`
-                          ].mvp?.last_name}
+                          props.match[`spirit_score_team_${currTeamNo()}`].mvp
+                            ?.last_name}
                       </div>
                       <div class="text-sm text-gray-500 dark:text-gray-400">
-                        {props.match[`team_${props.currentTeamNo}`].name}
+                        {props.match[`team_${currTeamNo()}`].name}
                       </div>
                     </div>
                   </div>
                 </Show>
                 <Show
-                  when={
-                    props.match[`spirit_score_team_${props.opponentTeamNo}`].mvp
-                  }
+                  when={props.match[`spirit_score_team_${oppTeamNo()}`].mvp}
                 >
                   <div class="flex items-center space-x-4 mx-5">
                     <img
                       class="w-10 h-10 rounded-full ring-2 ring-gray-300 dark:ring-gray-500 p-1"
                       src={
-                        props.match[`spirit_score_team_${props.opponentTeamNo}`]
-                          .mvp?.image_url
+                        props.match[`spirit_score_team_${oppTeamNo()}`].mvp
+                          ?.image_url
                       }
                       alt="Image"
                     />
                     <div class="font-medium dark:text-white">
                       <div>
-                        {props.match[
-                          `spirit_score_team_${props.opponentTeamNo}`
-                        ].mvp?.first_name +
+                        {props.match[`spirit_score_team_${oppTeamNo()}`].mvp
+                          ?.first_name +
                           " " +
-                          props.match[
-                            `spirit_score_team_${props.opponentTeamNo}`
-                          ].mvp?.last_name}
+                          props.match[`spirit_score_team_${oppTeamNo()}`].mvp
+                            ?.last_name}
                       </div>
                       <div class="text-sm text-gray-500 dark:text-gray-400">
-                        {props.match[`team_${props.opponentTeamNo}`].name}
+                        {props.match[`team_${oppTeamNo()}`].name}
                       </div>
                     </div>
                   </div>
@@ -402,60 +411,53 @@ const TournamentMatch = props => {
                   MSPs
                 </h2>
                 <Show
-                  when={
-                    props.match[`spirit_score_team_${props.currentTeamNo}`].msp
-                  }
+                  when={props.match[`spirit_score_team_${currTeamNo()}`].msp}
                 >
                   <div class="flex items-center space-x-4 mx-5">
                     <img
                       class="w-10 h-10 rounded-full ring-2 ring-gray-300 dark:ring-gray-500 p-1"
                       src={
-                        props.match[`spirit_score_team_${props.currentTeamNo}`]
-                          .msp?.image_url
+                        props.match[`spirit_score_team_${currTeamNo()}`].msp
+                          ?.image_url
                       }
                       alt="Image"
                     />
                     <div class="font-medium dark:text-white">
                       <div>
-                        {props.match[`spirit_score_team_${props.currentTeamNo}`]
-                          .msp?.first_name +
+                        {props.match[`spirit_score_team_${currTeamNo()}`].msp
+                          ?.first_name +
                           " " +
-                          props.match[
-                            `spirit_score_team_${props.currentTeamNo}`
-                          ].msp?.last_name}
+                          props.match[`spirit_score_team_${currTeamNo()}`].msp
+                            ?.last_name}
                       </div>
                       <div class="text-sm text-gray-500 dark:text-gray-400">
-                        {props.match[`team_${props.currentTeamNo}`].name}
+                        {props.match[`team_${currTeamNo()}`].name}
                       </div>
                     </div>
                   </div>
                 </Show>
                 <Show
-                  when={
-                    props.match[`spirit_score_team_${props.opponentTeamNo}`].msp
-                  }
+                  when={props.match[`spirit_score_team_${oppTeamNo()}`].msp}
                 >
                   <div class="flex items-center space-x-4 mx-5">
                     <img
                       class="w-10 h-10 rounded-full ring-2 ring-gray-300 dark:ring-gray-500 p-1"
                       src={
-                        props.match[`spirit_score_team_${props.opponentTeamNo}`]
-                          .msp?.image_url
+                        props.match[`spirit_score_team_${oppTeamNo()}`].msp
+                          ?.image_url
                       }
                       alt="Image"
                     />
                     <div class="font-medium dark:text-white">
                       <div>
-                        {props.match[
-                          `spirit_score_team_${props.opponentTeamNo}`
-                        ].msp?.first_name +
+                        {props.match[`spirit_score_team_${oppTeamNo()}`].msp
+                          ?.first_name +
                           " " +
-                          props.match[
-                            `spirit_score_team_${props.opponentTeamNo}`
-                          ].msp?.last_name}
+                          props.match[`spirit_score_team_${oppTeamNo()}`].msp
+                            ?.last_name}
                       </div>
                       <div class="text-sm text-gray-500 dark:text-gray-400">
-                        {props.match[`team_${props.opponentTeamNo}`].name}
+                        {props.match[`team_${oppTeamNo()}`].name}
                       </div>
                     </div>
                   </div>
