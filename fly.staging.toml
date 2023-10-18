@@ -21,10 +21,6 @@ swap_size_mb = 512
   DJANGO_SETTINGS_MODULE = "hub.production"
   PORT = "8000"
 
-[[mounts]]
-  source = "upai_hub_staging_data"
-  destination = "/data"
-
 [[services]]
   protocol = "tcp"
   internal_port = 80
