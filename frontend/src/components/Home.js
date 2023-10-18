@@ -92,7 +92,9 @@ const Home = () => {
                   />
                   <div class="font-medium hover:text-blue-600 dark:hover:text-blue-500">
                     <div>
-                      <a href={contributor["html_url"]}>{contributor.name}</a>
+                      <a href={contributor["html_url"]}>
+                        {contributor.name || contributor.login}
+                      </a>
                     </div>
                   </div>
                 </div>
