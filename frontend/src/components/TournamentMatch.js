@@ -2,6 +2,8 @@ import { Match, Switch, Show, createEffect, createSignal } from "solid-js";
 import { A } from "@solidjs/router";
 import { arrowRight, play } from "solid-heroicons/solid";
 import { Icon } from "solid-heroicons";
+import { fetchTeams } from "../queries";
+import { createQuery } from "@tanstack/solid-query";
 
 /**
  * Returns a match block between 2 teams.
@@ -16,16 +18,29 @@ import { Icon } from "solid-heroicons";
  * @param {boolean} [props.bothTeamsClickable]
  */
 const TournamentMatch = props => {
+  const [teamsMap, setTeamsMap] = createSignal({});
   const [currTeamNo, setCurrTeamNo] = createSignal(1);
   const [oppTeamNo, setOppTeamNo] = createSignal(2);
+
+  const teamsQuery = createQuery(() => ["teams"], fetchTeams);
 
   createEffect(() => {
     setCurrTeamNo(props.currentTeamNo || 1);
     setOppTeamNo(props.opponentTeamNo || 2);
   });
 
+  createEffect(() => {
+    if (teamsQuery.status === "success") {
+      let newTeamsMap = {};
+      teamsQuery.data.map(team => {
+        newTeamsMap[team.id] = team;
+      });
+      setTeamsMap(newTeamsMap);
+    }
+  });
+
   return (
-    <div class="block py-2 px-1 bg-white border border-blue-600 rounded-lg shadow dark:bg-gray-800 dark:border-blue-400 w-full mb-5">
+    <>
       <Switch>
         <Match when={props.match.pool}>
           <p class="text-center text-sm mb-2">Pool - {props.match.pool.name}</p>
@@ -55,10 +70,7 @@ const TournamentMatch = props => {
         >
           <img
             class="w-6 h-6 p-1 rounded-full ring-2 ring-blue-500 dark:ring-blue-400 inline-block mr-1"
-            src={
-              props.teamsMap()[props.match[`team_${currTeamNo()}`].id]
-                ?.image_url
-            }
+            src={teamsMap()[props.match[`team_${currTeamNo()}`].id]?.image_url}
             alt="Bordered avatar"
           />
           <span class="w-1/3 text-center font-bold dark:text-blue-400 text-blue-500">
@@ -103,9 +115,7 @@ const TournamentMatch = props => {
 
           <img
             class="w-6 h-6 p-1 rounded-full ring-2 ring-blue-500 dark:ring-blue-400 inline-block ml-1"
-            src={
-              props.teamsMap()[props.match[`team_${oppTeamNo()}`].id]?.image_url
-            }
+            src={teamsMap()[props.match[`team_${oppTeamNo()}`].id]?.image_url}
             alt="Bordered avatar"
           />
         </Show>
@@ -467,7 +477,7 @@ const TournamentMatch = props => {
           </div>
         </div>
       </Show>
-    </div>
+    </>
   );
 };
 
