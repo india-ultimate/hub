@@ -360,6 +360,39 @@ class RazorpayTransaction(models.Model):
         return create_transaction_from_order_data(cls, data)
 
 
+class PhonePeTransaction(models.Model):
+    class TransactionStatusChoices(models.TextChoices):
+        PENDING = "pending", _("Pending")
+        SUCCESS = "success", _("Success")
+        ERROR = "error", _("Error")
+        DECLINED = "declined", _("Declined")
+
+    transaction_id = models.UUIDField(primary_key=True)
+    amount = models.IntegerField()
+    currency = models.CharField(max_length=5)
+    transaction_date = models.DateTimeField(auto_now_add=True)
+    # NOTE: These dates are for the membership for which the transaction is
+    # being done. We store these dates when the order is created, and use them
+    # to update the membership on payment success.
+    start_date = models.DateField(default="1900-01-01")
+    end_date = models.DateField(default="1900-01-01")
+    status = models.CharField(
+        max_length=20,
+        choices=TransactionStatusChoices.choices,
+        default=TransactionStatusChoices.PENDING,
+    )
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    players = models.ManyToManyField(Player)
+    event = models.ForeignKey(Event, on_delete=models.SET_NULL, blank=True, null=True)
+
+    def __str__(self) -> str:
+        return str(self.transaction_id)
+
+    @classmethod
+    def create_from_order_data(cls, data: dict[str, Any]) -> "PhonePeTransaction":
+        return create_transaction_from_order_data(cls, data)
+
+
 class ManualTransaction(models.Model):
     transaction_id = models.CharField(primary_key=True, max_length=255)
     amount = models.IntegerField()
