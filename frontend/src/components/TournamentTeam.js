@@ -3,11 +3,10 @@ import { createQuery } from "@tanstack/solid-query";
 import {
   fetchMatchesBySlug,
   fetchTeamBySlug,
-  fetchTeams,
   fetchTournamentBySlug,
   fetchTournamentTeamBySlug
 } from "../queries";
-import { createEffect, createSignal, For, onMount, Show } from "solid-js";
+import { For, onMount, Show } from "solid-js";
 import Breadcrumbs from "./Breadcrumbs";
 import { trophy } from "solid-heroicons/solid";
 import { initFlowbite } from "flowbite";
@@ -16,7 +15,6 @@ import TournamentMatch from "./TournamentMatch";
 
 const TournamentTeam = () => {
   const params = useParams();
-  const [teamsMap, setTeamsMap] = createSignal({});
 
   const tournamentQuery = createQuery(
     () => ["tournament", params.tournament_slug],
@@ -34,17 +32,6 @@ const TournamentTeam = () => {
     () => ["matches", params.tournament_slug],
     () => fetchMatchesBySlug(params.tournament_slug)
   );
-  const teamsQuery = createQuery(() => ["teams"], fetchTeams);
-
-  createEffect(() => {
-    if (teamsQuery.status === "success") {
-      let newTeamsMap = {};
-      teamsQuery.data.map(team => {
-        newTeamsMap[team.id] = team;
-      });
-      setTeamsMap(newTeamsMap);
-    }
-  });
 
   const currentTeamNo = match =>
     match.team_1.ultimate_central_slug === params.team_slug ? 1 : 2;
@@ -118,13 +105,14 @@ const TournamentTeam = () => {
               match.team_2?.ultimate_central_slug === params.team_slug
             }
           >
-            <TournamentMatch
-              match={match}
-              teamsMap={teamsMap}
-              currentTeamNo={currentTeamNo(match)}
-              opponentTeamNo={currentTeamNo(match) === 1 ? 2 : 1}
-              tournamentSlug={params.tournament_slug}
-            />
+            <div class="block py-2 px-1 bg-white border border-blue-600 rounded-lg shadow dark:bg-gray-800 dark:border-blue-400 w-full mb-5">
+              <TournamentMatch
+                match={match}
+                currentTeamNo={currentTeamNo(match)}
+                opponentTeamNo={currentTeamNo(match) === 1 ? 2 : 1}
+                tournamentSlug={params.tournament_slug}
+              />
+            </div>
           </Show>
         )}
       </For>
