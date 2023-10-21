@@ -598,13 +598,13 @@ def payment_success(
     authentic = verify_razorpay_payment(payment.dict())
     if not authentic:
         return 422, {"message": "We were unable to ascertain the authenticity of the payment."}
-    transaction = update_transaction(payment)
+    transaction = update_razorpay_transaction(payment)
     if not transaction:
         return 404, {"message": "No order found."}
     return 200, transaction.players.all()
 
 
-def update_transaction(payment: PaymentFormSchema) -> RazorpayTransaction | None:
+def update_razorpay_transaction(payment: PaymentFormSchema) -> RazorpayTransaction | None:
     try:
         transaction = RazorpayTransaction.objects.get(order_id=payment.razorpay_order_id)
     except RazorpayTransaction.DoesNotExist:
@@ -651,7 +651,7 @@ def payment_webhook(request: HttpRequest) -> message_response:
         razorpay_order_id=data["order_id"],
         razorpay_signature=f"webhook_{signature}",
     )
-    update_transaction(payment)
+    update_razorpay_transaction(payment)
     return {"message": "Webhook processed"}
 
 
