@@ -642,7 +642,13 @@ def update_razorpay_transaction(payment: PaymentFormSchema) -> RazorpayTransacti
 def mark_transaction_completed(transaction: RazorpayTransaction) -> RazorpayTransaction:
     transaction.status = RazorpayTransaction.TransactionStatusChoices.COMPLETED
     transaction.save()
+    update_transaction_player_memberships(transaction)
+    return transaction
 
+
+def update_transaction_player_memberships(
+    transaction: RazorpayTransaction | PhonePeTransaction,
+) -> None:
     membership_defaults = {
         "start_date": transaction.start_date,
         "end_date": transaction.end_date,
@@ -657,8 +663,6 @@ def mark_transaction_completed(transaction: RazorpayTransaction) -> RazorpayTran
             for key, value in membership_defaults.items():
                 setattr(membership, key, value)
             membership.save()
-
-    return transaction
 
 
 @api.post("/payment-success-webhook", auth=None, response={200: Response})
