@@ -438,7 +438,7 @@ def list_registrations(
 
 @api.post(
     "/manual-transaction/{transaction_id}",
-    response={200: ManualTransactionSchema, 400: Response, 502: str},
+    response={200: ManualTransactionSchema, 400: Response, 422: Response, 502: str},
 )
 def create_manual_transaction(
     request: AuthenticatedHttpRequest,
@@ -448,7 +448,7 @@ def create_manual_transaction(
     return create_transaction(request, order, transaction_id)
 
 
-@api.post("/create-order", response={200: OrderSchema, 400: Response, 502: str})
+@api.post("/create-order", response={200: OrderSchema, 400: Response, 422: Response, 502: str})
 def create_razorpay_transaction(
     request: AuthenticatedHttpRequest,
     order: AnnualMembershipSchema | EventMembershipSchema | GroupMembershipSchema,
@@ -467,7 +467,7 @@ def create_transaction(
         player_ids = {p.id for p in players}
         if len(player_ids) != len(order.player_ids):
             missing_players = set(order.player_ids) - player_ids
-            return 400, {
+            return 422, {
                 "message": f"Some players couldn't be found in the DB: {sorted(missing_players)}"
             }
 
@@ -476,7 +476,7 @@ def create_transaction(
         try:
             player = Player.objects.get(id=order.player_id)
         except Player.DoesNotExist:
-            return 400, {"message": "Player does not exist!"}
+            return 422, {"message": "Player does not exist!"}
 
     if isinstance(order, GroupMembershipSchema | AnnualMembershipSchema):
         start_date = datetime.date(order.year, *MEMBERSHIP_START)
@@ -493,7 +493,7 @@ def create_transaction(
         try:
             event = Event.objects.get(id=order.event_id)
         except Event.DoesNotExist:
-            return 400, {"message": "Event does not exist!"}
+            return 422, {"message": "Event does not exist!"}
 
         start_date = event.start_date
         end_date = event.end_date

@@ -237,7 +237,6 @@ class TestRegistration(ApiBaseTestCase):
             data=data,
             content_type="application/json",
         )
-        print(response.json())
         self.assertEqual(400, response.status_code)
 
     def test_register_guardian(self) -> None:
@@ -353,7 +352,7 @@ class TestPayment(ApiBaseTestCase):
                 },
                 content_type="application/json",
             )
-        self.assertEqual(400, response.status_code)
+        self.assertEqual(422, response.status_code)
         self.assertEqual("Player does not exist!", response.json()["message"])
 
     def test_create_manual_transaction_player_exists(self) -> None:
@@ -499,7 +498,7 @@ class TestPayment(ApiBaseTestCase):
                 },
                 content_type="application/json",
             )
-        self.assertEqual(400, response.status_code)
+        self.assertEqual(422, response.status_code)
         self.assertEqual("Player does not exist!", response.json()["message"])
 
     def test_create_order_event_membership_no_event(self) -> None:
@@ -518,7 +517,7 @@ class TestPayment(ApiBaseTestCase):
                 },
                 content_type="application/json",
             )
-        self.assertEqual(400, response.status_code)
+        self.assertEqual(422, response.status_code)
         self.assertEqual("Event does not exist!", response.json()["message"])
 
     def test_create_order_event_membership(self) -> None:
@@ -615,7 +614,7 @@ class TestPayment(ApiBaseTestCase):
                 },
                 content_type="application/json",
             )
-        self.assertEqual(400, response.status_code)
+        self.assertEqual(422, response.status_code)
         self.assertEqual(
             "Some players couldn't be found in the DB: [200, 220, 225, 230]",
             response.json()["message"],
