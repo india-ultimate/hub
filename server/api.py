@@ -1,18 +1,24 @@
 import contextlib
 import datetime
+import hashlib
 import io
 import json
 import time
+from base64 import b32encode
 from typing import Any, cast
 
 import firebase_admin
+import pyotp
 from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.base_user import AbstractBaseUser
+from django.core import mail
 from django.core.exceptions import ValidationError
 from django.db.models import Q, QuerySet
 from django.db.utils import IntegrityError
 from django.http import HttpRequest
+from django.template.loader import render_to_string
+from django.utils.html import strip_tags
 from django.utils.text import slugify
 from django.utils.timezone import now
 from django.views.decorators.csrf import csrf_exempt
@@ -66,6 +72,9 @@ from server.schema import (
     MatchUpdateSchema,
     NotVaccinatedFormSchema,
     OrderSchema,
+    OTPLoginCredentials,
+    OTPRequestCredentials,
+    OTPRequestResponse,
     PaymentFormSchema,
     PersonSchema,
     PlayerFormSchema,
@@ -219,6 +228,52 @@ def firebase_login(
     request.user = user
     login(request, user)
     return 200, user
+
+
+def get_email_hash(email: str) -> str:
+    email_hash = hashlib.sha256()
+    email_hash.update(email.encode("utf-8"))
+    email_hash.update(settings.OTP_EMAIL_HASH_KEY.encode("utf-8"))
+    return b32encode(email_hash.hexdigest().encode("utf-8")).decode("utf-8")
+
+
+@api.post("/send-otp", auth=None, response={200: OTPRequestResponse})
+def get_otp(
+    request: HttpRequest, credentials: OTPRequestCredentials
+) -> tuple[int, dict[str, int | str]]:
+    email_hash = get_email_hash(credentials.email)
+    totp = pyotp.TOTP(email_hash)
+    current_ts = int(now().timestamp())
+    otp = totp.generate_otp(current_ts)
+
+    subject = "OTP to Sign in to India Ultimate Hub"
+    html_message = render_to_string("otp_email.html", {"otp": otp})
+    plain_message = strip_tags(html_message)
+    from_email = settings.EMAIL_HOST_USER
+    to = credentials.email
+
+    mail.send_mail(subject, plain_message, from_email, [to], html_message=html_message)
+
+    return 200, {"otp_ts": current_ts}
+
+
+@api.post("/otp-login", auth=None, response={200: UserSchema, 403: Response, 404: Response})
+def otp_login(
+    request: HttpRequest, credentials: OTPLoginCredentials
+) -> tuple[int, User | message_response]:
+    email_hash = get_email_hash(credentials.email)
+    totp = pyotp.TOTP(email_hash)
+    actual_otp = totp.generate_otp(credentials.otp_ts)
+
+    if actual_otp == credentials.otp:
+        user, created = User.objects.get_or_create(
+            email=credentials.email, username=credentials.email
+        )
+        request.user = user
+        login(request, user)
+        return 200, user
+
+    return 403, {"message": "Invalid OTP"}
 
 
 # Registration #########
