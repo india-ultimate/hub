@@ -46,7 +46,7 @@ class Player(models.Model):
         MALE = "M", _("Male matching")
         FEMALE = "F", _("Female matching")
 
-    match_up = models.CharField(max_length=30)
+    match_up = models.CharField(max_length=30, choices=MatchupTypes.choices)
     city = models.CharField(max_length=100)
 
     class StatesUTs(models.TextChoices):
