@@ -42,3 +42,7 @@ def initiate_payment(amount: int, user: User, host: str, next_url: str) -> dict[
         "transaction_id": merchant_transaction_id,
         "amount": amount,
     }
+
+
+def verify_callback_checksum(body: str, signature: str) -> bool:
+    return phonepe_client.verify_response(x_verify=signature, response=body)

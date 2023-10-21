@@ -5,7 +5,7 @@ import hashlib
 import io
 import json
 import time
-from base64 import b32encode
+from base64 import b32encode, b64decode
 from typing import Any, cast
 
 import pyotp
@@ -49,7 +49,7 @@ from server.models import (
     User,
     Vaccination,
 )
-from server.phonepe_utils import initiate_payment
+from server.phonepe_utils import initiate_payment, verify_callback_checksum
 from server.schema import (
     AccreditationFormSchema,
     AccreditationSchema,
@@ -625,6 +625,39 @@ def payment_success(
     if not transaction:
         return 404, {"message": "No order found."}
     return 200, transaction.players.all()
+
+
+@api.post("/phonepe-callback", auth=None, response={200: Response})
+@csrf_exempt
+def phonepe_callback(request: HttpRequest) -> message_response:
+    body = request.body.decode("utf8")
+    signature = request.headers.get("X-Verify", "")
+    if not verify_callback_checksum(body, signature):
+        return {"message": "Signature could not be verified"}
+
+    encoded_data = json.loads(body)["response"]
+    data = json.loads(b64decode(encoded_data).decode("utf8"))
+    code = data["code"]
+    prefix = "PAYMENT_"
+    if not code.startswith(prefix):
+        return {"message": "Ignored webhook"}
+    code = code[len(prefix) :]
+    transaction_id = data["data"]["merchantTransactionId"]
+    try:
+        transaction = PhonePeTransaction.objects.get(transaction_id=transaction_id)
+    except PhonePeTransaction.DoesNotExist:
+        return {"message": "Transaction not found"}
+    update_phonepe_transaction(transaction, code)
+    return {"message": "Webhook processed"}
+
+
+def update_phonepe_transaction(
+    transaction: PhonePeTransaction, status_code: str
+) -> PhonePeTransaction:
+    transaction.status = getattr(PhonePeTransaction.TransactionStatusChoices, status_code)
+    transaction.save(update_fields=["status"])
+    update_transaction_player_memberships(transaction)
+    return transaction
 
 
 def update_razorpay_transaction(payment: PaymentFormSchema) -> RazorpayTransaction | None:
