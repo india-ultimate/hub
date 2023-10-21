@@ -40,10 +40,26 @@ const TransactionList = props => {
     setQuery(q);
   });
 
-  const getPaidBy = user =>
-    props.admin
-      ? `${user.first_name} ${user.last_name} (${user.phone})`
-      : `${user.first_name} ${user.last_name}`;
+  const renderWhatsappLink = phone => (
+    <span>
+      {phone.slice(0, 1)}
+      <a
+        class="hover:underline underline-offset-4 font-semibold after:content-['_↗']"
+        href={`https://api.whatsapp.com/send?phone=${phone.slice(1)}`}
+      >
+        {phone.slice(1)}
+      </a>
+    </span>
+  );
+
+  const getPaidBy = user => {
+    return (
+      <span>
+        {user.first_name} {user.last_name} ({" "}
+        {props.admin ? renderWhatsappLink(user.phone) : ""} )
+      </span>
+    );
+  };
 
   return (
     <div class="p-5 border border-gray-200 dark:border-gray-700 dark:bg-gray-900">
@@ -94,7 +110,7 @@ const TransactionList = props => {
 
                   return (
                     <tr
-                      class={`${bgColor} border-b dark:bg-gray-800 dark:border-gray-700`}
+                      class={`${bgColor} border-b dark:bg-gray-800 dark:border-gray-700 text-gray-900 dark:text-white`}
                     >
                       <th
                         scope="row"
