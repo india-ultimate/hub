@@ -16,6 +16,7 @@ django-stubs-ext = "^4.2.2"
 dj-database-url = "^2.1.0"
 psycopg2 = "^2.9.7"
 python-dateutil = "^2.8.2"
+pyotp = "^2.9.0"
 
 [tool.poetry.group.dev.dependencies]
 ipython = "^8.13.2"
