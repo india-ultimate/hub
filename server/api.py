@@ -1,5 +1,6 @@
 import contextlib
 import datetime
+import enum
 import hashlib
 import io
 import json
@@ -436,6 +437,11 @@ def list_registrations(
 # Payments ##########
 
 
+class PaymentGateway(enum.Enum):
+    RAZORPAY = "R"
+    MANUAL = "M"
+
+
 @api.post(
     "/manual-transaction/{transaction_id}",
     response={200: ManualTransactionSchema, 400: Response, 422: Response, 502: str},
@@ -445,7 +451,7 @@ def create_manual_transaction(
     transaction_id: str,
     order: AnnualMembershipSchema | EventMembershipSchema | GroupMembershipSchema,
 ) -> tuple[int, str | message_response | dict[str, Any]]:
-    return create_transaction(request, order, transaction_id)
+    return create_transaction(request, order, PaymentGateway.MANUAL, transaction_id)
 
 
 @api.post("/create-order", response={200: OrderSchema, 400: Response, 422: Response, 502: str})
@@ -453,12 +459,13 @@ def create_razorpay_transaction(
     request: AuthenticatedHttpRequest,
     order: AnnualMembershipSchema | EventMembershipSchema | GroupMembershipSchema,
 ) -> tuple[int, str | message_response | dict[str, Any]]:
-    return create_transaction(request, order)
+    return create_transaction(request, order, PaymentGateway.RAZORPAY)
 
 
 def create_transaction(
     request: AuthenticatedHttpRequest,
     order: AnnualMembershipSchema | EventMembershipSchema | GroupMembershipSchema,
+    gateway: PaymentGateway,
     transaction_id: str | None = None,
 ) -> tuple[int, str | message_response | dict[str, Any]]:
     if isinstance(order, GroupMembershipSchema):
@@ -536,7 +543,7 @@ def create_transaction(
         }
         receipt = f"{membership.membership_number}:{start_date}:{ts}"
 
-    if transaction_id is None:
+    if gateway == PaymentGateway.RAZORPAY:
         data = create_razorpay_order(amount, receipt=receipt, notes=notes)
         if data is None:
             return 502, "Failed to connect to Razorpay."
@@ -552,7 +559,7 @@ def create_transaction(
             "event": event,
         }
     )
-    if not transaction_id:
+    if gateway == PaymentGateway.RAZORPAY:
         RazorpayTransaction.create_from_order_data(data)
         transaction_user_name = user.get_full_name()
         description = (
@@ -569,12 +576,16 @@ def create_transaction(
             "prefill": {"name": user.get_full_name(), "email": user.email, "contact": user.phone},
         }
         data.update(extra_data)
-    else:
+    elif gateway == PaymentGateway.MANUAL:
         ManualTransaction.create_from_order_data(data)
         memberships = Membership.objects.filter(
             player__in=player_ids if group_payment else [player.id]
         )
         memberships.update(is_active=True, start_date=start_date, end_date=end_date)
+    else:
+        # We shouldn't get here, because enum
+        pass
+
     return 200, data
 
 
