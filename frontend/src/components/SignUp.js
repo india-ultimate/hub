@@ -100,7 +100,7 @@ const SignUp = props => {
                 error={field.error}
                 type="text"
                 label="First Name"
-                placeholder="Jane"
+                placeholder="Maitreyi"
                 required
               />
             )}
@@ -116,7 +116,7 @@ const SignUp = props => {
                 error={field.error}
                 type="text"
                 label="Last Name"
-                placeholder="Doe"
+                placeholder="Devi"
                 required
               />
             )}

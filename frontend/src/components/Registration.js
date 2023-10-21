@@ -292,7 +292,7 @@ const RegistrationForm = props => {
                     error={field.error}
                     type="text"
                     label="Guardian's First Name"
-                    placeholder="Jane"
+                    placeholder="Maitreyi"
                     required
                   />
                 )}
@@ -308,7 +308,7 @@ const RegistrationForm = props => {
                     error={field.error}
                     type="text"
                     label="Guardian's Last Name"
-                    placeholder="Doe"
+                    placeholder="Devi"
                     required
                   />
                 )}
@@ -398,7 +398,7 @@ const RegistrationForm = props => {
                   error={field.error}
                   type="text"
                   label="First Name"
-                  placeholder="Jane"
+                  placeholder="Maitreyi"
                   required
                 />
               )}
@@ -414,7 +414,7 @@ const RegistrationForm = props => {
                   error={field.error}
                   type="text"
                   label="Last Name"
-                  placeholder="Doe"
+                  placeholder="Devi"
                   required
                 />
               )}
