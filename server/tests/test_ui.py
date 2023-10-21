@@ -1,4 +1,5 @@
 import datetime
+import os
 import random
 
 import pytest
@@ -42,6 +43,9 @@ class TestIntegration(BaseCase):
         test_email_dir = BASE_DIR.joinpath("tmp")
         create_empty_directory(test_email_dir)
 
+    @pytest.mark.skipif(
+        not os.environ.get("PHONEPE_MERCHANT_ID"), reason="no PhonePe configuration found"
+    )
     def test_new_user_login(self) -> None:
         username, password, user_id = create_login_user()
         names = ["NCS 23-24 SW Sectionals (Bangalore)", "NCS 23-24 North Sectionals (Delhi)"]
@@ -91,10 +95,16 @@ class TestIntegration(BaseCase):
             self.assert_element('button:contains("Pay")')
             self.click('button:contains("Pay")')
 
-            self.type("input#transaction-id", "blah-blah\n")
+            # Redirect to PhonePe page
+            self.js_click("input#net-banking", timeout=45)
+            self.js_click("button#b2bOnboardingSubmitButton")
+            self.type("input#username", "test")
+            self.type("input#password", "test\n")
+            self.click('input[value="Confirm"]')
             self.save_screenshot_to_logs("pay-clicked.png")
 
-            self.click(f'a[href="/vaccination/{player_id}"]', timeout=60)
+            self.click('a[href="/dashboard"]', timeout=45)
+            self.click(f'a[href="/vaccination/{player_id}"]')
             self.select_option_by_text("select#name", "Covishield")
             self.choose_file("input#certificate", "frontend/assets/favico.png")
             self.click('button:contains("Submit")')
