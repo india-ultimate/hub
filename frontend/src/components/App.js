@@ -28,6 +28,7 @@ const TournamentSchedule = lazy(() => import("./TournamentSchedule"));
 const TournamentStandings = lazy(() => import("./TournamentStandings"));
 const TournamentTeam = lazy(() => import("./TournamentTeam"));
 const Error404 = lazy(() => import("./Error404"));
+const PhonePeTransaction = lazy(() => import("./PhonePeTransaction"));
 
 const filters = {
   id: /^\d+$/ // only allow numbers
@@ -112,6 +113,11 @@ export default function App() {
                     path="/uc-login/:playerId"
                     component={UltimateCentralLogin}
                     matchFilters={filters}
+                  />
+                  {/* Transaction */}
+                  <UserRoute
+                    path="/phonepe-transaction/:transactionId"
+                    component={PhonePeTransaction}
                   />
                   {/* Admin routes */}
                   <UserRoute path="/players" component={RegisteredPlayerList} />

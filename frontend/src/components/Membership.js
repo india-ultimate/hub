@@ -19,8 +19,8 @@ import {
   minAgeWarning
 } from "../constants";
 import Breadcrumbs from "./Breadcrumbs";
-import ManualPaymentModal from "./ManualPaymentModal";
 import { inboxStack } from "solid-heroicons/solid";
+import PhonePePayment from "./PhonePePayment";
 
 const Membership = () => {
   const [store] = useStore();
@@ -206,16 +206,16 @@ const Membership = () => {
               {minAgeWarning}
             </div>
           </Show>
-          <ManualPaymentModal
-            disabled={payDisabled()}
-            annual={annual()}
-            year={year()}
-            event={event()}
-            player_id={player().id}
-            amount={getAmount()}
-            setStatus={setStatus}
-          />
         </div>
+        <PhonePePayment
+          disabled={payDisabled()}
+          annual={annual()}
+          year={year()}
+          event={event()}
+          player_id={player().id}
+          amount={getAmount()}
+          setStatus={setStatus}
+        />
         <p>{status()}</p>
       </Show>
     </div>

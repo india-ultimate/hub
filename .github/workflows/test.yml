@@ -116,6 +116,10 @@ jobs:
         run: poetry run sbase get geckodriver latest
 
       - name: Run Django Integration tests
+        env:
+          PHONEPE_SALT_INDEX: 1
+          PHONEPE_SALT_KEY: ${{ secrets.PHONEPE_SALT_KEY }}
+          PHONEPE_MERCHANT_ID: ${{ secrets.PHONEPE_MERCHANT_ID }}
         run: |
           poetry run pytest --disable-warnings -k Integration --firefox
 
