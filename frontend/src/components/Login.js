@@ -303,6 +303,178 @@ const SendEmailLink = props => {
   );
 };
 
+const SendEmailOTP = props => {
+  const csrftoken = getCookie("csrftoken");
+  const [email, setEmail] = createSignal("");
+  const [otp, setOtp] = createSignal("");
+  const [checkSpam, setCheckSpam] = createSignal(false);
+  const [loading, setLoading] = createSignal(false);
+  const [otpData, setOtpData] = createSignal();
+  const [store, { setLoggedIn, setData }] = useStore();
+  const [enableRetry, setEnableRetry] = createSignal(false);
+
+  createEffect(() => {
+    if (store.loggedIn) {
+      const navigate = useNavigate();
+      navigate("/dashboard", { replace: true });
+    }
+  });
+
+  let url = new URL(window.location);
+  url.pathname = "/email-otp";
+
+  const sendOTPEmail = async e => {
+    e.preventDefault();
+    setLoading(true);
+
+    const response = await fetch("/api/send-otp", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": csrftoken
+      },
+      body: JSON.stringify({
+        email: email()?.trim()
+      })
+    });
+
+    if (response.ok) {
+      props.setStatus("Successfully sent otp!");
+      const data = await response.json();
+      setOtpData(data);
+      setCheckSpam(true);
+      setEnableRetry(false);
+      setTimeout(() => setEnableRetry(true), 10000);
+    } else {
+      props.setError(true);
+      try {
+        const data = await response.json();
+        props.setStatus(`OTP sending failed with error: ${data.message}`);
+      } catch {
+        props.setStatus(
+          `OTP sending failed with error: ${response.statusText} (${response.status})`
+        );
+      }
+    }
+    setLoading(false);
+  };
+
+  const validateOTP = async e => {
+    e.preventDefault();
+
+    const response = await fetch("/api/otp-login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": csrftoken
+      },
+      body: JSON.stringify({
+        email: email()?.trim(),
+        otp: otp()?.trim(),
+        ...otpData()
+      })
+    });
+
+    if (response.ok) {
+      props.setStatus("Successfully logged in!");
+      const data = await response.json();
+      setData(data);
+      setLoggedIn(true);
+    } else {
+      props.setError(true);
+      setLoggedIn(false);
+      try {
+        const data = await response.json();
+        props.setStatus(`Login failed with error: ${data.message}`);
+      } catch {
+        props.setStatus(
+          `Login failed with error: ${response.statusText} (${response.status})`
+        );
+      }
+    }
+  };
+
+  return (
+    <div class="grid gap-3 mb-6">
+      <label
+        for="email-link-input"
+        class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+      >
+        Enter Email ID for sending login OTP
+      </label>
+      <div class="mb-6">
+        <input
+          class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+          id="email-otp-input"
+          placeholder="Email Address"
+          value={email()}
+          disabled={otpData()}
+          onInput={e => setEmail(e.currentTarget.value)}
+        />
+      </div>
+      <Show when={otpData()}>
+        <div class="mb-6">
+          <input
+            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+            id="email-otp-number"
+            placeholder="Verification Code"
+            value={otp()}
+            autoComplete="off"
+            onInput={e => setOtp(e.currentTarget.value)}
+          />
+        </div>
+      </Show>
+
+      <Show
+        when={otpData()}
+        fallback={
+          <button
+            id="send-otp-button"
+            onClick={sendOTPEmail}
+            disabled={loading()}
+            class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+          >
+            <Show when={loading()} fallback={"Send OTP"}>
+              <Spinner />
+            </Show>
+          </button>
+        }
+      >
+        <button
+          id="validate-otp-button"
+          onClick={validateOTP}
+          class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+        >
+          Confirm OTP
+        </button>
+        <span class="text-center text-sm mt-5">
+          Haven't received your OTP yet?
+        </span>
+        <button
+          disabled={!enableRetry() || loading()}
+          class="disabled:text-gray-500 text-blue-500 transition duration-300"
+          onClick={sendOTPEmail}
+        >
+          <Show when={loading()} fallback={"Resend OTP"}>
+            <Spinner />
+          </Show>
+        </button>
+      </Show>
+
+      <Show when={checkSpam()}>
+        <div
+          class="p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-yellow-50 dark:bg-gray-800 dark:text-yellow-300"
+          role="alert"
+        >
+          Please check the Junk folder if you are unable to find the email in
+          your Inbox. You should see an email with the subject "Sign in to India
+          Ultimate Hub".
+        </div>
+      </Show>
+    </div>
+  );
+};
+
 const Login = () => {
   const [status, setStatus] = createSignal("");
   const [error, setError] = createSignal(false);
@@ -339,6 +511,19 @@ const Login = () => {
           data-tabs-toggle="#signinTabContent"
           role="tablist"
         >
+          <li class="mr-2" role="presentation">
+            <button
+              class="inline-block p-4 border-b-2 rounded-t-lg"
+              id="email-otp-tab"
+              data-tabs-target="#email-otp"
+              type="button"
+              role="tab"
+              aria-controls="email-otp"
+              aria-selected="false"
+            >
+              OTP
+            </button>
+          </li>
           <li class="mr-2" role="presentation">
             <button
               class="inline-block p-4 border-b-2 rounded-t-lg"
@@ -383,6 +568,14 @@ const Login = () => {
           aria-labelledby="email-link-tab"
         >
           <SendEmailLink setStatus={setStatus} setError={setError} />
+        </div>
+        <div
+          class="hidden p-4 rounded-lg bg-gray-50 dark:bg-gray-800"
+          id="email-otp"
+          role="tabpanel"
+          aria-labelledby="email-otp-tab"
+        >
+          <SendEmailOTP setStatus={setStatus} setError={setError} />
         </div>
         <div
           class="hidden p-4 rounded-lg bg-gray-50 dark:bg-gray-800"
