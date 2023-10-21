@@ -1,3 +1,4 @@
+from collections import Counter
 from functools import cmp_to_key, partial
 
 from django.db.models import Q
@@ -17,6 +18,7 @@ from server.models import (
     User,
 )
 from server.schema import SpiritScoreUpdateSchema
+from server.types import validation_error_dict
 
 ROLES_ELIGIBLE_TO_SUBMIT_SCORES = ["captain", "admin", "spirit captain", "coach"]
 
@@ -810,3 +812,90 @@ def update_for_bracket_or_cross_pool(
     tournament_seeding = match.tournament.current_seeding
     match.tournament.current_seeding = get_new_bracket_seeding(tournament_seeding, match)
     match.tournament.save()
+
+
+def validate_seeds_and_teams(
+    tournament: Tournament, seeding: dict[int, int]
+) -> tuple[bool, validation_error_dict]:
+    incoming_seeds = seeding.keys()
+    incoming_teams = seeding.values()
+    # [5, 6, 7, 8, 9, 10, 14, 15, 87, 88, 99, 1286] for Sectionals Bangalore
+    rostered_team_ids = (
+        UCRegistration.objects.filter(event=tournament.event)
+        .values_list("team", flat=True)
+        .distinct()
+    )
+    roster_size = len(rostered_team_ids)
+    roster_seeds = range(1, roster_size + 1)
+
+    valid_seeds_and_teams = True
+    errors = {}
+
+    # incoming seeding list should be equal to range(len(roster_size))
+    missing_seeds = set(roster_seeds) - set(incoming_seeds)
+    if missing_seeds:
+        valid_seeds_and_teams = False
+        errors["missing_seeds"] = list(missing_seeds)
+
+    # Seeds must be an integer between 1 and {roster_size}
+    wrong_seeds = set(incoming_seeds) - set(roster_seeds)
+    if wrong_seeds:
+        valid_seeds_and_teams = False
+        errors["wrong_seeds"] = list(wrong_seeds)
+
+    # incoming teams list should be same as rostered teams list
+    missing_teams = set(rostered_team_ids) - set(incoming_teams)
+    if missing_teams:
+        errors["missing_teams"] = list(missing_teams)
+        valid_seeds_and_teams = False
+
+    # all teams in the update should belong to the roster
+    wrong_teams = set(incoming_teams) - set(rostered_team_ids)
+    if wrong_teams:
+        valid_seeds_and_teams = False
+        errors["wrong_teams"] = list(wrong_teams)
+
+    # same team cannot be in 2 different seeds
+    duplicate_teams: list[int] = [
+        team for team, occurence in Counter(incoming_teams).items() if occurence > 1
+    ]
+    if duplicate_teams:
+        valid_seeds_and_teams = False
+        errors["duplicate_teams"] = duplicate_teams
+
+    return valid_seeds_and_teams, errors
+
+
+def validate_new_pool(
+    tournament: Tournament, new_pool: set[int]
+) -> tuple[bool, validation_error_dict]:
+    # same seed shouldn't be added in multiple pools
+    other_pools_in_tournament = Pool.objects.filter(tournament=tournament).values_list(
+        "initial_seeding", flat=True
+    )
+    already_present_seeds: set[int] = set()
+    for pool in other_pools_in_tournament:
+        already_present_seeds.update(
+            map(int, pool.keys())
+        )  # Pool.initial_seeding : dict[seed(str), team_id(int)]. Convert seeds from str to ints
+
+    repeated_seeds_in_new_pool = already_present_seeds.intersection(new_pool)
+    # the seed shouldn't negative, 0 or more than roster size
+    tournament_roster_size = (
+        UCRegistration.objects.filter(event=tournament.event)
+        .values_list("team", flat=True)
+        .distinct()
+        .count()
+    )
+    invalid_seeds = list(filter(lambda seed: 1 <= seed <= tournament_roster_size, new_pool))
+    valid_pool = True
+    errors = {}
+
+    if repeated_seeds_in_new_pool:
+        errors["repeated_seeds_in_new_pool"] = list(repeated_seeds_in_new_pool)
+        valid_pool = False
+    if invalid_seeds:
+        errors["invalid_seeds"] = invalid_seeds
+        valid_pool = False
+
+    return valid_pool, errors

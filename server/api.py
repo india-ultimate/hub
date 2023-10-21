@@ -123,6 +123,8 @@ from server.tournament import (
     populate_fixtures,
     update_match_score_and_results,
     update_tournament_spirit_rankings,
+    validate_new_pool,
+    validate_seeds_and_teams,
 )
 from server.types import message_response
 from server.utils import (
@@ -1168,7 +1170,12 @@ def update_standings(
     except Tournament.DoesNotExist:
         return 400, {"message": "Tournament does not exist"}
 
-    # FIXME Check if all teams in standings are there in rostered teams
+    valid_seeds_and_teams, errors = validate_seeds_and_teams(tournament, tournament_details.seeding)
+
+    if not valid_seeds_and_teams:
+        message = "Cannot update standings, due to following errors: \n"
+        message += "\n".join(f"{key}: {value}" for key, value in errors.items())
+        return 400, {"message": message}
 
     tournament.initial_seeding = dict(sorted(tournament_details.seeding.items()))
     tournament.current_seeding = dict(sorted(tournament_details.seeding.items()))
@@ -1210,8 +1217,17 @@ def create_pool(
     except Tournament.DoesNotExist:
         return 400, {"message": "Tournament does not exist"}
 
-    pool_seeding = {}
-    pool_results = {}
+    valid_pool, errors = validate_new_pool(
+        tournament=tournament, new_pool=set(pool_details.seeding)
+    )
+    if not valid_pool:
+        message = "Cannot create pools, due to following errors: \n"
+        message += "\n".join(f"{key}: {value}" for key, value in errors.items())
+        return 400, {"message": message}
+
+    # seed -> team_id. If the same seed present twice, we'll only get one object since its a map with seed as the key
+    pool_seeding: dict[int, str] = {}
+    pool_results: dict[str, Any] = {}
     for i, seed in enumerate(pool_details.seeding):
         team_id = tournament.initial_seeding[str(seed)]
 
