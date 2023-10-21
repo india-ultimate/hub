@@ -53,6 +53,20 @@ class FirebaseSignUpCredentials(Schema):
     sign_up: bool
 
 
+class OTPRequestCredentials(Schema):
+    email: str
+
+
+class OTPRequestResponse(Schema):
+    otp_ts: int
+
+
+class OTPLoginCredentials(Schema):
+    email: str
+    otp: str
+    otp_ts: int
+
+
 class Response(Schema):
     message: str
 

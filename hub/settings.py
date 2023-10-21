@@ -178,6 +178,10 @@ EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD")
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 
+# OTP settings
+OTP_EMAIL_HASH_KEY = os.environ.get("OTP_EMAIL_HASH_KEY", "")
+
+
 ########################################################################
 import django_stubs_ext
 
