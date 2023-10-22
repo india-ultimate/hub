@@ -6,9 +6,10 @@ import pytest
 from django.utils.timezone import now
 from seleniumbase import BaseCase
 
+from hub.settings import BASE_DIR
 from server.models import Event, Player, User
 from server.tests.localserver import running_test_server
-from server.tests.utils import zulip_get_email_link
+from server.tests.utils import create_empty_directory, get_otp_from_email_logs, zulip_get_email_link
 
 
 def create_login_user() -> tuple[str, str, int]:
@@ -44,6 +45,16 @@ def create_event(title: str) -> Event:
 
 @pytest.mark.django_db(transaction=True)
 class TestIntegration(BaseCase):
+    def setUp(self, masterqa_mode: bool = False) -> None:
+        super().setUp()
+        test_email_dir = BASE_DIR.joinpath("tmp")
+        create_empty_directory(test_email_dir)
+
+    def tearDown(self) -> None:
+        super().tearDown()
+        test_email_dir = BASE_DIR.joinpath("tmp")
+        create_empty_directory(test_email_dir)
+
     def test_new_user_login(self) -> None:
         username, password, user_id = create_login_user()
         names = ["NCS 23-24 SW Sectionals (Bangalore)", "NCS 23-24 North Sectionals (Delhi)"]
@@ -160,3 +171,23 @@ class TestIntegration(BaseCase):
             self.click('a[href="/registration/ward"]')
             self.assert_text("", "input#first_name")
             self.assert_text("", "input#last_name")
+
+    def test_login_with_otp(self) -> None:
+        username, password, user_id = create_login_user()
+
+        with running_test_server() as base_url:
+            self.open(base_url)
+            self.click('a[href="/login"]')
+            self.click("button#email-otp-tab")
+            self.type("input#email-otp-input", username)
+            self.click("button#send-otp-button")
+            self.assert_element("input#email-otp-number")
+
+            test_email_dir = BASE_DIR.joinpath("tmp")
+            otp = get_otp_from_email_logs(test_email_dir)
+
+            self.type("input#email-otp-number", otp)
+            self.click("button#validate-otp-button")
+            self.assert_element("h2#accordion-heading-actions")
+            self.assert_element('a[href="/registration/me"]')
+            print("Successfully logged in!")
