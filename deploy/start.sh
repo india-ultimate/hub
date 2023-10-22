@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -euo pipefail
+
 # Start services
 sudo nginx
 sudo cron
@@ -10,6 +12,9 @@ HERE=$(dirname "$0")
 
 # Migrate DB
 python manage.py migrate
+
+# Ensure no security check errors
+python manage.py check --deploy
 
 # Start the server using gunicorn
 export PATH="$HOME/.local/bin:$PATH"
