@@ -1,5 +1,4 @@
 import datetime
-import os
 import random
 
 import pytest
@@ -21,18 +20,6 @@ def create_login_user() -> tuple[str, str, int]:
     user.set_password(password)
     user.save()
     return username, password, user.id
-
-
-def get_zulip_stream_email() -> str:
-    return os.environ["ZULIP_STREAM_EMAIL"]
-
-
-def create_email_link_user() -> tuple[str, int]:
-    username = get_zulip_stream_email()
-    user = User.objects.create(
-        username=username, email=username, first_name="Jagdeep", last_name="Chatterjee"
-    )
-    return username, user.id
 
 
 def create_event(title: str) -> Event:
