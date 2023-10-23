@@ -394,6 +394,15 @@ const SendEmailOTP = props => {
     }
   };
 
+  const resetEmail = async e => {
+    e.preventDefault();
+
+    setEmail("");
+    setCheckSpam(false);
+    setOtpData();
+    props.setStatus("");
+  };
+
   return (
     <div class="grid gap-3 mb-6">
       <label
@@ -458,6 +467,9 @@ const SendEmailOTP = props => {
           <Show when={loading()} fallback={"Resend OTP"}>
             <Spinner />
           </Show>
+        </button>
+        <button class="text-sm underline text-blue-500" onClick={resetEmail}>
+          Wrong Email? Click here to edit
         </button>
       </Show>
 
