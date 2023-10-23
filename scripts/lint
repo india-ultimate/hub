@@ -98,6 +98,12 @@ def run() -> None:
         ["scripts/lint-commits"],
         description="Checks commit messages for common formatting errors (config: .gitlint)",
     )
+    linter_config.external_linter(
+        "shellcheck",
+        ["shellcheck", "-x", "-P", "SCRIPTDIR"],
+        ["bash", "sh"],
+        description="Standard shell script linter",
+    )
     linter_config.do_lint()
 
 
