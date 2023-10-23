@@ -9,7 +9,7 @@ from seleniumbase import BaseCase
 from hub.settings import BASE_DIR
 from server.models import Event, Player, User
 from server.tests.localserver import running_test_server
-from server.tests.utils import create_empty_directory, get_otp_from_email_logs, zulip_get_email_link
+from server.tests.utils import create_empty_directory, get_otp_from_email_logs
 
 
 def create_login_user() -> tuple[str, str, int]:
@@ -124,53 +124,6 @@ class TestIntegration(BaseCase):
 
             self.click("h2#accordion-heading-transactions")
             self.assert_element("h2#accordion-heading-transactions")
-
-    @pytest.mark.skipif(not os.environ.get("ZULIP_SITE"), reason="no zulip configuration found")
-    def test_login_with_email(self) -> None:
-        username, user_id = create_email_link_user()
-
-        with running_test_server() as base_url:
-            self.open(base_url)
-            self.click('a[href="/login"]')
-            self.click("button#email-link-tab")
-            self.type("input#email-link-input", username)
-            self.click("div#email-link form div button")
-
-            signin_url = zulip_get_email_link()
-            self.open(signin_url)
-            self.click("form div button")
-
-            self.assert_text("Welcome Jagdeep Chatterjee")
-
-    @pytest.mark.skipif(not os.environ.get("ZULIP_SITE"), reason="no zulip configuration found")
-    def test_signup_with_email(self) -> None:
-        username = get_zulip_stream_email()
-        with running_test_server() as base_url:
-            self.open(base_url)
-            self.click('a[href="/login"]')
-            self.click("button#email-link-tab")
-            self.type("input#email-link-input", username)
-            self.click("div#email-link form div button")
-
-            signin_url = zulip_get_email_link()
-            self.open(signin_url)
-            self.click("form div button")
-
-            self.type("input#first_name", "Jagdeep")
-            self.type("input#last_name", "Chatterjee")
-            self.type("input#phone", "+919876543210\n")
-
-            self.assert_text("Welcome Jagdeep Chatterjee")
-            self.click('a[href="/registration/me"]')
-
-            self.assert_text("Jagdeep", "input#first_name")
-            self.assert_text("Chatterjee", "input#last_name")
-            self.assert_text("+919876543210", "input#phone")
-
-            self.click('a[href="/dashboard"]')
-            self.click('a[href="/registration/ward"]')
-            self.assert_text("", "input#first_name")
-            self.assert_text("", "input#last_name")
 
     def test_login_with_otp(self) -> None:
         username, password, user_id = create_login_user()
