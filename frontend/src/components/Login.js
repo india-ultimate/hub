@@ -428,7 +428,10 @@ const SendEmailOTP = props => {
             id="email-otp-number"
             placeholder="Verification Code"
             value={otp()}
-            autoComplete="off"
+            type="text"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            pattern="\d{6}"
             onInput={e => setOtp(e.currentTarget.value)}
           />
         </div>
