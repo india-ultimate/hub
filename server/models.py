@@ -269,6 +269,7 @@ class Match(models.Model):
         models.PositiveIntegerField()
     )  # For Cross Pool and Brackets to have round number
 
+    name = models.CharField(max_length=20, null=True, blank=True)
     status = models.CharField(max_length=3, choices=Status.choices, default=Status.YET_TO_FIX)
     time = models.DateTimeField(null=True, blank=True)
     field = models.CharField(max_length=25, null=True, blank=True)
