@@ -1,29 +1,9 @@
-import {
-  getCookie,
-  firebaseConfig,
-  loginWithFirebaseResponse,
-  clearCookie
-} from "../utils";
+import { getCookie, clearCookie } from "../utils";
 import { useStore } from "../store";
 import { Spinner } from "../icons";
-import {
-  createSignal,
-  createEffect,
-  onMount,
-  Switch,
-  Match,
-  Show
-} from "solid-js";
+import { createSignal, createEffect, onMount, Show } from "solid-js";
 import { useNavigate } from "@solidjs/router";
-import { initializeApp } from "firebase/app";
-import {
-  getAuth,
-  sendSignInLinkToEmail,
-  signInWithPopup,
-  GoogleAuthProvider
-} from "firebase/auth";
 import { initFlowbite } from "flowbite";
-import SignUp from "./SignUp";
 import Breadcrumbs from "./Breadcrumbs";
 import { home } from "solid-heroicons/solid";
 
@@ -122,182 +102,6 @@ const PasswordLogin = props => {
         in. This is a login page for admins or users having trouble using other
         methods to login. Your Ultimate Central credentials cannot be used to
         login from this page.
-      </div>
-    </form>
-  );
-};
-
-const GoogleLogin = props => {
-  const [store, { setLoggedIn, setData }] = useStore();
-  const [creds, setCreds] = createSignal();
-  const [showSignUp, setShowSignUp] = createSignal(false);
-  const [loading, setLoading] = createSignal(false);
-
-  createEffect(() => {
-    if (store.loggedIn) {
-      const navigate = useNavigate();
-      navigate("/dashboard", { replace: true });
-    }
-  });
-
-  const onSuccess = async response => {
-    props.setStatus("Successfully logged in!");
-    setLoading(false);
-    setLoggedIn(true);
-    setData(await response.json());
-  };
-
-  const onFailure = async response => {
-    setLoading(false);
-    setLoggedIn(false);
-    props.setError(true);
-    if (response.status === 404) {
-      setShowSignUp(true);
-      return;
-    }
-    try {
-      const data = await response.json();
-      props.setStatus(`Login failed with error: ${data.message}`);
-      setShowSignUp(false);
-    } catch {
-      props.setStatus(
-        `Login failed with error: ${response.statusText} (${response.status})`
-      );
-      setShowSignUp(false);
-    }
-  };
-
-  const loginWithGoogle = e => {
-    e.preventDefault();
-
-    const provider = new GoogleAuthProvider();
-    provider.addScope("https://www.googleapis.com/auth/userinfo.email");
-    provider.addScope("https://www.googleapis.com/auth/userinfo.profile");
-    provider.addScope("openid");
-
-    // Initialize Firebase
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    auth.useDeviceLanguage();
-
-    signInWithPopup(auth, provider)
-      .then(result => {
-        setCreds(result);
-        setLoading(true);
-        loginWithFirebaseResponse(result, onSuccess, onFailure);
-      })
-      .catch(error => {
-        props.setStatus(
-          `Failed to login using Google: ${error.code}; ${error.message}`
-        );
-      });
-  };
-
-  return (
-    <Switch>
-      <Match when={!showSignUp()}>
-        <div class="grid gap-3 mb-6">
-          <button
-            class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
-            onClick={loginWithGoogle}
-          >
-            Login with Google
-          </button>
-        </div>
-        <div
-          class="p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-yellow-50 dark:bg-gray-800 dark:text-yellow-300"
-          role="alert"
-        >
-          If you have issues logging in using Google on Firefox, disable
-          "Enhanced Tracking Protection" for this site (Use the shield icon (🛡)
-          in the address bar) or use the "Email Link" based sign-in.
-        </div>
-        <Show when={loading()}>
-          <Spinner />
-        </Show>
-      </Match>
-      <Match when={showSignUp()}>
-        <SignUp
-          emailId={creds()?.user?.email}
-          uid={creds()?.user?.uid}
-          token={creds()?.user?.stsTokenManager?.accessToken}
-        />
-      </Match>
-    </Switch>
-  );
-};
-
-const SendEmailLink = props => {
-  const [email, setEmail] = createSignal("");
-  const [checkSpam, setCheckSpam] = createSignal(false);
-  let url = new URL(window.location);
-  url.pathname = "/email-link";
-  const sendFirebaseEmailLink = e => {
-    e.preventDefault();
-    const actionCodeSettings = {
-      // URL you want to redirect back to. The domain (www.example.com) for this
-      // URL must be in the authorized domains list in the Firebase Console.
-      url: url.toString(),
-      // This must be true.
-      handleCodeInApp: true
-    };
-
-    // Initialize Firebase
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    auth.useDeviceLanguage();
-
-    sendSignInLinkToEmail(auth, email()?.trim(), actionCodeSettings)
-      .then(() => {
-        // The link was successfully sent. Inform the user.
-        props.setStatus(`Email was successfully sent to ${email()}`);
-        // Save the email locally so you don't need to ask the user for it
-        // again if they open the link on the same device.
-        window.localStorage.setItem("emailForSignIn", email());
-        setCheckSpam(true);
-      })
-      .catch(error => {
-        setCheckSpam(false);
-        props.setStatus(
-          `Failed to send email to ${email()}: ${error.code}; ${error.message}`
-        );
-      });
-  };
-
-  return (
-    <form onSubmit={sendFirebaseEmailLink}>
-      <div class="grid gap-3 mb-6">
-        <label
-          for="email-link-input"
-          class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
-        >
-          Enter Email ID for sending login link
-        </label>
-        <div class="mb-6">
-          <input
-            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-            id="email-link-input"
-            placeholder="Email Address"
-            value={email()}
-            onInput={e => setEmail(e.currentTarget.value)}
-          />
-        </div>
-        <button
-          type="submit"
-          class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
-        >
-          Send Email
-        </button>
-        <Show when={checkSpam()}>
-          <div
-            class="p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-yellow-50 dark:bg-gray-800 dark:text-yellow-300"
-            role="alert"
-          >
-            Please check the Junk folder if you are unable to find the email in
-            your Inbox. You should see an email with the subject "Sign in to
-            India Ultimate Hub".
-          </div>
-        </Show>
       </div>
     </form>
   );
@@ -542,19 +346,6 @@ const Login = () => {
           <li class="mr-2" role="presentation">
             <button
               class="inline-block p-4 border-b-2 rounded-t-lg"
-              id="email-link-tab"
-              data-tabs-target="#email-link"
-              type="button"
-              role="tab"
-              aria-controls="email-link"
-              aria-selected="false"
-            >
-              Email-Link
-            </button>
-          </li>
-          <li class="mr-2" role="presentation">
-            <button
-              class="inline-block p-4 border-b-2 rounded-t-lg"
               id="password-tab"
               data-tabs-target="#password"
               type="button"
@@ -568,22 +359,6 @@ const Login = () => {
         </ul>
       </div>
       <div id="signinTabContent">
-        <div
-          class="hidden p-4 rounded-lg bg-gray-50 dark:bg-gray-800"
-          id="google"
-          role="tabpanel"
-          aria-labelledby="google-tab"
-        >
-          <GoogleLogin setStatus={setStatus} setError={setError} />
-        </div>
-        <div
-          class="hidden p-4 rounded-lg bg-gray-50 dark:bg-gray-800"
-          id="email-link"
-          role="tabpanel"
-          aria-labelledby="email-link-tab"
-        >
-          <SendEmailLink setStatus={setStatus} setError={setError} />
-        </div>
         <div
           class="hidden p-4 rounded-lg bg-gray-50 dark:bg-gray-800"
           id="email-otp"

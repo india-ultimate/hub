@@ -8,7 +8,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/solid-query";
 
 const About = lazy(() => import("./About"));
 const Dashboard = lazy(() => import("./Dashboard"));
-const EmailLink = lazy(() => import("./EmailLink"));
 const Home = lazy(() => import("./Home"));
 const Login = lazy(() => import("./Login"));
 const Registration = lazy(() => import("./Registration"));
@@ -53,7 +52,6 @@ export default function App() {
                   <UserRoute path="/dashboard" component={Dashboard} />
                   {/* Login related routes */}
                   <Route path="/login" component={Login} />
-                  <Route path="/email-link" component={EmailLink} />
                   {/* Tournament Public Routes */}
                   <Route path={"/tournaments"} component={Tournaments} />
                   <Route path={"/tournament/:slug"} component={Tournament} />

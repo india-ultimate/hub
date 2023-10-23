@@ -24,41 +24,6 @@ export const clearCookie = name => {
   }
 };
 
-export const loginWithFirebaseResponse = async (
-  firebaseResponse,
-  onSuccess,
-  onFailure
-) => {
-  const {
-    user: { uid, accessToken: token }
-  } = firebaseResponse;
-  const response = await fetch("/api/firebase-login", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-CSRFToken": getCookie("csrftoken")
-    },
-    body: JSON.stringify({ uid, token, login: true })
-  });
-
-  if (response.ok) {
-    onSuccess(response);
-  } else {
-    onFailure(response);
-  }
-};
-
-// Firebase configuration. The configuration is considered public, and hence
-// can live in the source code.
-export const firebaseConfig = {
-  apiKey: "AIzaSyB5iRXnIckzjZMOthOUc3d4tCIaO2blLCA",
-  authDomain: "india-ultimate-hub.firebaseapp.com",
-  projectId: "india-ultimate-hub",
-  storageBucket: "india-ultimate-hub.appspot.com",
-  messagingSenderId: "677703680955",
-  appId: "1:677703680955:web:9014c1e57b3e04e7873a9e"
-};
-
 export const fetchUserData = (successCallback, failureCallback) => {
   return fetch("/api/me", {
     method: "GET",
