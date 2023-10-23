@@ -95,7 +95,7 @@ ignore = [
 ]
 
 [tool.pytest.ini_options]
-DJANGO_SETTINGS_MODULE = "hub.settings"
+DJANGO_SETTINGS_MODULE = "hub.test_settings"
 
 [tool.mypy]
 scripts_are_modules = true

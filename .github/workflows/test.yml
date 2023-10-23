@@ -81,7 +81,7 @@ jobs:
           TOPSCORE_CLIENT_SECRET: "fake-client-secret"
           TOPSCORE_SITE_SLUG: "upai"
         run: |
-          poetry run pytest --disable-warnings --ds=hub.test_settings -k 'not Integration'
+          poetry run pytest --disable-warnings -k 'not Integration'
 
   run-integration-tests:
     runs-on: ubuntu-latest
@@ -125,7 +125,7 @@ jobs:
           ZULIP_SITE: ${{ secrets.ZULIP_SITE }}
           FIREBASE_SERVICE_ACCOUNT_CREDENTIALS: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_CREDENTIALS }}
         run: |
-          poetry run pytest --disable-warnings --ds=hub.test_settings -k Integration --firefox
+          poetry run pytest --disable-warnings -k Integration --firefox
 
       - name: Upload selenium base logs as artifacts
         if: failure() # Upload the artifact even if a previous step fails
