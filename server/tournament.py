@@ -28,14 +28,15 @@ ROLES_ELIGIBLE_TO_SUBMIT_SCORES = ["captain", "admin", "spirit captain", "coach"
 def create_pool_matches(tournament: Tournament, pool: Pool) -> None:
     pool_seeding_list = list(map(int, pool.initial_seeding.keys()))
 
-    for i, x in enumerate(pool_seeding_list):
-        for _j, y in enumerate(pool_seeding_list[i + 1 :], i + 1):
+    for i, seed_x in enumerate(pool_seeding_list):
+        for j, seed_y in enumerate(pool_seeding_list[i + 1 :], i + 1):
             match = Match(
+                name=f"{pool.name}{i + 1} vs {pool.name}{j + 1}",
                 tournament=tournament,
                 pool=pool,
                 sequence_number=1,
-                placeholder_seed_1=x,
-                placeholder_seed_2=y,
+                placeholder_seed_1=seed_x,
+                placeholder_seed_2=seed_y,
             )
 
             match.save()
