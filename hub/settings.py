@@ -55,7 +55,6 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "server.firebase_middleware.FirebaseAuthenticationMiddleware",
 ]
 
 ROOT_URLCONF = "hub.urls"

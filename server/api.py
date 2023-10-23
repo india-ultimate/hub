@@ -7,7 +7,6 @@ import time
 from base64 import b32encode
 from typing import Any, cast
 
-import firebase_admin
 import pyotp
 from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
@@ -22,12 +21,10 @@ from django.utils.html import strip_tags
 from django.utils.text import slugify
 from django.utils.timezone import now
 from django.views.decorators.csrf import csrf_exempt
-from firebase_admin import auth
 from ninja import File, NinjaAPI, UploadedFile
 from ninja.security import django_auth
 
 from server.constants import EVENT_MEMBERSHIP_AMOUNT, MEMBERSHIP_END, MEMBERSHIP_START
-from server.firebase_middleware import firebase_to_django_user
 from server.manual_transactions import validate_manual_transactions
 from server.models import (
     Accreditation,
@@ -60,8 +57,6 @@ from server.schema import (
     CrossPoolSchema,
     EventMembershipSchema,
     EventSchema,
-    FirebaseCredentials,
-    FirebaseSignUpCredentials,
     GroupMembershipSchema,
     GuardianshipFormSchema,
     ManualTransactionSchema,
@@ -192,42 +187,6 @@ def api_login(
 def api_logout(request: AuthenticatedHttpRequest) -> tuple[int, message_response]:
     logout(request)
     return 200, {"message": "Logged out"}
-
-
-@api.post("/firebase-login", auth=None, response={200: UserSchema, 404: Response, 403: Response})
-def firebase_login(
-    request: HttpRequest, credentials: FirebaseCredentials | FirebaseSignUpCredentials
-) -> tuple[int, User | message_response]:
-    try:
-        firebase_user = auth.get_user(credentials.uid)
-    except (firebase_admin._auth_utils.UserNotFoundError, ValueError):
-        # ValueError occurs when firebase_app wasn't initialized because no
-        # server credentials
-        firebase_user = None
-    user = firebase_to_django_user(firebase_user)
-    invalid_credentials = 403, {"message": "Invalid credentials"}
-    if user is None and firebase_user is not None and isinstance(credentials, FirebaseCredentials):
-        return 404, {"message": "User not found in the DB"}
-    elif (
-        user is None
-        and firebase_user is not None
-        and isinstance(credentials, FirebaseSignUpCredentials)
-    ):
-        # Create user when we have an email ID
-        user = User.objects.create(
-            email=credentials.email,
-            username=credentials.email,
-            first_name=credentials.first_name,
-            last_name=credentials.last_name,
-            phone=credentials.phone,
-        )
-    elif user is None:
-        return invalid_credentials
-
-    request.session["firebase_token"] = credentials.token
-    request.user = user
-    login(request, user)
-    return 200, user
 
 
 def get_email_hash(email: str) -> str:

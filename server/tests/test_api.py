@@ -38,59 +38,6 @@ class TestLogin(ApiBaseTestCase):
         data = response.json()
         self.assertEqual(self.username, data["username"])
 
-    def test_firebase_login_failure(self) -> None:
-        c = Client()
-        with mock.patch("firebase_admin.auth.get_user", return_value=None):
-            response = c.post(
-                "/api/firebase-login",
-                data={"token": "token", "uid": "fake-uid", "login": True},
-                content_type="application/json",
-            )
-        self.assertEqual(403, response.status_code)
-
-    def test_firebase_login(self) -> None:
-        c = Client()
-        token = "token"
-        uid = "uid"
-        with mock.patch(
-            "firebase_admin.auth.get_user",
-            return_value=mock.MagicMock(email=self.username),
-        ):
-            response = c.post(
-                "/api/firebase-login",
-                data={"token": token, "uid": uid, "login": True},
-                content_type="application/json",
-            )
-        self.assertEqual(200, response.status_code)
-        data = response.json()
-        self.assertEqual(self.username, data["username"])
-        self.assertIn("firebase_token", c.session.keys())
-        self.assertEqual(token, c.session["firebase_token"])
-
-    def test_firebase_signup(self) -> None:
-        c = Client()
-        token = "my-secret-token"
-        email = "blah@example.com"
-        with mock.patch("firebase_admin.auth.get_user"):
-            response = c.post(
-                "/api/firebase-login",
-                data={
-                    "token": token,
-                    "uid": "fake-uid",
-                    "email": email,
-                    "first_name": "John",
-                    "last_name": "Doe",
-                    "sign_up": True,
-                    "phone": "+919999900000",
-                },
-                content_type="application/json",
-            )
-        self.assertEqual(200, response.status_code)
-        data = response.json()
-        self.assertEqual(email, data["username"])
-        self.assertIn("firebase_token", c.session.keys())
-        self.assertEqual(token, c.session["firebase_token"])
-
     def test_logout(self) -> None:
         c = Client()
         response = c.post(
@@ -101,24 +48,6 @@ class TestLogin(ApiBaseTestCase):
         self.assertEqual(200, response.status_code)
         response = c.post("/api/logout", content_type="application/json")
         self.assertEqual(200, response.status_code)
-
-        # Firebase login and logout
-        with mock.patch(
-            "firebase_admin.auth.get_user",
-            return_value=mock.MagicMock(email=self.username),
-        ):
-            response = c.post(
-                "/api/firebase-login",
-                data={"token": "token", "uid": "uid", "login": True},
-                content_type="application/json",
-            )
-        self.assertEqual(200, response.status_code)
-        response.json()
-        self.assertIn("firebase_token", c.session.keys())
-
-        response = c.post("/api/logout", content_type="application/json")
-        self.assertEqual(200, response.status_code)
-        self.assertNotIn("firebase_token", c.session.keys())
 
 
 class TestRegistration(ApiBaseTestCase):
