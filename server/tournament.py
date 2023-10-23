@@ -19,6 +19,7 @@ from server.models import (
 )
 from server.schema import SpiritScoreUpdateSchema
 from server.types import validation_error_dict
+from server.utils import ordinal_suffix
 
 ROLES_ELIGIBLE_TO_SUBMIT_SCORES = ["captain", "admin", "spirit captain", "coach"]
 
@@ -754,12 +755,16 @@ def create_bracket_sequence_matches(
     tournament: Tournament, bracket: Bracket, start: int, end: int, seq_num: int
 ) -> None:
     for i in range(0, ((end - start) + 1) // 2):
+        seed_1 = start + i
+        seed_2 = end - i
+
         match = Match(
+            name=get_bracket_match_name(start, end, seed_1, seed_2),
             tournament=tournament,
             bracket=bracket,
             sequence_number=seq_num,
-            placeholder_seed_1=start + i,
-            placeholder_seed_2=end - i,
+            placeholder_seed_1=seed_1,
+            placeholder_seed_2=seed_2,
         )
 
         match.save()
@@ -900,3 +905,33 @@ def validate_new_pool(
         valid_pool = False
 
     return valid_pool, errors
+
+
+def get_bracket_match_name(start: int, end: int, seed_1: int, seed_2: int) -> str:
+    """Get type of bracket match (Quarter Finals, Semi Finals, Finals, Position match)"""
+
+    position_match_bracket_size = 2
+    semifinal_bracket_size = 4
+    quarterfinal_bracket_size = 8
+
+    bracket_size = (end - start) + 1
+    seed = min(seed_1, seed_2)
+
+    if bracket_size == position_match_bracket_size:
+        if seed == 1:
+            return "Finals"
+        return f"{seed}{ordinal_suffix(seed)} Place"
+
+    if bracket_size == semifinal_bracket_size:
+        if 1 <= seed <= bracket_size:
+            return "Semi Finals"
+        else:
+            return f"{start}-{end} Bracket"
+
+    if bracket_size == quarterfinal_bracket_size:
+        if 1 <= seed <= bracket_size:
+            return "Quarter Finals"
+        else:
+            return f"{start}-{end} Bracket"
+
+    return ""
