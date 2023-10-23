@@ -9,7 +9,7 @@ export const Spinner = () => (
   <>
     <svg
       aria-hidden="true"
-      class="inline w-8 h-8 mr-2 text-gray-200 animate-spin dark:text-gray-600 fill-blue-600"
+      class="inline w-8 h-8 mr-2 animate-spin fill-blue-600"
       role="status"
       viewBox="0 0 100 101"
       fill="none"
