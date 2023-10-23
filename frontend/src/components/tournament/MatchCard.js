@@ -48,18 +48,47 @@ const MatchCard = props => {
     }
   };
 
+  const getSmallNameForBracket = matchName => {
+    if (matchName === "Quarter Finals") {
+      return "QF";
+    }
+    if (matchName === "Semi Finals") {
+      return "SF";
+    }
+    // Bracket matches are named like 5-8 Bracket, 9-12 Bracket
+    // On smaller screens show as B 5-8, B 9-12
+    const matchBracketPattern = matchName.match(/(\d+-\d+) Bracket/);
+    if (matchBracketPattern) {
+      return `B ${matchBracketPattern[1]}`;
+    }
+    // Return same name otherwise (Finals)
+    return matchName;
+  };
+
+  const showSeedForBracketMatch = matchName => {
+    // Don't show seed for finals or position matches (3rd Place match is 3v4)
+    const isFinals = matchName === "Finals";
+    const isPositionMatch = matchName?.match(/(\d+)\w{2} Place/) !== null;
+    return !(isFinals || isPositionMatch);
+  };
+
   const renderBadge = () => {
     return (
       <Switch>
-        <Match when={props.match.pool}>
+        <Match when={props.match.pool || props.match.position_pool}>
           <div
             class={`w-full flex justify-center flex-wrap bg-${color()}-100 text-${color()}-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded dark:bg-${color()}-900 dark:text-${color()}-300`}
           >
-            <h6 class="text-center w-full">Pool {props.match.pool.name}</h6>
-            <Show when={props.showSeed}>
+            <Show
+              when={props.showSeed}
+              fallback={
+                <h6 class="text-center w-full py-2">{props.match.name}</h6>
+              }
+            >
+              <h6 class="text-center w-full">{props.match.name}</h6>
               <h6 class="text-center">
                 {props.match.placeholder_seed_1 +
-                  " vs " +
+                  " v " +
                   props.match.placeholder_seed_2}
               </h6>
             </Show>
@@ -69,41 +98,39 @@ const MatchCard = props => {
           <div
             class={`w-full flex justify-center flex-wrap bg-${color()}-100 text-${color()}-800 text-xs font-medium px-2.5 py-0.5 rounded dark:bg-${color()}-900 dark:text-${color()}-300`}
           >
-            <h6 class="text-center w-full">CP</h6>
-            <Show when={props.showSeed}>
-              <h6 class="text-center">
-                {props.match.placeholder_seed_1 +
-                  " vs " +
-                  props.match.placeholder_seed_2}
-              </h6>
-            </Show>
-          </div>
-        </Match>
-        <Match when={props.match.bracket}>
-          <div
-            class={`w-full flex justify-center flex-wrap bg-${color()}-100 text-${color()}-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded dark:bg-${color()}-900 dark:text-${color()}-300`}
-          >
-            <h6 class="text-center w-full">B {props.match.bracket.name}</h6>
-            <Show when={props.showSeed}>
-              <h6 class="text-center">
-                {props.match.placeholder_seed_1 +
-                  " vs " +
-                  props.match.placeholder_seed_2}
-              </h6>
-            </Show>
-          </div>
-        </Match>
-        <Match when={props.match.position_pool}>
-          <div
-            class={`w-full flex justify-center flex-wrap bg-${color()}-100 text-${color()}-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded dark:bg-${color()}-900 dark:text-${color()}-300`}
-          >
-            <h6 class="text-center w-full">
-              Pos. Pool {props.match.position_pool.name}
+            <h6 class="text-center w-full block sm:hidden">CP</h6>
+            <h6 class="text-center w-full hidden sm:block">
+              {props.match.name}
             </h6>
             <Show when={props.showSeed}>
               <h6 class="text-center">
                 {props.match.placeholder_seed_1 +
-                  " vs " +
+                  " v " +
+                  props.match.placeholder_seed_2}
+              </h6>
+            </Show>
+          </div>
+        </Match>
+
+        <Match when={props.match.bracket}>
+          <div
+            class={`w-full flex justify-center flex-wrap bg-${color()}-100 text-${color()}-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded dark:bg-${color()}-900 dark:text-${color()}-300`}
+          >
+            <Show
+              when={props.showSeed && showSeedForBracketMatch(props.match.name)}
+              fallback={
+                <h6 class="text-center w-full py-2">{props.match.name}</h6>
+              }
+            >
+              <h6 class="text-center w-full block sm:hidden">
+                {getSmallNameForBracket(props.match.name)}
+              </h6>
+              <h6 class="text-center w-full hidden sm:block">
+                {props.match.name}
+              </h6>
+              <h6 class="text-center">
+                {props.match.placeholder_seed_1 +
+                  " v " +
                   props.match.placeholder_seed_2}
               </h6>
             </Show>
