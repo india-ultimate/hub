@@ -57,6 +57,7 @@ esac
 # Deploy the app using flyctl
 echo "Deploying to $TARGET..."
 flyctl deploy -c $CONFIG_FILE --local-only
+flyctl ssh console -c $CONFIG_FILE -u user -C 'python manage.py check --deploy'
 
 if [[ $TARGET == "staging" ]]; then
     flyctl ssh console -c fly.staging.toml -u user -C 'python manage.py loaddata server/fixtures/sample_data.json'
