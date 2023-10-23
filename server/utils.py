@@ -91,3 +91,21 @@ def mask_string(s: str) -> str:
         return s[:1] + "x" * (n - 2) + s[-1:]
     else:
         return s[:1] + "x" * (n - 1)
+
+
+def ordinal_suffix(num: int) -> str:
+    """Get ordinal suffix for a number. 22 -> 22nd, 103 -> 103rd..."""
+
+    # all numbers with last 2 digits in range 10 to 20 will have 'th' as suffix
+    # 13th, 111th, 1012th, 12233036th....
+    if 10 < num % 100 < 20:  # noqa: PLR2004
+        return "th"
+
+    # if last 2 digits arent within 10..20,
+    # nums ending with 1, 2, 3 have the below suffixes
+    number_suffixes = {1: "st", 2: "nd", 3: "rd"}
+    if 1 <= num % 10 <= 3:  # noqa: PLR2004
+        return number_suffixes[num % 10]
+
+    # all other numbers have 'th' as suffix
+    return "th"
