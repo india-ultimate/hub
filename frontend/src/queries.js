@@ -270,7 +270,11 @@ export const createTournament = async formData => {
   return data;
 };
 
-export const updateSeeding = async ({ id, body }) => {
+export const updateSeeding = async ({ id, teamSeeding }) => {
+  let seedToTeamId = {};
+  teamSeeding.forEach(
+    (teamId, seeding) => (seedToTeamId[(seeding + 1).toString()] = teamId)
+  );
   const response = await fetch(`/api/tournament/update/${id}`, {
     method: "PUT",
     headers: {
@@ -278,7 +282,7 @@ export const updateSeeding = async ({ id, body }) => {
       "X-CSRFToken": getCookie("csrftoken")
     },
     credentials: "same-origin",
-    body: JSON.stringify(body)
+    body: JSON.stringify({ seeding: seedToTeamId })
   });
   return await response.json();
 };

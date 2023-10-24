@@ -39,13 +39,14 @@ import CreateTournamentForm from "./tournament/CreateTournamentForm";
 import UpdateSpiritScoreForm from "./tournament/UpdateSpiritScoreForm";
 import { initFlowbite } from "flowbite";
 import clsx from "clsx";
+import ReorderTeams from "./tournament/ReorderTeams";
 
 const TournamentManager = () => {
   const queryClient = useQueryClient();
   const [store] = useStore();
   const [selectedTournament, setSelectedTournament] = createSignal();
   const [selectedTournamentID, setSelectedTournamentID] = createSignal(0);
-  const [tournamentSeeding, setTournamentSeeding] = createSignal([]);
+  const [teams, setTeams] = createSignal([]);
   const [teamsMap, setTeamsMap] = createSignal({});
   const [enteredPoolName, setEnteredPoolName] = createSignal("");
   const [enteredSeedingList, setEnteredSeedingList] = createSignal("[]");
@@ -83,7 +84,9 @@ const TournamentManager = () => {
       setSelectedTournament(tournament);
       const seeding = tournament?.initial_seeding;
 
-      if (seeding) setTournamentSeeding(seeding);
+      if (seeding) {
+        setTeams(Object.values(seeding));
+      }
 
       let newDatesList = [];
       for (
@@ -322,68 +325,37 @@ const TournamentManager = () => {
 
         <Show when={selectedTournamentID() > 0 && selectedTournament()}>
           <div class="relative overflow-x-auto my-5">
-            <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-              <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
-                <tr>
-                  <th scope="col" class="px-6 py-3">
-                    Seeding
-                  </th>
-                  <th scope="col" class="px-6 py-3">
-                    Team Name
-                  </th>
-                  <th scope="col" class="px-6 py-3">
-                    Team ID
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                <For each={Object.keys(tournamentSeeding())}>
-                  {seed => (
-                    <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-                      <th
-                        scope="row"
-                        class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
-                      >
-                        {seed}
-                      </th>
-                      <td class="px-6 py-4">
-                        {teamsMap()[tournamentSeeding()[seed]]}
-                      </td>
-                      <td class="px-6 py-4">{tournamentSeeding()[seed]}</td>
-                    </tr>
-                  )}
-                </For>
-              </tbody>
-            </table>
-
-            <label
-              for="message"
-              class="block mb-2 text-sm font-medium text-gray-900 dark:text-white mt-5"
-            >
-              Raw Seeding JSON
-            </label>
-            <textarea
-              id="message"
-              rows="4"
-              class="block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 mb-5"
-              placeholder="Seeding JSON Here..."
-              onChange={e => setTournamentSeeding(JSON.parse(e.target.value))}
-            >
-              {JSON.stringify(tournamentSeeding())}
-            </textarea>
+            <div class="text-blue-500 text-xl font-bold mb-4">Seeding</div>
+            <div class="w-full md:w-1/2">
+              <ReorderTeams
+                teams={teams()}
+                updateTeamSeeding={setTeams}
+                teamsMap={teamsMap()}
+                disabled={updateSeedingMutation.isLoading}
+              />
+            </div>
             <button
               type="button"
               onClick={() =>
                 updateSeedingMutation.mutate({
                   id: selectedTournamentID(),
-                  body: { seeding: tournamentSeeding() }
+                  teamSeeding: teams()
                 })
               }
-              disabled={selectedTournament()?.status !== "DFT"}
-              class="text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
+              disabled={
+                selectedTournament()?.status !== "DFT" ||
+                updateSeedingMutation.isLoading
+              }
+              class="my-2 text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
             >
-              Update Seeding
+              <Show
+                when={updateSeedingMutation.isLoading}
+                fallback={"Update Seeding"}
+              >
+                Updating...
+              </Show>
             </button>
+
             <button
               type="button"
               onClick={() =>
