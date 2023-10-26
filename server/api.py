@@ -753,15 +753,19 @@ def payment_webhook(request: HttpRequest) -> message_response:
 @api.get("/transactions", response={200: list[TransactionSchema]})
 def list_transactions(
     request: AuthenticatedHttpRequest, user_only: bool = True, only_invalid: bool = False
-) -> QuerySet[ManualTransaction]:
+) -> list[TransactionSchema]:
     user = request.user
+    transactions = list_manual_transactions(user, user_only, only_invalid)
+    return [TransactionSchema.from_orm(t) for t in transactions]
+
+
+def list_manual_transactions(
+    user: User, user_only: bool = True, only_invalid: bool = False
+) -> QuerySet[ManualTransaction]:
+    Cls = ManualTransaction  # noqa: N806
 
     if not user_only and user.is_staff:
-        transactions = (
-            ManualTransaction.objects.filter(validated=False)
-            if only_invalid
-            else ManualTransaction.objects.all()
-        )
+        transactions = Cls.objects.filter(validated=False) if only_invalid else Cls.objects.all()
 
     else:
         # Get ids of all associated players of a user (player + wards)
@@ -769,8 +773,8 @@ def list_transactions(
         player_id = set(Player.objects.filter(user=user).values_list("id", flat=True))
         player_ids = ward_ids.union(player_id)
 
-        query = Q(user=request.user) | Q(players__in=player_ids)
-        transactions = ManualTransaction.objects.filter(query)
+        query = Q(user=user) | Q(players__in=player_ids)
+        transactions = Cls.objects.filter(query)
         if only_invalid:
             transactions = transactions.filter(validated=False)
 
