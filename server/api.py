@@ -752,11 +752,11 @@ def payment_webhook(request: HttpRequest) -> message_response:
 
 @api.get("/transactions", response={200: list[TransactionSchema]})
 def list_transactions(
-    request: AuthenticatedHttpRequest, include_all: bool = False, only_invalid: bool = False
+    request: AuthenticatedHttpRequest, user_only: bool = True, only_invalid: bool = False
 ) -> QuerySet[ManualTransaction]:
     user = request.user
 
-    if include_all and user.is_staff:
+    if not user_only and user.is_staff:
         transactions = (
             ManualTransaction.objects.filter(validated=False)
             if only_invalid
