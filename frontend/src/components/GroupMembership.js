@@ -27,7 +27,7 @@ import { Icon } from "solid-heroicons";
 import { magnifyingGlass } from "solid-heroicons/solid-mini";
 import { inboxStack } from "solid-heroicons/solid";
 import Breadcrumbs from "./Breadcrumbs";
-import ManualPaymentModal from "./ManualPaymentModal";
+import PhonePePayment from "./PhonePePayment";
 import { initFlowbite } from "flowbite";
 import { createQuery } from "@tanstack/solid-query";
 import { fetchPlayers } from "../queries";
@@ -385,7 +385,7 @@ const GroupMembership = () => {
         <div>
           <Switch>
             <Match when={!paymentSuccess()}>
-              <ManualPaymentModal
+              <PhonePePayment
                 disabled={payDisabled()}
                 annual={true}
                 year={year()}
