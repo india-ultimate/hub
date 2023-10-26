@@ -2,8 +2,8 @@ import { Show, For, Suspense, createSignal, createEffect } from "solid-js";
 import { createQuery } from "@tanstack/solid-query";
 import {
   fetchTransactions,
-  fetchAllTransactions,
-  fetchAllInvalidTransactions
+  fetchAllManualTransactions,
+  fetchAllInvalidManualTransactions
 } from "../queries";
 import TransactionsSkeleton from "../skeletons/Transactions";
 import TransactionPlayersList from "./TransactionPlayersList";
@@ -17,8 +17,8 @@ const TransactionList = props => {
       () => ["transactions"],
       props.admin
         ? props.onlyInvalid
-          ? fetchAllInvalidTransactions
-          : fetchAllTransactions
+          ? fetchAllInvalidManualTransactions
+          : fetchAllManualTransactions
         : fetchTransactions,
       {
         refetchOnWindowFocus: false

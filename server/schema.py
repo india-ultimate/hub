@@ -141,6 +141,58 @@ class ManualTransactionSchema(ModelSchema):
         model_fields = "__all__"
 
 
+class RazorpayTransactionSchema(ModelSchema):
+    user: UserFormSchema
+
+    @staticmethod
+    def resolve_user(transaction: RazorpayTransaction) -> User:
+        return transaction.user
+
+    players: list[str]
+
+    @staticmethod
+    def resolve_players(transaction: RazorpayTransaction) -> list[str]:
+        return [p.user.get_full_name() for p in transaction.players.all()]
+
+    event: EventSchema | None
+
+    @staticmethod
+    def resolve_event(transaction: RazorpayTransaction) -> EventSchema | None:
+        if transaction.event is not None:
+            return EventSchema.from_orm(transaction.event)
+        return None
+
+    class Config:
+        model = RazorpayTransaction
+        model_fields = "__all__"
+
+
+class PhonePeTransactionSchema(ModelSchema):
+    user: UserFormSchema
+
+    @staticmethod
+    def resolve_user(transaction: RazorpayTransaction) -> User:
+        return transaction.user
+
+    players: list[str]
+
+    @staticmethod
+    def resolve_players(transaction: RazorpayTransaction) -> list[str]:
+        return [p.user.get_full_name() for p in transaction.players.all()]
+
+    event: EventSchema | None
+
+    @staticmethod
+    def resolve_event(transaction: RazorpayTransaction) -> EventSchema | None:
+        if transaction.event is not None:
+            return EventSchema.from_orm(transaction.event)
+        return None
+
+    class Config:
+        model = PhonePeTransaction
+        model_fields = "__all__"
+
+
 class ManualTransactionValidationFormSchema(Schema):
     transaction_id: str
     validation_comment: str
@@ -150,18 +202,6 @@ class ManualTransactionLiteSchema(ModelSchema):
     class Config:
         model = ManualTransaction
         model_fields = ["transaction_id", "amount", "currency"]
-
-
-class PhonePeTransactionSchema(ModelSchema):
-    players: list[str]
-
-    @staticmethod
-    def resolve_players(transaction: PhonePeTransaction) -> list[str]:
-        return [p.user.get_full_name() for p in transaction.players.all()]
-
-    class Config:
-        model = PhonePeTransaction
-        model_fields = ["transaction_id", "amount", "currency", "status"]
 
 
 class PhonePePaymentSchema(Schema):
