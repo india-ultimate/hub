@@ -14,7 +14,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.base_user import AbstractBaseUser
 from django.core import mail
 from django.core.exceptions import ValidationError
-from django.db.models import Q, QuerySet
+from django.db.models import Model, Q, QuerySet
 from django.db.utils import IntegrityError
 from django.http import HttpRequest
 from django.template.loader import render_to_string
@@ -89,6 +89,7 @@ from server.schema import (
     PoolSchema,
     PositionPoolCreateSchema,
     PositionPoolSchema,
+    RazorpayTransactionSchema,
     RegistrationGuardianSchema,
     RegistrationOthersSchema,
     RegistrationSchema,
@@ -750,19 +751,48 @@ def payment_webhook(request: HttpRequest) -> message_response:
     return {"message": "Webhook processed"}
 
 
-@api.get("/transactions", response={200: list[ManualTransactionSchema]})
+@api.get("/transactions", response={200: list[dict[str, Any]]})
 def list_transactions(
-    request: AuthenticatedHttpRequest, user_only: bool = True, only_invalid: bool = False
-) -> list[ManualTransactionSchema]:
+    request: AuthenticatedHttpRequest,
+    user_only: bool = True,
+    only_invalid: bool = False,
+    only_manual: bool = False,
+) -> list[dict[str, Any]]:
     user = request.user
-    transactions = list_manual_transactions(user, user_only, only_invalid)
-    return [ManualTransactionSchema.from_orm(t) for t in transactions]
+    payment_type_schema_map = {
+        PaymentGateway.MANUAL: ManualTransactionSchema,
+        PaymentGateway.RAZORPAY: RazorpayTransactionSchema,
+        PaymentGateway.PHONEPE: PhonePeTransactionSchema,
+    }
+    response_data = []
+    for payment_type, schema in payment_type_schema_map.items():
+        if only_manual and payment_type != PaymentGateway.MANUAL:
+            continue
+        transactions = list_transactions_by_type(user, payment_type, user_only, only_invalid)
+        transaction_dicts = [schema.from_orm(t).dict() for t in transactions]
+        for d in transaction_dicts:
+            d["type"] = payment_type.value
+            if "payment_date" not in d:
+                d["payment_date"] = d["transaction_date"]
+
+        response_data.extend(transaction_dicts)
+    return response_data
 
 
-def list_manual_transactions(
-    user: User, user_only: bool = True, only_invalid: bool = False
-) -> QuerySet[ManualTransaction]:
-    Cls = ManualTransaction  # noqa: N806
+def list_transactions_by_type(
+    user: User, payment_type: PaymentGateway, user_only: bool = True, only_invalid: bool = False
+) -> QuerySet[Model]:
+    transaction_classes = {
+        PaymentGateway.MANUAL: ManualTransaction,
+        PaymentGateway.RAZORPAY: RazorpayTransaction,
+        PaymentGateway.PHONEPE: PhonePeTransaction,
+    }
+    Cls = transaction_classes[payment_type]  # noqa: N806
+    order_by = (
+        "-payment_date"
+        if payment_type in {PaymentGateway.MANUAL, PaymentGateway.RAZORPAY}
+        else "-transaction_date"
+    )
 
     if not user_only and user.is_staff:
         transactions = Cls.objects.filter(validated=False) if only_invalid else Cls.objects.all()
@@ -778,7 +808,7 @@ def list_manual_transactions(
         if only_invalid:
             transactions = transactions.filter(validated=False)
 
-    return transactions.distinct().order_by("-payment_date")
+    return transactions.distinct().order_by(order_by)
 
 
 @api.post("/validate-transactions", response={200: ValidationStatsSchema, 400: Response})

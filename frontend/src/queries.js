@@ -26,12 +26,15 @@ export const fetchTransactions = async () => {
   return await response.json();
 };
 
-export const fetchAllTransactions = async () => {
-  const response = await fetch("/api/transactions?user_only=false", {
-    method: "GET",
-    headers: { "Content-Type": "application/json" },
-    credentials: "same-origin"
-  });
+export const fetchAllManualTransactions = async () => {
+  const response = await fetch(
+    "/api/transactions?user_only=false&only_manual=True",
+    {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin"
+    }
+  );
   return await response.json();
 };
 
@@ -44,9 +47,9 @@ export const fetchEvents = async () => {
   return await response.json();
 };
 
-export const fetchAllInvalidTransactions = async () => {
+export const fetchAllInvalidManualTransactions = async () => {
   const response = await fetch(
-    "/api/transactions?user_only=false&only_invalid=true",
+    "/api/transactions?user_only=false&only_invalid=true&only_manual=true",
     {
       method: "GET",
       headers: { "Content-Type": "application/json" },
