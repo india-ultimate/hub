@@ -11,6 +11,7 @@ from server.models import (
     ManualTransaction,
     Match,
     Membership,
+    PhonePeTransaction,
     Player,
     Pool,
     PositionPool,
@@ -149,6 +150,18 @@ class ManualTransactionSchema(ModelSchema):
     class Config:
         model = ManualTransaction
         model_fields = ["transaction_id", "amount", "currency"]
+
+
+class PhonePeTransactionSchema(ModelSchema):
+    players: list[str]
+
+    @staticmethod
+    def resolve_players(transaction: PhonePeTransaction) -> list[str]:
+        return [p.user.get_full_name() for p in transaction.players.all()]
+
+    class Config:
+        model = PhonePeTransaction
+        model_fields = ["transaction_id", "amount", "currency", "status"]
 
 
 class PhonePePaymentSchema(Schema):
