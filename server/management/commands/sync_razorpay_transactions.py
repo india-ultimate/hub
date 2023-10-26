@@ -5,7 +5,7 @@ from django.core.management.base import BaseCommand
 
 from server.api import mark_transaction_completed
 from server.models import RazorpayTransaction
-from server.utils import get_transactions
+from server.utils import get_razorpay_transactions
 
 STATUSES = {s.value: s for s in RazorpayTransaction.TransactionStatusChoices}
 
@@ -14,7 +14,7 @@ class Command(BaseCommand):
     help = "Import Razorpay transactions from the last week"
 
     def handle(self, *args: Any, **options: Any) -> None:
-        transactions = get_transactions()
+        transactions = get_razorpay_transactions()
         transactions_by_status = itertools.groupby(transactions, key=lambda x: x["status"])
 
         for status_, ts in transactions_by_status:
