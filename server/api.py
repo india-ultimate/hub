@@ -66,6 +66,7 @@ from server.schema import (
     EventSchema,
     GroupMembershipSchema,
     GuardianshipFormSchema,
+    ManualTransactionLiteSchema,
     ManualTransactionSchema,
     ManualTransactionValidationFormSchema,
     MatchCreateSchema,
@@ -98,7 +99,6 @@ from server.schema import (
     TournamentCreateSchema,
     TournamentSchema,
     TournamentUpdateSeedingSchema,
-    TransactionSchema,
     UCRegistrationSchema,
     UserFormSchema,
     UserSchema,
@@ -453,7 +453,7 @@ class PaymentGateway(enum.Enum):
 
 @api.post(
     "/manual-transaction/{transaction_id}",
-    response={200: ManualTransactionSchema, 400: Response, 422: Response, 502: str},
+    response={200: ManualTransactionLiteSchema, 400: Response, 422: Response, 502: str},
 )
 def create_manual_transaction(
     request: AuthenticatedHttpRequest,
@@ -750,13 +750,13 @@ def payment_webhook(request: HttpRequest) -> message_response:
     return {"message": "Webhook processed"}
 
 
-@api.get("/transactions", response={200: list[TransactionSchema]})
+@api.get("/transactions", response={200: list[ManualTransactionSchema]})
 def list_transactions(
     request: AuthenticatedHttpRequest, user_only: bool = True, only_invalid: bool = False
-) -> list[TransactionSchema]:
+) -> list[ManualTransactionSchema]:
     user = request.user
     transactions = list_manual_transactions(user, user_only, only_invalid)
-    return [TransactionSchema.from_orm(t) for t in transactions]
+    return [ManualTransactionSchema.from_orm(t) for t in transactions]
 
 
 def list_manual_transactions(
@@ -794,7 +794,7 @@ def validate_transactions(
     return 200, stats
 
 
-@api.post("/validate-transaction", response={200: TransactionSchema, 400: Response})
+@api.post("/validate-transaction", response={200: ManualTransactionSchema, 400: Response})
 def validate_transaction(
     request: AuthenticatedHttpRequest, data: ManualTransactionValidationFormSchema
 ) -> tuple[int, message_response] | tuple[int, ManualTransaction]:
