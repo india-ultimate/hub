@@ -133,7 +133,6 @@ class FeatureNamePrefix(LineRule):
     conventional_commit_prefixes = {
         "build",
         "chore",
-        "ci",
         "docs",
         "feat",
         "fix",
@@ -141,7 +140,6 @@ class FeatureNamePrefix(LineRule):
         "refactor",
         "revert",
         "style",
-        "test",
     }
 
     def validate(self, line: str, commit: GitCommit) -> list[RuleViolation]:
