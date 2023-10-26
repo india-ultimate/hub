@@ -7,6 +7,8 @@ import {
 } from "../queries";
 import TransactionsSkeleton from "../skeletons/Transactions";
 import TransactionPlayersList from "./TransactionPlayersList";
+import { getLabel } from "../utils";
+import { transactionTypes } from "../constants";
 
 const TransactionList = props => {
   const [query, setQuery] = createSignal();
@@ -72,6 +74,9 @@ const TransactionList = props => {
               <th scope="col" class="px-6 py-3">
                 Transaction ID
               </th>
+              <th scope="col" class="px-6 py-3">
+                Transaction Type
+              </th>
               <Show when={props.admin}>
                 <th scope="col" class="px-6 py-3">
                   Validate
@@ -121,6 +126,9 @@ const TransactionList = props => {
                         {transaction.event?.title || "Annual"}
                       </td>
                       <td class="px-6 py-4">{transaction.transaction_id}</td>
+                      <td class="px-6 py-4">
+                        {getLabel(transactionTypes, transaction.type)}
+                      </td>
                       <Show when={props.admin}>
                         <td class="px-6 py-4">
                           <button
