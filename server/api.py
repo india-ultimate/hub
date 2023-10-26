@@ -49,7 +49,11 @@ from server.models import (
     User,
     Vaccination,
 )
-from server.phonepe_utils import initiate_payment, verify_callback_checksum
+from server.phonepe_utils import (
+    check_transaction_status,
+    initiate_payment,
+    verify_callback_checksum,
+)
 from server.schema import (
     AccreditationFormSchema,
     AccreditationSchema,
@@ -76,6 +80,7 @@ from server.schema import (
     PaymentFormSchema,
     PersonSchema,
     PhonePePaymentSchema,
+    PhonePeTransactionSchema,
     PlayerFormSchema,
     PlayerSchema,
     PlayerTinySchema,
@@ -627,6 +632,26 @@ def payment_success(
     return 200, transaction.players.all()
 
 
+@api.get(
+    "/phonepe-transaction/{transaction_id}",
+    response={200: PhonePeTransactionSchema, 400: Response, 422: Response, 502: str},
+)
+def get_phonepe_transaction(
+    request: AuthenticatedHttpRequest,
+    transaction_id: str,
+) -> tuple[int, message_response | PhonePeTransaction]:
+    try:
+        transaction = PhonePeTransaction.objects.get(transaction_id=transaction_id)
+    except PhonePeTransaction.DoesNotExist:
+        return 422, {"message": "PhonePe Transaction does not exist!"}
+
+    # Check transaction status with PhonePe for pending transactions
+    if transaction.status == PhonePeTransaction.TransactionStatusChoices.PENDING:
+        check_and_update_phonepe_transaction(transaction)
+
+    return 200, transaction
+
+
 @api.post("/phonepe-callback", auth=None, response={200: Response})
 @csrf_exempt
 def phonepe_callback(request: HttpRequest) -> message_response:
@@ -649,6 +674,16 @@ def phonepe_callback(request: HttpRequest) -> message_response:
         return {"message": "Transaction not found"}
     update_phonepe_transaction(transaction, code)
     return {"message": "Webhook processed"}
+
+
+def check_and_update_phonepe_transaction(transaction: PhonePeTransaction) -> None:
+    data = check_transaction_status(str(transaction.transaction_id))
+    code = data["code"]
+    prefix = "PAYMENT_"
+    if code.startswith(prefix):
+        code = code[len(prefix) :]
+        if transaction.status != code.lower():
+            update_phonepe_transaction(transaction, code)
 
 
 def update_phonepe_transaction(
