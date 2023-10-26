@@ -115,7 +115,7 @@ class UserFormSchema(ModelSchema):
         model_fields = ["first_name", "last_name", "phone"]
 
 
-class TransactionSchema(ModelSchema):
+class ManualTransactionSchema(ModelSchema):
     user: UserFormSchema
 
     @staticmethod
@@ -146,7 +146,7 @@ class ManualTransactionValidationFormSchema(Schema):
     validation_comment: str
 
 
-class ManualTransactionSchema(ModelSchema):
+class ManualTransactionLiteSchema(ModelSchema):
     class Config:
         model = ManualTransaction
         model_fields = ["transaction_id", "amount", "currency"]
