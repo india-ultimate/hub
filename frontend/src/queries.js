@@ -27,7 +27,7 @@ export const fetchTransactions = async () => {
 };
 
 export const fetchAllTransactions = async () => {
-  const response = await fetch("/api/transactions?include_all=1", {
+  const response = await fetch("/api/transactions?user_only=false", {
     method: "GET",
     headers: { "Content-Type": "application/json" },
     credentials: "same-origin"
@@ -46,7 +46,7 @@ export const fetchEvents = async () => {
 
 export const fetchAllInvalidTransactions = async () => {
   const response = await fetch(
-    "/api/transactions?include_all=1&only_invalid=1",
+    "/api/transactions?user_only=false&only_invalid=true",
     {
       method: "GET",
       headers: { "Content-Type": "application/json" },
