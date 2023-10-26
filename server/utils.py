@@ -39,7 +39,7 @@ def create_razorpay_order(
     return response
 
 
-def get_transactions() -> list[dict[str, Any]]:
+def get_razorpay_transactions() -> list[dict[str, Any]]:
     today = now()
     last_week = today - datetime.timedelta(days=7)
 
