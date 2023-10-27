@@ -10,7 +10,7 @@ import {
 import { createSignal, For } from "solid-js";
 
 const TeamInfo = props => (
-  <div class="p-2 text-start flex gap-4">
+  <div class="p-2 text-start flex gap-4 cursor-grab">
     <div class="basis-1/6 text-center text-white dark:text-white-400 rounded-xl border-b bg-green-400 border-green-200 dark:bg-green-800 dark:border-green-700">
       {props.teamSeed + 1}
     </div>
