@@ -11,19 +11,6 @@ export const getCookie = name => {
   return cookies[name];
 };
 
-export const clearCookie = name => {
-  const cookie = document.cookie
-    .split(";")
-    .find(x => x.trim().split("=")[0] === name);
-
-  if (cookie) {
-    const [key, val] = cookie.split("=");
-    document.cookie = `${key}=${val}; max-age=0`;
-  } else {
-    console.log("Could not find cookie");
-  }
-};
-
 export const fetchUserData = (successCallback, failureCallback) => {
   return fetch("/api/me", {
     method: "GET",

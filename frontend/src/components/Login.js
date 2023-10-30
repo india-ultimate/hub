@@ -1,4 +1,4 @@
-import { getCookie, clearCookie } from "../utils";
+import { getCookie } from "../utils";
 import { useStore } from "../store";
 import { Spinner } from "../icons";
 import { createSignal, createEffect, onMount, Show } from "solid-js";
@@ -41,7 +41,6 @@ const PasswordLogin = props => {
       setLoggedIn(true);
     } else {
       setLoggedIn(false);
-      props.setError(true);
       try {
         const data = await response.json();
         props.setStatus(`Login failed with error: ${data.message}`);
@@ -150,7 +149,6 @@ const SendEmailOTP = props => {
       setEnableRetry(false);
       setTimeout(() => setEnableRetry(true), 10000);
     } else {
-      props.setError(true);
       try {
         const data = await response.json();
         props.setStatus(`OTP sending failed with error: ${data.message}`);
@@ -185,7 +183,6 @@ const SendEmailOTP = props => {
       setData(data);
       setLoggedIn(true);
     } else {
-      props.setError(true);
       setLoggedIn(false);
       try {
         const data = await response.json();
@@ -296,13 +293,11 @@ const SendEmailOTP = props => {
 
 const Login = () => {
   const [status, setStatus] = createSignal("");
-  const [error, setError] = createSignal(false);
   const [store, _] = useStore();
 
   const signInFailed = window.localStorage.getItem("emailSignInFailed");
   if (signInFailed) {
     setStatus(signInFailed);
-    setError(true);
     window.localStorage.removeItem("emailSignInFailed");
   }
 
@@ -365,7 +360,7 @@ const Login = () => {
           role="tabpanel"
           aria-labelledby="email-otp-tab"
         >
-          <SendEmailOTP setStatus={setStatus} setError={setError} />
+          <SendEmailOTP setStatus={setStatus} />
         </div>
         <div
           class="hidden p-4 rounded-lg bg-gray-50 dark:bg-gray-800"
@@ -373,24 +368,10 @@ const Login = () => {
           role="tabpanel"
           aria-labelledby="password-tab"
         >
-          <PasswordLogin setStatus={setStatus} setError={setError} />
+          <PasswordLogin setStatus={setStatus} />
         </div>
       </div>
       <p>{status()}</p>
-      <Show when={error()}>
-        <button
-          type="submit"
-          class="mx-2 text-white bg-gray-700 hover:bg-gray-800 focus:ring-4 focus:outline-none focus:ring-gray-300 font-small rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-gray-600 dark:hover:bg-gray-700 dark:focus:ring-gray-800"
-          onClick={() => {
-            setError(false);
-            alert(document.cookie);
-            clearCookie("csrftoken");
-          }}
-        >
-          Clear cookies
-        </button>{" "}
-        if you are having trouble signing in...
-      </Show>
     </>
   );
 };
