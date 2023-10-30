@@ -57,6 +57,7 @@ const ReorderTeams = props => {
         const updatedItems = currentItems.slice();
         updatedItems.splice(toIndex, 0, ...updatedItems.splice(fromIndex, 1));
         props.updateTeamSeeding(updatedItems);
+        props.setIsStandingsEdited(true);
       }
     }
   };
