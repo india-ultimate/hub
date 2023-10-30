@@ -570,7 +570,7 @@ def create_transaction(
             return 502, "Failed to connect to Razorpay."
     elif gateway == PaymentGateway.PHONEPE:
         host = f"{request.scheme}://{request.get_host()}"
-        next_url = "/membership/group" if group_payment else f"membership/{player.id}"
+        next_url = "/membership/group" if group_payment else f"/membership/{player.id}"
         data = initiate_payment(amount, user, host, next_url)
         if data is None:
             return 502, "Failed to connect to PhonePe."
