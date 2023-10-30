@@ -17,6 +17,7 @@ const PhonePePayment = props => {
       : { player_id, event_id };
 
     setLoading(true);
+    props.setStatus("");
 
     fetch("/api/initiate-payment", {
       method: "POST",
