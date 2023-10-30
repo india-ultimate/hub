@@ -170,6 +170,7 @@ RAZORPAY_WEBHOOK_SECRET = os.environ.get("RAZORPAY_WEBHOOK_SECRET", "")
 PHONEPE_MERCHANT_ID = os.environ.get("PHONEPE_MERCHANT_ID", "")
 PHONEPE_SALT_KEY = os.environ.get("PHONEPE_SALT_KEY", "")
 PHONEPE_SALT_INDEX = int(os.environ.get("PHONEPE_SALT_INDEX", "1"))
+PHONEPE_PRODUCTION = bool(os.environ.get("PHONEPE_PRODUCTION"))
 
 # Webpack dev server
 WEBPACK_SERVER_PORT = os.environ.get("WEBPACK_SERVER_PORT", 3000)

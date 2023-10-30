@@ -10,11 +10,12 @@ from phonepe.sdk.pg.payments.v1.payment_client import PhonePePaymentClient
 
 from server.models import User
 
+env = Env.UAT if not settings.PHONEPE_PRODUCTION else Env.PROD
 phonepe_client = PhonePePaymentClient(
     settings.PHONEPE_MERCHANT_ID,
     settings.PHONEPE_SALT_KEY,
     settings.PHONEPE_SALT_INDEX,
-    Env.UAT,
+    env,
     should_publish_events=False,  # NOTE: not sure what this does
 )
 logger = logging.getLogger(__name__)
