@@ -1210,11 +1210,12 @@ def delete_tournament(
 
 
 @api.post(
-    "/tournament/pool/{tournament_id}", response={200: PoolSchema, 400: Response, 401: Response}
+    "tournament/create-pools/{tournament_id}",
+    response={200: list[PoolSchema], 400: Response, 401: Response},
 )
-def create_pool(
-    request: AuthenticatedHttpRequest, tournament_id: int, pool_details: PoolCreateSchema
-) -> tuple[int, Pool] | tuple[int, message_response]:
+def create_pools(
+    request: AuthenticatedHttpRequest, tournament_id: int, pools: list[PoolCreateSchema]
+) -> tuple[int, list[Pool]] | tuple[int, message_response]:
     if not request.user.is_staff:
         return 401, {"message": "Only Admins can create pools"}
 
@@ -1223,42 +1224,50 @@ def create_pool(
     except Tournament.DoesNotExist:
         return 400, {"message": "Tournament does not exist"}
 
-    valid_pool, errors = validate_new_pool(
-        tournament=tournament, new_pool=set(pool_details.seeding)
-    )
-    if not valid_pool:
-        message = "Cannot create pools, due to following errors: \n"
-        message += "\n".join(f"{key}: {value}" for key, value in errors.items())
-        return 400, {"message": message}
+    # existing pools for the tournament maybe modified (teams added, or pool removed entirely)
+    # remove existing pools for the tournament, then add new pools
+    Pool.objects.filter(tournament=tournament).delete()
 
-    # seed -> team_id. If the same seed present twice, we'll only get one object since its a map with seed as the key
-    pool_seeding: dict[int, str] = {}
-    pool_results: dict[str, Any] = {}
-    for i, seed in enumerate(pool_details.seeding):
-        team_id = tournament.initial_seeding[str(seed)]
+    created_pools: list[Pool] = []
 
-        pool_seeding[seed] = team_id
-        pool_results[team_id] = {
-            "rank": i + 1,
-            "wins": 0,
-            "losses": 0,
-            "draws": 0,
-            "GF": 0,  # Goals For
-            "GA": 0,  # Goals Against
-        }
+    for pool in pools:
+        valid_pool, errors = validate_new_pool(
+            tournament=tournament, new_pool=set(pool.seeding)
+        )
+        if not valid_pool:
+            message = "Cannot create pools, due to following errors: \n"
+            message += "\n".join(f"{key}: {value}" for key, value in errors.items())
+            return 400, {"message": message}
 
-    pool = Pool(
-        sequence_number=pool_details.sequence_number,
-        name=pool_details.name,
-        tournament=tournament,
-        initial_seeding=dict(sorted(pool_seeding.items())),
-        results=pool_results,
-    )
-    pool.save()
+        # seed -> team_id. If the same seed present twice, we'll only get one object since its a map with seed as the key
+        pool_seeding: dict[int, str] = {}
+        pool_results: dict[str, Any] = {}
+        for i, seed in enumerate(pool.seeding):
+            team_id = tournament.initial_seeding[str(seed)]
 
-    create_pool_matches(tournament, pool)
+            pool_seeding[seed] = team_id
+            pool_results[team_id] = {
+                "rank": i + 1,
+                "wins": 0,
+                "losses": 0,
+                "draws": 0,
+                "GF": 0,  # Goals For
+                "GA": 0,  # Goals Against
+            }
 
-    return 200, pool
+        created_pool = Pool(
+            sequence_number=pool.sequence_number,
+            name=pool.name,
+            tournament=tournament,
+            initial_seeding=dict(sorted(pool_seeding.items())),
+            results=pool_results,
+        )
+
+        created_pool.save()
+        create_pool_matches(tournament=tournament, pool=created_pool)
+        created_pools.append(created_pool)
+
+    return 200, created_pools
 
 
 @api.get("/tournament/pools", auth=None, response={200: list[PoolSchema], 400: Response})

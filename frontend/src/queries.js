@@ -285,9 +285,9 @@ export const createTournament = async formData => {
   return data;
 };
 
-export const updateSeeding = async ({ id, teamSeeding }) => {
+export const updateSeeding = async ({ id, teams }) => {
   let seedToTeamId = {};
-  teamSeeding.forEach(
+  teams.forEach(
     (teamId, seeding) => (seedToTeamId[(seeding + 1).toString()] = teamId)
   );
   const response = await fetch(`/api/tournament/update/${id}`, {
@@ -333,6 +333,24 @@ export const createPool = async ({
       name: name
     })
   });
+  return await response.json();
+};
+
+export const createPools = async ({ tournament_id, createdPools }) => {
+  console.log(tournament_id, createdPools);
+
+  const response = await fetch(
+    `/api/tournament/create-pools/${tournament_id}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCookie("csrftoken")
+      },
+      credentials: "same-origin",
+      body: JSON.stringify(createdPools)
+    }
+  );
   return await response.json();
 };
 
