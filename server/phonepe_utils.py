@@ -1,4 +1,5 @@
 import hashlib
+import logging
 import uuid
 from typing import Any
 
@@ -16,6 +17,7 @@ phonepe_client = PhonePePaymentClient(
     Env.UAT,
     should_publish_events=False,  # NOTE: not sure what this does
 )
+logger = logging.getLogger(__name__)
 
 
 def initiate_payment(amount: int, user: User, host: str, next_url: str) -> dict[str, Any] | None:
@@ -32,7 +34,8 @@ def initiate_payment(amount: int, user: User, host: str, next_url: str) -> dict[
     )
     try:
         response = phonepe_client.pay(pay_page_request)
-    except Exception:
+    except Exception as e:
+        logger.error("Failed to initiate PhonePe payment: %s", e)
         return None
     if not response.success:
         return None
