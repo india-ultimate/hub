@@ -63,6 +63,7 @@ const TournamentManager = () => {
   const [datesList, setDatesList] = createSignal([]);
   const [timesList, setTimesList] = createSignal([]);
   const [updateMatchFields, setUpdateMatchFields] = createStore();
+  const [isStandingsEdited, setIsStandingsEdited] = createSignal(false);
 
   onMount(() => {
     const dt = new Date(1970, 0, 1, 6, 0);
@@ -332,16 +333,26 @@ const TournamentManager = () => {
                 updateTeamSeeding={setTeams}
                 teamsMap={teamsMap()}
                 disabled={updateSeedingMutation.isLoading}
+                setIsStandingsEdited={setIsStandingsEdited}
               />
+              <Show when={isStandingsEdited()}>
+                <div
+                  class="p-4 mb-4 text-sm text-red-800 rounded-lg bg-red-50 dark:bg-gray-800 dark:text-red-400"
+                  role="alert"
+                >
+                  Changes are not saved. Please click on Update Seeding button.
+                </div>
+              </Show>
             </div>
             <button
               type="button"
-              onClick={() =>
+              onClick={() => {
                 updateSeedingMutation.mutate({
                   id: selectedTournamentID(),
                   teamSeeding: teams()
-                })
-              }
+                });
+                setIsStandingsEdited(false);
+              }}
               disabled={
                 selectedTournament()?.status !== "DFT" ||
                 updateSeedingMutation.isLoading
