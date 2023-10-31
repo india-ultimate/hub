@@ -327,23 +327,58 @@ const TournamentManager = () => {
         <Show when={selectedTournamentID() > 0 && selectedTournament()}>
           <div class="relative overflow-x-auto my-5">
             <div class="text-blue-500 text-xl font-bold mb-4">Seeding</div>
-            <div class="w-full md:w-1/2">
-              <ReorderTeams
-                teams={teams()}
-                updateTeamSeeding={setTeams}
-                teamsMap={teamsMap()}
-                disabled={updateSeedingMutation.isLoading}
-                setIsStandingsEdited={setIsStandingsEdited}
-              />
-              <Show when={isStandingsEdited()}>
-                <div
-                  class="p-4 mb-4 text-sm text-red-800 rounded-lg bg-red-50 dark:bg-gray-800 dark:text-red-400"
-                  role="alert"
-                >
-                  Changes are not saved. Please click on Update Seeding button.
+            <Switch>
+              <Match when={selectedTournament()?.status === "DFT"}>
+                <div class="w-full md:w-1/2">
+                  <ReorderTeams
+                    teams={teams()}
+                    updateTeamSeeding={setTeams}
+                    teamsMap={teamsMap()}
+                    disabled={updateSeedingMutation.isLoading}
+                    setIsStandingsEdited={setIsStandingsEdited}
+                  />
+                  <Show when={isStandingsEdited()}>
+                    <div
+                      class="p-4 mb-4 text-sm text-red-800 rounded-lg bg-red-50 dark:bg-gray-800 dark:text-red-400"
+                      role="alert"
+                    >
+                      Changes are not saved. Please click on Update Seeding
+                      button.
+                    </div>
+                  </Show>
                 </div>
-              </Show>
-            </div>
+              </Match>
+              <Match when={selectedTournament()?.status !== "DFT"}>
+                <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                  <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                    <tr>
+                      <th scope="col" class="px-6 py-3">
+                        Seeding
+                      </th>
+                      <th scope="col" class="px-6 py-3">
+                        Team Name
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <For each={teams()}>
+                      {(id, seed) => (
+                        <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+                          <th
+                            scope="row"
+                            class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+                          >
+                            {seed() + 1}
+                          </th>
+                          <td class="px-6 py-4">{teamsMap()[id]}</td>
+                        </tr>
+                      )}
+                    </For>
+                  </tbody>
+                </table>
+              </Match>
+            </Switch>
+
             <button
               type="button"
               onClick={() => {
