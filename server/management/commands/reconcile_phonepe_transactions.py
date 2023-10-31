@@ -14,7 +14,12 @@ class Command(BaseCommand):
             status=PhonePeTransaction.TransactionStatusChoices.PENDING
         )
         n = pending_transactions.count()
+        self.stdout.write(self.style.SUCCESS(f"Found {n} pending transactions in our DB..."))
         for transaction in pending_transactions:
             check_and_update_phonepe_transaction(transaction)
 
-        self.stdout.write(self.style.SUCCESS(f"Updated status of {n} pending transactions."))
+        m = PhonePeTransaction.objects.filter(
+            status=PhonePeTransaction.TransactionStatusChoices.PENDING
+        ).count()
+
+        self.stdout.write(self.style.SUCCESS(f"Updated status of {n - m} pending transactions."))
