@@ -26,7 +26,7 @@ from ninja import File, NinjaAPI, UploadedFile
 from ninja.security import django_auth
 
 from server.constants import EVENT_MEMBERSHIP_AMOUNT, MEMBERSHIP_END, MEMBERSHIP_START
-from server.manual_transactions import validate_manual_transactions
+from server.lib.manual_transactions import validate_manual_transactions
 from server.models import (
     Accreditation,
     Bracket,

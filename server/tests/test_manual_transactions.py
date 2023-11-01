@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from server.manual_transactions import validate_manual_transactions
+from server.lib.manual_transactions import validate_manual_transactions
 from server.models import ManualTransaction
 from server.tests.base import ApiBaseTestCase
 
