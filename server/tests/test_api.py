@@ -1132,6 +1132,8 @@ class TestValidateTransactions(ApiBaseTestCase):
         }
         for tid, amount in transactions.items():
             ManualTransaction.objects.create(transaction_id=tid, amount=amount, user=self.user)
+        self.user.is_staff = True
+        self.user.save()
 
     def test_validate_transactions(self) -> None:
         c = self.client
