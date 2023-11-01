@@ -29,6 +29,7 @@ const TournamentStandings = lazy(() => import("./TournamentStandings"));
 const TournamentTeam = lazy(() => import("./TournamentTeam"));
 const Error404 = lazy(() => import("./Error404"));
 const PhonePeTransaction = lazy(() => import("./PhonePeTransaction"));
+const CheckMemberships = lazy(() => import("./CheckMemberships"));
 
 const filters = {
   id: /^\d+$/ // only allow numbers
@@ -128,6 +129,10 @@ export default function App() {
                   <UserRoute
                     path="/validate-transactions"
                     component={ValidateTransactions}
+                  />
+                  <UserRoute
+                    path="/check-memberships"
+                    component={CheckMemberships}
                   />
                   <UserRoute
                     path="/tournament-manager"
