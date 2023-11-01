@@ -120,23 +120,30 @@ export default function App() {
                     path="/phonepe-transaction/:transactionId"
                     component={PhonePeTransaction}
                   />
-                  {/* Admin routes */}
-                  <UserRoute path="/players" component={RegisteredPlayerList} />
                   <UserRoute
                     path="/validate-rosters"
                     component={ValidateRoster}
                   />
+                  {/* Admin routes */}
+                  <UserRoute
+                    path="/players"
+                    component={RegisteredPlayerList}
+                    admin={true}
+                  />
                   <UserRoute
                     path="/validate-transactions"
                     component={ValidateTransactions}
+                    admin={true}
                   />
                   <UserRoute
                     path="/check-memberships"
                     component={CheckMemberships}
+                    admin={true}
                   />
                   <UserRoute
                     path="/tournament-manager"
                     component={TournamentManager}
+                    admin={true}
                   />
                   <Route path="*" component={Error404} />
                 </Routes>
