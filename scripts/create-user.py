@@ -16,7 +16,7 @@ DEV_EMAIL = "developer@example.com"
 def create_dev_user(email: str, staff: bool, superuser: bool) -> None:
     first_name = "John"
     last_name = "Doe"
-
+    email = email.strip().lower()
     user, created = User.objects.get_or_create(
         email=email,
         defaults={

@@ -214,7 +214,9 @@ def get_team(
 def api_login(
     request: HttpRequest, credentials: Credentials
 ) -> tuple[int, AbstractBaseUser | message_response]:
-    user = authenticate(request, username=credentials.username, password=credentials.password)
+    user = authenticate(
+        request, username=credentials.username.strip().lower(), password=credentials.password
+    )
     if user is not None:
         login(request, user)
         return 200, user
@@ -240,6 +242,7 @@ def get_email_hash(email: str) -> str:
 def get_otp(
     request: HttpRequest, credentials: OTPRequestCredentials
 ) -> tuple[int, dict[str, int | str]]:
+    credentials.email = credentials.email.strip().lower()
     email_hash = get_email_hash(credentials.email)
     totp = pyotp.TOTP(email_hash)
     current_ts = int(now().timestamp())
@@ -260,6 +263,7 @@ def get_otp(
 def otp_login(
     request: HttpRequest, credentials: OTPLoginCredentials
 ) -> tuple[int, User | message_response]:
+    credentials.email = credentials.email.strip().lower()
     email_hash = get_email_hash(credentials.email)
     totp = pyotp.TOTP(email_hash)
     actual_otp = totp.generate_otp(credentials.otp_ts)
@@ -350,7 +354,7 @@ def do_register(
 
     if player.ultimate_central_id is None:
         try:
-            person = UCPerson.objects.get(email=user.email)
+            person = UCPerson.objects.get(email=user.email.strip().lower())
         except UCPerson.DoesNotExist:
             pass
         else:
@@ -374,9 +378,9 @@ def register_others(
     request: AuthenticatedHttpRequest, registration: RegistrationOthersSchema
 ) -> tuple[int, Player | message_response]:
     user, created = User.objects.get_or_create(
-        username=registration.email,  # type: ignore[attr-defined]
+        username=registration.email.strip().lower(),  # type: ignore[attr-defined]
         defaults={
-            "email": registration.email,  # type: ignore[attr-defined]
+            "email": registration.email.strip().lower(),  # type: ignore[attr-defined]
             "phone": registration.phone,  # type: ignore[attr-defined]
             "first_name": registration.first_name,  # type: ignore[attr-defined]
             "last_name": registration.last_name,  # type: ignore[attr-defined]
@@ -389,7 +393,8 @@ def register_others(
 def register_ward(
     request: AuthenticatedHttpRequest, registration: RegistrationWardSchema
 ) -> tuple[int, Player | message_response]:
-    email = registration.email  # type: ignore[attr-defined]
+    email = registration.email.strip().lower() if registration.email else None  # type: ignore[attr-defined]
+
     if request.user.email == email:
         return 400, {"message": "Use the players form instead of the guardians form"}
 
@@ -411,7 +416,7 @@ def register_ward(
 def register_guardian(
     request: AuthenticatedHttpRequest, registration: RegistrationGuardianSchema
 ) -> tuple[int, Player | message_response]:
-    email = registration.guardian_email
+    email = registration.guardian_email.strip().lower()
     if request.user.email == email:
         return 400, {"message": "Use the guardians form instead of the players form"}
 
