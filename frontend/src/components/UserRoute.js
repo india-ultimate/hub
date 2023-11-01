@@ -30,12 +30,35 @@ const WithUserData = props => {
     }
   });
 
+  const canView = () => {
+    if (!props.admin) {
+      console.log(props.admin);
+      return true;
+    } else {
+      return store.userFetched && store?.data?.is_staff;
+    }
+  };
+
   return (
     <Suspense fallback={<Spinner />}>
       {/* NOTE: fetch() doesn't have any real data, but we "read" it to be able to use the Suspense functionality */}
       <Switch>
-        <Match when={fetch() || (store.userFetched && store?.data?.username)}>
+        <Match
+          when={
+            fetch() || (store.userFetched && store?.data?.username && canView())
+          }
+        >
           <>{c()}</>
+        </Match>
+        <Match
+          when={
+            fetch() ||
+            (store.userFetched && store?.data?.username && !canView())
+          }
+        >
+          <p class="text-lg md:text-xl lg:text-2xl text-gray-500 my-12">
+            Sorry, the page you want to view is only available to admins
+          </p>
         </Match>
         <Match when={fetch() || (store.userFetched && !store?.data?.username)}>
           <Navigate href="/login" />
@@ -51,7 +74,9 @@ const UserRoute = props => {
       <Route
         {...props}
         component={null}
-        element={<WithUserData>{props.element}</WithUserData>}
+        element={
+          <WithUserData admin={props.admin}>{props.element}</WithUserData>
+        }
       />
     );
   } else if (props.component) {
@@ -60,7 +85,7 @@ const UserRoute = props => {
         {...props}
         component={null}
         element={
-          <WithUserData>
+          <WithUserData admin={props.admin}>
             <props.component />
           </WithUserData>
         }
