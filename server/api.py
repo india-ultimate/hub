@@ -835,11 +835,16 @@ def list_transactions_by_type(
     return transactions.distinct().order_by(order_by)
 
 
-@api.post("/validate-transactions", response={200: ValidationStatsSchema, 400: Response})
+@api.post(
+    "/validate-transactions", response={200: ValidationStatsSchema, 400: Response, 401: Response}
+)
 def validate_transactions(
     request: AuthenticatedHttpRequest,
     bank_statement: UploadedFile = File(...),  # noqa: B008
 ) -> tuple[int, message_response] | tuple[int, dict[str, int]]:
+    if not request.user.is_staff:
+        return 401, {"message": "Only Admins can validate transactions"}
+
     if not bank_statement.name or not bank_statement.name.endswith(".csv"):
         return 400, {"message": "Please upload a CSV file!"}
 
@@ -848,10 +853,15 @@ def validate_transactions(
     return 200, stats
 
 
-@api.post("/validate-transaction", response={200: ManualTransactionSchema, 400: Response})
+@api.post(
+    "/validate-transaction", response={200: ManualTransactionSchema, 400: Response, 401: Response}
+)
 def validate_transaction(
     request: AuthenticatedHttpRequest, data: ManualTransactionValidationFormSchema
 ) -> tuple[int, message_response] | tuple[int, ManualTransaction]:
+    if not request.user.is_staff:
+        return 401, {"message": "Only Admins can validate transactions"}
+
     try:
         transaction = ManualTransaction.objects.get(transaction_id=data.transaction_id)
     except Player.DoesNotExist:
