@@ -40,11 +40,11 @@ class Command(BaseCommand):
             csv_reader = csv.DictReader(file)
             for row in csv_reader:
                 # Process each row of the CSV file
-                email = row["email"]
+                email = row["email"].strip().lower()
                 user_data = {
                     "first_name": row["first_name"],
                     "last_name": row["last_name"],
-                    "email": row["email"],
+                    "email": email,
                     "phone": row["phone"],
                 }
                 user, created = User.objects.get_or_create(
@@ -82,7 +82,7 @@ class Command(BaseCommand):
 
                 player.full_clean()
 
-                guardian_email = row["guardian.email"]
+                guardian_email = row["guardian.email"].strip().lower()
                 if (
                     not guardian_email
                     and row["guardian.relation"]
@@ -98,7 +98,7 @@ class Command(BaseCommand):
 
                 if row["uc.email"]:
                     try:
-                        uc_person = UCPerson.objects.get(email=row["uc.email"].strip())
+                        uc_person = UCPerson.objects.get(email=row["uc.email"].strip().lower())
                         player.ultimate_central_id = uc_person.id
                     except UCPerson.DoesNotExist:
                         pass
