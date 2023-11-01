@@ -27,6 +27,7 @@ from ninja.security import django_auth
 
 from server.constants import EVENT_MEMBERSHIP_AMOUNT, MEMBERSHIP_END, MEMBERSHIP_START
 from server.lib.manual_transactions import validate_manual_transactions
+from server.lib.membership import get_membership_status
 from server.models import (
     Accreditation,
     Bracket,
@@ -441,6 +442,28 @@ def list_registrations(
         registrations = UCRegistration.objects.filter(event=event, team_id__in=team_ids)
 
     return 200, registrations
+
+
+# Memberships ##########
+
+
+@api.post("/check-memberships", response={200: list[dict[str, Any]], 400: Response, 401: Response})
+def check_membership_status(
+    request: AuthenticatedHttpRequest,
+    info_csv: UploadedFile = File(...),  # noqa: B008
+) -> tuple[int, message_response] | tuple[int, list[dict[str, Any]]]:
+    if not request.user.is_staff:
+        return 401, {"message": "Only Admins can check membership status"}
+
+    if not info_csv.name or not info_csv.name.endswith(".csv"):
+        return 400, {"message": "Please upload a CSV file!"}
+
+    text = info_csv.read().decode("utf-8")
+    data = get_membership_status(io.StringIO(text))
+    if data is None:
+        return 400, {"message": "Could not file an Email header in the CSV!"}
+
+    return 200, list(data.values())
 
 
 # Payments ##########

@@ -26,6 +26,7 @@ from server.models import (
     User,
 )
 from server.tests.base import ApiBaseTestCase, fake_id, fake_order
+from server.tests.test_membership import MembershipStatusTestCase
 
 
 class TestLogin(ApiBaseTestCase):
@@ -1153,3 +1154,29 @@ class TestValidateTransactions(ApiBaseTestCase):
         self.assertEqual(1, stats["validated"])
         self.assertEqual(1, ManualTransaction.objects.filter(validated=False).count())
         self.assertFalse(ManualTransaction.objects.get(transaction_id="33680091811DC").validated)
+
+
+class TestCheckMemberships(ApiBaseTestCase, MembershipStatusTestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        self.client.force_login(self.user)
+        self.user.is_staff = True
+        self.user.save()
+
+    def test_check_memberships(self) -> None:
+        c = self.client
+        info_csv = SimpleUploadedFile(
+            "info.csv",
+            self.csv_data.strip().encode("utf8"),
+            content_type="application/csv",
+        )
+        response = c.post(
+            path="/api/check-memberships",
+            data={"info_csv": info_csv},
+            content_type=MULTIPART_CONTENT,
+        )
+        self.assertEqual(200, response.status_code)
+        data = response.json()
+        self.assertEqual(len(data), len(self.csv_data.strip().split()) - 1)
+        for row in data:
+            self.assertIn("membership_status", row)
