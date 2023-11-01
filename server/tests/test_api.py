@@ -9,6 +9,7 @@ from django.test import Client
 from django.test.client import MULTIPART_CONTENT
 from django.utils.timezone import now
 
+from server.api import update_phonepe_transaction
 from server.constants import (
     ANNUAL_MEMBERSHIP_AMOUNT,
     EVENT_MEMBERSHIP_AMOUNT,
@@ -19,6 +20,7 @@ from server.models import (
     Guardianship,
     ManualTransaction,
     Membership,
+    PhonePeTransaction,
     Player,
     RazorpayTransaction,
     User,
@@ -943,6 +945,15 @@ class TestPayment(ApiBaseTestCase):
 
         self.assertEqual(502, response.status_code)
         self.assertIn(b"Razorpay", response.content)
+
+    def test_update_phonepe_transaction(self) -> None:
+        transaction = PhonePeTransaction.objects.create(
+            user=self.user, transaction_id=uuid.uuid4(), amount=10000
+        )
+        transaction.players.add(self.player)
+        update_phonepe_transaction(transaction, "ERROR")
+        with self.assertRaises(Membership.DoesNotExist):
+            self.assertFalse(self.player.membership.is_active)
 
 
 class TestVaccination(ApiBaseTestCase):

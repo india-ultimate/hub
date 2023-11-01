@@ -692,7 +692,8 @@ def update_phonepe_transaction(
 ) -> PhonePeTransaction:
     transaction.status = getattr(PhonePeTransaction.TransactionStatusChoices, status_code)
     transaction.save(update_fields=["status"])
-    update_transaction_player_memberships(transaction)
+    if transaction.status == PhonePeTransaction.TransactionStatusChoices.SUCCESS:
+        update_transaction_player_memberships(transaction)
     return transaction
 
 
