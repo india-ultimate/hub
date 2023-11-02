@@ -161,3 +161,7 @@ jobs:
         with:
           image_name: india-ultimate/hub
           push_image_and_stages: false
+      - name: Run the migrations
+        run: docker run india-ultimate/hub:latest python manage.py migrate
+      - name: Run the deploy checks
+        run: docker run --env OTP_EMAIL_HASH_KEY=test india-ultimate/hub:latest python manage.py check --deploy
