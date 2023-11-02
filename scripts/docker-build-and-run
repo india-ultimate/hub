@@ -2,4 +2,4 @@
 
 DJANGO_SETTINGS_MODULE=hub.production
 docker build --build-arg DJANGO_SETTINGS_MODULE=$DJANGO_SETTINGS_MODULE --tag india-ultimate/hub .
-docker run --env DJANGO_SETTINGS_MODULE=$DJANGO_SETTINGS_MODULE --env SECURE_SSL_REDIRECT=0 -p 127.0.0.1:80:80  -it india-ultimate/hub
+docker run --env DJANGO_SETTINGS_MODULE=$DJANGO_SETTINGS_MODULE --env OTP_EMAIL_HASH_KEY=foo --env SECURE_SSL_REDIRECT=0 -p 127.0.0.1:80:80  -it india-ultimate/hub
