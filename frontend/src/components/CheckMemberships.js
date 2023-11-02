@@ -92,6 +92,13 @@ const CheckMemberships = () => {
       class="my-6 space-y-6 md:space-y-7 lg:space-y-8"
       onSubmit={values => handleSubmit(values)}
     >
+      <div
+        class="p-4 mb-4 text-sm text-blue-800 rounded-lg bg-blue-50 dark:bg-gray-800 dark:text-blue-400"
+        role="alert"
+      >
+        Upload any CSV file which has 'Email' as one of the columns
+      </div>
+
       <div class="space-y-8">
         <Field
           name="info_csv"
