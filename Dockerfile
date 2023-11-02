@@ -57,4 +57,4 @@ COPY --chown=user:users scripts/hourly.sh cron/hourly.sh
 COPY --chown=user:users scripts/daily.sh cron/daily.sh
 RUN crontab -l | { cat; cat deploy/crontab; echo ""; } | crontab -
 
-ENTRYPOINT deploy/start.sh
+CMD deploy/start.sh
