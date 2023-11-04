@@ -230,6 +230,13 @@ class PositionPool(models.Model):
         unique_together = ["name", "tournament"]
 
 
+class MatchScore(models.Model):
+    score_team_1 = models.PositiveIntegerField(default=0)
+    score_team_2 = models.PositiveIntegerField(default=0)
+
+    entered_by = models.ForeignKey(Player, on_delete=models.CASCADE)
+
+
 class SpiritScore(models.Model):
     rules = models.PositiveIntegerField()
     fouls = models.PositiveIntegerField()
@@ -273,8 +280,24 @@ class Match(models.Model):
     )
     placeholder_seed_1 = models.PositiveIntegerField()
     placeholder_seed_2 = models.PositiveIntegerField()
+
     score_team_1 = models.PositiveIntegerField(default=0)
     score_team_2 = models.PositiveIntegerField(default=0)
+    suggested_score_team_1 = models.OneToOneField(
+        MatchScore,
+        on_delete=models.CASCADE,
+        related_name="suggested_score_team_1",
+        blank=True,
+        null=True,
+    )
+    suggested_score_team_2 = models.OneToOneField(
+        MatchScore,
+        on_delete=models.CASCADE,
+        related_name="suggested_score_team_2",
+        blank=True,
+        null=True,
+    )
+
     spirit_score_team_1 = models.OneToOneField(
         SpiritScore,
         on_delete=models.CASCADE,
