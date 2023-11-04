@@ -114,9 +114,8 @@ from server.tournament import (
     create_bracket_matches,
     create_pool_matches,
     create_position_pool_matches,
-    get_new_bracket_seeding,
-    get_new_pool_results,
     populate_fixtures,
+    update_match_score_and_results,
     update_tournament_spirit_rankings,
 )
 from server.utils import (
@@ -1524,66 +1523,7 @@ def add_match_score(
     if match.status in {Match.Status.COMPLETED, Match.Status.YET_TO_FIX}:
         return 400, {"message": "Match score cant be added in current status"}
 
-    match.score_team_1 = match_scores.team_1_score
-    match.score_team_2 = match_scores.team_2_score
-
-    if match.pool is not None:
-        results = match.pool.results
-        results = {int(k): v for k, v in results.items()}
-
-        pool_seeding_list = list(map(int, match.pool.initial_seeding.keys()))
-        pool_seeding_list.sort()
-        tournament_seeding = match.tournament.current_seeding
-
-        new_results, new_tournament_seeding = get_new_pool_results(
-            results, match, pool_seeding_list, tournament_seeding
-        )
-
-        match.pool.results = new_results
-        match.pool.save()
-
-        match.tournament.current_seeding = new_tournament_seeding
-        match.tournament.save()
-
-    elif match.cross_pool is not None:
-        seeding = match.cross_pool.current_seeding
-        match.cross_pool.current_seeding = get_new_bracket_seeding(seeding, match)
-        match.cross_pool.save()
-
-        tournament_seeding = match.tournament.current_seeding
-        match.tournament.current_seeding = get_new_bracket_seeding(tournament_seeding, match)
-        match.tournament.save()
-
-    elif match.bracket is not None:
-        seeding = match.bracket.current_seeding
-        match.bracket.current_seeding = get_new_bracket_seeding(seeding, match)
-        match.bracket.save()
-
-        tournament_seeding = match.tournament.current_seeding
-        match.tournament.current_seeding = get_new_bracket_seeding(tournament_seeding, match)
-        match.tournament.save()
-
-    elif match.position_pool is not None:
-        results = match.position_pool.results
-        results = {int(k): v for k, v in results.items()}
-
-        pool_seeding_list = list(map(int, match.position_pool.initial_seeding.keys()))
-        pool_seeding_list.sort()
-        tournament_seeding = match.tournament.current_seeding
-
-        new_results, new_tournament_seeding = get_new_pool_results(
-            results, match, pool_seeding_list, tournament_seeding
-        )
-
-        match.position_pool.results = new_results
-        match.position_pool.save()
-
-        match.tournament.current_seeding = new_tournament_seeding
-        match.tournament.save()
-
-    match.status = Match.Status.COMPLETED
-    match.save()
-
+    update_match_score_and_results(match, match_scores.team_1_score, match_scores.team_2_score)
     populate_fixtures(match.tournament.id)
 
     return 200, match

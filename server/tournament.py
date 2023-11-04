@@ -154,6 +154,26 @@ def get_new_bracket_seeding(seeding: dict[int, int], match: Match) -> dict[int, 
     return seeding
 
 
+def update_match_score_and_results(match: Match, team_1_score: int, team_2_score: int) -> None:
+    match.score_team_1 = team_1_score
+    match.score_team_2 = team_2_score
+
+    if match.pool is not None:
+        update_for_pool_or_position_pool(match, match.pool)
+
+    elif match.cross_pool is not None:
+        update_for_bracket_or_cross_pool(match, match.cross_pool)
+
+    elif match.bracket is not None:
+        update_for_bracket_or_cross_pool(match, match.bracket)
+
+    elif match.position_pool is not None:
+        update_for_pool_or_position_pool(match, match.position_pool)
+
+    match.status = Match.Status.COMPLETED
+    match.save()
+
+
 def populate_fixtures(tournament_id: int) -> None:
     pools = Pool.objects.filter(tournament=tournament_id)
     cross_pool = CrossPool.objects.filter(tournament=tournament_id)
@@ -631,3 +651,34 @@ def rank_spirit_scores(scores: list[dict[str, int | float]]) -> list[dict[str, i
         score["rank"] = spirit_points.index(score["points"]) + 1
 
     return sorted(scores, key=lambda x: x["rank"])
+
+
+def update_for_pool_or_position_pool(match: Match, pool: Pool | PositionPool) -> None:
+    results = pool.results
+    results = {int(k): v for k, v in results.items()}
+
+    pool_seeding_list = list(map(int, pool.initial_seeding.keys()))
+    pool_seeding_list.sort()
+    tournament_seeding = match.tournament.current_seeding
+
+    new_results, new_tournament_seeding = get_new_pool_results(
+        results, match, pool_seeding_list, tournament_seeding
+    )
+
+    pool.results = new_results
+    pool.save()
+
+    match.tournament.current_seeding = new_tournament_seeding
+    match.tournament.save()
+
+
+def update_for_bracket_or_cross_pool(
+    match: Match, bracket_or_cross_pool: Bracket | CrossPool
+) -> None:
+    seeding = bracket_or_cross_pool.current_seeding
+    bracket_or_cross_pool.current_seeding = get_new_bracket_seeding(seeding, match)
+    bracket_or_cross_pool.save()
+
+    tournament_seeding = match.tournament.current_seeding
+    match.tournament.current_seeding = get_new_bracket_seeding(tournament_seeding, match)
+    match.tournament.save()
