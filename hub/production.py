@@ -18,3 +18,12 @@ else:
     DATABASES["default"]["NAME"] = DATA_DIR / "production.db.sqlite"  # noqa: F405
 MEDIA_ROOT = DATA_DIR / "media"
 MEDIA_URL = "/media/"
+
+SENTRY_DSN = os.environ.get("SENTRY_DSN")
+if SENTRY_DSN:
+    import sentry_sdk
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        enable_tracing=True,
+    )

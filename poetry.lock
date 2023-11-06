@@ -639,15 +639,15 @@ files = [
 
 [package.dependencies]
 arrow = [
-    {version = ">=1"},
+    {version = ">=1", optional = true, markers = "extra != \"trusted-deps\""},
     {version = "1.2.3", optional = true, markers = "extra == \"trusted-deps\""},
 ]
 click = [
-    {version = ">=8"},
+    {version = ">=8", optional = true, markers = "extra != \"trusted-deps\""},
     {version = "8.1.3", optional = true, markers = "extra == \"trusted-deps\""},
 ]
 sh = [
-    {version = ">=1.13.0", markers = "sys_platform != \"win32\""},
+    {version = ">=1.13.0", optional = true, markers = "extra != \"trusted-deps\" and sys_platform != \"win32\""},
     {version = "1.14.3", optional = true, markers = "sys_platform != \"win32\" and extra == \"trusted-deps\""},
 ]
 
@@ -1723,6 +1723,52 @@ psutil = ["psutil (==5.9.5)"]
 selenium-wire = ["Brotli (==1.0.9)", "blinker (==1.6.2)", "h2 (==4.1.0)", "hpack (==4.0.0)", "hyperframe (==6.0.1)", "kaitaistruct (==0.10)", "pyasn1 (==0.5.0)", "selenium-wire (==5.1.0)", "zstandard (==0.21.0)"]
 
 [[package]]
+name = "sentry-sdk"
+version = "1.34.0"
+description = "Python client for Sentry (https://sentry.io)"
+optional = false
+python-versions = "*"
+files = [
+    {file = "sentry-sdk-1.34.0.tar.gz", hash = "sha256:e5d0d2b25931d88fa10986da59d941ac6037f742ab6ff2fce4143a27981d60c3"},
+    {file = "sentry_sdk-1.34.0-py2.py3-none-any.whl", hash = "sha256:76dd087f38062ac6c1e30ed6feb533ee0037ff9e709974802db7b5dbf2e5db21"},
+]
+
+[package.dependencies]
+certifi = "*"
+django = {version = ">=1.8", optional = true, markers = "extra == \"django\""}
+urllib3 = {version = ">=1.26.11", markers = "python_version >= \"3.6\""}
+
+[package.extras]
+aiohttp = ["aiohttp (>=3.5)"]
+arq = ["arq (>=0.23)"]
+asyncpg = ["asyncpg (>=0.23)"]
+beam = ["apache-beam (>=2.12)"]
+bottle = ["bottle (>=0.12.13)"]
+celery = ["celery (>=3)"]
+chalice = ["chalice (>=1.16.0)"]
+clickhouse-driver = ["clickhouse-driver (>=0.2.0)"]
+django = ["django (>=1.8)"]
+falcon = ["falcon (>=1.4)"]
+fastapi = ["fastapi (>=0.79.0)"]
+flask = ["blinker (>=1.1)", "flask (>=0.11)", "markupsafe"]
+grpcio = ["grpcio (>=1.21.1)"]
+httpx = ["httpx (>=0.16.0)"]
+huey = ["huey (>=2)"]
+loguru = ["loguru (>=0.5)"]
+opentelemetry = ["opentelemetry-distro (>=0.35b0)"]
+opentelemetry-experimental = ["opentelemetry-distro (>=0.40b0,<1.0)", "opentelemetry-instrumentation-aiohttp-client (>=0.40b0,<1.0)", "opentelemetry-instrumentation-django (>=0.40b0,<1.0)", "opentelemetry-instrumentation-fastapi (>=0.40b0,<1.0)", "opentelemetry-instrumentation-flask (>=0.40b0,<1.0)", "opentelemetry-instrumentation-requests (>=0.40b0,<1.0)", "opentelemetry-instrumentation-sqlite3 (>=0.40b0,<1.0)", "opentelemetry-instrumentation-urllib (>=0.40b0,<1.0)"]
+pure-eval = ["asttokens", "executing", "pure-eval"]
+pymongo = ["pymongo (>=3.1)"]
+pyspark = ["pyspark (>=2.4.4)"]
+quart = ["blinker (>=1.1)", "quart (>=0.16.1)"]
+rq = ["rq (>=0.6)"]
+sanic = ["sanic (>=0.8)"]
+sqlalchemy = ["sqlalchemy (>=1.2)"]
+starlette = ["starlette (>=0.19.1)"]
+starlite = ["starlite (>=1.48)"]
+tornado = ["tornado (>=5)"]
+
+[[package]]
 name = "setuptools"
 version = "68.0.0"
 description = "Easily download, build, install, upgrade, and uninstall Python packages"
@@ -2096,4 +2142,4 @@ resolved_reference = "85de0cbadbba3f498deba32f861bb9a478faa3b4"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "54919d7d4b2293478e25ed8ca1fb74ebbff50e5173ebf5b158d42d50c3b3c1a5"
+content-hash = "e31eb177d0d6d25678789892d3f4aa0569f72df79407abe5e5ade9bb7895ca7b"
