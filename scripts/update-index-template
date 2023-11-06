@@ -24,7 +24,7 @@ def main() -> None:
 
     for link in soup.find_all("script"):
         src = link.attrs.get("src")
-        if src:
+        if src and not link.attrs.get("external"):
             link.attrs["src"] = make_static(src)
 
     tool_path = Path(__file__).relative_to(ROOT)
