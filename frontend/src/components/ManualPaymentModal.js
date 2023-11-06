@@ -100,7 +100,7 @@ const ManualPaymentModal = props => {
         type="button"
         disabled={props.disabled}
       >
-        Pay
+        Record Transaction
       </button>
       <div
         id="payment-modal"
@@ -191,21 +191,6 @@ const ManualPaymentModal = props => {
                   Submit UPI Transaction ID
                 </button>
               </Form>
-              <div
-                class="p-4 my-4 text-sm text-yellow-800 rounded-lg bg-yellow-50 dark:bg-gray-800 dark:text-yellow-300"
-                role="alert"
-              >
-                <details>
-                  <summary>Why you no use payment gateway?</summary>
-                  <p class="mt-4">
-                    We've been in the process of setting up a payment gateway
-                    using a service provider like Razorpay/PhonePe/etc, but
-                    still have a few banking related issues to sort out. We'll
-                    soon have a smoother payment experience! Thank you for your
-                    patience.
-                  </p>
-                </details>
-              </div>
             </div>
           </div>
         </div>
