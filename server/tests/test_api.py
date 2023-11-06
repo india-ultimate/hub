@@ -1058,6 +1058,35 @@ class TestAccreditation(ApiBaseTestCase):
         self.assertEqual(self.player.id, response_data["player"])
         self.assertTrue(response_data["is_valid"])
 
+    def test_accreditation_duplicate(self) -> None:
+        c = self.client
+
+        certificate = SimpleUploadedFile(
+            "certificate.pdf", b"file content", content_type="application/pdf"
+        )
+        date = str((now() - datetime.timedelta(days=18 * 30)).date())
+        data = {"date": date, "level": "ADV", "player_id": self.player.id, "wfdf_id": 100}
+        response = c.post(
+            path="/api/accreditation",
+            data={"accreditation": json.dumps(data), "certificate": certificate},
+            content_type=MULTIPART_CONTENT,
+        )
+        response.json()
+        self.assertEqual(200, response.status_code)
+
+        username = email = "foo@example.com"
+
+        user = User.objects.create(username=username, email=email)
+        player = Player.objects.create(date_of_birth="2000-01-01", user=user)
+        data["player_id"] = player.id
+        response = c.post(
+            path="/api/accreditation",
+            data={"accreditation": json.dumps(data), "certificate": certificate},
+            content_type=MULTIPART_CONTENT,
+        )
+        self.assertEqual(400, response.status_code)
+        self.assertIn("Wfdf id already exists", response.json()["message"])
+
 
 class TestWaiver(ApiBaseTestCase):
     def setUp(self) -> None:

@@ -947,7 +947,11 @@ def accreditation(
         acc.date = accreditation_data.get("date", None)
         acc.level = accreditation_data.get("level", Accreditation.AccreditationLevel.STANDARD)
 
-    acc.full_clean()
+    try:
+        acc.full_clean()
+    except ValidationError as e:
+        return 400, {"message": " ".join(e.messages)}
+
     acc.save()
     return 200, acc
 
