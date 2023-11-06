@@ -221,7 +221,9 @@ const Tournament = () => {
                       {teamsMap()[spirit.team_id]?.name}
                     </A>
                   </td>
-                  <td class="px-6 py-4">{spirit.points}</td>
+                  <td class="px-6 py-4">
+                    {Math.round(spirit.points * 10) / 10}
+                  </td>
                 </tr>
               )}
             </For>
