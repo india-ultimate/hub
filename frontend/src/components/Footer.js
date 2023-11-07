@@ -20,8 +20,8 @@ export default function Footer() {
               </A>
             </li>
             <li>
-              <A href="#" class="mr-4 hover:underline md:mr-6">
-                Privacy Policy
+              <A href="/legal" class="mr-4 hover:underline md:mr-6">
+                Refund Policy
               </A>
             </li>
             <li>

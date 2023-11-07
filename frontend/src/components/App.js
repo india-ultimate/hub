@@ -12,6 +12,7 @@ const Home = lazy(() => import("./Home"));
 const Login = lazy(() => import("./Login"));
 const Registration = lazy(() => import("./Registration"));
 const Help = lazy(() => import("./Help"));
+const Legal = lazy(() => import("./Legal"));
 const Membership = lazy(() => import("./Membership"));
 const GroupMembership = lazy(() => import("./GroupMembership"));
 const Vaccination = lazy(() => import("./Vaccination"));
@@ -85,6 +86,7 @@ export default function App() {
                     element={<Registration ward={true} />}
                   />
                   <Route path="/help" component={Help} />
+                  <Route path="/legal" component={Legal} />
                   {/* Membership, vaccination, waiver, etc. */}
                   <UserRoute
                     path="/membership/group"
