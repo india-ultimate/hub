@@ -87,6 +87,7 @@ const PhonePePayment = props => {
               disabled={props.disabled}
               annual={props.annual}
               year={props.year}
+              player_id={props.player_id}
               player_ids={props.player_ids}
               amount={props.amount}
               setStatus={props.setStatus}
