@@ -1083,6 +1083,82 @@
     }
   },
   {
+    "model": "server.user",
+    "pk": 2,
+    "fields": {
+      "password": "pbkdf2_sha256$600000$iSivAK2jSAmAcUzOcRyZVI$/w0DCFvNbbbXrcCMoj2mLE49XOEVdqveLWt5NhhR8cg=",
+      "last_login": "2023-10-07T04:44:02.761Z",
+      "is_superuser": false,
+      "username": "l2fadmin@example.com",
+      "first_name": "L2F",
+      "last_name": "Admin",
+      "is_staff": false,
+      "is_active": true,
+      "date_joined": "2023-10-05T13:01:29.909Z",
+      "phone": "",
+      "email": "l2fadmin@example.com",
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "server.user",
+    "pk": 3,
+    "fields": {
+      "password": "pbkdf2_sha256$600000$iSivAK2jSAmAcUzOcRyZVI$/w0DCFvNbbbXrcCMoj2mLE49XOEVdqveLWt5NhhR8cg=",
+      "last_login": "2023-10-07T04:44:02.761Z",
+      "is_superuser": false,
+      "username": "tiksadmin@example.com",
+      "first_name": "Tiks",
+      "last_name": "Admin",
+      "is_staff": false,
+      "is_active": true,
+      "date_joined": "2023-10-05T13:01:29.909Z",
+      "phone": "",
+      "email": "tiksadmin@example.com",
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "server.user",
+    "pk": 4,
+    "fields": {
+      "password": "pbkdf2_sha256$600000$iSivAK2jSAmAcUzOcRyZVI$/w0DCFvNbbbXrcCMoj2mLE49XOEVdqveLWt5NhhR8cg=",
+      "last_login": "2023-10-07T04:44:02.761Z",
+      "is_superuser": false,
+      "username": "stormadmin@example.com",
+      "first_name": "Storm Chasers",
+      "last_name": "Admin",
+      "is_staff": false,
+      "is_active": true,
+      "date_joined": "2023-10-05T13:01:29.909Z",
+      "phone": "",
+      "email": "stormadmin@example.com",
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "server.user",
+    "pk": 5,
+    "fields": {
+      "password": "pbkdf2_sha256$600000$iSivAK2jSAmAcUzOcRyZVI$/w0DCFvNbbbXrcCMoj2mLE49XOEVdqveLWt5NhhR8cg=",
+      "last_login": "2023-10-07T04:44:02.761Z",
+      "is_superuser": false,
+      "username": "dpadmin@example.com",
+      "first_name": "Disc Positive",
+      "last_name": "Admin",
+      "is_staff": false,
+      "is_active": true,
+      "date_joined": "2023-10-05T13:01:29.909Z",
+      "phone": "",
+      "email": "dpadmin@example.com",
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
     "model": "server.team",
     "pk": 1,
     "fields": {
@@ -24076,6 +24152,62 @@
       "team": 7,
       "person": 1384198,
       "roles": ["player"]
+    }
+  },
+  {
+    "model": "server.player",
+    "pk": 1,
+    "fields": {
+      "user": 2,
+      "date_of_birth": "2000-01-01",
+      "gender": "M",
+      "match_up": "M",
+      "city": "bangalore",
+      "state_ut": "KA",
+      "teams": [28],
+      "ultimate_central_id": 393811
+    }
+  },
+  {
+    "model": "server.player",
+    "pk": 2,
+    "fields": {
+      "user": 3,
+      "date_of_birth": "2000-01-01",
+      "gender": "M",
+      "match_up": "M",
+      "city": "bangalore",
+      "state_ut": "KA",
+      "teams": [31],
+      "ultimate_central_id": 521435
+    }
+  },
+  {
+    "model": "server.player",
+    "pk": 3,
+    "fields": {
+      "user": 4,
+      "date_of_birth": "2000-01-01",
+      "gender": "M",
+      "match_up": "M",
+      "city": "mumbai",
+      "state_ut": "MH",
+      "teams": [14],
+      "ultimate_central_id": 741809
+    }
+  },
+  {
+    "model": "server.player",
+    "pk": 4,
+    "fields": {
+      "user": 5,
+      "date_of_birth": "2000-01-01",
+      "gender": "M",
+      "match_up": "M",
+      "city": "pune",
+      "state_ut": "MH",
+      "teams": [44],
+      "ultimate_central_id": 981629
     }
   }
 ]
