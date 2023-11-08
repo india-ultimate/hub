@@ -192,7 +192,12 @@ const TournamentMatch = props => {
           </button>
         </a>
       </Show>
-      <Show when={props.match[`spirit_score_team_${currTeamNo()}`]}>
+      <Show
+        when={
+          props.match[`spirit_score_team_${currTeamNo()}`] &&
+          props.match[`spirit_score_team_${oppTeamNo()}`]
+        }
+      >
         <div class="flex justify-center mt-5">
           <button
             data-modal-target={`modal-${props.match.id}`}
