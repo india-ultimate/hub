@@ -36,6 +36,7 @@ from server.models import (
     Guardianship,
     ManualTransaction,
     Match,
+    MatchScore,
     Membership,
     PhonePeTransaction,
     Player,
@@ -111,9 +112,11 @@ from server.schema import (
 )
 from server.top_score_utils import TopScoreClient
 from server.tournament import (
+    can_submit_match_score,
     create_bracket_matches,
     create_pool_matches,
     create_position_pool_matches,
+    is_submitted_scores_equal,
     populate_fixtures,
     update_match_score_and_results,
     update_tournament_spirit_rankings,
@@ -1525,6 +1528,45 @@ def add_match_score(
 
     update_match_score_and_results(match, match_scores.team_1_score, match_scores.team_2_score)
     populate_fixtures(match.tournament.id)
+
+    return 200, match
+
+
+@api.post(
+    "/match/{match_id}/submit-score", response={200: MatchSchema, 400: Response, 401: Response}
+)
+def submit_match_score(
+    request: AuthenticatedHttpRequest, match_id: int, match_scores: MatchScoreSchema
+) -> tuple[int, Match | message_response]:
+    try:
+        match = Match.objects.get(id=match_id)
+    except Match.DoesNotExist:
+        return 400, {"message": "Match does not exist"}
+
+    if match.status in {Match.Status.COMPLETED, Match.Status.YET_TO_FIX}:
+        return 400, {"message": "Match score cant be submitted in current status"}
+
+    is_authorised, team_id = can_submit_match_score(match, request.user)
+    if not is_authorised:
+        return 401, {"message": "User not authorised to add score for this match"}
+
+    match_score = MatchScore.objects.create(
+        score_team_1=match_scores.team_1_score,
+        score_team_2=match_scores.team_2_score,
+        entered_by=request.user.player_profile,
+    )
+
+    if match.team_1 is not None and team_id == match.team_1.id:
+        match.suggested_score_team_1 = match_score
+    elif match.team_2 is not None and team_id == match.team_2.id:
+        match.suggested_score_team_2 = match_score
+
+    match.save()
+    match.refresh_from_db()
+
+    if is_submitted_scores_equal(match):
+        update_match_score_and_results(match, match_scores.team_1_score, match_scores.team_2_score)
+        populate_fixtures(match.tournament.id)
 
     return 200, match
 

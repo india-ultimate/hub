@@ -10,6 +10,7 @@ from server.models import (
     Guardianship,
     ManualTransaction,
     Match,
+    MatchScore,
     Membership,
     PhonePeTransaction,
     Player,
@@ -568,6 +569,14 @@ class PositionPoolCreateSchema(Schema):
     name: str
 
 
+class MatchScoreModelSchema(ModelSchema):
+    entered_by: PlayerTinySchema
+
+    class Config:
+        model = MatchScore
+        model_fields = "__all__"
+
+
 class SpiritScoreSchema(ModelSchema):
     mvp: PersonSchema | None
     msp: PersonSchema | None
@@ -587,6 +596,8 @@ class MatchSchema(ModelSchema):
     team_2: TeamSchema | None
     spirit_score_team_1: SpiritScoreSchema | None
     spirit_score_team_2: SpiritScoreSchema | None
+    suggested_score_team_1: MatchScoreModelSchema | None
+    suggested_score_team_2: MatchScoreModelSchema | None
 
     class Config:
         model = Match
