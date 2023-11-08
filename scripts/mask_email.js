@@ -23,7 +23,9 @@ fs.readFile("server/fixtures/sample_data.json", "utf8", (err, data) => {
       // Check if the model is "server.ucperson"
       if (obj.model === "server.ucperson") {
         // Update the email field with a random email
-        obj.fields.email = generateRandomEmail();
+        obj.fields.email = obj.fields.email.endsWith("@example.com")
+          ? obj.fields.email
+          : generateRandomEmail();
         obj.fields.image_url =
           "https://secure.gravatar.com/avatar/04d7b508acc28c747e55a9d1d81cdd4a?s=200&d=mm&r=r";
       }
