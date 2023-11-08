@@ -1237,6 +1237,18 @@ class TestTournaments(ApiBaseTestCase):
             event=self.event, team=self.teams[1], person=person2, roles=["admin", "player"]
         )
 
+        self.user_with_no_event = user_with_no_event = User.objects.create(
+            username="username3@foo.com", email="username3@foo.com"
+        )
+        user_with_no_event.set_password(self.password)
+        user_with_no_event.save()
+        person_with_no_event = UCPerson.objects.create(email="username3@foo.com", slug="username3")
+        Player.objects.create(
+            user=user_with_no_event,
+            date_of_birth="1990-01-01",
+            ultimate_central_id=person_with_no_event.id,
+        )
+
     def test_valid_submit_score(self) -> None:
         valid_matches = Match.objects.filter(tournament=self.tournament).filter(
             Q(team_1=self.teams[0]) | Q(team_2=self.teams[0])
@@ -1284,3 +1296,25 @@ class TestTournaments(ApiBaseTestCase):
             content_type="application/json",
         )
         self.assertEqual(401, response.status_code)
+
+    def test_user_with_team_admin_access(self) -> None:
+        c = self.client
+        c.force_login(self.user)
+
+        response = c.get(f"/api/me/access?tournament_slug={self.event.ultimate_central_slug}")
+        self.assertEqual(200, response.status_code)
+
+        data = response.json()
+        self.assertEqual(True, data["team_admin"])
+        self.assertEqual(self.teams[0].id, data["team_id"])
+
+    def test_user_without_team_admin_access(self) -> None:
+        c = self.client
+        c.force_login(self.user_with_no_event)
+
+        response = c.get(f"/api/me/access?tournament_slug={self.event.ultimate_central_slug}")
+        self.assertEqual(200, response.status_code)
+
+        data = response.json()
+        self.assertEqual(False, data["team_admin"])
+        self.assertEqual(None, data["team_id"])

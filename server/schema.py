@@ -636,3 +636,8 @@ class MatchUpdateSchema(Schema):
 class MatchScoreSchema(Schema):
     team_1_score: int
     team_2_score: int
+
+
+class UserAccessSchema(Schema):
+    team_admin: bool
+    team_id: int | None
