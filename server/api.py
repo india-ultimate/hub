@@ -103,6 +103,7 @@ from server.schema import (
     TournamentSchema,
     TournamentUpdateSeedingSchema,
     UCRegistrationSchema,
+    UserAccessSchema,
     UserFormSchema,
     UserSchema,
     VaccinatedFormSchema,
@@ -113,6 +114,7 @@ from server.schema import (
 from server.top_score_utils import TopScoreClient
 from server.tournament import (
     can_submit_match_score,
+    can_submit_tournament_scores,
     create_bracket_matches,
     create_pool_matches,
     create_position_pool_matches,
@@ -145,6 +147,29 @@ message_response = dict[str, str]
 @api.get("/me", response={200: UserSchema})
 def me(request: AuthenticatedHttpRequest) -> User:
     return request.user
+
+
+@api.get(
+    "/me/access",
+    response={200: UserAccessSchema, 400: Response, 401: Response},
+)
+def me_access(
+    request: AuthenticatedHttpRequest, tournament_slug: str
+) -> tuple[int, dict[str, bool | int] | dict[str, bool] | message_response]:
+    try:
+        event = Event.objects.get(ultimate_central_slug=tournament_slug)
+        tournament = Tournament.objects.get(event=event)
+    except Tournament.DoesNotExist:
+        return 400, {"message": "Tournament does not exist"}
+    except Event.DoesNotExist:
+        return 400, {"message": "Event does not exist"}
+
+    is_team_admin, team_id = can_submit_tournament_scores(tournament, request.user)
+
+    if not is_team_admin:
+        return 200, {"team_admin": False}
+
+    return 200, {"team_admin": is_team_admin, "team_id": team_id}
 
 
 # Players ##########
