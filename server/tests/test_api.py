@@ -5,6 +5,7 @@ from pathlib import Path
 from unittest import mock
 
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.db.models import Q
 from django.test import Client
 from django.test.client import MULTIPART_CONTENT
 from django.utils.timezone import now
@@ -19,13 +20,16 @@ from server.models import (
     Event,
     Guardianship,
     ManualTransaction,
+    Match,
     Membership,
     PhonePeTransaction,
     Player,
     RazorpayTransaction,
+    UCPerson,
+    UCRegistration,
     User,
 )
-from server.tests.base import ApiBaseTestCase, fake_id, fake_order
+from server.tests.base import ApiBaseTestCase, create_pool, fake_id, fake_order, start_tournament
 from server.tests.test_membership import MembershipStatusTestCase
 
 
@@ -1211,3 +1215,72 @@ class TestCheckMemberships(ApiBaseTestCase, MembershipStatusTestCase):
         self.assertEqual(len(data), len(self.csv_data.strip().split()) - 1)
         for row in data:
             self.assertIn("membership_status", row)
+
+
+class TestTournaments(ApiBaseTestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        self.pool = create_pool("A", self.tournament, [1, 2, 3])
+        start_tournament(self.tournament)
+
+        self.user2 = user2 = User.objects.create(
+            username="username2@foo.com", email="username2@foo.com"
+        )
+        user2.set_password(self.password)
+        user2.save()
+        person2 = UCPerson.objects.create(email="username2@foo.com", slug="username2")
+        self.player2 = Player.objects.create(
+            user=self.user2, date_of_birth="1990-01-01", ultimate_central_id=person2.id
+        )
+        self.player2.refresh_from_db()
+        UCRegistration.objects.create(
+            event=self.event, team=self.teams[1], person=person2, roles=["admin", "player"]
+        )
+
+    def test_valid_submit_score(self) -> None:
+        valid_matches = Match.objects.filter(tournament=self.tournament).filter(
+            Q(team_1=self.teams[0]) | Q(team_2=self.teams[0])
+        )
+
+        self.client.force_login(self.user)
+        c = self.client
+        response = c.post(
+            f"/api/match/{valid_matches[0].id}/submit-score",
+            data={"team_1_score": 15, "team_2_score": 14},
+            content_type="application/json",
+        )
+        match = response.json()
+        self.assertEqual(200, response.status_code)
+        self.assertEqual(15, match["suggested_score_team_1"]["score_team_1"])
+        self.assertEqual(14, match["suggested_score_team_1"]["score_team_2"])
+        self.assertEqual(self.player.id, match["suggested_score_team_1"]["entered_by"]["id"])
+
+        self.client.force_login(self.user2)
+        c = self.client
+        response = c.post(
+            f"/api/match/{valid_matches[0].id}/submit-score",
+            data={"team_1_score": 15, "team_2_score": 14},
+            content_type="application/json",
+        )
+        match = response.json()
+        self.assertEqual(200, response.status_code)
+        self.assertEqual(15, match["suggested_score_team_2"]["score_team_1"])
+        self.assertEqual(14, match["suggested_score_team_2"]["score_team_2"])
+        self.assertEqual(self.player2.id, match["suggested_score_team_2"]["entered_by"]["id"])
+
+        self.assertEqual(15, match["score_team_1"])
+        self.assertEqual(14, match["score_team_2"])
+        self.assertEqual("COM", match["status"])
+
+    def test_invalid_submit_score(self) -> None:
+        invalid_matches = Match.objects.filter(tournament=self.tournament).filter(
+            placeholder_seed_1=2, placeholder_seed_2=3
+        )
+
+        c = self.client
+        response = c.post(
+            f"/api/match/{invalid_matches[0].id}/submit-score",
+            data={"team_1_score": 15, "team_2_score": 14},
+            content_type="application/json",
+        )
+        self.assertEqual(401, response.status_code)
