@@ -252,6 +252,18 @@ export const fetchTournamentTeamBySlug = async (tournament_slug, team_slug) => {
   return await response.json();
 };
 
+export const fetchUserAccessByTournamentSlug = async tournament_slug => {
+  const response = await fetch(
+    `/api/me/access?tournament_slug=${tournament_slug}`,
+    {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin"
+    }
+  );
+  return await response.json();
+};
+
 // Mutations ----------------
 
 export const createTournament = async formData => {
@@ -441,6 +453,26 @@ export const addMatchScore = async ({ match_id, body }) => {
     body: JSON.stringify(body)
   });
   return await response.json();
+};
+
+export const submitMatchScore = async ({ match_id, body }) => {
+  const response = await fetch(`/api/match/${match_id}/submit-score`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin",
+    body: JSON.stringify(body)
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.message || JSON.stringify(data));
+  }
+
+  return data;
 };
 
 export const addMatchSpiritScore = async ({ match_id, body }) => {
