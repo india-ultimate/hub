@@ -1,9 +1,11 @@
 import { Match, Switch, Show, createEffect, createSignal } from "solid-js";
 import { A } from "@solidjs/router";
-import { arrowRight, play } from "solid-heroicons/solid";
+import { arrowRight, play, paperAirplane, pencil } from "solid-heroicons/solid";
 import { Icon } from "solid-heroicons";
-import { fetchTeams } from "../queries";
-import { createQuery } from "@tanstack/solid-query";
+import { fetchTeams, fetchUserAccessByTournamentSlug } from "../queries";
+import { createQuery, useQueryClient } from "@tanstack/solid-query";
+import MatchScoreForm from "./tournament/MatchScoreForm";
+import { initFlowbite } from "flowbite";
 
 /**
  * Returns a match block between 2 teams.
@@ -18,11 +20,17 @@ import { createQuery } from "@tanstack/solid-query";
  * @param {boolean} [props.bothTeamsClickable]
  */
 const TournamentMatch = props => {
+  const queryClient = useQueryClient();
+
   const [teamsMap, setTeamsMap] = createSignal({});
   const [currTeamNo, setCurrTeamNo] = createSignal(1);
   const [oppTeamNo, setOppTeamNo] = createSignal(2);
 
   const teamsQuery = createQuery(() => ["teams"], fetchTeams);
+  const userAccessQuery = createQuery(
+    () => ["user-access", props.tournamentSlug],
+    () => fetchUserAccessByTournamentSlug(props.tournamentSlug)
+  );
 
   createEffect(() => {
     setCurrTeamNo(props.currentTeamNo || 1);
@@ -38,6 +46,22 @@ const TournamentMatch = props => {
       setTeamsMap(newTeamsMap);
     }
   });
+
+  const checkIfSuggestedScoresClash = (
+    suggested_score_team_1,
+    suggested_score_team_2
+  ) => {
+    if (!suggested_score_team_1 || !suggested_score_team_2) {
+      return false;
+    }
+
+    return (
+      suggested_score_team_1["score_team_1"] !==
+        suggested_score_team_2["score_team_1"] ||
+      suggested_score_team_1["score_team_2"] !==
+        suggested_score_team_2["score_team_2"]
+    );
+  };
 
   return (
     <>
@@ -477,6 +501,149 @@ const TournamentMatch = props => {
                     </div>
                   </div>
                 </Show>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Show>
+      {/*Team Admin Actions*/}
+      <Show
+        when={
+          props.match.status === "SCH" &&
+          userAccessQuery.data &&
+          userAccessQuery.data.team_admin &&
+          (props.match["team_1"].id === userAccessQuery.data.team_id ||
+            props.match["team_2"].id === userAccessQuery.data.team_id)
+        }
+      >
+        <hr class="w-48 h-1 mx-auto my-4 bg-gray-100 border-0 rounded md:my-10 dark:bg-gray-700" />
+        <div class="flex justify-center mb-5 flex-wrap">
+          <Show
+            when={checkIfSuggestedScoresClash(
+              props.match["suggested_score_team_1"],
+              props.match["suggested_score_team_2"]
+            )}
+          >
+            <span class="bg-red-100 text-red-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded dark:bg-red-900 dark:text-red-300 mb-3">
+              Scores Clashing
+            </span>
+          </Show>
+          <Show when={props.match[`suggested_score_team_${currTeamNo()}`]}>
+            <p>
+              {
+                props.match[`suggested_score_team_${currTeamNo()}`][
+                  "entered_by"
+                ]["full_name"]
+              }{" "}
+              submitted score as{" "}
+              {
+                props.match[`suggested_score_team_${currTeamNo()}`][
+                  `score_team_${currTeamNo()}`
+                ]
+              }{" "}
+              -{" "}
+              {
+                props.match[`suggested_score_team_${currTeamNo()}`][
+                  `score_team_${oppTeamNo()}`
+                ]
+              }{" "}
+            </p>
+          </Show>
+          <Show when={props.match[`suggested_score_team_${oppTeamNo()}`]}>
+            <p>
+              {
+                props.match[`suggested_score_team_${oppTeamNo()}`][
+                  "entered_by"
+                ]["full_name"]
+              }{" "}
+              submitted score as{" "}
+              {
+                props.match[`suggested_score_team_${oppTeamNo()}`][
+                  `score_team_${currTeamNo()}`
+                ]
+              }{" "}
+              -{" "}
+              {
+                props.match[`suggested_score_team_${oppTeamNo()}`][
+                  `score_team_${oppTeamNo()}`
+                ]
+              }{" "}
+            </p>
+          </Show>
+          <button
+            data-modal-target={"submit-score-modal" + props.match?.id}
+            data-modal-toggle={"submit-score-modal" + props.match?.id}
+            type="button"
+            class="text-white mt-2 bg-blue-600 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center dark:bg-blue-500 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+          >
+            <Show
+              when={
+                (props.match["team_1"].id === userAccessQuery.data.team_id &&
+                  !props.match["suggested_score_team_1"]) ||
+                (props.match["team_2"].id === userAccessQuery.data.team_id &&
+                  !props.match["suggested_score_team_2"])
+              }
+              fallback={
+                <>
+                  <Icon class="w-4 mr-2" path={pencil} />
+                  Edit Score
+                </>
+              }
+            >
+              <Icon class="w-4 mr-2" path={paperAirplane} />
+              Submit Score
+            </Show>
+          </button>
+
+          {/*Submit Score modal*/}
+          <div
+            id={"submit-score-modal" + props.match?.id}
+            tabindex="-1"
+            aria-hidden="true"
+            class="fixed top-0 left-0 right-0 z-50 hidden w-full p-4 overflow-x-hidden overflow-y-auto md:inset-0 h-[calc(100%-1rem)] max-h-full"
+          >
+            <div class="relative w-full max-w-2xl max-h-full">
+              <div class="relative bg-white rounded-lg shadow dark:bg-gray-700">
+                <div class="flex items-start justify-between p-4 border-b rounded-t dark:border-gray-600">
+                  <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
+                    Submit Score
+                  </h3>
+                  <button
+                    type="button"
+                    class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ml-auto inline-flex justify-center items-center dark:hover:bg-gray-600 dark:hover:text-white"
+                    data-modal-hide={"submit-score-modal" + props.match?.id}
+                    onClick={() => {
+                      queryClient.invalidateQueries({
+                        queryKey: ["matches", props.tournamentSlug]
+                      });
+                      setTimeout(() => initFlowbite(), 500);
+                    }}
+                  >
+                    <svg
+                      class="w-3 h-3"
+                      aria-hidden="true"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 14 14"
+                    >
+                      <path
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"
+                      />
+                    </svg>
+                    <span class="sr-only">Close modal</span>
+                  </button>
+                </div>
+                <div class="p-6 space-y-6">
+                  <MatchScoreForm
+                    match={props.match}
+                    currTeamNo={currTeamNo()}
+                    oppTeamNo={oppTeamNo()}
+                  />
+                </div>
               </div>
             </div>
           </div>
