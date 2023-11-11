@@ -119,6 +119,7 @@ from server.tournament import (
     create_pool_matches,
     create_position_pool_matches,
     create_spirit_scores,
+    get_bracket_match_name,
     is_submitted_scores_equal,
     populate_fixtures,
     update_match_score_and_results,
@@ -1453,18 +1454,30 @@ def create_match(
     )
 
     try:
+        seed_1 = min(match_details.seed_1, match_details.seed_2)
+        seed_2 = max(match_details.seed_1, match_details.seed_2)
+
         if match_details.stage == "pool":
             pool = Pool.objects.get(id=match_details.stage_id)
             match.pool = pool
+            match.name = f"{pool.name}{seed_1} v {pool.name}{seed_2}"
+
         elif match_details.stage == "bracket":
             bracket = Bracket.objects.get(id=match_details.stage_id)
             match.bracket = bracket
+            seeds = sorted(map(int, bracket.initial_seeding.keys()))
+            start, end = seeds[0], seeds[-1]
+            match.name = get_bracket_match_name(start=start, end=end, seed_1=seed_1, seed_2=seed_2)
+
         elif match_details.stage == "cross_pool":
             cross_pool = CrossPool.objects.get(id=match_details.stage_id)
             match.cross_pool = cross_pool
+            match.name = "Cross Pool"
+
         elif match_details.stage == "position_pool":
             position_pool = PositionPool.objects.get(id=match_details.stage_id)
             match.position_pool = position_pool
+            match.name = f"{position_pool.name}{seed_1} v {position_pool.name}{seed_2}"
 
     except (
         Pool.DoesNotExist,
@@ -1510,9 +1523,9 @@ def start_tournament(
     except Tournament.DoesNotExist:
         return 400, {"message": "Tournament does not exist"}
 
-    matches = Match.objects.filter(tournament=tournament).exclude(pool__isnull=True)
+    pool_matches = Match.objects.filter(tournament=tournament).exclude(pool__isnull=True)
 
-    for match in matches:
+    for match in pool_matches:
         team_1_id = tournament.initial_seeding[str(match.placeholder_seed_1)]
         team_2_id = tournament.initial_seeding[str(match.placeholder_seed_2)]
 
