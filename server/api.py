@@ -1209,6 +1209,35 @@ def delete_tournament(
     return 200, {"message": "Tournament successfully deleted"}
 
 
+def create_pool(tournament: Tournament, pool: PoolCreateSchema) -> Pool:
+    # seed -> team_id. If the same seed present twice, we'll only get one object since its a map with seed as the key
+    pool_seeding: dict[int, str] = {}
+    pool_results: dict[str, Any] = {}
+    for i, seed in enumerate(pool.seeding):
+        team_id = tournament.initial_seeding[str(seed)]
+
+        pool_seeding[seed] = team_id
+        pool_results[team_id] = {
+            "rank": i + 1,
+            "wins": 0,
+            "losses": 0,
+            "draws": 0,
+            "GF": 0,  # Goals For
+            "GA": 0,  # Goals Against
+        }
+
+    created_pool = Pool(
+        sequence_number=pool.sequence_number,
+        name=pool.name,
+        tournament=tournament,
+        initial_seeding=dict(sorted(pool_seeding.items())),
+        results=pool_results,
+    )
+
+    created_pool.save()
+    return created_pool
+
+
 @api.post(
     "tournament/create-pools/{tournament_id}",
     response={200: list[PoolSchema], 400: Response, 401: Response},
@@ -1224,13 +1253,13 @@ def create_pools(
     except Tournament.DoesNotExist:
         return 400, {"message": "Tournament does not exist"}
 
-    # existing pools for the tournament maybe modified (teams added, or pool removed entirely)
-    # remove existing pools for the tournament, then add new pools
-    Pool.objects.filter(tournament=tournament).delete()
-
+    existing_pool_names: set[str] = set(
+        Pool.objects.filter(tournament=tournament).values_list("name", flat=True)
+    )
     created_pools: list[Pool] = []
 
     for pool in pools:
+        
         valid_pool, errors = validate_new_pool(
             tournament=tournament, new_pool=set(pool.seeding)
         )
@@ -1238,34 +1267,34 @@ def create_pools(
             message = "Cannot create pools, due to following errors: \n"
             message += "\n".join(f"{key}: {value}" for key, value in errors.items())
             return 400, {"message": message}
+        
+        existing_pool_names.discard(pool.name)
+        
+        try:
+            # if the incoming pool's name and seeding matches an existing pool
+            # no need to recreate pool and matches, continue
+            existing_pool = Pool.objects.get(tournament=tournament, name=pool.name)
+            existing_pool_seeds = list(map(int, existing_pool.initial_seeding.keys()))
+            seeding_same_as_before = set(existing_pool_seeds) == set(pool.seeding)
+            if seeding_same_as_before:
+                continue
+            else:
+                # if the incoming pool's name matches an existing pool, but seeding is different
+                # we need to recreate the pool and matches
+                existing_pool.delete()
 
-        # seed -> team_id. If the same seed present twice, we'll only get one object since its a map with seed as the key
-        pool_seeding: dict[int, str] = {}
-        pool_results: dict[str, Any] = {}
-        for i, seed in enumerate(pool.seeding):
-            team_id = tournament.initial_seeding[str(seed)]
+        except Pool.DoesNotExist:
+            # if the incoming pool hasn't been created earlier
+            # we need to create pool and matches
+            print(f"pool {pool.name} not present in {tournament.event.title}")
 
-            pool_seeding[seed] = team_id
-            pool_results[team_id] = {
-                "rank": i + 1,
-                "wins": 0,
-                "losses": 0,
-                "draws": 0,
-                "GF": 0,  # Goals For
-                "GA": 0,  # Goals Against
-            }
-
-        created_pool = Pool(
-            sequence_number=pool.sequence_number,
-            name=pool.name,
-            tournament=tournament,
-            initial_seeding=dict(sorted(pool_seeding.items())),
-            results=pool_results,
-        )
-
-        created_pool.save()
-        create_pool_matches(tournament=tournament, pool=created_pool)
+        created_pool = create_pool(tournament=tournament, pool=pool)
         created_pools.append(created_pool)
+        create_pool_matches(tournament=tournament, pool=created_pool)
+
+    # if a pool that was previously created is missing from the update, delete it
+    for removed_pool_name in existing_pool_names:
+        Pool.objects.get(tournament=tournament, name=removed_pool_name).delete()
 
     return 200, created_pools
 
