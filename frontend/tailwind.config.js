@@ -24,12 +24,12 @@ module.exports = {
     "dark:after:border-gray-700",
     {
       pattern:
-        /bg-(red|green|blue|violet|yellow|cyan|rose|lime|indigo|purple|pink|sky)-(100|900)/,
+        /bg-(red|green|blue|violet|yellow|cyan|rose|lime|indigo|purple|pink|sky|emerald)-(100|900)/,
       variants: ["dark"]
     },
     {
       pattern:
-        /text-(red|green|blue|violet|yellow|cyan|rose|lime|indigo|purple|pink|sky)-(300|800)/,
+        /text-(red|green|blue|violet|yellow|cyan|rose|lime|indigo|purple|pink|sky|emerald)-(300|800)/,
       variants: ["dark"]
     }
   ],

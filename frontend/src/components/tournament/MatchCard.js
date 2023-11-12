@@ -8,7 +8,7 @@ const colors = {
     ["cyan", "indigo", "sky"],
     ["cyan", "indigo", "sky"]
   ],
-  position_pool: ["lime"]
+  position_pool: ["lime", "pink", "emerald"]
 };
 
 const MatchCard = props => {
