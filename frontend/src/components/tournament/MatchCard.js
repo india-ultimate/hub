@@ -2,7 +2,7 @@ import { createEffect, createSignal, Match, Show, Switch } from "solid-js";
 
 const colors = {
   pool: ["blue", "green", "pink", "purple"],
-  cross_pool: "yellow",
+  cross_pool: ["yellow", "red", "fuchsia"],
   bracket: [
     ["cyan", "indigo", "sky"],
     ["cyan", "indigo", "sky"],
@@ -18,7 +18,7 @@ const MatchCard = props => {
     if (props.match.pool) {
       setColor(colors["pool"][props.match.pool.sequence_number - 1]);
     } else if (props.match.cross_pool) {
-      setColor(colors["cross_pool"]);
+      setColor(colors["cross_pool"][props.match.sequence_number - 1]);
     } else if (props.match.bracket) {
       setColor(
         colors["bracket"][props.match.bracket.sequence_number - 1][
