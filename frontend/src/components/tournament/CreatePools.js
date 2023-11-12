@@ -121,6 +121,7 @@ const CreatePools = props => {
   };
 
   const removePool = droppableId => {
+    const removingEmptyPool = props.pools[droppableId].length == 0
     batch(() => {
       props.updatePools(remainingTeamsName, teams =>
         [...teams, ...props.pools[droppableId]].sort((a, b) => a.seed - b.seed)
@@ -128,7 +129,7 @@ const CreatePools = props => {
       // setting value undefined to delete it from the store
       props.updatePools(droppableId, undefined);
     });
-    props.setIsPoolsEdited(true);
+    props.setIsPoolsEdited(!removingEmptyPool);
   };
 
   const addPool = poolName => {

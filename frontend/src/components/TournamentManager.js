@@ -356,7 +356,10 @@ const TournamentManager = () => {
     const createdPoolNames = Object.keys(pools).filter(
       name => name !== "Remaining"
     );
-    createdPoolNames.forEach((poolName, index) => {
+    for (const [index, poolName] of createdPoolNames.entries()) {
+      // don't send empty pools
+      if (!pools[poolName]) continue;
+
       let poolSeeds = [];
       for (let { seed } of pools[poolName]) {
         poolSeeds.push(seed);
@@ -366,7 +369,7 @@ const TournamentManager = () => {
         seeding: poolSeeds,
         sequence_number: index + 1
       });
-    });
+    }
 
     createPoolsMutation.mutate({
       tournament_id: selectedTournamentID(),
