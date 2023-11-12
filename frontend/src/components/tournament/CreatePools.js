@@ -116,6 +116,7 @@ const CreatePools = props => {
           [...teams, draggedTeam()].sort((a, b) => a.seed - b.seed)
         );
       });
+      props.setIsPoolsEdited(true);
     }
   };
 
@@ -127,6 +128,7 @@ const CreatePools = props => {
       // setting value undefined to delete it from the store
       props.updatePools(droppableId, undefined);
     });
+    props.setIsPoolsEdited(true);
   };
 
   const addPool = poolName => {
@@ -165,7 +167,10 @@ const CreatePools = props => {
       >
         <DragDropSensors>
           <div class="w-full grid grid-rows-2 grid-cols-3 grid-flow-row gap-4">
-            <div class="row-span-2 col-span-1">
+            <div
+              class="row-span-2 col-span-1 transition-opacity"
+              classList={{ "opacity-30": props.isUpdating }}
+            >
               <Droppable
                 id={remainingTeamsName}
                 name={remainingTeamsName}
@@ -176,7 +181,10 @@ const CreatePools = props => {
             <For each={Object.entries(props.pools)}>
               {([poolName, teams]) => (
                 <Show when={poolName !== remainingTeamsName}>
-                  <div class="row-span-1 col-span-1">
+                  <div
+                    class="row-span-1 col-span-1 transition-opacity"
+                    classList={{ "opacity-30": props.isUpdating }}
+                  >
                     <Droppable
                       id={poolName}
                       name={poolName}

@@ -65,6 +65,7 @@ const TournamentManager = () => {
   const [timesList, setTimesList] = createSignal([]);
   const [updateMatchFields, setUpdateMatchFields] = createStore();
   const [isStandingsEdited, setIsStandingsEdited] = createSignal(false);
+  const [isPoolsEdited, setIsPoolsEdited] = createSignal(false);
 
   onMount(() => {
     const dt = new Date(1970, 0, 1, 6, 0);
@@ -347,6 +348,10 @@ const TournamentManager = () => {
   };
 
   const submitPools = () => {
+    if (!isPoolsEdited()) {
+      return;
+    }
+
     let createdPools = [];
     const createdPoolNames = Object.keys(pools).filter(
       name => name !== "Remaining"
@@ -367,6 +372,8 @@ const TournamentManager = () => {
       tournament_id: selectedTournamentID(),
       createdPools
     });
+
+    setIsPoolsEdited(false);
   };
 
   return (
@@ -490,18 +497,34 @@ const TournamentManager = () => {
             <div class="text-blue-500 text-xl font-bold mb-4">Pools</div>
             <Switch>
               <Match when={selectedTournament()?.status === "DFT"}>
+                <Show when={isPoolsEdited()}>
+                  <div
+                    class="p-4 mb-4 text-sm text-red-800 rounded-lg bg-red-50 dark:bg-gray-800 dark:text-red-400"
+                    role="alert"
+                  >
+                    Changes are not saved. Please click on Submit Pools button.
+                  </div>
+                </Show>
                 <CreatePools
                   pools={pools}
                   updatePools={setPools}
                   teamsMap={teamsMap()}
                   submitPools={submitPools}
+                  setIsPoolsEdited={setIsPoolsEdited}
+                  isUpdating={createPoolsMutation.isLoading}
                 />
                 <button
                   type="button"
                   class="basis-1/3 px-4 py-2 my-4 text-sm font-normal rounded-lg text-white bg-blue-700 hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
                   onClick={submitPools}
+                  disabled={createPoolsMutation.isLoading}
                 >
-                  Submit Pools
+                  <Show
+                    when={createPoolsMutation.isLoading}
+                    fallback={"Submit Pools"}
+                  >
+                    Submitting...
+                  </Show>
                 </button>
               </Match>
 
