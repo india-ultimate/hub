@@ -34,7 +34,7 @@ const Draggable = props => {
   return (
     <div
       use:draggable
-      class="text-gray-500 dark:text-gray-400 my-2 rounded-lg bg-gray-200 border-gray-300 border-b dark:bg-gray-800 dark:border-gray-700"
+      class="text-gray-600 dark:text-gray-400 my-2 rounded-lg bg-gray-300 border-gray-400 border-b dark:bg-gray-800 dark:border-gray-700"
     >
       <TeamInfo team={props.team} />
     </div>
@@ -57,12 +57,13 @@ const Droppable = props => {
         class="flex flex-col justify-items-center justify-start gap-y-2 content-center h-full p-4 rounded-lg dark:text-gray-400 bg-white text-center select-none border dark:border-gray-700"
         classList={{
           "ring-4 ring-blue-500": droppable.isActiveDroppable,
-          "justify-between dark:bg-gray-700": props.id !== remainingTeamsName,
+          "justify-between bg-gray-200/80 dark:bg-gray-700/80 text-black dark:text-white":
+            props.id !== remainingTeamsName,
           "dark:bg-gray-900": props.id === remainingTeamsName
         }}
       >
         {/* bg-gray-200 dark:bg-gray-700 border-b dark:border-gray-600 rounded-b-xl */}
-        <h4 class="text-center text-white p-2 justify-self-start">
+        <h4 class="text-center p-2 justify-self-start">
           <Show when={props.id !== remainingTeamsName} fallback={"All teams"}>
             Pool - {props.name}
           </Show>
@@ -121,7 +122,7 @@ const CreatePools = props => {
   };
 
   const removePool = droppableId => {
-    const removingEmptyPool = props.pools[droppableId].length == 0
+    const removingEmptyPool = props.pools[droppableId].length == 0;
     batch(() => {
       props.updatePools(remainingTeamsName, teams =>
         [...teams, ...props.pools[droppableId]].sort((a, b) => a.seed - b.seed)
