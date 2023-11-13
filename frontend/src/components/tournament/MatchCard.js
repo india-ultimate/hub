@@ -1,15 +1,5 @@
 import { createEffect, createSignal, Match, Show, Switch } from "solid-js";
-
-const colors = {
-  pool: ["blue", "green", "pink", "purple"],
-  cross_pool: ["yellow", "red", "fuchsia"],
-  bracket: [
-    ["cyan", "indigo", "sky"],
-    ["cyan", "indigo", "sky"],
-    ["cyan", "indigo", "sky"]
-  ],
-  position_pool: ["lime", "pink", "emerald"]
-};
+import { getMatchCardColor } from "../../utils";
 
 const getSmallName = matchName => {
   if (matchName === "Cross Pool") {
@@ -71,21 +61,7 @@ const MatchCard = props => {
   const [color, setColor] = createSignal("blue");
 
   createEffect(() => {
-    if (props.match.pool) {
-      setColor(colors["pool"][props.match.pool.sequence_number - 1]);
-    } else if (props.match.cross_pool) {
-      setColor(colors["cross_pool"][props.match.sequence_number - 1]);
-    } else if (props.match.bracket) {
-      setColor(
-        colors["bracket"][props.match.bracket.sequence_number - 1][
-          props.match.sequence_number - 1
-        ]
-      );
-    } else if (props.match.position_pool) {
-      setColor(
-        colors["position_pool"][props.match.position_pool.sequence_number - 1]
-      );
-    }
+    setColor(getMatchCardColor(props.match));
   });
 
   const handleMatchCardClick = matchId => {
