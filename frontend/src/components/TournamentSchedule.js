@@ -9,6 +9,8 @@ import MatchCard from "./tournament/MatchCard";
 import { createStore, reconcile } from "solid-js/store";
 import clsx from "clsx";
 import TournamentMatch from "./TournamentMatch";
+import { getMatchCardColor } from "../utils";
+import { matchCardColorToBorderColorMap } from "../colors";
 
 const TournamentSchedule = () => {
   const params = useParams();
@@ -260,7 +262,8 @@ const TournamentSchedule = () => {
                         flash() == match.id
                           ? "bg-blue-100 dark:bg-slate-700 dark:text-white text-black"
                           : "bg-white dark:bg-gray-800",
-                        "transition block py-2 px-1 border border-blue-600 rounded-lg shadow dark:border-blue-400 w-full mb-5"
+                        "transition block py-2 px-1 rounded-lg shadow w-full mb-5 border",
+                        matchCardColorToBorderColorMap[getMatchCardColor(match)]
                       )}
                     >
                       <TournamentMatch

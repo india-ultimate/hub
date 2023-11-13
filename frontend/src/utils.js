@@ -2,6 +2,7 @@ import { membershipStartDate } from "./constants";
 import { Icon } from "solid-heroicons";
 import { checkCircle, exclamationCircle } from "solid-heroicons/solid-mini";
 import clsx from "clsx";
+import { matchCardColors } from "./colors";
 
 export const getCookie = name => {
   const cookies = document.cookie.split(";").reduce((acc, x) => {
@@ -151,3 +152,21 @@ export const assetURL = name =>
   process.env.NODE_ENV === "production"
     ? `/static/assets/${name}`
     : `/assets/${name}`;
+
+export const getMatchCardColor = match => {
+  let color = "";
+  if (match.pool) {
+    color = matchCardColors["pool"][match.pool.sequence_number - 1];
+  } else if (match.cross_pool) {
+    color = matchCardColors["cross_pool"][match.sequence_number - 1];
+  } else if (match.bracket) {
+    color =
+      matchCardColors["bracket"][match.bracket.sequence_number - 1][
+        match.sequence_number - 1
+      ];
+  } else if (match.position_pool) {
+    color =
+      matchCardColors["position_pool"][match.position_pool.sequence_number - 1];
+  }
+  return color;
+};
