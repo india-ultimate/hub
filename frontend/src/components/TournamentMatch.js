@@ -103,7 +103,7 @@ const TournamentMatch = props => {
         >
           <img
             class={clsx(
-              "w-6 h-6 p-1 rounded-full ring-2 inline-block mr-1",
+              "mr-1 inline-block h-6 w-6 rounded-full p-1 ring-2",
               props.imgRingColor
                 ? matchCardColorToRingColorMap[props.imgRingColor]
                 : matchCardColorToRingColorMap[getMatchCardColor(props.match)]
@@ -153,7 +153,7 @@ const TournamentMatch = props => {
 
           <img
             class={clsx(
-              "w-6 h-6 p-1 rounded-full ring-2 inline-block mr-1",
+              "mr-1 inline-block h-6 w-6 rounded-full p-1 ring-2",
               props.imgRingColor
                 ? matchCardColorToRingColorMap[props.imgRingColor]
                 : matchCardColorToRingColorMap[getMatchCardColor(props.match)]
@@ -211,7 +211,7 @@ const TournamentMatch = props => {
           </Switch>
         </p>
       </Show>
-      <p class="text-center text-sm mt-2">
+      <p class="mt-2 text-center text-sm">
         {props.match.field +
           " | " +
           new Date(Date.parse(props.match.time)).toLocaleTimeString("en-US", {
@@ -228,9 +228,9 @@ const TournamentMatch = props => {
         >
           <button
             type="button"
-            class="text-white mt-2 bg-blue-600 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center dark:bg-blue-500 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+            class="mt-2 inline-flex items-center rounded-lg bg-blue-600 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-500 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
           >
-            <Icon class="w-4 mr-2" path={play} />
+            <Icon class="mr-2 w-4" path={play} />
             Watch
           </button>
         </a>
@@ -241,13 +241,13 @@ const TournamentMatch = props => {
           props.match[`spirit_score_team_${oppTeamNo()}`]
         }
       >
-        <div class="flex justify-center mt-5">
+        <div class="mt-5 flex justify-center">
           <button
             data-modal-target={`modal-${props.match.id}`}
             data-modal-toggle={`modal-${props.match.id}`}
             class={clsx(
-              "relative inline-flex items-center justify-center p-0.5 mb-2 mr-2 overflow-hidden text-xs font-medium rounded-lg group",
-              "hover:text-white text-gray-900 dark:text-white focus:ring-4 focus:outline-none",
+              "group relative mb-2 mr-2 inline-flex items-center justify-center overflow-hidden rounded-lg p-0.5 text-xs font-medium",
+              "text-gray-900 hover:text-white focus:outline-none focus:ring-4 dark:text-white",
               // "bg-gradient-to-br from-cyan-500 to-blue-500 group-hover:from-cyan-500 group-hover:to-blue-500",
               // "focus:ring-cyan-200 dark:focus:ring-cyan-800",
               props.buttonColor
@@ -255,9 +255,9 @@ const TournamentMatch = props => {
                 : matchCardColorToButtonStyles[getMatchCardColor(props.match)]
             )}
           >
-            <span class="relative px-3 py-2.5 transition-all ease-in duration-75 bg-white dark:bg-gray-800 rounded-md group-hover:bg-opacity-0 inline-flex items-center">
+            <span class="relative inline-flex items-center rounded-md bg-white px-3 py-2.5 transition-all duration-75 ease-in group-hover:bg-opacity-0 dark:bg-gray-800">
               Spirit Scores, MVP & MSP
-              <Icon path={arrowRight} class="w-4 ml-1.5" />
+              <Icon path={arrowRight} class="ml-1.5 w-4" />
             </span>
           </button>
         </div>
@@ -266,21 +266,21 @@ const TournamentMatch = props => {
           id={`modal-${props.match.id}`}
           tabindex="-1"
           aria-hidden="true"
-          class="fixed top-0 left-0 right-0 z-50 hidden w-full p-4 overflow-x-hidden overflow-y-auto md:inset-0 h-[calc(100%-1rem)] max-h-full"
+          class="fixed left-0 right-0 top-0 z-50 hidden h-[calc(100%-1rem)] max-h-full w-full overflow-y-auto overflow-x-hidden p-4 md:inset-0"
         >
-          <div class="relative w-full max-w-2xl max-h-full">
-            <div class="relative bg-white rounded-lg shadow dark:bg-gray-700">
-              <div class="flex items-start justify-between p-4 border-b rounded-t dark:border-gray-600">
+          <div class="relative max-h-full w-full max-w-2xl">
+            <div class="relative rounded-lg bg-white shadow dark:bg-gray-700">
+              <div class="flex items-start justify-between rounded-t border-b p-4 dark:border-gray-600">
                 <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
                   Spirit Scores, MVP & MSP
                 </h3>
                 <button
                   type="button"
-                  class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ml-auto inline-flex justify-center items-center dark:hover:bg-gray-600 dark:hover:text-white"
+                  class="ml-auto inline-flex h-8 w-8 items-center justify-center rounded-lg bg-transparent text-sm text-gray-400 hover:bg-gray-200 hover:text-gray-900 dark:hover:bg-gray-600 dark:hover:text-white"
                   data-modal-hide={`modal-${props.match.id}`}
                 >
                   <svg
-                    class="w-3 h-3"
+                    class="h-3 w-3"
                     aria-hidden="true"
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
@@ -297,7 +297,7 @@ const TournamentMatch = props => {
                   <span class="sr-only">Close modal</span>
                 </button>
               </div>
-              <div class="p-2 space-y-2">
+              <div class="space-y-2 p-2">
                 <h2 class="text-center font-bold text-blue-600 dark:text-blue-500">
                   Spirit Scores
                 </h2>
@@ -330,9 +330,9 @@ const TournamentMatch = props => {
                 <Show
                   when={props.match[`spirit_score_team_${currTeamNo()}`].mvp}
                 >
-                  <div class="flex items-center space-x-4 mx-5">
+                  <div class="mx-5 flex items-center space-x-4">
                     <img
-                      class="w-10 h-10 rounded-full ring-2 ring-gray-300 dark:ring-gray-500 p-1"
+                      class="h-10 w-10 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
                       src={
                         props.match[`spirit_score_team_${currTeamNo()}`].mvp
                           ?.image_url
@@ -356,9 +356,9 @@ const TournamentMatch = props => {
                 <Show
                   when={props.match[`spirit_score_team_${oppTeamNo()}`].mvp}
                 >
-                  <div class="flex items-center space-x-4 mx-5">
+                  <div class="mx-5 flex items-center space-x-4">
                     <img
-                      class="w-10 h-10 rounded-full ring-2 ring-gray-300 dark:ring-gray-500 p-1"
+                      class="h-10 w-10 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
                       src={
                         props.match[`spirit_score_team_${oppTeamNo()}`].mvp
                           ?.image_url
@@ -386,9 +386,9 @@ const TournamentMatch = props => {
                 <Show
                   when={props.match[`spirit_score_team_${currTeamNo()}`].msp}
                 >
-                  <div class="flex items-center space-x-4 mx-5">
+                  <div class="mx-5 flex items-center space-x-4">
                     <img
-                      class="w-10 h-10 rounded-full ring-2 ring-gray-300 dark:ring-gray-500 p-1"
+                      class="h-10 w-10 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
                       src={
                         props.match[`spirit_score_team_${currTeamNo()}`].msp
                           ?.image_url
@@ -412,9 +412,9 @@ const TournamentMatch = props => {
                 <Show
                   when={props.match[`spirit_score_team_${oppTeamNo()}`].msp}
                 >
-                  <div class="flex items-center space-x-4 mx-5">
+                  <div class="mx-5 flex items-center space-x-4">
                     <img
-                      class="w-10 h-10 rounded-full ring-2 ring-gray-300 dark:ring-gray-500 p-1"
+                      class="h-10 w-10 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
                       src={
                         props.match[`spirit_score_team_${oppTeamNo()}`].msp
                           ?.image_url
@@ -453,7 +453,7 @@ const TournamentMatch = props => {
                         ?.comments
                     }
                   >
-                    <div class="flex items-center space-x-4 mx-5">
+                    <div class="mx-5 flex items-center space-x-4">
                       <div class="font-medium dark:text-white">
                         <div>
                           {
@@ -474,7 +474,7 @@ const TournamentMatch = props => {
                         ?.comments
                     }
                   >
-                    <div class="flex items-center space-x-4 mx-5">
+                    <div class="mx-5 flex items-center space-x-4">
                       <div class="font-medium dark:text-white">
                         <div>
                           {
@@ -499,25 +499,25 @@ const TournamentMatch = props => {
       <Show
         when={props.match.status === "SCH" && (isMatchTeamAdmin() || isStaff())}
       >
-        <div class="inline-flex items-center justify-center w-full">
-          <hr class="w-64 h-px my-6 bg-gray-200 border-0 dark:bg-gray-700" />
-          <span class="absolute px-3 text-sm -translate-x-1/2 bg-white left-1/2 dark:bg-gray-800">
+        <div class="inline-flex w-full items-center justify-center">
+          <hr class="my-6 h-px w-64 border-0 bg-gray-200 dark:bg-gray-700" />
+          <span class="absolute left-1/2 -translate-x-1/2 bg-white px-3 text-sm dark:bg-gray-800">
             Match Scores
           </span>
         </div>
-        <div class="flex justify-center flex-wrap">
+        <div class="flex flex-wrap justify-center">
           <Show
             when={checkIfSuggestedScoresClash(
               props.match["suggested_score_team_1"],
               props.match["suggested_score_team_2"]
             )}
           >
-            <p class="bg-red-100 text-red-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded dark:bg-red-900 dark:text-red-300 mb-3">
+            <p class="mb-3 mr-2 rounded bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800 dark:bg-red-900 dark:text-red-300">
               Scores Clashing
             </p>
           </Show>
           <Show when={props.match[`suggested_score_team_${currTeamNo()}`]}>
-            <p class="text-sm mb-2 text-center w-full">
+            <p class="mb-2 w-full text-center text-sm">
               {
                 props.match[`suggested_score_team_${currTeamNo()}`][
                   "entered_by"
@@ -540,7 +540,7 @@ const TournamentMatch = props => {
             </p>
           </Show>
           <Show when={props.match[`suggested_score_team_${oppTeamNo()}`]}>
-            <p class="text-sm mb-2 text-center w-full">
+            <p class="mb-2 w-full text-center text-sm">
               {
                 props.match[`suggested_score_team_${oppTeamNo()}`][
                   "entered_by"
@@ -578,8 +578,8 @@ const TournamentMatch = props => {
               data-modal-toggle={"submit-score-modal" + props.match?.id}
               type="button"
               class={clsx(
-                "relative inline-flex items-center justify-center p-0.5 mb-2 mr-2 overflow-hidden font-medium rounded-lg",
-                "text-xs hover:text-white text-gray-900 dark:text-white focus:ring-4 focus:outline-none",
+                "relative mb-2 mr-2 inline-flex items-center justify-center overflow-hidden rounded-lg p-0.5 font-medium",
+                "text-xs text-gray-900 hover:text-white focus:outline-none focus:ring-4 dark:text-white",
                 props.buttonColor
                   ? matchCardColorToButtonStyles[props.buttonColor]
                   : matchCardColorToButtonStyles[getMatchCardColor(props.match)]
@@ -594,16 +594,16 @@ const TournamentMatch = props => {
                 }
                 fallback={
                   <>
-                    <span class="relative px-3 py-2.5 transition-all ease-in duration-75 bg-white dark:bg-gray-800 rounded-md group-hover:bg-opacity-0 inline-flex items-center">
+                    <span class="relative inline-flex items-center rounded-md bg-white px-3 py-2.5 transition-all duration-75 ease-in group-hover:bg-opacity-0 dark:bg-gray-800">
                       Edit Score
-                      <Icon path={pencil} class="w-4 ml-1.5" />
+                      <Icon path={pencil} class="ml-1.5 w-4" />
                     </span>
                   </>
                 }
               >
-                <span class="relative px-3 py-2.5 transition-all ease-in duration-75 bg-white dark:bg-gray-800 rounded-md group-hover:bg-opacity-0 inline-flex items-center">
+                <span class="relative inline-flex items-center rounded-md bg-white px-3 py-2.5 transition-all duration-75 ease-in group-hover:bg-opacity-0 dark:bg-gray-800">
                   Submit Score
-                  <Icon path={arrowRight} class="w-4 ml-1.5" />
+                  <Icon path={arrowRight} class="ml-1.5 w-4" />
                 </span>
               </Show>
             </button>
@@ -616,17 +616,17 @@ const TournamentMatch = props => {
               data-modal-backdrop="static"
               tabIndex="-1"
               aria-hidden="true"
-              class="fixed top-0 left-0 right-0 z-50 hidden w-full p-4 overflow-x-hidden overflow-y-auto md:inset-0 h-[calc(100%-1rem)] max-h-full"
+              class="fixed left-0 right-0 top-0 z-50 hidden h-[calc(100%-1rem)] max-h-full w-full overflow-y-auto overflow-x-hidden p-4 md:inset-0"
             >
-              <div class="relative w-full max-w-2xl max-h-full">
-                <div class="relative bg-white rounded-lg shadow dark:bg-gray-700">
-                  <div class="flex items-start justify-between p-4 border-b rounded-t dark:border-gray-600">
+              <div class="relative max-h-full w-full max-w-2xl">
+                <div class="relative rounded-lg bg-white shadow dark:bg-gray-700">
+                  <div class="flex items-start justify-between rounded-t border-b p-4 dark:border-gray-600">
                     <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
                       Submit Score
                     </h3>
                     <button
                       type="button"
-                      class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ml-auto inline-flex justify-center items-center dark:hover:bg-gray-600 dark:hover:text-white"
+                      class="ml-auto inline-flex h-8 w-8 items-center justify-center rounded-lg bg-transparent text-sm text-gray-400 hover:bg-gray-200 hover:text-gray-900 dark:hover:bg-gray-600 dark:hover:text-white"
                       data-modal-hide={"submit-score-modal" + props.match?.id}
                       onClick={() => {
                         queryClient.invalidateQueries({
@@ -636,7 +636,7 @@ const TournamentMatch = props => {
                       }}
                     >
                       <svg
-                        class="w-3 h-3"
+                        class="h-3 w-3"
                         aria-hidden="true"
                         xmlns="http://www.w3.org/2000/svg"
                         fill="none"
@@ -653,14 +653,14 @@ const TournamentMatch = props => {
                       <span class="sr-only">Close modal</span>
                     </button>
                   </div>
-                  <div class="p-6 space-y-6">
+                  <div class="space-y-6 p-6">
                     <MatchScoreForm
                       match={props.match}
                       currTeamNo={currTeamNo()}
                       oppTeamNo={oppTeamNo()}
                     />
                   </div>
-                  <div class="flex items-center p-4 md:p-5 border-t border-gray-200 rounded-b dark:border-gray-600">
+                  <div class="flex items-center rounded-b border-t border-gray-200 p-4 dark:border-gray-600 md:p-5">
                     <button
                       data-modal-hide={"submit-score-modal" + props.match?.id}
                       type="button"
@@ -670,7 +670,7 @@ const TournamentMatch = props => {
                         });
                         setTimeout(() => initFlowbite(), 500);
                       }}
-                      class="ms-3 text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-blue-300 rounded-lg border border-gray-200 text-sm font-medium px-5 py-2.5 hover:text-gray-900 focus:z-10 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-500 dark:hover:text-white dark:hover:bg-gray-600 dark:focus:ring-gray-600"
+                      class="ms-3 rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-900 focus:z-10 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:border-gray-500 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 dark:hover:text-white dark:focus:ring-gray-600"
                     >
                       Go Back
                     </button>
@@ -690,9 +690,9 @@ const TournamentMatch = props => {
             !props.match["spirit_score_team_1"])
         }
       >
-        <div class="inline-flex items-center justify-center w-full">
-          <hr class="w-64 h-px my-6 bg-gray-200 border-0 dark:bg-gray-700" />
-          <span class="absolute px-3 text-sm -translate-x-1/2 bg-white left-1/2 dark:bg-gray-800">
+        <div class="inline-flex w-full items-center justify-center">
+          <hr class="my-6 h-px w-64 border-0 bg-gray-200 dark:bg-gray-700" />
+          <span class="absolute left-1/2 -translate-x-1/2 bg-white px-3 text-sm dark:bg-gray-800">
             Spirit Scores
           </span>
         </div>
@@ -721,28 +721,28 @@ const TournamentMatch = props => {
                 props.match.status === "COM")))
         }
       >
-        <div class="inline-flex items-center justify-center w-full">
-          <hr class="w-64 h-px my-6 bg-gray-200 border-0 dark:bg-gray-700" />
-          <span class="absolute px-3 text-sm -translate-x-1/2 bg-white left-1/2 dark:bg-gray-800">
+        <div class="inline-flex w-full items-center justify-center">
+          <hr class="my-6 h-px w-64 border-0 bg-gray-200 dark:bg-gray-700" />
+          <span class="absolute left-1/2 -translate-x-1/2 bg-white px-3 text-sm dark:bg-gray-800">
             Spirit Scores
           </span>
         </div>
-        <div class="flex justify-center mb-3 flex-wrap">
+        <div class="mb-3 flex flex-wrap justify-center">
           <button
             data-modal-target={"submit-spirit-score-modal" + props.match?.id}
             data-modal-toggle={"submit-spirit-score-modal" + props.match?.id}
             type="button"
             class={clsx(
-              "relative inline-flex items-center justify-center p-0.5 mb-2 mr-2 overflow-hidden font-medium rounded-lg",
-              "text-xs hover:text-white text-gray-900 dark:text-white focus:ring-4 focus:outline-none",
+              "relative mb-2 mr-2 inline-flex items-center justify-center overflow-hidden rounded-lg p-0.5 font-medium",
+              "text-xs text-gray-900 hover:text-white focus:outline-none focus:ring-4 dark:text-white",
               props.buttonColor
                 ? matchCardColorToButtonStyles[props.buttonColor]
                 : matchCardColorToButtonStyles[getMatchCardColor(props.match)]
             )}
           >
-            <span class="relative px-3 py-2.5 transition-all ease-in duration-75 bg-white dark:bg-gray-800 rounded-md group-hover:bg-opacity-0 inline-flex items-center">
+            <span class="relative inline-flex items-center rounded-md bg-white px-3 py-2.5 transition-all duration-75 ease-in group-hover:bg-opacity-0 dark:bg-gray-800">
               Submit Spirit Score
-              <Icon path={arrowRight} class="w-4 ml-1.5" />
+              <Icon path={arrowRight} class="ml-1.5 w-4" />
             </span>
           </button>
 
@@ -752,17 +752,17 @@ const TournamentMatch = props => {
             data-modal-backdrop="static"
             tabIndex="-1"
             aria-hidden="true"
-            class="fixed top-0 left-0 right-0 z-50 hidden w-full p-4 overflow-x-hidden overflow-y-auto md:inset-0 h-[calc(100%-1rem)] max-h-full"
+            class="fixed left-0 right-0 top-0 z-50 hidden h-[calc(100%-1rem)] max-h-full w-full overflow-y-auto overflow-x-hidden p-4 md:inset-0"
           >
-            <div class="relative w-full max-w-2xl max-h-full">
-              <div class="relative bg-white rounded-lg shadow dark:bg-gray-700">
-                <div class="flex items-start justify-between p-4 border-b rounded-t dark:border-gray-600">
+            <div class="relative max-h-full w-full max-w-2xl">
+              <div class="relative rounded-lg bg-white shadow dark:bg-gray-700">
+                <div class="flex items-start justify-between rounded-t border-b p-4 dark:border-gray-600">
                   <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
                     Submit Spirit Score
                   </h3>
                   <button
                     type="button"
-                    class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ml-auto inline-flex justify-center items-center dark:hover:bg-gray-600 dark:hover:text-white"
+                    class="ml-auto inline-flex h-8 w-8 items-center justify-center rounded-lg bg-transparent text-sm text-gray-400 hover:bg-gray-200 hover:text-gray-900 dark:hover:bg-gray-600 dark:hover:text-white"
                     data-modal-hide={
                       "submit-spirit-score-modal" + props.match?.id
                     }
@@ -774,7 +774,7 @@ const TournamentMatch = props => {
                     }}
                   >
                     <svg
-                      class="w-3 h-3"
+                      class="h-3 w-3"
                       aria-hidden="true"
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"
@@ -791,7 +791,7 @@ const TournamentMatch = props => {
                     <span class="sr-only">Close modal</span>
                   </button>
                 </div>
-                <div class="p-6 space-y-6">
+                <div class="space-y-6 p-6">
                   <MatchSpiritScoreForm
                     match={props.match}
                     oppTeamNo={
@@ -801,7 +801,7 @@ const TournamentMatch = props => {
                     }
                   />
                 </div>
-                <div class="flex items-center p-4 md:p-5 border-t border-gray-200 rounded-b dark:border-gray-600">
+                <div class="flex items-center rounded-b border-t border-gray-200 p-4 dark:border-gray-600 md:p-5">
                   <button
                     data-modal-hide={
                       "submit-spirit-score-modal" + props.match?.id
@@ -813,7 +813,7 @@ const TournamentMatch = props => {
                       });
                       setTimeout(() => initFlowbite(), 500);
                     }}
-                    class="ms-3 text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-blue-300 rounded-lg border border-gray-200 text-sm font-medium px-5 py-2.5 hover:text-gray-900 focus:z-10 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-500 dark:hover:text-white dark:hover:bg-gray-600 dark:focus:ring-gray-600"
+                    class="ms-3 rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-900 focus:z-10 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:border-gray-500 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 dark:hover:text-white dark:focus:ring-gray-600"
                   >
                     Go Back
                   </button>

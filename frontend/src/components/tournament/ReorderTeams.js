@@ -10,8 +10,8 @@ import {
 import { createSignal, For } from "solid-js";
 
 const TeamInfo = props => (
-  <div class="p-2 text-start flex gap-4 cursor-grab">
-    <div class="basis-1/6 text-center text-white dark:text-white-400 rounded-xl border-b bg-green-400 border-green-200 dark:bg-green-800 dark:border-green-700">
+  <div class="flex cursor-grab gap-4 p-2 text-start">
+    <div class="dark:text-white-400 basis-1/6 rounded-xl border-b border-green-200 bg-green-400 text-center text-white dark:border-green-700 dark:bg-green-800">
       {props.teamSeed + 1}
     </div>
     <div class="basis-5/6">{props.teamName}</div>
@@ -24,7 +24,7 @@ const Sortable = props => {
   return (
     <div
       use:sortable
-      class="sortable text-gray-500 dark:text-gray-400 my-2 rounded-lg bg-gray-200 border-gray-300 border-b dark:bg-gray-800 dark:border-gray-700"
+      class="sortable my-2 rounded-lg border-b border-gray-300 bg-gray-200 text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
       classList={{
         "opacity-25": sortable.isActiveDraggable,
         "transition-transform": !!state.active.draggable
@@ -88,7 +88,7 @@ const ReorderTeams = props => {
         </SortableProvider>
       </div>
       <DragOverlay>
-        <div class="sortable text-gray-500 dark:text-gray-400 my-2 rounded-lg bg-white border-b dark:bg-gray-700 dark:border-gray-600">
+        <div class="sortable my-2 rounded-lg border-b bg-white text-gray-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-400">
           <TeamInfo
             teamName={props.teamsMap[activeItem()]}
             teamSeed={props.teams.indexOf(activeItem())}

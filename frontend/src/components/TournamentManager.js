@@ -301,20 +301,20 @@ const TournamentManager = () => {
   return (
     <Show when={store?.data?.is_staff} fallback={<p>Not Authorised!</p>}>
       <div>
-        <h1 class="text-center font-bold text-2xl text-blue-500">
+        <h1 class="text-center text-2xl font-bold text-blue-500">
           New Tournament
         </h1>
         <CreateTournamentForm />
       </div>
-      <hr class="h-px my-8 bg-gray-200 border-0 dark:bg-gray-700" />
+      <hr class="my-8 h-px border-0 bg-gray-200 dark:bg-gray-700" />
       <div>
-        <h1 class="text-center font-bold text-2xl text-blue-500 mb-5">
+        <h1 class="mb-5 text-center text-2xl font-bold text-blue-500">
           Existing Tournaments
         </h1>
         <select
           id="tournaments"
           onChange={e => setSelectedTournamentID(parseInt(e.target.value))}
-          class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+          class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
         >
           <option value={0} selected>
             Choose a tournament
@@ -325,8 +325,8 @@ const TournamentManager = () => {
         </select>
 
         <Show when={selectedTournamentID() > 0 && selectedTournament()}>
-          <div class="relative overflow-x-auto my-5">
-            <div class="text-blue-500 text-xl font-bold mb-4">Seeding</div>
+          <div class="relative my-5 overflow-x-auto">
+            <div class="mb-4 text-xl font-bold text-blue-500">Seeding</div>
             <Switch>
               <Match when={selectedTournament()?.status === "DFT"}>
                 <div class="w-full md:w-1/2">
@@ -339,7 +339,7 @@ const TournamentManager = () => {
                   />
                   <Show when={isStandingsEdited()}>
                     <div
-                      class="p-4 mb-4 text-sm text-red-800 rounded-lg bg-red-50 dark:bg-gray-800 dark:text-red-400"
+                      class="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-800 dark:bg-gray-800 dark:text-red-400"
                       role="alert"
                     >
                       Changes are not saved. Please click on Update Seeding
@@ -349,8 +349,8 @@ const TournamentManager = () => {
                 </div>
               </Match>
               <Match when={selectedTournament()?.status !== "DFT"}>
-                <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                  <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
+                  <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
                     <tr>
                       <th scope="col" class="px-6 py-3">
                         Seeding
@@ -363,10 +363,10 @@ const TournamentManager = () => {
                   <tbody>
                     <For each={teams()}>
                       {(id, seed) => (
-                        <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+                        <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
                           <th
                             scope="row"
-                            class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+                            class="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white"
                           >
                             {seed() + 1}
                           </th>
@@ -392,7 +392,7 @@ const TournamentManager = () => {
                 selectedTournament()?.status !== "DFT" ||
                 updateSeedingMutation.isLoading
               }
-              class="my-2 text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
+              class="my-2 mb-2 mr-2 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
             >
               <Show
                 when={updateSeedingMutation.isLoading}
@@ -409,13 +409,13 @@ const TournamentManager = () => {
                   id: selectedTournamentID()
                 })
               }
-              class="text-white bg-red-700 hover:bg-red-800 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-red-600 dark:hover:bg-red-700"
+              class="mb-2 mr-2 rounded-lg bg-red-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-red-800 dark:bg-red-600 dark:hover:bg-red-700"
             >
               Delete Tournament
             </button>
           </div>
           <div>
-            <h2 class="text-blue-500 text-xl font-bold mb-5">Pools</h2>
+            <h2 class="mb-5 text-xl font-bold text-blue-500">Pools</h2>
             <Show
               when={!poolsQuery.data?.message}
               fallback={<p>Select Tournament to see/add Pools</p>}
@@ -426,8 +426,8 @@ const TournamentManager = () => {
                     <div>
                       <h3>Pool - {pool.name}</h3>{" "}
                       <div class="relative overflow-x-auto">
-                        <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                          <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                        <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
+                          <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
                             <tr>
                               <th scope="col" class="px-6 py-3">
                                 Seeding
@@ -443,10 +443,10 @@ const TournamentManager = () => {
                           <tbody>
                             <For each={Object.keys(pool.initial_seeding)}>
                               {seed => (
-                                <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+                                <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
                                   <th
                                     scope="row"
-                                    class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+                                    class="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white"
                                   >
                                     {seed}
                                   </th>
@@ -465,12 +465,12 @@ const TournamentManager = () => {
                     </div>
                   )}
                 </For>
-                <div class="border border-blue-600 rounded-lg p-5">
+                <div class="rounded-lg border border-blue-600 p-5">
                   <h3>Add New Pool</h3>
                   <div>
                     <label
                       for="pool-name"
-                      class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                      class="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
                     >
                       Pool Name
                     </label>
@@ -479,13 +479,13 @@ const TournamentManager = () => {
                       id="pool-name"
                       value={enteredPoolName()}
                       onChange={e => setEnteredPoolName(e.target.value)}
-                      class="block w-full p-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 sm:text-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                      class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500 sm:text-xs"
                     />
                   </div>
                   <div>
                     <label
                       for="seedings-pool"
-                      class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                      class="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
                     >
                       Seedings List
                     </label>
@@ -494,7 +494,7 @@ const TournamentManager = () => {
                       id="seedings-pool"
                       value={enteredSeedingList()}
                       onChange={e => setEnteredSeedingList(e.target.value)}
-                      class="block w-full p-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 sm:text-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                      class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500 sm:text-xs"
                     />
                   </div>
                   <button
@@ -508,7 +508,7 @@ const TournamentManager = () => {
                       })
                     }
                     disabled={selectedTournament()?.status !== "DFT"}
-                    class="text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400 mt-5"
+                    class="mb-2 mr-2 mt-5 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
                   >
                     Create Pool
                   </button>
@@ -517,7 +517,7 @@ const TournamentManager = () => {
             </Show>
           </div>
           <div>
-            <h3 class="text-blue-500 text-xl font-bold my-5">Cross Pool</h3>
+            <h3 class="my-5 text-xl font-bold text-blue-500">Cross Pool</h3>
             <Show
               when={crossPoolQuery.data?.message}
               fallback={<p>Cross Pool is Enabled for this Tournament</p>}
@@ -531,14 +531,14 @@ const TournamentManager = () => {
                   })
                 }
                 disabled={selectedTournament()?.status !== "DFT"}
-                class="text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400 mt-5"
+                class="mb-2 mr-2 mt-5 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
               >
                 Create Cross Pool
               </button>
             </Show>
           </div>
           <div>
-            <h2 class="text-blue-500 text-xl font-bold my-5">Brackets</h2>
+            <h2 class="my-5 text-xl font-bold text-blue-500">Brackets</h2>
             <Show
               when={!bracketQuery.data?.message}
               fallback={<p>Select Tournament to see/add Bracket</p>}
@@ -549,8 +549,8 @@ const TournamentManager = () => {
                     <div>
                       <h3>Bracket - {bracket.name}</h3>{" "}
                       <div class="relative overflow-x-auto">
-                        <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                          <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                        <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
+                          <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
                             <tr>
                               <th scope="col" class="px-6 py-3">
                                 Seeds in Bracket
@@ -560,10 +560,10 @@ const TournamentManager = () => {
                           <tbody>
                             <For each={Object.keys(bracket.initial_seeding)}>
                               {seed => (
-                                <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+                                <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
                                   <th
                                     scope="row"
-                                    class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+                                    class="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white"
                                   >
                                     {seed}
                                   </th>
@@ -576,12 +576,12 @@ const TournamentManager = () => {
                     </div>
                   )}
                 </For>
-                <div class="border border-blue-600 rounded-lg p-5">
+                <div class="rounded-lg border border-blue-600 p-5">
                   <h3>Add New Bracket</h3>
                   <div>
                     <label
                       for="bracket-name"
-                      class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                      class="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
                     >
                       Bracket Name
                     </label>
@@ -590,7 +590,7 @@ const TournamentManager = () => {
                       id="bracket-name"
                       value={enteredBracketName()}
                       onChange={e => setEnteredBracketName(e.target.value)}
-                      class="block w-full p-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 sm:text-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                      class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500 sm:text-xs"
                     />
                   </div>
                   <button
@@ -603,7 +603,7 @@ const TournamentManager = () => {
                       })
                     }
                     disabled={selectedTournament()?.status !== "DFT"}
-                    class="text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400 mt-5"
+                    class="mb-2 mr-2 mt-5 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
                   >
                     Create Bracket
                   </button>
@@ -612,7 +612,7 @@ const TournamentManager = () => {
             </Show>
           </div>
           <div>
-            <h2 class="text-blue-500 text-xl font-bold my-5">Position Pools</h2>
+            <h2 class="my-5 text-xl font-bold text-blue-500">Position Pools</h2>
             <Show
               when={!postionPoolsQuery.data?.message}
               fallback={<p>Select Tournament to see/add Position Pools</p>}
@@ -623,8 +623,8 @@ const TournamentManager = () => {
                     <div>
                       <h3>Position Pool - {pool.name}</h3>{" "}
                       <div class="relative overflow-x-auto">
-                        <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                          <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                        <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
+                          <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
                             <tr>
                               <th scope="col" class="px-6 py-3">
                                 Seeding
@@ -634,10 +634,10 @@ const TournamentManager = () => {
                           <tbody>
                             <For each={Object.keys(pool.initial_seeding)}>
                               {seed => (
-                                <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+                                <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
                                   <th
                                     scope="row"
-                                    class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+                                    class="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white"
                                   >
                                     {seed}
                                   </th>
@@ -650,12 +650,12 @@ const TournamentManager = () => {
                     </div>
                   )}
                 </For>
-                <div class="border border-blue-600 rounded-lg p-5">
+                <div class="rounded-lg border border-blue-600 p-5">
                   <h3>Add New Positon Pool</h3>
                   <div>
                     <label
                       for="position-pool-name"
-                      class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                      class="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
                     >
                       Pool Name
                     </label>
@@ -664,13 +664,13 @@ const TournamentManager = () => {
                       id="position-pool-name"
                       value={enteredPositionPoolName()}
                       onChange={e => setEnteredPositionPoolName(e.target.value)}
-                      class="block w-full p-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 sm:text-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                      class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500 sm:text-xs"
                     />
                   </div>
                   <div>
                     <label
                       for="seedings-position-pool"
-                      class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                      class="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
                     >
                       Seedings List
                     </label>
@@ -681,7 +681,7 @@ const TournamentManager = () => {
                       onChange={e =>
                         setEnteredPositionPoolSeedingList(e.target.value)
                       }
-                      class="block w-full p-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 sm:text-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                      class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500 sm:text-xs"
                     />
                   </div>
                   <button
@@ -695,7 +695,7 @@ const TournamentManager = () => {
                       })
                     }
                     disabled={selectedTournament()?.status !== "DFT"}
-                    class="text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400 mt-5"
+                    class="mb-2 mr-2 mt-5 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
                   >
                     Create Position Pool
                   </button>
@@ -704,7 +704,7 @@ const TournamentManager = () => {
             </Show>
           </div>
           <div>
-            <h3 class="text-blue-500 text-xl font-bold my-5">Matches</h3>
+            <h3 class="my-5 text-xl font-bold text-blue-500">Matches</h3>
             <Show
               when={!matchesQuery.data?.message}
               fallback={<p>Select Tournament to see/add Matches</p>}
@@ -713,14 +713,14 @@ const TournamentManager = () => {
                 <div>
                   <label
                     for="match-stage"
-                    class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                    class="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
                   >
                     Select Match Stage
                   </label>
                   <select
                     id="match-stage"
                     onChange={e => setMatchFields("stage", e.target.value)}
-                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 mb-3"
+                    class="mb-3 block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
                   >
                     <option selected>Choose a stage</option>
                     <option value="pool">Pool</option>
@@ -733,14 +733,14 @@ const TournamentManager = () => {
                   <div>
                     <label
                       for="match-stage-id"
-                      class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                      class="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
                     >
                       Select Pool/Bracket/Cross-Pool
                     </label>
                     <select
                       id="match-stage-id"
                       onChange={e => setMatchFields("stage_id", e.target.value)}
-                      class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 mb-3"
+                      class="mb-3 block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
                     >
                       <option selected>Choose a option</option>
                       <Switch>
@@ -777,7 +777,7 @@ const TournamentManager = () => {
                 <div>
                   <label
                     for="match-seq-num"
-                    class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                    class="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
                   >
                     Sequence Number
                   </label>
@@ -785,13 +785,13 @@ const TournamentManager = () => {
                     type="number"
                     id="match-seq-num"
                     onChange={e => setMatchFields("seq_num", e.target.value)}
-                    class="block w-full p-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 sm:text-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 mb-3"
+                    class="mb-3 block w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500 sm:text-xs"
                   />
                 </div>
                 <div>
                   <label
                     for="match-time"
-                    class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                    class="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
                   >
                     Date & Time
                   </label>
@@ -801,20 +801,20 @@ const TournamentManager = () => {
                     onChange={e => setMatchFields("time", e.target.value)}
                     min={selectedTournament()?.event?.start_date + "T00:00"}
                     max={selectedTournament()?.event?.end_date + "T23:59"}
-                    class="block w-full p-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 sm:text-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:placeholder-white dark:border-gray-600 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 mb-3"
+                    class="mb-3 block w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-white dark:focus:border-blue-500 dark:focus:ring-blue-500 sm:text-xs"
                   />
                 </div>
                 <div>
                   <label
                     for="match-field"
-                    class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                    class="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
                   >
                     Select Field
                   </label>
                   <select
                     id="match-field"
                     onChange={e => setMatchFields("field", e.target.value)}
-                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 mb-3"
+                    class="mb-3 block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
                   >
                     <option selected>Choose a field</option>
                     <option value="Field 1">Field 1</option>
@@ -826,7 +826,7 @@ const TournamentManager = () => {
                 <div>
                   <label
                     for="match-seed-1"
-                    class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                    class="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
                   >
                     Team 1 - Seed Number
                   </label>
@@ -834,13 +834,13 @@ const TournamentManager = () => {
                     type="number"
                     id="match-seed-1"
                     onChange={e => setMatchFields("seed_1", e.target.value)}
-                    class="block w-full p-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 sm:text-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 mb-3"
+                    class="mb-3 block w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500 sm:text-xs"
                   />
                 </div>
                 <div>
                   <label
                     for="match-seed-2"
-                    class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                    class="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
                   >
                     Team 2 - Seed Number
                   </label>
@@ -848,7 +848,7 @@ const TournamentManager = () => {
                     type="number"
                     id="match-seed-2"
                     onChange={e => setMatchFields("seed_2", e.target.value)}
-                    class="block w-full p-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 sm:text-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 mb-3"
+                    class="mb-3 block w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500 sm:text-xs"
                   />
                 </div>
                 <button
@@ -860,14 +860,14 @@ const TournamentManager = () => {
                     });
                   }}
                   disabled={selectedTournament()?.status !== "DFT"}
-                  class="text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 mb-5 disabled:dark:bg-gray-400"
+                  class="mb-2 mb-5 mr-2 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
                 >
                   Add Match
                 </button>
               </div>
             </Show>
-            <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-              <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+            <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
+              <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
                 <tr>
                   <th scope="col" class="px-6 py-3">
                     Seeds
@@ -902,14 +902,14 @@ const TournamentManager = () => {
                       id={match.id}
                       class={clsx(
                         flash() == match.id
-                          ? "bg-gray-100 text-black dark:text-white dark:bg-slate-700"
+                          ? "bg-gray-100 text-black dark:bg-slate-700 dark:text-white"
                           : "bg-white dark:bg-gray-800",
                         "border-b dark:border-gray-700"
                       )}
                     >
                       <th
                         scope="row"
-                        class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+                        class="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white"
                       >
                         {match.placeholder_seed_1 +
                           " vs " +
@@ -920,7 +920,7 @@ const TournamentManager = () => {
                         <Show when={match.status === "SCH"}>
                           <label
                             for="match-score-1"
-                            class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                            class="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
                           >
                             Score
                           </label>
@@ -933,7 +933,7 @@ const TournamentManager = () => {
                                 team_1_score: parseInt(e.target.value)
                               })
                             }
-                            class="block w-full p-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 sm:text-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 mb-3"
+                            class="mb-3 block w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500 sm:text-xs"
                           />
                         </Show>
                       </td>
@@ -942,7 +942,7 @@ const TournamentManager = () => {
                         <Show when={match.status === "SCH"}>
                           <label
                             for="match-score-2"
-                            class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                            class="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
                           >
                             Score
                           </label>
@@ -955,14 +955,14 @@ const TournamentManager = () => {
                                 team_2_score: parseInt(e.target.value)
                               })
                             }
-                            class="block w-full p-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 sm:text-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 mb-3"
+                            class="mb-3 block w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500 sm:text-xs"
                           />
                         </Show>
                       </td>
                       <td class="px-6 py-4">
                         <MatchCard match={match} />
                       </td>
-                      <td class="px-6 py-4 w-fit">
+                      <td class="w-fit px-6 py-4">
                         {new Date(Date.parse(match.time)).toLocaleDateString(
                           "en-US",
                           {
@@ -985,7 +985,7 @@ const TournamentManager = () => {
                                   e.target.value
                                 );
                               }}
-                              class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 mb-2"
+                              class="mb-2 block rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
                             >
                               <option selected>Choose new date</option>
                               <For each={datesList()}>
@@ -1009,7 +1009,7 @@ const TournamentManager = () => {
                                   e.target.value
                                 );
                               }}
-                              class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                              class="block rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
                             >
                               <option selected>Choose new time</option>
                               <For each={timesList()}>
@@ -1031,7 +1031,7 @@ const TournamentManager = () => {
                                 e.target.value
                               );
                             }}
-                            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 mb-3"
+                            class="mb-3 block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
                           >
                             <option selected>Update Field</option>
                             <option value="Field 1">Field 1</option>
@@ -1070,7 +1070,7 @@ const TournamentManager = () => {
                                   });
                                 }
                               }}
-                              class="text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 mb-5 disabled:dark:bg-gray-400"
+                              class="mb-2 mb-5 mr-2 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
                             >
                               Update
                             </button>
@@ -1090,7 +1090,7 @@ const TournamentManager = () => {
                                     body: matchScoreFields[match.id]
                                   });
                               }}
-                              class="text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 mb-5 disabled:dark:bg-gray-400"
+                              class="mb-2 mb-5 mr-2 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
                             >
                               Add Score
                             </button>
@@ -1120,7 +1120,7 @@ const TournamentManager = () => {
                                   });
                                 }
                               }}
-                              class="text-white bg-green-700 hover:bg-green-800 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-green-600 dark:hover:bg-green-700 mb-5 disabled:dark:bg-gray-400"
+                              class="mb-2 mb-5 mr-2 rounded-lg bg-green-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-green-800 dark:bg-green-600 dark:hover:bg-green-700 disabled:dark:bg-gray-400"
                             >
                               Update
                             </button>
@@ -1141,7 +1141,7 @@ const TournamentManager = () => {
                             <button
                               data-modal-target={`spiritModal-${match.id}`}
                               data-modal-toggle={`spiritModal-${match.id}`}
-                              class="block text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+                              class="block rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
                               type="button"
                             >
                               Add Spirit Score
@@ -1150,21 +1150,21 @@ const TournamentManager = () => {
                               id={`spiritModal-${match.id}`}
                               tabIndex="-1"
                               aria-hidden="true"
-                              class="fixed top-0 left-0 right-0 z-50 hidden w-full p-4 overflow-x-hidden overflow-y-auto md:inset-0 h-[calc(100%-1rem)] max-h-full"
+                              class="fixed left-0 right-0 top-0 z-50 hidden h-[calc(100%-1rem)] max-h-full w-full overflow-y-auto overflow-x-hidden p-4 md:inset-0"
                             >
-                              <div class="relative w-full max-w-2xl max-h-full">
-                                <div class="relative bg-white rounded-lg shadow dark:bg-gray-700">
-                                  <div class="flex items-start justify-between p-4 border-b rounded-t dark:border-gray-600">
+                              <div class="relative max-h-full w-full max-w-2xl">
+                                <div class="relative rounded-lg bg-white shadow dark:bg-gray-700">
+                                  <div class="flex items-start justify-between rounded-t border-b p-4 dark:border-gray-600">
                                     <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
                                       Add Spirit Score
                                     </h3>
                                     <button
                                       type="button"
-                                      class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ml-auto inline-flex justify-center items-center dark:hover:bg-gray-600 dark:hover:text-white"
+                                      class="ml-auto inline-flex h-8 w-8 items-center justify-center rounded-lg bg-transparent text-sm text-gray-400 hover:bg-gray-200 hover:text-gray-900 dark:hover:bg-gray-600 dark:hover:text-white"
                                       data-modal-hide={`spiritModal-${match.id}`}
                                     >
                                       <svg
-                                        class="w-3 h-3"
+                                        class="h-3 w-3"
                                         aria-hidden="true"
                                         xmlns="http://www.w3.org/2000/svg"
                                         fill="none"
@@ -1181,7 +1181,7 @@ const TournamentManager = () => {
                                       <span class="sr-only">Close modal</span>
                                     </button>
                                   </div>
-                                  <div class="p-6 space-y-6">
+                                  <div class="space-y-6 p-6">
                                     <UpdateSpiritScoreForm match={match} />
                                   </div>
                                 </div>
@@ -1196,7 +1196,7 @@ const TournamentManager = () => {
                           fallback={
                             <div>
                               <input
-                                class="block w-full p-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 sm:text-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 mb-3"
+                                class="mb-3 block w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500 sm:text-xs"
                                 onChange={e => {
                                   setUpdateMatchFields(match.id, {});
                                   setUpdateMatchFields(
@@ -1223,7 +1223,7 @@ const TournamentManager = () => {
                                     });
                                   }
                                 }}
-                                class="text-white bg-green-700 hover:bg-green-800 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-green-600 dark:hover:bg-green-700 mb-5 disabled:dark:bg-gray-400"
+                                class="mb-2 mb-5 mr-2 rounded-lg bg-green-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-green-800 dark:bg-green-600 dark:hover:bg-green-700 disabled:dark:bg-gray-400"
                               >
                                 Update
                               </button>
@@ -1243,10 +1243,10 @@ const TournamentManager = () => {
             <For each={Object.keys(matchDayTimeFieldMap).sort()}>
               {day => (
                 <div>
-                  <h6 class="text-center my-5">Schedule - {day}</h6>
+                  <h6 class="my-5 text-center">Schedule - {day}</h6>
                   <div class="relative overflow-x-auto">
-                    <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                      <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                    <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
+                      <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
                         <tr>
                           <th scope="col" class="px-6 py-3 text-center">
                             Time
@@ -1267,10 +1267,10 @@ const TournamentManager = () => {
                           )}
                         >
                           {time => (
-                            <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+                            <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
                               <th
                                 scope="row"
-                                class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white text-center"
+                                class="whitespace-nowrap px-6 py-4 text-center font-medium text-gray-900 dark:text-white"
                               >
                                 {new Date(time).toLocaleTimeString("en-US", {
                                   hour: "numeric",
@@ -1316,7 +1316,7 @@ const TournamentManager = () => {
                     tournament_id: selectedTournamentID()
                   })
                 }
-                class="text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 my-5"
+                class="my-5 mb-2 mr-2 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700"
               >
                 Start Tournament
               </button>
@@ -1329,7 +1329,7 @@ const TournamentManager = () => {
                     tournament_id: selectedTournamentID()
                   })
                 }
-                class="text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 my-5"
+                class="my-5 mb-2 mr-2 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700"
               >
                 Populate Fixtures
               </button>

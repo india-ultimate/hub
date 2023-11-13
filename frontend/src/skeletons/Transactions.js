@@ -1,8 +1,8 @@
 import { For } from "solid-js";
 const Contributor = () => {
   return (
-    <div class="flex items-center mt-4 space-x-3">
-      <div class="h-2.5 bg-gray-200 rounded-full dark:bg-gray-700 w-32 mb-2" />
+    <div class="mt-4 flex items-center space-x-3">
+      <div class="mb-2 h-2.5 w-32 rounded-full bg-gray-200 dark:bg-gray-700" />
     </div>
   );
 };

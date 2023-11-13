@@ -85,14 +85,14 @@ const UltimateCentralLogin = () => {
         <Match when={!player()?.ultimate_central_id}>
           <details>
             <summary
-              class="p-4 text-sm text-blue-800 rounded-lg bg-blue-50 dark:bg-gray-800 dark:text-blue-400"
+              class="rounded-lg bg-blue-50 p-4 text-sm text-blue-800 dark:bg-gray-800 dark:text-blue-400"
               role="alert"
             >
               We only use your Ultimate Central (indiaultimate.org) credentials
               to authenticate against the Ultimate Central site, and fetch your
               profile information.
             </summary>
-            <p class="p-4 mb-4 text-sm text-blue-800 rounded-lg bg-blue-50 dark:bg-gray-800 dark:text-blue-400">
+            <p class="mb-4 rounded-lg bg-blue-50 p-4 text-sm text-blue-800 dark:bg-gray-800 dark:text-blue-400">
               Ultimate Central has a beta implementation of OAuth2, and requires
               us to ask for your password, unlike the OAuth2 implementations by
               other providers like Google or Facebook. The API spec provided by
@@ -151,7 +151,7 @@ const UltimateCentralLogin = () => {
             </Field>
             <button
               type="submit"
-              class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+              class="w-full rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 sm:w-auto"
             >
               Submit
             </button>

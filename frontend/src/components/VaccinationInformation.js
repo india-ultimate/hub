@@ -10,10 +10,10 @@ const VaccinationInformation = props => {
   );
   return (
     <>
-      <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+      <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
         <th
           scope="row"
-          class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+          class="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white"
         >
           Vaccinated?
         </th>
@@ -23,10 +23,10 @@ const VaccinationInformation = props => {
       </tr>
       <Switch>
         <Match when={props?.vaccination?.is_vaccinated}>
-          <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+          <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
             <th
               scope="row"
-              class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+              class="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white"
             >
               Vaccination name
             </th>
@@ -34,10 +34,10 @@ const VaccinationInformation = props => {
               {getLabel(vaccinationChoices, props?.vaccination?.name)}
             </td>
           </tr>
-          <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+          <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
             <th
               scope="row"
-              class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+              class="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white"
             >
               Vaccination certificate
             </th>
@@ -45,10 +45,10 @@ const VaccinationInformation = props => {
           </tr>
         </Match>
         <Match when={!props?.vaccination?.is_vaccinated}>
-          <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+          <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
             <th
               scope="row"
-              class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+              class="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white"
             >
               Reason
             </th>

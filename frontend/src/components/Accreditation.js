@@ -22,8 +22,8 @@ const AccreditationInformation = props => {
   );
   return (
     <div class="relative overflow-x-auto">
-      <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-        <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+      <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
+        <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
           <tr>
             <th scope="col" class="px-6 py-3">
               Accreditation Level
@@ -34,10 +34,10 @@ const AccreditationInformation = props => {
           </tr>
         </thead>
         <tbody>
-          <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+          <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
             <th
               scope="row"
-              class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+              class="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white"
             >
               Accreditation Valid?
             </th>
@@ -45,19 +45,19 @@ const AccreditationInformation = props => {
               {props?.accreditation?.is_valid ? "Yes" : "No"}
             </td>
           </tr>
-          <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+          <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
             <th
               scope="row"
-              class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+              class="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white"
             >
               Accreditation Date
             </th>
             <td class="px-6 py-4">{displayDate(props?.accreditation?.date)}</td>
           </tr>
-          <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+          <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
             <th
               scope="row"
-              class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+              class="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white"
             >
               Accreditation Certificate
             </th>
@@ -160,7 +160,7 @@ const Accreditation = () => {
               </tbody>
             </table>
             <button
-              class="block my-4 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+              class="my-4 block w-full rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 sm:w-auto"
               onClick={() => setEdit(!edit())}
             >
               <Icon
@@ -250,16 +250,16 @@ const Accreditation = () => {
                   )}
                 </Field>
                 <div
-                  class="mx-10 my-0 px-8 lg:px-10 p-4 mb-4 text-sm text-blue-800 rounded-lg bg-blue-50 dark:bg-gray-800 dark:text-blue-400"
+                  class="mx-10 my-0 mb-4 rounded-lg bg-blue-50 p-4 px-8 text-sm text-blue-800 dark:bg-gray-800 dark:text-blue-400 lg:px-10"
                   role="alert"
                 >
                   <details>
                     <summary>How to find my WFDF ID?</summary>
-                    <ol class="pl-5 mt-2 space-y-1 list-decimal text-sm">
+                    <ol class="mt-2 list-decimal space-y-1 pl-5 text-sm">
                       <li>
                         Login to your{" "}
                         <a
-                          class="text-blue-600 underline dark:text-blue-500 hover:no-underline"
+                          class="text-blue-600 underline hover:no-underline dark:text-blue-500"
                           href="https://rules.wfdf.org"
                         >
                           WFDF account
@@ -268,7 +268,7 @@ const Accreditation = () => {
                       <li>
                         Navigate to the{" "}
                         <a
-                          class="text-blue-600 underline dark:text-blue-500 hover:no-underline"
+                          class="text-blue-600 underline hover:no-underline dark:text-blue-500"
                           href="https://rules.wfdf.org/my-results"
                         >
                           "My Results"
@@ -284,7 +284,7 @@ const Accreditation = () => {
                 </div>
                 <button
                   type="submit"
-                  class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+                  class="w-full rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 sm:w-auto"
                 >
                   Submit
                 </button>

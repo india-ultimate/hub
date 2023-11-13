@@ -101,7 +101,7 @@ const PlayerSearchDropdown = props => {
         <h2 id="accordion-flush-heading-1">
           <button
             type="button"
-            class="flex items-center justify-between w-full py-5 font-medium text-left text-gray-500 border-b border-gray-200 dark:border-gray-700 dark:text-gray-400"
+            class="flex w-full items-center justify-between border-b border-gray-200 py-5 text-left font-medium text-gray-500 dark:border-gray-700 dark:text-gray-400"
             data-accordion-target="#accordion-flush-body-1"
             aria-expanded="true"
             aria-controls="accordion-flush-body-1"
@@ -109,7 +109,7 @@ const PlayerSearchDropdown = props => {
             <span>Search Players</span>
             <svg
               data-accordion-icon
-              class="w-3 h-3 rotate-180 shrink-0"
+              class="h-3 w-3 shrink-0 rotate-180"
               aria-hidden="true"
               xmlns="http://www.w3.org/2000/svg"
               fill="none"
@@ -130,10 +130,10 @@ const PlayerSearchDropdown = props => {
           class="hidden"
           aria-labelledby="accordion-flush-heading-1"
         >
-          <div class="flex p-3 flex-wrap">
+          <div class="flex flex-wrap p-3">
             <select
               id="countries"
-              class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 w-1/4 min-w-fit mr-5 mb-4 md:mb-0"
+              class="mb-4 mr-5 block w-1/4 min-w-fit rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500 md:mb-0"
               onChange={e => setSelectedTeam(e.target.value)}
               value={selectedTeam()}
             >
@@ -145,34 +145,34 @@ const PlayerSearchDropdown = props => {
               </For>
             </select>
             <div class="relative flex-grow">
-              <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+              <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                 <Icon path={magnifyingGlass} style={{ width: "20px" }} />
               </div>
               <input
                 type="search"
                 id="default-search"
-                class="block w-full p-4 pl-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-4 pl-10 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
                 placeholder="Search Player Names"
                 onInput={onSearchInput}
               />
             </div>
           </div>
           <ul
-            class="h-48 px-3 pb-3 overflow-y-auto text-sm text-gray-700 dark:text-gray-200"
+            class="h-48 overflow-y-auto px-3 pb-3 text-sm text-gray-700 dark:text-gray-200"
             aria-labelledby="playerSearchButton"
           >
             <li>
-              <div class="flex items-center pl-2 rounded hover:bg-gray-100 dark:hover:bg-gray-600">
+              <div class="flex items-center rounded pl-2 hover:bg-gray-100 dark:hover:bg-gray-600">
                 <input
                   id={"checkbox-item-0"}
                   type="checkbox"
-                  class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500"
+                  class="h-4 w-4 rounded border-gray-300 bg-gray-100 text-blue-600 focus:ring-2 focus:ring-blue-500 dark:border-gray-500 dark:bg-gray-600 dark:ring-offset-gray-700 dark:focus:ring-blue-600 dark:focus:ring-offset-gray-700"
                   onChange={handleSelectAll}
                   checked={selectAll()}
                 />
                 <label
                   for={"checkbox-item-0"}
-                  class="w-full py-2 ml-2 text-sm font-medium text-gray-600 rounded dark:text-gray-400"
+                  class="ml-2 w-full rounded py-2 text-sm font-medium text-gray-600 dark:text-gray-400"
                 >
                   <div class="w-full pl-3">Select All</div>
                 </label>
@@ -182,11 +182,11 @@ const PlayerSearchDropdown = props => {
               <For each={searchResults()}>
                 {player => (
                   <li>
-                    <div class="flex items-center pl-2 rounded hover:bg-gray-100 dark:hover:bg-gray-600">
+                    <div class="flex items-center rounded pl-2 hover:bg-gray-100 dark:hover:bg-gray-600">
                       <input
                         id={`checkbox-item-${player.id}`}
                         type="checkbox"
-                        class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500"
+                        class="h-4 w-4 rounded border-gray-300 bg-gray-100 text-blue-600 focus:ring-2 focus:ring-blue-500 dark:border-gray-500 dark:bg-gray-600 dark:ring-offset-gray-700 dark:focus:ring-blue-600 dark:focus:ring-offset-gray-700"
                         onChange={e => props.onPlayerChecked(e, player)}
                         checked={
                           player.has_membership || checkedPlayers()[player.id]
@@ -195,10 +195,10 @@ const PlayerSearchDropdown = props => {
                       />
                       <label
                         for={`checkbox-item-${player.id}`}
-                        class="w-full py-2 ml-2 text-sm font-medium text-gray-900 rounded dark:text-gray-300"
+                        class="ml-2 w-full rounded py-2 text-sm font-medium text-gray-900 dark:text-gray-300"
                       >
                         <div class="w-full pl-3">
-                          <div class="text-gray-500 text-sm mb-1.5 dark:text-gray-400">
+                          <div class="mb-1.5 text-sm text-gray-500 dark:text-gray-400">
                             <span
                               class={`font-semibold ${
                                 player.has_membership
@@ -222,7 +222,7 @@ const PlayerSearchDropdown = props => {
             </Suspense>
             <Show when={allTeamsSearch() && searchResults()?.length > 0}>
               <div
-                class="p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-yellow-50 dark:bg-gray-800 dark:text-yellow-300"
+                class="mb-4 rounded-lg bg-yellow-50 p-4 text-sm text-yellow-800 dark:bg-gray-800 dark:text-yellow-300"
                 role="alert"
               >
                 Searching for players across all teams, since no player was
@@ -235,7 +235,7 @@ const PlayerSearchDropdown = props => {
             </Show>
             <Show when={searchResults()?.length == 0}>
               <div
-                class="p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-yellow-50 dark:bg-gray-800 dark:text-yellow-300"
+                class="mb-4 rounded-lg bg-yellow-50 p-4 text-sm text-yellow-800 dark:bg-gray-800 dark:text-yellow-300"
                 role="alert"
               >
                 Could not find any player matching "{searchText()}"; Make sure
@@ -347,7 +347,7 @@ const GroupMembership = () => {
       <div class="my-2">
         <select
           id="year"
-          class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+          class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
           value={year()}
           onInput={handleYearChange}
           required
@@ -375,7 +375,7 @@ const GroupMembership = () => {
         />
         <Show when={payingPlayers()?.find(p => p.is_minor)}>
           <div
-            class="p-4 mb-4 text-sm text-red-800 rounded-lg bg-red-50 dark:bg-gray-800 dark:text-red-400"
+            class="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-800 dark:bg-gray-800 dark:text-red-400"
             role="alert"
           >
             * {minAgeWarning} Please ensure that all the players are atleast{" "}
@@ -397,7 +397,7 @@ const GroupMembership = () => {
             </Match>
             <Match when={paymentSuccess()}>
               <button
-                class={`my-2 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 ${
+                class={`my-2 w-full rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 sm:w-auto ${
                   payDisabled() ? "cursor-not-allowed" : ""
                 } `}
                 onClick={() => {

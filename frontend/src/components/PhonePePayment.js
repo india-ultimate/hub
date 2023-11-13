@@ -58,14 +58,14 @@ const PhonePePayment = props => {
         <Spinner />
       </Show>
       <div
-        class="p-4 my-4 text-sm text-blue-800 rounded-lg bg-blue-50 dark:bg-gray-800 dark:text-blue-400"
+        class="my-4 rounded-lg bg-blue-50 p-4 text-sm text-blue-800 dark:bg-gray-800 dark:text-blue-400"
         role="alert"
       >
         If you are using UPI for your payment, try manually entering your UPI ID
         instead of using the PhonePe QR code.
       </div>
       <button
-        class={`block text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 my-5 ${
+        class={`my-5 block rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 ${
           props.disabled ? "cursor-not-allowed" : ""
         }`}
         type="button"
@@ -75,7 +75,7 @@ const PhonePePayment = props => {
         Pay
       </button>
       <div
-        class="p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-yellow-50 dark:bg-gray-800 dark:text-yellow-300"
+        class="mb-4 rounded-lg bg-yellow-50 p-4 text-sm text-yellow-800 dark:bg-gray-800 dark:text-yellow-300"
         role="alert"
       >
         <details>

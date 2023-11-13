@@ -94,7 +94,7 @@ const ManualPaymentModal = props => {
         ref={modalButton}
         data-modal-target="payment-modal"
         data-modal-toggle="payment-modal"
-        class={`block text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 my-5 ${
+        class={`my-5 block rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 ${
           props.disabled ? "cursor-not-allowed" : ""
         }`}
         type="button"
@@ -106,13 +106,13 @@ const ManualPaymentModal = props => {
         id="payment-modal"
         tabindex="-1"
         aria-hidden="true"
-        class="fixed top-0 left-0 right-0 z-50 hidden w-full p-4 overflow-x-hidden overflow-y-auto md:inset-0 h-[calc(100%-1rem)] max-h-full"
+        class="fixed left-0 right-0 top-0 z-50 hidden h-[calc(100%-1rem)] max-h-full w-full overflow-y-auto overflow-x-hidden p-4 md:inset-0"
       >
-        <div class="relative w-full max-w-md max-h-full">
-          <div class="relative bg-white rounded-lg shadow dark:bg-gray-700">
+        <div class="relative max-h-full w-full max-w-md">
+          <div class="relative rounded-lg bg-white shadow dark:bg-gray-700">
             <button
               type="button"
-              class="absolute top-3 right-2.5 text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ml-auto inline-flex justify-center items-center dark:hover:bg-gray-600 dark:hover:text-white"
+              class="absolute right-2.5 top-3 ml-auto inline-flex h-8 w-8 items-center justify-center rounded-lg bg-transparent text-sm text-gray-400 hover:bg-gray-200 hover:text-gray-900 dark:hover:bg-gray-600 dark:hover:text-white"
               data-modal-hide="payment-modal"
             >
               <Icon path={xMark} style={{ width: "20px" }} />
@@ -123,7 +123,7 @@ const ManualPaymentModal = props => {
                 Pay ₹ {props.amount} to India Ultimate
               </h3>
               <img ref={qrElement} />
-              <div class="text-sm mb-4 space-y-4">
+              <div class="mb-4 space-y-4 text-sm">
                 <ul>
                   <li>
                     UPI: <span class="font-bold">{upiID}</span>
@@ -155,7 +155,7 @@ const ManualPaymentModal = props => {
                   </ul>
                 </details>
               </div>
-              <ol class="pl-5 mt-2 space-y-1 list-decimal text-sm">
+              <ol class="mt-2 list-decimal space-y-1 pl-5 text-sm">
                 <li>Pay the membership fee using UPI or a Bank Transaction</li>
                 <li>
                   Submit the UPI transaction ID of your transaction. Please make
@@ -186,7 +186,7 @@ const ManualPaymentModal = props => {
                 </Field>
                 <button
                   type="submit"
-                  class="w-full text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+                  class="w-full rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
                 >
                   Submit UPI Transaction ID
                 </button>

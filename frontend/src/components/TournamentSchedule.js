@@ -138,15 +138,15 @@ const TournamentSchedule = () => {
           }
         ]}
       />
-      <h1 class="text-center mb-5">
-        <span class="font-extrabold text-transparent text-2xl bg-clip-text bg-gradient-to-r from-blue-500 to-green-500 w-fit">
+      <h1 class="mb-5 text-center">
+        <span class="w-fit bg-gradient-to-r from-blue-500 to-green-500 bg-clip-text text-2xl font-extrabold text-transparent">
           Schedule
         </span>
       </h1>
 
       <div class="mb-4 border-b border-gray-200 dark:border-gray-700">
         <ul
-          class="flex flex-wrap -mb-px text-sm font-medium text-center justify-center"
+          class="-mb-px flex flex-wrap justify-center text-center text-sm font-medium"
           id="myTab"
           data-tabs-toggle="#myTabContent"
           role="tablist"
@@ -155,7 +155,7 @@ const TournamentSchedule = () => {
             {(day, i) => (
               <li class="mr-2" role="presentation">
                 <button
-                  class="inline-block p-4 border-b-2 rounded-t-lg"
+                  class="inline-block rounded-t-lg border-b-2 p-4"
                   id={"day-tab-" + (i() + 1)}
                   data-tabs-target={"#day-" + (i() + 1)}
                   type="button"
@@ -174,7 +174,7 @@ const TournamentSchedule = () => {
         <For each={tournamentDays()}>
           {(day, i) => (
             <div
-              class="hidden p-4 rounded-lg"
+              class="hidden rounded-lg p-4"
               id={"day-" + (i() + 1)}
               role="tabpanel"
               aria-labelledby={"day-tab-" + (i() + 1)}
@@ -184,9 +184,9 @@ const TournamentSchedule = () => {
                   <Show
                     when={sameDay(day, new Date(Date.parse(day2 + " GMT")))}
                   >
-                    <div class="relative overflow-x-auto mb-8">
-                      <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400 table-fixed">
-                        <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                    <div class="relative mb-8 overflow-x-auto">
+                      <table class="w-full table-fixed text-left text-sm text-gray-500 dark:text-gray-400">
+                        <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
                           <tr>
                             <th scope="col" class="px-2 py-3 text-center">
                               Time
@@ -207,10 +207,10 @@ const TournamentSchedule = () => {
                             )}
                           >
                             {time => (
-                              <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+                              <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
                                 <th
                                   scope="row"
-                                  class="px-2 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white text-center text-xs"
+                                  class="whitespace-nowrap px-2 py-4 text-center text-xs font-medium text-gray-900 dark:text-white"
                                 >
                                   {new Date(time).toLocaleTimeString("en-US", {
                                     hour: "numeric",
@@ -246,7 +246,7 @@ const TournamentSchedule = () => {
                           </For>
                         </tbody>
                       </table>
-                      <p class="text-sm mt-2">
+                      <p class="mt-2 text-sm">
                         * CP - Cross Pool | B - Brackets
                       </p>
                     </div>
@@ -260,9 +260,9 @@ const TournamentSchedule = () => {
                       id={match.id}
                       class={clsx(
                         flash() == match.id
-                          ? "bg-blue-100 dark:bg-slate-700 dark:text-white text-black"
+                          ? "bg-blue-100 text-black dark:bg-slate-700 dark:text-white"
                           : "bg-white dark:bg-gray-800",
-                        "transition block py-2 px-1 rounded-lg shadow w-full mb-5 border",
+                        "mb-5 block w-full rounded-lg border px-1 py-2 shadow transition",
                         matchCardColorToBorderColorMap[getMatchCardColor(match)]
                       )}
                     >

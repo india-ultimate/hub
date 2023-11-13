@@ -44,8 +44,8 @@ const Tournament = () => {
         pageList={[{ url: "/tournaments", name: "All Tournaments" }]}
       />
 
-      <h1 class="text-center mb-5">
-        <span class="font-extrabold text-transparent text-2xl bg-clip-text bg-gradient-to-r from-blue-500 to-green-500 w-fit">
+      <h1 class="mb-5 text-center">
+        <span class="w-fit bg-gradient-to-r from-blue-500 to-green-500 bg-clip-text text-2xl font-extrabold text-transparent">
           {tournamentQuery.data?.event?.title}
         </span>
       </h1>
@@ -54,10 +54,10 @@ const Tournament = () => {
         when={tournamentQuery.data?.logo_dark}
         fallback={
           <div>
-            <p class="text-sm text-center mt-2">
+            <p class="mt-2 text-center text-sm">
               {tournamentQuery.data?.event?.location}
             </p>
-            <p class="text-sm text-center mt-2">
+            <p class="mt-2 text-center text-sm">
               {new Date(
                 Date.parse(tournamentQuery.data?.event.start_date)
               ).toLocaleDateString("en-US", {
@@ -91,25 +91,25 @@ const Tournament = () => {
           <img
             src={tournamentQuery.data?.logo_dark}
             alt="Tournament logo"
-            class="w-3/4 hidden dark:block"
+            class="hidden w-3/4 dark:block"
           />
           <img
             src={tournamentQuery.data?.logo_light}
             alt="Tournament logo"
-            class="w-3/4 block dark:hidden"
+            class="block w-3/4 dark:hidden"
           />
         </div>
       </Show>
 
-      <div class="flex justify-center mt-5">
+      <div class="mt-5 flex justify-center">
         <Switch>
           <Match when={tournamentQuery.data?.status === "COM"}>
-            <span class="h-fit bg-blue-100 text-blue-800 text-sm font-medium mr-2 px-2.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300">
+            <span class="mr-2 h-fit rounded bg-blue-100 px-2.5 py-0.5 text-sm font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-300">
               Completed
             </span>
           </Match>
           <Match when={tournamentQuery.data?.status === "LIV"}>
-            <span class="h-fit bg-green-100 text-green-800 text-sm font-medium mr-2 px-2.5 py-0.5 rounded dark:bg-green-900 dark:text-green-300">
+            <span class="mr-2 h-fit rounded bg-green-100 px-2.5 py-0.5 text-sm font-medium text-green-800 dark:bg-green-900 dark:text-green-300">
               Live
             </span>
           </Match>
@@ -117,47 +117,47 @@ const Tournament = () => {
       </div>
       <A
         href={`/tournament/${params.slug}/schedule`}
-        class="block p-4 bg-white border border-blue-600 rounded-lg shadow dark:bg-gray-800 dark:border-blue-400 w-full mt-5"
+        class="mt-5 block w-full rounded-lg border border-blue-600 bg-white p-4 shadow dark:border-blue-400 dark:bg-gray-800"
       >
-        <h5 class="mb-2 text-xl font-bold tracking-tight text-blue-600 dark:text-blue-400 capitalize text-center">
+        <h5 class="mb-2 text-center text-xl font-bold capitalize tracking-tight text-blue-600 dark:text-blue-400">
           Schedule
         </h5>
-        <p class="text-sm text-center capitalize">
+        <p class="text-center text-sm capitalize">
           View the detailed schedule of matches
         </p>
       </A>
       <A
         href={`/tournament/${params.slug}/standings`}
-        class="block p-4 bg-white border border-blue-600 rounded-lg shadow dark:bg-gray-800 dark:border-blue-400 w-full mt-5"
+        class="mt-5 block w-full rounded-lg border border-blue-600 bg-white p-4 shadow dark:border-blue-400 dark:bg-gray-800"
       >
-        <h5 class="mb-2 text-xl font-bold tracking-tight text-blue-600 dark:text-blue-400 capitalize text-center">
+        <h5 class="mb-2 text-center text-xl font-bold capitalize tracking-tight text-blue-600 dark:text-blue-400">
           Standings
         </h5>
-        <p class="text-sm text-center capitalize">
+        <p class="text-center text-sm capitalize">
           View the pools, brackets and the detailed standings
         </p>
       </A>
 
       <Switch>
         <Match when={tournamentQuery.data?.status === "COM"}>
-          <h2 class="text-center mt-5 text-xl font-bold">Final Standings</h2>
+          <h2 class="mt-5 text-center text-xl font-bold">Final Standings</h2>
         </Match>
         <Match when={tournamentQuery.data?.status === "LIV"}>
-          <h2 class="text-center mt-5 text-xl font-bold">Current Standings</h2>
+          <h2 class="mt-5 text-center text-xl font-bold">Current Standings</h2>
         </Match>
       </Switch>
 
-      <div class="relative overflow-x-auto shadow-md rounded-lg mt-5">
-        <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+      <div class="relative mt-5 overflow-x-auto rounded-lg shadow-md">
+        <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
           <tbody>
             <For
               each={Object.entries(tournamentQuery.data?.current_seeding || {})}
             >
               {([rank, team_id]) => (
-                <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+                <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
                   <th
                     scope="row"
-                    class="pr-6 pl-10 py-4 whitespace-nowrap font-normal"
+                    class="whitespace-nowrap py-4 pl-10 pr-6 font-normal"
                   >
                     {rank}
                   </th>
@@ -168,7 +168,7 @@ const Tournament = () => {
                       }`}
                     >
                       <img
-                        class="w-8 h-8 p-1 rounded-full ring-2 ring-gray-300 dark:ring-gray-500 inline-block mr-3"
+                        class="mr-3 inline-block h-8 w-8 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
                         src={teamsMap()[team_id]?.image_url}
                         alt="Bordered avatar"
                       />
@@ -184,12 +184,12 @@ const Tournament = () => {
 
       <Switch>
         <Match when={tournamentQuery.data?.status === "COM"}>
-          <h2 class="text-center mt-5 text-xl font-bold">
+          <h2 class="mt-5 text-center text-xl font-bold">
             Final Spirit Rankings
           </h2>
         </Match>
         <Match when={tournamentQuery.data?.status === "LIV"}>
-          <h2 class="text-center mt-5 text-xl font-bold">
+          <h2 class="mt-5 text-center text-xl font-bold">
             Current Spirit Rankings
           </h2>
         </Match>
@@ -199,7 +199,7 @@ const Tournament = () => {
         when={tournamentQuery.data?.spirit_ranking.length > 0}
         fallback={
           <div
-            class="p-2 my-4 text-sm rounded-lg bg-blue-50 dark:bg-gray-800"
+            class="my-4 rounded-lg bg-blue-50 p-2 text-sm dark:bg-gray-800"
             role="alert"
           >
             <p class="text-center">
@@ -210,15 +210,15 @@ const Tournament = () => {
           </div>
         }
       >
-        <div class="relative overflow-x-auto shadow-md rounded-lg mt-5">
-          <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+        <div class="relative mt-5 overflow-x-auto rounded-lg shadow-md">
+          <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
             <tbody>
               <For each={tournamentQuery.data?.spirit_ranking}>
                 {spirit => (
-                  <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+                  <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
                     <th
                       scope="row"
-                      class="px-6 py-4 whitespace-nowrap font-normal"
+                      class="whitespace-nowrap px-6 py-4 font-normal"
                     >
                       {spirit.rank}
                     </th>
@@ -229,7 +229,7 @@ const Tournament = () => {
                         }`}
                       >
                         <img
-                          class="w-8 h-8 p-1 rounded-full ring-2 ring-gray-300 dark:ring-gray-500 inline-block mr-3"
+                          class="mr-3 inline-block h-8 w-8 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
                           src={teamsMap()[spirit.team_id]?.image_url}
                           alt="Bordered avatar"
                         />
@@ -248,7 +248,7 @@ const Tournament = () => {
             </tbody>
           </table>
         </div>
-        <p class="italic text-sm mt-2 text-right">
+        <p class="mt-2 text-right text-sm italic">
           * Self scores are in brackets
         </p>
       </Show>

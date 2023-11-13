@@ -34,15 +34,15 @@ const Player = props => {
       <StatusStepper player={props.player} />
       <Show when={props.player?.imported_data}>
         <div
-          class="p-4 mb-4 text-sm text-blue-800 rounded-lg bg-blue-50 dark:bg-gray-800 dark:text-blue-400"
+          class="mb-4 rounded-lg bg-blue-50 p-4 text-sm text-blue-800 dark:bg-gray-800 dark:text-blue-400"
           role="alert"
         >
           Your profile information has been imported from the India Ultimate
           Membership form for 2022-2023.
         </div>
       </Show>
-      <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400 break-all">
-        <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+      <table class="w-full break-all text-left text-sm text-gray-500 dark:text-gray-400">
+        <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
           <tr>
             <th scope="col" class="px-6 py-3">
               Name
@@ -53,10 +53,10 @@ const Player = props => {
           </tr>
         </thead>
         <tbody>
-          <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+          <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
             <th
               scope="row"
-              class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+              class="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white"
             >
               Teams
             </th>
@@ -68,7 +68,7 @@ const Player = props => {
                   </p>
                   <button
                     type="submit"
-                    class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+                    class="w-full rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 sm:w-auto"
                     onClick={e => navUltimateCentral(e, props.player?.id)}
                   >
                     Link profile
@@ -82,7 +82,7 @@ const Player = props => {
                     {team => (
                       <a
                         href={`https://indiaultimate.org/en_in/t/${team.ultimate_central_slug}`}
-                        class="bg-blue-100 hover:bg-blue-200 text-blue-800 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded dark:bg-gray-700 dark:text-blue-400 border border-blue-400 inline-flex items-center justify-center"
+                        class="mr-2 inline-flex items-center justify-center rounded border border-blue-400 bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-800 hover:bg-blue-200 dark:bg-gray-700 dark:text-blue-400"
                       >
                         {team.name}
                       </a>
@@ -93,10 +93,10 @@ const Player = props => {
             </td>
           </tr>
           <Show when={props.player?.membership}>
-            <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+            <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
               <th
                 scope="row"
-                class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+                class="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white"
               >
                 Membership validity
               </th>
@@ -113,7 +113,7 @@ const Player = props => {
                   </p>
                   <button
                     type="submit"
-                    class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+                    class="w-full rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 sm:w-auto"
                     onClick={e => navMembership(e, props.player?.id)}
                   >
                     Renew
@@ -121,10 +121,10 @@ const Player = props => {
                 </Show>
               </td>
             </tr>
-            <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+            <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
               <th
                 scope="row"
-                class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+                class="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white"
               >
                 Waiver
               </th>
@@ -137,7 +137,7 @@ const Player = props => {
                   <Match when={!props.player?.membership.waiver_valid}>
                     <button
                       type="submit"
-                      class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+                      class="w-full rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 sm:w-auto"
                       onClick={e => navWaiver(e, props.player?.id)}
                     >
                       Sign Waiver
@@ -148,10 +148,10 @@ const Player = props => {
             </tr>
           </Show>
           <Show when={!props.player?.membership && !props.others}>
-            <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+            <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
               <th
                 scope="row"
-                class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+                class="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white"
               >
                 Membership
               </th>
@@ -162,7 +162,7 @@ const Player = props => {
                 </p>
                 <button
                   type="submit"
-                  class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+                  class="w-full rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 sm:w-auto"
                   onClick={e => navMembership(e, props.player?.id)}
                 >
                   Enroll
@@ -174,10 +174,10 @@ const Player = props => {
             <VaccinationInformation vaccination={props.player?.vaccination} />
           </Show>
           <Show when={!props.player?.vaccination}>
-            <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+            <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
               <th
                 scope="row"
-                class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+                class="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white"
               >
                 Vaccination details
               </th>
@@ -185,7 +185,7 @@ const Player = props => {
                 <p class="mb-4">Your vaccination information is not complete</p>
                 <button
                   type="submit"
-                  class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+                  class="w-full rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 sm:w-auto"
                   onClick={e => navVaccination(e, props.player?.id)}
                 >
                   Update
@@ -193,28 +193,28 @@ const Player = props => {
               </td>
             </tr>
           </Show>
-          <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+          <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
             <th
               scope="row"
-              class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+              class="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white"
             >
               Phone number
             </th>
             <td class="px-6 py-4">{props.player?.phone}</td>
           </tr>
-          <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+          <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
             <th
               scope="row"
-              class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+              class="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white"
             >
               Email
             </th>
             <td class="px-6 py-4">{props.player?.email}</td>
           </tr>
-          <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+          <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
             <th
               scope="row"
-              class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+              class="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white"
             >
               Date of Birth
             </th>
@@ -223,19 +223,19 @@ const Player = props => {
                 displayDate(props.player.date_of_birth)}
             </td>
           </tr>
-          <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+          <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
             <th
               scope="row"
-              class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+              class="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white"
             >
               City
             </th>
             <td class="px-6 py-4">{props.player?.city}</td>
           </tr>
-          <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+          <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
             <th
               scope="row"
-              class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+              class="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white"
             >
               State
             </th>
@@ -243,10 +243,10 @@ const Player = props => {
               {getLabel(stateChoices, props.player?.state_ut)}
             </td>
           </tr>
-          <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+          <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
             <th
               scope="row"
-              class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+              class="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white"
             >
               Gender
             </th>
@@ -260,10 +260,10 @@ const Player = props => {
             </Show>
           </tr>
 
-          <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+          <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
             <th
               scope="row"
-              class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+              class="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white"
             >
               Occupation
             </th>
@@ -272,10 +272,10 @@ const Player = props => {
             </td>
           </tr>
           <Show when={props.player?.educational_institution}>
-            <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+            <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
               <th
                 scope="row"
-                class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+                class="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white"
               >
                 Educational Institution
               </th>
