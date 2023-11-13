@@ -85,7 +85,7 @@ const MatchSpiritScoreForm = componentProps => {
         onSubmit={values => handleSubmit(values)}
       >
         <div class="space-y-8">
-          <h2 class="text-2xl text-bold text-blue-600 dark:text-blue-500 text-center">
+          <h2 class="text-bold text-center text-2xl text-blue-600 dark:text-blue-500">
             {componentProps.match[`team_${componentProps.oppTeamNo}`].name}
           </h2>
           <Field
@@ -215,7 +215,7 @@ const MatchSpiritScoreForm = componentProps => {
             )}
           </Field>
 
-          <h2 class="text-2xl text-bold text-blue-600 dark:text-blue-500 text-center">
+          <h2 class="text-bold text-center text-2xl text-blue-600 dark:text-blue-500">
             Self Score
           </h2>
           <Field
@@ -325,7 +325,7 @@ const MatchSpiritScoreForm = componentProps => {
           </Field>
           <button
             type="submit"
-            class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+            class="w-full rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 sm:w-auto"
           >
             Submit
           </button>

@@ -7,7 +7,7 @@ const MembershipPlayerList = props => {
       <h2 id="accordion-collapse-heading-1">
         <button
           type="button"
-          class="flex items-center justify-between w-full p-5 font-medium text-left text-gray-500 border border-b-0 border-gray-200 rounded-t-xl focus:ring-4 focus:ring-gray-200 dark:focus:ring-gray-800 dark:border-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+          class="flex w-full items-center justify-between rounded-t-xl border border-b-0 border-gray-200 p-5 text-left font-medium text-gray-500 hover:bg-gray-100 focus:ring-4 focus:ring-gray-200 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:focus:ring-gray-800"
           data-accordion-target="#accordion-collapse-body-1"
           aria-expanded="true"
           aria-controls="accordion-collapse-body-1"
@@ -26,10 +26,10 @@ const MembershipPlayerList = props => {
         class="hidden"
         aria-labelledby="accordion-collapse-heading-1"
       >
-        <div class="p-5 border border-gray-200 dark:border-gray-700 dark:bg-gray-900">
+        <div class="border border-gray-200 p-5 dark:border-gray-700 dark:bg-gray-900">
           <div class="relative overflow-x-auto">
-            <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-              <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+            <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
+              <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
                 <tr>
                   <th scope="col" class="px-6 py-3">
                     Player
@@ -45,10 +45,10 @@ const MembershipPlayerList = props => {
               <tbody>
                 <For each={props.players}>
                   {player => (
-                    <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+                    <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
                       <th
                         scope="row"
-                        class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+                        class="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white"
                       >
                         {player.full_name} {player.is_minor ? "*" : ""}
                       </th>

@@ -12,11 +12,11 @@ const MembershipStatusTable = props => {
 
   return (
     <div class="relative overflow-x-auto">
-      <table class="w-full text-sm text-left border border-gray-300">
+      <table class="w-full border border-gray-300 text-left text-sm">
         <thead>
           <tr>
             <For each={columns}>
-              {column => <th class="py-2 px-4 bg-gray-200">{column}</th>}
+              {column => <th class="bg-gray-200 px-4 py-2">{column}</th>}
             </For>
           </tr>
         </thead>
@@ -27,14 +27,14 @@ const MembershipStatusTable = props => {
                 class={
                   row.membership_status
                     ? "bg-green-200 dark:bg-green-700"
-                    : "text-white bg-red-800"
+                    : "bg-red-800 text-white"
                 }
               >
                 <For each={columns}>
                   {column => {
                     const value = row[column];
                     return (
-                      <td class="py-2 px-4">
+                      <td class="px-4 py-2">
                         {typeof value === "boolean"
                           ? value
                             ? "Y"
@@ -93,7 +93,7 @@ const CheckMemberships = () => {
       onSubmit={values => handleSubmit(values)}
     >
       <div
-        class="p-4 mb-4 text-sm text-blue-800 rounded-lg bg-blue-50 dark:bg-gray-800 dark:text-blue-400"
+        class="mb-4 rounded-lg bg-blue-50 p-4 text-sm text-blue-800 dark:bg-gray-800 dark:text-blue-400"
         role="alert"
       >
         Upload any CSV file which has 'Email' as one of the columns
@@ -118,7 +118,7 @@ const CheckMemberships = () => {
         </Field>
         <button
           type="submit"
-          class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center"
+          class="w-full rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 sm:w-auto"
         >
           Submit
         </button>

@@ -53,17 +53,17 @@ const PasswordLogin = props => {
   };
   return (
     <form onSubmit={login}>
-      <div class="grid gap-3 mb-6">
+      <div class="mb-6 grid gap-3">
         <label
           for="username-input"
-          class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+          class="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
         >
           Username
         </label>
         <div class="mb-6">
           <input
             id="username-input"
-            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+            class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
             placeholder="username"
             value={username()}
             onInput={e => setUsername(e.currentTarget.value)}
@@ -71,14 +71,14 @@ const PasswordLogin = props => {
         </div>
         <label
           for="password-input"
-          class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+          class="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
         >
           Password
         </label>
         <div class="mb-6">
           <input
             id="password-input"
-            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+            class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
             placeholder="password"
             type="password"
             required
@@ -88,13 +88,13 @@ const PasswordLogin = props => {
         </div>
         <button
           type="submit"
-          class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+          class="w-full rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 sm:w-auto"
         >
           Login
         </button>
       </div>
       <div
-        class="p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-yellow-50 dark:bg-gray-800 dark:text-yellow-300"
+        class="mb-4 rounded-lg bg-yellow-50 p-4 text-sm text-yellow-800 dark:bg-gray-800 dark:text-yellow-300"
         role="alert"
       >
         Kindly use the Google Login option or request an Email-Link for logging
@@ -205,16 +205,16 @@ const SendEmailOTP = props => {
   };
 
   return (
-    <div class="grid gap-3 mb-6">
+    <div class="mb-6 grid gap-3">
       <label
         for="email-link-input"
-        class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+        class="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
       >
         Enter Email ID for sending login OTP
       </label>
       <div class="mb-6">
         <input
-          class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+          class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
           id="email-otp-input"
           placeholder="Email Address"
           type="email"
@@ -226,7 +226,7 @@ const SendEmailOTP = props => {
       <Show when={otpData()}>
         <div class="mb-6">
           <input
-            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+            class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
             id="email-otp-number"
             placeholder="Verification Code"
             value={otp()}
@@ -246,7 +246,7 @@ const SendEmailOTP = props => {
             id="send-otp-button"
             onClick={sendOTPEmail}
             disabled={loading()}
-            class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+            class="w-full rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 sm:w-auto"
           >
             <Show when={loading()} fallback={"Send OTP"}>
               <Spinner />
@@ -257,30 +257,30 @@ const SendEmailOTP = props => {
         <button
           id="validate-otp-button"
           onClick={validateOTP}
-          class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+          class="w-full rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 sm:w-auto"
         >
           Confirm OTP
         </button>
-        <span class="text-center text-sm mt-5">
+        <span class="mt-5 text-center text-sm">
           Haven't received your OTP yet?
         </span>
         <button
           disabled={!enableRetry() || loading()}
-          class="disabled:text-gray-500 text-blue-500 transition duration-300"
+          class="text-blue-500 transition duration-300 disabled:text-gray-500"
           onClick={sendOTPEmail}
         >
           <Show when={loading()} fallback={"Resend OTP"}>
             <Spinner />
           </Show>
         </button>
-        <button class="text-sm underline text-blue-500" onClick={resetEmail}>
+        <button class="text-sm text-blue-500 underline" onClick={resetEmail}>
           Wrong Email? Click here to edit
         </button>
       </Show>
 
       <Show when={checkSpam()}>
         <div
-          class="p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-yellow-50 dark:bg-gray-800 dark:text-yellow-300"
+          class="mb-4 rounded-lg bg-yellow-50 p-4 text-sm text-yellow-800 dark:bg-gray-800 dark:text-yellow-300"
           role="alert"
         >
           Please check the Junk folder if you are unable to find the email in
@@ -321,14 +321,14 @@ const Login = () => {
       />
       <div class="mb-4 border-b border-gray-200 dark:border-gray-700">
         <ul
-          class="flex flex-wrap -mb-px text-sm font-medium text-center"
+          class="-mb-px flex flex-wrap text-center text-sm font-medium"
           id="signinTabs"
           data-tabs-toggle="#signinTabContent"
           role="tablist"
         >
           <li class="mr-2" role="presentation">
             <button
-              class="inline-block p-4 border-b-2 rounded-t-lg"
+              class="inline-block rounded-t-lg border-b-2 p-4"
               id="email-otp-tab"
               data-tabs-target="#email-otp"
               type="button"
@@ -341,7 +341,7 @@ const Login = () => {
           </li>
           <li class="mr-2" role="presentation">
             <button
-              class="inline-block p-4 border-b-2 rounded-t-lg"
+              class="inline-block rounded-t-lg border-b-2 p-4"
               id="password-tab"
               data-tabs-target="#password"
               type="button"
@@ -356,7 +356,7 @@ const Login = () => {
       </div>
       <div id="signinTabContent">
         <div
-          class="hidden p-4 rounded-lg bg-gray-50 dark:bg-gray-800"
+          class="hidden rounded-lg bg-gray-50 p-4 dark:bg-gray-800"
           id="email-otp"
           role="tabpanel"
           aria-labelledby="email-otp-tab"
@@ -364,7 +364,7 @@ const Login = () => {
           <SendEmailOTP setStatus={setStatus} />
         </div>
         <div
-          class="hidden p-4 rounded-lg bg-gray-50 dark:bg-gray-800"
+          class="hidden rounded-lg bg-gray-50 p-4 dark:bg-gray-800"
           id="password"
           role="tabpanel"
           aria-labelledby="password-tab"

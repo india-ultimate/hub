@@ -45,7 +45,7 @@ const RegisteredPlayerList = () => {
         Registered Players{" "}
         {players()?.length > 0 ? `(${players().length})` : ""}
       </h2>
-      <div class="my-4 p-5 border border-gray-200 dark:border-gray-700 dark:bg-gray-900">
+      <div class="my-4 border border-gray-200 p-5 dark:border-gray-700 dark:bg-gray-900">
         <div class="relative overflow-x-auto">
           <Switch>
             <Match when={loading()}>
@@ -60,21 +60,21 @@ const RegisteredPlayerList = () => {
                   Search
                 </label>
                 <div class="relative">
-                  <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                  <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                     <Icon path={magnifyingGlass} style={{ width: "24px" }} />
                   </div>
                   <input
                     type="text"
                     id="input-group-search"
-                    class="block w-full p-2 pl-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                    class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2 pl-10 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-500 dark:bg-gray-600 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
                     placeholder="Search player"
                     onChange={e => setSearchText(e.target.value)}
                   />
                 </div>
               </div>
 
-              <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+              <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
+                <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
                   <tr>
                     <th scope="col" class="px-6 py-3">
                       Player
@@ -108,10 +108,10 @@ const RegisteredPlayerList = () => {
                     }
                   >
                     {player => (
-                      <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+                      <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
                         <th
                           scope="row"
-                          class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+                          class="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white"
                         >
                           {player.full_name}
                         </th>

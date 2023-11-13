@@ -8,14 +8,14 @@ const Tournaments = () => {
 
   return (
     <div>
-      <h1 class="text-center mb-5">
-        <span class="font-extrabold text-transparent text-3xl bg-clip-text bg-gradient-to-r from-blue-500 to-green-500 w-fit ">
+      <h1 class="mb-5 text-center">
+        <span class="w-fit bg-gradient-to-r from-blue-500 to-green-500 bg-clip-text text-3xl font-extrabold text-transparent ">
           Tournaments
         </span>
       </h1>
       <div
         class={
-          "grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3 justify-items-center mt-5 "
+          "mt-5 grid grid-cols-1 justify-items-center gap-5 md:grid-cols-2 lg:grid-cols-3 "
         }
       >
         <For each={tournamentsQuery.data}>
@@ -23,9 +23,9 @@ const Tournaments = () => {
             <Show when={tournament.status !== "DFT"}>
               <A
                 href={`/tournament/${tournament.event?.ultimate_central_slug}`}
-                class="block p-4 bg-white border border-blue-600 rounded-lg shadow dark:bg-gray-800 dark:border-blue-400 w-full"
+                class="block w-full rounded-lg border border-blue-600 bg-white p-4 shadow dark:border-blue-400 dark:bg-gray-800"
               >
-                <h5 class="mb-2 text-xl font-bold tracking-tight text-blue-600 dark:text-blue-400 capitalize">
+                <h5 class="mb-2 text-xl font-bold capitalize tracking-tight text-blue-600 dark:text-blue-400">
                   {tournament.event.title}
                 </h5>
                 <div class="flex justify-between">
@@ -34,12 +34,12 @@ const Tournaments = () => {
                   </span>
                   <Switch>
                     <Match when={tournament.status === "COM"}>
-                      <span class="h-fit bg-blue-100 text-blue-800 text-sm font-medium mr-2 px-2.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300">
+                      <span class="mr-2 h-fit rounded bg-blue-100 px-2.5 py-0.5 text-sm font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-300">
                         Completed
                       </span>
                     </Match>
                     <Match when={tournament.status === "LIV"}>
-                      <span class="h-fit bg-green-100 text-green-800 text-sm font-medium mr-2 px-2.5 py-0.5 rounded dark:bg-green-900 dark:text-green-300">
+                      <span class="mr-2 h-fit rounded bg-green-100 px-2.5 py-0.5 text-sm font-medium text-green-800 dark:bg-green-900 dark:text-green-300">
                         Live
                       </span>
                     </Match>

@@ -23,6 +23,7 @@
     "postcss": "^8.4.24",
     "postcss-loader": "^7.3.3",
     "prettier": "^3.0.0",
+    "prettier-plugin-tailwindcss": "^0.5.7",
     "qrious": "^4.0.2",
     "raw-loader": "^4.0.2",
     "slug": "^8.2.3",
@@ -43,7 +44,10 @@
   "prettier": {
     "trailingComma": "none",
     "tabWidth": 2,
-    "arrowParens": "avoid"
+    "arrowParens": "avoid",
+    "plugins": [
+      "./node_modules/prettier-plugin-tailwindcss/dist/index.mjs"
+    ]
   },
   "eslintConfig": {
     "env": {

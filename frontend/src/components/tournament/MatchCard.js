@@ -34,13 +34,13 @@ const MatchName = props => (
     fallback={
       <>
         <h6
-          class="text-center w-full block sm:hidden"
+          class="block w-full text-center sm:hidden"
           classList={{ "py-2": props.extraVerticalPadding }}
         >
           {getSmallName(props.name)}
         </h6>
         <h6
-          class="text-center w-full hidden sm:block"
+          class="hidden w-full text-center sm:block"
           classList={{ "py-2": props.extraVerticalPadding }}
         >
           {props.name}
@@ -49,7 +49,7 @@ const MatchName = props => (
     }
   >
     <h6
-      class="text-center w-full"
+      class="w-full text-center"
       classList={{ "py-2": props.extraVerticalPadding }}
     >
       {props.name}
@@ -85,15 +85,15 @@ const MatchCard = props => {
       <Switch>
         <Match when={props.match.pool || props.match.position_pool}>
           <div
-            class={`w-full flex justify-center flex-wrap bg-${color()}-100 text-${color()}-800 text-xs font-medium px-2.5 py-0.5 rounded dark:bg-${color()}-900 dark:text-${color()}-300`}
+            class={`flex w-full flex-wrap justify-center bg-${color()}-100 text-${color()}-800 rounded px-2.5 py-0.5 text-xs font-medium dark:bg-${color()}-900 dark:text-${color()}-300`}
           >
             <Show
               when={props.showSeed}
               fallback={
-                <h6 class="text-center w-full py-2">{props.match.name}</h6>
+                <h6 class="w-full py-2 text-center">{props.match.name}</h6>
               }
             >
-              <h6 class="text-center w-full">{props.match.name}</h6>
+              <h6 class="w-full text-center">{props.match.name}</h6>
               <h6 class="text-center">
                 {props.match.placeholder_seed_1 +
                   " v " +
@@ -104,7 +104,7 @@ const MatchCard = props => {
         </Match>
         <Match when={props.match.cross_pool || props.match.bracket}>
           <div
-            class={`w-full flex justify-center flex-wrap bg-${color()}-100 text-${color()}-800 text-xs font-medium px-2.5 py-0.5 rounded dark:bg-${color()}-900 dark:text-${color()}-300`}
+            class={`flex w-full flex-wrap justify-center bg-${color()}-100 text-${color()}-800 rounded px-2.5 py-0.5 text-xs font-medium dark:bg-${color()}-900 dark:text-${color()}-300`}
           >
             <Show
               when={props.showSeed && showSeedForBracketMatch(props.match.name)}

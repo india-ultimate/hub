@@ -43,11 +43,11 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <div class={store.theme === "dark" ? "dark" : ""}>
-        <div class="bg-white dark:bg-gray-900 min-h-screen flex flex-col">
+        <div class="flex min-h-screen flex-col bg-white dark:bg-gray-900">
           <Header />
           <section class="grow">
-            <div class="py-8 px-4 mx-auto max-w-screen-xl lg:py-16 lg:px-6">
-              <div class="text-gray-500 sm:text-lg dark:text-gray-400">
+            <div class="mx-auto max-w-screen-xl px-4 py-8 lg:px-6 lg:py-16">
+              <div class="text-gray-500 dark:text-gray-400 sm:text-lg">
                 <Routes>
                   {/* Simple pages */}
                   <Route path="/" component={Home} />

@@ -178,7 +178,7 @@ const RegistrationForm = props => {
         <Switch>
           <Match when={props.others}>
             <div
-              class="px-8 lg:px-10 p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-yellow-50 dark:bg-gray-800 dark:text-yellow-300"
+              class="mb-4 rounded-lg bg-yellow-50 p-4 px-8 text-sm text-yellow-800 dark:bg-gray-800 dark:text-yellow-300 lg:px-10"
               role="alert"
             >
               You are filling up the registration form for a different player.
@@ -189,7 +189,7 @@ const RegistrationForm = props => {
           </Match>
           <Match when={ward()}>
             <div
-              class="px-8 lg:px-10 p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-yellow-50 dark:bg-gray-800 dark:text-yellow-300"
+              class="mb-4 rounded-lg bg-yellow-50 p-4 px-8 text-sm text-yellow-800 dark:bg-gray-800 dark:text-yellow-300 lg:px-10"
               role="alert"
             >
               You are filling up the registration form for a ward. Please be
@@ -236,7 +236,7 @@ const RegistrationForm = props => {
                       The player's email ID cannot be the same as the guardian's
                       email. If you are a player, please use the players' form,{" "}
                       <A
-                        class="font-medium text-blue-600 underline dark:text-blue-500 hover:no-underline"
+                        class="font-medium text-blue-600 underline hover:no-underline dark:text-blue-500"
                         href="/registration/me"
                       >
                         here
@@ -260,7 +260,7 @@ const RegistrationForm = props => {
               </Field>
               <Show when={ward()}>
                 <div
-                  class="px-8 lg:px-10 p-4 mb-4 text-sm text-blue-800 rounded-lg bg-blue-50 dark:bg-gray-800 dark:text-blue-400"
+                  class="mb-4 rounded-lg bg-blue-50 p-4 px-8 text-sm text-blue-800 dark:bg-gray-800 dark:text-blue-400 lg:px-10"
                   role="alert"
                 >
                   Entering an email address for your ward will allow them to
@@ -325,7 +325,7 @@ const RegistrationForm = props => {
                       If you are a guardian filling up the form for a ward,
                       please use the form{" "}
                       <A
-                        class="font-medium text-blue-600 underline dark:text-blue-500 hover:no-underline"
+                        class="font-medium text-blue-600 underline hover:no-underline dark:text-blue-500"
                         href="/registration/ward"
                       >
                         here
@@ -609,7 +609,7 @@ const RegistrationForm = props => {
             </Show>
             <button
               type="submit"
-              class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+              class="w-full rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 sm:w-auto"
             >
               Submit
             </button>

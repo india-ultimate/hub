@@ -1,8 +1,8 @@
 const SpiritScoreTable = props => {
   return (
     <div class="relative overflow-x-auto">
-      <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-        <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+      <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
+        <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
           <tr>
             <th scope="col" class="px-2 py-3">
               Spirit Criteria
@@ -16,7 +16,7 @@ const SpiritScoreTable = props => {
           </tr>
         </thead>
         <tbody>
-          <tr class="bg-white border-b dark:bg-gray-700 dark:border-gray-700">
+          <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-700">
             <th
               scope="row"
               class="px-2 py-4 font-medium text-gray-900 dark:text-white"
@@ -26,7 +26,7 @@ const SpiritScoreTable = props => {
             <td class="px-2 py-4">{props.spirit_score_team_1?.rules}</td>
             <td class="px-2 py-4">{props.spirit_score_team_2?.rules}</td>
           </tr>
-          <tr class="bg-white border-b dark:bg-gray-700 dark:border-gray-700">
+          <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-700">
             <th
               scope="row"
               class="px-2 py-4 font-medium text-gray-900 dark:text-white"
@@ -36,7 +36,7 @@ const SpiritScoreTable = props => {
             <td class="px-2 py-4">{props.spirit_score_team_1?.fouls}</td>
             <td class="px-2 py-4">{props.spirit_score_team_2?.fouls}</td>
           </tr>
-          <tr class="bg-white border-b dark:bg-gray-700 dark:border-gray-700">
+          <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-700">
             <th
               scope="row"
               class="px-2 py-4 font-medium text-gray-900 dark:text-white"
@@ -46,7 +46,7 @@ const SpiritScoreTable = props => {
             <td class="px-2 py-4">{props.spirit_score_team_1?.fair}</td>
             <td class="px-2 py-4">{props.spirit_score_team_2?.fair}</td>
           </tr>
-          <tr class="bg-white border-b dark:bg-gray-700 dark:border-gray-700">
+          <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-700">
             <th
               scope="row"
               class="px-2 py-4 font-medium text-gray-900 dark:text-white"
@@ -56,7 +56,7 @@ const SpiritScoreTable = props => {
             <td class="px-2 py-4">{props.spirit_score_team_1?.positive}</td>
             <td class="px-2 py-4">{props.spirit_score_team_2?.positive}</td>
           </tr>
-          <tr class="bg-white border-b dark:bg-gray-700 dark:border-gray-700">
+          <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-700">
             <th
               scope="row"
               class="px-2 py-4 font-medium text-gray-900 dark:text-white"

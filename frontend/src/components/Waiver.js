@@ -39,7 +39,7 @@ const PartA = props => (
           {displayDate(props.endDate)}. I, the undersigned, understand,
           acknowledge and agree to the following:
         </p>
-        <ol class="pl-5 mt-2 space-y-1 list-decimal list-inside my-4">
+        <ol class="my-4 mt-2 list-inside list-decimal space-y-1 pl-5">
           <li>
             I am aware that my son/daughter/ward's participation involves
             certain risks and hazards, including, but not limited to, physical
@@ -87,7 +87,7 @@ const PartA = props => (
           I, the undersigned, understand, acknowledge and agree to the
           following:
         </p>
-        <ol class="pl-5 mt-2 space-y-1 list-decimal list-inside my-4">
+        <ol class="my-4 mt-2 list-inside list-decimal space-y-1 pl-5">
           <li>
             I am aware that my participation involves certain risks and hazards,
             including, but not limited to, physical injury, property damage, and
@@ -137,7 +137,7 @@ const PartB = props => (
           Following the pronouncements above I hereby declare the following on
           behalf of my son/daughter/ward
         </p>
-        <ol class="pl-5 mt-2 space-y-1 list-decimal list-inside my-4">
+        <ol class="my-4 mt-2 list-inside list-decimal space-y-1 pl-5">
           <li>
             In consideration for my son/daughter/ward being permitted to
             participate in the Event(s), I hereby agree to release, discharge,
@@ -200,7 +200,7 @@ const PartB = props => (
         <p>
           Following the pronouncements above I hereby declare the following:
         </p>
-        <ol class="pl-5 mt-2 space-y-1 list-decimal list-inside my-4">
+        <ol class="my-4 mt-2 list-inside list-decimal space-y-1 pl-5">
           <li>
             In consideration for being permitted to participate in the Event(s),
             I hereby agree to release, discharge, and hold harmless the
@@ -350,7 +350,7 @@ const WaiverForm = props => {
             a membership{" "}
             <A
               href={`/membership/${props.player.id}`}
-              class="w-full border-b border-gray-200 cursor-pointer hover:bg-gray-100 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 focus:text-blue-700 dark:border-gray-600 dark:hover:bg-gray-600 dark:hover:text-white dark:focus:ring-gray-500 dark:focus:text-white"
+              class="w-full cursor-pointer border-b border-gray-200 hover:bg-gray-100 hover:text-blue-700 focus:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 dark:border-gray-600 dark:hover:bg-gray-600 dark:hover:text-white dark:focus:text-white dark:focus:ring-gray-500"
             >
               here
             </A>
@@ -361,7 +361,7 @@ const WaiverForm = props => {
       >
         <Show when={props.signed}>
           <div
-            class="p-4 my-4 text-sm text-green-800 rounded-lg bg-green-50 dark:bg-gray-800 dark:text-green-400"
+            class="my-4 rounded-lg bg-green-50 p-4 text-sm text-green-800 dark:bg-gray-800 dark:text-green-400"
             role="alert"
           >
             Liability Waiver form for {props.player?.full_name} has been signed
@@ -371,7 +371,7 @@ const WaiverForm = props => {
             {displayDate(props.player?.membership?.waiver_signed_at)}.
           </div>
           <button
-            class="my-4 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+            class="my-4 w-full rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 sm:w-auto"
             onClick={() => setDetailed(!detailed())}
           >
             Show full text
@@ -403,7 +403,7 @@ const WaiverForm = props => {
         </Show>
         <Show when={!props.signed}>
           <button
-            class={`my-4 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 ${
+            class={`my-4 w-full rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 sm:w-auto ${
               !enableSubmit() ? "cursor-not-allowed" : ""
             } `}
             onClick={props.handleSubmit} // eslint-disable-line solid/reactivity

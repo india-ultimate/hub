@@ -2,20 +2,20 @@ import { A } from "@solidjs/router";
 
 const Error404 = () => {
   return (
-    <div class="w-full flex flex-col lg:flex-row items-center justify-center space-y-16 lg:space-y-0 space-x-8 2xl:space-x-0">
-      <div class="w-full lg:w-1/2 flex flex-col items-center justify-center lg:px-2 xl:px-0 text-center">
-        <p class="text-7xl md:text-8xl lg:text-9xl font-bold tracking-wider text-gray-300">
+    <div class="flex w-full flex-col items-center justify-center space-x-8 space-y-16 lg:flex-row lg:space-y-0 2xl:space-x-0">
+      <div class="flex w-full flex-col items-center justify-center text-center lg:w-1/2 lg:px-2 xl:px-0">
+        <p class="text-7xl font-bold tracking-wider text-gray-300 md:text-8xl lg:text-9xl">
           404
         </p>
-        <p class="text-4xl md:text-5xl lg:text-6xl font-bold tracking-wider text-gray-300 mt-2">
+        <p class="mt-2 text-4xl font-bold tracking-wider text-gray-300 md:text-5xl lg:text-6xl">
           Page Not Found
         </p>
-        <p class="text-lg md:text-xl lg:text-2xl text-gray-500 my-12">
+        <p class="my-12 text-lg text-gray-500 md:text-xl lg:text-2xl">
           Sorry, the page you are looking for could not be found.
         </p>
         <A
           href="/"
-          class="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-gray-100 px-4 py-2 rounded transition duration-150"
+          class="flex items-center space-x-2 rounded bg-blue-600 px-4 py-2 text-gray-100 transition duration-150 hover:bg-blue-700"
           title="Return Home"
         >
           <svg

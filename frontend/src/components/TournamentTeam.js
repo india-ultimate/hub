@@ -103,26 +103,26 @@ const TournamentTeam = () => {
       />
       <div class="flex justify-center">
         <img
-          class="w-24 h-24 p-1 rounded-full ring-2 ring-blue-600 dark:ring-blue-500 inline-block mr-3"
+          class="mr-3 inline-block h-24 w-24 rounded-full p-1 ring-2 ring-blue-600 dark:ring-blue-500"
           src={teamQuery.data?.image_url}
           alt="Bordered avatar"
         />
       </div>
 
-      <h1 class="text-center my-5">
-        <span class="font-extrabold text-transparent text-2xl bg-clip-text bg-gradient-to-r from-blue-500 to-green-500 w-fit">
+      <h1 class="my-5 text-center">
+        <span class="w-fit bg-gradient-to-r from-blue-500 to-green-500 bg-clip-text text-2xl font-extrabold text-transparent">
           {teamQuery.data?.name}
         </span>
       </h1>
 
-      <h2 class="text-center font-bold text-xl">Roster</h2>
+      <h2 class="text-center text-xl font-bold">Roster</h2>
 
       <For each={rosterQuery.data}>
         {player => (
-          <div class="flex my-5 px-6">
+          <div class="my-5 flex px-6">
             <span>
               <img
-                class="w-10 h-10 p-1 rounded-full ring-2 ring-gray-300 dark:ring-gray-500 inline-block mr-3"
+                class="mr-3 inline-block h-10 w-10 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
                 src={player.image_url}
                 alt="Bordered avatar"
               />
@@ -135,7 +135,7 @@ const TournamentTeam = () => {
         )}
       </For>
 
-      <h2 class="font-bold text-center text-xl my-5 mt-10 mb-10 underline underline-offset-8">
+      <h2 class="my-5 mb-10 mt-10 text-center text-xl font-bold underline underline-offset-8">
         Matches
       </h2>
 
@@ -144,7 +144,7 @@ const TournamentTeam = () => {
         {([tournamentDate, matches], idx) => (
           <div class="mb-10">
             <div class="mb-5 ml-1">
-              <h3 class="font-bold text-lg text-center">Day - {idx() + 1}</h3>
+              <h3 class="text-center text-lg font-bold">Day - {idx() + 1}</h3>
             </div>
             <For each={matches}>
               {match => (
@@ -156,7 +156,7 @@ const TournamentTeam = () => {
                 >
                   <div
                     class={clsx(
-                      "block py-2 px-1 bg-white border rounded-lg shadow dark:bg-gray-800 w-full mb-5",
+                      "mb-5 block w-full rounded-lg border bg-white px-1 py-2 shadow dark:bg-gray-800",
                       matchCardColorToBorderColorMap[matchOutcomeColor(match)]
                     )}
                   >

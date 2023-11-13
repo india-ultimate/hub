@@ -56,7 +56,7 @@ const WithUserData = props => {
             (store.userFetched && store?.data?.username && !canView())
           }
         >
-          <p class="text-lg md:text-xl lg:text-2xl text-gray-500 my-12">
+          <p class="my-12 text-lg text-gray-500 md:text-xl lg:text-2xl">
             Sorry, the page you want to view is only available to admins
           </p>
         </Match>

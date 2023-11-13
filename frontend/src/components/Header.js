@@ -32,27 +32,27 @@ export default function Header() {
 
   return (
     <div>
-      <nav class="border-gray-200 bg-gray-50 dark:bg-gray-800 dark:border-gray-700">
-        <div class="max-w-screen-xl flex flex-wrap items-center justify-between mx-auto p-4">
+      <nav class="border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800">
+        <div class="mx-auto flex max-w-screen-xl flex-wrap items-center justify-between p-4">
           <A href="/" class="flex items-center">
             <img
               src={assetURL("logo-vertical.png")}
-              class="h-8 mr-3 block dark:hidden"
+              class="mr-3 block h-8 dark:hidden"
               alt="India Ultimate Logo"
             />
             <img
               src={assetURL("white-logo-vertical.jpg")}
-              class="h-8 mr-3 hidden dark:block rounded"
+              class="mr-3 hidden h-8 rounded dark:block"
               alt="India Ultimate Logo"
             />
-            <span class="self-center text-2xl font-semibold whitespace-nowrap dark:text-white">
+            <span class="self-center whitespace-nowrap text-2xl font-semibold dark:text-white">
               Hub
             </span>
           </A>
           <div>
             <button
               type="button"
-              class="inline-flex items-center p-2 w-10 h-10 justify-center text-sm text-gray-500 rounded-lg md:hidden hover:bg-gray-100 focus:outline-none dark:text-gray-400 dark:hover:bg-gray-700 dark:focus:ring-gray-600"
+              class="inline-flex h-10 w-10 items-center justify-center rounded-lg p-2 text-sm text-gray-500 hover:bg-gray-100 focus:outline-none dark:text-gray-400 dark:hover:bg-gray-700 dark:focus:ring-gray-600 md:hidden"
               onClick={toggleTheme}
             >
               <Show
@@ -65,7 +65,7 @@ export default function Header() {
             <button
               data-collapse-toggle="navbar-solid-bg"
               type="button"
-              class="inline-flex items-center p-2 w-10 h-10 justify-center text-sm text-gray-500 rounded-lg md:hidden hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 dark:focus:ring-gray-600"
+              class="inline-flex h-10 w-10 items-center justify-center rounded-lg p-2 text-sm text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 dark:focus:ring-gray-600 md:hidden"
               aria-controls="navbar-solid-bg"
               aria-expanded="false"
             >
@@ -74,7 +74,7 @@ export default function Header() {
             </button>
           </div>
           <div class="hidden w-full md:block md:w-auto" id="navbar-solid-bg">
-            <ul class="flex flex-col font-medium mt-4 rounded-lg bg-gray-50 md:flex-row md:space-x-8 md:mt-0 md:border-0 md:bg-transparent dark:bg-gray-800 md:dark:bg-transparent dark:border-gray-700">
+            <ul class="mt-4 flex flex-col rounded-lg bg-gray-50 font-medium dark:border-gray-700 dark:bg-gray-800 md:mt-0 md:flex-row md:space-x-8 md:border-0 md:bg-transparent md:dark:bg-transparent">
               <li>
                 <A
                   href="/"
@@ -111,7 +111,7 @@ export default function Header() {
                   fallback={
                     <A
                       href="/login"
-                      class="block py-2 pl-3 pr-4 text-gray-900 rounded hover:bg-gray-100 md:hover:bg-transparent md:border-0 md:hover:text-blue-700 md:p-0 dark:text-white md:dark:hover:text-blue-500 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent"
+                      class="block rounded py-2 pl-3 pr-4 text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700 dark:hover:text-white md:border-0 md:p-0 md:hover:bg-transparent md:hover:text-blue-700 md:dark:hover:bg-transparent md:dark:hover:text-blue-500"
                     >
                       Login
                     </A>
@@ -119,7 +119,7 @@ export default function Header() {
                 >
                   <A
                     href=""
-                    class="block py-2 pl-3 pr-4 text-gray-900 rounded hover:bg-gray-100 md:hover:bg-transparent md:border-0 md:hover:text-blue-700 md:p-0 dark:text-white md:dark:hover:text-blue-500 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent"
+                    class="block rounded py-2 pl-3 pr-4 text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700 dark:hover:text-white md:border-0 md:p-0 md:hover:bg-transparent md:hover:text-blue-700 md:dark:hover:bg-transparent md:dark:hover:text-blue-500"
                     onClick={logout}
                   >
                     Logout
@@ -129,7 +129,7 @@ export default function Header() {
               <li>
                 <button
                   type="button"
-                  class="hidden md:block py-2 pl-3 pr-4 text-gray-900 rounded md:border-0 md:hover:text-blue-700 md:p-0 dark:text-white md:dark:hover:text-blue-500 focus:outline-none"
+                  class="hidden rounded py-2 pl-3 pr-4 text-gray-900 focus:outline-none dark:text-white md:block md:border-0 md:p-0 md:hover:text-blue-700 md:dark:hover:text-blue-500"
                   onClick={toggleTheme}
                 >
                   <Show

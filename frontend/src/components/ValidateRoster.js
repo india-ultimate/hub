@@ -42,8 +42,8 @@ const isPlayer = registration => {
 };
 
 const ValidationLegend = () => (
-  <ul class="w-80 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-    <li class="w-full px-4 py-2 border-b border-gray-200 rounded-t-lg dark:border-gray-600">
+  <ul class="w-80 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+    <li class="w-full rounded-t-lg border-b border-gray-200 px-4 py-2 dark:border-gray-600">
       <Icon
         path={noSymbol}
         style={{
@@ -53,7 +53,7 @@ const ValidationLegend = () => (
       />{" "}
       — Ultimate Central profile not linked to the Hub
     </li>
-    <li class="w-full px-4 py-2 border-b border-gray-200 dark:border-gray-600">
+    <li class="w-full border-b border-gray-200 px-4 py-2 dark:border-gray-600">
       <Icon
         path={currencyRupee}
         style={{
@@ -63,7 +63,7 @@ const ValidationLegend = () => (
       />
       — Membership Fee status
     </li>
-    <li class="w-full px-4 py-2 border-b border-gray-200 dark:border-gray-600">
+    <li class="w-full border-b border-gray-200 px-4 py-2 dark:border-gray-600">
       <Icon
         path={handThumbUp}
         style={{
@@ -73,7 +73,7 @@ const ValidationLegend = () => (
       />{" "}
       — Liability Waiver Signed
     </li>
-    <li class="w-full px-4 py-2 border-b border-gray-200 dark:border-gray-600">
+    <li class="w-full border-b border-gray-200 px-4 py-2 dark:border-gray-600">
       <Icon
         path={handThumbDown}
         style={{
@@ -83,7 +83,7 @@ const ValidationLegend = () => (
       />{" "}
       — Liability Waiver Not Signed
     </li>
-    <li class="w-full px-4 py-2 border-b border-gray-200 dark:border-gray-600">
+    <li class="w-full border-b border-gray-200 px-4 py-2 dark:border-gray-600">
       <Icon
         path={shieldCheck}
         style={{
@@ -93,7 +93,7 @@ const ValidationLegend = () => (
       />{" "}
       — Player Vaccinated
     </li>
-    <li class="w-full px-4 py-2 border-b border-gray-200 dark:border-gray-600">
+    <li class="w-full border-b border-gray-200 px-4 py-2 dark:border-gray-600">
       <Icon
         path={shieldExclamation}
         style={{
@@ -103,7 +103,7 @@ const ValidationLegend = () => (
       />{" "}
       — Player Not Vaccinated
     </li>
-    <li class="w-full px-4 py-2 border-b border-gray-200 dark:border-gray-600">
+    <li class="w-full border-b border-gray-200 px-4 py-2 dark:border-gray-600">
       <Icon
         path={documentCheck}
         style={{
@@ -113,7 +113,7 @@ const ValidationLegend = () => (
       />{" "}
       — Advanced Accreditation
     </li>
-    <li class="w-full px-4 py-2 border-b border-gray-200 dark:border-gray-600">
+    <li class="w-full border-b border-gray-200 px-4 py-2 dark:border-gray-600">
       <Icon
         path={document}
         style={{
@@ -123,7 +123,7 @@ const ValidationLegend = () => (
       />{" "}
       — Standard Accreditation
     </li>
-    <li class="w-full px-4 py-2 rounded-b-lg">
+    <li class="w-full rounded-b-lg px-4 py-2">
       <Icon
         path={xCircle}
         style={{
@@ -242,7 +242,7 @@ const ValidateRoster = () => {
         </h2>
         <select
           id="event"
-          class="my-4 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+          class="my-4 block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
           value={event()?.id}
           onInput={handleEventChange}
           required
@@ -267,7 +267,7 @@ const ValidateRoster = () => {
         </Match>
         <Match when={!loading() && !eventData() && status()}>
           <div
-            class="p-4 mb-4 text-sm text-red-800 rounded-lg bg-red-50 dark:bg-gray-800 dark:text-red-400"
+            class="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-800 dark:bg-gray-800 dark:text-red-400"
             role="alert"
           >
             {status()}
@@ -316,14 +316,14 @@ const ValidateRoster = () => {
             }
           >
             <div
-              class="p-4 mb-4 text-sm text-red-800 rounded-lg bg-red-50 dark:bg-gray-800 dark:text-red-400"
+              class="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-800 dark:bg-gray-800 dark:text-red-400"
               role="alert"
             >
               You do not have access to view any teams participating in this
               event!
             </div>
           </Show>
-          <div class="my-4 grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div class="my-4 grid grid-cols-2 gap-4 md:grid-cols-3">
             <For each={eventData()?.teams}>
               {team => {
                 const teamRegistrations = eventData()?.registrationsByTeam[
@@ -344,7 +344,7 @@ const ValidateRoster = () => {
                           <h4 class="text-l font-bold text-blue-300">
                             {matchUp.label}
                           </h4>
-                          <ul class="my-4 w-200 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                          <ul class="w-200 my-4 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
                             <For
                               each={teamRegistrations.filter(
                                 r =>
@@ -369,7 +369,7 @@ const ValidateRoster = () => {
                                 return (
                                   <li
                                     class={clsx(
-                                      "w-full px-4 py-2 border-b border-gray-200 rounded-t-lg dark:border-gray-600",
+                                      "w-full rounded-t-lg border-b border-gray-200 px-4 py-2 dark:border-gray-600",
                                       displayAge < minAge
                                         ? "bg-gray-100 dark:bg-gray-800"
                                         : ""
@@ -504,7 +504,7 @@ const ValidateRoster = () => {
                                     </Switch>
                                     <Show when={displayAge < minAge}>
                                       <p
-                                        class="text-sm text-red-800 rounded-lg bg-red-50 dark:bg-gray-800 dark:text-red-400"
+                                        class="rounded-lg bg-red-50 text-sm text-red-800 dark:bg-gray-800 dark:text-red-400"
                                         role="alert"
                                       >
                                         Under age: {displayAge} years old

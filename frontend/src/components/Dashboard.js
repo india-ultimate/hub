@@ -10,42 +10,42 @@ import { showPlayerStatus } from "../utils";
 
 const Actions = props => {
   return (
-    <div class="w-90 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+    <div class="w-90 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
       <Show when={!props.player}>
         <A
           href="/registration/me"
-          class="block w-full px-4 py-2 border-b border-gray-200 cursor-pointer hover:bg-gray-100 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 focus:text-blue-700 dark:border-gray-600 dark:hover:bg-gray-600 dark:hover:text-white dark:focus:ring-gray-500 dark:focus:text-white"
+          class="block w-full cursor-pointer border-b border-gray-200 px-4 py-2 hover:bg-gray-100 hover:text-blue-700 focus:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 dark:border-gray-600 dark:hover:bg-gray-600 dark:hover:text-white dark:focus:text-white dark:focus:ring-gray-500"
         >
           Register yourself as a player
         </A>
       </Show>
       <A
         href="/registration/ward"
-        class="block w-full px-4 py-2 border-b border-gray-200 cursor-pointer hover:bg-gray-100 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 focus:text-blue-700 dark:border-gray-600 dark:hover:bg-gray-600 dark:hover:text-white dark:focus:ring-gray-500 dark:focus:text-white"
+        class="block w-full cursor-pointer border-b border-gray-200 px-4 py-2 hover:bg-gray-100 hover:text-blue-700 focus:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 dark:border-gray-600 dark:hover:bg-gray-600 dark:hover:text-white dark:focus:text-white dark:focus:ring-gray-500"
       >
         Fill the membership form for a minor player as Guardian
       </A>
       <A
         href="/registration/others"
-        class="block w-full px-4 py-2 border-b border-gray-200 cursor-pointer hover:bg-gray-100 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 focus:text-blue-700 dark:border-gray-600 dark:hover:bg-gray-600 dark:hover:text-white dark:focus:ring-gray-500 dark:focus:text-white"
+        class="block w-full cursor-pointer border-b border-gray-200 px-4 py-2 hover:bg-gray-100 hover:text-blue-700 focus:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 dark:border-gray-600 dark:hover:bg-gray-600 dark:hover:text-white dark:focus:text-white dark:focus:ring-gray-500"
       >
         Fill the membership form for another player
       </A>
       <A
         href="/help#import-players-from-a-spreadsheet"
-        class="block w-full px-4 py-2 border-b border-gray-200 cursor-pointer hover:bg-gray-100 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 focus:text-blue-700 dark:border-gray-600 dark:hover:bg-gray-600 dark:hover:text-white dark:focus:ring-gray-500 dark:focus:text-white"
+        class="block w-full cursor-pointer border-b border-gray-200 px-4 py-2 hover:bg-gray-100 hover:text-blue-700 focus:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 dark:border-gray-600 dark:hover:bg-gray-600 dark:hover:text-white dark:focus:text-white dark:focus:ring-gray-500"
       >
         Import players information from a Spreadsheet
       </A>
       <A
         href="/membership/group"
-        class="block w-full px-4 py-2 border-b border-gray-200 cursor-pointer hover:bg-gray-100 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 focus:text-blue-700 dark:border-gray-600 dark:hover:bg-gray-600 dark:hover:text-white dark:focus:ring-gray-500 dark:focus:text-white"
+        class="block w-full cursor-pointer border-b border-gray-200 px-4 py-2 hover:bg-gray-100 hover:text-blue-700 focus:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 dark:border-gray-600 dark:hover:bg-gray-600 dark:hover:text-white dark:focus:text-white dark:focus:ring-gray-500"
       >
         Pay the membership fee for a group
       </A>
       <A
         href="/validate-rosters"
-        class="block w-full px-4 py-2 border-b border-gray-200 cursor-pointer hover:bg-gray-100 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 focus:text-blue-700 dark:border-gray-600 dark:hover:bg-gray-600 dark:hover:text-white dark:focus:ring-gray-500 dark:focus:text-white"
+        class="block w-full cursor-pointer border-b border-gray-200 px-4 py-2 hover:bg-gray-100 hover:text-blue-700 focus:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 dark:border-gray-600 dark:hover:bg-gray-600 dark:hover:text-white dark:focus:text-white dark:focus:ring-gray-500"
       >
         Validate your Team Roster for an event
       </A>
@@ -55,34 +55,34 @@ const Actions = props => {
 
 const StaffActions = () => {
   return (
-    <div class="w-90 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+    <div class="w-90 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
       <A
         href="/players"
-        class="block w-full px-4 py-2 border-b border-gray-200 cursor-pointer hover:bg-gray-100 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 focus:text-blue-700 dark:border-gray-600 dark:hover:bg-gray-600 dark:hover:text-white dark:focus:ring-gray-500 dark:focus:text-white"
+        class="block w-full cursor-pointer border-b border-gray-200 px-4 py-2 hover:bg-gray-100 hover:text-blue-700 focus:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 dark:border-gray-600 dark:hover:bg-gray-600 dark:hover:text-white dark:focus:text-white dark:focus:ring-gray-500"
       >
         View Registered players
       </A>
       <A
         href="/validate-rosters"
-        class="block w-full px-4 py-2 border-b border-gray-200 cursor-pointer hover:bg-gray-100 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 focus:text-blue-700 dark:border-gray-600 dark:hover:bg-gray-600 dark:hover:text-white dark:focus:ring-gray-500 dark:focus:text-white"
+        class="block w-full cursor-pointer border-b border-gray-200 px-4 py-2 hover:bg-gray-100 hover:text-blue-700 focus:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 dark:border-gray-600 dark:hover:bg-gray-600 dark:hover:text-white dark:focus:text-white dark:focus:ring-gray-500"
       >
         Validate Event Roster
       </A>
       <A
         href="/validate-transactions"
-        class="block w-full px-4 py-2 border-b border-gray-200 cursor-pointer hover:bg-gray-100 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 focus:text-blue-700 dark:border-gray-600 dark:hover:bg-gray-600 dark:hover:text-white dark:focus:ring-gray-500 dark:focus:text-white"
+        class="block w-full cursor-pointer border-b border-gray-200 px-4 py-2 hover:bg-gray-100 hover:text-blue-700 focus:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 dark:border-gray-600 dark:hover:bg-gray-600 dark:hover:text-white dark:focus:text-white dark:focus:ring-gray-500"
       >
         Validate Transactions
       </A>
       <A
         href="/check-memberships"
-        class="block w-full px-4 py-2 border-b border-gray-200 cursor-pointer hover:bg-gray-100 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 focus:text-blue-700 dark:border-gray-600 dark:hover:bg-gray-600 dark:hover:text-white dark:focus:ring-gray-500 dark:focus:text-white"
+        class="block w-full cursor-pointer border-b border-gray-200 px-4 py-2 hover:bg-gray-100 hover:text-blue-700 focus:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 dark:border-gray-600 dark:hover:bg-gray-600 dark:hover:text-white dark:focus:text-white dark:focus:ring-gray-500"
       >
         Check Membership Status
       </A>
       <A
         href="/tournament-manager"
-        class="block w-full px-4 py-2 border-b border-gray-200 cursor-pointer hover:bg-gray-100 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 focus:text-blue-700 dark:border-gray-600 dark:hover:bg-gray-600 dark:hover:text-white dark:focus:ring-gray-500 dark:focus:text-white"
+        class="block w-full cursor-pointer border-b border-gray-200 px-4 py-2 hover:bg-gray-100 hover:text-blue-700 focus:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 dark:border-gray-600 dark:hover:bg-gray-600 dark:hover:text-white dark:focus:text-white dark:focus:ring-gray-500"
       >
         Create / Manage Tournament
       </A>
@@ -95,13 +95,13 @@ const Dashboard = () => {
   return (
     <div>
       <div class="w-full">
-        <h2 class="flex items-center text-lg font-bold text-gray-900 text-center dark:text-white mb-5 mx-auto w-fit">
-          <Icon class="w-6 h-6 mr-2.5" path={inboxStack} />
+        <h2 class="mx-auto mb-5 flex w-fit items-center text-center text-lg font-bold text-gray-900 dark:text-white">
+          <Icon class="mr-2.5 h-6 w-6" path={inboxStack} />
           Dashboard
         </h2>
       </div>
 
-      <h1 class="text-2xl md:text-4xl font-bold mb-4 text-blue-500">
+      <h1 class="mb-4 text-2xl font-bold text-blue-500 md:text-4xl">
         Welcome <span>{store?.data?.full_name || store?.data?.username}</span>!
       </h1>
       <div
@@ -114,7 +114,7 @@ const Dashboard = () => {
           <h2 id="accordion-heading-player">
             <button
               type="button"
-              class="flex items-center justify-between w-full py-5 font-medium text-left text-gray-500 border-b border-gray-200 dark:border-gray-700 dark:text-gray-400"
+              class="flex w-full items-center justify-between border-b border-gray-200 py-5 text-left font-medium text-gray-500 dark:border-gray-700 dark:text-gray-400"
               data-accordion-target="#accordion-body-player"
               aria-expanded="true"
               aria-controls="accordion-body-player"
@@ -132,7 +132,7 @@ const Dashboard = () => {
             class="hidden"
             aria-labelledby="accordion-heading-player"
           >
-            <div class="py-5 border-b border-gray-200 dark:border-gray-700">
+            <div class="border-b border-gray-200 py-5 dark:border-gray-700">
               <Player player={store.data.player} />
             </div>
           </div>
@@ -144,7 +144,7 @@ const Dashboard = () => {
                 <h2 id={`accordion-heading-ward-${ward.id}`}>
                   <button
                     type="button"
-                    class="flex items-center justify-between w-full py-5 font-medium text-left text-gray-500 border-b border-gray-200 dark:border-gray-700 dark:text-gray-400"
+                    class="flex w-full items-center justify-between border-b border-gray-200 py-5 text-left font-medium text-gray-500 dark:border-gray-700 dark:text-gray-400"
                     data-accordion-target={`#accordion-body-ward-${ward.id}`}
                     aria-expanded={store?.data?.player ? "false" : "true"}
                     aria-controls={`accordion-body-ward-${ward.id}`}
@@ -161,7 +161,7 @@ const Dashboard = () => {
                   class="hidden"
                   aria-labelledby={`accordion-heading-ward-${ward.id}`}
                 >
-                  <div class="py-5 border-b border-gray-200 dark:border-gray-700">
+                  <div class="border-b border-gray-200 py-5 dark:border-gray-700">
                     <Player player={ward} />
                   </div>
                 </div>
@@ -172,7 +172,7 @@ const Dashboard = () => {
         <h2 id="accordion-heading-actions">
           <button
             type="button"
-            class="flex items-center justify-between w-full py-5 font-medium text-left text-gray-500 border-b border-gray-200 dark:border-gray-700 dark:text-gray-400"
+            class="flex w-full items-center justify-between border-b border-gray-200 py-5 text-left font-medium text-gray-500 dark:border-gray-700 dark:text-gray-400"
             data-accordion-target="#accordion-body-actions"
             aria-expanded={
               store?.data?.player || store?.data?.wards?.length > 0
@@ -190,7 +190,7 @@ const Dashboard = () => {
           class="hidden"
           aria-labelledby="accordion-heading-actions"
         >
-          <div class="py-5 border-b border-gray-200 dark:border-gray-700">
+          <div class="border-b border-gray-200 py-5 dark:border-gray-700">
             <Actions player={store.data.player} />
           </div>
         </div>
@@ -198,7 +198,7 @@ const Dashboard = () => {
           <h2 id="accordion-heading-staff">
             <button
               type="button"
-              class="flex items-center justify-between w-full py-5 font-medium text-left text-gray-500 border-b border-gray-200 dark:border-gray-700 dark:text-gray-400"
+              class="flex w-full items-center justify-between border-b border-gray-200 py-5 text-left font-medium text-gray-500 dark:border-gray-700 dark:text-gray-400"
               data-accordion-target="#accordion-body-staff"
               aria-expanded="false"
               aria-controls="accordion-body-staff"
@@ -212,7 +212,7 @@ const Dashboard = () => {
             class="hidden"
             aria-labelledby="accordion-heading-staff"
           >
-            <div class="py-5 border-b border-gray-200 dark:border-gray-700">
+            <div class="border-b border-gray-200 py-5 dark:border-gray-700">
               <StaffActions player={store.data.player} />
             </div>
           </div>
@@ -220,7 +220,7 @@ const Dashboard = () => {
         <h2 id="accordion-heading-transactions">
           <button
             type="button"
-            class="flex items-center justify-between w-full py-5 font-medium text-left text-gray-500 border-b border-gray-200 dark:border-gray-700 dark:text-gray-400"
+            class="flex w-full items-center justify-between border-b border-gray-200 py-5 text-left font-medium text-gray-500 dark:border-gray-700 dark:text-gray-400"
             data-accordion-target="#accordion-body-transactions"
             aria-expanded="false"
             aria-controls="accordion-body-transactions"
@@ -234,7 +234,7 @@ const Dashboard = () => {
           class="hidden"
           aria-labelledby="accordion-heading-transactions"
         >
-          <div class="py-5 border-b border-gray-200 dark:border-gray-700">
+          <div class="border-b border-gray-200 py-5 dark:border-gray-700">
             <TransactionList />
           </div>
         </div>

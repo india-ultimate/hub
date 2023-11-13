@@ -45,15 +45,15 @@ const StatusStepper = props => {
   const { status, percent } = getStatusAndPercent(props?.player);
   return (
     <div class="my-8">
-      <div class="flex justify-between my-4">
-        <span class="text-base font-medium dark:text-white text-center">
+      <div class="my-4 flex justify-between">
+        <span class="text-center text-base font-medium dark:text-white">
           <div class="text-4xl font-bold text-gray-900 dark:text-white">
             {percent}%
           </div>
           of the profile is complete
         </span>
         <div class="w-full">
-          <div class="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+          <div class="h-2.5 w-full rounded-full bg-gray-200 dark:bg-gray-700">
             <div
               class={clsx(
                 percent < 100 ? "bg-red-400" : "bg-green-600",
@@ -67,7 +67,7 @@ const StatusStepper = props => {
               <p class="text-md mt-2">
                 Complete the profile to participate in India Ultimate events
               </p>
-              <p class="text-xs mt-2">
+              <p class="mt-2 text-xs">
                 You can click on the incomplete steps (indicated in red) below,
                 to complete those steps.
               </p>
@@ -78,7 +78,7 @@ const StatusStepper = props => {
           </Switch>
         </div>
       </div>
-      <ol class="items-center w-full md:flex md:space-x-8 space-y-4 md:space-y-0 mt-2">
+      <ol class="mt-2 w-full items-center space-y-4 md:flex md:space-x-8 md:space-y-0">
         <Step
           title="Profile Info"
           link={`/edit/registration/${props.player.id}`}

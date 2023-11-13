@@ -4,7 +4,7 @@ import { For, Show } from "solid-js";
 
 const Breadcrumbs = props => {
   return (
-    <nav class="flex mb-5" aria-label="Breadcrumb">
+    <nav class="mb-5 flex" aria-label="Breadcrumb">
       <ol class="inline-flex items-center space-x-1 md:space-x-3">
         <For each={props.pageList}>
           {(page, i) => (
@@ -14,9 +14,9 @@ const Breadcrumbs = props => {
                 <li class="inline-flex items-center">
                   <a
                     href={page.url}
-                    class="inline-flex items-center text-sm font-medium text-gray-900 bg-white border border-gray-300 hover:bg-gray-100 rounded-full px-3 py-1 text-center dark:bg-gray-800 dark:text-white dark:border-gray-600 dark:hover:bg-gray-700 dark:hover:border-gray-600"
+                    class="inline-flex items-center rounded-full border border-gray-300 bg-white px-3 py-1 text-center text-sm font-medium text-gray-900 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:border-gray-600 dark:hover:bg-gray-700"
                   >
-                    <Icon class="w-3 h-3 mr-2.5" path={props.icon} />
+                    <Icon class="mr-2.5 h-3 w-3" path={props.icon} />
                     {page.name}
                   </a>
                 </li>
@@ -25,20 +25,20 @@ const Breadcrumbs = props => {
               <li>
                 <div class="flex items-center">
                   <Icon
-                    class="w-3 h-3 text-gray-400 mx-1"
+                    class="mx-1 h-3 w-3 text-gray-400"
                     path={chevronRight}
                   />
                   <Show
                     when={page.url}
                     fallback={
-                      <span class="ml-1 text-sm font-medium text-gray-500 md:ml-2 dark:text-gray-400">
+                      <span class="ml-1 text-sm font-medium text-gray-500 dark:text-gray-400 md:ml-2">
                         {page.name}
                       </span>
                     }
                   >
                     <a
                       href={page.url}
-                      class="ml-1 text-sm font-medium text-gray-900 bg-white border border-gray-300 hover:bg-gray-100 rounded-full px-3 py-1 text-center dark:bg-gray-800 dark:text-white dark:border-gray-600 dark:hover:bg-gray-700 dark:hover:border-gray-600"
+                      class="ml-1 rounded-full border border-gray-300 bg-white px-3 py-1 text-center text-sm font-medium text-gray-900 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:border-gray-600 dark:hover:bg-gray-700"
                     >
                       {page.name}
                     </a>
