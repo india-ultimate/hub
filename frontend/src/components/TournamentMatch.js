@@ -10,6 +10,9 @@ import MatchSpiritScoreForm from "./tournament/MatchSpiritScoreForm";
 import SpiritScoreTable from "./tournament/SpiritScoreTable";
 import MatchCard from "./tournament/MatchCard";
 
+import { clsx } from "clsx";
+import { matchCardColorToRingColorMap } from "../colors";
+import { getMatchCardColor } from "../utils";
 /**
  * Returns a match block between 2 teams.
  * If a team should appear first, pass `currentTeamNo` = team id in match object (1 or 2).
@@ -93,11 +96,14 @@ const TournamentMatch = props => {
           }
         >
           <img
-            class="w-6 h-6 p-1 rounded-full ring-2 ring-blue-500 dark:ring-blue-400 inline-block mr-1"
+            class={clsx(
+              "w-6 h-6 p-1 rounded-full ring-2 inline-block mr-1",
+              matchCardColorToRingColorMap[getMatchCardColor(props.match)]
+            )}
             src={teamsMap()[props.match[`team_${currTeamNo()}`].id]?.image_url}
             alt="Bordered avatar"
           />
-          <span class="w-1/3 text-center font-bold dark:text-blue-400 text-blue-500">
+          <span class="w-1/3 text-center font-bold text-gray-600 dark:text-gray-300">
             <Show
               when={props.bothTeamsClickable}
               fallback={
@@ -126,7 +132,7 @@ const TournamentMatch = props => {
             </span>
           }
         >
-          <span class="w-1/3 text-center font-bold dark:text-blue-400 text-blue-500">
+          <span class="w-1/3 text-center font-medium text-gray-600 dark:text-gray-300">
             <A
               href={`/tournament/${props.tournamentSlug}/team/${
                 props.match[`team_${oppTeamNo()}`].ultimate_central_slug
@@ -138,7 +144,10 @@ const TournamentMatch = props => {
           </span>
 
           <img
-            class="w-6 h-6 p-1 rounded-full ring-2 ring-blue-500 dark:ring-blue-400 inline-block ml-1"
+            class={clsx(
+              "w-6 h-6 p-1 rounded-full ring-2 inline-block mr-1",
+              matchCardColorToRingColorMap[getMatchCardColor(props.match)]
+            )}
             src={teamsMap()[props.match[`team_${oppTeamNo()}`].id]?.image_url}
             alt="Bordered avatar"
           />
