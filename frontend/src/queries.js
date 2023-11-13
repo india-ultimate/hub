@@ -475,6 +475,26 @@ export const submitMatchScore = async ({ match_id, body }) => {
   return data;
 };
 
+export const submitMatchSpiritScore = async ({ match_id, body }) => {
+  const response = await fetch(`/api/match/${match_id}/submit-spirit-score`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin",
+    body: JSON.stringify(body)
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.message || JSON.stringify(data));
+  }
+
+  return data;
+};
+
 export const addMatchSpiritScore = async ({ match_id, body }) => {
   const response = await fetch(`/api/match/${match_id}/update`, {
     method: "POST",
