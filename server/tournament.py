@@ -9,11 +9,14 @@ from server.models import (
     Player,
     Pool,
     PositionPool,
+    SpiritScore,
     Team,
     Tournament,
+    UCPerson,
     UCRegistration,
     User,
 )
+from server.schema import SpiritScoreUpdateSchema
 
 ROLES_ELIGIBLE_TO_SUBMIT_SCORES = ["captain", "admin", "spirit captain", "coach"]
 
@@ -539,13 +542,18 @@ def update_tournament_spirit_rankings(tournament: Tournament) -> None:
             Q(team_1=team) | Q(team_2=team)
         )
         points = 0.0
+        self_points = 0.0
         matches_count = 0
 
         for match in team_matches:
             if match.team_1 is None or match.team_2 is None:
                 continue
 
-            if match.team_1.id == team.id and match.spirit_score_team_1:
+            if (
+                match.team_1.id == team.id
+                and match.spirit_score_team_1
+                and match.self_spirit_score_team_1
+            ):
                 spirit_score = match.spirit_score_team_1
                 points += (
                     float(spirit_score.rules)
@@ -554,8 +562,22 @@ def update_tournament_spirit_rankings(tournament: Tournament) -> None:
                     + float(spirit_score.positive)
                     + float(spirit_score.communication)
                 )
+
+                self_spirit_score = match.self_spirit_score_team_1
+                self_points += (
+                    float(self_spirit_score.rules)
+                    + float(self_spirit_score.fouls)
+                    + float(self_spirit_score.fair)
+                    + float(self_spirit_score.positive)
+                    + float(self_spirit_score.communication)
+                )
+
                 matches_count += 1
-            elif match.team_2.id == team.id and match.spirit_score_team_2:
+            elif (
+                match.team_2.id == team.id
+                and match.spirit_score_team_2
+                and match.self_spirit_score_team_2
+            ):
                 spirit_score = match.spirit_score_team_2
                 points += (
                     float(spirit_score.rules)
@@ -564,12 +586,25 @@ def update_tournament_spirit_rankings(tournament: Tournament) -> None:
                     + float(spirit_score.positive)
                     + float(spirit_score.communication)
                 )
+
+                self_spirit_score = match.self_spirit_score_team_2
+                self_points += (
+                    float(self_spirit_score.rules)
+                    + float(self_spirit_score.fouls)
+                    + float(self_spirit_score.fair)
+                    + float(self_spirit_score.positive)
+                    + float(self_spirit_score.communication)
+                )
+
                 matches_count += 1
 
         spirit_ranking.append(
             {
                 "team_id": team.id,
                 "points": round(points / matches_count, ndigits=1) if matches_count > 0 else points,
+                "self_points": round(self_points / matches_count, ndigits=1)
+                if matches_count > 0
+                else self_points,
             }
         )
 
@@ -633,6 +668,27 @@ def is_submitted_scores_equal(match: Match) -> bool:
         return True
 
     return False
+
+
+def create_spirit_scores(spirit_score: SpiritScoreUpdateSchema) -> SpiritScore:
+    score = SpiritScore(
+        rules=spirit_score.rules,
+        fouls=spirit_score.fouls,
+        fair=spirit_score.fair,
+        positive=spirit_score.positive,
+        communication=spirit_score.communication,
+    )
+
+    if spirit_score.mvp_id:
+        mvp = UCPerson.objects.get(id=spirit_score.mvp_id)
+        score.mvp = mvp
+
+    if spirit_score.msp_id:
+        msp = UCPerson.objects.get(id=spirit_score.msp_id)
+        score.msp = msp
+
+    score.save()
+    return score
 
 
 # Helper Functions #####################

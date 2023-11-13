@@ -43,7 +43,6 @@ from server.models import (
     Pool,
     PositionPool,
     RazorpayTransaction,
-    SpiritScore,
     Team,
     Tournament,
     UCPerson,
@@ -97,6 +96,7 @@ from server.schema import (
     RegistrationSchema,
     RegistrationWardSchema,
     Response,
+    SpiritScoreSubmitSchema,
     TeamSchema,
     TopScoreCredentials,
     TournamentCreateSchema,
@@ -118,6 +118,7 @@ from server.tournament import (
     create_bracket_matches,
     create_pool_matches,
     create_position_pool_matches,
+    create_spirit_scores,
     is_submitted_scores_equal,
     populate_fixtures,
     update_match_score_and_results,
@@ -1623,50 +1624,48 @@ def update_match(
         match.video_url = match_details.video_url
 
     if match_details.spirit_score_team_1:
-        spirit_score = SpiritScore(
-            rules=match_details.spirit_score_team_1.rules,
-            fouls=match_details.spirit_score_team_1.fouls,
-            fair=match_details.spirit_score_team_1.fair,
-            positive=match_details.spirit_score_team_1.positive,
-            communication=match_details.spirit_score_team_1.communication,
-        )
-
-        if match_details.spirit_score_team_1.mvp_id:
-            mvp = UCPerson.objects.get(id=match_details.spirit_score_team_1.mvp_id)
-            spirit_score.mvp = mvp
-
-        if match_details.spirit_score_team_1.msp_id:
-            msp = UCPerson.objects.get(id=match_details.spirit_score_team_1.msp_id)
-            spirit_score.msp = msp
-
-        spirit_score.save()
-
-        match.spirit_score_team_1 = spirit_score
+        match.spirit_score_team_1 = create_spirit_scores(match_details.spirit_score_team_1)
 
     if match_details.spirit_score_team_2:
-        spirit_score = SpiritScore(
-            rules=match_details.spirit_score_team_2.rules,
-            fouls=match_details.spirit_score_team_2.fouls,
-            fair=match_details.spirit_score_team_2.fair,
-            positive=match_details.spirit_score_team_2.positive,
-            communication=match_details.spirit_score_team_2.communication,
-        )
+        match.spirit_score_team_2 = create_spirit_scores(match_details.spirit_score_team_2)
 
-        if match_details.spirit_score_team_2.mvp_id:
-            mvp = UCPerson.objects.get(id=match_details.spirit_score_team_2.mvp_id)
-            spirit_score.mvp = mvp
-
-        if match_details.spirit_score_team_2.msp_id:
-            msp = UCPerson.objects.get(id=match_details.spirit_score_team_2.msp_id)
-            spirit_score.msp = msp
-
-        spirit_score.save()
-
-        match.spirit_score_team_2 = spirit_score
+    match.save()
 
     if match_details.spirit_score_team_1 or match_details.spirit_score_team_2:
         update_tournament_spirit_rankings(match.tournament)
 
-    match.save()
+    return 200, match
 
+
+@api.post(
+    "/match/{match_id}/submit-spirit-score",
+    response={200: MatchSchema, 400: Response, 401: Response},
+)
+def submit_match_spirit_score(
+    request: AuthenticatedHttpRequest, match_id: int, spirit_score: SpiritScoreSubmitSchema
+) -> tuple[int, Match] | tuple[int, message_response]:
+    try:
+        match = Match.objects.get(id=match_id)
+    except Match.DoesNotExist:
+        return 400, {"message": "Match does not exist"}
+
+    if match.status != Match.Status.COMPLETED:
+        return 400, {
+            "message": "Match spirit score can be submitted only after scores are submitted"
+        }
+
+    is_authorised, team_id = can_submit_match_score(match, request.user)
+
+    if not is_authorised:
+        return 401, {"message": "User not authorised to add score for this match"}
+
+    if match.team_1 is not None and match.team_1.id == team_id:
+        match.spirit_score_team_2 = create_spirit_scores(spirit_score.opponent)
+        match.self_spirit_score_team_1 = create_spirit_scores(spirit_score.self)
+    elif match.team_2 is not None and match.team_2.id == team_id:
+        match.spirit_score_team_1 = create_spirit_scores(spirit_score.opponent)
+        match.self_spirit_score_team_2 = create_spirit_scores(spirit_score.self)
+
+    match.save()
+    update_tournament_spirit_rankings(match.tournament)
     return 200, match
