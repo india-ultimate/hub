@@ -1318,3 +1318,104 @@ class TestTournaments(ApiBaseTestCase):
         data = response.json()
         self.assertEqual(False, data["team_admin"])
         self.assertEqual(None, data["team_id"])
+
+    def test_valid_submit_spirit_score(self) -> None:
+        valid_matches = Match.objects.filter(tournament=self.tournament).filter(
+            Q(team_1=self.teams[0]) | Q(team_2=self.teams[0])
+        )
+        valid_match = valid_matches[0]
+        valid_match.status = Match.Status.COMPLETED
+        valid_match.save()
+
+        self.client.force_login(self.user)
+        c = self.client
+        response = c.post(
+            f"/api/match/{valid_match.id}/submit-spirit-score",
+            data={
+                "opponent": {
+                    "rules": 2,
+                    "fouls": 3,
+                    "fair": 2,
+                    "positive": 2,
+                    "communication": 2,
+                    "msp_id": self.player2.ultimate_central_id,
+                    "mvp_id": self.player2.ultimate_central_id,
+                },
+                "self": {
+                    "rules": 2,
+                    "fouls": 2,
+                    "fair": 2,
+                    "positive": 2,
+                    "communication": 2,
+                },
+            },
+            content_type="application/json",
+        )
+        match = response.json()
+        self.assertEqual(200, response.status_code)
+        self.assertEqual(2, match["spirit_score_team_2"]["rules"])
+        self.assertEqual(3, match["spirit_score_team_2"]["fouls"])
+        self.assertEqual(
+            self.player2.ultimate_central_id, match["spirit_score_team_2"]["mvp"]["id"]
+        )
+        self.assertEqual(2, match["self_spirit_score_team_1"]["rules"])
+        self.assertEqual(2, match["self_spirit_score_team_1"]["fouls"])
+
+        self.client.force_login(self.user2)
+        c = self.client
+        response = c.post(
+            f"/api/match/{valid_match.id}/submit-spirit-score",
+            data={
+                "opponent": {
+                    "rules": 1,
+                    "fouls": 2,
+                    "fair": 2,
+                    "positive": 2,
+                    "communication": 2,
+                    "msp_id": self.player.ultimate_central_id,
+                    "mvp_id": self.player.ultimate_central_id,
+                },
+                "self": {"rules": 3, "fouls": 2, "fair": 2, "positive": 2, "communication": 2},
+            },
+            content_type="application/json",
+        )
+        match = response.json()
+        self.assertEqual(200, response.status_code)
+        self.assertEqual(1, match["spirit_score_team_1"]["rules"])
+        self.assertEqual(2, match["spirit_score_team_1"]["fouls"])
+        self.assertEqual(self.player.ultimate_central_id, match["spirit_score_team_1"]["mvp"]["id"])
+        self.assertEqual(3, match["self_spirit_score_team_2"]["rules"])
+        self.assertEqual(2, match["self_spirit_score_team_2"]["fouls"])
+
+        expected_tournament_spirit_ranking = [
+            {"team_id": 2, "points": 11.0, "self_points": 11.0, "rank": 1},
+            {"team_id": 1, "points": 9.0, "self_points": 10.0, "rank": 2},
+            {"team_id": 3, "points": 0.0, "self_points": 0.0, "rank": 3},
+            {"team_id": 4, "points": 0.0, "self_points": 0.0, "rank": 3},
+            {"team_id": 5, "points": 0.0, "self_points": 0.0, "rank": 3},
+            {"team_id": 6, "points": 0.0, "self_points": 0.0, "rank": 3},
+            {"team_id": 7, "points": 0.0, "self_points": 0.0, "rank": 3},
+            {"team_id": 8, "points": 0.0, "self_points": 0.0, "rank": 3},
+            {"team_id": 9, "points": 0.0, "self_points": 0.0, "rank": 3},
+            {"team_id": 10, "points": 0.0, "self_points": 0.0, "rank": 3},
+            {"team_id": 11, "points": 0.0, "self_points": 0.0, "rank": 3},
+            {"team_id": 12, "points": 0.0, "self_points": 0.0, "rank": 3},
+            {"team_id": 13, "points": 0.0, "self_points": 0.0, "rank": 3},
+            {"team_id": 14, "points": 0.0, "self_points": 0.0, "rank": 3},
+        ]
+
+        print(match["tournament"]["spirit_ranking"])
+        self.assertEqual(expected_tournament_spirit_ranking, match["tournament"]["spirit_ranking"])
+
+    def test_invalid_submit_spirit_score(self) -> None:
+        invalid_matches = Match.objects.filter(tournament=self.tournament).filter(
+            placeholder_seed_1=2, placeholder_seed_2=3
+        )
+
+        c = self.client
+        response = c.post(
+            f"/api/match/{invalid_matches[0].id}/submit-spirit-score",
+            data={"rules": 2, "fouls": 2, "fair": 2, "positive": 2, "communication": 2},
+            content_type="application/json",
+        )
+        self.assertEqual(401, response.status_code)

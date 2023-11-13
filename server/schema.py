@@ -596,6 +596,8 @@ class MatchSchema(ModelSchema):
     team_2: TeamSchema | None
     spirit_score_team_1: SpiritScoreSchema | None
     spirit_score_team_2: SpiritScoreSchema | None
+    self_spirit_score_team_1: SpiritScoreSchema | None
+    self_spirit_score_team_2: SpiritScoreSchema | None
     suggested_score_team_1: MatchScoreModelSchema | None
     suggested_score_team_2: MatchScoreModelSchema | None
 
@@ -623,6 +625,11 @@ class SpiritScoreUpdateSchema(Schema):
 
     mvp_id: str | None
     msp_id: str | None
+
+
+class SpiritScoreSubmitSchema(Schema):
+    opponent: SpiritScoreUpdateSchema
+    self: SpiritScoreUpdateSchema
 
 
 class MatchUpdateSchema(Schema):
