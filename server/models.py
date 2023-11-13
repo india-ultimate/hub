@@ -313,6 +313,21 @@ class Match(models.Model):
         null=True,
     )
 
+    self_spirit_score_team_1 = models.OneToOneField(
+        SpiritScore,
+        on_delete=models.CASCADE,
+        related_name="self_spirit_score_team_1",
+        blank=True,
+        null=True,
+    )
+    self_spirit_score_team_2 = models.OneToOneField(
+        SpiritScore,
+        on_delete=models.CASCADE,
+        related_name="self_spirit_score_team_2",
+        blank=True,
+        null=True,
+    )
+
     class Meta:
         unique_together = ["tournament", "time", "field"]
 
