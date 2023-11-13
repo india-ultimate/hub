@@ -7,6 +7,7 @@ import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import MatchScoreForm from "./tournament/MatchScoreForm";
 import { initFlowbite } from "flowbite";
 import MatchSpiritScoreForm from "./tournament/MatchSpiritScoreForm";
+import MatchCard from "./tournament/MatchCard";
 
 /**
  * Returns a match block between 2 teams.
@@ -78,24 +79,9 @@ const TournamentMatch = props => {
 
   return (
     <>
-      <Switch>
-        <Match when={props.match.pool}>
-          <p class="text-center text-sm mb-2">Pool - {props.match.pool.name}</p>
-        </Match>
-        <Match when={props.match.cross_pool}>
-          <p class="text-center text-sm mb-2">Cross Pool</p>
-        </Match>
-        <Match when={props.match.bracket}>
-          <p class="text-center text-sm mb-2">
-            Bracket - {props.match.bracket.name}
-          </p>
-        </Match>
-        <Match when={props.match.position_pool}>
-          <p class="text-center text-sm mb-2">
-            Position Pool - {props.match.position_pool.name}
-          </p>
-        </Match>
-      </Switch>
+      <div class="mb-4">
+        <MatchCard match={props.match} dontMinimiseMatchName />
+      </div>
       <div class="flex justify-center text-sm">
         <Show
           when={props.match[`team_${currTeamNo()}`]}
