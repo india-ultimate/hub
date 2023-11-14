@@ -626,6 +626,8 @@ class SpiritScoreUpdateSchema(Schema):
     mvp_id: str | None
     msp_id: str | None
 
+    comments: str | None
+
 
 class SpiritScoreSubmitSchema(Schema):
     opponent: SpiritScoreUpdateSchema

@@ -1363,6 +1363,7 @@ class TestTournaments(ApiBaseTestCase):
                     "fair": 2,
                     "positive": 2,
                     "communication": 2,
+                    "comments": "Good game!",
                 },
             },
             content_type="application/json",
@@ -1376,6 +1377,7 @@ class TestTournaments(ApiBaseTestCase):
         )
         self.assertEqual(2, match["self_spirit_score_team_1"]["rules"])
         self.assertEqual(2, match["self_spirit_score_team_1"]["fouls"])
+        self.assertEqual("Good game!", match["self_spirit_score_team_1"]["comments"])
 
         self.client.force_login(self.user2)
         c = self.client
