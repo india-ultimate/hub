@@ -151,7 +151,7 @@ class Event(models.Model):
     start_date = models.DateField()
     end_date = models.DateField()
     ultimate_central_id = models.PositiveIntegerField(unique=True, null=True, blank=True)
-    ultimate_central_slug = models.SlugField(default="unknown")
+    ultimate_central_slug = models.SlugField(max_length=200, default="unknown")
     location = models.CharField(max_length=255, default="unknown")
 
 
