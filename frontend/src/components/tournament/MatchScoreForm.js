@@ -1,9 +1,10 @@
 import { createForm, required } from "@modular-forms/solid";
-import { createSignal, Show } from "solid-js";
-import { initFlowbite } from "flowbite";
-import TextInput from "../TextInput";
 import { createMutation } from "@tanstack/solid-query";
+import { initFlowbite } from "flowbite";
+import { createSignal, Show } from "solid-js";
+
 import { submitMatchScore } from "../../queries";
+import TextInput from "../TextInput";
 
 const MatchScoreForm = componentProps => {
   const initialValues = {

@@ -1,37 +1,38 @@
+import { createQuery } from "@tanstack/solid-query";
+import { initFlowbite } from "flowbite";
+import { Icon } from "solid-heroicons";
+import { inboxStack } from "solid-heroicons/solid";
+import { magnifyingGlass } from "solid-heroicons/solid-mini";
 import {
-  createSignal,
   createEffect,
-  onMount,
+  createSignal,
   For,
-  Switch,
   Match,
+  onMount,
   Show,
-  Suspense
+  Suspense,
+  Switch
 } from "solid-js";
+
+import {
+  annualMembershipFee,
+  membershipEndDate,
+  membershipStartDate,
+  minAge,
+  minAgeWarning,
+  sponsoredAnnualMembershipFee
+} from "../constants";
+import { fetchPlayers } from "../queries";
+import PlayersSkeleton from "../skeletons/Players";
 import {
   displayDate,
   fetchUrl,
   membershipYearOptions,
   playerMatches
 } from "../utils";
-import {
-  membershipStartDate,
-  membershipEndDate,
-  annualMembershipFee,
-  sponsoredAnnualMembershipFee,
-  minAge,
-  minAgeWarning
-} from "../constants";
-import MembershipPlayerList from "./MembershipPlayerList";
-import { Icon } from "solid-heroicons";
-import { magnifyingGlass } from "solid-heroicons/solid-mini";
-import { inboxStack } from "solid-heroicons/solid";
 import Breadcrumbs from "./Breadcrumbs";
+import MembershipPlayerList from "./MembershipPlayerList";
 import PhonePePayment from "./PhonePePayment";
-import { initFlowbite } from "flowbite";
-import { createQuery } from "@tanstack/solid-query";
-import { fetchPlayers } from "../queries";
-import PlayersSkeleton from "../skeletons/Players";
 
 const PlayerSearchDropdown = props => {
   const query = createQuery(() => ["players"], fetchPlayers, {

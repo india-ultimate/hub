@@ -1,22 +1,23 @@
+import { A } from "@solidjs/router";
 import clsx from "clsx";
-import { For, createSignal, createEffect, Show, Match, Switch } from "solid-js";
-import { onMount } from "solid-js";
-import { fetchUrl, getAge, getLabel } from "../utils";
-import { useStore } from "../store";
 import { Icon } from "solid-heroicons";
-import { minAge, accreditationChoices, matchUpChoices } from "../constants";
 import {
-  noSymbol,
   currencyRupee,
-  handThumbUp,
-  handThumbDown,
-  shieldCheck,
-  shieldExclamation,
   document,
   documentCheck,
+  handThumbDown,
+  handThumbUp,
+  noSymbol,
+  shieldCheck,
+  shieldExclamation,
   xCircle
 } from "solid-heroicons/solid-mini";
-import { A } from "@solidjs/router";
+import { createEffect, createSignal, For, Match, Show, Switch } from "solid-js";
+import { onMount } from "solid-js";
+
+import { accreditationChoices, matchUpChoices, minAge } from "../constants";
+import { useStore } from "../store";
+import { fetchUrl, getAge, getLabel } from "../utils";
 
 const groupByTeam = registrations => {
   const teamsMap = registrations?.reduce(

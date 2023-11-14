@@ -1,18 +1,19 @@
-import { useStore } from "../store";
+import { createForm, maxRange, minRange, required } from "@modular-forms/solid";
 import { useParams } from "@solidjs/router";
-import { createSignal, createEffect, Show } from "solid-js";
+import { Icon } from "solid-heroicons";
+import { inboxStack } from "solid-heroicons/solid";
+import { pencilSquare } from "solid-heroicons/solid-mini";
+import { createEffect, createSignal, Show } from "solid-js";
+
 import { accreditationChoices } from "../constants";
-import { getCookie, getPlayer, displayDate } from "../utils";
-import { createForm, required, maxRange, minRange } from "@modular-forms/solid";
+import { useStore } from "../store";
+import { displayDate, getCookie, getPlayer } from "../utils";
+import { getLabel } from "../utils";
+import Breadcrumbs from "./Breadcrumbs";
+import FileInput from "./FileInput";
+import Select from "./Select";
 import StatusStepper from "./StatusStepper";
 import TextInput from "./TextInput";
-import Select from "./Select";
-import FileInput from "./FileInput";
-import { Icon } from "solid-heroicons";
-import { pencilSquare } from "solid-heroicons/solid-mini";
-import Breadcrumbs from "./Breadcrumbs";
-import { inboxStack } from "solid-heroicons/solid";
-import { getLabel } from "../utils";
 
 const AccreditationInformation = props => {
   const url = (

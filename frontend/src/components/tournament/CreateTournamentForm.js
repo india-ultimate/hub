@@ -1,13 +1,14 @@
 import { createForm, required } from "@modular-forms/solid";
-import { createEffect, createSignal, Show } from "solid-js";
 import {
   createMutation,
   createQuery,
   useQueryClient
 } from "@tanstack/solid-query";
+import { createEffect, createSignal, Show } from "solid-js";
+
 import { createTournament, fetchEvents } from "../../queries";
-import Select from "../Select";
 import FileInput from "../FileInput";
+import Select from "../Select";
 
 const CreateTournamentForm = () => {
   const queryClient = useQueryClient();

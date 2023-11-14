@@ -1,6 +1,7 @@
-import { getCookie } from "../utils";
 import { createSignal, Show } from "solid-js";
+
 import { Spinner } from "../icons";
+import { getCookie } from "../utils";
 import ManualPaymentModal from "./ManualPaymentModal";
 
 const PhonePePayment = props => {

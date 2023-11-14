@@ -1,9 +1,21 @@
-import { useStore } from "../store";
 import {
   createMutation,
   createQuery,
   useQueryClient
 } from "@tanstack/solid-query";
+import clsx from "clsx";
+import { initFlowbite } from "flowbite";
+import {
+  createEffect,
+  createSignal,
+  For,
+  Match,
+  onMount,
+  Show,
+  Switch
+} from "solid-js";
+import { createStore, reconcile } from "solid-js/store";
+
 import {
   addMatchScore,
   createBracket,
@@ -24,22 +36,11 @@ import {
   updateMatch,
   updateSeeding
 } from "../queries";
-import {
-  createEffect,
-  createSignal,
-  For,
-  Match,
-  onMount,
-  Show,
-  Switch
-} from "solid-js";
-import { createStore, reconcile } from "solid-js/store";
-import MatchCard from "./tournament/MatchCard";
+import { useStore } from "../store";
 import CreateTournamentForm from "./tournament/CreateTournamentForm";
-import UpdateSpiritScoreForm from "./tournament/UpdateSpiritScoreForm";
-import { initFlowbite } from "flowbite";
-import clsx from "clsx";
+import MatchCard from "./tournament/MatchCard";
 import ReorderTeams from "./tournament/ReorderTeams";
+import UpdateSpiritScoreForm from "./tournament/UpdateSpiritScoreForm";
 
 const TournamentManager = () => {
   const queryClient = useQueryClient();

@@ -1,12 +1,13 @@
+import { createForm, required } from "@modular-forms/solid";
+import QRious from "qrious";
 import { Icon } from "solid-heroicons";
 import { xMark } from "solid-heroicons/solid-mini";
-import { getCookie, fetchUserData } from "../utils";
-import TextInput from "./TextInput";
-import { createForm, required } from "@modular-forms/solid";
 import { createEffect } from "solid-js";
-import QRious from "qrious";
-import { useStore } from "../store";
+
 import { upiID } from "../constants";
+import { useStore } from "../store";
+import { fetchUserData, getCookie } from "../utils";
+import TextInput from "./TextInput";
 
 const ManualPaymentModal = props => {
   const initialValues = {};

@@ -1,4 +1,5 @@
 import { createEffect, createSignal, Match, Show, Switch } from "solid-js";
+
 import { getMatchCardColor } from "../../utils";
 
 const getSmallName = matchName => {

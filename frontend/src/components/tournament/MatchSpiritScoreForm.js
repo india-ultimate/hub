@@ -1,13 +1,14 @@
 import { createForm, custom, maxLength, required } from "@modular-forms/solid";
-import { createSignal, Show } from "solid-js";
-import TextInput from "../TextInput";
-import Select from "../Select";
 import { createMutation, createQuery } from "@tanstack/solid-query";
+import { initFlowbite } from "flowbite";
+import { createSignal, Show } from "solid-js";
+
 import {
   fetchTournamentTeamBySlug,
   submitMatchSpiritScore
 } from "../../queries";
-import { initFlowbite } from "flowbite";
+import Select from "../Select";
+import TextInput from "../TextInput";
 
 const MatchSpiritScoreForm = componentProps => {
   const initialValues = {

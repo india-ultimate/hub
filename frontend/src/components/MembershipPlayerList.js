@@ -1,4 +1,5 @@
 import { For } from "solid-js";
+
 import { AccordionDownIcon } from "../icons";
 
 const MembershipPlayerList = props => {

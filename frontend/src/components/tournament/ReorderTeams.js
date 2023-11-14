@@ -1,11 +1,11 @@
 import { useDragDropContext } from "@thisbeyond/solid-dnd";
 import {
+  closestCenter,
+  createSortable,
   DragDropProvider,
   DragDropSensors,
   DragOverlay,
-  SortableProvider,
-  createSortable,
-  closestCenter
+  SortableProvider
 } from "@thisbeyond/solid-dnd";
 import { createSignal, For } from "solid-js";
 

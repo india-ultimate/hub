@@ -1,14 +1,15 @@
-import { For, createSignal, Switch, Match } from "solid-js";
-import { Spinner } from "../icons";
-import { onMount } from "solid-js";
-import { fetchUrl, playerMatches } from "../utils";
-import { useStore } from "../store";
 import { Icon } from "solid-heroicons";
 import {
-  xCircle,
   checkBadge,
-  magnifyingGlass
+  magnifyingGlass,
+  xCircle
 } from "solid-heroicons/solid-mini";
+import { createSignal, For, Match, Switch } from "solid-js";
+import { onMount } from "solid-js";
+
+import { Spinner } from "../icons";
+import { useStore } from "../store";
+import { fetchUrl, playerMatches } from "../utils";
 
 const RegisteredPlayerList = () => {
   const [store] = useStore();

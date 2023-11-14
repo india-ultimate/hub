@@ -1,10 +1,11 @@
-import { Show, Switch, Match, For } from "solid-js";
 import { useNavigate } from "@solidjs/router";
-import { displayDate } from "../utils";
-import VaccinationInformation from "./VaccinationInformation";
-import StatusStepper from "./StatusStepper";
-import { getLabel } from "../utils";
+import { For, Match, Show, Switch } from "solid-js";
+
 import { genderChoices, occupationChoices, stateChoices } from "../constants";
+import { displayDate } from "../utils";
+import { getLabel } from "../utils";
+import StatusStepper from "./StatusStepper";
+import VaccinationInformation from "./VaccinationInformation";
 
 const Player = props => {
   const navigate = useNavigate();

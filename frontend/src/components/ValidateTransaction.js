@@ -1,8 +1,9 @@
-import { createSignal } from "solid-js";
 import { createForm, required } from "@modular-forms/solid";
-import TextInput from "./TextInput";
-import { getCookie } from "../utils";
 import { initFlowbite } from "flowbite";
+import { createSignal } from "solid-js";
+
+import { getCookie } from "../utils";
+import TextInput from "./TextInput";
 
 const ValidateTransaction = props => {
   const [status, setStatus] = createSignal("");

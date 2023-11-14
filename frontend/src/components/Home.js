@@ -1,11 +1,12 @@
 import { A } from "@solidjs/router";
-import { For, Suspense } from "solid-js";
 import { createQuery } from "@tanstack/solid-query";
+import { Icon } from "solid-heroicons";
+import { chatBubbleBottomCenterText } from "solid-heroicons/solid";
+import { For, Suspense } from "solid-js";
+
+import { WALink } from "../constants";
 import { fetchContributors } from "../queries";
 import ContributorsSkeleton from "../skeletons/Contributors";
-import { chatBubbleBottomCenterText } from "solid-heroicons/solid";
-import { Icon } from "solid-heroicons";
-import { WALink } from "../constants";
 
 const Home = () => {
   const query = createQuery(() => ["contributors"], fetchContributors, {

@@ -1,13 +1,14 @@
-import { useStore } from "../store";
-import { useParams } from "@solidjs/router";
-import { createSignal, createEffect, Show, Switch, Match } from "solid-js";
-import { getCookie, getPlayer } from "../utils";
 import { createForm, required } from "@modular-forms/solid";
+import { useParams } from "@solidjs/router";
+import { inboxStack } from "solid-heroicons/solid";
+import { createEffect, createSignal, Match, Show, Switch } from "solid-js";
+
+import { Spinner } from "../icons";
+import { useStore } from "../store";
+import { getCookie, getPlayer } from "../utils";
+import Breadcrumbs from "./Breadcrumbs";
 import StatusStepper from "./StatusStepper";
 import TextInput from "./TextInput";
-import { Spinner } from "../icons";
-import Breadcrumbs from "./Breadcrumbs";
-import { inboxStack } from "solid-heroicons/solid";
 
 const UltimateCentralLogin = () => {
   const [store, { setPlayerById }] = useStore();

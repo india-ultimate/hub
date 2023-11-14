@@ -1,11 +1,12 @@
-import { getCookie } from "../utils";
-import { useStore } from "../store";
-import { Spinner } from "../icons";
-import { createSignal, createEffect, onMount, Show } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 import { initFlowbite } from "flowbite";
-import Breadcrumbs from "./Breadcrumbs";
 import { home } from "solid-heroicons/solid";
+import { createEffect, createSignal, onMount, Show } from "solid-js";
+
+import { Spinner } from "../icons";
+import { useStore } from "../store";
+import { getCookie } from "../utils";
+import Breadcrumbs from "./Breadcrumbs";
 
 const PasswordLogin = props => {
   const csrftoken = getCookie("csrftoken");

@@ -1,9 +1,10 @@
+import { createForm, required } from "@modular-forms/solid";
 import { createSignal } from "solid-js";
+
+import { getCookie } from "../utils";
+import FileInput from "./FileInput";
 import TransactionList from "./TransactionList";
 import ValidateTransaction from "./ValidateTransaction";
-import { createForm, required } from "@modular-forms/solid";
-import FileInput from "./FileInput";
-import { getCookie } from "../utils";
 
 const TransactionStats = props => {
   return (

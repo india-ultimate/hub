@@ -1,11 +1,12 @@
-import { useStore } from "../store";
 import { useParams } from "@solidjs/router";
-import { createSignal, createEffect, Show, Switch, Match } from "solid-js";
 import { A } from "@solidjs/router";
-import { getCookie, displayDate, getPlayer } from "../utils";
-import StatusStepper from "./StatusStepper";
-import Breadcrumbs from "./Breadcrumbs";
 import { inboxStack } from "solid-heroicons/solid";
+import { createEffect, createSignal, Match, Show, Switch } from "solid-js";
+
+import { useStore } from "../store";
+import { displayDate, getCookie, getPlayer } from "../utils";
+import Breadcrumbs from "./Breadcrumbs";
+import StatusStepper from "./StatusStepper";
 
 const Legal = props => (
   <div class="my-10">
