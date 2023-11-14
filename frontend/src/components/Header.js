@@ -41,8 +41,8 @@ export default function Header() {
               alt="India Ultimate Logo"
             />
             <img
-              src={assetURL("logo-vertical.jpg")}
-              class="h-8 mr-3 hidden dark:block"
+              src={assetURL("white-logo-vertical.jpg")}
+              class="h-8 mr-3 hidden dark:block rounded"
               alt="India Ultimate Logo"
             />
             <span class="self-center text-2xl font-semibold whitespace-nowrap dark:text-white">
