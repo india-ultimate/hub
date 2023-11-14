@@ -1,9 +1,10 @@
-import { Show } from "solid-js";
-import { useStore } from "../store";
-import { getCookie, assetURL } from "../utils";
 import { A } from "@solidjs/router";
 import { Icon } from "solid-heroicons";
 import { bars_3, moon, sun } from "solid-heroicons/solid-mini";
+import { Show } from "solid-js";
+
+import { useStore } from "../store";
+import { assetURL, getCookie } from "../utils";
 
 export default function Header() {
   const [store, { userFetchFailure, setTheme }] = useStore();

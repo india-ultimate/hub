@@ -16,6 +16,7 @@
     "copy-webpack-plugin": "^11.0.0",
     "css-loader": "^6.8.1",
     "eslint": "^8.46.0",
+    "eslint-plugin-simple-import-sort": "^10.0.0",
     "eslint-plugin-solid": "^0.12.1",
     "eslint-plugin-unused-imports": "^3.0.0",
     "flowbite": "^1.7.0",
@@ -57,7 +58,8 @@
     },
     "plugins": [
       "solid",
-      "unused-imports"
+      "unused-imports",
+      "simple-import-sort"
     ],
     "extends": [
       "eslint:recommended",
@@ -95,7 +97,9 @@
           "ignoreRestSiblings": false,
           "varsIgnorePattern": "^_"
         }
-      ]
+      ],
+      "simple-import-sort/imports": "error",
+      "simple-import-sort/exports": "error"
     },
     "ignorePatterns": [
       "dist/*",

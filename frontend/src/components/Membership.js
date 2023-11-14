@@ -1,26 +1,27 @@
-import StatusStepper from "./StatusStepper";
-import { useStore } from "../store";
 import { useParams } from "@solidjs/router";
-import { createSignal, createEffect, onMount, Show, For } from "solid-js";
+import { inboxStack } from "solid-heroicons/solid";
+import { createEffect, createSignal, For, onMount, Show } from "solid-js";
+
+import {
+  annualMembershipFee,
+  eventMembershipFee,
+  membershipEndDate,
+  membershipStartDate,
+  minAge,
+  minAgeWarning,
+  sponsoredAnnualMembershipFee
+} from "../constants";
+import { useStore } from "../store";
 import {
   displayDate,
   fetchUrl,
-  membershipYearOptions,
   findPlayerById,
-  getAge
+  getAge,
+  membershipYearOptions
 } from "../utils";
-import {
-  membershipStartDate,
-  membershipEndDate,
-  annualMembershipFee,
-  eventMembershipFee,
-  sponsoredAnnualMembershipFee,
-  minAge,
-  minAgeWarning
-} from "../constants";
 import Breadcrumbs from "./Breadcrumbs";
-import { inboxStack } from "solid-heroicons/solid";
 import PhonePePayment from "./PhonePePayment";
+import StatusStepper from "./StatusStepper";
 
 const Membership = () => {
   const [store] = useStore();

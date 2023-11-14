@@ -1,19 +1,20 @@
-import VaccinationInformation from "./VaccinationInformation";
-import { useStore } from "../store";
-import { useParams } from "@solidjs/router";
-import { createSignal, createEffect, Show, Switch, Match } from "solid-js";
-import { vaccinationChoices } from "../constants";
-import { getCookie, getPlayer } from "../utils";
 import { createForm, getValue, required } from "@modular-forms/solid";
-import StatusStepper from "./StatusStepper";
-import TextInput from "./TextInput";
-import Select from "./Select";
+import { useParams } from "@solidjs/router";
+import { Icon } from "solid-heroicons";
+import { inboxStack } from "solid-heroicons/solid";
+import { pencilSquare } from "solid-heroicons/solid-mini";
+import { createEffect, createSignal, Match, Show, Switch } from "solid-js";
+
+import { vaccinationChoices } from "../constants";
+import { useStore } from "../store";
+import { getCookie, getPlayer } from "../utils";
+import Breadcrumbs from "./Breadcrumbs";
 import Checkbox from "./Checkbox";
 import FileInput from "./FileInput";
-import { Icon } from "solid-heroicons";
-import { pencilSquare } from "solid-heroicons/solid-mini";
-import Breadcrumbs from "./Breadcrumbs";
-import { inboxStack } from "solid-heroicons/solid";
+import Select from "./Select";
+import StatusStepper from "./StatusStepper";
+import TextInput from "./TextInput";
+import VaccinationInformation from "./VaccinationInformation";
 
 const Vaccination = () => {
   const [store, { setPlayerById }] = useStore();

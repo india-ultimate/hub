@@ -1,7 +1,8 @@
-import { createSignal, For } from "solid-js";
 import { createForm, required } from "@modular-forms/solid";
-import FileInput from "./FileInput";
+import { createSignal, For } from "solid-js";
+
 import { getCookie } from "../utils";
+import FileInput from "./FileInput";
 
 const MembershipStatusTable = props => {
   if (!props.data || props.data.length === 0) {

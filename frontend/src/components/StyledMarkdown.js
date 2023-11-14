@@ -1,6 +1,6 @@
-import SolidMarkdown from "solid-markdown";
-import { onMount } from "solid-js";
 import slug from "slug";
+import { onMount } from "solid-js";
+import SolidMarkdown from "solid-markdown";
 
 const TailwindMarkdown = props => {
   let divRef;

@@ -1,12 +1,13 @@
 import { A } from "@solidjs/router";
-import { Show, For } from "solid-js";
+import { Icon } from "solid-heroicons";
+import { inboxStack } from "solid-heroicons/solid";
+import { For, Show } from "solid-js";
+
+import { AccordionDownIcon } from "../icons";
 import { useStore } from "../store";
+import { showPlayerStatus } from "../utils";
 import Player from "./Player";
 import TransactionList from "./TransactionList";
-import { AccordionDownIcon } from "../icons";
-import { inboxStack } from "solid-heroicons/solid";
-import { Icon } from "solid-heroicons";
-import { showPlayerStatus } from "../utils";
 
 const Actions = props => {
   return (

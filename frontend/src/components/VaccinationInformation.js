@@ -1,6 +1,7 @@
-import { Switch, Match } from "solid-js";
-import { getLabel } from "../utils";
+import { Match, Switch } from "solid-js";
+
 import { vaccinationChoices } from "../constants";
+import { getLabel } from "../utils";
 
 const VaccinationInformation = props => {
   const url = (

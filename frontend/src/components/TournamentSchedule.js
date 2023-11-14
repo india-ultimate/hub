@@ -1,16 +1,17 @@
 import { A, useParams } from "@solidjs/router";
-import { createEffect, createSignal, For, onMount, Show } from "solid-js";
 import { createQuery } from "@tanstack/solid-query";
-import { fetchMatchesBySlug, fetchTournamentBySlug } from "../queries";
-import Breadcrumbs from "./Breadcrumbs";
-import { trophy } from "solid-heroicons/solid";
-import { initFlowbite } from "flowbite";
-import MatchCard from "./tournament/MatchCard";
-import { createStore, reconcile } from "solid-js/store";
 import clsx from "clsx";
-import TournamentMatch from "./TournamentMatch";
-import { getMatchCardColor } from "../utils";
+import { initFlowbite } from "flowbite";
+import { trophy } from "solid-heroicons/solid";
+import { createEffect, createSignal, For, onMount, Show } from "solid-js";
+import { createStore, reconcile } from "solid-js/store";
+
 import { matchCardColorToBorderColorMap } from "../colors";
+import { fetchMatchesBySlug, fetchTournamentBySlug } from "../queries";
+import { getMatchCardColor } from "../utils";
+import Breadcrumbs from "./Breadcrumbs";
+import MatchCard from "./tournament/MatchCard";
+import TournamentMatch from "./TournamentMatch";
 
 const TournamentSchedule = () => {
   const params = useParams();

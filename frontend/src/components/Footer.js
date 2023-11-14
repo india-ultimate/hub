@@ -1,4 +1,5 @@
 import { A } from "@solidjs/router";
+
 import { WALink } from "../constants";
 
 export default function Footer() {

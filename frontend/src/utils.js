@@ -1,8 +1,9 @@
-import { membershipStartDate } from "./constants";
+import clsx from "clsx";
 import { Icon } from "solid-heroicons";
 import { checkCircle, exclamationCircle } from "solid-heroicons/solid-mini";
-import clsx from "clsx";
+
 import { matchCardColors } from "./colors";
+import { membershipStartDate } from "./constants";
 
 export const getCookie = name => {
   const cookies = document.cookie.split(";").reduce((acc, x) => {

@@ -1,6 +1,9 @@
 import { A, useParams } from "@solidjs/router";
-import { createEffect, createSignal, For, onMount, Show } from "solid-js";
 import { createQuery } from "@tanstack/solid-query";
+import { initFlowbite } from "flowbite";
+import { trophy } from "solid-heroicons/solid";
+import { createEffect, createSignal, For, onMount, Show } from "solid-js";
+
 import {
   fetchBracketsBySlug,
   fetchCrossPoolBySlug,
@@ -9,9 +12,7 @@ import {
   fetchTeams,
   fetchTournamentBySlug
 } from "../queries";
-import { trophy } from "solid-heroicons/solid";
 import Breadcrumbs from "./Breadcrumbs";
-import { initFlowbite } from "flowbite";
 
 const TournamentStandings = () => {
   const params = useParams();

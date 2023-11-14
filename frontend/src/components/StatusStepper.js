@@ -1,20 +1,21 @@
+import { A } from "@solidjs/router";
 import clsx from "clsx";
 import { Icon } from "solid-heroicons";
-import { A } from "@solidjs/router";
-import { Switch, Match } from "solid-js";
-import { getStatusAndPercent } from "../utils";
 import {
-  identification,
-  currencyRupee,
-  shieldExclamation,
-  shieldCheck,
-  handThumbUp,
-  handThumbDown,
   arrowTopRightOnSquare,
+  currencyRupee,
   document,
   documentCheck,
+  handThumbDown,
+  handThumbUp,
+  identification,
+  shieldCheck,
+  shieldExclamation,
   xCircle
 } from "solid-heroicons/solid-mini";
+import { Match, Switch } from "solid-js";
+
+import { getStatusAndPercent } from "../utils";
 
 const Step = props => {
   const liClass = clsx(

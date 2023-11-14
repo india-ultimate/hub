@@ -1,7 +1,8 @@
-import { createQuery } from "@tanstack/solid-query";
-import { fetchTournaments } from "../queries";
-import { For, Match, Show, Switch } from "solid-js";
 import { A } from "@solidjs/router";
+import { createQuery } from "@tanstack/solid-query";
+import { For, Match, Show, Switch } from "solid-js";
+
+import { fetchTournaments } from "../queries";
 
 const Tournaments = () => {
   const tournamentsQuery = createQuery(() => ["tournaments"], fetchTournaments);

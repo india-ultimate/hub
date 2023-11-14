@@ -1,36 +1,37 @@
-import { getCookie, getAge, findPlayerById } from "../utils";
-import { useStore } from "../store";
-import { createSignal, Show, Switch, Match, createEffect } from "solid-js";
-import {
-  matchUpChoices,
-  genderChoices,
-  stateChoices,
-  occupationChoices,
-  relationChoices,
-  minAge,
-  majorAge
-} from "../constants";
 import {
   createForm,
-  getValue,
-  setValue,
-  reset,
+  custom,
   // validators
   email,
-  pattern,
-  required,
+  getValue,
   maxLength,
   minLength,
-  custom
+  pattern,
+  required,
+  reset,
+  setValue
 } from "@modular-forms/solid";
 import { useParams } from "@solidjs/router";
-import RegistrationSuccess from "./RegistrationSuccess";
-import TextInput from "./TextInput";
-import Select from "./Select";
-import Checkbox from "./Checkbox";
-import Breadcrumbs from "./Breadcrumbs";
-import { inboxStack } from "solid-heroicons/solid";
 import { A } from "@solidjs/router";
+import { inboxStack } from "solid-heroicons/solid";
+import { createEffect, createSignal, Match, Show, Switch } from "solid-js";
+
+import {
+  genderChoices,
+  majorAge,
+  matchUpChoices,
+  minAge,
+  occupationChoices,
+  relationChoices,
+  stateChoices
+} from "../constants";
+import { useStore } from "../store";
+import { findPlayerById, getAge, getCookie } from "../utils";
+import Breadcrumbs from "./Breadcrumbs";
+import Checkbox from "./Checkbox";
+import RegistrationSuccess from "./RegistrationSuccess";
+import Select from "./Select";
+import TextInput from "./TextInput";
 
 const RegistrationForm = props => {
   const csrftoken = getCookie("csrftoken");

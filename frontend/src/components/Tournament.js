@@ -1,8 +1,9 @@
-import { createQuery } from "@tanstack/solid-query";
-import { fetchTeams, fetchTournamentBySlug } from "../queries";
-import { createEffect, createSignal, For, Match, Show, Switch } from "solid-js";
 import { A, useParams } from "@solidjs/router";
+import { createQuery } from "@tanstack/solid-query";
 import { trophy } from "solid-heroicons/solid";
+import { createEffect, createSignal, For, Match, Show, Switch } from "solid-js";
+
+import { fetchTeams, fetchTournamentBySlug } from "../queries";
 import Breadcrumbs from "./Breadcrumbs";
 
 const Tournament = () => {

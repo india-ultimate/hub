@@ -1,10 +1,11 @@
-import { lazy } from "solid-js";
-import { Routes, Route } from "@solidjs/router";
-import Header from "./Header";
-import Footer from "./Footer";
-import UserRoute from "./UserRoute";
-import { useStore } from "../store";
+import { Route, Routes } from "@solidjs/router";
 import { QueryClient, QueryClientProvider } from "@tanstack/solid-query";
+import { lazy } from "solid-js";
+
+import { useStore } from "../store";
+import Footer from "./Footer";
+import Header from "./Header";
+import UserRoute from "./UserRoute";
 
 const About = lazy(() => import("./About"));
 const Dashboard = lazy(() => import("./Dashboard"));

@@ -1,16 +1,17 @@
-import { fetchUserData } from "../utils";
-import { useStore } from "../store";
-import {
-  createEffect,
-  Switch,
-  Match,
-  children,
-  Suspense,
-  createResource
-} from "solid-js";
-import { Route, Navigate } from "@solidjs/router";
+import { Navigate, Route } from "@solidjs/router";
 import { initFlowbite } from "flowbite";
+import {
+  children,
+  createEffect,
+  createResource,
+  Match,
+  Suspense,
+  Switch
+} from "solid-js";
+
 import { Spinner } from "../icons";
+import { useStore } from "../store";
+import { fetchUserData } from "../utils";
 
 const WithUserData = props => {
   const [store, { userFetchSuccess, userFetchFailure }] = useStore();

@@ -1,21 +1,21 @@
-import { Match, Switch, Show, createEffect, createSignal } from "solid-js";
 import { A } from "@solidjs/router";
-import { arrowRight, play, pencil } from "solid-heroicons/solid";
-import { Icon } from "solid-heroicons";
-import { fetchTeams, fetchUserAccessByTournamentSlug } from "../queries";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
-import MatchScoreForm from "./tournament/MatchScoreForm";
-import { initFlowbite } from "flowbite";
-import MatchSpiritScoreForm from "./tournament/MatchSpiritScoreForm";
-import SpiritScoreTable from "./tournament/SpiritScoreTable";
-import MatchCard from "./tournament/MatchCard";
-
 import { clsx } from "clsx";
+import { initFlowbite } from "flowbite";
+import { Icon } from "solid-heroicons";
+import { arrowRight, pencil, play } from "solid-heroicons/solid";
+import { createEffect, createSignal, Match, Show, Switch } from "solid-js";
+
 import {
   matchCardColorToButtonStyles,
   matchCardColorToRingColorMap
 } from "../colors";
+import { fetchTeams, fetchUserAccessByTournamentSlug } from "../queries";
 import { getMatchCardColor } from "../utils";
+import MatchCard from "./tournament/MatchCard";
+import MatchScoreForm from "./tournament/MatchScoreForm";
+import MatchSpiritScoreForm from "./tournament/MatchSpiritScoreForm";
+import SpiritScoreTable from "./tournament/SpiritScoreTable";
 /**
  * Returns a match block between 2 teams.
  * If a team should appear first, pass `currentTeamNo` = team id in match object (1 or 2).
