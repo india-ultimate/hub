@@ -1307,6 +1307,7 @@ class TestTournaments(ApiBaseTestCase):
         data = response.json()
         self.assertEqual(True, data["team_admin"])
         self.assertEqual(self.teams[0].id, data["team_id"])
+        self.assertEqual(False, data["is_staff"])
 
     def test_user_without_team_admin_access(self) -> None:
         c = self.client
@@ -1318,6 +1319,21 @@ class TestTournaments(ApiBaseTestCase):
         data = response.json()
         self.assertEqual(False, data["team_admin"])
         self.assertEqual(None, data["team_id"])
+        self.assertEqual(False, data["is_staff"])
+
+    def test_user_with_staff_access(self) -> None:
+        c = self.client
+        self.user.is_staff = True
+        self.user.save()
+        c.force_login(self.user)
+
+        response = c.get(f"/api/me/access?tournament_slug={self.event.ultimate_central_slug}")
+        self.assertEqual(200, response.status_code)
+
+        data = response.json()
+        self.assertEqual(True, data["team_admin"])
+        self.assertEqual(self.teams[0].id, data["team_id"])
+        self.assertEqual(True, data["is_staff"])
 
     def test_valid_submit_spirit_score(self) -> None:
         valid_matches = Match.objects.filter(tournament=self.tournament).filter(

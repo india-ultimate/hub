@@ -168,9 +168,9 @@ def me_access(
     is_team_admin, team_id = can_submit_tournament_scores(tournament, request.user)
 
     if not is_team_admin:
-        return 200, {"team_admin": False}
+        return 200, {"team_admin": False, "is_staff": request.user.is_staff}
 
-    return 200, {"team_admin": is_team_admin, "team_id": team_id}
+    return 200, {"team_admin": is_team_admin, "team_id": team_id, "is_staff": request.user.is_staff}
 
 
 # Players ##########
