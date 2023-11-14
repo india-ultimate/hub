@@ -251,6 +251,8 @@ class SpiritScore(models.Model):
         UCPerson, on_delete=models.CASCADE, related_name="msp", blank=True, null=True
     )
 
+    comments = models.CharField(max_length=500, blank=True, null=True)
+
 
 class Match(models.Model):
     class Status(models.TextChoices):

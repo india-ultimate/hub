@@ -677,6 +677,7 @@ def create_spirit_scores(spirit_score: SpiritScoreUpdateSchema) -> SpiritScore:
         fair=spirit_score.fair,
         positive=spirit_score.positive,
         communication=spirit_score.communication,
+        comments=spirit_score.comments if spirit_score.comments else None,
     )
 
     if spirit_score.mvp_id:

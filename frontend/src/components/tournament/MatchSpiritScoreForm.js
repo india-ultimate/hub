@@ -1,4 +1,4 @@
-import { createForm, custom, required } from "@modular-forms/solid";
+import { createForm, custom, maxLength, required } from "@modular-forms/solid";
 import { createSignal, Show } from "solid-js";
 import TextInput from "../TextInput";
 import Select from "../Select";
@@ -307,6 +307,19 @@ const MatchSpiritScoreForm = componentProps => {
                 type="number"
                 label="Communication (self)"
                 required
+              />
+            )}
+          </Field>
+          <Field
+            name="self.comments"
+            validate={maxLength(400, "Maximum length is 400 characters")}
+          >
+            {(field, props) => (
+              <TextInput
+                {...props}
+                value={field.value}
+                error={field.error}
+                label="Comments(if any)"
               />
             )}
           </Field>
