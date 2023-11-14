@@ -7,6 +7,7 @@ import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import MatchScoreForm from "./tournament/MatchScoreForm";
 import { initFlowbite } from "flowbite";
 import MatchSpiritScoreForm from "./tournament/MatchSpiritScoreForm";
+import SpiritScoreTable from "./tournament/SpiritScoreTable";
 
 /**
  * Returns a match block between 2 teams.
@@ -287,122 +288,29 @@ const TournamentMatch = props => {
                 <h2 class="text-center font-bold text-blue-600 dark:text-blue-500">
                   Spirit Scores
                 </h2>
-                <div class="relative overflow-x-auto">
-                  <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                    <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
-                      <tr>
-                        <th scope="col" class="px-2 py-3">
-                          Spirit Criteria
-                        </th>
-                        <th scope="col" class="px-2 py-3">
-                          {props.match[`team_${currTeamNo()}`].name}
-                        </th>
-                        <th scope="col" class="px-2 py-3">
-                          {props.match[`team_${oppTeamNo()}`].name}
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr class="bg-white border-b dark:bg-gray-700 dark:border-gray-700">
-                        <th
-                          scope="row"
-                          class="px-2 py-4 font-medium text-gray-900 dark:text-white"
-                        >
-                          Rules Knowledge & Use
-                        </th>
-                        <td class="px-2 py-4">
-                          {
-                            props.match[`spirit_score_team_${currTeamNo()}`]
-                              .rules
-                          }
-                        </td>
-                        <td class="px-2 py-4">
-                          {
-                            props.match[`spirit_score_team_${oppTeamNo()}`]
-                              .rules
-                          }
-                        </td>
-                      </tr>
-                      <tr class="bg-white border-b dark:bg-gray-700 dark:border-gray-700">
-                        <th
-                          scope="row"
-                          class="px-2 py-4 font-medium text-gray-900 dark:text-white"
-                        >
-                          Fouls & Body Contact
-                        </th>
-                        <td class="px-2 py-4">
-                          {
-                            props.match[`spirit_score_team_${currTeamNo()}`]
-                              .fouls
-                          }
-                        </td>
-                        <td class="px-2 py-4">
-                          {
-                            props.match[`spirit_score_team_${oppTeamNo()}`]
-                              .fouls
-                          }
-                        </td>
-                      </tr>
-                      <tr class="bg-white border-b dark:bg-gray-700 dark:border-gray-700">
-                        <th
-                          scope="row"
-                          class="px-2 py-4 font-medium text-gray-900 dark:text-white"
-                        >
-                          Fair-Mindedness
-                        </th>
-                        <td class="px-2 py-4">
-                          {
-                            props.match[`spirit_score_team_${currTeamNo()}`]
-                              .fair
-                          }
-                        </td>
-                        <td class="px-2 py-4">
-                          {props.match[`spirit_score_team_${oppTeamNo()}`].fair}
-                        </td>
-                      </tr>
-                      <tr class="bg-white border-b dark:bg-gray-700 dark:border-gray-700">
-                        <th
-                          scope="row"
-                          class="px-2 py-4 font-medium text-gray-900 dark:text-white"
-                        >
-                          Positive Attitude & Self-Control
-                        </th>
-                        <td class="px-2 py-4">
-                          {
-                            props.match[`spirit_score_team_${currTeamNo()}`]
-                              .positive
-                          }
-                        </td>
-                        <td class="px-2 py-4">
-                          {
-                            props.match[`spirit_score_team_${oppTeamNo()}`]
-                              .positive
-                          }
-                        </td>
-                      </tr>
-                      <tr class="bg-white border-b dark:bg-gray-700 dark:border-gray-700">
-                        <th
-                          scope="row"
-                          class="px-2 py-4 font-medium text-gray-900 dark:text-white"
-                        >
-                          Communication
-                        </th>
-                        <td class="px-2 py-4">
-                          {
-                            props.match[`spirit_score_team_${currTeamNo()}`]
-                              .communication
-                          }
-                        </td>
-                        <td class="px-2 py-4">
-                          {
-                            props.match[`spirit_score_team_${oppTeamNo()}`]
-                              .communication
-                          }
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
+                <SpiritScoreTable
+                  team_1={props.match[`team_${currTeamNo()}`]}
+                  team_2={props.match[`team_${oppTeamNo()}`]}
+                  spirit_score_team_1={
+                    props.match[`spirit_score_team_${currTeamNo()}`]
+                  }
+                  spirit_score_team_2={
+                    props.match[`spirit_score_team_${oppTeamNo()}`]
+                  }
+                />
+                <h2 class="text-center font-bold text-blue-600 dark:text-blue-500">
+                  Spirit Scores - Self
+                </h2>
+                <SpiritScoreTable
+                  team_1={props.match[`team_${currTeamNo()}`]}
+                  team_2={props.match[`team_${oppTeamNo()}`]}
+                  spirit_score_team_1={
+                    props.match[`self_spirit_score_team_${currTeamNo()}`]
+                  }
+                  spirit_score_team_2={
+                    props.match[`self_spirit_score_team_${oppTeamNo()}`]
+                  }
+                />
                 <h2 class="text-center font-bold text-blue-600 dark:text-blue-500">
                   MVPs
                 </h2>
@@ -513,6 +421,60 @@ const TournamentMatch = props => {
                       </div>
                     </div>
                   </div>
+                </Show>
+
+                <Show
+                  when={
+                    props.match[`self_spirit_score_team_${currTeamNo()}`]
+                      .comments ||
+                    props.match[`self_spirit_score_team_${oppTeamNo()}`]
+                      .comments
+                  }
+                >
+                  <h2 class="text-center font-bold text-blue-600 dark:text-blue-500">
+                    Comments
+                  </h2>
+                  <Show
+                    when={
+                      props.match[`self_spirit_score_team_${currTeamNo()}`]
+                        .comments
+                    }
+                  >
+                    <div class="flex items-center space-x-4 mx-5">
+                      <div class="font-medium dark:text-white">
+                        <div>
+                          {
+                            props.match[
+                              `self_spirit_score_team_${currTeamNo()}`
+                            ].comments
+                          }
+                        </div>
+                        <div class="text-sm text-gray-500 dark:text-gray-400">
+                          {props.match[`team_${currTeamNo()}`].name}
+                        </div>
+                      </div>
+                    </div>
+                  </Show>
+                  <Show
+                    when={
+                      props.match[`self_spirit_score_team_${oppTeamNo()}`]
+                        .comments
+                    }
+                  >
+                    <div class="flex items-center space-x-4 mx-5">
+                      <div class="font-medium dark:text-white">
+                        <div>
+                          {
+                            props.match[`self_spirit_score_team_${oppTeamNo()}`]
+                              .comments
+                          }
+                        </div>
+                        <div class="text-sm text-gray-500 dark:text-gray-400">
+                          {props.match[`team_${oppTeamNo()}`].name}
+                        </div>
+                      </div>
+                    </div>
+                  </Show>
                 </Show>
               </div>
             </div>
