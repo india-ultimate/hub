@@ -1649,11 +1649,6 @@ def submit_match_spirit_score(
     except Match.DoesNotExist:
         return 400, {"message": "Match does not exist"}
 
-    if match.status != Match.Status.COMPLETED:
-        return 400, {
-            "message": "Match spirit score can be submitted only after scores are submitted"
-        }
-
     is_authorised, team_id = can_submit_match_score(match, request.user)
 
     if not is_authorised:
@@ -1665,6 +1660,8 @@ def submit_match_spirit_score(
     elif match.team_2 is not None and match.team_2.id == team_id:
         match.spirit_score_team_1 = create_spirit_scores(spirit_score.opponent)
         match.self_spirit_score_team_2 = create_spirit_scores(spirit_score.self)
+    else:
+        return 401, {"message": "User not authorised to add score for this match"}
 
     match.save()
     update_tournament_spirit_rankings(match.tournament)
