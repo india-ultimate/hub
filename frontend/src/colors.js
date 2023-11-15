@@ -21,7 +21,8 @@ export const matchCardColorToBorderColorMap = {
   emerald: "border-emerald-400 dark:border-emerald-400",
   cyan: "border-cyan-400 dark:border-cyan-400",
   indigo: "border-indigo-400 dark:border-indigo-400",
-  sky: "border-sky-400 dark:border-sky-400"
+  sky: "border-sky-400 dark:border-sky-400",
+  gray: "border-gray-400 dark:border-gray-400"
 };
 
 export const matchCardColorToRingColorMap = {
@@ -36,5 +37,6 @@ export const matchCardColorToRingColorMap = {
   emerald: "ring-emerald-500 dark:ring-emerald-400",
   cyan: "ring-cyan-500 dark:ring-cyan-400",
   indigo: "ring-indigo-500 dark:ring-indigo-400",
-  sky: "ring-sky-500 dark:ring-sky-400"
+  sky: "ring-sky-500 dark:ring-sky-400",
+  gray: "ring-gray-500 dark:ring-gray-400"
 };

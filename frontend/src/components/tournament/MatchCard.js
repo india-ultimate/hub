@@ -61,7 +61,7 @@ const MatchCard = props => {
   const [color, setColor] = createSignal("blue");
 
   createEffect(() => {
-    setColor(getMatchCardColor(props.match));
+    setColor(props.matchCardColorOverride ?? getMatchCardColor(props.match));
   });
 
   const handleMatchCardClick = matchId => {
