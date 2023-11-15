@@ -13,10 +13,7 @@ import { initFlowbite } from "flowbite";
 
 import TournamentMatch from "./TournamentMatch";
 import clsx from "clsx";
-import {
-  matchCardColorToBorderColorMap,
-  matchCardColorToRingColorMap
-} from "../colors";
+import { matchCardColorToBorderColorMap } from "../colors";
 
 const TournamentTeam = () => {
   const params = useParams();
@@ -47,9 +44,9 @@ const TournamentTeam = () => {
 
   const matchOutcomeColor = match => {
     if (match.status === "SCH") {
-      console.log(match);
       return "blue";
     }
+
     const currTeamScore = match[`score_team_${currTeamNo(match)}`];
     const oppTeamScore = match[`score_team_${oppTeamNo(match)}`];
 
@@ -164,11 +161,11 @@ const TournamentTeam = () => {
                   >
                     <TournamentMatch
                       match={match}
-                      currentTeamNo={currentTeamNo(match)}
-                      opponentTeamNo={currentTeamNo(match) === 1 ? 2 : 1}
+                      currentTeamNo={currTeamNo(match)}
+                      opponentTeamNo={oppTeamNo(match) === 1 ? 2 : 1}
                       tournamentSlug={params.tournament_slug}
                       imgRingColor={
-                        matchCardColorToRingColorMap[matchOutcomeColor(match)]
+                        "gray"
                       }
                       matchCardColorOverride={matchOutcomeColor(match)}
                     />
