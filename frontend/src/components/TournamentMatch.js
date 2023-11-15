@@ -84,7 +84,11 @@ const TournamentMatch = props => {
   return (
     <>
       <div class="mb-4">
-        <MatchCard match={props.match} dontMinimiseMatchName />
+        <MatchCard
+          match={props.match}
+          dontMinimiseMatchName
+          matchCardColorOverride={props.matchCardColorOverride}
+        />
       </div>
       <div class="flex justify-center text-sm">
         <Show
@@ -98,7 +102,8 @@ const TournamentMatch = props => {
           <img
             class={clsx(
               "w-6 h-6 p-1 rounded-full ring-2 inline-block mr-1",
-              matchCardColorToRingColorMap[getMatchCardColor(props.match)]
+              props.imgRingColor ??
+                matchCardColorToRingColorMap[getMatchCardColor(props.match)]
             )}
             src={teamsMap()[props.match[`team_${currTeamNo()}`].id]?.image_url}
             alt="Bordered avatar"
@@ -146,7 +151,8 @@ const TournamentMatch = props => {
           <img
             class={clsx(
               "w-6 h-6 p-1 rounded-full ring-2 inline-block mr-1",
-              matchCardColorToRingColorMap[getMatchCardColor(props.match)]
+              props.imgRingColor ??
+                matchCardColorToRingColorMap[getMatchCardColor(props.match)]
             )}
             src={teamsMap()[props.match[`team_${oppTeamNo()}`].id]?.image_url}
             alt="Bordered avatar"
