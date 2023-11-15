@@ -195,39 +195,63 @@ const Tournament = () => {
         </Match>
       </Switch>
 
-      <div class="relative overflow-x-auto shadow-md rounded-lg mt-5">
-        <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-          <tbody>
-            <For each={tournamentQuery.data?.spirit_ranking}>
-              {spirit => (
-                <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-                  <th
-                    scope="row"
-                    class="pr-6 pl-10 py-4 whitespace-nowrap font-normal"
-                  >
-                    {spirit.rank}
-                  </th>
-                  <td class="px-6 py-4">
-                    <A
-                      href={`/tournament/${params.slug}/team/${
-                        teamsMap()[spirit.team_id]?.ultimate_central_slug
-                      }`}
+      <Show
+        when={tournamentQuery.data?.spirit_ranking.length > 0}
+        fallback={
+          <div
+            class="p-2 my-4 text-sm rounded-lg bg-blue-50 dark:bg-gray-800"
+            role="alert"
+          >
+            <p class="text-center">
+              Spirit rankings is not yet available.
+              <br />
+              Please check after some time!
+            </p>
+          </div>
+        }
+      >
+        <div class="relative overflow-x-auto shadow-md rounded-lg mt-5">
+          <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+            <tbody>
+              <For each={tournamentQuery.data?.spirit_ranking}>
+                {spirit => (
+                  <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+                    <th
+                      scope="row"
+                      class="px-6 py-4 whitespace-nowrap font-normal"
                     >
-                      <img
-                        class="w-8 h-8 p-1 rounded-full ring-2 ring-gray-300 dark:ring-gray-500 inline-block mr-3"
-                        src={teamsMap()[spirit.team_id]?.image_url}
-                        alt="Bordered avatar"
-                      />
-                      {teamsMap()[spirit.team_id]?.name}
-                    </A>
-                  </td>
-                  <td class="px-6 py-4">{spirit.points}</td>
-                </tr>
-              )}
-            </For>
-          </tbody>
-        </table>
-      </div>
+                      {spirit.rank}
+                    </th>
+                    <td class="px-3 py-4">
+                      <A
+                        href={`/tournament/${params.slug}/team/${
+                          teamsMap()[spirit.team_id]?.ultimate_central_slug
+                        }`}
+                      >
+                        <img
+                          class="w-8 h-8 p-1 rounded-full ring-2 ring-gray-300 dark:ring-gray-500 inline-block mr-3"
+                          src={teamsMap()[spirit.team_id]?.image_url}
+                          alt="Bordered avatar"
+                        />
+                        {teamsMap()[spirit.team_id]?.name}
+                      </A>
+                    </td>
+                    <td class="px-3 py-4">
+                      {spirit.points}
+                      <Show when={spirit.self_points}>
+                        ({spirit.self_points})
+                      </Show>
+                    </td>
+                  </tr>
+                )}
+              </For>
+            </tbody>
+          </table>
+        </div>
+        <p class="italic text-sm mt-2 text-right">
+          * Self scores are in brackets
+        </p>
+      </Show>
     </Show>
   );
 };
