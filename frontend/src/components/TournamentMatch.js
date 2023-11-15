@@ -10,7 +10,10 @@ import MatchSpiritScoreForm from "./tournament/MatchSpiritScoreForm";
 import MatchCard from "./tournament/MatchCard";
 
 import { clsx } from "clsx";
-import { matchCardColorToRingColorMap } from "../colors";
+import {
+  matchCardColorToBgColorMap,
+  matchCardColorToRingColorMap
+} from "../colors";
 import { getMatchCardColor } from "../utils";
 /**
  * Returns a match block between 2 teams.
@@ -240,7 +243,13 @@ const TournamentMatch = props => {
           <button
             data-modal-target={`modal-${props.match.id}`}
             data-modal-toggle={`modal-${props.match.id}`}
-            class="relative inline-flex items-center justify-center p-0.5 mb-2 mr-2 overflow-hidden text-xs font-medium text-gray-900 rounded-lg group bg-gradient-to-br from-cyan-500 to-blue-500 group-hover:from-cyan-500 group-hover:to-blue-500 hover:text-white dark:text-white focus:ring-4 focus:outline-none focus:ring-cyan-200 dark:focus:ring-cyan-800"
+            class={clsx(
+              "relative inline-flex items-center justify-center p-0.5 mb-2 mr-2 overflow-hidden text-xs font-medium rounded-lg group ",
+              "hover:text-white text-gray-900 dark:text-white focus:ring-4 focus:outline-none",
+              // "bg-gradient-to-br from-cyan-500 to-blue-500 group-hover:from-cyan-500 group-hover:to-blue-500",
+              // "focus:ring-cyan-200 dark:focus:ring-cyan-800",
+              matchCardColorToBgColorMap[getMatchCardColor(props.match)]
+            )}
           >
             <span class="relative px-3 py-2.5 transition-all ease-in duration-75 bg-white dark:bg-gray-800 rounded-md group-hover:bg-opacity-0 inline-flex items-center">
               Spirit Scores, MVP & MSP
@@ -557,7 +566,11 @@ const TournamentMatch = props => {
             data-modal-target={"submit-spirit-score-modal" + props.match?.id}
             data-modal-toggle={"submit-spirit-score-modal" + props.match?.id}
             type="button"
-            class="text-white mt-2 bg-blue-600 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center dark:bg-blue-500 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+            class={clsx(
+              "text-white mt-2 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center focus:ring-4 focus:outline-none",
+              // "bg-blue-600 hover:bg-blue-800 dark:bg-blue-500 dark:hover:bg-blue-700 focus:ring-blue-300 dark:focus:ring-blue-800"
+              matchCardColorToBgColorMap[getMatchCardColor(props.match)]
+            )}
           >
             <Icon class="w-4 mr-2" path={paperAirplane} />
             Submit Spirit Score
@@ -717,7 +730,11 @@ const TournamentMatch = props => {
               data-modal-target={"submit-score-modal" + props.match?.id}
               data-modal-toggle={"submit-score-modal" + props.match?.id}
               type="button"
-              class="text-white mt-2 bg-blue-600 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center dark:bg-blue-500 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+              class={clsx(
+                "text-white mt-2 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center focus:ring-4 focus:outline-none",
+                // "bg-blue-600 hover:bg-blue-800 dark:bg-blue-500 dark:hover:bg-blue-700 focus:ring-blue-300 dark:focus:ring-blue-800"
+                matchCardColorToBgColorMap[getMatchCardColor(props.match)]
+              )}
             >
               <Show
                 when={

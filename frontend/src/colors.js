@@ -40,3 +40,25 @@ export const matchCardColorToRingColorMap = {
   sky: "ring-sky-500 dark:ring-sky-400",
   gray: "ring-gray-500 dark:ring-gray-400"
 };
+
+export const matchCardColorToBgColorMap = {
+  blue: "bg-blue-600 hover:bg-blue-800 dark:bg-blue-500 dark:hover:bg-blue-700 focus:ring-blue-300 dark:focus:ring-blue-800",
+  green:
+    "bg-green-600 hover:bg-green-800 dark:bg-green-500 dark:hover:bg-green-700 focus:ring-green-300 dark:focus:ring-green-800",
+  pink: "bg-pink-600 hover:bg-pink-800 dark:bg-pink-500 dark:hover:bg-pink-700 focus:ring-pink-300 dark:focus:ring-pink-800",
+  purple:
+    "bg-purple-600 hover:bg-purple-800 dark:bg-purple-500 dark:hover:bg-purple-700 focus:ring-purple-300 dark:focus:ring-purple-800",
+  yellow:
+    "bg-yellow-600 hover:bg-yellow-800 dark:bg-yellow-500 dark:hover:bg-yellow-700 focus:ring-yellow-300 dark:focus:ring-yellow-800",
+  red: "bg-red-600 hover:bg-red-800 dark:bg-red-500 dark:hover:bg-red-700 focus:ring-red-300 dark:focus:ring-red-800",
+  fuchsia:
+    "bg-fuchsia-600 hover:bg-fuchsia-800 dark:bg-fuchsia-500 dark:hover:bg-fuchsia-700 focus:ring-fuchsia-300 dark:focus:ring-fuchsia-800",
+  lime: "bg-lime-600 hover:bg-lime-800 dark:bg-lime-500 dark:hover:bg-lime-700 focus:ring-lime-300 dark:focus:ring-lime-800",
+  emerald:
+    "bg-emerald-600 hover:bg-emerald-800 dark:bg-emerald-500 dark:hover:bg-emerald-700 focus:ring-emerald-300 dark:focus:ring-emerald-800",
+  cyan: "bg-cyan-600 hover:bg-cyan-800 dark:bg-cyan-500 dark:hover:bg-cyan-700 focus:ring-cyan-300 dark:focus:ring-cyan-800",
+  indigo:
+    "bg-indigo-600 hover:bg-indigo-800 dark:bg-indigo-500 dark:hover:bg-indigo-700 focus:ring-indigo-300 dark:focus:ring-indigo-800",
+  sky: "bg-sky-600 hover:bg-sky-800 dark:bg-sky-500 dark:hover:bg-sky-700 focus:ring-sky-300 dark:focus:ring-sky-800",
+  gray: "bg-gray-600 hover:bg-gray-800 dark:bg-gray-500 dark:hover:bg-gray-700 focus:ring-gray-300 dark:focus:ring-gray-800"
+};
