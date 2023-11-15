@@ -12,6 +12,11 @@ import { trophy } from "solid-heroicons/solid";
 import { initFlowbite } from "flowbite";
 
 import TournamentMatch from "./TournamentMatch";
+import clsx from "clsx";
+import {
+  matchCardColorToBorderColorMap,
+  matchCardColorToRingColorMap
+} from "../colors";
 
 const TournamentTeam = () => {
   const params = useParams();
@@ -34,8 +39,28 @@ const TournamentTeam = () => {
     () => fetchMatchesBySlug(params.tournament_slug)
   );
 
-  const currentTeamNo = match =>
-    match.team_1.ultimate_central_slug === params.team_slug ? 1 : 2;
+  const currTeamNo = match =>
+    params.team_slug === match.team_1.ultimate_central_slug ? 1 : 2;
+
+  const oppTeamNo = match =>
+    params.team_slug === match.team_1.ultimate_central_slug ? 2 : 1;
+
+  const matchOutcomeColor = match => {
+    if (match.status === "SCH") {
+      console.log(match);
+      return "blue";
+    }
+    const currTeamScore = match[`score_team_${currTeamNo(match)}`];
+    const oppTeamScore = match[`score_team_${oppTeamNo(match)}`];
+
+    if (currTeamScore > oppTeamScore) {
+      return "green";
+    } else if (currTeamScore == oppTeamScore) {
+      return "gray";
+    } else {
+      return "red";
+    }
+  };
 
   createEffect(() => {
     if (matchesQuery.status === "success" && !matchesQuery.data?.message) {
@@ -131,12 +156,21 @@ const TournamentTeam = () => {
                     match.team_2?.ultimate_central_slug === params.team_slug
                   }
                 >
-                  <div class="block py-2 px-1 bg-white border border-blue-600 rounded-lg shadow dark:bg-gray-800 dark:border-blue-400 w-full mb-5">
+                  <div
+                    class={clsx(
+                      "block py-2 px-1 bg-white border rounded-lg shadow dark:bg-gray-800 w-full mb-5",
+                      matchCardColorToBorderColorMap[matchOutcomeColor(match)]
+                    )}
+                  >
                     <TournamentMatch
                       match={match}
                       currentTeamNo={currentTeamNo(match)}
                       opponentTeamNo={currentTeamNo(match) === 1 ? 2 : 1}
                       tournamentSlug={params.tournament_slug}
+                      imgRingColor={
+                        matchCardColorToRingColorMap[matchOutcomeColor(match)]
+                      }
+                      matchCardColorOverride={matchOutcomeColor(match)}
                     />
                   </div>
                 </Show>
