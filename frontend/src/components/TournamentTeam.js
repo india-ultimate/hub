@@ -6,7 +6,7 @@ import {
   fetchTournamentBySlug,
   fetchTournamentTeamBySlug
 } from "../queries";
-import { For, onMount, Show } from "solid-js";
+import { createEffect, For, onMount, Show, createSignal } from "solid-js";
 import Breadcrumbs from "./Breadcrumbs";
 import { trophy } from "solid-heroicons/solid";
 import { initFlowbite } from "flowbite";
@@ -15,6 +15,7 @@ import TournamentMatch from "./TournamentMatch";
 
 const TournamentTeam = () => {
   const params = useParams();
+  const [matchesGroupedByDate, setMatchesGroupedByDate] = createSignal({});
 
   const tournamentQuery = createQuery(
     () => ["tournament", params.tournament_slug],
@@ -35,6 +36,22 @@ const TournamentTeam = () => {
 
   const currentTeamNo = match =>
     match.team_1.ultimate_central_slug === params.team_slug ? 1 : 2;
+
+  createEffect(() => {
+    if (matchesQuery.status === "success" && !matchesQuery.data?.message) {
+      const teamMatches = matchesQuery.data?.filter(
+        match =>
+          match.team_1?.ultimate_central_slug === params.team_slug ||
+          match.team_2?.ultimate_central_slug === params.team_slug
+      );
+
+      setMatchesGroupedByDate(
+        Object.groupBy(teamMatches, ({ time }) =>
+          new Date(Date.parse(time)).getUTCDate()
+        )
+      );
+    }
+  });
 
   onMount(() => {
     setTimeout(() => initFlowbite(), 100);
@@ -95,25 +112,37 @@ const TournamentTeam = () => {
         )}
       </For>
 
-      <h2 class="text-center font-bold text-xl my-5 mt-10">Matches</h2>
+      <h2 class="font-bold text-center text-xl my-5 mt-10 mb-10 underline underline-offset-8">
+        Matches
+      </h2>
 
-      <For each={matchesQuery.data}>
-        {match => (
-          <Show
-            when={
-              match.team_1?.ultimate_central_slug === params.team_slug ||
-              match.team_2?.ultimate_central_slug === params.team_slug
-            }
-          >
-            <div class="block py-2 px-1 bg-white border border-blue-600 rounded-lg shadow dark:bg-gray-800 dark:border-blue-400 w-full mb-5">
-              <TournamentMatch
-                match={match}
-                currentTeamNo={currentTeamNo(match)}
-                opponentTeamNo={currentTeamNo(match) === 1 ? 2 : 1}
-                tournamentSlug={params.tournament_slug}
-              />
+      <For each={Object.entries(matchesGroupedByDate())}>
+        {/* eslint-disable-next-line no-unused-vars */}
+        {([tournamentDate, matches], idx) => (
+          <div class="mb-10">
+            <div class="mb-5 ml-1">
+              <h3 class="font-bold text-lg text-center">Day - {idx() + 1}</h3>
             </div>
-          </Show>
+            <For each={matches}>
+              {match => (
+                <Show
+                  when={
+                    match.team_1?.ultimate_central_slug === params.team_slug ||
+                    match.team_2?.ultimate_central_slug === params.team_slug
+                  }
+                >
+                  <div class="block py-2 px-1 bg-white border border-blue-600 rounded-lg shadow dark:bg-gray-800 dark:border-blue-400 w-full mb-5">
+                    <TournamentMatch
+                      match={match}
+                      currentTeamNo={currentTeamNo(match)}
+                      opponentTeamNo={currentTeamNo(match) === 1 ? 2 : 1}
+                      tournamentSlug={params.tournament_slug}
+                    />
+                  </div>
+                </Show>
+              )}
+            </For>
+          </div>
         )}
       </For>
     </Show>
