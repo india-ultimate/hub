@@ -46,16 +46,17 @@ const TournamentTeam = () => {
     if (match.status === "SCH") {
       return "blue";
     }
+    if (match.status === "COM") {
+      const currTeamScore = match[`score_team_${currTeamNo(match)}`];
+      const oppTeamScore = match[`score_team_${oppTeamNo(match)}`];
 
-    const currTeamScore = match[`score_team_${currTeamNo(match)}`];
-    const oppTeamScore = match[`score_team_${oppTeamNo(match)}`];
-
-    if (currTeamScore > oppTeamScore) {
-      return "green";
-    } else if (currTeamScore == oppTeamScore) {
-      return "gray";
-    } else {
-      return "red";
+      if (currTeamScore > oppTeamScore) {
+        return "green";
+      } else if (currTeamScore == oppTeamScore) {
+        return "gray";
+      } else {
+        return "red";
+      }
     }
   };
 
@@ -162,12 +163,11 @@ const TournamentTeam = () => {
                     <TournamentMatch
                       match={match}
                       currentTeamNo={currTeamNo(match)}
-                      opponentTeamNo={oppTeamNo(match) === 1 ? 2 : 1}
+                      opponentTeamNo={oppTeamNo(match)}
                       tournamentSlug={params.tournament_slug}
-                      imgRingColor={
-                        "gray"
-                      }
+                      imgRingColor={"gray"}
                       matchCardColorOverride={matchOutcomeColor(match)}
+                      buttonColor={matchOutcomeColor(match)}
                     />
                   </div>
                 </Show>
