@@ -426,9 +426,9 @@ const TournamentMatch = props => {
                 <Show
                   when={
                     props.match[`self_spirit_score_team_${currTeamNo()}`]
-                      .comments ||
+                      ?.comments ||
                     props.match[`self_spirit_score_team_${oppTeamNo()}`]
-                      .comments
+                      ?.comments
                   }
                 >
                   <h2 class="text-center font-bold text-blue-600 dark:text-blue-500">
@@ -437,7 +437,7 @@ const TournamentMatch = props => {
                   <Show
                     when={
                       props.match[`self_spirit_score_team_${currTeamNo()}`]
-                        .comments
+                        ?.comments
                     }
                   >
                     <div class="flex items-center space-x-4 mx-5">
@@ -446,7 +446,7 @@ const TournamentMatch = props => {
                           {
                             props.match[
                               `self_spirit_score_team_${currTeamNo()}`
-                            ].comments
+                            ]?.comments
                           }
                         </div>
                         <div class="text-sm text-gray-500 dark:text-gray-400">
@@ -458,7 +458,7 @@ const TournamentMatch = props => {
                   <Show
                     when={
                       props.match[`self_spirit_score_team_${oppTeamNo()}`]
-                        .comments
+                        ?.comments
                     }
                   >
                     <div class="flex items-center space-x-4 mx-5">
@@ -466,7 +466,7 @@ const TournamentMatch = props => {
                         <div>
                           {
                             props.match[`self_spirit_score_team_${oppTeamNo()}`]
-                              .comments
+                              ?.comments
                           }
                         </div>
                         <div class="text-sm text-gray-500 dark:text-gray-400">
