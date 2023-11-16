@@ -44,7 +44,8 @@ def create_pool_matches(tournament: Tournament, pool: Pool) -> None:
 
 
 def create_bracket_matches(tournament: Tournament, bracket: Bracket) -> None:
-    start, end = map(int, bracket.name.split("-"))
+    seeds = sorted(map(int, bracket.initial_seeding.keys()))
+    start, end = seeds[0], seeds[-1]
     if ((end - start) + 1) % 2 == 0:
         create_bracket_sequence_matches(tournament, bracket, start, end, 1)
 
