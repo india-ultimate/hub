@@ -52,14 +52,15 @@ def create_bracket_matches(tournament: Tournament, bracket: Bracket) -> None:
 def create_position_pool_matches(tournament: Tournament, position_pool: PositionPool) -> None:
     position_pool_seeding_list = list(map(int, position_pool.initial_seeding.keys()))
 
-    for i, x in enumerate(position_pool_seeding_list):
-        for _j, y in enumerate(position_pool_seeding_list[i + 1 :], i + 1):
+    for i, seed_x in enumerate(position_pool_seeding_list):
+        for j, seed_y in enumerate(position_pool_seeding_list[i + 1 :], i + 1):
             match = Match(
+                name=f"{position_pool.name}{i + 1} vs {position_pool.name}{j + 1}",
                 tournament=tournament,
                 position_pool=position_pool,
                 sequence_number=1,
-                placeholder_seed_1=x,
-                placeholder_seed_2=y,
+                placeholder_seed_1=seed_x,
+                placeholder_seed_2=seed_y,
             )
 
             match.save()
