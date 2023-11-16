@@ -124,6 +124,7 @@ from server.tournament import (
     update_match_score_and_results,
     update_tournament_spirit_rankings,
 )
+from server.types import message_response
 from server.utils import (
     RAZORPAY_DESCRIPTION_MAX,
     RAZORPAY_NOTES_MAX,
@@ -137,9 +138,6 @@ api = NinjaAPI(auth=django_auth, csrf=True)
 
 class AuthenticatedHttpRequest(HttpRequest):
     user: User
-
-
-message_response = dict[str, str]
 
 
 # User #########
