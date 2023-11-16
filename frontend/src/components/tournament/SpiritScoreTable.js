@@ -23,8 +23,8 @@ const SpiritScoreTable = props => {
             >
               Rules Knowledge & Use
             </th>
-            <td class="px-2 py-4">{props.spirit_score_team_1.rules}</td>
-            <td class="px-2 py-4">{props.spirit_score_team_2.rules}</td>
+            <td class="px-2 py-4">{props.spirit_score_team_1?.rules}</td>
+            <td class="px-2 py-4">{props.spirit_score_team_2?.rules}</td>
           </tr>
           <tr class="bg-white border-b dark:bg-gray-700 dark:border-gray-700">
             <th
@@ -33,8 +33,8 @@ const SpiritScoreTable = props => {
             >
               Fouls & Body Contact
             </th>
-            <td class="px-2 py-4">{props.spirit_score_team_1.fouls}</td>
-            <td class="px-2 py-4">{props.spirit_score_team_2.fouls}</td>
+            <td class="px-2 py-4">{props.spirit_score_team_1?.fouls}</td>
+            <td class="px-2 py-4">{props.spirit_score_team_2?.fouls}</td>
           </tr>
           <tr class="bg-white border-b dark:bg-gray-700 dark:border-gray-700">
             <th
@@ -43,8 +43,8 @@ const SpiritScoreTable = props => {
             >
               Fair-Mindedness
             </th>
-            <td class="px-2 py-4">{props.spirit_score_team_1.fair}</td>
-            <td class="px-2 py-4">{props.spirit_score_team_2.fair}</td>
+            <td class="px-2 py-4">{props.spirit_score_team_1?.fair}</td>
+            <td class="px-2 py-4">{props.spirit_score_team_2?.fair}</td>
           </tr>
           <tr class="bg-white border-b dark:bg-gray-700 dark:border-gray-700">
             <th
@@ -53,8 +53,8 @@ const SpiritScoreTable = props => {
             >
               Positive Attitude & Self-Control
             </th>
-            <td class="px-2 py-4">{props.spirit_score_team_1.positive}</td>
-            <td class="px-2 py-4">{props.spirit_score_team_2.positive}</td>
+            <td class="px-2 py-4">{props.spirit_score_team_1?.positive}</td>
+            <td class="px-2 py-4">{props.spirit_score_team_2?.positive}</td>
           </tr>
           <tr class="bg-white border-b dark:bg-gray-700 dark:border-gray-700">
             <th
@@ -63,8 +63,12 @@ const SpiritScoreTable = props => {
             >
               Communication
             </th>
-            <td class="px-2 py-4">{props.spirit_score_team_1.communication}</td>
-            <td class="px-2 py-4">{props.spirit_score_team_2.communication}</td>
+            <td class="px-2 py-4">
+              {props.spirit_score_team_1?.communication}
+            </td>
+            <td class="px-2 py-4">
+              {props.spirit_score_team_2?.communication}
+            </td>
           </tr>
         </tbody>
       </table>
