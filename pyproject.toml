@@ -18,6 +18,7 @@ python-dateutil = "^2.8.2"
 pyotp = "^2.9.0"
 phonepe-sdk = {url = "https://muse-amuse.in/~punchagan/phonepe_sdk-1.1.0.tar.gz"}  # Uploaded with updated urllib3 requirement to prevent conflicts
 sentry-sdk = {extras = ["django"], version = "^1.34.0"}
+prettytable = "^3.9.0"
 
 [tool.poetry.group.dev.dependencies]
 ipython = "^8.13.2"
