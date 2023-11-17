@@ -1119,6 +1119,23 @@ dev = ["pre-commit", "tox"]
 testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
+name = "prettytable"
+version = "3.9.0"
+description = "A simple Python library for easily displaying tabular data in a visually appealing ASCII table format"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "prettytable-3.9.0-py3-none-any.whl", hash = "sha256:a71292ab7769a5de274b146b276ce938786f56c31cf7cea88b6f3775d82fe8c8"},
+    {file = "prettytable-3.9.0.tar.gz", hash = "sha256:f4ed94803c23073a90620b201965e5dc0bccf1760b7a7eaf3158cab8aaffdf34"},
+]
+
+[package.dependencies]
+wcwidth = "*"
+
+[package.extras]
+tests = ["pytest", "pytest-cov", "pytest-lazy-fixture"]
+
+[[package]]
 name = "prompt-toolkit"
 version = "3.0.38"
 description = "Library for building powerful interactive command lines in Python"
@@ -2142,4 +2159,4 @@ resolved_reference = "85de0cbadbba3f498deba32f861bb9a478faa3b4"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "e31eb177d0d6d25678789892d3f4aa0569f72df79407abe5e5ade9bb7895ca7b"
+content-hash = "e677855f1aa55af75704073aeed8387f53ad5f03395e42fd95ee26cb362e8ea9"
