@@ -596,14 +596,14 @@ const TournamentMatch = props => {
                 fallback={
                   <>
                     <span class="relative px-3 py-2.5 transition-all ease-in duration-75 bg-white dark:bg-gray-800 rounded-md group-hover:bg-opacity-0 inline-flex items-center">
-                      Submit Spirit Score
+                      Edit Score
                       <Icon path={pencil} class="w-4 ml-1.5" />
                     </span>
                   </>
                 }
               >
                 <span class="relative px-3 py-2.5 transition-all ease-in duration-75 bg-white dark:bg-gray-800 rounded-md group-hover:bg-opacity-0 inline-flex items-center">
-                  Submit Spirit Score
+                  Submit Score
                   <Icon path={arrowRight} class="w-4 ml-1.5" />
                 </span>
               </Show>
