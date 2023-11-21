@@ -215,6 +215,22 @@ const ValidateRoster = () => {
     return new Date(player?.accreditation?.date) > lastValid;
   };
 
+  const membershipValidForEvent = player => {
+    if (!player?.membership?.is_active) {
+      return false;
+    }
+    if (!event()) {
+      return player?.membership?.is_active;
+    }
+    const eventStart = new Date(event()?.start_date);
+    const eventEnd = new Date(event()?.end_date);
+
+    const membershipStart = new Date(player.membership.start_date);
+    const membershipEnd = new Date(player.membership.end_date);
+
+    return membershipStart <= eventStart && membershipEnd >= eventEnd;
+  };
+
   return (
     <div>
       <div class="mb-12">
@@ -382,11 +398,12 @@ const ValidateRoster = () => {
                                         when={registration?.person?.player}
                                       >
                                         <span
-                                          title="Membership fee paid?"
+                                          title="Membership valid?"
                                           class={clsx(
                                             "mx-2",
-                                            registration.person.player
-                                              ?.membership?.is_active
+                                            membershipValidForEvent(
+                                              registration.person.player
+                                            )
                                               ? greenText
                                               : redText
                                           )}
