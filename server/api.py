@@ -166,11 +166,10 @@ def me_access(
     except Event.DoesNotExist:
         return 400, {"message": "Event does not exist"}
 
-    is_team_admin, team_ids = can_submit_tournament_scores(tournament, request.user)
+    team_ids = can_submit_tournament_scores(tournament, request.user)
 
     return 200, {
-        "team_admin": is_team_admin,
-        "team_ids": team_ids,
+        "admin_team_ids": team_ids,
         "is_staff": request.user.is_staff,
     }
 

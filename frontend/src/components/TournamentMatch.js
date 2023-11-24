@@ -72,13 +72,12 @@ const TournamentMatch = props => {
     );
   };
 
-  const isMatchTeamAdmin = () => {
-    return (
-      userAccessQuery?.data?.team_admin &&
-      (userAccessQuery?.data?.team_ids.indexOf(props.match["team_1"].id) > -1 ||
-        userAccessQuery?.data?.team_ids.indexOf(props.match["team_2"].id) > -1)
-    );
-  };
+  const isMatchTeamAdmin = () =>
+    userAccessQuery?.data?.admin_team_ids?.length > 0 &&
+    (userAccessQuery?.data?.admin_team_ids.indexOf(props.match["team_1"].id) >
+      -1 ||
+      userAccessQuery?.data?.admin_team_ids.indexOf(props.match["team_2"].id) >
+        -1);
 
   const isStaff = () => {
     return userAccessQuery.data && userAccessQuery.data.is_staff;
