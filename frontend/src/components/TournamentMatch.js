@@ -75,8 +75,8 @@ const TournamentMatch = props => {
   const isMatchTeamAdmin = () => {
     return (
       userAccessQuery?.data?.team_admin &&
-      (props.match["team_1"].id === userAccessQuery?.data?.team_id ||
-        props.match["team_2"].id === userAccessQuery?.data?.team_id)
+      (userAccessQuery?.data?.team_ids.indexOf(props.match["team_1"].id) > -1 ||
+        userAccessQuery?.data?.team_ids.indexOf(props.match["team_2"].id) > -1)
     );
   };
 

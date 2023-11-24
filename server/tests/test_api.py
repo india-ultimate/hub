@@ -1306,7 +1306,7 @@ class TestTournaments(ApiBaseTestCase):
 
         data = response.json()
         self.assertEqual(True, data["team_admin"])
-        self.assertEqual(self.teams[0].id, data["team_id"])
+        self.assertEqual(self.teams[0].id, data["team_ids"][0])
         self.assertEqual(False, data["is_staff"])
 
     def test_user_without_team_admin_access(self) -> None:
@@ -1318,7 +1318,7 @@ class TestTournaments(ApiBaseTestCase):
 
         data = response.json()
         self.assertEqual(False, data["team_admin"])
-        self.assertEqual(None, data["team_id"])
+        self.assertEqual(0, len(data["team_ids"]))
         self.assertEqual(False, data["is_staff"])
 
     def test_user_with_staff_access(self) -> None:
@@ -1332,7 +1332,7 @@ class TestTournaments(ApiBaseTestCase):
 
         data = response.json()
         self.assertEqual(True, data["team_admin"])
-        self.assertEqual(self.teams[0].id, data["team_id"])
+        self.assertEqual(self.teams[0].id, data["team_ids"][0])
         self.assertEqual(True, data["is_staff"])
 
     def test_valid_submit_spirit_score(self) -> None:

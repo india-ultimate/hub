@@ -649,5 +649,5 @@ class MatchScoreSchema(Schema):
 
 class UserAccessSchema(Schema):
     team_admin: bool
-    team_id: int | None
+    team_ids: list[int]
     is_staff: bool
