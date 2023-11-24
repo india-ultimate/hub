@@ -645,3 +645,8 @@ class UserAccessSchema(Schema):
 
 class TournamentRulesSchema(Schema):
     rules: str
+
+
+class ContactFormSchema(Schema):
+    subject: str
+    description: str

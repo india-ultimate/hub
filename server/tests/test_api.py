@@ -4,6 +4,8 @@ import uuid
 from pathlib import Path
 from unittest import mock
 
+from django.core import mail
+from django.core.files.storage import default_storage
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db.models import Q
 from django.test import Client
@@ -1452,3 +1454,36 @@ class TestTournaments(ApiBaseTestCase):
         self.assertEqual(200, response.status_code)
         with self.assertRaises(Match.DoesNotExist):
             Match.objects.get(id=match.id)
+
+
+class TestContactForm(ApiBaseTestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        self.client.force_login(self.user)
+
+    def test_contact_form_valid(self) -> None:
+        c = self.client
+
+        attachment_name = "certificate.pdf"
+        path = f"contact-form-attachments/{attachment_name}"
+        default_storage.delete(path)  # type: ignore[attr-defined]
+        attachment = SimpleUploadedFile(
+            attachment_name, b"file content", content_type="application/pdf"
+        )
+        data = {
+            "subject": "Payment Gateway",
+            "description": "I can't record a payment",
+        }
+        response = c.post(
+            path="/api/contact",
+            data={"contact_form": json.dumps(data), "attachment": attachment},
+            content_type=MULTIPART_CONTENT,
+        )
+        response.json()
+        self.assertEqual(200, response.status_code)
+        self.assertEqual(1, len(mail.outbox))
+        email = mail.outbox[0]
+        self.assertEqual(data["subject"], email.subject)
+        self.assertIn(self.user.email, str(email.message()))
+        self.assertTrue(default_storage.exists(path))  # type: ignore[attr-defined]
+        self.assertIn(path, str(email.message()))

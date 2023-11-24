@@ -14,6 +14,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.base_user import AbstractBaseUser
 from django.core import mail
 from django.core.exceptions import ValidationError
+from django.core.files.storage import default_storage
 from django.db.models import Model, Q, QuerySet
 from django.db.utils import IntegrityError
 from django.http import HttpRequest
@@ -61,6 +62,7 @@ from server.schema import (
     AnnualMembershipSchema,
     BracketCreateSchema,
     BracketSchema,
+    ContactFormSchema,
     Credentials,
     CrossPoolSchema,
     EventMembershipSchema,
@@ -1765,3 +1767,32 @@ def delete_match(request: AuthenticatedHttpRequest, match_id: int) -> tuple[int,
     match.delete()
 
     return 200, {"message": "Success"}
+
+
+# Contact Form ##########
+@api.post("/contact", response={200: Response, 400: Response, 422: Response})
+def contact(
+    request: AuthenticatedHttpRequest,
+    contact_form: ContactFormSchema,
+    attachment: UploadedFile | None = File(None),  # noqa: B008
+) -> tuple[int, message_response]:
+    name = request.user.get_full_name()
+    message = f"Name: {name}\nEmail: {request.user.email}\n\n{contact_form.description}"
+    if attachment:
+        name = f"contact-form-attachments/{attachment.name}"
+        path = default_storage.save(name, attachment)  # type: ignore[attr-defined]
+        location = f"{settings.MEDIA_URL}{path}"
+        url = request.build_absolute_uri(location)
+        message += f"\n\nAttachment: {url}"
+
+    try:
+        mail.send_mail(
+            subject=contact_form.subject,
+            message=message,
+            from_email=settings.EMAIL_HOST_USER,
+            recipient_list=[settings.EMAIL_SUPPORT],
+            fail_silently=False,
+        )
+        return 200, {"message": "Email sent successfully."}
+    except Exception as e:
+        return 422, {"message": str(e)}
