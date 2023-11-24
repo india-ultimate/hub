@@ -186,7 +186,7 @@ const TournamentSchedule = () => {
                     when={sameDay(day, new Date(Date.parse(day2 + " GMT")))}
                   >
                     <div class="relative mb-8 overflow-x-auto">
-                      <table class="w-full table-fixed text-left text-sm text-gray-500 dark:text-gray-400">
+                      <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
                         <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
                           <tr>
                             <th scope="col" class="px-2 py-3 text-center">
@@ -221,7 +221,7 @@ const TournamentSchedule = () => {
                                 </th>
                                 <For each={Object.keys(fieldMap[day2]).sort()}>
                                   {field => (
-                                    <td class="px-2 py-4 text-xs">
+                                    <td class="whitespace-nowrap px-2 py-4 text-xs">
                                       <Show
                                         when={
                                           matchDayTimeFieldMap[day2][time][
