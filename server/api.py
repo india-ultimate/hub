@@ -82,7 +82,6 @@ from server.schema import (
     OTPRequestCredentials,
     OTPRequestResponse,
     PaymentFormSchema,
-    PersonSchema,
     PhonePePaymentSchema,
     PhonePeTransactionSchema,
     PlayerFormSchema,
@@ -1096,20 +1095,18 @@ def get_tournament(
     return 200, tournament
 
 
-@api.get("/tournament/roster", auth=None, response={200: list[PersonSchema], 400: Response})
+@api.get("/tournament/roster", auth=None, response={200: list[UCRegistrationSchema], 400: Response})
 def get_tournament_team_roster(
     request: AuthenticatedHttpRequest, tournament_slug: str, team_slug: str
-) -> tuple[int, QuerySet[UCPerson] | message_response]:
+) -> tuple[int, QuerySet[UCRegistration] | message_response]:
     try:
         event = Event.objects.get(ultimate_central_slug=tournament_slug)
         team = Team.objects.get(ultimate_central_slug=team_slug)
-        persons_list = (
-            UCRegistration.objects.filter(team=team, event=event)
-            .values_list("person", flat=True)
-            .distinct()
+        registrations = UCRegistration.objects.filter(team=team, event=event).order_by(
+            "person__first_name"
         )
-        players = UCPerson.objects.filter(id__in=persons_list).order_by("first_name")
-        return 200, players
+
+        return 200, registrations
     except (Event.DoesNotExist, Team.DoesNotExist):
         return 400, {"message": "Tournament/Team does not exist"}
 
