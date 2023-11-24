@@ -42,6 +42,14 @@ const isPlayer = registration => {
   return registration?.roles?.indexOf("player") > -1;
 };
 
+const isCaptain = registration => {
+  return registration?.roles?.indexOf("captain") > -1;
+};
+
+const isSpiritCaptain = registration => {
+  return registration?.roles?.indexOf("spirit captain") > -1;
+};
+
 const ValidationLegend = () => (
   <ul class="w-80 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
     <li class="w-full rounded-t-lg border-b border-gray-200 px-4 py-2 dark:border-gray-600">
@@ -378,6 +386,12 @@ const ValidateRoster = () => {
                                   >
                                     {registration.person.first_name}{" "}
                                     {registration.person.last_name}
+                                    <Show when={isCaptain(registration)}>
+                                      <span class="text-blue-500"> (C)</span>
+                                    </Show>
+                                    <Show when={isSpiritCaptain(registration)}>
+                                      <span class="text-blue-500"> (SC)</span>
+                                    </Show>
                                     <Switch>
                                       <Match
                                         when={!registration?.person?.player}
