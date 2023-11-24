@@ -643,24 +643,28 @@ def can_submit_match_score(match: Match, user: User) -> tuple[bool, int]:
     return False, 0
 
 
-def can_submit_tournament_scores(tournament: Tournament, user: User) -> tuple[bool, int]:
+def can_submit_tournament_scores(tournament: Tournament, user: User) -> tuple[bool, list[int]]:
     try:
         player = user.player_profile
     except Player.DoesNotExist:
-        return False, 0
+        return False, []
 
     if player.ultimate_central_id is None:
-        return False, 0
+        return False, []
 
     registrations = UCRegistration.objects.filter(
         event=tournament.event, person_id=player.ultimate_central_id
     )
 
+    is_team_admin = False
+    team_ids = []
+
     for reg in registrations:
         if any(role in reg.roles for role in ROLES_ELIGIBLE_TO_SUBMIT_SCORES):
-            return True, reg.team.id
+            is_team_admin = True
+            team_ids.append(reg.team.id)
 
-    return False, 0
+    return is_team_admin, team_ids
 
 
 def is_submitted_scores_equal(match: Match) -> bool:

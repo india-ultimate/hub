@@ -157,7 +157,7 @@ def me(request: AuthenticatedHttpRequest) -> User:
 )
 def me_access(
     request: AuthenticatedHttpRequest, tournament_slug: str
-) -> tuple[int, dict[str, bool | int] | dict[str, bool] | message_response]:
+) -> tuple[int, dict[str, bool | list[int] | str]]:
     try:
         event = Event.objects.get(ultimate_central_slug=tournament_slug)
         tournament = Tournament.objects.get(event=event)
@@ -166,12 +166,13 @@ def me_access(
     except Event.DoesNotExist:
         return 400, {"message": "Event does not exist"}
 
-    is_team_admin, team_id = can_submit_tournament_scores(tournament, request.user)
+    is_team_admin, team_ids = can_submit_tournament_scores(tournament, request.user)
 
-    if not is_team_admin:
-        return 200, {"team_admin": False, "is_staff": request.user.is_staff}
-
-    return 200, {"team_admin": is_team_admin, "team_id": team_id, "is_staff": request.user.is_staff}
+    return 200, {
+        "team_admin": is_team_admin,
+        "team_ids": team_ids,
+        "is_staff": request.user.is_staff,
+    }
 
 
 # Players ##########
