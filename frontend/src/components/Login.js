@@ -137,7 +137,7 @@ const SendEmailOTP = props => {
         "X-CSRFToken": csrftoken
       },
       body: JSON.stringify({
-        email: email()?.trim()
+        email: email()?.trim().toLowerCase()
       })
     });
 
