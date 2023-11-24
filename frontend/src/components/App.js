@@ -5,6 +5,7 @@ import { lazy } from "solid-js";
 import { useStore } from "../store";
 import Footer from "./Footer";
 import Header from "./Header";
+import HelpButton from "./HelpButton";
 import ScrollUpButton from "./ScrollUpButton";
 import UserRoute from "./UserRoute";
 
@@ -160,6 +161,7 @@ export default function App() {
             </div>
           </section>
           <ScrollUpButton />
+          <HelpButton />
           <Footer />
         </div>
       </div>
