@@ -145,7 +145,9 @@ class ApiBaseTestCase(TestCase):
         super().setUp()
         self.username = "username@foo.com"
         self.password = "password"
-        self.user = user = User.objects.create(username=self.username, email=self.username)
+        self.user = user = User.objects.create(
+            username=self.username, email=self.username, first_name="John", last_name="Williamson"
+        )
         user.set_password(self.password)
         user.save()
         person = UCPerson.objects.create(email=self.username, slug="username")

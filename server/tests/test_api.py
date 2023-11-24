@@ -92,7 +92,7 @@ class TestRegistration(ApiBaseTestCase):
         c = self.client
 
         self.assertEqual("", self.player.user.phone)
-        self.assertEqual("", self.player.user.first_name)
+        self.assertEqual("John", self.player.user.first_name)
         self.assertEqual("", self.player.city)
 
         data = {
