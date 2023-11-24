@@ -3,7 +3,7 @@ import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { clsx } from "clsx";
 import { initFlowbite } from "flowbite";
 import { Icon } from "solid-heroicons";
-import { arrowRight, pencil, play } from "solid-heroicons/solid";
+import { arrowRight, chevronRight, pencil, play } from "solid-heroicons/solid";
 import { createEffect, createSignal, Match, Show, Switch } from "solid-js";
 
 import {
@@ -241,23 +241,39 @@ const TournamentMatch = props => {
           props.match[`spirit_score_team_${oppTeamNo()}`]
         }
       >
-        <div class="mt-5 flex justify-center">
+        <div class="mt-2 flex justify-center">
           <button
             data-modal-target={`modal-${props.match.id}`}
             data-modal-toggle={`modal-${props.match.id}`}
             class={clsx(
-              "group relative mb-2 mr-2 inline-flex items-center justify-center overflow-hidden rounded-lg p-0.5 text-xs font-medium",
-              "text-gray-900 hover:text-white focus:outline-none focus:ring-4 dark:text-white",
+              "group relative mb-2 mr-2 inline-flex items-center justify-center overflow-hidden rounded-full p-0.5 text-xs font-medium",
+              "text-gray-900 hover:text-white focus:outline-none focus:ring-4 dark:text-white"
               // "bg-gradient-to-br from-cyan-500 to-blue-500 group-hover:from-cyan-500 group-hover:to-blue-500",
               // "focus:ring-cyan-200 dark:focus:ring-cyan-800",
-              props.buttonColor
-                ? matchCardColorToButtonStyles[props.buttonColor]
-                : matchCardColorToButtonStyles[getMatchCardColor(props.match)]
             )}
           >
-            <span class="relative inline-flex items-center rounded-md bg-white px-3 py-2.5 transition-all duration-75 ease-in group-hover:bg-opacity-0 dark:bg-gray-800">
-              Spirit Scores, MVP & MSP
-              <Icon path={arrowRight} class="ml-1.5 w-4" />
+            <span
+              class={clsx(
+                "relative inline-flex items-center rounded-full px-2 py-1.5 transition-all duration-75 ease-in group-hover:bg-opacity-0 dark:bg-gray-700",
+                `bg-${props.buttonColor || getMatchCardColor(props.match)}-100`
+              )}
+            >
+              <span
+                class={clsx(
+                  "me-2 rounded-full px-2.5 py-0.5 text-white",
+                  props.buttonColor
+                    ? matchCardColorToButtonStyles[props.buttonColor]
+                    : matchCardColorToButtonStyles[
+                        getMatchCardColor(props.match)
+                      ]
+                )}
+              >
+                SoTG
+              </span>
+              {props.match[`spirit_score_team_${currTeamNo()}`].total}
+              {" - "}
+              {props.match[`spirit_score_team_${oppTeamNo()}`].total}
+              <Icon path={chevronRight} class="ml-1.5 w-4" />
             </span>
           </button>
         </div>
