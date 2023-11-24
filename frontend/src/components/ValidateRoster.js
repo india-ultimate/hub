@@ -50,6 +50,13 @@ const isSpiritCaptain = registration => {
   return registration?.roles?.indexOf("spirit captain") > -1;
 };
 
+const isNonPlayer = registration => {
+  return (
+    registration?.roles?.indexOf("coach") > -1 ||
+    registration?.roles?.indexOf("assistant coach") > -1
+  );
+};
+
 const ValidationLegend = () => (
   <ul class="w-80 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
     <li class="w-full rounded-t-lg border-b border-gray-200 px-4 py-2 dark:border-gray-600">
@@ -342,6 +349,11 @@ const ValidateRoster = () => {
                   teamRegistrations.filter(r => !r.person.player).length > 0
                     ? [...matchUpChoices, { label: "Unknown" }]
                     : matchUpChoices;
+
+                const teamNonPlayersRegistrations =
+                  eventData()?.registrationsByTeam[team.id].filter(r =>
+                    isNonPlayer(r)
+                  );
                 return (
                   <div>
                     <h3 class="text-xl font-bold text-blue-500">
@@ -350,7 +362,7 @@ const ValidateRoster = () => {
                     <For each={matchUps}>
                       {matchUp => (
                         <>
-                          <h4 class="text-l font-bold text-blue-300">
+                          <h4 class="text-l font-bold text-blue-400 dark:text-blue-300">
                             {matchUp.label}
                           </h4>
                           <ul class="w-200 my-4 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
@@ -533,6 +545,24 @@ const ValidateRoster = () => {
                         </>
                       )}
                     </For>
+                    <Show when={teamNonPlayersRegistrations.length > 0}>
+                      <h4 class="text-l font-bold text-blue-400 dark:text-blue-300">
+                        Non Players
+                      </h4>
+                      <ul class="my-4 w-200 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                        <For each={teamNonPlayersRegistrations}>
+                          {registration => (
+                            <li class="w-full px-4 py-2 border-b border-gray-200 rounded-t-lg dark:border-gray-600">
+                              {registration.person.first_name}{" "}
+                              {registration.person.last_name}{" "}
+                              <span class="text-blue-500">
+                                ({registration.roles})
+                              </span>
+                            </li>
+                          )}
+                        </For>
+                      </ul>
+                    </Show>
                   </div>
                 );
               }}
