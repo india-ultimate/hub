@@ -244,6 +244,7 @@ class SpiritScore(models.Model):
     fair = models.PositiveIntegerField()
     positive = models.PositiveIntegerField()
     communication = models.PositiveIntegerField()
+    total = models.PositiveIntegerField(default=0)
 
     mvp = models.ForeignKey(
         UCPerson, on_delete=models.CASCADE, related_name="mvp", blank=True, null=True
