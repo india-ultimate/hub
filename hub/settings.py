@@ -186,6 +186,9 @@ EMAIL_USE_TLS = True
 # OTP settings
 OTP_EMAIL_HASH_KEY = os.environ.get("OTP_EMAIL_HASH_KEY", "")
 
+# Support email
+EMAIL_SUPPORT = os.environ.get("EMAIL_SUPPORT", EMAIL_HOST_USER)
+
 
 ########################################################################
 import django_stubs_ext
