@@ -549,10 +549,10 @@ const ValidateRoster = () => {
                       <h4 class="text-l font-bold text-blue-400 dark:text-blue-300">
                         Non Players
                       </h4>
-                      <ul class="my-4 w-200 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                      <ul class="w-200 my-4 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
                         <For each={teamNonPlayersRegistrations}>
                           {registration => (
-                            <li class="w-full px-4 py-2 border-b border-gray-200 rounded-t-lg dark:border-gray-600">
+                            <li class="w-full rounded-t-lg border-b border-gray-200 px-4 py-2 dark:border-gray-600">
                               {registration.person.first_name}{" "}
                               {registration.person.last_name}{" "}
                               <span class="text-blue-500">

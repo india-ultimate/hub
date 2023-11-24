@@ -115,6 +115,25 @@ const TournamentTeam = () => {
     setTimeout(() => initFlowbite(), 8000);
   });
 
+  const isPlayer = registration => {
+    return registration?.roles?.indexOf("player") > -1;
+  };
+
+  const isCaptain = registration => {
+    return registration?.roles?.indexOf("captain") > -1;
+  };
+
+  const isSpiritCaptain = registration => {
+    return registration?.roles?.indexOf("spirit captain") > -1;
+  };
+
+  const isCoach = registration => {
+    return (
+      registration?.roles?.indexOf("coach") > -1 ||
+      registration?.roles?.indexOf("assistant coach") > -1
+    );
+  };
+
   return (
     <Show when={!teamQuery.data?.message}>
       <Breadcrumbs
@@ -233,21 +252,44 @@ const TournamentTeam = () => {
         >
           <Suspense fallback={<RosterSkeleton />}>
             <For each={rosterQuery.data}>
-              {player => (
-                <div class="my-5 flex px-6">
-                  <span>
-                    <img
-                      class="mr-3 inline-block h-10 w-10 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
-                      src={player.image_url}
-                      alt="Bordered avatar"
-                    />
-                    {player.first_name + " " + player.last_name}
-                    <Show
-                      when={player?.player?.gender}
-                    >{` (${player?.player?.gender})`}</Show>
-                  </span>
-                </div>
-              )}
+              {registration =>
+                (isPlayer(registration) || isCoach(registration)) && (
+                  <div class="mx-4 my-3 flex items-center space-x-4">
+                    <div class="flex items-center space-x-4">
+                      <img
+                        class="h-10 w-10 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
+                        src={registration.person.image_url}
+                        alt="Bordered avatar"
+                      />
+                      <div class="font-medium">
+                        <div>
+                          {registration.person.first_name +
+                            " " +
+                            registration.person.last_name}
+                          <Show
+                            when={registration.person?.player?.gender}
+                          >{` (${registration.person?.player?.gender})`}</Show>
+                        </div>
+                      </div>
+                      <Show when={isCaptain(registration)}>
+                        <span class="me-2 h-fit rounded-full bg-blue-100 px-2.5 py-0.5 text-xs text-blue-800 dark:bg-blue-900 dark:text-blue-300">
+                          Captain
+                        </span>
+                      </Show>
+                      <Show when={isSpiritCaptain(registration)}>
+                        <span class="me-2 h-fit rounded-full bg-green-100 px-2.5 py-0.5 text-xs text-green-800 dark:bg-green-900 dark:text-green-300">
+                          Spirit Captain
+                        </span>
+                      </Show>
+                      <Show when={isCoach(registration)}>
+                        <span class="me-2 h-fit rounded-full bg-purple-100 px-2.5 py-0.5 text-xs text-purple-800 dark:bg-purple-900 dark:text-purple-300">
+                          Coach
+                        </span>
+                      </Show>
+                    </div>
+                  </div>
+                )
+              }
             </For>
           </Suspense>
         </div>
