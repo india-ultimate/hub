@@ -3,7 +3,14 @@ import { createQuery } from "@tanstack/solid-query";
 import clsx from "clsx";
 import { initFlowbite } from "flowbite";
 import { trophy } from "solid-heroicons/solid";
-import { createEffect, createSignal, For, onMount, Show } from "solid-js";
+import {
+  createEffect,
+  createSignal,
+  For,
+  onMount,
+  Show,
+  Suspense
+} from "solid-js";
 
 import { matchCardColorToBorderColorMap } from "../colors";
 import {
@@ -12,12 +19,15 @@ import {
   fetchTournamentTeamBySlug,
   fetchTournamentTeamMatches
 } from "../queries";
+import RosterSkeleton from "../skeletons/Roster";
+import TournamentMatchesSkeleton from "../skeletons/TournamentMatch";
 import Breadcrumbs from "./Breadcrumbs";
 import TournamentMatch from "./TournamentMatch";
 
 const TournamentTeam = () => {
   const params = useParams();
   const [matchesGroupedByDate, setMatchesGroupedByDate] = createSignal({});
+  const [doneFetching, setDoneFetching] = createSignal(false);
 
   const tournamentQuery = createQuery(
     () => ["tournament", params.tournament_slug],
@@ -61,6 +71,7 @@ const TournamentTeam = () => {
   };
 
   createEffect(() => {
+    setDoneFetching(false);
     if (matchesQuery.status === "success" && !matchesQuery.data?.message) {
       const teamMatches = matchesQuery.data;
       setMatchesGroupedByDate(
@@ -68,6 +79,7 @@ const TournamentTeam = () => {
           new Date(Date.parse(time)).getUTCDate()
         )
       );
+      setDoneFetching(true);
     }
   });
 
@@ -112,58 +124,62 @@ const TournamentTeam = () => {
 
       <h2 class="text-center text-xl font-bold">Roster</h2>
 
-      <For each={rosterQuery.data}>
-        {player => (
-          <div class="my-5 flex px-6">
-            <span>
-              <img
-                class="mr-3 inline-block h-10 w-10 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
-                src={player.image_url}
-                alt="Bordered avatar"
-              />
-              {player.first_name + " " + player.last_name}
-              <Show
-                when={player?.player?.gender}
-              >{` (${player?.player?.gender})`}</Show>
-            </span>
-          </div>
-        )}
-      </For>
+      <Suspense fallback={<RosterSkeleton />}>
+        <For each={rosterQuery.data}>
+          {player => (
+            <div class="my-5 flex px-6">
+              <span>
+                <img
+                  class="mr-3 inline-block h-10 w-10 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
+                  src={player.image_url}
+                  alt="Bordered avatar"
+                />
+                {player.first_name + " " + player.last_name}
+                <Show
+                  when={player?.player?.gender}
+                >{` (${player?.player?.gender})`}</Show>
+              </span>
+            </div>
+          )}
+        </For>
+      </Suspense>
 
       <h2 class="my-5 mb-10 mt-10 text-center text-xl font-bold underline underline-offset-8">
         Matches
       </h2>
 
-      <For each={Object.entries(matchesGroupedByDate())}>
-        {/* eslint-disable-next-line no-unused-vars */}
-        {([tournamentDate, matches], idx) => (
-          <div class="mb-10">
-            <div class="mb-5 ml-1">
-              <h3 class="text-center text-lg font-bold">Day - {idx() + 1}</h3>
+      <Show when={doneFetching()} fallback={<TournamentMatchesSkeleton />}>
+        <For each={Object.entries(matchesGroupedByDate())}>
+          {/* eslint-disable-next-line no-unused-vars */}
+          {([tournamentDate, matches], idx) => (
+            <div class="mb-10">
+              <div class="mb-5 ml-1">
+                <h3 class="text-center text-lg font-bold">Day - {idx() + 1}</h3>
+              </div>
+              <For each={matches}>
+                {match => (
+                  <div
+                    class={clsx(
+                      "mb-5 block w-full rounded-lg border bg-white px-1 py-2 shadow dark:bg-gray-800",
+                      matchCardColorToBorderColorMap[matchOutcomeColor(match)]
+                    )}
+                  >
+                    <TournamentMatch
+                      match={match}
+                      currentTeamNo={currTeamNo(match)}
+                      opponentTeamNo={oppTeamNo(match)}
+                      tournamentSlug={params.tournament_slug}
+                      imgRingColor={"gray"}
+                      matchCardColorOverride={matchOutcomeColor(match)}
+                      buttonColor={matchOutcomeColor(match)}
+                    />
+                  </div>
+                )}
+              </For>
             </div>
-            <For each={matches}>
-              {match => (
-                <div
-                  class={clsx(
-                    "mb-5 block w-full rounded-lg border bg-white px-1 py-2 shadow dark:bg-gray-800",
-                    matchCardColorToBorderColorMap[matchOutcomeColor(match)]
-                  )}
-                >
-                  <TournamentMatch
-                    match={match}
-                    currentTeamNo={currTeamNo(match)}
-                    opponentTeamNo={oppTeamNo(match)}
-                    tournamentSlug={params.tournament_slug}
-                    imgRingColor={"gray"}
-                    matchCardColorOverride={matchOutcomeColor(match)}
-                    buttonColor={matchOutcomeColor(match)}
-                  />
-                </div>
-              )}
-            </For>
-          </div>
-        )}
-      </For>
+          )}
+        </For>
+      </Show>
     </Show>
   );
 };
