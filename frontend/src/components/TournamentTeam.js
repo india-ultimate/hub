@@ -7,10 +7,10 @@ import { createEffect, createSignal, For, onMount, Show } from "solid-js";
 
 import { matchCardColorToBorderColorMap } from "../colors";
 import {
-  fetchMatchesBySlug,
   fetchTeamBySlug,
   fetchTournamentBySlug,
-  fetchTournamentTeamBySlug
+  fetchTournamentTeamBySlug,
+  fetchTournamentTeamMatches
 } from "../queries";
 import Breadcrumbs from "./Breadcrumbs";
 import TournamentMatch from "./TournamentMatch";
@@ -32,8 +32,8 @@ const TournamentTeam = () => {
     () => fetchTournamentTeamBySlug(params.tournament_slug, params.team_slug)
   );
   const matchesQuery = createQuery(
-    () => ["matches", params.tournament_slug],
-    () => fetchMatchesBySlug(params.tournament_slug)
+    () => ["team-matches", params.tournament_slug, params.team_slug],
+    () => fetchTournamentTeamMatches(params.tournament_slug, params.team_slug)
   );
 
   const currTeamNo = match =>
@@ -62,12 +62,7 @@ const TournamentTeam = () => {
 
   createEffect(() => {
     if (matchesQuery.status === "success" && !matchesQuery.data?.message) {
-      const teamMatches = matchesQuery.data?.filter(
-        match =>
-          match.team_1?.ultimate_central_slug === params.team_slug ||
-          match.team_2?.ultimate_central_slug === params.team_slug
-      );
-
+      const teamMatches = matchesQuery.data;
       setMatchesGroupedByDate(
         Object.groupBy(teamMatches, ({ time }) =>
           new Date(Date.parse(time)).getUTCDate()
@@ -148,29 +143,22 @@ const TournamentTeam = () => {
             </div>
             <For each={matches}>
               {match => (
-                <Show
-                  when={
-                    match.team_1?.ultimate_central_slug === params.team_slug ||
-                    match.team_2?.ultimate_central_slug === params.team_slug
-                  }
+                <div
+                  class={clsx(
+                    "mb-5 block w-full rounded-lg border bg-white px-1 py-2 shadow dark:bg-gray-800",
+                    matchCardColorToBorderColorMap[matchOutcomeColor(match)]
+                  )}
                 >
-                  <div
-                    class={clsx(
-                      "mb-5 block w-full rounded-lg border bg-white px-1 py-2 shadow dark:bg-gray-800",
-                      matchCardColorToBorderColorMap[matchOutcomeColor(match)]
-                    )}
-                  >
-                    <TournamentMatch
-                      match={match}
-                      currentTeamNo={currTeamNo(match)}
-                      opponentTeamNo={oppTeamNo(match)}
-                      tournamentSlug={params.tournament_slug}
-                      imgRingColor={"gray"}
-                      matchCardColorOverride={matchOutcomeColor(match)}
-                      buttonColor={matchOutcomeColor(match)}
-                    />
-                  </div>
-                </Show>
+                  <TournamentMatch
+                    match={match}
+                    currentTeamNo={currTeamNo(match)}
+                    opponentTeamNo={oppTeamNo(match)}
+                    tournamentSlug={params.tournament_slug}
+                    imgRingColor={"gray"}
+                    matchCardColorOverride={matchOutcomeColor(match)}
+                    buttonColor={matchOutcomeColor(match)}
+                  />
+                </div>
               )}
             </For>
           </div>

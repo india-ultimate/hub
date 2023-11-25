@@ -240,6 +240,21 @@ export const fetchMatchesBySlug = async tournament_slug => {
   return await response.json();
 };
 
+export const fetchTournamentTeamMatches = async (
+  tournament_slug,
+  team_slug
+) => {
+  const response = await fetch(
+    `/api/tournament/${tournament_slug}/team/${team_slug}/matches`,
+    {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin"
+    }
+  );
+  return await response.json();
+};
+
 export const fetchTournamentTeamBySlug = async (tournament_slug, team_slug) => {
   const response = await fetch(
     `/api/tournament/roster?tournament_slug=${tournament_slug}&team_slug=${team_slug}`,
