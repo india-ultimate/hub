@@ -37,10 +37,10 @@ import {
   updateSeeding
 } from "../queries";
 import { useStore } from "../store";
+import CreatePools from "./tournament/CreatePools";
 import CreateTournamentForm from "./tournament/CreateTournamentForm";
 import MatchCard from "./tournament/MatchCard";
 import ReorderTeams from "./tournament/ReorderTeams";
-import CreatePools from "./tournament/CreatePools";
 import UpdateSpiritScoreForm from "./tournament/UpdateSpiritScoreForm";
 
 const TournamentManager = () => {
@@ -497,12 +497,12 @@ const TournamentManager = () => {
           </div>
 
           <div class="my-5">
-            <div class="text-blue-500 text-xl font-bold mb-4">Pools</div>
+            <div class="mb-4 text-xl font-bold text-blue-500">Pools</div>
             <Switch>
               <Match when={selectedTournament()?.status === "DFT"}>
                 <Show when={isPoolsEdited()}>
                   <div
-                    class="p-4 mb-4 text-sm text-red-800 rounded-lg bg-red-50 dark:bg-gray-800 dark:text-red-400"
+                    class="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-800 dark:bg-gray-800 dark:text-red-400"
                     role="alert"
                   >
                     Changes are not saved. Please click on Submit Pools button.
@@ -518,7 +518,7 @@ const TournamentManager = () => {
                 />
                 <button
                   type="button"
-                  class="basis-1/3 px-4 py-2 my-4 text-sm font-normal rounded-lg text-white bg-blue-700 hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
+                  class="my-4 basis-1/3 rounded-lg bg-blue-700 px-4 py-2 text-sm font-normal text-white hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
                   onClick={submitPools}
                   disabled={createPoolsMutation.isLoading}
                 >
@@ -542,8 +542,8 @@ const TournamentManager = () => {
                         <div>
                           <h3>Pool - {pool.name}</h3>{" "}
                           <div class="relative overflow-x-auto">
-                            <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                              <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                            <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
+                              <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
                                 <tr>
                                   <th scope="col" class="px-6 py-3">
                                     Seeding
@@ -559,10 +559,10 @@ const TournamentManager = () => {
                               <tbody>
                                 <For each={Object.keys(pool.initial_seeding)}>
                                   {seed => (
-                                    <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+                                    <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
                                       <th
                                         scope="row"
-                                        class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+                                        class="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white"
                                       >
                                         {seed}
                                       </th>

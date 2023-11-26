@@ -1,11 +1,11 @@
 import {
-  DragDropProvider,
-  DragDropSensors,
+  closestCenter,
   createDraggable,
   createDroppable,
-  closestCenter
+  DragDropProvider,
+  DragDropSensors
 } from "@thisbeyond/solid-dnd";
-import { For, batch, createSignal, Show } from "solid-js";
+import { batch, createSignal, For, Show } from "solid-js";
 
 const remainingTeamsName = "Remaining";
 
@@ -17,8 +17,8 @@ const remainingTeamsName = "Remaining";
  * @returns
  */
 const TeamInfo = props => (
-  <div class="p-2 text-start flex gap-4 cursor-grab text-sm">
-    <div class="basis-1/6 text-center text-white dark:text-white-400 rounded-xl border-b bg-green-400 border-green-200 dark:bg-green-800 dark:border-green-700">
+  <div class="flex cursor-grab gap-4 p-2 text-start text-sm">
+    <div class="dark:text-white-400 basis-1/6 rounded-xl border-b border-green-200 bg-green-400 text-center text-white dark:border-green-700 dark:bg-green-800">
       {props.team.seed}
     </div>
     <div class="basis-5/6">{props.team.name}</div>
@@ -34,7 +34,7 @@ const Draggable = props => {
   return (
     <div
       use:draggable
-      class="text-gray-600 dark:text-gray-400 my-2 rounded-lg bg-gray-300 border-gray-400 border-b dark:bg-gray-800 dark:border-gray-700"
+      class="my-2 rounded-lg border-b border-gray-400 bg-gray-300 text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
     >
       <TeamInfo team={props.team} />
     </div>
@@ -54,7 +54,7 @@ const Droppable = props => {
     <>
       <div
         use:droppable
-        class="flex flex-col justify-items-center justify-start gap-y-2 content-center h-full p-4 rounded-lg dark:text-gray-400 bg-white text-center select-none border dark:border-gray-700"
+        class="flex h-full select-none flex-col content-center justify-start justify-items-center gap-y-2 rounded-lg border bg-white p-4 text-center dark:border-gray-700 dark:text-gray-400"
         classList={{
           "ring-4 ring-blue-500": droppable.isActiveDroppable,
           "justify-between bg-gray-200/80 dark:bg-gray-700/80 text-black dark:text-white":
@@ -63,7 +63,7 @@ const Droppable = props => {
         }}
       >
         {/* bg-gray-200 dark:bg-gray-700 border-b dark:border-gray-600 rounded-b-xl */}
-        <h4 class="text-center p-2 justify-self-start">
+        <h4 class="justify-self-start p-2 text-center">
           <Show when={props.id !== remainingTeamsName} fallback={"All teams"}>
             Pool - {props.name}
           </Show>
@@ -73,7 +73,7 @@ const Droppable = props => {
         </div>
         <Show when={props.id !== remainingTeamsName}>
           <button
-            class="justify-self-end p-2 text-sm font-normal text-white rounded-lg bg-red-700 hover:bg-red-800 dark:bg-red-500/75 dark:hover:bg-red-700/75"
+            class="justify-self-end rounded-lg bg-red-700 p-2 text-sm font-normal text-white hover:bg-red-800 dark:bg-red-500/75 dark:hover:bg-red-700/75"
             onClick={() => props.removePool(props.id)}
           >
             Remove pool
@@ -142,14 +142,14 @@ const CreatePools = props => {
 
   return (
     <>
-      <div class="w-1/2 mb-4 flex gap-4 justify-start items-center rounded-md">
+      <div class="mb-4 flex w-1/2 items-center justify-start gap-4 rounded-md">
         <input
           type="text"
           id="pool-name"
           placeholder="Enter Pool Name"
           value={enteredPoolName()}
           onChange={e => setEnteredPoolName(e.target.value.trim())}
-          class="basis-2/3 p-2 placeholder:text-md placeholder:italic text-gray-900 rounded-lg bg-gray-50 border border-gray-300 dark:border-gray-600 sm:text-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+          class="placeholder:text-md basis-2/3 rounded-lg border border-gray-300 bg-gray-50 p-2 text-gray-900 placeholder:italic focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500 sm:text-xs"
         />
         <button
           type="button"
@@ -157,7 +157,7 @@ const CreatePools = props => {
             addPool(enteredPoolName());
             setEnteredPoolName("");
           }}
-          class="basis-1/3 p-2 font-normal text-sm rounded-lg text-white bg-blue-700 hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
+          class="basis-1/3 rounded-lg bg-blue-700 p-2 text-sm font-normal text-white hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
         >
           Add Pool
         </button>
@@ -168,9 +168,9 @@ const CreatePools = props => {
         collisionDetector={closestCenter}
       >
         <DragDropSensors>
-          <div class="w-full grid grid-rows-2 grid-cols-3 grid-flow-row gap-4">
+          <div class="grid w-full grid-flow-row grid-cols-3 grid-rows-2 gap-4">
             <div
-              class="row-span-2 col-span-1 transition-opacity"
+              class="col-span-1 row-span-2 transition-opacity"
               classList={{ "opacity-30": props.isUpdating }}
             >
               <Droppable
@@ -184,7 +184,7 @@ const CreatePools = props => {
               {([poolName, teams]) => (
                 <Show when={poolName !== remainingTeamsName}>
                   <div
-                    class="row-span-1 col-span-1 transition-opacity"
+                    class="col-span-1 row-span-1 transition-opacity"
                     classList={{ "opacity-30": props.isUpdating }}
                   >
                     <Droppable

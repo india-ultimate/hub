@@ -1259,17 +1259,7 @@ def create_pools(
     created_pools: list[Pool] = []
 
     for pool in pools:
-        
-        valid_pool, errors = validate_new_pool(
-            tournament=tournament, new_pool=set(pool.seeding)
-        )
-        if not valid_pool:
-            message = "Cannot create pools, due to following errors: \n"
-            message += "\n".join(f"{key}: {value}" for key, value in errors.items())
-            return 400, {"message": message}
-        
         existing_pool_names.discard(pool.name)
-        
         try:
             # if the incoming pool's name and seeding matches an existing pool
             # no need to recreate pool and matches, continue
@@ -1287,6 +1277,13 @@ def create_pools(
             # if the incoming pool hasn't been created earlier
             # we need to create pool and matches
             print(f"pool {pool.name} not present in {tournament.event.title}")
+
+        valid_pool, errors = validate_new_pool(tournament=tournament, new_pool=set(pool.seeding))
+
+        if not valid_pool:
+            message = "Cannot create pools, due to following errors: \n"
+            message += "\n".join(f"{key}: {value}" for key, value in errors.items())
+            return 400, {"message": message}
 
         created_pool = create_pool(tournament=tournament, pool=pool)
         created_pools.append(created_pool)
