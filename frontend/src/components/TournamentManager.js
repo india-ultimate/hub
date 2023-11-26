@@ -21,7 +21,7 @@ import {
   createBracket,
   createCrossPool,
   createMatch,
-  createPool,
+  createPools,
   createPositionPool,
   deleteTournament,
   fetchBrackets,
@@ -37,6 +37,7 @@ import {
   updateSeeding
 } from "../queries";
 import { useStore } from "../store";
+import CreatePools from "./tournament/CreatePools";
 import CreateTournamentForm from "./tournament/CreateTournamentForm";
 import MatchCard from "./tournament/MatchCard";
 import ReorderTeams from "./tournament/ReorderTeams";
@@ -48,9 +49,8 @@ const TournamentManager = () => {
   const [selectedTournament, setSelectedTournament] = createSignal();
   const [selectedTournamentID, setSelectedTournamentID] = createSignal(0);
   const [teams, setTeams] = createSignal([]);
+
   const [teamsMap, setTeamsMap] = createSignal({});
-  const [enteredPoolName, setEnteredPoolName] = createSignal("");
-  const [enteredSeedingList, setEnteredSeedingList] = createSignal("[]");
   const [enteredBracketName, setEnteredBracketName] = createSignal("1-8");
   const [enteredPositionPoolName, setEnteredPositionPoolName] =
     createSignal("");
@@ -65,6 +65,7 @@ const TournamentManager = () => {
   const [timesList, setTimesList] = createSignal([]);
   const [updateMatchFields, setUpdateMatchFields] = createStore();
   const [isStandingsEdited, setIsStandingsEdited] = createSignal(false);
+  const [isPoolsEdited, setIsPoolsEdited] = createSignal(false);
 
   onMount(() => {
     const dt = new Date(1970, 0, 1, 6, 0);
@@ -87,6 +88,7 @@ const TournamentManager = () => {
       const seeding = tournament?.initial_seeding;
 
       if (seeding) {
+        setTournamentSeeding(seeding);
         setTeams(Object.values(seeding));
       }
 
@@ -111,6 +113,52 @@ const TournamentManager = () => {
         newTeamsMap[team.id] = team.name;
       });
       setTeamsMap(newTeamsMap);
+
+      setTimeout(() => initFlowbite(), 500);
+    }
+  });
+
+  const [tournamentSeeding, setTournamentSeeding] = createSignal({});
+
+  const [pools, setPools] = createStore({});
+
+  createEffect(() => {
+    if (poolsQuery.status === "success" && !poolsQuery.data?.message) {
+      setPools(reconcile({}));
+
+      const alreadyCreatedPools = poolsQuery.data;
+      console.log(selectedTournamentID(), "running pool effect");
+      console.log(
+        alreadyCreatedPools,
+        selectedTournamentID(),
+        tournamentSeeding()
+      );
+
+      const seedsWithAssignedPools = alreadyCreatedPools.reduce(
+        (acc, pool) => acc.concat(Object.keys(pool.initial_seeding)),
+        []
+      );
+      // remaining teams are all teams that are not assigned pools yet
+      const remainingSeeds = Object.keys(tournamentSeeding()).filter(
+        seed => !seedsWithAssignedPools.includes(seed)
+      );
+
+      let remainingTeams = [];
+      remainingSeeds.forEach(seed => {
+        remainingTeams.push({
+          seed,
+          name: teamsMap()[tournamentSeeding()[seed]]
+        });
+      });
+      setPools("Remaining", remainingTeams);
+
+      for (let { name, initial_seeding } of alreadyCreatedPools) {
+        let poolTeams = [];
+        Object.keys(initial_seeding).forEach(seed => {
+          poolTeams.push({ seed, name: teamsMap()[tournamentSeeding()[seed]] });
+        });
+        setPools(name, poolTeams);
+      }
 
       setTimeout(() => initFlowbite(), 500);
     }
@@ -180,8 +228,8 @@ const TournamentManager = () => {
       queryClient.invalidateQueries({ queryKey: ["tournaments"] })
   });
 
-  const createPoolMutation = createMutation({
-    mutationFn: createPool,
+  const createPoolsMutation = createMutation({
+    mutationFn: createPools,
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["pools", selectedTournamentID()]
@@ -299,6 +347,38 @@ const TournamentManager = () => {
     return `${hours}:${minutes}`;
   };
 
+  const submitPools = () => {
+    if (!isPoolsEdited()) {
+      return;
+    }
+
+    let createdPools = [];
+    const createdPoolNames = Object.keys(pools).filter(
+      name => name !== "Remaining"
+    );
+    for (const [index, poolName] of createdPoolNames.entries()) {
+      // don't send empty pools
+      if (!pools[poolName]) continue;
+
+      let poolSeeds = [];
+      for (let { seed } of pools[poolName]) {
+        poolSeeds.push(seed);
+      }
+      createdPools.push({
+        name: poolName,
+        seeding: poolSeeds,
+        sequence_number: index + 1
+      });
+    }
+
+    createPoolsMutation.mutate({
+      tournament_id: selectedTournamentID(),
+      createdPools
+    });
+
+    setIsPoolsEdited(false);
+  };
+
   return (
     <Show when={store?.data?.is_staff} fallback={<p>Not Authorised!</p>}>
       <div>
@@ -385,7 +465,7 @@ const TournamentManager = () => {
               onClick={() => {
                 updateSeedingMutation.mutate({
                   id: selectedTournamentID(),
-                  teamSeeding: teams()
+                  teams: teams()
                 });
                 setIsStandingsEdited(false);
               }}
@@ -415,108 +495,98 @@ const TournamentManager = () => {
               Delete Tournament
             </button>
           </div>
-          <div>
-            <h2 class="mb-5 text-xl font-bold text-blue-500">Pools</h2>
-            <Show
-              when={!poolsQuery.data?.message}
-              fallback={<p>Select Tournament to see/add Pools</p>}
-            >
-              <div class="grid grid-cols-3 gap-4">
-                <For each={poolsQuery.data}>
-                  {pool => (
-                    <div>
-                      <h3>Pool - {pool.name}</h3>{" "}
-                      <div class="relative overflow-x-auto">
-                        <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
-                          <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
-                            <tr>
-                              <th scope="col" class="px-6 py-3">
-                                Seeding
-                              </th>
-                              <th scope="col" class="px-6 py-3">
-                                Team Name
-                              </th>
-                              <th scope="col" class="px-6 py-3">
-                                Team ID
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <For each={Object.keys(pool.initial_seeding)}>
-                              {seed => (
-                                <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
-                                  <th
-                                    scope="row"
-                                    class="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white"
-                                  >
-                                    {seed}
-                                  </th>
-                                  <td class="px-6 py-4">
-                                    {teamsMap()[pool.initial_seeding[seed]]}
-                                  </td>
-                                  <td class="px-6 py-4">
-                                    {pool.initial_seeding[seed]}
-                                  </td>
-                                </tr>
-                              )}
-                            </For>
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )}
-                </For>
-                <div class="rounded-lg border border-blue-600 p-5">
-                  <h3>Add New Pool</h3>
-                  <div>
-                    <label
-                      for="pool-name"
-                      class="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
-                    >
-                      Pool Name
-                    </label>
-                    <input
-                      type="text"
-                      id="pool-name"
-                      value={enteredPoolName()}
-                      onChange={e => setEnteredPoolName(e.target.value)}
-                      class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500 sm:text-xs"
-                    />
-                  </div>
-                  <div>
-                    <label
-                      for="seedings-pool"
-                      class="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
-                    >
-                      Seedings List
-                    </label>
-                    <input
-                      type="text"
-                      id="seedings-pool"
-                      value={enteredSeedingList()}
-                      onChange={e => setEnteredSeedingList(e.target.value)}
-                      class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500 sm:text-xs"
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      createPoolMutation.mutate({
-                        tournament_id: selectedTournamentID(),
-                        name: enteredPoolName(),
-                        seq_num: poolsQuery.data.length + 1,
-                        seeding_list: enteredSeedingList()
-                      })
-                    }
-                    disabled={selectedTournament()?.status !== "DFT"}
-                    class="mb-2 mr-2 mt-5 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
+
+          <div class="my-5">
+            <div class="mb-4 text-xl font-bold text-blue-500">Pools</div>
+            <Switch>
+              <Match when={selectedTournament()?.status === "DFT"}>
+                <Show when={isPoolsEdited()}>
+                  <div
+                    class="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-800 dark:bg-gray-800 dark:text-red-400"
+                    role="alert"
                   >
-                    Create Pool
-                  </button>
-                </div>
-              </div>
-            </Show>
+                    Changes are not saved. Please click on Submit Pools button.
+                  </div>
+                </Show>
+                <CreatePools
+                  pools={pools}
+                  updatePools={setPools}
+                  teamsMap={teamsMap()}
+                  submitPools={submitPools}
+                  setIsPoolsEdited={setIsPoolsEdited}
+                  isUpdating={createPoolsMutation.isLoading}
+                />
+                <button
+                  type="button"
+                  class="my-4 basis-1/3 rounded-lg bg-blue-700 px-4 py-2 text-sm font-normal text-white hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
+                  onClick={submitPools}
+                  disabled={createPoolsMutation.isLoading}
+                >
+                  <Show
+                    when={createPoolsMutation.isLoading}
+                    fallback={"Submit Pools"}
+                  >
+                    Submitting...
+                  </Show>
+                </button>
+              </Match>
+
+              <Match when={selectedTournament()?.status !== "DFT"}>
+                <Show
+                  when={!poolsQuery.data?.message}
+                  fallback={<p>Select Tournament to see/add Pools</p>}
+                >
+                  <div class="grid grid-cols-3 gap-4">
+                    <For each={poolsQuery.data}>
+                      {pool => (
+                        <div>
+                          <h3>Pool - {pool.name}</h3>{" "}
+                          <div class="relative overflow-x-auto">
+                            <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
+                              <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
+                                <tr>
+                                  <th scope="col" class="px-6 py-3">
+                                    Seeding
+                                  </th>
+                                  <th scope="col" class="px-6 py-3">
+                                    Team Name
+                                  </th>
+                                  <th scope="col" class="px-6 py-3">
+                                    Team ID
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                <For each={Object.keys(pool.initial_seeding)}>
+                                  {seed => (
+                                    <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
+                                      <th
+                                        scope="row"
+                                        class="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white"
+                                      >
+                                        {seed}
+                                      </th>
+                                      <td class="px-6 py-4">
+                                        {teamsMap()[pool.initial_seeding[seed]]}
+                                      </td>
+                                      <td class="px-6 py-4">
+                                        {pool.initial_seeding[seed]}
+                                      </td>
+                                    </tr>
+                                  )}
+                                </For>
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+                    </For>
+                  </div>
+                </Show>
+              </Match>
+            </Switch>
           </div>
+
           <div>
             <h3 class="my-5 text-xl font-bold text-blue-500">Cross Pool</h3>
             <Show

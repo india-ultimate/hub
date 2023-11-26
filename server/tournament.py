@@ -889,14 +889,15 @@ def validate_new_pool(
         )  # Pool.initial_seeding : dict[seed(str), team_id(int)]. Convert seeds from str to ints
 
     repeated_seeds_in_new_pool = already_present_seeds.intersection(new_pool)
-    # the seed shouldn't negative, 0 or more than roster size
+
+    # the seed shouldn't be negative, 0 or more than roster size
     tournament_roster_size = (
         UCRegistration.objects.filter(event=tournament.event)
         .values_list("team", flat=True)
         .distinct()
         .count()
     )
-    invalid_seeds = list(filter(lambda seed: 1 <= seed <= tournament_roster_size, new_pool))
+    invalid_seeds = list(filter(lambda seed: not (1 <= seed <= tournament_roster_size), new_pool))
     valid_pool = True
     errors = {}
 
