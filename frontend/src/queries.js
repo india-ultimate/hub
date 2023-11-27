@@ -521,3 +521,14 @@ export const addMatchSpiritScore = async ({ match_id, body }) => {
 
   return data;
 };
+
+export const deleteMatch = async ({ match_id }) => {
+  const response = await fetch(`/api/match/${match_id}`, {
+    method: "DELETE",
+    headers: {
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin"
+  });
+  return await response.json();
+};

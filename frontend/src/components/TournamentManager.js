@@ -23,6 +23,7 @@ import {
   createMatch,
   createPool,
   createPositionPool,
+  deleteMatch,
   deleteTournament,
   fetchBrackets,
   fetchCrossPool,
@@ -275,6 +276,14 @@ const TournamentManager = () => {
         queryKey: ["matches", selectedTournamentID()]
       });
     }
+  });
+
+  const deleteMatchMutation = createMutation({
+    mutationFn: deleteMatch,
+    onSuccess: () =>
+      queryClient.invalidateQueries({
+        queryKey: ["matches", selectedTournamentID()]
+      })
   });
 
   Date.prototype.yyyymmdd = function () {
@@ -896,7 +905,7 @@ const TournamentManager = () => {
                     Field
                   </th>
                   <th scope="col" class="px-6 py-3">
-                    Score
+                    Actions
                   </th>
                   <th scope="col" class="px-6 py-3">
                     Video Link
@@ -1085,7 +1094,18 @@ const TournamentManager = () => {
                               }}
                               class="mb-2 mb-5 mr-2 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
                             >
-                              Update
+                              Update Date & Field
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                deleteMatchMutation.mutate({
+                                  match_id: match.id
+                                })
+                              }
+                              class="mb-2 mb-5 mr-2 rounded-lg bg-red-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-red-800 dark:bg-red-600 dark:hover:bg-red-700 disabled:dark:bg-gray-400"
+                            >
+                              Delete Match
                             </button>
                           </Match>
                           <Match when={match.status === "SCH"}>
@@ -1135,7 +1155,7 @@ const TournamentManager = () => {
                               }}
                               class="mb-2 mb-5 mr-2 rounded-lg bg-green-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-green-800 dark:bg-green-600 dark:hover:bg-green-700 disabled:dark:bg-gray-400"
                             >
-                              Update
+                              Update Date & Field
                             </button>
                           </Match>
                           <Match when={match.status === "COM"}>
