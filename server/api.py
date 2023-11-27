@@ -1638,7 +1638,7 @@ def update_match(
 
     try:
         match = Match.objects.get(id=match_id)
-    except Tournament.DoesNotExist:
+    except Match.DoesNotExist:
         return 400, {"message": "Match does not exist"}
 
     if match_details.time:
@@ -1698,3 +1698,18 @@ def submit_match_spirit_score(
     match.save()
     update_tournament_spirit_rankings(match.tournament)
     return 200, match
+
+
+@api.delete("/match/{match_id}", response={200: Response, 400: Response, 401: Response})
+def delete_match(request: AuthenticatedHttpRequest, match_id: int) -> tuple[int, message_response]:
+    if not request.user.is_staff:
+        return 401, {"message": "Only Admins can delete matches"}
+
+    try:
+        match = Match.objects.get(id=match_id)
+    except Match.DoesNotExist:
+        return 400, {"message": "Match does not exist"}
+
+    match.delete()
+
+    return 200, {"message": "Success"}
