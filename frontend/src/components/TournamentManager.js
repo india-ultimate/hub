@@ -962,6 +962,11 @@ const TournamentManager = () => {
                       </td>
                       <td class="px-6 py-4">
                         <MatchCard match={match} />
+                        <Show when={match.cross_pool || match.bracket}>
+                          <span class="whitespace-nowrap">
+                            Seq Num - {match.sequence_number}
+                          </span>
+                        </Show>
                       </td>
                       <td class="w-fit px-6 py-4">
                         {new Date(Date.parse(match.time)).toLocaleDateString(
