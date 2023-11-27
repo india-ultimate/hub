@@ -896,7 +896,7 @@ def validate_new_pool(
         .distinct()
         .count()
     )
-    invalid_seeds = list(filter(lambda seed: 1 <= seed <= tournament_roster_size, new_pool))
+    invalid_seeds = list(filter(lambda seed: not 1 <= seed <= tournament_roster_size, new_pool))
     valid_pool = True
     errors = {}
 
