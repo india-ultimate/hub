@@ -1,7 +1,16 @@
 import { A, useParams } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
+import { initFlowbite } from "flowbite";
 import { trophy } from "solid-heroicons/solid";
-import { createEffect, createSignal, For, Match, Show, Switch } from "solid-js";
+import {
+  createEffect,
+  createSignal,
+  For,
+  Match,
+  onMount,
+  Show,
+  Switch
+} from "solid-js";
 
 import { fetchTeams, fetchTournamentBySlug } from "../queries";
 import Breadcrumbs from "./Breadcrumbs";
@@ -24,6 +33,15 @@ const Tournament = () => {
       });
       setTeamsMap(newTeamsMap);
     }
+  });
+
+  onMount(() => {
+    setTimeout(() => initFlowbite(), 100);
+    setTimeout(() => initFlowbite(), 500);
+    setTimeout(() => initFlowbite(), 1000);
+    setTimeout(() => initFlowbite(), 3000);
+    setTimeout(() => initFlowbite(), 5000);
+    setTimeout(() => initFlowbite(), 8000);
   });
 
   return (
@@ -139,120 +157,216 @@ const Tournament = () => {
         </p>
       </A>
 
-      <Switch>
-        <Match when={tournamentQuery.data?.status === "COM"}>
-          <h2 class="mt-5 text-center text-xl font-bold">Final Standings</h2>
-        </Match>
-        <Match when={tournamentQuery.data?.status === "LIV"}>
-          <h2 class="mt-5 text-center text-xl font-bold">Current Standings</h2>
-        </Match>
-      </Switch>
+      <h2 class="mt-5 text-center text-xl font-bold">Overall Standings</h2>
 
-      <div class="relative mt-5 overflow-x-auto rounded-lg shadow-md">
-        <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
-          <tbody>
-            <For
-              each={Object.entries(tournamentQuery.data?.current_seeding || {})}
+      <div class="mb-4 border-b border-gray-200 dark:border-gray-700">
+        <ul
+          class="-mb-px flex flex-wrap justify-center text-center text-sm font-medium"
+          id="myTab"
+          data-tabs-toggle="#myTabContent"
+          role="tablist"
+        >
+          <li class="mr-2" role="presentation">
+            <button
+              class="inline-block rounded-t-lg border-b-2 p-4"
+              id={"tab-current"}
+              data-tabs-target={"#current"}
+              type="button"
+              role="tab"
+              aria-controls={"current"}
+              aria-selected="false"
             >
-              {([rank, team_id]) => (
-                <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
-                  <th
-                    scope="row"
-                    class="whitespace-nowrap py-4 pl-10 pr-6 font-normal"
-                  >
-                    {rank}
-                  </th>
-                  <td class="px-6 py-4">
-                    <A
-                      href={`/tournament/${params.slug}/team/${
-                        teamsMap()[team_id]?.ultimate_central_slug
-                      }`}
-                    >
-                      <img
-                        class="mr-3 inline-block h-8 w-8 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
-                        src={teamsMap()[team_id]?.image_url}
-                        alt="Bordered avatar"
-                      />
-                      {teamsMap()[team_id]?.name}
-                    </A>
-                  </td>
-                </tr>
-              )}
-            </For>
-          </tbody>
-        </table>
+              <Switch>
+                <Match when={tournamentQuery.data?.status === "COM"}>
+                  Final
+                </Match>
+                <Match when={tournamentQuery.data?.status === "LIV"}>
+                  Current
+                </Match>
+              </Switch>
+            </button>
+          </li>
+          <li class="mr-2" role="presentation">
+            <button
+              class="inline-block rounded-t-lg border-b-2 p-4"
+              id={"tab-initial"}
+              data-tabs-target={"#initial"}
+              type="button"
+              role="tab"
+              aria-controls={"initial"}
+              aria-selected="false"
+            >
+              Initial
+            </button>
+          </li>
+          <li class="mr-2" role="presentation">
+            <button
+              class="inline-block rounded-t-lg border-b-2 p-4"
+              id={"tab-sotg"}
+              data-tabs-target={"#sotg"}
+              type="button"
+              role="tab"
+              aria-controls={"sotg"}
+              aria-selected="false"
+            >
+              SoTG
+            </button>
+          </li>
+        </ul>
       </div>
 
-      <Switch>
-        <Match when={tournamentQuery.data?.status === "COM"}>
-          <h2 class="mt-5 text-center text-xl font-bold">
-            Final Spirit Rankings
-          </h2>
-        </Match>
-        <Match when={tournamentQuery.data?.status === "LIV"}>
-          <h2 class="mt-5 text-center text-xl font-bold">
-            Current Spirit Rankings
-          </h2>
-        </Match>
-      </Switch>
-
-      <Show
-        when={tournamentQuery.data?.spirit_ranking.length > 0}
-        fallback={
-          <div
-            class="my-4 rounded-lg bg-blue-50 p-2 text-sm dark:bg-gray-800"
-            role="alert"
-          >
-            <p class="text-center">
-              Spirit rankings is not yet available.
-              <br />
-              Please check after some time!
-            </p>
-          </div>
-        }
-      >
-        <div class="relative mt-5 overflow-x-auto rounded-lg shadow-md">
-          <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
-            <tbody>
-              <For each={tournamentQuery.data?.spirit_ranking}>
-                {spirit => (
-                  <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
-                    <th
-                      scope="row"
-                      class="whitespace-nowrap px-6 py-4 font-normal"
-                    >
-                      {spirit.rank}
-                    </th>
-                    <td class="px-3 py-4">
-                      <A
-                        href={`/tournament/${params.slug}/team/${
-                          teamsMap()[spirit.team_id]?.ultimate_central_slug
-                        }`}
+      <div id="myTabContent">
+        <div
+          class="hidden rounded-lg p-2"
+          id={"current"}
+          role="tabpanel"
+          aria-labelledby={"tab-current"}
+        >
+          <div class="relative overflow-x-auto rounded-lg shadow-md">
+            <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
+              <tbody>
+                <For
+                  each={Object.entries(
+                    tournamentQuery.data?.current_seeding || {}
+                  )}
+                >
+                  {([rank, team_id]) => (
+                    <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
+                      <th
+                        scope="row"
+                        class="whitespace-nowrap py-4 pl-10 pr-6 font-normal"
                       >
-                        <img
-                          class="mr-3 inline-block h-8 w-8 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
-                          src={teamsMap()[spirit.team_id]?.image_url}
-                          alt="Bordered avatar"
-                        />
-                        {teamsMap()[spirit.team_id]?.name}
-                      </A>
-                    </td>
-                    <td class="px-3 py-4">
-                      {spirit.points}
-                      <Show when={spirit.self_points}>
-                        ({spirit.self_points})
-                      </Show>
-                    </td>
-                  </tr>
-                )}
-              </For>
-            </tbody>
-          </table>
+                        {rank}
+                      </th>
+                      <td class="px-6 py-4">
+                        <A
+                          href={`/tournament/${params.slug}/team/${
+                            teamsMap()[team_id]?.ultimate_central_slug
+                          }`}
+                        >
+                          <img
+                            class="mr-3 inline-block h-8 w-8 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
+                            src={teamsMap()[team_id]?.image_url}
+                            alt="Bordered avatar"
+                          />
+                          {teamsMap()[team_id]?.name}
+                        </A>
+                      </td>
+                    </tr>
+                  )}
+                </For>
+              </tbody>
+            </table>
+          </div>
         </div>
-        <p class="mt-2 text-right text-sm italic">
-          * Self scores are in brackets
-        </p>
-      </Show>
+        <div
+          class="hidden rounded-lg p-2"
+          id={"initial"}
+          role="tabpanel"
+          aria-labelledby={"tab-initial"}
+        >
+          <div class="relative overflow-x-auto rounded-lg shadow-md">
+            <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
+              <tbody>
+                <For
+                  each={Object.entries(
+                    tournamentQuery.data?.initial_seeding || {}
+                  )}
+                >
+                  {([rank, team_id]) => (
+                    <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
+                      <th
+                        scope="row"
+                        class="whitespace-nowrap py-4 pl-10 pr-6 font-normal"
+                      >
+                        {rank}
+                      </th>
+                      <td class="px-6 py-4">
+                        <A
+                          href={`/tournament/${params.slug}/team/${
+                            teamsMap()[team_id]?.ultimate_central_slug
+                          }`}
+                        >
+                          <img
+                            class="mr-3 inline-block h-8 w-8 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
+                            src={teamsMap()[team_id]?.image_url}
+                            alt="Bordered avatar"
+                          />
+                          {teamsMap()[team_id]?.name}
+                        </A>
+                      </td>
+                    </tr>
+                  )}
+                </For>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div
+          class="hidden rounded-lg p-2"
+          id={"sotg"}
+          role="tabpanel"
+          aria-labelledby={"tab-sotg"}
+        >
+          <Show
+            when={tournamentQuery.data?.spirit_ranking.length > 0}
+            fallback={
+              <div
+                class="my-4 rounded-lg bg-blue-50 p-2 text-sm dark:bg-gray-800"
+                role="alert"
+              >
+                <p class="text-center">
+                  Spirit rankings is not yet available.
+                  <br />
+                  Please check after some time!
+                </p>
+              </div>
+            }
+          >
+            <div class="relative overflow-x-auto rounded-lg shadow-md">
+              <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
+                <tbody>
+                  <For each={tournamentQuery.data?.spirit_ranking}>
+                    {spirit => (
+                      <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
+                        <th
+                          scope="row"
+                          class="whitespace-nowrap px-6 py-4 font-normal"
+                        >
+                          {spirit.rank}
+                        </th>
+                        <td class="px-3 py-4">
+                          <A
+                            href={`/tournament/${params.slug}/team/${
+                              teamsMap()[spirit.team_id]?.ultimate_central_slug
+                            }`}
+                          >
+                            <img
+                              class="mr-3 inline-block h-8 w-8 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
+                              src={teamsMap()[spirit.team_id]?.image_url}
+                              alt="Bordered avatar"
+                            />
+                            {teamsMap()[spirit.team_id]?.name}
+                          </A>
+                        </td>
+                        <td class="px-3 py-4">
+                          {spirit.points}
+                          <Show when={spirit.self_points}>
+                            ({spirit.self_points})
+                          </Show>
+                        </td>
+                      </tr>
+                    )}
+                  </For>
+                </tbody>
+              </table>
+            </div>
+            <p class="mt-2 text-right text-sm italic">
+              * Self scores are in brackets
+            </p>
+          </Show>
+        </div>
+      </div>
     </Show>
   );
 };
