@@ -1125,7 +1125,7 @@ def get_tournament_matches_by_slug(
 
     return 200, Match.objects.filter(tournament=tournament).order_by("time")
 
-    
+
 @api.get(
     "/tournament/{tournament_slug}/team/{team_slug}/matches",
     auth=None,

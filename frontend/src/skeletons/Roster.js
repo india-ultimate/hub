@@ -11,7 +11,7 @@ const Player = () => {
 
 const Roster = () => {
   return (
-    <For each={new Array(15)}>
+    <For each={new Array(5)}>
       {/* eslint-disable-next-line no-unused-vars */}
       {num => <Player />}
     </For>
