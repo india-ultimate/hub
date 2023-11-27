@@ -65,6 +65,7 @@ const TournamentManager = () => {
   const [timesList, setTimesList] = createSignal([]);
   const [updateMatchFields, setUpdateMatchFields] = createStore();
   const [isStandingsEdited, setIsStandingsEdited] = createSignal(false);
+  const [addMatchStatus, setAddMatchStatus] = createSignal();
 
   onMount(() => {
     const dt = new Date(1970, 0, 1, 6, 0);
@@ -230,6 +231,10 @@ const TournamentManager = () => {
       queryClient.invalidateQueries({
         queryKey: ["matches", selectedTournamentID()]
       });
+      setAddMatchStatus("Successfully created the match!");
+    },
+    onError: e => {
+      setAddMatchStatus(e.toString());
     }
   });
 
@@ -855,16 +860,18 @@ const TournamentManager = () => {
                 <button
                   type="button"
                   onClick={() => {
+                    setAddMatchStatus("");
                     createMatchMutation.mutate({
                       tournament_id: selectedTournamentID(),
                       body: matchFields
                     });
                   }}
                   disabled={selectedTournament()?.status !== "DFT"}
-                  class="mb-2 mb-5 mr-2 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
+                  class="mb-1 mb-2 mr-2 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
                 >
                   Add Match
                 </button>
+                <p class="mb-5 text-sm">{addMatchStatus()}</p>
               </div>
             </Show>
             <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">

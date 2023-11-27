@@ -399,7 +399,14 @@ export const createMatch = async ({ tournament_id, body }) => {
     credentials: "same-origin",
     body: JSON.stringify(body)
   });
-  return await response.json();
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.message || JSON.stringify(data));
+  }
+
+  return data;
 };
 
 export const updateMatch = async ({ match_id, body }) => {
