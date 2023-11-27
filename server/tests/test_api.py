@@ -1436,3 +1436,18 @@ class TestTournaments(ApiBaseTestCase):
             content_type="application/json",
         )
         self.assertEqual(401, response.status_code)
+
+    def test_delete_match(self) -> None:
+        match = Match.objects.filter()[0]
+
+        c = self.client
+        self.user.is_staff = True
+        self.user.save()
+        c.force_login(self.user)
+
+        response = c.delete(
+            f"/api/match/{match.id}",
+        )
+        self.assertEqual(200, response.status_code)
+        with self.assertRaises(Match.DoesNotExist):
+            Match.objects.get(id=match.id)
