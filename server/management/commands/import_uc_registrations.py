@@ -82,6 +82,8 @@ class Command(BaseCommand):
             persons_data = [registration["Person"] for registration in registrations]
 
             for person in persons_data:
+                if person is None:
+                    continue
                 person["email_canonical"] = person["email_canonical"].lower()
 
             persons_data_by_id = {person["id"]: person for person in persons_data if person}
