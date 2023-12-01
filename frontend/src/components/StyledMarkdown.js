@@ -1,3 +1,4 @@
+import remarkGfm from "remark-gfm";
 import slug from "slug";
 import { onMount } from "solid-js";
 import SolidMarkdown from "solid-markdown";
@@ -8,8 +9,11 @@ const TailwindMarkdown = props => {
   const classMap = {
     a: "font-medium text-blue-600 underline dark:text-blue-500 hover:no-underline",
     p: "mb-2",
-    h1: "text-2xl font-bold mb-4 text-blue-500",
-    ol: "m-4 text-gray-500 list-decimal list-outside dark:text-gray-400"
+    h1: "text-2xl font-bold mb-4 text-blue-500 text-center",
+    h2: "text-xl font-bold mb-4 text-blue-500 text-center",
+    h3: "text-lg font-bold mb-4 underline",
+    ol: "m-4 text-gray-500 list-decimal list-outside dark:text-gray-400",
+    ul: "m-4 text-gray-500 list-disc list-outside dark:text-gray-400"
   };
 
   onMount(() => {
@@ -28,7 +32,7 @@ const TailwindMarkdown = props => {
 
   return (
     <div ref={divRef}>
-      <SolidMarkdown children={props.markdown} />
+      <SolidMarkdown remarkPlugins={[remarkGfm]} children={props.markdown} />
     </div>
   );
 };
