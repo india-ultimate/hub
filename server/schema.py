@@ -650,3 +650,7 @@ class MatchScoreSchema(Schema):
 class UserAccessSchema(Schema):
     admin_team_ids: list[int]
     is_staff: bool
+
+
+class TournamentRulesSchema(Schema):
+    rules: str

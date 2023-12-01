@@ -100,6 +100,7 @@ from server.schema import (
     TeamSchema,
     TopScoreCredentials,
     TournamentCreateSchema,
+    TournamentRulesSchema,
     TournamentSchema,
     TournamentUpdateSeedingSchema,
     UCRegistrationSchema,
@@ -1567,6 +1568,27 @@ def generate_tournament_fixtures(
     populate_fixtures(tournament.id)
 
     return 200, {"message": "Tournament fixtures populated"}
+
+
+@api.post(
+    "/tournament/rules/{tournament_id}",
+    response={200: TournamentSchema, 400: Response, 401: Response},
+)
+def update_rules(
+    request: AuthenticatedHttpRequest, tournament_id: int, tournament_rules: TournamentRulesSchema
+) -> tuple[int, Tournament | message_response]:
+    if not request.user.is_staff:
+        return 401, {"message": "Only Admins can edit rules"}
+
+    try:
+        tournament = Tournament.objects.get(id=tournament_id)
+    except Tournament.DoesNotExist:
+        return 400, {"message": "Tournament does not exist"}
+
+    tournament.rules = tournament_rules.rules
+    tournament.save()
+
+    return 200, tournament
 
 
 @api.post("/match/{match_id}/score", response={200: MatchSchema, 400: Response, 401: Response})
