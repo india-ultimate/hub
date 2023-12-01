@@ -5,6 +5,7 @@ import { lazy } from "solid-js";
 import { useStore } from "../store";
 import Footer from "./Footer";
 import Header from "./Header";
+import TournamentRules from "./TournamentRules";
 import UserRoute from "./UserRoute";
 
 const About = lazy(() => import("./About"));
@@ -66,6 +67,10 @@ export default function App() {
                   <Route
                     path={"/tournament/:slug/standings"}
                     component={TournamentStandings}
+                  />
+                  <Route
+                    path={"/tournament/:slug/rules"}
+                    component={TournamentRules}
                   />
                   <Route
                     path={"/tournament/:tournament_slug/team/:team_slug"}

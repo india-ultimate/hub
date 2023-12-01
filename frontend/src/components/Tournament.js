@@ -156,6 +156,19 @@ const Tournament = () => {
           View the pools, brackets and the detailed standings
         </p>
       </A>
+      <Show when={tournamentQuery.data?.rules}>
+        <A
+          href={`/tournament/${params.slug}/rules`}
+          class="mt-5 block w-full rounded-lg border border-blue-600 bg-white p-4 shadow dark:border-blue-400 dark:bg-gray-800"
+        >
+          <h5 class="mb-2 text-center text-xl font-bold capitalize tracking-tight text-blue-600 dark:text-blue-400">
+            Rules & Format
+          </h5>
+          <p class="text-center text-sm capitalize">
+            View the detailed rules and format of the tournament
+          </p>
+        </A>
+      </Show>
 
       <h2 class="mt-5 text-center text-xl font-bold">Overall Standings</h2>
 
