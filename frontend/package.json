@@ -27,6 +27,7 @@
     "prettier-plugin-tailwindcss": "^0.5.7",
     "qrious": "^4.0.2",
     "raw-loader": "^4.0.2",
+    "remark-gfm": "3.0.1",
     "slug": "^8.2.3",
     "solid-heroicons": "^3.2.4",
     "solid-hot-loader": "^0.0.5",
