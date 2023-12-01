@@ -532,3 +532,23 @@ export const deleteMatch = async ({ match_id }) => {
   });
   return await response.json();
 };
+
+export const updateTournamentRules = async ({ tournament_id, body }) => {
+  const response = await fetch(`/api/tournament/rules/${tournament_id}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin",
+    body: JSON.stringify(body)
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.message || JSON.stringify(data));
+  }
+
+  return data;
+};
