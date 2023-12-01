@@ -1,3 +1,4 @@
+import os
 from collections import Counter
 from functools import cmp_to_key, partial
 
@@ -22,6 +23,7 @@ from server.types import validation_error_dict
 from server.utils import ordinal_suffix
 
 ROLES_ELIGIBLE_TO_SUBMIT_SCORES = ["captain", "admin", "spirit captain", "coach"]
+
 
 # Exported Functions ####################
 
@@ -697,6 +699,16 @@ def create_spirit_scores(spirit_score: SpiritScoreUpdateSchema) -> SpiritScore:
 
     score.save()
     return score
+
+
+def get_default_rules() -> str:
+    module_dir = os.path.dirname(__file__)
+    file_path = os.path.join(module_dir, "templates", "rules_default.md")
+
+    with open(file_path) as data_file:
+        data = data_file.read()
+
+    return data
 
 
 # Helper Functions #####################

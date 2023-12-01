@@ -121,6 +121,7 @@ from server.tournament import (
     create_position_pool_matches,
     create_spirit_scores,
     get_bracket_match_name,
+    get_default_rules,
     is_submitted_scores_equal,
     populate_fixtures,
     update_match_score_and_results,
@@ -1155,6 +1156,9 @@ def create_tournament(
         tournament.logo_light = logo_light
     if logo_dark:
         tournament.logo_dark = logo_dark
+
+    tournament.rules = get_default_rules()
+
     tournament.save()
 
     return 200, tournament
