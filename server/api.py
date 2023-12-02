@@ -117,7 +117,6 @@ from server.schema import (
 from server.top_score_utils import TopScoreClient
 from server.tournament import (
     can_submit_match_score,
-    can_submit_tournament_scores,
     create_bracket_matches,
     create_pool_matches,
     create_position_pool_matches,
@@ -128,6 +127,7 @@ from server.tournament import (
     populate_fixtures,
     update_match_score_and_results,
     update_tournament_spirit_rankings,
+    user_tournament_teams,
     validate_new_pool,
     validate_seeds_and_teams,
 )
@@ -161,7 +161,7 @@ def me(request: AuthenticatedHttpRequest) -> User:
 )
 def me_access(
     request: AuthenticatedHttpRequest, tournament_slug: str
-) -> tuple[int, dict[str, bool | list[int] | str]]:
+) -> tuple[int, dict[str, bool | set[int] | str | int | None]]:
     try:
         event = Event.objects.get(ultimate_central_slug=tournament_slug)
         tournament = Tournament.objects.get(event=event)
@@ -170,11 +170,12 @@ def me_access(
     except Event.DoesNotExist:
         return 400, {"message": "Event does not exist"}
 
-    team_ids = can_submit_tournament_scores(tournament, request.user)
+    player_team_id, admin_team_ids = user_tournament_teams(tournament, request.user)
 
     return 200, {
-        "admin_team_ids": team_ids,
         "is_staff": request.user.is_staff,
+        "playing_team_id": player_team_id,
+        "admin_team_ids": admin_team_ids,
     }
 
 

@@ -12,18 +12,30 @@ import {
   Switch
 } from "solid-js";
 
-import { fetchTeams, fetchTournamentBySlug } from "../queries";
+import {
+  fetchTeams,
+  fetchTournamentBySlug,
+  fetchUserAccessByTournamentSlug
+} from "../queries";
+import { useStore } from "../store";
+import { fetchUserData } from "../utils";
 import Breadcrumbs from "./Breadcrumbs";
 
 const Tournament = () => {
   const params = useParams();
   const [teamsMap, setTeamsMap] = createSignal({});
+  const [store, { userFetchSuccess }] = useStore();
+  const [playingTeam, setPlayingTeam] = createSignal(null);
 
   const tournamentQuery = createQuery(
     () => ["tournament", params.slug],
     () => fetchTournamentBySlug(params.slug)
   );
   const teamsQuery = createQuery(() => ["teams"], fetchTeams);
+  const userAccessQuery = createQuery(
+    () => ["user-access", params.slug],
+    () => fetchUserAccessByTournamentSlug(params.slug)
+  );
 
   createEffect(() => {
     if (teamsQuery.status === "success") {
@@ -42,6 +54,19 @@ const Tournament = () => {
     setTimeout(() => initFlowbite(), 3000);
     setTimeout(() => initFlowbite(), 5000);
     setTimeout(() => initFlowbite(), 8000);
+  });
+
+  onMount(() => {
+    fetchUserData(userFetchSuccess, () => {});
+  });
+
+  createEffect(() => {
+    if (userAccessQuery.status == "success") {
+      const playingTeamID = userAccessQuery.data?.playing_team_id;
+      if (playingTeamID !== 0) {
+        setPlayingTeam(teamsMap()[playingTeamID]);
+      }
+    }
   });
 
   return (
@@ -134,9 +159,30 @@ const Tournament = () => {
           </Match>
         </Switch>
       </div>
+      <Show when={playingTeam()}>
+        <A
+          href={`/tournament/${params.slug}/team/${
+            playingTeam().ultimate_central_slug
+          }`}
+          //
+          class="mt-5 block w-full rounded-lg bg-gradient-to-br from-pink-600 to-orange-400 p-0.5 shadow-md"
+        >
+          <div class="rounded-md bg-white p-4 dark:bg-gray-800">
+            <h5 class="mb-2 text-center text-xl tracking-tight">
+              <span class="font-normal">Playing team - </span>
+              <span class="bg-gradient-to-br from-pink-600 to-orange-400 bg-clip-text font-bold text-transparent">
+                {playingTeam().name}
+              </span>
+            </h5>
+            <p class="text-center text-sm capitalize">
+              View the matches and roster of your team
+            </p>
+          </div>
+        </A>
+      </Show>
       <A
         href={`/tournament/${params.slug}/schedule`}
-        class="mt-5 block w-full rounded-lg border border-blue-600 bg-white p-4 shadow dark:border-blue-400 dark:bg-gray-800"
+        class="mt-5 block w-full rounded-lg  border border-blue-600 bg-white p-4 shadow-md dark:border-blue-400 dark:bg-gray-800"
       >
         <h5 class="mb-2 text-center text-xl font-bold capitalize tracking-tight text-blue-600 dark:text-blue-400">
           Schedule
@@ -147,7 +193,7 @@ const Tournament = () => {
       </A>
       <A
         href={`/tournament/${params.slug}/standings`}
-        class="mt-5 block w-full rounded-lg border border-blue-600 bg-white p-4 shadow dark:border-blue-400 dark:bg-gray-800"
+        class="mt-5 block w-full rounded-lg border border-blue-600 bg-white p-4 shadow-md dark:border-blue-400 dark:bg-gray-800"
       >
         <h5 class="mb-2 text-center text-xl font-bold capitalize tracking-tight text-blue-600 dark:text-blue-400">
           Standings
