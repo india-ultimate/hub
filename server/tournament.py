@@ -24,7 +24,6 @@ from server.utils import ordinal_suffix
 
 ROLES_ELIGIBLE_TO_SUBMIT_SCORES = ["captain", "admin", "spirit captain", "coach"]
 PLAYER_ROLE = "player"
-ASSISTANT_COACH_ROLE = "assistant coach"
 
 
 # Exported Functions ####################

@@ -24,7 +24,7 @@ import Breadcrumbs from "./Breadcrumbs";
 const Tournament = () => {
   const params = useParams();
   const [teamsMap, setTeamsMap] = createSignal({});
-  const [store, { userFetchSuccess }] = useStore();
+  const [_, { userFetchSuccess }] = useStore();
   const [playingTeam, setPlayingTeam] = createSignal(null);
 
   const tournamentQuery = createQuery(
@@ -37,16 +37,6 @@ const Tournament = () => {
     () => fetchUserAccessByTournamentSlug(params.slug)
   );
 
-  createEffect(() => {
-    if (teamsQuery.status === "success") {
-      let newTeamsMap = {};
-      teamsQuery.data.map(team => {
-        newTeamsMap[team.id] = team;
-      });
-      setTeamsMap(newTeamsMap);
-    }
-  });
-
   onMount(() => {
     setTimeout(() => initFlowbite(), 100);
     setTimeout(() => initFlowbite(), 500);
@@ -58,6 +48,16 @@ const Tournament = () => {
 
   onMount(() => {
     fetchUserData(userFetchSuccess, () => {});
+  });
+
+  createEffect(() => {
+    if (teamsQuery.status === "success") {
+      let newTeamsMap = {};
+      teamsQuery.data.map(team => {
+        newTeamsMap[team.id] = team;
+      });
+      setTeamsMap(newTeamsMap);
+    }
   });
 
   createEffect(() => {
@@ -169,8 +169,8 @@ const Tournament = () => {
         >
           <div class="rounded-md bg-white p-4 dark:bg-gray-800">
             <h5 class="mb-2 text-center text-xl tracking-tight">
-              <span class="font-normal">Playing team - </span>
-              <span class="bg-gradient-to-br from-pink-600 to-orange-400 bg-clip-text font-bold text-transparent">
+              <span class="font-normal">Your team - </span>
+              <span class="bg-gradient-to-br from-orange-400 to-pink-500 bg-clip-text font-bold text-transparent">
                 {playingTeam().name}
               </span>
             </h5>
