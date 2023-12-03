@@ -1225,6 +1225,7 @@ class TestTournaments(ApiBaseTestCase):
         self.pool = create_pool("A", self.tournament, [1, 2, 3])
         start_tournament(self.tournament)
 
+        # User who's a player in team 2, admin + coach in team 6
         self.user2 = user2 = User.objects.create(
             username="username2@foo.com", email="username2@foo.com"
         )
@@ -1234,11 +1235,14 @@ class TestTournaments(ApiBaseTestCase):
         self.player2 = Player.objects.create(
             user=self.user2, date_of_birth="1990-01-01", ultimate_central_id=person2.id
         )
-        self.player2.refresh_from_db()
         UCRegistration.objects.create(
             event=self.event, team=self.teams[1], person=person2, roles=["admin", "player"]
         )
+        UCRegistration.objects.create(
+            event=self.event, team=self.teams[5], person=person2, roles=["admin", "coach"]
+        )
 
+        # User who's not part of any event
         self.user_with_no_event = user_with_no_event = User.objects.create(
             username="username3@foo.com", email="username3@foo.com"
         )
@@ -1249,6 +1253,36 @@ class TestTournaments(ApiBaseTestCase):
             user=user_with_no_event,
             date_of_birth="1990-01-01",
             ultimate_central_id=person_with_no_event.id,
+        )
+
+        # User who's a player in team 1, and admin in team 3
+        self.user_with_admin_player_roles_in_diff_teams = User.objects.create(
+            username="foo@bar.com", email="foo@bar.com"
+        )
+        self.user_with_admin_player_roles_in_diff_teams.set_password(self.password)
+        self.user_with_admin_player_roles_in_diff_teams.save()
+
+        person_with_admin_player_roles_in_diff_teams = UCPerson.objects.create(
+            email="foo@bar.com", slug="foobar"
+        )
+        self.player_with_admin_player_roles_in_diff_teams = Player.objects.create(
+            user=self.user_with_admin_player_roles_in_diff_teams,
+            ultimate_central_id=person_with_admin_player_roles_in_diff_teams.pk,
+            date_of_birth="1990-01-01",
+        )
+
+        UCRegistration.objects.create(
+            event=self.event,
+            team=self.teams[0],
+            person=person_with_admin_player_roles_in_diff_teams,
+            roles=["player"],
+        )
+
+        UCRegistration.objects.create(
+            event=self.event,
+            team=self.teams[2],
+            person=person_with_admin_player_roles_in_diff_teams,
+            roles=["admin"],
         )
 
     def test_valid_submit_score(self) -> None:
@@ -1302,13 +1336,36 @@ class TestTournaments(ApiBaseTestCase):
     def test_user_with_team_admin_access(self) -> None:
         c = self.client
         c.force_login(self.user)
+        response = c.get(f"/api/me/access?tournament_slug={self.event.ultimate_central_slug}")
+        self.assertEqual(200, response.status_code)
+
+        data = response.json()
+        self.assertEqual(self.teams[0].pk, data["playing_team_id"])
+        self.assertListEqual([self.teams[0].pk], data["admin_team_ids"])
+        self.assertEqual(False, data["is_staff"])
+
+    def test_user_with_different_team_admin_access(self) -> None:
+        c = self.client
+        c.force_login(self.user_with_admin_player_roles_in_diff_teams)
 
         response = c.get(f"/api/me/access?tournament_slug={self.event.ultimate_central_slug}")
         self.assertEqual(200, response.status_code)
 
         data = response.json()
-        self.assertGreater(len(data["admin_team_ids"]), 0)
-        self.assertEqual(self.teams[0].id, data["admin_team_ids"][0])
+        self.assertEqual(self.teams[0].pk, data["playing_team_id"])
+        self.assertListEqual([self.teams[2].pk], data["admin_team_ids"])
+        self.assertEqual(False, data["is_staff"])
+
+    def test_player_with_multiple_teams_admin_access(self) -> None:
+        c = self.client
+        c.force_login(self.user2)
+
+        response = c.get(f"/api/me/access?tournament_slug={self.event.ultimate_central_slug}")
+        self.assertEqual(200, response.status_code)
+
+        data = response.json()
+        self.assertEqual(self.teams[1].pk, data["playing_team_id"])
+        self.assertListEqual([self.teams[1].pk, self.teams[5].pk], data["admin_team_ids"])
         self.assertEqual(False, data["is_staff"])
 
     def test_user_without_team_admin_access(self) -> None:
@@ -1319,7 +1376,8 @@ class TestTournaments(ApiBaseTestCase):
         self.assertEqual(200, response.status_code)
 
         data = response.json()
-        self.assertEqual(0, len(data["admin_team_ids"]))
+        self.assertEqual(0, data["playing_team_id"])
+        self.assertListEqual([], data["admin_team_ids"])
         self.assertEqual(False, data["is_staff"])
 
     def test_user_with_staff_access(self) -> None:
@@ -1332,8 +1390,8 @@ class TestTournaments(ApiBaseTestCase):
         self.assertEqual(200, response.status_code)
 
         data = response.json()
-        self.assertGreater(len(data["admin_team_ids"]), 0)
-        self.assertEqual(self.teams[0].id, data["admin_team_ids"][0])
+        self.assertEqual(self.teams[0].pk, data["playing_team_id"])
+        self.assertListEqual([self.teams[0].pk], data["admin_team_ids"])
         self.assertEqual(True, data["is_staff"])
 
     def test_valid_submit_spirit_score(self) -> None:
