@@ -20,7 +20,7 @@ import {
   fetchTournamentTeamMatches
 } from "../queries";
 import RosterSkeleton from "../skeletons/Roster";
-import TournamentMatchesSkeleton from "../skeletons/TournamentMatch";
+import { TournamentTeamMatches as TournamentTeamMatchesSkeleton } from "../skeletons/TournamentMatch";
 import { getTournamentBreadcrumbName } from "../utils";
 import Breadcrumbs from "./Breadcrumbs";
 import TournamentMatch from "./TournamentMatch";
@@ -209,7 +209,10 @@ const TournamentTeam = () => {
           role="tabpanel"
           aria-labelledby="tab-matches"
         >
-          <Show when={doneFetching()} fallback={<TournamentMatchesSkeleton />}>
+          <Show
+            when={doneFetching()}
+            fallback={<TournamentTeamMatchesSkeleton />}
+          >
             <For each={Object.entries(matchesGroupedByDate())}>
               {([tournamentDate, matches]) => (
                 <div class="mb-10">

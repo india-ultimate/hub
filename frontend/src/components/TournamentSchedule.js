@@ -3,11 +3,20 @@ import { createQuery } from "@tanstack/solid-query";
 import clsx from "clsx";
 import { initFlowbite } from "flowbite";
 import { trophy } from "solid-heroicons/solid";
-import { createEffect, createSignal, For, onMount, Show } from "solid-js";
+import {
+  createEffect,
+  createSignal,
+  For,
+  onMount,
+  Show,
+  Suspense
+} from "solid-js";
 import { createStore, reconcile } from "solid-js/store";
 
 import { matchCardColorToBorderColorMap } from "../colors";
 import { fetchMatchesBySlug, fetchTournamentBySlug } from "../queries";
+import DayScheduleSkeleton from "../skeletons/Schedule";
+import { TournamentMatches as TournamentMatchesSkeleton } from "../skeletons/TournamentMatch";
 import { getMatchCardColor, getTournamentBreadcrumbName } from "../utils";
 import Breadcrumbs from "./Breadcrumbs";
 import MatchCard from "./tournament/MatchCard";
@@ -20,6 +29,8 @@ const TournamentSchedule = () => {
   const [matchDayTimeFieldMap, setMatchDayTimeFieldMap] = createStore({});
   const [fieldMap, setFieldMap] = createStore({});
   // const [_, setDateTimeMatchMap] = createSignal({});
+  const [doneBuildingScheduleMap, setDoneBuildingScheduleMap] =
+    createSignal(false);
 
   const tournamentQuery = createQuery(
     () => ["tournament", params.slug],
@@ -81,7 +92,7 @@ const TournamentSchedule = () => {
           setFieldMap(day, match.field, true);
         }
       });
-
+      setDoneBuildingScheduleMap(true);
       setTimeout(() => initFlowbite(), 500);
     }
   });
@@ -178,6 +189,10 @@ const TournamentSchedule = () => {
               role="tabpanel"
               aria-labelledby={"day-tab-" + (i() + 1)}
             >
+              <Show
+                when={doneBuildingScheduleMap()}
+                fallback={<DayScheduleSkeleton />}
+              />
               <For each={Object.keys(matchDayTimeFieldMap).sort()}>
                 {day2 => (
                   <Show
@@ -280,28 +295,32 @@ const TournamentSchedule = () => {
                   </div>
                 </div>
               </Show>
-              <For each={matchesQuery.data}>
-                {match => (
-                  <Show when={sameDay(day, new Date(Date.parse(match.time)))}>
-                    <div
-                      id={match.id}
-                      class={clsx(
-                        flash() == match.id
-                          ? "bg-blue-100 text-black dark:bg-slate-700 dark:text-white"
-                          : "bg-white dark:bg-gray-800",
-                        "mb-5 block w-full rounded-lg border px-1 py-2 shadow transition",
-                        matchCardColorToBorderColorMap[getMatchCardColor(match)]
-                      )}
-                    >
-                      <TournamentMatch
-                        match={match}
-                        tournamentSlug={params.slug}
-                        bothTeamsClickable
-                      />
-                    </div>
-                  </Show>
-                )}
-              </For>
+              <Suspense fallback={<TournamentMatchesSkeleton />}>
+                <For each={matchesQuery.data}>
+                  {match => (
+                    <Show when={sameDay(day, new Date(Date.parse(match.time)))}>
+                      <div
+                        id={match.id}
+                        class={clsx(
+                          flash() == match.id
+                            ? "bg-blue-100 text-black dark:bg-slate-700 dark:text-white"
+                            : "bg-white dark:bg-gray-800",
+                          "mb-5 block w-full rounded-lg border px-1 py-2 shadow transition",
+                          matchCardColorToBorderColorMap[
+                            getMatchCardColor(match)
+                          ]
+                        )}
+                      >
+                        <TournamentMatch
+                          match={match}
+                          tournamentSlug={params.slug}
+                          bothTeamsClickable
+                        />
+                      </div>
+                    </Show>
+                  )}
+                </For>
+              </Suspense>
             </div>
           )}
         </For>
