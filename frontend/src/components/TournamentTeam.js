@@ -20,7 +20,7 @@ import {
   fetchTournamentTeamMatches
 } from "../queries";
 import RosterSkeleton from "../skeletons/Roster";
-import TournamentMatchesSkeleton from "../skeletons/TournamentMatch";
+import { TournamentTeamMatches as TournamentTeamMatchesSkeleton } from "../skeletons/TournamentMatch";
 import Breadcrumbs from "./Breadcrumbs";
 import TournamentMatch from "./TournamentMatch";
 
@@ -148,7 +148,7 @@ const TournamentTeam = () => {
         Matches
       </h2>
 
-      <Show when={doneFetching()} fallback={<TournamentMatchesSkeleton />}>
+      <Show when={doneFetching()} fallback={<TournamentTeamMatchesSkeleton />}>
         <For each={Object.entries(matchesGroupedByDate())}>
           {/* eslint-disable-next-line no-unused-vars */}
           {([tournamentDate, matches], idx) => (

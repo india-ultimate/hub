@@ -61,7 +61,17 @@ const TournamentMatch = () => {
 };
 
 const TournamentMatches = () => {
-  console.log("in tournament match skeleton");
+  return (
+    <>
+      <TournamentMatch />
+      <TournamentMatch />
+      <TournamentMatch />
+      <TournamentMatch />
+    </>
+  );
+};
+
+const TournamentTeamMatches = () => {
   return (
     <div class="mb-10">
       <div class="mb-5 ml-1">
@@ -75,4 +85,4 @@ const TournamentMatches = () => {
   );
 };
 
-export default TournamentMatches;
+export { TournamentMatches, TournamentTeamMatches };
