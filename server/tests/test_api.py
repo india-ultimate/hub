@@ -1421,8 +1421,9 @@ class TestTournaments(ApiBaseTestCase):
             {"team_id": 14, "points": 0.0, "self_points": 0.0, "rank": 3},
         ]
 
-        print(match["tournament"]["spirit_ranking"])
-        self.assertEqual(expected_tournament_spirit_ranking, match["tournament"]["spirit_ranking"])
+        self.tournament.refresh_from_db()
+        print(self.tournament.spirit_ranking)
+        self.assertEqual(expected_tournament_spirit_ranking, self.tournament.spirit_ranking)
 
     def test_invalid_submit_spirit_score(self) -> None:
         invalid_matches = Match.objects.filter(tournament=self.tournament).filter(
