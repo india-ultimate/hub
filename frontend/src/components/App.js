@@ -5,6 +5,7 @@ import { lazy } from "solid-js";
 import { useStore } from "../store";
 import Footer from "./Footer";
 import Header from "./Header";
+import ScrollUpButton from "./ScrollUpButton";
 import TournamentRules from "./TournamentRules";
 import UserRoute from "./UserRoute";
 
@@ -158,6 +159,7 @@ export default function App() {
               </div>
             </div>
           </section>
+          <ScrollUpButton />
           <Footer />
         </div>
       </div>
