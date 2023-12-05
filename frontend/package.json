@@ -1,8 +1,8 @@
 {
   "scripts": {
-    "dev": "yarn webpack serve --mode development",
-    "build-dev": "yarn webpack --mode development",
-    "build": "yarn webpack --mode production"
+    "dev": "yarn webpack serve --mode development --node-env development",
+    "build-dev": "yarn webpack --mode development --node-env development",
+    "build": "yarn webpack --mode production --node-env production"
   },
   "devDependencies": {
     "@babel/core": "^7.22.5",
@@ -20,6 +20,7 @@
     "eslint-plugin-solid": "^0.12.1",
     "eslint-plugin-unused-imports": "^3.0.0",
     "flowbite": "^1.7.0",
+    "html-webpack-plugin": "^5.5.3",
     "mini-css-extract-plugin": "^2.7.6",
     "postcss": "^8.4.24",
     "postcss-loader": "^7.3.3",
@@ -37,7 +38,8 @@
     "tailwindcss": "^3.3.2",
     "webpack": "^5.88.1",
     "webpack-cli": "^5.1.4",
-    "webpack-dev-server": "^4.15.1"
+    "webpack-dev-server": "^4.15.1",
+    "webpack-manifest-plugin": "^5.0.0"
   },
   "dependencies": {
     "@tanstack/solid-query": "^4.33.0",

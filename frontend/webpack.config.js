@@ -1,12 +1,14 @@
 const path = require("path");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const CopyWebpackPlugin = require("copy-webpack-plugin");
+const { WebpackManifestPlugin } = require("webpack-manifest-plugin");
+const HtmlWebpackPlugin = require("html-webpack-plugin");
 
 module.exports = {
   entry: "./src/index.js",
   output: {
     path: path.resolve(__dirname, "dist"),
-    filename: "bundle.js"
+    filename: "bundle.[contenthash].js"
   },
   resolve: {
     extensions: [".js"]
@@ -53,20 +55,28 @@ module.exports = {
     ]
   },
   plugins: [
+    new HtmlWebpackPlugin({
+      template: "./index.html", // Path to your index.html file
+      filename: "index.html", // Output filename
+      inject: "body", // Inject the script tag in the body of the HTML file
+      publicPath: process.env.NODE_ENV === "production" ? "/static" : "/" // Use /static prefix for production build
+    }),
     // MiniCssExtractPlugin to extract css into separate files
     new MiniCssExtractPlugin({
-      filename: "main.css"
+      filename: "main.[contenthash].css"
     }),
     // CopyWebpackPlugin to copy assets folder
     new CopyWebpackPlugin({
       patterns: [
         { from: "assets", to: "assets" } // Specify the source and destination folders
       ]
-    })
+    }),
+    // Manifest file for dynamically finding the files in Django
+    new WebpackManifestPlugin()
   ],
   devServer: {
     static: {
-      directory: path.resolve(__dirname),
+      directory: path.resolve(__dirname, "dist"),
       staticOptions: {
         index: "index.html"
       }
