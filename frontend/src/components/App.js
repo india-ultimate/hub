@@ -6,7 +6,6 @@ import { useStore } from "../store";
 import Footer from "./Footer";
 import Header from "./Header";
 import ScrollUpButton from "./ScrollUpButton";
-import TournamentRules from "./TournamentRules";
 import UserRoute from "./UserRoute";
 
 const About = lazy(() => import("./About"));
@@ -28,6 +27,7 @@ const ValidateTransactions = lazy(() => import("./ValidateTransactions"));
 const TournamentManager = lazy(() => import("./TournamentManager"));
 const Tournaments = lazy(() => import("./Tournaments"));
 const Tournament = lazy(() => import("./Tournament"));
+const TournamentRules = lazy(() => import("./TournamentRules"));
 const TournamentSchedule = lazy(() => import("./TournamentSchedule"));
 const TournamentStandings = lazy(() => import("./TournamentStandings"));
 const TournamentTeam = lazy(() => import("./TournamentTeam"));
