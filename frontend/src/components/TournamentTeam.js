@@ -17,6 +17,7 @@ import TournamentMatch from "./TournamentMatch";
 
 const TournamentTeam = () => {
   const params = useParams();
+  const [tournamentDates, setTournamentDates] = createSignal([]);
   const [matchesGroupedByDate, setMatchesGroupedByDate] = createSignal({});
 
   const tournamentQuery = createQuery(
@@ -59,6 +60,27 @@ const TournamentTeam = () => {
       }
     }
   };
+
+  createEffect(() => {
+    if (
+      tournamentQuery.status === "success" &&
+      !tournamentQuery.data?.message
+    ) {
+      let dates = [];
+      const start = new Date(
+        Date.parse(tournamentQuery.data?.event?.start_date)
+      );
+      const end = new Date(Date.parse(tournamentQuery.data?.event?.end_date));
+
+      for (let d = start; d <= end; d.setDate(d.getDate() + 1)) {
+        dates.push(new Date(d).getUTCDate());
+      }
+
+      setTournamentDates(dates);
+
+      setTimeout(() => initFlowbite(), 500);
+    }
+  });
 
   createEffect(() => {
     if (matchesQuery.status === "success" && !matchesQuery.data?.message) {
@@ -140,12 +162,17 @@ const TournamentTeam = () => {
       </h2>
 
       <For each={Object.entries(matchesGroupedByDate())}>
-        {/* eslint-disable-next-line no-unused-vars */}
-        {([tournamentDate, matches], idx) => (
+        {([tournamentDate, matches]) => (
           <div class="mb-10">
-            <div class="mb-5 ml-1">
-              <h3 class="text-center text-lg font-bold">Day - {idx() + 1}</h3>
-            </div>
+            <Show when={tournamentDates().length > 1}>
+              <div class="mb-5 ml-1">
+                <h3 class="text-center text-lg font-bold">
+                  {/* Object.groupBy coerces the keys to strings */}
+                  Day -{" "}
+                  {tournamentDates().indexOf(parseInt(tournamentDate)) + 1}
+                </h3>
+              </div>
+            </Show>
             <For each={matches}>
               {match => (
                 <Show
