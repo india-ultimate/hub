@@ -8,7 +8,7 @@ import { createStore, reconcile } from "solid-js/store";
 
 import { matchCardColorToBorderColorMap } from "../colors";
 import { fetchMatchesBySlug, fetchTournamentBySlug } from "../queries";
-import { getMatchCardColor } from "../utils";
+import { getMatchCardColor, getTournamentBreadcrumbName } from "../utils";
 import Breadcrumbs from "./Breadcrumbs";
 import MatchCard from "./tournament/MatchCard";
 import TournamentMatch from "./TournamentMatch";
@@ -131,11 +131,9 @@ const TournamentSchedule = () => {
           { url: "/tournaments", name: "All Tournaments" },
           {
             url: `/tournament/${params.slug}`,
-            name: tournamentQuery.data?.event?.ultimate_central_slug
-              ?.split("-")
-              .splice(-2)
-              .map(word => word[0].toUpperCase() + word.slice(1))
-              .join(" ")
+            name: getTournamentBreadcrumbName(
+              tournamentQuery.data?.event?.ultimate_central_slug || ""
+            )
           }
         ]}
       />
