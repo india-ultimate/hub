@@ -4,10 +4,10 @@ import { bars_3, moon, sun } from "solid-heroicons/solid-mini";
 import { Show } from "solid-js";
 
 import { useStore } from "../store";
-import { assetURL, getCookie } from "../utils";
+import { assetURL, fetchUserData, getCookie } from "../utils";
 
 export default function Header() {
-  const [store, { userFetchFailure, setTheme }] = useStore();
+  const [store, { userFetchSuccess, userFetchFailure, setTheme }] = useStore();
 
   const logout = async () => {
     const response = await fetch("/api/logout", {
@@ -30,6 +30,8 @@ export default function Header() {
     if (store.theme === "dark") setTheme("light");
     else setTheme("dark");
   };
+
+  fetchUserData(userFetchSuccess, () => {});
 
   return (
     <div>

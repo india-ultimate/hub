@@ -17,14 +17,11 @@ import {
   fetchTournamentBySlug,
   fetchUserAccessByTournamentSlug
 } from "../queries";
-import { useStore } from "../store";
-import { fetchUserData } from "../utils";
 import Breadcrumbs from "./Breadcrumbs";
 
 const Tournament = () => {
   const params = useParams();
   const [teamsMap, setTeamsMap] = createSignal({});
-  const [_, { userFetchSuccess }] = useStore();
   const [playingTeam, setPlayingTeam] = createSignal(null);
 
   const tournamentQuery = createQuery(
@@ -44,10 +41,6 @@ const Tournament = () => {
     setTimeout(() => initFlowbite(), 3000);
     setTimeout(() => initFlowbite(), 5000);
     setTimeout(() => initFlowbite(), 8000);
-  });
-
-  onMount(() => {
-    fetchUserData(userFetchSuccess, () => {});
   });
 
   createEffect(() => {
