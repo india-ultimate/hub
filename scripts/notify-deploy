@@ -3,14 +3,18 @@
 set -euo pipefail
 
 REPO_BASE_URL="https://github.com/india-ultimate/hub"
-# Commit info
-LAST_COMMIT_SHA=$(git log -1 --pretty=format:"%H")
-LAST_COMMIT_MESSAGE=$(git log -1 --pretty=format:"'%s' by %an")
+if [ -n "${GITHUB_REPOSITORY-}" ]; then
+    GIT_USER_NAME="${GITHUB_ACTOR}"
+    GIT_USER_EMAIL="via GitHub actions"  # Email is not available in GitHub Actions
+    LAST_COMMIT_SHA="${GITHUB_SHA}"
+    COMMIT_URL="$REPO_BASE_URL/commit/$LAST_COMMIT_SHA"
+else
+    LAST_COMMIT_SHA=$(git log -1 --pretty=format:"%H")
+    GIT_USER_NAME=$(git config user.name)
+    GIT_USER_EMAIL=$(git config user.email)
+fi
 COMMIT_URL="$REPO_BASE_URL/commit/$LAST_COMMIT_SHA"
-
-# Get the name and email of the user from Git config
-GIT_USER_NAME=$(git config user.name)
-GIT_USER_EMAIL=$(git config user.email)
+LAST_COMMIT_MESSAGE=$(git log -1 --pretty=format:"'%s' by %an")
 
 MESSAGE="Deployment by $GIT_USER_NAME ($GIT_USER_EMAIL)
 

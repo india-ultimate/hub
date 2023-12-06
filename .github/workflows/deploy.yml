@@ -12,3 +12,10 @@ jobs:
       - run: flyctl deploy --remote-only
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      - name: Send Deployment Notification
+        env:
+          ZULIP_SITE: "https://upai.zulipchat.com"
+          ZULIP_EMAIL: "github-bot@upai.zulipchat.com"
+          ZULIP_API_KEY: ${{ secrets.ZULIP_API_KEY }}
+        run: |
+          ./scripts/notify-deploy
