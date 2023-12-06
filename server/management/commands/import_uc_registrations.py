@@ -84,7 +84,8 @@ class Command(BaseCommand):
             for person in persons_data:
                 if person is None:
                     continue
-                person["email_canonical"] = person["email_canonical"].lower()
+                person_email = person.get("email_canonical", person.get("email_address", ""))
+                person["email_canonical"] = person_email.lower()
 
             persons_data_by_id = {person["id"]: person for person in persons_data if person}
             email_id_map = {
