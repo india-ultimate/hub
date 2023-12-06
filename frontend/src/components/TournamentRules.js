@@ -43,7 +43,7 @@ const TournamentRules = () => {
         ]}
       />
       <Show
-        when={tournamentQuery.data.rules}
+        when={tournamentQuery.data?.rules}
         fallback={<p>Rules does not exist for this tournament</p>}
       >
         <StyledMarkdown markdown={tournamentQuery.data.rules} />
