@@ -556,7 +556,7 @@ const ValidateRoster = () => {
                               {registration.person.first_name}{" "}
                               {registration.person.last_name}{" "}
                               <span class="text-blue-500">
-                                ({registration.roles})
+                                ({registration.roles.join(", ")})
                               </span>
                             </li>
                           )}
