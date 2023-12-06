@@ -1,4 +1,3 @@
-import { A } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
 import { Icon } from "solid-heroicons";
 import { chatBubbleBottomCenterText } from "solid-heroicons/solid";
@@ -7,37 +6,12 @@ import { For, Suspense } from "solid-js";
 import { WALink } from "../constants";
 import { fetchContributors } from "../queries";
 import ContributorsSkeleton from "../skeletons/Contributors";
+import Tournaments from "./Tournaments";
 
 const Home = () => {
   const query = createQuery(() => ["contributors"], fetchContributors, {
     refetchOnWindowFocus: false
   });
-
-  const features = [
-    {
-      title: "Tournaments",
-      link: "/tournaments",
-      description:
-        "View Schedule, Standings etc. of the various India Ultimate Tournaments around you!"
-    },
-    {
-      title: "Membership",
-      link: "/dashboard",
-      description:
-        "India Ultimate’s Membership process made easier - one place to keep track of it all!"
-    },
-    {
-      title: "Payments",
-      link: "/dashboard",
-      description:
-        "Direct integrated payment system for easy individual or group membership payments"
-    },
-    {
-      title: "Roster",
-      link: "/dashboard",
-      description: "Validate your Team Roster for any events"
-    }
-  ];
 
   return (
     <div>
@@ -49,28 +23,7 @@ const Home = () => {
       </h1>
       <h2 class="text-center">By UPAI & FDSF(I)</h2>
       <div class="mt-5">
-        <h3 class="text-center text-2xl font-extrabold">Features</h3>
-        <div
-          class={
-            "mt-5 grid grid-cols-1 justify-items-center gap-5 md:grid-cols-2 lg:grid-cols-3 "
-          }
-        >
-          <For each={features}>
-            {feature => (
-              <A
-                href={feature.link}
-                class="block w-full rounded-lg border border-blue-600 bg-white p-4 shadow dark:border-blue-400 dark:bg-gray-800"
-              >
-                <h5 class="mb-2 text-xl font-bold tracking-tight text-blue-600 dark:text-blue-400">
-                  {feature.title}
-                </h5>
-                <p class="font-normal text-gray-700 dark:text-gray-400">
-                  {feature.description}
-                </p>
-              </A>
-            )}
-          </For>
-        </div>
+        <Tournaments />
       </div>
       <div class="mt-10">
         <h3 class="text-center text-2xl font-extrabold">
