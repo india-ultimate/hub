@@ -219,7 +219,7 @@ class Command(BaseCommand):
             certificate_path = certificates[0]
             filename = certificate_path.name
         elif filename:
-            certificate_path = certificate_path.joinpath(filename)
+            certificate_path = certificate_dir.joinpath(filename)
             if not certificate_path.exists():
                 return None, None
 
