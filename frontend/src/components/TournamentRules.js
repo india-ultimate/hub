@@ -4,6 +4,7 @@ import { trophy } from "solid-heroicons/solid";
 import { Show } from "solid-js";
 
 import { fetchTournamentBySlug } from "../queries";
+import { getTournamentBreadcrumbName } from "../utils";
 import Breadcrumbs from "./Breadcrumbs";
 import StyledMarkdown from "./StyledMarkdown";
 
@@ -35,11 +36,9 @@ const TournamentRules = () => {
           { url: "/tournaments", name: "All Tournaments" },
           {
             url: `/tournament/${params.slug}`,
-            name: tournamentQuery.data?.event?.ultimate_central_slug
-              ?.split("-")
-              .splice(-2)
-              .map(word => word[0].toUpperCase() + word.slice(1))
-              .join(" ")
+            name: getTournamentBreadcrumbName(
+              tournamentQuery.data?.event?.ultimate_central_slug || ""
+            )
           }
         ]}
       />

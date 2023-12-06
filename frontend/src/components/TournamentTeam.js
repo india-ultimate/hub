@@ -21,6 +21,7 @@ import {
 } from "../queries";
 import RosterSkeleton from "../skeletons/Roster";
 import TournamentMatchesSkeleton from "../skeletons/TournamentMatch";
+import { getTournamentBreadcrumbName } from "../utils";
 import Breadcrumbs from "./Breadcrumbs";
 import TournamentMatch from "./TournamentMatch";
 
@@ -122,11 +123,9 @@ const TournamentTeam = () => {
           { url: "/tournaments", name: "All Tournaments" },
           {
             url: `/tournament/${params.tournament_slug}`,
-            name: tournamentQuery.data?.event?.ultimate_central_slug
-              ?.split("-")
-              .splice(-2)
-              .map(word => word[0].toUpperCase() + word.slice(1))
-              .join(" ")
+            name: getTournamentBreadcrumbName(
+              tournamentQuery.data?.event?.ultimate_central_slug || ""
+            )
           }
         ]}
       />

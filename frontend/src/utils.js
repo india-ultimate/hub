@@ -171,3 +171,67 @@ export const getMatchCardColor = match => {
   }
   return color;
 };
+
+export const getTournamentBreadcrumbName = tournamentSlug => {
+  let category,
+    level,
+    area = "";
+
+  const slugWords = new Set(tournamentSlug.toLowerCase().split("-"));
+
+  // Category
+  if (slugWords.has("ncs")) {
+    category = "Mixed";
+  } else if (slugWords.has("nocs")) {
+    category = "Opens";
+  } else if (slugWords.has("nwcs")) {
+    category = "Womens";
+  } else if (slugWords.has("beach")) {
+    category = "Beach";
+  } else if (slugWords.has("ncuc") || slugWords.has("college")) {
+    category = "College";
+  } else if (slugWords.has("nsuc") || slugWords.has("school")) {
+    category = "School";
+  }
+
+  // Level
+  if (slugWords.has("sectionals")) {
+    level = "Sectionals";
+  } else if (slugWords.has("regionals")) {
+    level = "Regionals";
+  } else if (slugWords.has("nationals")) {
+    level = "Nationals";
+  } else if (slugWords.has("qualifiers")) {
+    level = "Qualifiers";
+  }
+
+  // Area: It can be either north or south not both
+  if (slugWords.has("north")) {
+    area = "N";
+  } else if (slugWords.has("south")) {
+    area = "S";
+  } else if (slugWords.has("nw")) {
+    area = "NW";
+  } else if (slugWords.has("ne")) {
+    area = "NE";
+  } else if (slugWords.has("sw")) {
+    area = "SW";
+  } else if (slugWords.has("se")) {
+    area = "SE";
+  }
+
+  // Append west or east to empty or north/south already in area string to accommodate NW / SE etc.
+  if (slugWords.has("west")) {
+    area += "W";
+  }
+  if (slugWords.has("east")) {
+    area += "E";
+  }
+
+  let name = category + " " + level;
+  if (area.length > 0) {
+    name += ` (${area})`;
+  }
+
+  return name;
+};
