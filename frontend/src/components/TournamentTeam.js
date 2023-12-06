@@ -97,11 +97,18 @@ const TournamentTeam = () => {
     setDoneFetching(false);
     if (matchesQuery.status === "success" && !matchesQuery.data?.message) {
       const teamMatches = matchesQuery.data;
-      setMatchesGroupedByDate(
-        Object.groupBy(teamMatches, ({ time }) =>
-          new Date(Date.parse(time)).getUTCDate()
-        )
-      );
+      let groupedMatches = {};
+
+      for (const match of teamMatches) {
+        // Object.keys returns a list of strings, so converting date to a string
+        const date = new Date(Date.parse(match?.time)).getUTCDate().toString();
+        if (!Object.keys(groupedMatches).includes(date)) {
+          groupedMatches[date] = [];
+        }
+        groupedMatches[date].push(match);
+      }
+
+      setMatchesGroupedByDate(groupedMatches);
       setDoneFetching(true);
     }
   });
