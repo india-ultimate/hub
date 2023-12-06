@@ -1,0 +1,27 @@
+#!/bin/bash
+
+set -euo pipefail
+
+REPO_BASE_URL="https://github.com/india-ultimate/hub"
+# Commit info
+LAST_COMMIT_SHA=$(git log -1 --pretty=format:"%H")
+LAST_COMMIT_MESSAGE=$(git log -1 --pretty=format:"'%s' by %an")
+COMMIT_URL="$REPO_BASE_URL/commit/$LAST_COMMIT_SHA"
+
+# Get the name and email of the user from Git config
+GIT_USER_NAME=$(git config user.name)
+GIT_USER_EMAIL=$(git config user.email)
+
+MESSAGE="Deployment by $GIT_USER_NAME ($GIT_USER_EMAIL)
+
+$LAST_COMMIT_MESSAGE.
+
+[View Commit]($COMMIT_URL)"
+
+# Send notification to Zulip
+curl -s -X POST "$ZULIP_SITE/api/v1/messages" \
+     -u "$ZULIP_EMAIL:$ZULIP_API_KEY" \
+     -d "type=stream" \
+     -d "to=tech%20backend" \
+     -d "subject=Deploys" \
+     -d "content=$MESSAGE"
