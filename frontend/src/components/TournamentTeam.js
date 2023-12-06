@@ -3,7 +3,14 @@ import { createQuery } from "@tanstack/solid-query";
 import clsx from "clsx";
 import { initFlowbite } from "flowbite";
 import { trophy } from "solid-heroicons/solid";
-import { createEffect, createSignal, For, onMount, Show } from "solid-js";
+import {
+  createEffect,
+  createSignal,
+  For,
+  onMount,
+  Show,
+  Suspense
+} from "solid-js";
 
 import { matchCardColorToBorderColorMap } from "../colors";
 import {
@@ -12,6 +19,8 @@ import {
   fetchTournamentTeamBySlug,
   fetchTournamentTeamMatches
 } from "../queries";
+import RosterSkeleton from "../skeletons/Roster";
+import TournamentMatchesSkeleton from "../skeletons/TournamentMatch";
 import Breadcrumbs from "./Breadcrumbs";
 import TournamentMatch from "./TournamentMatch";
 
@@ -19,6 +28,7 @@ const TournamentTeam = () => {
   const params = useParams();
   const [tournamentDates, setTournamentDates] = createSignal([]);
   const [matchesGroupedByDate, setMatchesGroupedByDate] = createSignal({});
+  const [doneFetching, setDoneFetching] = createSignal(false);
 
   const tournamentQuery = createQuery(
     () => ["tournament", params.tournament_slug],
@@ -83,6 +93,7 @@ const TournamentTeam = () => {
   });
 
   createEffect(() => {
+    setDoneFetching(false);
     if (matchesQuery.status === "success" && !matchesQuery.data?.message) {
       const teamMatches = matchesQuery.data;
       setMatchesGroupedByDate(
@@ -90,6 +101,7 @@ const TournamentTeam = () => {
           new Date(Date.parse(time)).getUTCDate()
         )
       );
+      setDoneFetching(true);
     }
   });
 
@@ -172,27 +184,22 @@ const TournamentTeam = () => {
           role="tabpanel"
           aria-labelledby="tab-matches"
         >
-          <For each={Object.entries(matchesGroupedByDate())}>
-            {([tournamentDate, matches]) => (
-              <div class="mb-10">
-                <Show when={tournamentDates().length > 1}>
-                  <div class="mb-5 ml-1">
-                    <h3 class="text-center text-lg font-bold">
-                      {/* Object.groupBy coerces the keys to strings */}
-                      Day -{" "}
-                      {tournamentDates().indexOf(parseInt(tournamentDate)) + 1}
-                    </h3>
-                  </div>
-                </Show>
-                <For each={matches}>
-                  {match => (
-                    <Show
-                      when={
-                        match.team_1?.ultimate_central_slug ===
-                          params.team_slug ||
-                        match.team_2?.ultimate_central_slug === params.team_slug
-                      }
-                    >
+          <Show when={doneFetching()} fallback={<TournamentMatchesSkeleton />}>
+            <For each={Object.entries(matchesGroupedByDate())}>
+              {([tournamentDate, matches]) => (
+                <div class="mb-10">
+                  <Show when={tournamentDates().length > 1}>
+                    <div class="mb-5 ml-1">
+                      <h3 class="text-center text-lg font-bold">
+                        {/* Object.groupBy coerces the keys to strings */}
+                        Day -{" "}
+                        {tournamentDates().indexOf(parseInt(tournamentDate)) +
+                          1}
+                      </h3>
+                    </div>
+                  </Show>
+                  <For each={matches}>
+                    {match => (
                       <div
                         class={clsx(
                           "mb-5 block w-full rounded-lg border bg-white px-1 py-2 shadow dark:bg-gray-800",
@@ -211,12 +218,12 @@ const TournamentTeam = () => {
                           buttonColor={matchOutcomeColor(match)}
                         />
                       </div>
-                    </Show>
-                  )}
-                </For>
-              </div>
-            )}
-          </For>
+                    )}
+                  </For>
+                </div>
+              )}
+            </For>
+          </Show>
         </div>
 
         <div
@@ -225,23 +232,25 @@ const TournamentTeam = () => {
           role="tabpanel"
           aria-labelledby="tab-roster"
         >
-          <For each={rosterQuery.data}>
-            {player => (
-              <div class="my-5 flex px-6">
-                <span>
-                  <img
-                    class="mr-3 inline-block h-10 w-10 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
-                    src={player.image_url}
-                    alt="Bordered avatar"
-                  />
-                  {player.first_name + " " + player.last_name}
-                  <Show
-                    when={player?.player?.gender}
-                  >{` (${player?.player?.gender})`}</Show>
-                </span>
-              </div>
-            )}
-          </For>
+          <Suspense fallback={<RosterSkeleton />}>
+            <For each={rosterQuery.data}>
+              {player => (
+                <div class="my-5 flex px-6">
+                  <span>
+                    <img
+                      class="mr-3 inline-block h-10 w-10 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
+                      src={player.image_url}
+                      alt="Bordered avatar"
+                    />
+                    {player.first_name + " " + player.last_name}
+                    <Show
+                      when={player?.player?.gender}
+                    >{` (${player?.player?.gender})`}</Show>
+                  </span>
+                </div>
+              )}
+            </For>
+          </Suspense>
         </div>
       </div>
     </Show>
