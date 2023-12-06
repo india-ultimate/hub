@@ -251,45 +251,70 @@ const TournamentTeam = () => {
           aria-labelledby="tab-roster"
         >
           <Suspense fallback={<RosterSkeleton />}>
-            <For each={rosterQuery.data}>
-              {registration =>
-                (isPlayer(registration) || isCoach(registration)) && (
-                  <div class="mx-4 my-3 flex items-center space-x-4">
-                    <div class="flex items-center space-x-4">
-                      <img
-                        class="h-10 w-10 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
-                        src={registration.person.image_url}
-                        alt="Bordered avatar"
-                      />
-                      <div class="font-medium">
-                        <div>
-                          {registration.person.first_name +
-                            " " +
-                            registration.person.last_name}
-                          <Show
-                            when={registration.person?.player?.gender}
-                          >{` (${registration.person?.player?.gender})`}</Show>
-                        </div>
+            <Show when={rosterQuery.data?.filter(r => isPlayer(r)).length > 0}>
+              <h2 class="text-center text-xl font-bold">Players</h2>
+            </Show>
+
+            <For each={rosterQuery.data?.filter(r => isPlayer(r))}>
+              {registration => (
+                <div class="mx-4 my-3 flex items-center space-x-4">
+                  <div class="flex items-center space-x-4">
+                    <img
+                      class="h-10 w-10 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
+                      src={registration.person.image_url}
+                      alt="Bordered avatar"
+                    />
+                    <div class="font-medium">
+                      <div>
+                        {registration.person.first_name +
+                          " " +
+                          registration.person.last_name}
+                        <Show
+                          when={registration.person?.player?.gender}
+                        >{` (${registration.person?.player?.gender})`}</Show>
                       </div>
-                      <Show when={isCaptain(registration)}>
-                        <span class="me-2 h-fit rounded-full bg-blue-100 px-2.5 py-0.5 text-xs text-blue-800 dark:bg-blue-900 dark:text-blue-300">
-                          Captain
-                        </span>
-                      </Show>
-                      <Show when={isSpiritCaptain(registration)}>
-                        <span class="me-2 h-fit rounded-full bg-green-100 px-2.5 py-0.5 text-xs text-green-800 dark:bg-green-900 dark:text-green-300">
-                          Spirit Captain
-                        </span>
-                      </Show>
-                      <Show when={isCoach(registration)}>
-                        <span class="me-2 h-fit rounded-full bg-purple-100 px-2.5 py-0.5 text-xs text-purple-800 dark:bg-purple-900 dark:text-purple-300">
-                          Coach
-                        </span>
-                      </Show>
+                    </div>
+                    <Show when={isCaptain(registration)}>
+                      <span class="me-2 h-fit rounded-full bg-blue-100 px-2.5 py-0.5 text-xs text-blue-800 dark:bg-blue-900 dark:text-blue-300">
+                        Captain
+                      </span>
+                    </Show>
+                    <Show when={isSpiritCaptain(registration)}>
+                      <span class="me-2 h-fit rounded-full bg-green-100 px-2.5 py-0.5 text-xs text-green-800 dark:bg-green-900 dark:text-green-300">
+                        Spirit Captain
+                      </span>
+                    </Show>
+                  </div>
+                </div>
+              )}
+            </For>
+
+            <Show when={rosterQuery.data?.filter(r => isCoach(r)).length > 0}>
+              <h2 class="text-center text-xl font-bold">Coaches</h2>
+            </Show>
+
+            <For each={rosterQuery.data?.filter(r => isCoach(r))}>
+              {registration => (
+                <div class="mx-4 my-3 flex items-center space-x-4">
+                  <div class="flex items-center space-x-4">
+                    <img
+                      class="h-10 w-10 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
+                      src={registration.person.image_url}
+                      alt="Bordered avatar"
+                    />
+                    <div class="font-medium">
+                      <div>
+                        {registration.person.first_name +
+                          " " +
+                          registration.person.last_name}
+                        <Show
+                          when={registration.person?.player?.gender}
+                        >{` (${registration.person?.player?.gender})`}</Show>
+                      </div>
                     </div>
                   </div>
-                )
-              }
+                </div>
+              )}
             </For>
           </Suspense>
         </div>
