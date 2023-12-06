@@ -141,7 +141,7 @@ class Command(BaseCommand):
                     field: row.get(f"accreditation.{field}") for field in accreditation_fields
                 }
                 has_accreditation_data = all(accreditation_data.values())
-                doa = accreditation_data["date"]
+                doa = accreditation_data["date"]  # to make the type checker happy
                 if has_accreditation_data and doa is not None:
                     accreditation_data["level"] = ACCREDITATIONS.get(
                         row["accreditation.level"], None
@@ -149,21 +149,23 @@ class Command(BaseCommand):
                     try:
                         acc_date = datetime.strptime(doa, options["date_format"])  # noqa: DTZ007
                         accreditation_data["date"] = acc_date.date()
+                        accreditation_data["is_valid"] = True
                     except ValueError:
                         self.stderr.write(self.style.ERROR(f"Invalid date: {doa}"))
                         continue
 
-                    accreditation, created = Accreditation.objects.get_or_create(
-                        player=player, defaults=accreditation_data
-                    )
-                    if not created:
-                        for key, value in accreditation_data.items():
-                            setattr(accreditation, key, value)
-                        accreditation.save()
-
-                    name, contents = self.find_certificate_file(row, certificate_dir)
-                    if name and contents:
-                        accreditation.certificate.save(name, contents)
+                    certificate = self.find_certificate_file(row, certificate_dir)
+                    if certificate:
+                        accreditation_data["certificate"] = certificate
+                        accreditation, created = Accreditation.objects.get_or_create(
+                            player=player, defaults=accreditation_data
+                        )
+                        if not created:
+                            for key, value in accreditation_data.items():
+                                setattr(accreditation, key, value)
+                            accreditation.save()
+                    else:
+                        print("Not creating accreditation: no certificate")
 
                 # Import vaccination information
                 has_vaccination_data = "vaccination.is_vaccinated" in row
@@ -206,26 +208,26 @@ class Command(BaseCommand):
 
     def find_certificate_file(
         self, row: dict[str, str], certificate_dir: Path
-    ) -> tuple[str | None, ContentFile[bytes] | None]:
+    ) -> ContentFile[bytes] | None:
         filename = row.get("accreditation.certificate_file_name")
         wfdf_id = row.get("accreditation.wfdf_id")
 
         if not filename and not wfdf_id:
-            return None, None
+            return None
         elif not filename:
             certificates = list(certificate_dir.glob(f"{wfdf_id}.*"))
             if not certificates:
-                return None, None
+                return None
             certificate_path = certificates[0]
             filename = certificate_path.name
         elif filename:
             certificate_path = certificate_dir.joinpath(filename)
             if not certificate_path.exists():
-                return None, None
+                return None
 
         with certificate_path.open("rb") as f:
             name = slugify(certificate_path.stem) + certificate_path.suffix
-            return name, ContentFile(f.read())
+            return ContentFile(f.read(), name=name)
 
     def find_vaccination_file(
         self, filename: str, vaccination_dir: Path
