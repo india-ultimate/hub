@@ -75,9 +75,11 @@ class Command(BaseCommand):
 
                 try:
                     player = Player.objects.get(user=user)
+                    print(f"Updating player: {user}")
                     for key, value in player_data.items():
                         setattr(player, key, value)
                 except Player.DoesNotExist:
+                    print(f"Creating new player: {user}")
                     player = Player(**player_data)
 
                 player.full_clean()
