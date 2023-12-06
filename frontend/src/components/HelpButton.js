@@ -29,7 +29,7 @@ const HelpButton = () => {
         <span class="sr-only">Help</span>
       </button>
       {isOpen() && (
-        <div class="absolute bottom-16 right-0 w-96 rounded-lg border border-purple-400 bg-white p-4 shadow dark:bg-gray-900">
+        <div class="fixed bottom-20 right-4 w-80 rounded-lg border border-blue-400 bg-white p-4 shadow dark:bg-gray-900 md:right-8 md:w-96">
           <ContactForm close={() => setIsOpen(false)} />
         </div>
       )}
