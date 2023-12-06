@@ -1128,6 +1128,32 @@ def get_tournament_matches_by_slug(
     return 200, Match.objects.filter(tournament=tournament).order_by("time")
 
 
+@api.get(
+    "/tournament/{tournament_slug}/team/{team_slug}/matches",
+    auth=None,
+    response={200: list[MatchSchema], 400: Response},
+)
+def get_tournament_team_matches(
+    request: AuthenticatedHttpRequest, tournament_slug: str, team_slug: str
+) -> tuple[int, QuerySet[Match] | message_response]:
+    try:
+        event = Event.objects.get(ultimate_central_slug=tournament_slug)
+        tournament = Tournament.objects.get(event=event)
+        team = Team.objects.get(ultimate_central_slug=team_slug)
+    except Tournament.DoesNotExist:
+        return 400, {"message": "Tournament does not exist"}
+    except Event.DoesNotExist:
+        return 400, {"message": "Event does not exist"}
+    except Team.DoesNotExist:
+        return 400, {"message": "Team does not exist"}
+
+    tournament_team_matches = Match.objects.filter(
+        Q(team_1=team) | Q(team_2=team), tournament=tournament
+    ).order_by("time")
+
+    return 200, tournament_team_matches
+
+
 @api.post("/tournament", response={200: TournamentSchema, 400: Response, 401: Response})
 def create_tournament(
     request: AuthenticatedHttpRequest,
