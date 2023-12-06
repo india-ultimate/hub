@@ -1,0 +1,5 @@
+first_name,last_name,email,uc.email,phone,date_of_birth,gender,other_gender,city,state_ut,not_in_india,occupation,educational_institution,guardian.first_name,guardian.last_name,guardian.email,guardian.phone,guardian.relation,accreditation.wfdf_id,accreditation.date,accreditation.level,accreditation.certificate_file_name
+Shiv,A,ultimate+shiv@gmail.com,ultimate+shiv@gmail.com,,01-01-2001,Male,,Lucknow,Uttar Pradesh,N,Student,AB School,,,,,,,22-11-2023,Standard,std.pdf
+Loka,B,loka@gmail.com,loka@gmail.com,,01-01-2001,Male,,Lucknow,Uttar Pradesh,N,Student,AB School,,,,,,,21-11-2023,Standard,std-2.pdf
+Raj,C,raj@gmail.com,raj@gmail.com,,01-01-2002,Female,,Lucknow,Uttar Pradesh,N,Student,AB School,,,,,,,21-11-2023,Advanced,adv.pdf
+Gur,P,gur@gmail.com,gur@gmail.com,,01-01-2003,Female,,Lucknow,Uttar Pradesh,N,Student,AB School,,,,,,840,20-08-2023,Advanced,adv-2.pdf

@@ -1,4 +1,5 @@
 from datetime import date
+from pathlib import Path
 
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
@@ -144,3 +145,32 @@ class MergeUsersCommandTestCase(TestCase):
         Player.objects.all().delete()
         Membership.objects.all().delete()
         Guardianship.objects.all().delete()
+
+
+class TestImportPlayers(TestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        self.fixtures_dir = Path(__file__).parent.joinpath("fixtures")
+        self.fixture = self.fixtures_dir / "import-players.csv"
+        self.cert_dir = self.fixtures_dir / "certificates"
+        self.cert_dir.mkdir(exist_ok=True)
+        self.cert_names = ["std.pdf", "std-2.pdf", "adv.pdf"]  # 'adv-2.pdf not created
+        for name in self.cert_names:
+            path = self.cert_dir / name
+            with path.open("w"):
+                pass
+
+    def test_import_players(self) -> None:
+        call_command("import_players", self.fixture, "--date-format", "%d-%m-%Y")
+
+        n_players = 4
+        self.assertEqual(n_players, User.objects.count())
+        self.assertEqual(n_players, Player.objects.count())
+        self.assertEqual(0, Guardianship.objects.count())
+        self.assertEqual(n_players - 1, Accreditation.objects.count())
+
+    def tearDown(self) -> None:
+        for name in self.cert_names:
+            path = self.cert_dir / name
+            path.unlink(missing_ok=True)
+        self.cert_dir.rmdir()
