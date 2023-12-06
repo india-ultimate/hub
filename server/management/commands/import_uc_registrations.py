@@ -84,17 +84,16 @@ class Command(BaseCommand):
             for person in persons_data:
                 if person is None:
                     continue
-                person_email = person.get("email_canonical", person.get("email_address", ""))
-                person["email_canonical"] = person_email.lower()
+                person["email_address"] = person["email_address"].lower()
 
             persons_data_by_id = {person["id"]: person for person in persons_data if person}
             email_id_map = {
-                person["email_canonical"]: person["id"] for person in persons_data if person
+                person["email_address"]: person["id"] for person in persons_data if person
             }
             persons = [
                 UCPerson(
                     id=person["id"],
-                    email=person["email_canonical"],
+                    email=person["email_address"],
                     dominant_hand=person["dominant_hand"] or "",
                     image_url=person["images"]["200"],
                     first_name=person["first_name"],
