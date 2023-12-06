@@ -136,7 +136,7 @@ class Command(BaseCommand):
                     guardianship.save()
 
                 # Import accreditation information
-                accreditation_fields = ("date", "level", "wfdf_id")
+                accreditation_fields = ("date", "level")
                 accreditation_data = {
                     field: row.get(f"accreditation.{field}") for field in accreditation_fields
                 }
