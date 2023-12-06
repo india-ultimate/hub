@@ -562,23 +562,8 @@ def update_tournament_spirit_rankings(tournament: Tournament) -> None:
                 and match.spirit_score_team_1
                 and match.self_spirit_score_team_1
             ):
-                spirit_score = match.spirit_score_team_1
-                points += (
-                    float(spirit_score.rules)
-                    + float(spirit_score.fouls)
-                    + float(spirit_score.fair)
-                    + float(spirit_score.positive)
-                    + float(spirit_score.communication)
-                )
-
-                self_spirit_score = match.self_spirit_score_team_1
-                self_points += (
-                    float(self_spirit_score.rules)
-                    + float(self_spirit_score.fouls)
-                    + float(self_spirit_score.fair)
-                    + float(self_spirit_score.positive)
-                    + float(self_spirit_score.communication)
-                )
+                points += float(match.spirit_score_team_1.total)
+                self_points += float(match.self_spirit_score_team_1.total)
 
                 matches_count += 1
             elif (
@@ -586,23 +571,8 @@ def update_tournament_spirit_rankings(tournament: Tournament) -> None:
                 and match.spirit_score_team_2
                 and match.self_spirit_score_team_2
             ):
-                spirit_score = match.spirit_score_team_2
-                points += (
-                    float(spirit_score.rules)
-                    + float(spirit_score.fouls)
-                    + float(spirit_score.fair)
-                    + float(spirit_score.positive)
-                    + float(spirit_score.communication)
-                )
-
-                self_spirit_score = match.self_spirit_score_team_2
-                self_points += (
-                    float(self_spirit_score.rules)
-                    + float(self_spirit_score.fouls)
-                    + float(self_spirit_score.fair)
-                    + float(self_spirit_score.positive)
-                    + float(self_spirit_score.communication)
-                )
+                points += float(match.spirit_score_team_2.total)
+                self_points += float(match.self_spirit_score_team_2.total)
 
                 matches_count += 1
 
@@ -686,6 +656,13 @@ def create_spirit_scores(spirit_score: SpiritScoreUpdateSchema) -> SpiritScore:
         fair=spirit_score.fair,
         positive=spirit_score.positive,
         communication=spirit_score.communication,
+        total=(
+            spirit_score.rules
+            + spirit_score.fouls
+            + spirit_score.fair
+            + spirit_score.positive
+            + spirit_score.communication
+        ),
         comments=spirit_score.comments if spirit_score.comments else None,
     )
 

@@ -130,79 +130,125 @@ const TournamentTeam = () => {
           alt="Bordered avatar"
         />
       </div>
-
       <h1 class="my-5 text-center">
         <span class="w-fit bg-gradient-to-r from-blue-500 to-green-500 bg-clip-text text-2xl font-extrabold text-transparent">
           {teamQuery.data?.name}
         </span>
       </h1>
-
-      <h2 class="text-center text-xl font-bold">Roster</h2>
-
-      <For each={rosterQuery.data}>
-        {player => (
-          <div class="my-5 flex px-6">
-            <span>
-              <img
-                class="mr-3 inline-block h-10 w-10 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
-                src={player.image_url}
-                alt="Bordered avatar"
-              />
-              {player.first_name + " " + player.last_name}
-              <Show
-                when={player?.player?.gender}
-              >{` (${player?.player?.gender})`}</Show>
-            </span>
-          </div>
-        )}
-      </For>
-
-      <h2 class="my-5 mb-10 mt-10 text-center text-xl font-bold underline underline-offset-8">
-        Matches
-      </h2>
-
-      <For each={Object.entries(matchesGroupedByDate())}>
-        {([tournamentDate, matches]) => (
-          <div class="mb-10">
-            <Show when={tournamentDates().length > 1}>
-              <div class="mb-5 ml-1">
-                <h3 class="text-center text-lg font-bold">
-                  {/* Object.groupBy coerces the keys to strings */}
-                  Day -{" "}
-                  {tournamentDates().indexOf(parseInt(tournamentDate)) + 1}
-                </h3>
-              </div>
-            </Show>
-            <For each={matches}>
-              {match => (
-                <Show
-                  when={
-                    match.team_1?.ultimate_central_slug === params.team_slug ||
-                    match.team_2?.ultimate_central_slug === params.team_slug
-                  }
-                >
-                  <div
-                    class={clsx(
-                      "mb-5 block w-full rounded-lg border bg-white px-1 py-2 shadow dark:bg-gray-800",
-                      matchCardColorToBorderColorMap[matchOutcomeColor(match)]
-                    )}
-                  >
-                    <TournamentMatch
-                      match={match}
-                      currentTeamNo={currTeamNo(match)}
-                      opponentTeamNo={oppTeamNo(match)}
-                      tournamentSlug={params.tournament_slug}
-                      imgRingColor={"gray"}
-                      matchCardColorOverride={matchOutcomeColor(match)}
-                      buttonColor={matchOutcomeColor(match)}
-                    />
+      <div class="mb-4 border-b border-gray-200 dark:border-gray-700">
+        <ul
+          class="-mb-px flex flex-wrap justify-center text-center text-sm font-medium"
+          id="myTab"
+          data-tabs-toggle="#myTabContent"
+          role="tablist"
+        >
+          <li class="mr-2" role="presentation">
+            <button
+              class="inline-block rounded-t-lg border-b-2 p-4"
+              id="tab-matches"
+              data-tabs-target="#matches"
+              type="button"
+              role="tab"
+              aria-controls="matches"
+              aria-selected="false"
+            >
+              Matches
+            </button>
+          </li>
+          <li class="mr-2" role="presentation">
+            <button
+              class="inline-block rounded-t-lg border-b-2 p-4"
+              id="tab-roster"
+              data-tabs-target="#roster"
+              type="button"
+              role="tab"
+              aria-controls="roster"
+              aria-selected="false"
+            >
+              Roster
+            </button>
+          </li>
+        </ul>
+      </div>
+      <div id="myTabContent">
+        <div
+          class="hidden rounded-lg"
+          id="matches"
+          role="tabpanel"
+          aria-labelledby="tab-matches"
+        >
+          <For each={Object.entries(matchesGroupedByDate())}>
+            {([tournamentDate, matches]) => (
+              <div class="mb-10">
+                <Show when={tournamentDates().length > 1}>
+                  <div class="mb-5 ml-1">
+                    <h3 class="text-center text-lg font-bold">
+                      {/* Object.groupBy coerces the keys to strings */}
+                      Day -{" "}
+                      {tournamentDates().indexOf(parseInt(tournamentDate)) + 1}
+                    </h3>
                   </div>
                 </Show>
-              )}
-            </For>
-          </div>
-        )}
-      </For>
+                <For each={matches}>
+                  {match => (
+                    <Show
+                      when={
+                        match.team_1?.ultimate_central_slug ===
+                          params.team_slug ||
+                        match.team_2?.ultimate_central_slug === params.team_slug
+                      }
+                    >
+                      <div
+                        class={clsx(
+                          "mb-5 block w-full rounded-lg border bg-white px-1 py-2 shadow dark:bg-gray-800",
+                          matchCardColorToBorderColorMap[
+                            matchOutcomeColor(match)
+                          ]
+                        )}
+                      >
+                        <TournamentMatch
+                          match={match}
+                          currentTeamNo={currTeamNo(match)}
+                          opponentTeamNo={oppTeamNo(match)}
+                          tournamentSlug={params.tournament_slug}
+                          imgRingColor={"gray"}
+                          matchCardColorOverride={matchOutcomeColor(match)}
+                          buttonColor={matchOutcomeColor(match)}
+                        />
+                      </div>
+                    </Show>
+                  )}
+                </For>
+              </div>
+            )}
+          </For>
+        </div>
+
+        <div
+          class="hidden rounded-lg"
+          id="roster"
+          role="tabpanel"
+          aria-labelledby="tab-roster"
+        >
+          <For each={rosterQuery.data}>
+            {player => (
+              <div class="my-5 flex px-6">
+                <span>
+                  <img
+                    class="mr-3 inline-block h-10 w-10 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
+                    src={player.image_url}
+                    alt="Bordered avatar"
+                  />
+                  {player.first_name + " " + player.last_name}
+                  <Show
+                    when={player?.player?.gender}
+                  >{` (${player?.player?.gender})`}</Show>
+                </span>
+              </div>
+            )}
+          </For>
+        </div>
+      </div>
     </Show>
   );
 };
