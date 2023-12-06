@@ -521,11 +521,9 @@ class TournamentUpdateSeedingSchema(Schema):
 
 
 class PoolSchema(ModelSchema):
-    tournament: TournamentSchema
-
     class Config:
         model = Pool
-        model_fields = "__all__"
+        model_exclude = ["tournament"]
 
 
 class PoolCreateSchema(Schema):
@@ -535,19 +533,15 @@ class PoolCreateSchema(Schema):
 
 
 class CrossPoolSchema(ModelSchema):
-    tournament: TournamentSchema
-
     class Config:
         model = CrossPool
-        model_fields = "__all__"
+        model_exclude = ["tournament"]
 
 
 class BracketSchema(ModelSchema):
-    tournament: TournamentSchema
-
     class Config:
         model = Bracket
-        model_fields = "__all__"
+        model_exclude = ["tournament"]
 
 
 class BracketCreateSchema(Schema):
@@ -556,11 +550,9 @@ class BracketCreateSchema(Schema):
 
 
 class PositionPoolSchema(ModelSchema):
-    tournament: TournamentSchema
-
     class Config:
         model = PositionPool
-        model_fields = "__all__"
+        model_exclude = ["tournament"]
 
 
 class PositionPoolCreateSchema(Schema):
@@ -587,7 +579,6 @@ class SpiritScoreSchema(ModelSchema):
 
 
 class MatchSchema(ModelSchema):
-    tournament: TournamentSchema
     pool: PoolSchema | None
     cross_pool: CrossPoolSchema | None
     bracket: BracketSchema | None
@@ -603,7 +594,7 @@ class MatchSchema(ModelSchema):
 
     class Config:
         model = Match
-        model_fields = "__all__"
+        model_exclude = ["tournament"]
 
 
 class MatchCreateSchema(Schema):
