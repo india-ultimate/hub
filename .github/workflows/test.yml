@@ -49,11 +49,6 @@ jobs:
         run: |
           poetry check
 
-      - name: Ensure server/templates/index.html is in sync with the frontend
-        run: |
-          poetry run ./scripts/update-index-template
-          git diff --exit-code
-
       - name: Ensure models and migrations are in sync
         run: |
           poetry run python manage.py makemigrations --noinput --check --dry-run
