@@ -2,6 +2,13 @@
 
 set -euo pipefail
 
+# Check for command line argument
+if [ "$#" -eq 1 ] && [ "$1" == "start" ]; then
+    DEPLOYMENT_STATUS="STARTING"
+else
+    DEPLOYMENT_STATUS="COMPLETED"
+fi
+
 REPO_BASE_URL="https://github.com/india-ultimate/hub"
 if [ -n "${GITHUB_REPOSITORY-}" ]; then
     GIT_USER_NAME="${GITHUB_ACTOR}"
@@ -16,7 +23,7 @@ fi
 COMMIT_URL="$REPO_BASE_URL/commit/$LAST_COMMIT_SHA"
 LAST_COMMIT_MESSAGE=$(git log -1 --pretty=format:"'%s' by %an")
 
-MESSAGE="Deployment by $GIT_USER_NAME ($GIT_USER_EMAIL)
+MESSAGE="$DEPLOYMENT_STATUS Deployment by $GIT_USER_NAME ($GIT_USER_EMAIL)
 
 $LAST_COMMIT_MESSAGE.
 

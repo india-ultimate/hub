@@ -9,10 +9,17 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Send Deployment Starting Notification
+        env:
+          ZULIP_SITE: "https://upai.zulipchat.com"
+          ZULIP_EMAIL: "github-bot@upai.zulipchat.com"
+          ZULIP_API_KEY: ${{ secrets.ZULIP_API_KEY }}
+        run: |
+          ./scripts/notify-deploy start
       - run: flyctl deploy --remote-only
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-      - name: Send Deployment Notification
+      - name: Send Deployment Complete Notification
         env:
           ZULIP_SITE: "https://upai.zulipchat.com"
           ZULIP_EMAIL: "github-bot@upai.zulipchat.com"
