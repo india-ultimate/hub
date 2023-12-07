@@ -245,7 +245,7 @@ const Accreditation = () => {
                       {...props}
                       value={field.value}
                       error={field.error}
-                      type="text"
+                      type="number"
                       label="WFDF User ID"
                       placeholder="99999"
                     />
