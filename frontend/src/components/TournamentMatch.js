@@ -660,6 +660,9 @@ const TournamentMatch = props => {
                         queryClient.invalidateQueries({
                           queryKey: ["matches", props.tournamentSlug]
                         });
+                        queryClient.invalidateQueries({
+                          queryKey: ["team-matches", props.tournamentSlug]
+                        });
                         setTimeout(() => initFlowbite(), 500);
                       }}
                     >
@@ -695,6 +698,9 @@ const TournamentMatch = props => {
                       onClick={() => {
                         queryClient.invalidateQueries({
                           queryKey: ["matches", props.tournamentSlug]
+                        });
+                        queryClient.invalidateQueries({
+                          queryKey: ["team-matches", props.tournamentSlug]
                         });
                         setTimeout(() => initFlowbite(), 500);
                       }}
@@ -798,6 +804,9 @@ const TournamentMatch = props => {
                       queryClient.invalidateQueries({
                         queryKey: ["matches", props.tournamentSlug]
                       });
+                      queryClient.invalidateQueries({
+                        queryKey: ["team-matches", props.tournamentSlug]
+                      });
                       setTimeout(() => initFlowbite(), 500);
                     }}
                   >
@@ -835,6 +844,9 @@ const TournamentMatch = props => {
                     onClick={() => {
                       queryClient.invalidateQueries({
                         queryKey: ["matches", props.tournamentSlug]
+                      });
+                      queryClient.invalidateQueries({
+                        queryKey: ["team-matches", props.tournamentSlug]
                       });
                       setTimeout(() => initFlowbite(), 500);
                     }}
