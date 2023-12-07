@@ -160,7 +160,9 @@ const TournamentSchedule = () => {
                   type="button"
                   role="tab"
                   aria-controls={"day-" + (i() + 1)}
-                  aria-selected="false"
+                  aria-selected={
+                    sameDay(day, new Date(Date.now())) ? "true" : "false"
+                  }
                 >
                   {"Day " + (i() + 1)}
                 </button>
