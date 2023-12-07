@@ -96,7 +96,10 @@ const Accreditation = () => {
   // handleSubmit function to handle form submission
   const handleSubmit = async values => {
     const { certificate, ...accreditationData } = values;
-    const data = { ...accreditationData, player_id: player()?.id };
+    let data = { ...accreditationData, player_id: player()?.id };
+    if (data.wfdf_id === "") {
+      data.wfdf_id = null;
+    }
 
     const formData = new FormData();
     formData.append("accreditation", JSON.stringify(data));
@@ -233,7 +236,6 @@ const Accreditation = () => {
                 <Field
                   name="wfdf_id"
                   validate={[
-                    required("Please enter WFDF User ID."),
                     minRange(1, "Enter a valid WFDF ID"),
                     maxRange(99999999, "Enter a valid WFDF ID")
                   ]}
@@ -246,7 +248,6 @@ const Accreditation = () => {
                       type="text"
                       label="WFDF User ID"
                       placeholder="99999"
-                      required
                     />
                   )}
                 </Field>
