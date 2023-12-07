@@ -18,6 +18,8 @@ class User(AbstractUser):
     phone = models.CharField(max_length=20)
     email = models.EmailField()
 
+    is_tournament_admin = models.BooleanField(default=False)
+
 
 class Team(models.Model):
     ultimate_central_id = models.PositiveIntegerField(
