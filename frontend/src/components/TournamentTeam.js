@@ -184,7 +184,13 @@ const TournamentTeam = () => {
       </div>
       <h1 class="my-5 text-center">
         <span class="w-fit bg-gradient-to-r from-blue-500 to-green-500 bg-clip-text text-2xl font-extrabold text-transparent">
-          {teamQuery.data?.name}
+          <Suspense
+            fallback={
+              <span class="inline-block h-2 w-60 animate-pulse rounded-full bg-gray-200 dark:bg-gray-700" />
+            }
+          >
+            {teamQuery.data?.name}
+          </Suspense>
         </span>
       </h1>
       <div class="mb-4 border-b border-gray-200 dark:border-gray-700">
