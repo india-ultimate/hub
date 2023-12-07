@@ -390,153 +390,160 @@ const ValidateRoster = () => {
                                 return (
                                   <li
                                     class={clsx(
-                                      "w-full rounded-t-lg border-b border-gray-200 px-4 py-2 dark:border-gray-600",
+                                      "flex w-full justify-between rounded-t-lg border-b border-gray-200 px-4 py-2 dark:border-gray-600",
                                       displayAge < minAge
                                         ? "bg-gray-100 dark:bg-gray-800"
                                         : ""
                                     )}
                                   >
-                                    {registration.person.first_name}{" "}
-                                    {registration.person.last_name}
-                                    <Show when={isCaptain(registration)}>
-                                      <span class="text-blue-500"> (C)</span>
-                                    </Show>
-                                    <Show when={isSpiritCaptain(registration)}>
-                                      <span class="text-blue-500"> (SC)</span>
-                                    </Show>
-                                    <Switch>
-                                      <Match
-                                        when={!registration?.person?.player}
+                                    <span>
+                                      {registration.person.first_name}{" "}
+                                      {registration.person.last_name}
+                                      <Show when={isCaptain(registration)}>
+                                        <span class="text-blue-500"> (C)</span>
+                                      </Show>
+                                      <Show
+                                        when={isSpiritCaptain(registration)}
                                       >
-                                        <span
-                                          class={clsx("mx-4", redText)}
-                                          title="No Hub player linked with UC Profile"
+                                        <span class="text-blue-500"> (SC)</span>
+                                      </Show>
+                                    </span>
+
+                                    <div>
+                                      <Switch>
+                                        <Match
+                                          when={!registration?.person?.player}
                                         >
-                                          <Icon
-                                            path={noSymbol}
-                                            style={{
-                                              width: "20px",
-                                              display: "inline"
-                                            }}
-                                          />
-                                        </span>
-                                      </Match>
-                                      <Match
-                                        when={registration?.person?.player}
-                                      >
-                                        <span
-                                          title="Membership valid?"
-                                          class={clsx(
-                                            "mx-2",
-                                            membershipValidForEvent(
-                                              registration.person.player
-                                            )
-                                              ? greenText
-                                              : redText
-                                          )}
+                                          <span
+                                            class={clsx("mx-4", redText)}
+                                            title="No Hub player linked with UC Profile"
+                                          >
+                                            <Icon
+                                              path={noSymbol}
+                                              style={{
+                                                width: "20px",
+                                                display: "inline"
+                                              }}
+                                            />
+                                          </span>
+                                        </Match>
+                                        <Match
+                                          when={registration?.person?.player}
                                         >
-                                          <Icon
-                                            path={currencyRupee}
-                                            style={{
-                                              width: "20px",
-                                              display: "inline"
-                                            }}
-                                          />
-                                        </span>
-                                        <span
-                                          title="Liability Waiver signed?"
-                                          class={clsx(
-                                            "mx-2",
-                                            registration.person.player
-                                              ?.membership?.waiver_valid
-                                              ? greenText
-                                              : redText
-                                          )}
-                                        >
-                                          <Icon
-                                            path={
+                                          <span
+                                            title="Membership valid?"
+                                            class={clsx(
+                                              "mx-2",
+                                              membershipValidForEvent(
+                                                registration.person.player
+                                              )
+                                                ? greenText
+                                                : redText
+                                            )}
+                                          >
+                                            <Icon
+                                              path={currencyRupee}
+                                              style={{
+                                                width: "20px",
+                                                display: "inline"
+                                              }}
+                                            />
+                                          </span>
+                                          <span
+                                            title="Liability Waiver signed?"
+                                            class={clsx(
+                                              "mx-2",
                                               registration.person.player
                                                 ?.membership?.waiver_valid
-                                                ? handThumbUp
-                                                : handThumbDown
-                                            }
-                                            style={{
-                                              width: "20px",
-                                              display: "inline"
-                                            }}
-                                          />
-                                        </span>
-                                        <span
-                                          title="Vaccinated?"
-                                          class={clsx(
-                                            "mx-2",
-                                            registration.person.player
-                                              ?.vaccination?.is_vaccinated
-                                              ? greenText
-                                              : redText
-                                          )}
-                                        >
-                                          <Icon
-                                            path={
+                                                ? greenText
+                                                : redText
+                                            )}
+                                          >
+                                            <Icon
+                                              path={
+                                                registration.person.player
+                                                  ?.membership?.waiver_valid
+                                                  ? handThumbUp
+                                                  : handThumbDown
+                                              }
+                                              style={{
+                                                width: "20px",
+                                                display: "inline"
+                                              }}
+                                            />
+                                          </span>
+                                          <span
+                                            title="Vaccinated?"
+                                            class={clsx(
+                                              "mx-2",
                                               registration.person.player
                                                 ?.vaccination?.is_vaccinated
-                                                ? shieldCheck
-                                                : shieldExclamation
-                                            }
-                                            style={{
-                                              width: "20px",
-                                              display: "inline"
-                                            }}
-                                          />
-                                        </span>
-                                        <span
-                                          title={`Accreditation - ${
-                                            playerAccreditationValid(
-                                              registration.person.player
-                                            )
-                                              ? `${getLabel(
-                                                  accreditationChoices,
-                                                  accreditationLevel
-                                                )} (${accreditationDate})`
-                                              : !accreditationDate
-                                              ? "No accreditation"
-                                              : `Outdated: ${accreditationDate}`
-                                          }`}
-                                          class={clsx(
-                                            "mx-2",
-                                            playerAccreditationValid(
-                                              registration.person.player
-                                            )
-                                              ? greenText
-                                              : redText
-                                          )}
-                                        >
-                                          <Icon
-                                            path={
+                                                ? greenText
+                                                : redText
+                                            )}
+                                          >
+                                            <Icon
+                                              path={
+                                                registration.person.player
+                                                  ?.vaccination?.is_vaccinated
+                                                  ? shieldCheck
+                                                  : shieldExclamation
+                                              }
+                                              style={{
+                                                width: "20px",
+                                                display: "inline"
+                                              }}
+                                            />
+                                          </span>
+                                          <span
+                                            title={`Accreditation - ${
                                               playerAccreditationValid(
                                                 registration.person.player
                                               )
-                                                ? accreditationLevel === "ADV"
-                                                  ? documentCheck
-                                                  : document
-                                                : xCircle
-                                            }
-                                            style={{
-                                              width: "20px",
-                                              display: "inline"
-                                            }}
-                                          />
-                                        </span>
-                                      </Match>
-                                    </Switch>
-                                    <Show when={displayAge < minAge}>
-                                      <p
-                                        class="rounded-lg bg-red-50 text-sm text-red-800 dark:bg-gray-800 dark:text-red-400"
-                                        role="alert"
-                                      >
-                                        Under age: {displayAge} years old
-                                      </p>
-                                    </Show>
+                                                ? `${getLabel(
+                                                    accreditationChoices,
+                                                    accreditationLevel
+                                                  )} (${accreditationDate})`
+                                                : !accreditationDate
+                                                ? "No accreditation"
+                                                : `Outdated: ${accreditationDate}`
+                                            }`}
+                                            class={clsx(
+                                              "mx-2",
+                                              playerAccreditationValid(
+                                                registration.person.player
+                                              )
+                                                ? greenText
+                                                : redText
+                                            )}
+                                          >
+                                            <Icon
+                                              path={
+                                                playerAccreditationValid(
+                                                  registration.person.player
+                                                )
+                                                  ? accreditationLevel === "ADV"
+                                                    ? documentCheck
+                                                    : document
+                                                  : xCircle
+                                              }
+                                              style={{
+                                                width: "20px",
+                                                display: "inline"
+                                              }}
+                                            />
+                                          </span>
+                                        </Match>
+                                      </Switch>
+                                      <Show when={displayAge < minAge}>
+                                        <p
+                                          class="rounded-lg bg-red-50 text-sm text-red-800 dark:bg-gray-800 dark:text-red-400"
+                                          role="alert"
+                                        >
+                                          Under age: {displayAge} years old
+                                        </p>
+                                      </Show>
+                                    </div>
                                   </li>
                                 );
                               }}
