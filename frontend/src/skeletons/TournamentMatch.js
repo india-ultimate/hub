@@ -60,12 +60,6 @@ const TournamentTeamMatches = () => {
       </div>
       <TournamentMatch />
       <TournamentMatch />
-      <div class="mb-5 ml-1">
-        <h3 class="text-center text-lg font-bold">Day - 2</h3>
-      </div>
-      <TournamentMatch />
-      <TournamentMatch />
-      <TournamentMatch />
     </div>
   );
 };
