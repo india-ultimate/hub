@@ -461,24 +461,7 @@ def list_registrations(
     except Event.DoesNotExist:
         return 404, {"message": f"Event with {event_id} not found."}
 
-    if request.user.is_staff:
-        registrations = UCRegistration.objects.filter(event=event)
-    else:
-        no_uc_profile = (400, {"message": "Need a linked UC profile"})
-        try:
-            player = request.user.player_profile
-        except Player.DoesNotExist:
-            return no_uc_profile
-
-        if player.ultimate_central_id is None:
-            return no_uc_profile
-
-        team_ids = set(
-            UCRegistration.objects.filter(
-                event=event, person_id=player.ultimate_central_id
-            ).values_list("team_id", flat=True)
-        )
-        registrations = UCRegistration.objects.filter(event=event, team_id__in=team_ids)
+    registrations = UCRegistration.objects.filter(event=event)
 
     return 200, registrations
 
