@@ -11,24 +11,24 @@ const UpdateSpiritScoreForm = props => {
   const rosterQueryTeam1 = createQuery(
     () => [
       "tournament-roster",
-      props.match?.tournament?.event?.ultimate_central_slug,
+      props.tournament?.event?.ultimate_central_slug,
       props.match?.team_1?.ultimate_central_slug
     ],
     () =>
       fetchTournamentTeamBySlug(
-        props.match?.tournament?.event?.ultimate_central_slug,
+        props.tournament?.event?.ultimate_central_slug,
         props.match?.team_1?.ultimate_central_slug
       )
   );
   const rosterQueryTeam2 = createQuery(
     () => [
       "tournament-roster",
-      props.match?.tournament?.event?.ultimate_central_slug,
+      props.tournament?.event?.ultimate_central_slug,
       props.match?.team_2?.ultimate_central_slug
     ],
     () =>
       fetchTournamentTeamBySlug(
-        props.match?.tournament?.event?.ultimate_central_slug,
+        props.tournament?.event?.ultimate_central_slug,
         props.match?.team_2?.ultimate_central_slug
       )
   );
@@ -174,8 +174,8 @@ const UpdateSpiritScoreForm = props => {
                 error={field.error}
                 options={rosterQueryTeam1.data?.map(r => {
                   return {
-                    value: r.id.toString(),
-                    label: r.first_name + " " + r.last_name
+                    value: r.person.id.toString(),
+                    label: r.person.first_name + " " + r.last_name
                   };
                 })}
                 type="text"
@@ -192,8 +192,8 @@ const UpdateSpiritScoreForm = props => {
                 error={field.error}
                 options={rosterQueryTeam1.data?.map(r => {
                   return {
-                    value: r.id.toString(),
-                    label: r.first_name + " " + r.last_name
+                    value: r.person.id.toString(),
+                    label: r.person.first_name + " " + r.last_name
                   };
                 })}
                 type="text"
@@ -289,8 +289,8 @@ const UpdateSpiritScoreForm = props => {
                 error={field.error}
                 options={rosterQueryTeam2.data?.map(r => {
                   return {
-                    value: r.id.toString(),
-                    label: r.first_name + " " + r.last_name
+                    value: r.person.id.toString(),
+                    label: r.person.first_name + " " + r.last_name
                   };
                 })}
                 type="text"
@@ -307,8 +307,8 @@ const UpdateSpiritScoreForm = props => {
                 error={field.error}
                 options={rosterQueryTeam2.data?.map(r => {
                   return {
-                    value: r.id.toString(),
-                    label: r.first_name + " " + r.last_name
+                    value: r.person.id.toString(),
+                    label: r.person.first_name + " " + r.last_name
                   };
                 })}
                 type="text"

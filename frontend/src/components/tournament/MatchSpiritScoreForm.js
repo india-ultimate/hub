@@ -40,13 +40,13 @@ const MatchSpiritScoreForm = componentProps => {
   const oppRosterQuery = createQuery(
     () => [
       "tournament-roster",
-      componentProps.match?.tournament?.event?.ultimate_central_slug,
+      componentProps.tournamentSlug,
       componentProps.match[`team_${componentProps.oppTeamNo}`]
         .ultimate_central_slug
     ],
     () =>
       fetchTournamentTeamBySlug(
-        componentProps.match?.tournament?.event?.ultimate_central_slug,
+        componentProps.tournamentSlug,
         componentProps.match[`team_${componentProps.oppTeamNo}`]
           .ultimate_central_slug
       )
@@ -187,8 +187,8 @@ const MatchSpiritScoreForm = componentProps => {
                 error={field.error}
                 options={oppRosterQuery.data?.map(r => {
                   return {
-                    value: r.id.toString(),
-                    label: r.first_name + " " + r.last_name
+                    value: r.person.id.toString(),
+                    label: r.person.first_name + " " + r.person.last_name
                   };
                 })}
                 type="text"
@@ -205,8 +205,8 @@ const MatchSpiritScoreForm = componentProps => {
                 error={field.error}
                 options={oppRosterQuery.data?.map(r => {
                   return {
-                    value: r.id.toString(),
-                    label: r.first_name + " " + r.last_name
+                    value: r.person.id.toString(),
+                    label: r.person.first_name + " " + r.person.last_name
                   };
                 })}
                 type="text"

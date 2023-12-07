@@ -1268,7 +1268,10 @@ const TournamentManager = () => {
                                     </button>
                                   </div>
                                   <div class="space-y-6 p-6">
-                                    <UpdateSpiritScoreForm match={match} />
+                                    <UpdateSpiritScoreForm
+                                      match={match}
+                                      tournament={selectedTournament()}
+                                    />
                                   </div>
                                 </div>
                               </div>
