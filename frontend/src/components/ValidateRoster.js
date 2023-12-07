@@ -339,7 +339,7 @@ const ValidateRoster = () => {
               event!
             </div>
           </Show>
-          <div class="my-4 grid grid-cols-2 gap-4 md:grid-cols-3">
+          <div class="my-4 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
             <For each={eventData()?.teams}>
               {team => {
                 const teamRegistrations = eventData()?.registrationsByTeam[
