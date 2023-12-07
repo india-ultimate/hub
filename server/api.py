@@ -173,6 +173,7 @@ def me_access(
 
     return 200, {
         "is_staff": request.user.is_staff,
+        "is_tournament_admin": request.user.is_tournament_admin,
         "playing_team_id": player_team_id,
         "admin_team_ids": admin_team_ids,
     }
