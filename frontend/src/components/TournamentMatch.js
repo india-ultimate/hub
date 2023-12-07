@@ -87,7 +87,11 @@ const TournamentMatch = props => {
   };
 
   const isStaff = () => {
-    return userAccessQuery.data && userAccessQuery.data.is_staff;
+    return (
+      userAccessQuery.data &&
+      (userAccessQuery.data.is_staff ||
+        userAccessQuery.data.is_tournament_admin)
+    );
   };
 
   return (
