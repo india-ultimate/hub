@@ -30,7 +30,6 @@ const TournamentTeam = () => {
   const [tournamentDates, setTournamentDates] = createSignal([]);
   const [matchesGroupedByDate, setMatchesGroupedByDate] = createSignal({});
   const [doneFetching, setDoneFetching] = createSignal(false);
-  const [teamImageURLFromBlob, setTeamImageURLFromBlob] = createSignal(null);
 
   const tournamentQuery = createQuery(
     () => ["tournament", params.tournament_slug],
@@ -72,18 +71,6 @@ const TournamentTeam = () => {
       }
     }
   };
-
-  createEffect(async () => {
-    if (teamQuery.status === "success" && !teamQuery.data?.message) {
-      try {
-        const response = await fetch(teamQuery.data?.image_url);
-        const imageBlob = await response.blob();
-        setTeamImageURLFromBlob(URL.createObjectURL(imageBlob));
-      } catch (e) {
-        console.log("failed to fetch image: ", e);
-      }
-    }
-  });
 
   createEffect(() => {
     if (
@@ -169,18 +156,11 @@ const TournamentTeam = () => {
         ]}
       />
       <div class="flex justify-center">
-        <Show
-          when={teamImageURLFromBlob()}
-          fallback={
-            <div class="mr-3 h-24 w-24 animate-pulse rounded-full p-1 ring-2 ring-blue-600 dark:bg-gray-700 dark:ring-blue-500" />
-          }
-        >
-          <img
-            src={teamImageURLFromBlob()}
-            class="mr-3 inline-block h-24 w-24 rounded-full p-1 ring-2 ring-blue-600 dark:ring-blue-500"
-            alt="team image"
-          />
-        </Show>
+        <img
+          class="mr-3 inline-block h-24 w-24 rounded-full p-1 ring-2 ring-blue-600 dark:ring-blue-500"
+          src={teamQuery.data?.image_url}
+          alt="Bordered avatar"
+        />
       </div>
       <h1 class="my-5 text-center">
         <span class="w-fit bg-gradient-to-r from-blue-500 to-green-500 bg-clip-text text-2xl font-extrabold text-transparent">
