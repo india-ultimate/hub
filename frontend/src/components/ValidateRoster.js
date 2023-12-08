@@ -53,7 +53,8 @@ const isSpiritCaptain = registration => {
 const isNonPlayer = registration => {
   return (
     registration?.roles?.indexOf("coach") > -1 ||
-    registration?.roles?.indexOf("assistant coach") > -1
+    registration?.roles?.indexOf("assistant coach") > -1 ||
+    registration?.roles?.indexOf("admin") > -1
   );
 };
 
