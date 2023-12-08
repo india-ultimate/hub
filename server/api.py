@@ -105,6 +105,7 @@ from server.schema import (
     TournamentSchema,
     TournamentUpdateSeedingSchema,
     UCRegistrationSchema,
+    UpdateRolesSchema,
     UserAccessSchema,
     UserFormSchema,
     UserSchema,
@@ -192,6 +193,26 @@ def list_players(
         return [PlayerSchema.from_orm(p) for p in players]
     else:
         return [PlayerTinySchema.from_orm(p) for p in players]
+
+
+@api.post("/uc-registration/set-roles", response={200: TeamSchema, 400: Response})
+def set_roles(
+    request: AuthenticatedHttpRequest, data: UpdateRolesSchema
+) -> tuple[int, UpdateRolesSchema | message_response]:
+    client = TopScoreClient()
+    roles = client.update_registration_roles(data.registration_id, data.person_id, data.roles)
+    if roles is None:
+        return 400, {"message": "Could not update roles"}
+
+    try:
+        registration = UCRegistration.objects.get(id=data.registration_id)
+    except UCRegistration.DoesNotExist:
+        # The registration has not been synced, yet. Nothing to do in our DB.
+        return 200, data
+
+    registration.roles = roles
+    registration.save(update_fields=["roles"])
+    return 200, data
 
 
 # Teams #########

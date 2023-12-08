@@ -652,3 +652,9 @@ class TournamentRulesSchema(Schema):
 class ContactFormSchema(Schema):
     subject: str
     description: str
+
+
+class UpdateRolesSchema(Schema):
+    registration_id: int
+    person_id: int
+    roles: list[str]

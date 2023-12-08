@@ -113,9 +113,28 @@ class TopScoreClient:
             logger.error("Failed to fetch events")
         return registrations
 
-    def _request(self, url: str) -> Any | None:
+    def update_registration_roles(
+        self, registration_id: int, person_id: int, roles: list[str]
+    ) -> None | dict[str, Any]:
+        if self.headers is None:
+            self.refresh_access_token()
+
+        url = f"{self.site_url}/api/registrations/edit"
+        data = {"id": registration_id, "person_id": person_id, "roles[]": roles}
+        response = self._request(url, data, method="POST")
+        if response is None:
+            return None
+        else:
+            return response["result"][0]["roles"]
+
+    def _request(
+        self, url: str, data: dict[str, Any] | None = None, method: str = "GET"
+    ) -> Any | None:
         try:
-            response = requests.get(url, headers=self.headers, timeout=30)
+            if method == "GET":
+                response = requests.get(url, headers=self.headers, timeout=30)
+            else:
+                response = requests.post(url, headers=self.headers, data=data, timeout=30)
         except requests.exceptions.RequestException as e:
             logger.error("Failed to get data: %s", e)
             return None
