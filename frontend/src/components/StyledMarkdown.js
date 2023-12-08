@@ -13,7 +13,14 @@ const TailwindMarkdown = props => {
     h2: "text-xl font-bold mb-4 text-blue-500 text-center",
     h3: "text-lg font-bold mb-4 underline",
     ol: "m-4 text-gray-500 list-decimal list-outside dark:text-gray-400",
-    ul: "m-4 text-gray-500 list-disc list-outside dark:text-gray-400"
+    ul: "m-4 text-gray-500 list-disc list-outside dark:text-gray-400",
+    table:
+      "w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400 mb-5",
+    thead:
+      "text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400",
+    th: "px-6 py-3",
+    "tbody tr": "bg-white border-b dark:bg-gray-800 dark:border-gray-700",
+    "tbody td": "px-6 py-4 font-medium"
   };
 
   onMount(() => {
