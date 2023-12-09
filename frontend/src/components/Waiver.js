@@ -328,10 +328,11 @@ const WaiverForm = props => {
   const [isLegal, setIsLegal] = createSignal(false);
   const [waiverSign, setWaiverSign] = createSignal(false);
   const [enableSubmit, setEnableSubmit] = createSignal(false);
-  const [detailed, setDetailed] = createSignal(!props.signed);
+  const [detailed, setDetailed] = createSignal(false);
 
   createEffect(() => {
     setEnableSubmit(waiverSign() && isLegal());
+    setDetailed(!props.signed);
   });
 
   createEffect(() => {
