@@ -23,8 +23,11 @@ const Player = () => {
 };
 
 const PlayersSkeleton = props => {
-  const array = Array.from({ length: props.n }, (value, index) => index);
-  return <For each={array}>{() => <Player />}</For>;
+  return (
+    <For each={Array.from({ length: props.n }, (value, index) => index)}>
+      {() => <Player />}
+    </For>
+  );
 };
 
 export default PlayersSkeleton;
