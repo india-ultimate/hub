@@ -1,56 +1,55 @@
 import { createForm, required } from "@modular-forms/solid";
-import { createSignal, For } from "solid-js";
+import { createSignal, For, Show } from "solid-js";
 
 import { getCookie } from "../utils";
 import FileInput from "./FileInput";
 
 const MembershipStatusTable = props => {
-  if (!props.data || props.data.length === 0) {
-    return <p>No data found in the CSV</p>;
-  }
-
-  const columns = Object.keys(props.data[0]);
-
   return (
-    <div class="relative overflow-x-auto">
-      <table class="w-full border border-gray-300 text-left text-sm">
-        <thead>
-          <tr>
-            <For each={columns}>
-              {column => <th class="bg-gray-200 px-4 py-2">{column}</th>}
+    <Show
+      fallback={<p>No data found in the CSV</p>}
+      when={props?.data?.length || 0 > 0}
+    >
+      <div class="relative overflow-x-auto">
+        <table class="w-full border border-gray-300 text-left text-sm">
+          <thead>
+            <tr>
+              <For each={props.data[0]}>
+                {column => <th class="bg-gray-200 px-4 py-2">{column}</th>}
+              </For>
+            </tr>
+          </thead>
+          <tbody>
+            <For each={props.data}>
+              {row => (
+                <tr
+                  class={
+                    row.membership_status
+                      ? "bg-green-200 dark:bg-green-700"
+                      : "bg-red-800 text-white"
+                  }
+                >
+                  <For each={props.data[0]}>
+                    {column => {
+                      const value = row[column];
+                      return (
+                        <td class="px-4 py-2">
+                          {typeof value === "boolean"
+                            ? value
+                              ? "Y"
+                              : "N"
+                            : value}
+                        </td>
+                      );
+                    }}
+                  </For>
+                </tr>
+              )}
             </For>
-          </tr>
-        </thead>
-        <tbody>
-          <For each={props.data}>
-            {row => (
-              <tr
-                class={
-                  row.membership_status
-                    ? "bg-green-200 dark:bg-green-700"
-                    : "bg-red-800 text-white"
-                }
-              >
-                <For each={columns}>
-                  {column => {
-                    const value = row[column];
-                    return (
-                      <td class="px-4 py-2">
-                        {typeof value === "boolean"
-                          ? value
-                            ? "Y"
-                            : "N"
-                          : value}
-                      </td>
-                    );
-                  }}
-                </For>
-              </tr>
-            )}
-          </For>
-        </tbody>
-      </table>
-    </div>
+          </tbody>
+        </table>
+      </div>
+    </Show>
   );
 };
 
