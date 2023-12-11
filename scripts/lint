@@ -51,6 +51,7 @@ def run() -> None:
             "--cache",
             "--max-warnings",
             "0",
+            "--no-ignore",
             "--ext",
             ".js,.ts",
         ],
