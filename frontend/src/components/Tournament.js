@@ -1,7 +1,8 @@
 import { A, useParams } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
 import { initFlowbite } from "flowbite";
-import { trophy } from "solid-heroicons/solid";
+import { Icon } from "solid-heroicons";
+import { arrowSmallDown, arrowSmallUp, trophy } from "solid-heroicons/solid";
 import {
   createEffect,
   createSignal,
@@ -23,6 +24,51 @@ import {
   Standings as StandingsSkeleton
 } from "../skeletons/Standings";
 import Breadcrumbs from "./Breadcrumbs";
+
+const TeamSeedingChange = props => {
+  const filteredByTeamID = Object.entries(
+    props.tournament.initial_seeding
+  ).filter(([_, teamID]) => teamID == props.teamID); // eslint-disable-line no-unused-vars
+
+  const [initialSeed, _] = filteredByTeamID[0]; // eslint-disable-line no-unused-vars
+
+  return (
+    <Switch>
+      <Match when={props.currentSeed < initialSeed}>
+        <div class="flex content-center justify-center space-x-1">
+          <Icon
+            path={arrowSmallUp}
+            style={{
+              color: "rgb(34 197 94)",
+              display: "inline",
+              width: "20px"
+            }}
+            class="place-self-center"
+          />
+          <h6 class="text-md m-0 basis-1/2 place-self-center p-0 font-medium text-green-500">
+            {parseInt(initialSeed) - parseInt(props.currentSeed)}
+          </h6>
+        </div>
+      </Match>
+      <Match when={props.currentSeed > initialSeed}>
+        <div class="flex content-center justify-center space-x-1">
+          <Icon
+            path={arrowSmallDown}
+            style={{
+              color: "rgb(239 68 68)",
+              display: "inline",
+              width: "20px"
+            }}
+            class="place-self-center"
+          />
+          <h6 class="text-md m-0 basis-1/2 place-self-center p-0 font-medium text-red-500">
+            {parseInt(props.currentSeed) - parseInt(initialSeed)}
+          </h6>
+        </div>
+      </Match>
+    </Switch>
+  );
+};
 
 const Tournament = () => {
   const params = useParams();
@@ -321,6 +367,15 @@ const Tournament = () => {
                             {teamsMap()[team_id]?.name}
                           </A>
                         </td>
+                        <Show when={tournamentQuery.data?.status === "COM"}>
+                          <td class="px-4">
+                            <TeamSeedingChange
+                              tournament={tournamentQuery.data}
+                              teamID={team_id}
+                              currentSeed={rank}
+                            />
+                          </td>
+                        </Show>
                       </tr>
                     )}
                   </For>
