@@ -34,6 +34,45 @@ const ManualPaymentModal = props => {
       : { player_id, event_id };
     const transactionID = values["transaction-id"];
 
+    // NOTE: Not sure why this function needs so many eslint-disables, while a
+    // similar function in PhonePePayment works just fine... this function is
+    // inside an onSubmit handler for modular forms, while the one in
+    // PhonePePayment is in an onClick handler. 🤷
+    const handleResponse = async response => {
+      // eslint-disable-next-line solid/reactivity
+      if (response.ok) {
+        fetchUserData(userFetchSuccess, userFetchFailure);
+        if (props.successCallback) {
+          props.successCallback();
+        }
+        props.setStatus(
+          <span class="text-green-500 dark:text-green-400">
+            Payment successfully completed! 🎉
+          </span>
+        );
+      } else {
+        // eslint-disable-next-line solid/reactivity
+        if (response.status === 422) {
+          // eslint-disable-next-line solid/reactivity
+          const error = await response.json();
+          props.setStatus(`Error: ${error.message}`);
+        } else {
+          // eslint-disable-next-line solid/reactivity
+          const body = await response.text();
+          props.setStatus(
+            // eslint-disable-next-line solid/reactivity
+            `Error: ${response.statusText} (${response.status}) — ${body}`
+          );
+        }
+      }
+      modalButton.click();
+    };
+
+    const handleError = error => {
+      props.setStatus(`Error: ${error}`);
+      modalButton.click();
+    };
+
     fetch(`/api/manual-transaction/${transactionID}`, {
       method: "POST",
       headers: {
@@ -43,34 +82,8 @@ const ManualPaymentModal = props => {
       body: JSON.stringify(data),
       credentials: "same-origin"
     })
-      .then(async response => {
-        if (response.ok) {
-          fetchUserData(userFetchSuccess, userFetchFailure);
-          if (props.successCallback) {
-            props.successCallback();
-          }
-          props.setStatus(
-            <span class="text-green-500 dark:text-green-400">
-              Payment successfully completed! 🎉
-            </span>
-          );
-        } else {
-          if (response.status === 422) {
-            const error = await response.json();
-            props.setStatus(`Error: ${error.message}`);
-          } else {
-            const body = await response.text();
-            props.setStatus(
-              `Error: ${response.statusText} (${response.status}) — ${body}`
-            );
-          }
-        }
-        modalButton.click();
-      })
-      .catch(error => {
-        props.setStatus(`Error: ${error}`);
-        modalButton.click();
-      });
+      .then(handleResponse)
+      .catch(handleError);
   };
 
   let qrElement;
@@ -167,7 +180,7 @@ const ManualPaymentModal = props => {
               </ol>
               <Form
                 class="mt-4 space-y-4 md:space-y-4 lg:space-y-6"
-                onSubmit={values => submitTransactionDetails(values)}
+                onSubmit={submitTransactionDetails}
               >
                 <Field
                   name="transaction-id"

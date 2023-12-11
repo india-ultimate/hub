@@ -19,7 +19,7 @@ const TeamInfo = props => (
 );
 
 const Sortable = props => {
-  const sortable = createSortable(props.teamId);
+  const sortable = createSortable(props.teamId); // eslint-disable-line solid/reactivity
   const [state] = useDragDropContext();
   return (
     <div

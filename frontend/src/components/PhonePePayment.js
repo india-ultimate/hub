@@ -21,6 +21,29 @@ const PhonePePayment = props => {
     setLoading(true);
     props.setStatus("");
 
+    const handleError = error => {
+      setLoading(false);
+      props.setStatus(`Error: ${error}`);
+    };
+
+    const handleResponse = async response => {
+      if (response.ok) {
+        const data = await response.json();
+        window.location = data.redirect_url;
+      } else {
+        if (response.status === 422) {
+          const error = await response.json();
+          props.setStatus(`Error: ${error.message}`);
+        } else {
+          const body = await response.text();
+          props.setStatus(
+            `Error: ${response.statusText} (${response.status}) — ${body}`
+          );
+        }
+      }
+      setLoading(false);
+    };
+
     fetch("/api/initiate-payment", {
       method: "POST",
       headers: {
@@ -30,27 +53,8 @@ const PhonePePayment = props => {
       body: JSON.stringify(data),
       credentials: "same-origin"
     })
-      .then(async response => {
-        if (response.ok) {
-          const data = await response.json();
-          window.location = data.redirect_url;
-        } else {
-          if (response.status === 422) {
-            const error = await response.json();
-            props.setStatus(`Error: ${error.message}`);
-          } else {
-            const body = await response.text();
-            props.setStatus(
-              `Error: ${response.statusText} (${response.status}) — ${body}`
-            );
-          }
-        }
-        setLoading(false);
-      })
-      .catch(error => {
-        setLoading(false);
-        props.setStatus(`Error: ${error}`);
-      });
+      .then(handleResponse)
+      .catch(handleError);
   };
 
   return (

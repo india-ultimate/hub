@@ -39,6 +39,8 @@ const ValidateTransactions = () => {
   });
 
   const handleSubmit = async values => {
+    // This is an event handler, but the eslint-plugin-solid doesn't seem to identify it?
+    // eslint-disable-next-line solid/reactivity
     const { bank_statement } = values;
 
     const formData = new FormData();
@@ -85,7 +87,7 @@ const ValidateTransactions = () => {
       </label>
       <Form
         class="my-6 space-y-6 md:space-y-7 lg:space-y-8"
-        onSubmit={values => handleSubmit(values)}
+        onSubmit={handleSubmit}
       >
         <div class="space-y-8">
           <Field

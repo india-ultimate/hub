@@ -70,29 +70,33 @@ const WithUserData = props => {
 };
 
 const UserRoute = props => {
-  if (props.element) {
-    return (
-      <Route
-        {...props}
-        component={null}
-        element={
-          <WithUserData admin={props.admin}>{props.element}</WithUserData>
-        }
-      />
-    );
-  } else if (props.component) {
-    return (
-      <Route
-        {...props}
-        component={null}
-        element={
-          <WithUserData admin={props.admin}>
-            <props.component />
-          </WithUserData>
-        }
-      />
-    );
-  }
+  return (
+    <Switch>
+      <Match when={props.element}>
+        <Route
+          {...props}
+          component={null}
+          element={
+            <WithUserData admin={props.admin}>{props.element}</WithUserData>
+          }
+        />
+      </Match>
+      <Match when={props.component}>
+        <Route
+          {...props}
+          component={null}
+          element={
+            <WithUserData admin={props.admin}>
+              <props.component />
+            </WithUserData>
+          }
+        />
+      </Match>
+      <Match when={!props.component && !props.element}>
+        {/* We never get here, since Route component takes care of 404ing the page */}
+      </Match>
+    </Switch>
+  );
 };
 
 export default UserRoute;
