@@ -46,10 +46,7 @@ const ContactForm = props => {
   };
 
   return (
-    <Form
-      class="text-sm dark:text-white"
-      onSubmit={values => handleSubmit(values)}
-    >
+    <Form class="text-sm dark:text-white" onSubmit={handleSubmit}>
       <Field name="subject" validate={[required("Please enter a subject.")]}>
         {(field, props) => (
           <TextInput
@@ -105,8 +102,7 @@ const ContactForm = props => {
       <a
         class="mx-2.5 rounded-lg bg-gray-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-gray-800 focus:outline-none focus:ring-4 focus:ring-gray-300 dark:bg-gray-600 dark:hover:bg-gray-700 dark:focus:ring-gray-800 sm:w-auto"
         disabled={contactForm.submitting}
-        href="#"
-        onClick={props.close}
+        onClick={() => props.close()}
       >
         Close
       </a>
