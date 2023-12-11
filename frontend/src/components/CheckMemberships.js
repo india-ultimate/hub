@@ -63,6 +63,8 @@ const CheckMemberships = () => {
   });
 
   const handleSubmit = async values => {
+    // This is an event handler, but the eslint-plugin-solid doesn't seem to identify it?
+    // eslint-disable-next-line solid/reactivity
     const { info_csv } = values;
     const formData = new FormData();
     formData.append("info_csv", info_csv);
@@ -90,7 +92,7 @@ const CheckMemberships = () => {
   return (
     <Form
       class="my-6 space-y-6 md:space-y-7 lg:space-y-8"
-      onSubmit={values => handleSubmit(values)}
+      onSubmit={handleSubmit}
     >
       <div
         class="mb-4 rounded-lg bg-blue-50 p-4 text-sm text-blue-800 dark:bg-gray-800 dark:text-blue-400"
