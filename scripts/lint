@@ -49,6 +49,8 @@ def run() -> None:
             "--config",
             "frontend/package.json",
             "--cache",
+            "--max-warnings",
+            "0",
             "--ext",
             ".js,.ts",
         ],
