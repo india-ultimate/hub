@@ -8,9 +8,12 @@ import {
   handThumbDown,
   handThumbUp,
   noSymbol,
+  pencil,
+  plus,
   shieldCheck,
   shieldExclamation,
-  xCircle
+  xCircle,
+  xMark
 } from "solid-heroicons/solid-mini";
 import { createEffect, createSignal, For, Match, Show, Switch } from "solid-js";
 import { onMount } from "solid-js";
@@ -18,6 +21,170 @@ import { onMount } from "solid-js";
 import { accreditationChoices, matchUpChoices, minAge } from "../constants";
 import { useStore } from "../store";
 import { fetchUrl, getAge, getLabel } from "../utils";
+
+const allRoles = [
+  "captain",
+  "spirit captain",
+  "coach",
+  "assistant coach",
+  "admin",
+  "player"
+];
+
+const EditPlayerRoles = props => {
+  let dialogRef;
+
+  const [roles, setRoles] = createSignal(props.registration?.roles);
+
+  const otherRoles = () => allRoles.filter(role => !roles().includes(role));
+
+  const updatePlayerRoles = async registration => {
+    console.log(
+      `person_id: ${registration?.person?.id}, reg_id: ${
+        registration?.id
+      }, roles: ${roles()}`
+    );
+    // const response = await fetch("/api/player/set-roles", {
+    //   method: "POST",
+    //   headers: {
+    //     "Content-Type": "application/json",
+    //     "X-CSRFToken": getCookie("csrftoken")
+    //   },
+    //   credentials: "same-origin",
+    //   body: JSON.stringify({
+    //     person_id: registration.person.id,
+    //     registration_id: registration.id,
+    //     roles: roles()
+    //   })
+    // });
+  };
+
+  return (
+    <>
+      <dialog
+        ref={dialogRef}
+        class="min-w-64 max-w-72 rounded-xl p-0 backdrop:bg-gray-700/90 sm:max-w-96"
+      >
+        <div class="flex w-full flex-col items-start gap-2 rounded-xl border border-gray-800 bg-gray-50 p-4 text-gray-600 dark:border-gray-300 dark:bg-gray-600 dark:text-gray-100">
+          <div class="flex w-full items-center justify-between text-base sm:text-lg">
+            <div class="flex">
+              <span class="mr-1 font-normal">Player - </span>
+              <span class="font-semibold">
+                {props.registration?.person?.first_name}{" "}
+                {props.registration?.person?.last_name}
+              </span>
+            </div>
+            <button
+              type="button"
+              class="rounded-lg bg-red-500/90 px-4 py-1 text-sm text-white hover:bg-red-600 dark:bg-red-900  dark:text-gray-100 dark:hover:bg-red-800"
+              aria-label="Exit"
+              onClick={() => dialogRef.close()}
+            >
+              <p class="text-sm">Exit</p>
+            </button>
+          </div>
+
+          <hr class="mt-1 h-px w-full border-0 bg-gray-300 dark:bg-gray-500" />
+
+          <div class="mt-2">
+            <div class="mb-2 text-sm">Roles</div>
+            <Show
+              when={roles().length > 0}
+              fallback={
+                <p class="font-normal italic text-gray-300/80">
+                  The player has no roles
+                </p>
+              }
+            >
+              <div class="flex select-none flex-row flex-wrap justify-start gap-2">
+                <For each={roles()}>
+                  {role => (
+                    <>
+                      <span class="inline-flex items-center rounded-lg bg-yellow-100 px-2 py-1 font-medium text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">
+                        {role}
+                        <button
+                          type="button"
+                          class="ms-2 inline-flex items-center rounded-sm bg-transparent text-sm text-yellow-400 hover:bg-yellow-200 hover:text-yellow-900 dark:hover:bg-yellow-800 dark:hover:text-yellow-300"
+                          aria-label="Remove"
+                        >
+                          <Icon
+                            path={xMark}
+                            class="m-0 inline w-5"
+                            onClick={() =>
+                              setRoles(prev =>
+                                prev.filter(prev_role => prev_role !== role)
+                              )
+                            }
+                          />
+                        </button>
+                      </span>
+                    </>
+                  )}
+                </For>
+              </div>
+            </Show>
+          </div>
+
+          <div class="mt-3">
+            <div class="mb-2 text-sm">Other roles</div>
+            <div class="flex select-none flex-row flex-wrap justify-start gap-2">
+              <Show
+                when={otherRoles().length > 0}
+                fallback={
+                  <p class="font-normal italic text-gray-300/80">
+                    No more roles to give
+                  </p>
+                }
+              >
+                <For each={otherRoles()}>
+                  {role => (
+                    <>
+                      <span class="inline-flex items-center rounded-lg bg-blue-100 px-2 py-1 font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-300">
+                        {role}
+                        <button
+                          type="button"
+                          class="ms-2 inline-flex items-center rounded-sm bg-transparent text-sm text-blue-400 hover:bg-blue-200 hover:text-blue-900 dark:hover:bg-blue-800 dark:hover:text-blue-300"
+                          aria-label="Add"
+                        >
+                          <Icon
+                            path={plus}
+                            class="m-0 inline w-5"
+                            onClick={() => setRoles(prev => [...prev, role])}
+                          />
+                        </button>
+                      </span>
+                    </>
+                  )}
+                </For>
+              </Show>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            class="me-2 mt-6 w-full rounded-lg bg-green-500/80 px-3 py-2.5 text-sm font-medium text-white hover:bg-green-600 focus:outline-none focus:ring-4 focus:ring-green-300 dark:bg-green-900 dark:text-gray-100  dark:hover:bg-green-700 dark:focus:ring-green-800"
+            onClick={() => updatePlayerRoles(props.registration)}
+          >
+            Update roles
+          </button>
+        </div>
+      </dialog>
+
+      <button>
+        <Icon
+          path={pencil}
+          class="mr-2"
+          style={{
+            width: "20px",
+            display: "inline",
+            color: "orange"
+          }}
+          onClick={() => dialogRef.showModal()}
+        />
+      </button>
+    </>
+  );
+};
 
 const groupByTeam = registrations => {
   const teamsMap = registrations?.reduce(
@@ -398,6 +565,15 @@ const ValidateRoster = () => {
                                     )}
                                   >
                                     <span>
+                                      <Show
+                                        when={
+                                          store?.data?.is_staff && registration
+                                        }
+                                      >
+                                        <EditPlayerRoles
+                                          registration={registration}
+                                        />
+                                      </Show>
                                       {registration.person.first_name}{" "}
                                       {registration.person.last_name}
                                       <Show when={isCaptain(registration)}>
