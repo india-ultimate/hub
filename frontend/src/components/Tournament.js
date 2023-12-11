@@ -1,7 +1,8 @@
 import { A, useParams } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
 import { initFlowbite } from "flowbite";
-import { trophy } from "solid-heroicons/solid";
+import { Icon } from "solid-heroicons";
+import { arrowSmallDown, arrowSmallUp, trophy } from "solid-heroicons/solid";
 import {
   createEffect,
   createSignal,
@@ -24,9 +25,54 @@ import {
 } from "../skeletons/Standings";
 import Breadcrumbs from "./Breadcrumbs";
 
+/**
+ * @param {object} props
+ * @param {number} props.currentSeed
+ * @param {number} props.initialSeed
+ */
+const TeamSeedingChange = props => {
+  return (
+    <Switch>
+      <Match when={props.currentSeed < props.initialSeed}>
+        <div class="flex items-center justify-center space-x-1">
+          <Icon
+            path={arrowSmallUp}
+            style={{
+              color: "rgb(34 197 94)",
+              display: "inline",
+              width: "20px"
+            }}
+            class="place-self-center"
+          />
+          <h6 class="m-0 basis-1/2 place-self-center p-0 text-lg font-medium text-green-500">
+            {props.initialSeed - props.currentSeed}
+          </h6>
+        </div>
+      </Match>
+      <Match when={props.currentSeed > props.initialSeed}>
+        <div class="flex items-center justify-center space-x-1">
+          <Icon
+            path={arrowSmallDown}
+            style={{
+              color: "rgb(239 68 68)",
+              display: "inline",
+              width: "20px"
+            }}
+            class="place-self-center"
+          />
+          <h6 class="m-0 basis-1/2 place-self-center p-0 text-lg font-medium text-red-500">
+            {props.currentSeed - props.initialSeed}
+          </h6>
+        </div>
+      </Match>
+    </Switch>
+  );
+};
+
 const Tournament = () => {
   const params = useParams();
   const [teamsMap, setTeamsMap] = createSignal({});
+  const [teamsInitialSeeding, setTeamsInitialSeeding] = createSignal(undefined);
   const [playingTeam, setPlayingTeam] = createSignal(null);
 
   const tournamentQuery = createQuery(
@@ -64,6 +110,19 @@ const Tournament = () => {
       if (playingTeamID !== 0) {
         setPlayingTeam(teamsMap()[playingTeamID]);
       }
+    }
+  });
+
+  createEffect(() => {
+    if (tournamentQuery.status === "success" && !tournamentQuery.data.message) {
+      const teamsInitialSeedingMap = {};
+
+      Object.entries(tournamentQuery.data.initial_seeding).forEach(
+        ([rank, teamId]) =>
+          (teamsInitialSeedingMap[parseInt(teamId)] = parseInt(rank))
+      );
+
+      setTeamsInitialSeeding(teamsInitialSeedingMap);
     }
   });
 
@@ -217,7 +276,6 @@ const Tournament = () => {
       <h2 class="mt-5 text-center text-xl font-bold">Overall Standings</h2>
 
       <div class="mb-4 border-b border-gray-200 dark:border-gray-700">
-        {/* <Suspense fallback={<StandingsTabsSkeleton />}> */}
         <ul
           class="-mb-px flex flex-wrap justify-center text-center text-sm font-medium"
           id="myTab"
@@ -234,14 +292,7 @@ const Tournament = () => {
               aria-controls={"current"}
               aria-selected="false"
             >
-              <Suspense
-                fallback={
-                  "Current"
-                  // <div class="flex py-1.5">
-                  //   <div class="h-2 w-8 animate-pulse self-center rounded-full bg-gray-300 dark:bg-gray-600" />
-                  // </div>
-                }
-              >
+              <Suspense fallback={"Current"}>
                 <Switch>
                   <Match when={tournamentQuery.data?.status === "COM"}>
                     Final
@@ -280,7 +331,6 @@ const Tournament = () => {
             </button>
           </li>
         </ul>
-        {/* </Suspense> */}
       </div>
 
       <div id="myTabContent">
@@ -321,6 +371,14 @@ const Tournament = () => {
                             {teamsMap()[team_id]?.name}
                           </A>
                         </td>
+                        <Show when={teamsInitialSeeding()}>
+                          <td class="px-4">
+                            <TeamSeedingChange
+                              initialSeed={teamsInitialSeeding()[team_id]}
+                              currentSeed={parseInt(rank)}
+                            />
+                          </td>
+                        </Show>
                       </tr>
                     )}
                   </For>
