@@ -1285,6 +1285,36 @@ class TestTournaments(ApiBaseTestCase):
             roles=["admin"],
         )
 
+        # User who is admin of both team 1 and 3
+        self.user_with_admin_roles_in_diff_teams = User.objects.create(
+            username="foo1@bar.com", email="foo1@bar.com"
+        )
+        self.user_with_admin_roles_in_diff_teams.set_password(self.password)
+        self.user_with_admin_roles_in_diff_teams.save()
+
+        person_with_admin_roles_in_diff_teams = UCPerson.objects.create(
+            email="foo1@bar.com", slug="foo1bar"
+        )
+        self.player_with_admin_roles_in_diff_teams = Player.objects.create(
+            user=self.user_with_admin_roles_in_diff_teams,
+            ultimate_central_id=person_with_admin_roles_in_diff_teams.pk,
+            date_of_birth="1990-01-01",
+        )
+
+        UCRegistration.objects.create(
+            event=self.event,
+            team=self.teams[0],
+            person=person_with_admin_roles_in_diff_teams,
+            roles=["admin"],
+        )
+
+        UCRegistration.objects.create(
+            event=self.event,
+            team=self.teams[2],
+            person=person_with_admin_roles_in_diff_teams,
+            roles=["admin"],
+        )
+
     def test_valid_submit_score(self) -> None:
         valid_matches = Match.objects.filter(tournament=self.tournament).filter(
             Q(team_1=self.teams[0]) | Q(team_2=self.teams[0])
@@ -1315,6 +1345,42 @@ class TestTournaments(ApiBaseTestCase):
         self.assertEqual(15, match["suggested_score_team_2"]["score_team_1"])
         self.assertEqual(14, match["suggested_score_team_2"]["score_team_2"])
         self.assertEqual(self.player2.id, match["suggested_score_team_2"]["entered_by"]["id"])
+
+        self.assertEqual(15, match["score_team_1"])
+        self.assertEqual(14, match["score_team_2"])
+        self.assertEqual("COM", match["status"])
+
+    def test_valid_submit_score_by_both_team_admin(self) -> None:
+        filtered_match = (
+            Match.objects.filter(tournament=self.tournament)
+            .filter(team_1=self.teams[0])
+            .filter(team_2=self.teams[2])[0]
+        )
+
+        self.client.force_login(self.user_with_admin_roles_in_diff_teams)
+        c = self.client
+        response = c.post(
+            f"/api/match/{filtered_match.id}/submit-score",
+            data={"team_1_score": 15, "team_2_score": 14},
+            content_type="application/json",
+        )
+        match = response.json()
+
+        self.assertEqual(200, response.status_code)
+
+        self.assertEqual(15, match["suggested_score_team_1"]["score_team_1"])
+        self.assertEqual(14, match["suggested_score_team_1"]["score_team_2"])
+        self.assertEqual(
+            self.player_with_admin_roles_in_diff_teams.id,
+            match["suggested_score_team_1"]["entered_by"]["id"],
+        )
+
+        self.assertEqual(15, match["suggested_score_team_2"]["score_team_1"])
+        self.assertEqual(14, match["suggested_score_team_2"]["score_team_2"])
+        self.assertEqual(
+            self.player_with_admin_roles_in_diff_teams.id,
+            match["suggested_score_team_2"]["entered_by"]["id"],
+        )
 
         self.assertEqual(15, match["score_team_1"])
         self.assertEqual(14, match["score_team_2"])
