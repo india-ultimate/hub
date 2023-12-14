@@ -1637,11 +1637,16 @@ def submit_match_score(
     except Match.DoesNotExist:
         return 400, {"message": "Match does not exist"}
 
-    if match.status in {Match.Status.COMPLETED, Match.Status.YET_TO_FIX}:
+    if (
+        match.status in {Match.Status.COMPLETED, Match.Status.YET_TO_FIX}
+        or match.team_1 is None
+        or match.team_2 is None
+    ):
         return 400, {"message": "Match score cant be submitted in current status"}
 
-    is_authorised, team_id = can_submit_match_score(match, request.user)
-    if not is_authorised:
+    player_team_id, admin_team_ids = user_tournament_teams(match.tournament, request.user)
+
+    if match.team_1.id not in admin_team_ids and match.team_2.id not in admin_team_ids:
         return 401, {"message": "User not authorised to add score for this match"}
 
     match_score = MatchScore.objects.create(
@@ -1650,9 +1655,9 @@ def submit_match_score(
         entered_by=request.user.player_profile,
     )
 
-    if match.team_1 is not None and team_id == match.team_1.id:
+    if match.team_1.id in admin_team_ids:
         match.suggested_score_team_1 = match_score
-    elif match.team_2 is not None and team_id == match.team_2.id:
+    if match.team_2.id in admin_team_ids:
         match.suggested_score_team_2 = match_score
 
     match.save()
