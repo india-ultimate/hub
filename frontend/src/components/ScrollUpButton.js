@@ -7,7 +7,7 @@ const ScrollUpButton = () => {
   const [visible, setVisible] = createSignal(false);
 
   const toggleVisible = () => {
-    const scrolled = document.documentElement.scrollTop;
+    const scrolled = window.scrollY;
     if (scrolled > 300) {
       setVisible(true);
     } else if (scrolled <= 300) {
