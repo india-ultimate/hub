@@ -115,7 +115,6 @@ from server.schema import (
 )
 from server.top_score_utils import TopScoreClient
 from server.tournament import (
-    can_submit_match_score,
     create_bracket_matches,
     create_pool_matches,
     create_position_pool_matches,
@@ -1722,15 +1721,15 @@ def submit_match_spirit_score(
     except Match.DoesNotExist:
         return 400, {"message": "Match does not exist"}
 
-    is_authorised, team_id = can_submit_match_score(match, request.user)
+    player_team_id, admin_team_ids = user_tournament_teams(match.tournament, request.user)
 
-    if not is_authorised:
+    if spirit_score.team_id not in admin_team_ids:
         return 401, {"message": "User not authorised to add score for this match"}
 
-    if match.team_1 is not None and match.team_1.id == team_id:
+    if match.team_1 is not None and match.team_1.id == spirit_score.team_id:
         match.spirit_score_team_2 = create_spirit_scores(spirit_score.opponent)
         match.self_spirit_score_team_1 = create_spirit_scores(spirit_score.self)
-    elif match.team_2 is not None and match.team_2.id == team_id:
+    elif match.team_2 is not None and match.team_2.id == spirit_score.team_id:
         match.spirit_score_team_1 = create_spirit_scores(spirit_score.opponent)
         match.self_spirit_score_team_2 = create_spirit_scores(spirit_score.self)
     else:

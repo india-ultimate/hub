@@ -591,31 +591,6 @@ def update_tournament_spirit_rankings(tournament: Tournament) -> None:
     tournament.save()
 
 
-def can_submit_match_score(match: Match, user: User) -> tuple[bool, int]:
-    try:
-        player = user.player_profile
-    except Player.DoesNotExist:
-        return False, 0
-
-    if player.ultimate_central_id is None:
-        return False, 0
-
-    registrations = UCRegistration.objects.filter(
-        event=match.tournament.event, person_id=player.ultimate_central_id
-    )
-
-    for reg in registrations:
-        if (
-            match.team_1 is not None
-            and match.team_2 is not None
-            and reg.team.id in {match.team_1.id, match.team_2.id}
-            and any(role in reg.roles for role in ROLES_ELIGIBLE_TO_SUBMIT_SCORES)
-        ):
-            return True, reg.team.id
-
-    return False, 0
-
-
 def user_tournament_teams(tournament: Tournament, user: User) -> tuple[int | None, set[int]]:
     player_team_id = 0
     admin_team_ids: set[int] = set()
