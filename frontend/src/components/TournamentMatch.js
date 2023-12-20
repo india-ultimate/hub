@@ -833,12 +833,22 @@ const TournamentMatch = props => {
                   </button>
                 </div>
                 <div class="space-y-6 p-6">
-                  <MatchSpiritScoreForm
-                    match={props.match}
-                    tournamentSlug={props.tournamentSlug}
-                    oppTeamNo={isTeamAdminOf(props.match["team_1"].id) ? 2 : 1}
-                    curTeamNo={isTeamAdminOf(props.match["team_1"].id) ? 1 : 2}
-                  />
+                  <Show when={isTeamAdminOf(props.match["team_1"].id)}>
+                    <MatchSpiritScoreForm
+                      match={props.match}
+                      tournamentSlug={props.tournamentSlug}
+                      oppTeamNo={2}
+                      curTeamNo={1}
+                    />
+                  </Show>
+                  <Show when={isTeamAdminOf(props.match["team_2"].id)}>
+                    <MatchSpiritScoreForm
+                      match={props.match}
+                      tournamentSlug={props.tournamentSlug}
+                      oppTeamNo={1}
+                      curTeamNo={2}
+                    />
+                  </Show>
                 </div>
                 <div class="flex items-center rounded-b border-t border-gray-200 p-4 dark:border-gray-600 md:p-5">
                   <button
