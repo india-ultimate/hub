@@ -624,6 +624,8 @@ class SpiritScoreSubmitSchema(Schema):
     opponent: SpiritScoreUpdateSchema
     self: SpiritScoreUpdateSchema
 
+    team_id: int
+
 
 class MatchUpdateSchema(Schema):
     time: str | None

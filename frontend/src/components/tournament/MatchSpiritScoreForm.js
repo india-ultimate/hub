@@ -69,6 +69,7 @@ const MatchSpiritScoreForm = componentProps => {
 
     submitSpiritScoreMutation.mutate({
       match_id: componentProps?.match?.id,
+      team_id: componentProps?.match[`team_${componentProps.curTeamNo}`].id,
       body: values
     });
 

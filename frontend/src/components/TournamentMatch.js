@@ -837,6 +837,7 @@ const TournamentMatch = props => {
                     match={props.match}
                     tournamentSlug={props.tournamentSlug}
                     oppTeamNo={isTeamAdminOf(props.match["team_1"].id) ? 2 : 1}
+                    curTeamNo={isTeamAdminOf(props.match["team_1"].id) ? 1 : 2}
                   />
                 </div>
                 <div class="flex items-center rounded-b border-t border-gray-200 p-4 dark:border-gray-600 md:p-5">

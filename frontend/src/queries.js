@@ -497,7 +497,7 @@ export const submitMatchScore = async ({ match_id, body }) => {
   return data;
 };
 
-export const submitMatchSpiritScore = async ({ match_id, body }) => {
+export const submitMatchSpiritScore = async ({ match_id, team_id, body }) => {
   const response = await fetch(`/api/match/${match_id}/submit-spirit-score`, {
     method: "POST",
     headers: {
@@ -505,7 +505,7 @@ export const submitMatchSpiritScore = async ({ match_id, body }) => {
       "X-CSRFToken": getCookie("csrftoken")
     },
     credentials: "same-origin",
-    body: JSON.stringify(body)
+    body: JSON.stringify({ ...body, team_id })
   });
 
   const data = await response.json();

@@ -1481,10 +1481,11 @@ class TestTournaments(ApiBaseTestCase):
         self.assertEqual(True, data["is_tournament_admin"])
 
     def test_valid_submit_spirit_score(self) -> None:
-        valid_matches = Match.objects.filter(tournament=self.tournament).filter(
-            Q(team_1=self.teams[0]) | Q(team_2=self.teams[0])
+        valid_match = (
+            Match.objects.filter(tournament=self.tournament)
+            .filter(team_1=self.teams[0])
+            .filter(team_2=self.teams[1])[0]
         )
-        valid_match = valid_matches[0]
         valid_match.status = Match.Status.COMPLETED
         valid_match.save()
 
@@ -1510,6 +1511,7 @@ class TestTournaments(ApiBaseTestCase):
                     "communication": 2,
                     "comments": "Good game!",
                 },
+                "team_id": self.teams[0].id,
             },
             content_type="application/json",
         )
@@ -1539,6 +1541,7 @@ class TestTournaments(ApiBaseTestCase):
                     "mvp_id": self.player.ultimate_central_id,
                 },
                 "self": {"rules": 3, "fouls": 2, "fair": 2, "positive": 2, "communication": 2},
+                "team_id": self.teams[1].id,
             },
             content_type="application/json",
         )
@@ -1576,10 +1579,42 @@ class TestTournaments(ApiBaseTestCase):
             placeholder_seed_1=2, placeholder_seed_2=3
         )
 
+        self.client.force_login(self.user)
         c = self.client
         response = c.post(
             f"/api/match/{invalid_matches[0].id}/submit-spirit-score",
-            data={"rules": 2, "fouls": 2, "fair": 2, "positive": 2, "communication": 2},
+            data={
+                "opponent": {
+                    "rules": 1,
+                    "fouls": 2,
+                    "fair": 2,
+                    "positive": 2,
+                    "communication": 2,
+                    "msp_id": self.player.ultimate_central_id,
+                    "mvp_id": self.player.ultimate_central_id,
+                },
+                "self": {"rules": 3, "fouls": 2, "fair": 2, "positive": 2, "communication": 2},
+                "team_id": self.teams[0].id,
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(401, response.status_code)
+
+        response = c.post(
+            f"/api/match/{invalid_matches[0].id}/submit-spirit-score",
+            data={
+                "opponent": {
+                    "rules": 1,
+                    "fouls": 2,
+                    "fair": 2,
+                    "positive": 2,
+                    "communication": 2,
+                    "msp_id": self.player.ultimate_central_id,
+                    "mvp_id": self.player.ultimate_central_id,
+                },
+                "self": {"rules": 3, "fouls": 2, "fair": 2, "positive": 2, "communication": 2},
+                "team_id": self.teams[1].id,
+            },
             content_type="application/json",
         )
         self.assertEqual(401, response.status_code)
