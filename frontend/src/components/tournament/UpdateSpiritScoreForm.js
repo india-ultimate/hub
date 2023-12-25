@@ -47,6 +47,20 @@ const UpdateSpiritScoreForm = props => {
       fair: 2,
       positive: 2,
       communication: 2
+    },
+    self_spirit_score_team_1: {
+      rules: 2,
+      fouls: 2,
+      fair: 2,
+      positive: 2,
+      communication: 2
+    },
+    self_spirit_score_team_2: {
+      rules: 2,
+      fouls: 2,
+      fair: 2,
+      positive: 2,
+      communication: 2
     }
   };
   const [_tournamentForm, { Form, Field }] = createForm({
@@ -175,7 +189,7 @@ const UpdateSpiritScoreForm = props => {
                 options={rosterQueryTeam1.data?.map(r => {
                   return {
                     value: r.person.id.toString(),
-                    label: r.person.first_name + " " + r.last_name
+                    label: r.person.first_name + " " + r.person.last_name
                   };
                 })}
                 type="text"
@@ -193,12 +207,91 @@ const UpdateSpiritScoreForm = props => {
                 options={rosterQueryTeam1.data?.map(r => {
                   return {
                     value: r.person.id.toString(),
-                    label: r.person.first_name + " " + r.last_name
+                    label: r.person.first_name + " " + r.person.last_name
                   };
                 })}
                 type="text"
                 label="MSP"
                 placeholder="Choose a Player"
+              />
+            )}
+          </Field>
+
+          <h2 class="text-bold text-center text-2xl text-blue-600 dark:text-blue-500">
+            Self Score - {props?.match?.team_2?.name}
+          </h2>
+          <Field
+            name="self_spirit_score_team_2.rules"
+            validate={required("Please add rules score.")}
+          >
+            {(field, props) => (
+              <TextInput
+                {...props}
+                value={field.value}
+                error={field.error}
+                type="number"
+                label="Rules Score"
+                required
+              />
+            )}
+          </Field>
+          <Field
+            name="self_spirit_score_team_2.fouls"
+            validate={required("Please add fouls score.")}
+          >
+            {(field, props) => (
+              <TextInput
+                {...props}
+                value={field.value}
+                error={field.error}
+                type="number"
+                label="Fouls Score"
+                required
+              />
+            )}
+          </Field>
+          <Field
+            name="self_spirit_score_team_2.fair"
+            validate={required("Please add fair score.")}
+          >
+            {(field, props) => (
+              <TextInput
+                {...props}
+                value={field.value}
+                error={field.error}
+                type="number"
+                label="Fair Score"
+                required
+              />
+            )}
+          </Field>
+          <Field
+            name="self_spirit_score_team_2.positive"
+            validate={required("Please add positive score.")}
+          >
+            {(field, props) => (
+              <TextInput
+                {...props}
+                value={field.value}
+                error={field.error}
+                type="number"
+                label="Positive Score"
+                required
+              />
+            )}
+          </Field>
+          <Field
+            name="self_spirit_score_team_2.communication"
+            validate={required("Please add communication score.")}
+          >
+            {(field, props) => (
+              <TextInput
+                {...props}
+                value={field.value}
+                error={field.error}
+                type="number"
+                label="Communication Score"
+                required
               />
             )}
           </Field>
@@ -290,7 +383,7 @@ const UpdateSpiritScoreForm = props => {
                 options={rosterQueryTeam2.data?.map(r => {
                   return {
                     value: r.person.id.toString(),
-                    label: r.person.first_name + " " + r.last_name
+                    label: r.person.first_name + " " + r.person.last_name
                   };
                 })}
                 type="text"
@@ -308,7 +401,7 @@ const UpdateSpiritScoreForm = props => {
                 options={rosterQueryTeam2.data?.map(r => {
                   return {
                     value: r.person.id.toString(),
-                    label: r.person.first_name + " " + r.last_name
+                    label: r.person.first_name + " " + r.person.last_name
                   };
                 })}
                 type="text"
@@ -317,6 +410,86 @@ const UpdateSpiritScoreForm = props => {
               />
             )}
           </Field>
+
+          <h2 class="text-bold text-center text-2xl text-blue-600 dark:text-blue-500">
+            Self Score - {props?.match?.team_1?.name}
+          </h2>
+          <Field
+            name="self_spirit_score_team_1.rules"
+            validate={required("Please add rules score.")}
+          >
+            {(field, props) => (
+              <TextInput
+                {...props}
+                value={field.value}
+                error={field.error}
+                type="number"
+                label="Rules Score"
+                required
+              />
+            )}
+          </Field>
+          <Field
+            name="self_spirit_score_team_1.fouls"
+            validate={required("Please add fouls score.")}
+          >
+            {(field, props) => (
+              <TextInput
+                {...props}
+                value={field.value}
+                error={field.error}
+                type="number"
+                label="Fouls Score"
+                required
+              />
+            )}
+          </Field>
+          <Field
+            name="self_spirit_score_team_1.fair"
+            validate={required("Please add fair score.")}
+          >
+            {(field, props) => (
+              <TextInput
+                {...props}
+                value={field.value}
+                error={field.error}
+                type="number"
+                label="Fair Score"
+                required
+              />
+            )}
+          </Field>
+          <Field
+            name="self_spirit_score_team_1.positive"
+            validate={required("Please add positive score.")}
+          >
+            {(field, props) => (
+              <TextInput
+                {...props}
+                value={field.value}
+                error={field.error}
+                type="number"
+                label="Positive Score"
+                required
+              />
+            )}
+          </Field>
+          <Field
+            name="self_spirit_score_team_1.communication"
+            validate={required("Please add communication score.")}
+          >
+            {(field, props) => (
+              <TextInput
+                {...props}
+                value={field.value}
+                error={field.error}
+                type="number"
+                label="Communication Score"
+                required
+              />
+            )}
+          </Field>
+
           <button
             type="submit"
             class="w-full rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 sm:w-auto"
