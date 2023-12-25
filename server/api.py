@@ -1701,9 +1701,24 @@ def update_match(
     if match_details.spirit_score_team_2:
         match.spirit_score_team_2 = create_spirit_scores(match_details.spirit_score_team_2)
 
+    if match_details.self_spirit_score_team_1:
+        match.self_spirit_score_team_1 = create_spirit_scores(
+            match_details.self_spirit_score_team_1
+        )
+
+    if match_details.self_spirit_score_team_2:
+        match.self_spirit_score_team_2 = create_spirit_scores(
+            match_details.self_spirit_score_team_2
+        )
+
     match.save()
 
-    if match_details.spirit_score_team_1 or match_details.spirit_score_team_2:
+    if (
+        match_details.spirit_score_team_1
+        or match_details.spirit_score_team_2
+        or match_details.self_spirit_score_team_1
+        or match_details.self_spirit_score_team_2
+    ):
         update_tournament_spirit_rankings(match.tournament)
 
     return 200, match
