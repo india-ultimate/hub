@@ -69,6 +69,7 @@ const MatchSpiritScoreForm = componentProps => {
 
     submitSpiritScoreMutation.mutate({
       match_id: componentProps?.match?.id,
+      team_id: componentProps?.match[`team_${componentProps.curTeamNo}`].id,
       body: values
     });
 
@@ -218,6 +219,8 @@ const MatchSpiritScoreForm = componentProps => {
 
           <h2 class="text-bold text-center text-2xl text-blue-600 dark:text-blue-500">
             Self Score
+            <br />(
+            {componentProps.match[`team_${componentProps.curTeamNo}`].name})
           </h2>
           <Field
             name="self.rules"

@@ -1285,6 +1285,36 @@ class TestTournaments(ApiBaseTestCase):
             roles=["admin"],
         )
 
+        # User who is admin of both team 1 and 3
+        self.user_with_admin_roles_in_diff_teams = User.objects.create(
+            username="foo1@bar.com", email="foo1@bar.com"
+        )
+        self.user_with_admin_roles_in_diff_teams.set_password(self.password)
+        self.user_with_admin_roles_in_diff_teams.save()
+
+        person_with_admin_roles_in_diff_teams = UCPerson.objects.create(
+            email="foo1@bar.com", slug="foo1bar"
+        )
+        self.player_with_admin_roles_in_diff_teams = Player.objects.create(
+            user=self.user_with_admin_roles_in_diff_teams,
+            ultimate_central_id=person_with_admin_roles_in_diff_teams.pk,
+            date_of_birth="1990-01-01",
+        )
+
+        UCRegistration.objects.create(
+            event=self.event,
+            team=self.teams[0],
+            person=person_with_admin_roles_in_diff_teams,
+            roles=["admin"],
+        )
+
+        UCRegistration.objects.create(
+            event=self.event,
+            team=self.teams[2],
+            person=person_with_admin_roles_in_diff_teams,
+            roles=["admin"],
+        )
+
     def test_valid_submit_score(self) -> None:
         valid_matches = Match.objects.filter(tournament=self.tournament).filter(
             Q(team_1=self.teams[0]) | Q(team_2=self.teams[0])
@@ -1315,6 +1345,42 @@ class TestTournaments(ApiBaseTestCase):
         self.assertEqual(15, match["suggested_score_team_2"]["score_team_1"])
         self.assertEqual(14, match["suggested_score_team_2"]["score_team_2"])
         self.assertEqual(self.player2.id, match["suggested_score_team_2"]["entered_by"]["id"])
+
+        self.assertEqual(15, match["score_team_1"])
+        self.assertEqual(14, match["score_team_2"])
+        self.assertEqual("COM", match["status"])
+
+    def test_valid_submit_score_by_both_team_admin(self) -> None:
+        filtered_match = (
+            Match.objects.filter(tournament=self.tournament)
+            .filter(team_1=self.teams[0])
+            .filter(team_2=self.teams[2])[0]
+        )
+
+        self.client.force_login(self.user_with_admin_roles_in_diff_teams)
+        c = self.client
+        response = c.post(
+            f"/api/match/{filtered_match.id}/submit-score",
+            data={"team_1_score": 15, "team_2_score": 14},
+            content_type="application/json",
+        )
+        match = response.json()
+
+        self.assertEqual(200, response.status_code)
+
+        self.assertEqual(15, match["suggested_score_team_1"]["score_team_1"])
+        self.assertEqual(14, match["suggested_score_team_1"]["score_team_2"])
+        self.assertEqual(
+            self.player_with_admin_roles_in_diff_teams.id,
+            match["suggested_score_team_1"]["entered_by"]["id"],
+        )
+
+        self.assertEqual(15, match["suggested_score_team_2"]["score_team_1"])
+        self.assertEqual(14, match["suggested_score_team_2"]["score_team_2"])
+        self.assertEqual(
+            self.player_with_admin_roles_in_diff_teams.id,
+            match["suggested_score_team_2"]["entered_by"]["id"],
+        )
 
         self.assertEqual(15, match["score_team_1"])
         self.assertEqual(14, match["score_team_2"])
@@ -1415,10 +1481,11 @@ class TestTournaments(ApiBaseTestCase):
         self.assertEqual(True, data["is_tournament_admin"])
 
     def test_valid_submit_spirit_score(self) -> None:
-        valid_matches = Match.objects.filter(tournament=self.tournament).filter(
-            Q(team_1=self.teams[0]) | Q(team_2=self.teams[0])
+        valid_match = (
+            Match.objects.filter(tournament=self.tournament)
+            .filter(team_1=self.teams[0])
+            .filter(team_2=self.teams[1])[0]
         )
-        valid_match = valid_matches[0]
         valid_match.status = Match.Status.COMPLETED
         valid_match.save()
 
@@ -1444,6 +1511,7 @@ class TestTournaments(ApiBaseTestCase):
                     "communication": 2,
                     "comments": "Good game!",
                 },
+                "team_id": self.teams[0].id,
             },
             content_type="application/json",
         )
@@ -1473,6 +1541,7 @@ class TestTournaments(ApiBaseTestCase):
                     "mvp_id": self.player.ultimate_central_id,
                 },
                 "self": {"rules": 3, "fouls": 2, "fair": 2, "positive": 2, "communication": 2},
+                "team_id": self.teams[1].id,
             },
             content_type="application/json",
         )
@@ -1510,10 +1579,42 @@ class TestTournaments(ApiBaseTestCase):
             placeholder_seed_1=2, placeholder_seed_2=3
         )
 
+        self.client.force_login(self.user)
         c = self.client
         response = c.post(
             f"/api/match/{invalid_matches[0].id}/submit-spirit-score",
-            data={"rules": 2, "fouls": 2, "fair": 2, "positive": 2, "communication": 2},
+            data={
+                "opponent": {
+                    "rules": 1,
+                    "fouls": 2,
+                    "fair": 2,
+                    "positive": 2,
+                    "communication": 2,
+                    "msp_id": self.player.ultimate_central_id,
+                    "mvp_id": self.player.ultimate_central_id,
+                },
+                "self": {"rules": 3, "fouls": 2, "fair": 2, "positive": 2, "communication": 2},
+                "team_id": self.teams[0].id,
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(401, response.status_code)
+
+        response = c.post(
+            f"/api/match/{invalid_matches[0].id}/submit-spirit-score",
+            data={
+                "opponent": {
+                    "rules": 1,
+                    "fouls": 2,
+                    "fair": 2,
+                    "positive": 2,
+                    "communication": 2,
+                    "msp_id": self.player.ultimate_central_id,
+                    "mvp_id": self.player.ultimate_central_id,
+                },
+                "self": {"rules": 3, "fouls": 2, "fair": 2, "positive": 2, "communication": 2},
+                "team_id": self.teams[1].id,
+            },
             content_type="application/json",
         )
         self.assertEqual(401, response.status_code)
