@@ -56,29 +56,33 @@ const PasswordLogin = props => {
     <form onSubmit={login}>
       <div class="mb-6 grid gap-3">
         <label
-          for="username-input"
+          for="email"
           class="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
         >
-          Username
+          Email
         </label>
         <div class="mb-6">
           <input
-            id="username-input"
+            id="email"
+            name="email"
+            type="email"
+            autoComplete="username"
             class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
-            placeholder="username"
+            placeholder="johndoe@gmail.com"
             value={username()}
             onInput={e => setUsername(e.currentTarget.value)}
           />
         </div>
         <label
-          for="password-input"
+          for="current-password"
           class="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
         >
           Password
         </label>
         <div class="mb-6">
           <input
-            id="password-input"
+            id="current-password"
+            autoComplete="current-password"
             class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
             placeholder="password"
             type="password"
@@ -208,7 +212,7 @@ const SendEmailOTP = props => {
   return (
     <div class="mb-6 grid gap-3">
       <label
-        for="email-link-input"
+        for="otp-email"
         class="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
       >
         Enter Email ID for sending login OTP
@@ -216,9 +220,11 @@ const SendEmailOTP = props => {
       <div class="mb-6">
         <input
           class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
-          id="email-otp-input"
+          id="otp-email"
+          name="email"
           placeholder="Email Address"
           type="email"
+          autoComplete="email"
           value={email()}
           disabled={otpData()}
           onInput={e => setEmail(e.currentTarget.value)}
