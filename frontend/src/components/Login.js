@@ -1,6 +1,7 @@
 import { useNavigate } from "@solidjs/router";
 import { initFlowbite } from "flowbite";
-import { home } from "solid-heroicons/solid";
+import { Icon } from "solid-heroicons";
+import { eye, eyeSlash, home } from "solid-heroicons/solid";
 import { createEffect, createSignal, onMount, Show } from "solid-js";
 
 import { Spinner } from "../icons";
@@ -13,6 +14,7 @@ const PasswordLogin = props => {
   const [username, setUsername] = createSignal("");
   const [password, setPassword] = createSignal("");
   const [store, { setLoggedIn, setData }] = useStore();
+  const [showPassword, setShowPassword] = createSignal(false);
 
   createEffect(() => {
     if (store.loggedIn) {
@@ -79,13 +81,27 @@ const PasswordLogin = props => {
         >
           Password
         </label>
-        <div class="mb-6">
+        <div class="relative mb-6">
+          <div class="absolute inset-y-0 right-0 flex items-center px-2">
+            <input
+              class="hidden"
+              id="toggle"
+              type="checkbox"
+              onClick={() => setShowPassword(prevValue => !prevValue)}
+            />
+            <label
+              class="cursor-pointer rounded px-2 py-1 font-mono text-sm text-gray-600 dark:text-gray-200"
+              for="toggle"
+            >
+              <Icon path={showPassword() ? eyeSlash : eye} class="h-5 w-5" />
+            </label>
+          </div>
           <input
             id="current-password"
             autoComplete="current-password"
             class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
             placeholder="password"
-            type="password"
+            type={showPassword() ? "text" : "password"}
             required
             value={password()}
             onInput={e => setPassword(e.currentTarget.value)}
