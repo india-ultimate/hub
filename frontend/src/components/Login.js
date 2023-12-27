@@ -1,6 +1,11 @@
+import {
+  get,
+  parseRequestOptionsFromJSON
+} from "@github/webauthn-json/browser-ponyfill";
 import { useNavigate } from "@solidjs/router";
 import { initFlowbite } from "flowbite";
-import { home } from "solid-heroicons/solid";
+import { Icon } from "solid-heroicons";
+import { eye, eyeSlash, fingerPrint, home } from "solid-heroicons/solid";
 import { createEffect, createSignal, onMount, Show } from "solid-js";
 
 import { Spinner } from "../icons";
@@ -13,6 +18,7 @@ const PasswordLogin = props => {
   const [username, setUsername] = createSignal("");
   const [password, setPassword] = createSignal("");
   const [store, { setLoggedIn, setData }] = useStore();
+  const [showPassword, setShowPassword] = createSignal(false);
 
   createEffect(() => {
     if (store.loggedIn) {
@@ -56,32 +62,50 @@ const PasswordLogin = props => {
     <form onSubmit={login}>
       <div class="mb-6 grid gap-3">
         <label
-          for="username-input"
+          for="email"
           class="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
         >
-          Username
+          Email
         </label>
         <div class="mb-6">
           <input
-            id="username-input"
+            id="email"
+            name="email"
+            type="email"
+            autoComplete="username"
             class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
-            placeholder="username"
+            placeholder="johndoe@gmail.com"
             value={username()}
             onInput={e => setUsername(e.currentTarget.value)}
           />
         </div>
         <label
-          for="password-input"
+          for="current-password"
           class="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
         >
           Password
         </label>
-        <div class="mb-6">
+        <div class="relative mb-6">
+          <div class="absolute inset-y-0 right-0 flex items-center px-2">
+            <input
+              class="hidden"
+              id="toggle"
+              type="checkbox"
+              onClick={() => setShowPassword(prevValue => !prevValue)}
+            />
+            <label
+              class="cursor-pointer rounded px-2 py-1 font-mono text-sm text-gray-600 dark:text-gray-200"
+              for="toggle"
+            >
+              <Icon path={showPassword() ? eyeSlash : eye} class="h-5 w-5" />
+            </label>
+          </div>
           <input
-            id="password-input"
+            id="current-password"
+            autoComplete="current-password"
             class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
             placeholder="password"
-            type="password"
+            type={showPassword() ? "text" : "password"}
             required
             value={password()}
             onInput={e => setPassword(e.currentTarget.value)}
@@ -208,7 +232,7 @@ const SendEmailOTP = props => {
   return (
     <div class="mb-6 grid gap-3">
       <label
-        for="email-link-input"
+        for="otp-email"
         class="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
       >
         Enter Email ID for sending login OTP
@@ -216,9 +240,11 @@ const SendEmailOTP = props => {
       <div class="mb-6">
         <input
           class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
-          id="email-otp-input"
+          id="otp-email"
+          name="email"
           placeholder="Email Address"
           type="email"
+          autoComplete="email"
           value={email()}
           disabled={otpData()}
           onInput={e => setEmail(e.currentTarget.value)}
@@ -293,6 +319,117 @@ const SendEmailOTP = props => {
   );
 };
 
+const PasskeyLogin = props => {
+  const csrftoken = getCookie("csrftoken");
+  const [loading, setLoading] = createSignal(false);
+  const [store, { setLoggedIn, setData }] = useStore();
+
+  createEffect(() => {
+    if (store.loggedIn) {
+      const navigate = useNavigate();
+      navigate("/dashboard", { replace: true });
+    }
+  });
+
+  let url = new URL(window.location);
+  url.pathname = "/passkey";
+
+  const loginWithPasskey = async e => {
+    e.preventDefault();
+    setLoading(true);
+
+    const loginOptions = await fetch("/api/passkey/login/start", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": csrftoken
+      }
+    });
+
+    if (loginOptions.ok) {
+      props.setStatus("Successfully initialised passkey method!");
+      const data = await loginOptions.json();
+
+      const credential = await get(
+        parseRequestOptionsFromJSON(JSON.parse(data["passkey_response"]))
+      );
+
+      const loginResponse = await fetch("/api/passkey/login/finish", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": getCookie("csrftoken")
+        },
+        body: JSON.stringify({ passkey_request: JSON.stringify(credential) })
+      });
+
+      if (loginResponse.ok) {
+        props.setStatus("Successfully logged in!");
+        const data = await loginResponse.json();
+        setData(data);
+        setLoggedIn(true);
+      } else {
+        setLoggedIn(false);
+        try {
+          const data = await loginResponse.json();
+          props.setStatus(`Login failed with error: ${data.message}`);
+        } catch {
+          props.setStatus(
+            `Login failed with error: ${loginResponse.statusText} (${loginResponse.status})`
+          );
+        }
+      }
+    } else {
+      try {
+        const data = await loginOptions.json();
+        props.setStatus(
+          `Passkey initializing failed with error: ${data.message}`
+        );
+      } catch {
+        props.setStatus(
+          `Passkey initializing failed with error: ${loginOptions.statusText} (${loginOptions.status})`
+        );
+      }
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div class="mb-6 grid gap-3">
+      <button
+        id="passkey-login-button"
+        onClick={loginWithPasskey}
+        disabled={loading()}
+        class="w-full rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 sm:w-auto"
+      >
+        <Show
+          when={loading()}
+          fallback={
+            <span class="flex items-center justify-center">
+              <span>Tap to Login</span>
+              <Icon class="ml-2 h-6 w-6" path={fingerPrint} />
+            </span>
+          }
+        >
+          <Spinner />
+        </Show>
+      </button>
+
+      <div
+        class="mb-4 rounded-lg bg-yellow-50 p-4 text-sm text-yellow-800 dark:bg-gray-800 dark:text-yellow-300"
+        role="alert"
+      >
+        Only for already registered users who have enabled One-Tap login for
+        their device.
+        <br />
+        <br />
+        To Enable: Login with OTP &gt; Dashboard &gt; User Actions &gt; Enable
+        One-Tab Login
+      </div>
+    </div>
+  );
+};
+
 const Login = () => {
   const [status, setStatus] = createSignal("");
   const [store, _] = useStore();
@@ -343,6 +480,19 @@ const Login = () => {
           <li class="mr-2" role="presentation">
             <button
               class="inline-block rounded-t-lg border-b-2 p-4"
+              id="passkey-tab"
+              data-tabs-target="#passkey"
+              type="button"
+              role="tab"
+              aria-controls="passkey"
+              aria-selected="false"
+            >
+              One-Tap Login
+            </button>
+          </li>
+          <li class="mr-2" role="presentation">
+            <button
+              class="inline-block rounded-t-lg border-b-2 p-4"
               id="password-tab"
               data-tabs-target="#password"
               type="button"
@@ -371,6 +521,14 @@ const Login = () => {
           aria-labelledby="password-tab"
         >
           <PasswordLogin setStatus={setStatus} />
+        </div>
+        <div
+          class="hidden rounded-lg bg-gray-50 p-4 dark:bg-gray-800"
+          id="passkey"
+          role="tabpanel"
+          aria-labelledby="passkey-tab"
+        >
+          <PasskeyLogin setStatus={setStatus} />
         </div>
       </div>
       <p>{status()}</p>
