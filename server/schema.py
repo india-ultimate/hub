@@ -656,3 +656,11 @@ class TournamentRulesSchema(Schema):
 class ContactFormSchema(Schema):
     subject: str
     description: str
+
+
+class PasskeyResponseSchema(Schema):
+    passkey_response: str
+
+
+class PasskeyRequestSchema(Schema):
+    passkey_request: str
