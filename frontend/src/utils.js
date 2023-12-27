@@ -1,3 +1,7 @@
+import {
+  create,
+  parseCreationOptionsFromJSON
+} from "@github/webauthn-json/browser-ponyfill";
 import clsx from "clsx";
 import { Icon } from "solid-heroicons";
 import { checkCircle, exclamationCircle } from "solid-heroicons/solid-mini";
@@ -234,4 +238,62 @@ export const getTournamentBreadcrumbName = tournamentSlug => {
   }
 
   return name;
+};
+
+export const registerPasskey = async () => {
+  // Hit our backend to start register process
+  const creationOptions = await fetch("/api/passkey/create/start", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin"
+  });
+
+  // Return error if failure
+  if (!creationOptions.ok) {
+    try {
+      const data = await creationOptions.json();
+      return { error: `Failed with error: ${data.message}` };
+    } catch {
+      return {
+        error: `Failed with error: ${creationOptions.statusText} (${creationOptions.status})`
+      };
+    }
+  }
+
+  // Get the response data if success
+  const creationOptionsData = await creationOptions.json();
+
+  // Open "create passkey" dialog
+  const credential = await create(
+    parseCreationOptionsFromJSON(
+      JSON.parse(creationOptionsData["passkey_response"])
+    )
+  );
+
+  // Hit our backend to finish registration process
+  const creationResponse = await fetch("/api/passkey/create/finish", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    body: JSON.stringify({ passkey_request: JSON.stringify(credential) })
+  });
+
+  // Return error if failure
+  if (!creationResponse.ok) {
+    try {
+      const data = await creationResponse.json();
+      return { error: `Failed with error: ${data.message}` };
+    } catch {
+      return {
+        error: `Failed with error: ${creationResponse.statusText} (${creationResponse.status})`
+      };
+    }
+  }
+
+  return { success: "Created passkey!" };
 };
