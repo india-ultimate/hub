@@ -51,6 +51,7 @@ from server.models import (
     User,
     Vaccination,
 )
+from server.passkey_utils import PassKeyClient
 from server.phonepe_utils import (
     check_transaction_status,
     initiate_payment,
@@ -81,6 +82,8 @@ from server.schema import (
     OTPLoginCredentials,
     OTPRequestCredentials,
     OTPRequestResponse,
+    PasskeyRequestSchema,
+    PasskeyResponseSchema,
     PaymentFormSchema,
     PhonePePaymentSchema,
     PhonePeTransactionSchema,
@@ -281,6 +284,60 @@ def otp_login(
         return 200, user
 
     return 403, {"message": "Invalid OTP"}
+
+
+passkey_client = PassKeyClient()
+
+
+@api.post("/passkey/create/start", response={200: PasskeyResponseSchema, 400: Response})
+def passkey_start_creation(request: AuthenticatedHttpRequest) -> tuple[int, message_response]:
+    data, error, _ = passkey_client.start_registration(str(request.user.id), request.user.username)
+
+    if error:
+        return 400, {"message": error}
+
+    return 200, {"passkey_response": data}
+
+
+@api.post("/passkey/create/finish", response={200: Response, 400: Response})
+def passkey_finish_creation(
+    request: AuthenticatedHttpRequest, body: PasskeyRequestSchema
+) -> tuple[int, message_response]:
+    data, error, _ = passkey_client.finish_registration(body.passkey_request)
+
+    if error:
+        return 400, {"message": error}
+
+    return 200, {"message": "Success"}
+
+
+@api.post("/passkey/login/start", auth=None, response={200: PasskeyResponseSchema, 400: Response})
+def passkey_start_login(request: HttpRequest) -> tuple[int, message_response]:
+    data, error, _ = passkey_client.start_login()
+
+    if error:
+        return 400, {"message": error}
+
+    return 200, {"passkey_response": data}
+
+
+@api.post("/passkey/login/finish", auth=None, response={200: UserSchema, 400: Response})
+def passkey_finish_login(
+    request: HttpRequest, body: PasskeyRequestSchema
+) -> tuple[int, User | message_response]:
+    data, error, user_id = passkey_client.finish_login(body.passkey_request)
+
+    if error:
+        return 400, {"message": error}
+
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return 400, {"message": "User does not exist"}
+
+    request.user = user
+    login(request, user)
+    return 200, user
 
 
 # Registration #########
