@@ -1,7 +1,12 @@
+import {
+  get,
+  parseRequestOptionsFromJSON,
+  supported
+} from "@github/webauthn-json/browser-ponyfill";
 import { useNavigate } from "@solidjs/router";
 import { initFlowbite } from "flowbite";
 import { Icon } from "solid-heroicons";
-import { eye, eyeSlash, home } from "solid-heroicons/solid";
+import { eye, eyeSlash, fingerPrint, home } from "solid-heroicons/solid";
 import { createEffect, createSignal, onMount, Show } from "solid-js";
 
 import { Spinner } from "../icons";
@@ -315,6 +320,122 @@ const SendEmailOTP = props => {
   );
 };
 
+const PasskeyLogin = props => {
+  const csrftoken = getCookie("csrftoken");
+  const [loading, setLoading] = createSignal(false);
+  const [store, { setLoggedIn, setData }] = useStore();
+
+  createEffect(() => {
+    if (store.loggedIn) {
+      const navigate = useNavigate();
+      navigate("/dashboard", { replace: true });
+    }
+  });
+
+  let url = new URL(window.location);
+  url.pathname = "/passkey";
+
+  const loginWithPasskey = async e => {
+    e.preventDefault();
+    setLoading(true);
+
+    const loginOptions = await fetch("/api/passkey/login/start", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": csrftoken
+      }
+    });
+
+    if (loginOptions.ok) {
+      props.setStatus("Successfully initialised passkey method!");
+      const data = await loginOptions.json();
+
+      const credential = await get(
+        parseRequestOptionsFromJSON(JSON.parse(data["passkey_response"]))
+      );
+
+      const loginResponse = await fetch("/api/passkey/login/finish", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": getCookie("csrftoken")
+        },
+        body: JSON.stringify({ passkey_request: JSON.stringify(credential) })
+      });
+
+      if (loginResponse.ok) {
+        props.setStatus("Successfully logged in!");
+        const data = await loginResponse.json();
+        setData(data);
+        setLoggedIn(true);
+      } else {
+        setLoggedIn(false);
+        try {
+          const data = await loginResponse.json();
+          props.setStatus(`Login failed with error: ${data.message}`);
+        } catch {
+          props.setStatus(
+            `Login failed with error: ${loginResponse.statusText} (${loginResponse.status})`
+          );
+        }
+      }
+    } else {
+      try {
+        const data = await loginOptions.json();
+        props.setStatus(
+          `Passkey initializing failed with error: ${data.message}`
+        );
+      } catch {
+        props.setStatus(
+          `Passkey initializing failed with error: ${loginOptions.statusText} (${loginOptions.status})`
+        );
+      }
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div class="mb-6 grid gap-3">
+      <button
+        id="passkey-login-button"
+        onClick={loginWithPasskey}
+        disabled={loading() || !supported()}
+        class="w-full rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 disabled:bg-gray-300 disabled:text-gray-600 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 dark:disabled:bg-gray-700 sm:w-auto"
+      >
+        <Show
+          when={supported()}
+          fallback={"Not supported for this device/browser"}
+        >
+          <Show
+            when={loading()}
+            fallback={
+              <span class="flex items-center justify-center">
+                <span>Tap to Login</span>
+                <Icon class="ml-2 h-6 w-6" path={fingerPrint} />
+              </span>
+            }
+          >
+            <Spinner />
+          </Show>
+        </Show>
+      </button>
+
+      <div
+        class="mb-4 rounded-lg bg-yellow-50 p-4 text-sm text-yellow-800 dark:bg-gray-800 dark:text-yellow-300"
+        role="alert"
+      >
+        Only for already registered users who have enabled One-Tap login for
+        their device.
+        <br />
+        <br />
+        To Enable: Login with OTP &gt; Dashboard &gt; User Actions &gt; Enable
+        One-Tab Login
+      </div>
+    </div>
+  );
+};
+
 const Login = () => {
   const [status, setStatus] = createSignal("");
   const [store, _] = useStore();
@@ -365,6 +486,19 @@ const Login = () => {
           <li class="mr-2" role="presentation">
             <button
               class="inline-block rounded-t-lg border-b-2 p-4"
+              id="passkey-tab"
+              data-tabs-target="#passkey"
+              type="button"
+              role="tab"
+              aria-controls="passkey"
+              aria-selected="false"
+            >
+              One-Tap Login
+            </button>
+          </li>
+          <li class="mr-2" role="presentation">
+            <button
+              class="inline-block rounded-t-lg border-b-2 p-4"
               id="password-tab"
               data-tabs-target="#password"
               type="button"
@@ -393,6 +527,14 @@ const Login = () => {
           aria-labelledby="password-tab"
         >
           <PasswordLogin setStatus={setStatus} />
+        </div>
+        <div
+          class="hidden rounded-lg bg-gray-50 p-4 dark:bg-gray-800"
+          id="passkey"
+          role="tabpanel"
+          aria-labelledby="passkey-tab"
+        >
+          <PasskeyLogin setStatus={setStatus} />
         </div>
       </div>
       <p>{status()}</p>
