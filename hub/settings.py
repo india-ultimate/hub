@@ -189,6 +189,10 @@ OTP_EMAIL_HASH_KEY = os.environ.get("OTP_EMAIL_HASH_KEY", "")
 # Support email
 EMAIL_SUPPORT = os.environ.get("EMAIL_SUPPORT", EMAIL_HOST_USER)
 
+# Hanko Settings
+PASSKEY_TENANT_ID = os.environ.get("PASSKEY_TENANT_ID", "")
+PASSKEY_SECRET_API_KEY = os.environ.get("PASSKEY_SECRET_API_KEY", "")
+
 
 ########################################################################
 import django_stubs_ext
