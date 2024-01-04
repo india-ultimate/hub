@@ -372,7 +372,7 @@ const WaiverForm = props => {
             {displayDate(props.player?.membership?.waiver_signed_at)}.
           </div>
           <button
-            class="my-4 w-full rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 sm:w-auto"
+            class="my-4 w-full rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 sm:w-auto dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
             onClick={() => setDetailed(!detailed())}
           >
             Show full text
@@ -404,7 +404,7 @@ const WaiverForm = props => {
         </Show>
         <Show when={!props.signed}>
           <button
-            class={`my-4 w-full rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 sm:w-auto ${
+            class={`my-4 w-full rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 sm:w-auto dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 ${
               !enableSubmit() ? "cursor-not-allowed" : ""
             } `}
             onClick={props.handleSubmit} // eslint-disable-line solid/reactivity

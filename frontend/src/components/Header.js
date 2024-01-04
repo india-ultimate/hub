@@ -55,7 +55,7 @@ export default function Header() {
           <div>
             <button
               type="button"
-              class="inline-flex h-10 w-10 items-center justify-center rounded-lg p-2 text-sm text-gray-500 hover:bg-gray-100 focus:outline-none dark:text-gray-400 dark:hover:bg-gray-700 dark:focus:ring-gray-600 md:hidden"
+              class="inline-flex h-10 w-10 items-center justify-center rounded-lg p-2 text-sm text-gray-500 hover:bg-gray-100 focus:outline-none md:hidden dark:text-gray-400 dark:hover:bg-gray-700 dark:focus:ring-gray-600"
               onClick={toggleTheme}
             >
               <Show
@@ -68,7 +68,7 @@ export default function Header() {
             <button
               data-collapse-toggle="navbar-solid-bg"
               type="button"
-              class="inline-flex h-10 w-10 items-center justify-center rounded-lg p-2 text-sm text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 dark:focus:ring-gray-600 md:hidden"
+              class="inline-flex h-10 w-10 items-center justify-center rounded-lg p-2 text-sm text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200 md:hidden dark:text-gray-400 dark:hover:bg-gray-700 dark:focus:ring-gray-600"
               aria-controls="navbar-solid-bg"
               aria-expanded="false"
             >
@@ -77,7 +77,7 @@ export default function Header() {
             </button>
           </div>
           <div class="hidden w-full md:block md:w-auto" id="navbar-solid-bg">
-            <ul class="mt-4 flex flex-col rounded-lg bg-gray-50 font-medium dark:border-gray-700 dark:bg-gray-800 md:mt-0 md:flex-row md:space-x-8 md:border-0 md:bg-transparent md:dark:bg-transparent">
+            <ul class="mt-4 flex flex-col rounded-lg bg-gray-50 font-medium md:mt-0 md:flex-row md:space-x-8 md:border-0 md:bg-transparent dark:border-gray-700 dark:bg-gray-800 md:dark:bg-transparent">
               <li>
                 <A
                   href="/"
@@ -114,7 +114,7 @@ export default function Header() {
                   fallback={
                     <A
                       href="/login"
-                      class="block rounded py-2 pl-3 pr-4 text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700 dark:hover:text-white md:border-0 md:p-0 md:hover:bg-transparent md:hover:text-blue-700 md:dark:hover:bg-transparent md:dark:hover:text-blue-500"
+                      class="block rounded py-2 pl-3 pr-4 text-gray-900 hover:bg-gray-100 md:border-0 md:p-0 md:hover:bg-transparent md:hover:text-blue-700 dark:text-white dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent md:dark:hover:text-blue-500"
                     >
                       Login
                     </A>
@@ -122,7 +122,7 @@ export default function Header() {
                 >
                   <A
                     href=""
-                    class="block rounded py-2 pl-3 pr-4 text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700 dark:hover:text-white md:border-0 md:p-0 md:hover:bg-transparent md:hover:text-blue-700 md:dark:hover:bg-transparent md:dark:hover:text-blue-500"
+                    class="block rounded py-2 pl-3 pr-4 text-gray-900 hover:bg-gray-100 md:border-0 md:p-0 md:hover:bg-transparent md:hover:text-blue-700 dark:text-white dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent md:dark:hover:text-blue-500"
                     onClick={logout}
                   >
                     Logout
@@ -132,7 +132,7 @@ export default function Header() {
               <li>
                 <button
                   type="button"
-                  class="hidden rounded py-2 pl-3 pr-4 text-gray-900 focus:outline-none dark:text-white md:block md:border-0 md:p-0 md:hover:text-blue-700 md:dark:hover:text-blue-500"
+                  class="hidden rounded py-2 pl-3 pr-4 text-gray-900 focus:outline-none md:block md:border-0 md:p-0 md:hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500"
                   onClick={toggleTheme}
                 >
                   <Show

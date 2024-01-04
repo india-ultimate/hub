@@ -695,7 +695,7 @@ const TournamentMatch = props => {
                       oppTeamNo={oppTeamNo()}
                     />
                   </div>
-                  <div class="flex items-center rounded-b border-t border-gray-200 p-4 dark:border-gray-600 md:p-5">
+                  <div class="flex items-center rounded-b border-t border-gray-200 p-4 md:p-5 dark:border-gray-600">
                     <button
                       data-modal-hide={"submit-score-modal" + props.match?.id}
                       type="button"
@@ -839,7 +839,7 @@ const TournamentMatch = props => {
                     oppTeamNo={isTeamAdminOf(props.match["team_1"].id) ? 2 : 1}
                   />
                 </div>
-                <div class="flex items-center rounded-b border-t border-gray-200 p-4 dark:border-gray-600 md:p-5">
+                <div class="flex items-center rounded-b border-t border-gray-200 p-4 md:p-5 dark:border-gray-600">
                   <button
                     data-modal-hide={
                       "submit-spirit-score-modal" + props.match?.id

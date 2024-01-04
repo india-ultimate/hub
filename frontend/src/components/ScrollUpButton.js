@@ -30,7 +30,7 @@ const ScrollUpButton = () => {
       onClick={scrollToTop}
       class={clsx(
         visible() ? "visible opacity-100" : "invisible opacity-0",
-        "fixed bottom-20 right-4 me-2 inline-flex items-center rounded-full bg-blue-700 p-2 text-center text-sm font-medium text-white transition-all duration-300 ease-in-out hover:bg-blue-800 focus:outline-none dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 md:bottom-20 md:right-8"
+        "fixed bottom-20 right-4 me-2 inline-flex items-center rounded-full bg-blue-700 p-2 text-center text-sm font-medium text-white transition-all duration-300 ease-in-out hover:bg-blue-800 focus:outline-none md:bottom-20 md:right-8 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
       )}
     >
       <svg

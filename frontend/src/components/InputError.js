@@ -4,7 +4,7 @@
 const InputError = props => {
   return (
     <div
-      class="pt-4 text-sm text-red-500 dark:text-red-400 md:text-base lg:pt-5 lg:text-lg"
+      class="pt-4 text-sm text-red-500 md:text-base lg:pt-5 lg:text-lg dark:text-red-400"
       id={`${props.name}-error`}
     >
       {props.error}
