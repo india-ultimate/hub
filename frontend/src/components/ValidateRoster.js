@@ -18,6 +18,8 @@ import { onMount } from "solid-js";
 import { accreditationChoices, matchUpChoices, minAge } from "../constants";
 import { useStore } from "../store";
 import { fetchUrl, getAge, getLabel } from "../utils";
+import AccreditationInformation from "./AccreditationInformation";
+import Modal from "./Modal";
 
 const groupByTeam = registrations => {
   const teamsMap = registrations?.reduce(
@@ -383,6 +385,12 @@ const ValidateRoster = () => {
                                 const accreditationLevel =
                                   registration?.person?.player?.accreditation
                                     ?.level;
+
+                                let accreditationModalRef;
+
+                                const closeAccreditationModal = () => {
+                                  accreditationModalRef.close();
+                                };
                                 return (
                                   <li
                                     class={clsx(
@@ -513,21 +521,51 @@ const ValidateRoster = () => {
                                                 : redText
                                             )}
                                           >
-                                            <Icon
-                                              path={
-                                                playerAccreditationValid(
-                                                  registration.person.player
-                                                )
-                                                  ? accreditationLevel === "ADV"
-                                                    ? documentCheck
-                                                    : document
-                                                  : xCircle
+                                            <Show
+                                              when={playerAccreditationValid(
+                                                registration.person.player
+                                              )}
+                                              fallback={
+                                                <Icon
+                                                  path={xCircle}
+                                                  style={{
+                                                    width: "20px",
+                                                    display: "inline"
+                                                  }}
+                                                />
                                               }
-                                              style={{
-                                                width: "20px",
-                                                display: "inline"
-                                              }}
-                                            />
+                                            >
+                                              <button
+                                                onClick={() =>
+                                                  accreditationModalRef.showModal()
+                                                }
+                                              >
+                                                <Icon
+                                                  path={
+                                                    accreditationLevel === "ADV"
+                                                      ? documentCheck
+                                                      : document
+                                                  }
+                                                  style={{
+                                                    width: "20px",
+                                                    display: "inline"
+                                                  }}
+                                                />
+                                              </button>
+                                              <Modal
+                                                ref={accreditationModalRef}
+                                                title={`Accreditation - ${registration.person.first_name} ${registration.person.last_name}`}
+                                                close={closeAccreditationModal}
+                                                body={
+                                                  <AccreditationInformation
+                                                    accreditation={
+                                                      registration.person.player
+                                                        .accreditation
+                                                    }
+                                                  />
+                                                }
+                                              />
+                                            </Show>
                                           </span>
                                         </Match>
                                       </Switch>
