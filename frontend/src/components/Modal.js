@@ -1,0 +1,31 @@
+import { Icon } from "solid-heroicons";
+import { xMark } from "solid-heroicons/solid-mini";
+
+const Modal = props => {
+  return (
+    <dialog
+      ref={props.ref}
+      class="w-3/4 rounded-xl p-0 backdrop:bg-gray-700/90"
+    >
+      <div class="flex w-full flex-col items-start gap-2 rounded-xl border border-gray-800 bg-gray-50 p-4 text-gray-600 dark:border-gray-300 dark:bg-gray-600 dark:text-gray-100">
+        <div class="flex w-full items-center justify-between text-base sm:text-lg">
+          <div class="flex">{props.title || ""}</div>
+          <button
+            type="button"
+            class="absolute right-2.5 top-3 ml-auto inline-flex h-8 w-8 items-center justify-center rounded-lg bg-transparent text-sm text-gray-400 hover:bg-gray-200 hover:text-gray-900 dark:hover:bg-gray-600 dark:hover:text-white"
+            onClick={() => props.close()}
+          >
+            <Icon path={xMark} style={{ width: "20px" }} />
+            <span class="sr-only">Close modal</span>
+          </button>
+        </div>
+
+        <hr class="mt-1 h-px w-full border-0 bg-gray-300 dark:bg-gray-500" />
+
+        <div class="mt-2 w-full">{props.body || ""}</div>
+      </div>
+    </dialog>
+  );
+};
+
+export default Modal;
