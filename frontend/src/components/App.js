@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/solid-query";
 import { lazy } from "solid-js";
 
 import { useStore } from "../store";
+import AnnouncementBanner from "./AnnouncementBanner";
 import Footer from "./Footer";
 import Header from "./Header";
 import HelpButton from "./HelpButton";
@@ -49,6 +50,10 @@ export default function App() {
       <div class={store.theme === "dark" ? "dark" : ""}>
         <div class="flex min-h-screen flex-col bg-white dark:bg-gray-900">
           <Header />
+          <AnnouncementBanner
+            text="New One-Tap Login Launched!"
+            cta={{ text: "more", href: "/help" }}
+          />
           <section class="grow">
             <div class="mx-auto max-w-screen-xl px-4 py-8 lg:px-6 lg:py-16">
               <div class="text-gray-500 dark:text-gray-400 sm:text-lg">
