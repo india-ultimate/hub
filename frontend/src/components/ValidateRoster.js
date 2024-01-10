@@ -364,7 +364,15 @@ const ValidateRoster = () => {
                       {matchUp => (
                         <>
                           <h4 class="text-l font-bold text-blue-400 dark:text-blue-300">
-                            {matchUp.label}
+                            {matchUp.label} (
+                            {
+                              teamRegistrations.filter(
+                                r =>
+                                  (!matchUp.value && !r.person.player) ||
+                                  r.person.player?.match_up === matchUp.value
+                              ).length
+                            }
+                            )
                           </h4>
                           <ul class="w-200 my-4 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
                             <For
