@@ -235,3 +235,13 @@ export const getTournamentBreadcrumbName = tournamentSlug => {
 
   return name;
 };
+
+/**
+ * @param {Response} response
+ * @param {number} delay_ms
+ */
+export function artificialDelay(response, delay_ms) {
+  return new Promise(res =>
+    setTimeout(async () => res(await response.json()), delay_ms)
+  );
+}
