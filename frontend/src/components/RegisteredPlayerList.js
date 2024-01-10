@@ -159,13 +159,13 @@ const RegisteredPlayerList = () => {
                           {
                             <Icon
                               path={
-                                player?.membersihp?.waiver_valid
+                                player?.membership?.waiver_valid
                                   ? checkBadge
                                   : xCircle
                               }
                               style={{ width: "20px" }}
                               class={
-                                player?.membersihp?.waiver_valid
+                                player?.membership?.waiver_valid
                                   ? "text-green-600 dark:text-green-500"
                                   : "text-red-600 dark:text-red-500"
                               }
