@@ -322,6 +322,9 @@ const ValidateRoster = () => {
         </Match>
         <Match when={eventData()?.ultimate_central_slug}>
           <h2 class="text-2xl font-bold text-blue-500">{eventData()?.title}</h2>
+          <h3 class="font-bold">
+            No. of Teams - {(eventData()?.teams || []).length}
+          </h3>
           <a
             href={`https://indiaultimate.org/en_in/e/${
               eventData()?.ultimate_central_slug
