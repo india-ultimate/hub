@@ -32,7 +32,7 @@ const Breadcrumbs = props => {
                   <Show
                     when={page.url}
                     fallback={
-                      <span class="ml-1 text-sm font-medium text-gray-500 dark:text-gray-400 md:ml-2">
+                      <span class="ml-1 text-sm font-medium text-gray-500 md:ml-2 dark:text-gray-400">
                         {page.name}
                       </span>
                     }

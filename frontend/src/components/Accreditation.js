@@ -164,7 +164,7 @@ const Accreditation = () => {
               </tbody>
             </table>
             <button
-              class="my-4 block w-full rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 sm:w-auto"
+              class="my-4 block w-full rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 sm:w-auto dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
               onClick={() => setEdit(!edit())}
             >
               <Icon
@@ -252,7 +252,7 @@ const Accreditation = () => {
                   )}
                 </Field>
                 <div
-                  class="mx-10 my-0 mb-4 rounded-lg bg-blue-50 p-4 px-8 text-sm text-blue-800 dark:bg-gray-800 dark:text-blue-400 lg:px-10"
+                  class="mx-10 my-0 mb-4 rounded-lg bg-blue-50 p-4 px-8 text-sm text-blue-800 lg:px-10 dark:bg-gray-800 dark:text-blue-400"
                   role="alert"
                 >
                   <details>
@@ -286,7 +286,7 @@ const Accreditation = () => {
                 </div>
                 <button
                   type="submit"
-                  class="w-full rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 sm:w-auto"
+                  class="w-full rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 sm:w-auto dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
                 >
                   Submit
                 </button>

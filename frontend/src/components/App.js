@@ -51,7 +51,7 @@ export default function App() {
           <Header />
           <section class="grow">
             <div class="mx-auto max-w-screen-xl px-4 py-8 lg:px-6 lg:py-16">
-              <div class="text-gray-500 dark:text-gray-400 sm:text-lg">
+              <div class="text-gray-500 sm:text-lg dark:text-gray-400">
                 <Routes>
                   {/* Simple pages */}
                   <Route path="/" component={Home} />

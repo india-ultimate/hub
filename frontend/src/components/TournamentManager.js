@@ -448,7 +448,7 @@ const TournamentManager = () => {
             >
               <div class="relative max-h-full w-full p-4">
                 <div class="relative rounded-lg bg-white shadow dark:bg-gray-700">
-                  <div class="flex items-center justify-between rounded-t border-b p-4 dark:border-gray-600 md:p-5">
+                  <div class="flex items-center justify-between rounded-t border-b p-4 md:p-5 dark:border-gray-600">
                     <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
                       Rules Editor & Preview
                     </h3>
@@ -547,7 +547,7 @@ const TournamentManager = () => {
                       id="pool-name"
                       value={enteredPoolName()}
                       onChange={e => setEnteredPoolName(e.target.value)}
-                      class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500 sm:text-xs"
+                      class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500 sm:text-xs dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
                     />
                   </div>
                   <div>
@@ -562,7 +562,7 @@ const TournamentManager = () => {
                       id="seedings-pool"
                       value={enteredSeedingList()}
                       onChange={e => setEnteredSeedingList(e.target.value)}
-                      class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500 sm:text-xs"
+                      class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500 sm:text-xs dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
                     />
                   </div>
                   <button
@@ -658,7 +658,7 @@ const TournamentManager = () => {
                       id="bracket-name"
                       value={enteredBracketName()}
                       onChange={e => setEnteredBracketName(e.target.value)}
-                      class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500 sm:text-xs"
+                      class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500 sm:text-xs dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
                     />
                   </div>
                   <button
@@ -732,7 +732,7 @@ const TournamentManager = () => {
                       id="position-pool-name"
                       value={enteredPositionPoolName()}
                       onChange={e => setEnteredPositionPoolName(e.target.value)}
-                      class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500 sm:text-xs"
+                      class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500 sm:text-xs dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
                     />
                   </div>
                   <div>
@@ -749,7 +749,7 @@ const TournamentManager = () => {
                       onChange={e =>
                         setEnteredPositionPoolSeedingList(e.target.value)
                       }
-                      class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500 sm:text-xs"
+                      class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500 sm:text-xs dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
                     />
                   </div>
                   <button
@@ -853,7 +853,7 @@ const TournamentManager = () => {
                     type="number"
                     id="match-seq-num"
                     onChange={e => setMatchFields("seq_num", e.target.value)}
-                    class="mb-3 block w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500 sm:text-xs"
+                    class="mb-3 block w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500 sm:text-xs dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
                   />
                 </div>
                 <div>
@@ -869,7 +869,7 @@ const TournamentManager = () => {
                     onChange={e => setMatchFields("time", e.target.value)}
                     min={selectedTournament()?.event?.start_date + "T00:00"}
                     max={selectedTournament()?.event?.end_date + "T23:59"}
-                    class="mb-3 block w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-white dark:focus:border-blue-500 dark:focus:ring-blue-500 sm:text-xs"
+                    class="mb-3 block w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500 sm:text-xs dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-white dark:focus:border-blue-500 dark:focus:ring-blue-500"
                   />
                 </div>
                 <div>
@@ -902,7 +902,7 @@ const TournamentManager = () => {
                     type="number"
                     id="match-seed-1"
                     onChange={e => setMatchFields("seed_1", e.target.value)}
-                    class="mb-3 block w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500 sm:text-xs"
+                    class="mb-3 block w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500 sm:text-xs dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
                   />
                 </div>
                 <div>
@@ -916,7 +916,7 @@ const TournamentManager = () => {
                     type="number"
                     id="match-seed-2"
                     onChange={e => setMatchFields("seed_2", e.target.value)}
-                    class="mb-3 block w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500 sm:text-xs"
+                    class="mb-3 block w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500 sm:text-xs dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
                   />
                 </div>
                 <button
@@ -1003,7 +1003,7 @@ const TournamentManager = () => {
                                 team_1_score: parseInt(e.target.value)
                               })
                             }
-                            class="mb-3 block w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500 sm:text-xs"
+                            class="mb-3 block w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500 sm:text-xs dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
                           />
                         </Show>
                       </td>
@@ -1025,7 +1025,7 @@ const TournamentManager = () => {
                                 team_2_score: parseInt(e.target.value)
                               })
                             }
-                            class="mb-3 block w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500 sm:text-xs"
+                            class="mb-3 block w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500 sm:text-xs dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
                           />
                         </Show>
                       </td>
@@ -1285,7 +1285,7 @@ const TournamentManager = () => {
                           fallback={
                             <div>
                               <input
-                                class="mb-3 block w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500 sm:text-xs"
+                                class="mb-3 block w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500 sm:text-xs dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
                                 onChange={e => {
                                   setUpdateMatchFields(match.id, {});
                                   setUpdateMatchFields(
