@@ -34,35 +34,19 @@ const TeamSeedingChange = props => {
   return (
     <Switch>
       <Match when={props.currentSeed < props.initialSeed}>
-        <div class="flex items-center justify-center space-x-1">
-          <Icon
-            path={arrowSmallUp}
-            style={{
-              color: "rgb(34 197 94)",
-              display: "inline",
-              width: "20px"
-            }}
-            class="place-self-center"
-          />
-          <h6 class="m-0 basis-1/2 place-self-center p-0 text-lg font-medium text-green-500">
+        <div class="flex w-fit items-center justify-center space-x-1 text-green-500">
+          <Icon path={arrowSmallUp} class="inline w-5 scale-90" />
+          <span class="text-lg font-medium">
             {props.initialSeed - props.currentSeed}
-          </h6>
+          </span>
         </div>
       </Match>
       <Match when={props.currentSeed > props.initialSeed}>
-        <div class="flex items-center justify-center space-x-1">
-          <Icon
-            path={arrowSmallDown}
-            style={{
-              color: "rgb(239 68 68)",
-              display: "inline",
-              width: "20px"
-            }}
-            class="place-self-center"
-          />
-          <h6 class="m-0 basis-1/2 place-self-center p-0 text-lg font-medium text-red-500">
+        <div class="flex w-fit items-center justify-center space-x-1 text-red-500">
+          <Icon path={arrowSmallDown} class="inline w-5 scale-90" />
+          <span class="text-lg font-medium">
             {props.currentSeed - props.initialSeed}
-          </h6>
+          </span>
         </div>
       </Match>
     </Switch>
@@ -353,11 +337,11 @@ const Tournament = () => {
                       <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
                         <th
                           scope="row"
-                          class="whitespace-nowrap py-4 pl-10 pr-6 font-normal"
+                          class="w-14 whitespace-nowrap py-4 pl-6 pr-2 font-normal"
                         >
                           {rank}
                         </th>
-                        <td class="px-6 py-4">
+                        <td class="px-2 py-4">
                           <A
                             href={`/tournament/${params.slug}/team/${
                               teamsMap()[team_id]?.ultimate_central_slug
@@ -372,7 +356,7 @@ const Tournament = () => {
                           </A>
                         </td>
                         <Show when={teamsInitialSeeding()}>
-                          <td class="px-4">
+                          <td class="pl-2 pr-6">
                             <TeamSeedingChange
                               initialSeed={teamsInitialSeeding()[team_id]}
                               currentSeed={parseInt(rank)}
@@ -406,11 +390,11 @@ const Tournament = () => {
                       <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
                         <th
                           scope="row"
-                          class="whitespace-nowrap py-4 pl-10 pr-6 font-normal"
+                          class="w-14 whitespace-nowrap py-4 pl-6 pr-2 font-normal"
                         >
                           {rank}
                         </th>
-                        <td class="px-6 py-4">
+                        <td class="px-2 py-4">
                           <A
                             href={`/tournament/${params.slug}/team/${
                               teamsMap()[team_id]?.ultimate_central_slug
@@ -462,11 +446,11 @@ const Tournament = () => {
                         <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
                           <th
                             scope="row"
-                            class="whitespace-nowrap px-6 py-4 font-normal"
+                            class="w-14 whitespace-nowrap py-4 pl-6 pr-2 font-normal"
                           >
                             {spirit.rank}
                           </th>
-                          <td class="px-3 py-4">
+                          <td class="px-2 py-4">
                             <A
                               href={`/tournament/${params.slug}/team/${
                                 teamsMap()[spirit.team_id]
@@ -481,7 +465,7 @@ const Tournament = () => {
                               {teamsMap()[spirit.team_id]?.name}
                             </A>
                           </td>
-                          <td class="px-3 py-4">
+                          <td class="py-4 pl-2 pr-6">
                             {spirit.points}
                             <Show when={spirit.self_points}>
                               ({spirit.self_points})
