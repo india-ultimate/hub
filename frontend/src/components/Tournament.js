@@ -2,7 +2,13 @@ import { A, useParams } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
 import { initFlowbite } from "flowbite";
 import { Icon } from "solid-heroicons";
-import { arrowSmallDown, arrowSmallUp, trophy } from "solid-heroicons/solid";
+import {
+  arrowSmallDown,
+  arrowSmallUp,
+  calendar,
+  mapPin,
+  trophy
+} from "solid-heroicons/solid";
 import {
   createEffect,
   createSignal,
@@ -53,6 +59,55 @@ const TeamSeedingChange = props => {
   );
 };
 
+const LocationAndDate = props => {
+  const startDate = () =>
+    new Date(Date.parse(props.startDate)).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      timeZone: "UTC"
+    });
+
+  const endDate = () =>
+    new Date(Date.parse(props.endDate)).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      timeZone: "UTC"
+    });
+
+  return (
+    <div class="mb-8 ">
+      <Suspense
+        fallback={
+          <div class="mt-2 h-5 w-52 animate-pulse self-center rounded-md bg-gray-400 dark:bg-gray-700/50" />
+        }
+      >
+        <div class="mt-2 text-sm">
+          <Icon path={mapPin} class="mr-2 inline w-4" />
+          <span>{props.location}</span>
+        </div>
+      </Suspense>
+
+      <Suspense
+        fallback={
+          <div class="mt-2 h-5 w-52 animate-pulse self-center rounded-md bg-gray-400 dark:bg-gray-700/50" />
+        }
+      >
+        <div class="mt-2 text-sm">
+          <Icon path={calendar} class="mr-2 inline w-4" />
+          <span>
+            {startDate()}
+            <Show when={props.startDate !== props.endDate}>
+              {" "}
+              to {endDate()}
+            </Show>
+          </span>
+        </div>
+      </Suspense>
+    </div>
+  );
+};
 const Tournament = () => {
   const params = useParams();
   const [teamsMap, setTeamsMap] = createSignal({});
@@ -129,47 +184,38 @@ const Tournament = () => {
         pageList={[{ url: "/tournaments", name: "All Tournaments" }]}
       />
 
-      <h1 class="mb-5 text-center">
-        <span class="w-fit bg-gradient-to-r from-blue-500 to-green-500 bg-clip-text text-2xl font-extrabold text-transparent">
-          {tournamentQuery.data?.event?.title}
-        </span>
-      </h1>
+      {/* Tournament title and status badge */}
+      <div class="mb-4 flex flex-col items-start justify-start space-y-2">
+        <div class="mb-1 flex justify-center">
+          <Switch>
+            <Match when={tournamentQuery.data?.status === "COM"}>
+              <span class="h-fit rounded bg-blue-100 px-2.5 py-0.5 text-sm font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-300">
+                Completed
+              </span>
+            </Match>
+            <Match when={tournamentQuery.data?.status === "LIV"}>
+              <span class="h-fit rounded bg-green-100 px-2.5 py-0.5 text-sm font-medium text-green-800 dark:bg-green-900 dark:text-green-300">
+                Live
+              </span>
+            </Match>
+          </Switch>
+        </div>
+        <h1 class="text-pretty text-2xl">
+          <span class="w-fit bg-gradient-to-r from-blue-500 to-green-500 bg-clip-text font-extrabold text-transparent">
+            {tournamentQuery.data?.event?.title}
+          </span>
+        </h1>
+      </div>
 
+      {/* Tournament image or date+location */}
       <Show
         when={tournamentQuery.data?.logo_dark}
         fallback={
-          <div>
-            <p class="mt-2 text-center text-sm">
-              {tournamentQuery.data?.event?.location}
-            </p>
-            <p class="mt-2 text-center text-sm">
-              {new Date(
-                Date.parse(tournamentQuery.data?.event.start_date)
-              ).toLocaleDateString("en-US", {
-                year: "numeric",
-                month: "short",
-                day: "numeric",
-                timeZone: "UTC"
-              })}
-              <Show
-                when={
-                  tournamentQuery.data?.event.start_date !==
-                  tournamentQuery.data?.event.end_date
-                }
-              >
-                {" "}
-                to{" "}
-                {new Date(
-                  Date.parse(tournamentQuery.data?.event.end_date)
-                ).toLocaleDateString("en-US", {
-                  year: "numeric",
-                  month: "short",
-                  day: "numeric",
-                  timeZone: "UTC"
-                })}
-              </Show>
-            </p>
-          </div>
+          <LocationAndDate
+            location={tournamentQuery.data?.event?.location}
+            startDate={tournamentQuery.data?.event?.start_date}
+            endDate={tournamentQuery.data?.event?.end_date}
+          />
         }
       >
         <div class="flex justify-center">
@@ -186,20 +232,6 @@ const Tournament = () => {
         </div>
       </Show>
 
-      <div class="mt-5 flex justify-center">
-        <Switch>
-          <Match when={tournamentQuery.data?.status === "COM"}>
-            <span class="mr-2 h-fit rounded bg-blue-100 px-2.5 py-0.5 text-sm font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-300">
-              Completed
-            </span>
-          </Match>
-          <Match when={tournamentQuery.data?.status === "LIV"}>
-            <span class="mr-2 h-fit rounded bg-green-100 px-2.5 py-0.5 text-sm font-medium text-green-800 dark:bg-green-900 dark:text-green-300">
-              Live
-            </span>
-          </Match>
-        </Switch>
-      </div>
       <Show when={playingTeam()}>
         <A
           href={`/tournament/${params.slug}/team/${
