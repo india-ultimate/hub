@@ -5,6 +5,7 @@ import { Icon } from "solid-heroicons";
 import {
   arrowSmallDown,
   arrowSmallUp,
+  arrowUpRight,
   calendar,
   mapPin,
   trophy
@@ -29,6 +30,7 @@ import {
   SpiritStandings as SpiritStandingsSkeleton,
   Standings as StandingsSkeleton
 } from "../skeletons/Standings";
+import { TournamentPageSkeleton } from "../skeletons/TournamentPage";
 import Breadcrumbs from "./Breadcrumbs";
 
 /**
@@ -77,13 +79,13 @@ const LocationAndDate = props => {
     });
 
   return (
-    <div class="mb-8 ">
+    <div class="mb-2 flex flex-col gap-2">
       <Suspense
         fallback={
-          <div class="mt-2 h-5 w-52 animate-pulse self-center rounded-md bg-gray-400 dark:bg-gray-700/50" />
+          <div class="h-5 w-52 animate-pulse rounded-md bg-gray-400 dark:bg-gray-700/50" />
         }
       >
-        <div class="mt-2 text-sm">
+        <div class="text-sm">
           <Icon path={mapPin} class="mr-2 inline w-4" />
           <span>{props.location}</span>
         </div>
@@ -91,10 +93,10 @@ const LocationAndDate = props => {
 
       <Suspense
         fallback={
-          <div class="mt-2 h-5 w-52 animate-pulse self-center rounded-md bg-gray-400 dark:bg-gray-700/50" />
+          <div class="h-5 w-52 animate-pulse rounded-md bg-gray-400 dark:bg-gray-700/50" />
         }
       >
-        <div class="mt-2 text-sm">
+        <div class="text-sm">
           <Icon path={calendar} class="mr-2 inline w-4" />
           <span>
             {startDate()}
@@ -108,11 +110,11 @@ const LocationAndDate = props => {
     </div>
   );
 };
+
 const Tournament = () => {
   const params = useParams();
   const [teamsMap, setTeamsMap] = createSignal({});
   const [teamsInitialSeeding, setTeamsInitialSeeding] = createSignal(undefined);
-  const [playingTeam, setPlayingTeam] = createSignal(null);
 
   const tournamentQuery = createQuery(
     () => ["tournament", params.slug],
@@ -143,14 +145,14 @@ const Tournament = () => {
     }
   });
 
-  createEffect(() => {
-    if (userAccessQuery.status == "success") {
-      const playingTeamID = userAccessQuery.data?.playing_team_id;
-      if (playingTeamID !== 0) {
-        setPlayingTeam(teamsMap()[playingTeamID]);
-      }
+  // using a derived signal instead, so we can use Suspense
+  const derivedPlayingTeam = () => {
+    const playingTeamID = userAccessQuery.data?.playing_team_id;
+    if (playingTeamID !== 0) {
+      return teamsMap()[playingTeamID];
     }
-  });
+    return null;
+  };
 
   createEffect(() => {
     if (tournamentQuery.status === "success" && !tournamentQuery.data.message) {
@@ -183,113 +185,142 @@ const Tournament = () => {
         icon={trophy}
         pageList={[{ url: "/tournaments", name: "All Tournaments" }]}
       />
-
-      {/* Tournament title and status badge */}
-      <div class="mb-4 flex flex-col items-start justify-start space-y-2">
-        <div class="mb-1 flex justify-center">
-          <Switch>
-            <Match when={tournamentQuery.data?.status === "COM"}>
-              <span class="h-fit rounded bg-blue-100 px-2.5 py-0.5 text-sm font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-300">
-                Completed
+      <Suspense fallback={<TournamentPageSkeleton />}>
+        {/* Tournament title and status badge */}
+        <div class="px-1 py-3">
+          <div class="mb-4 flex flex-col gap-2">
+            <div>
+              <Switch>
+                <Match when={tournamentQuery.data?.status === "COM"}>
+                  <span class="h-fit rounded bg-blue-100 px-2.5 py-1 text-sm font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-300">
+                    Completed
+                  </span>
+                </Match>
+                <Match when={tournamentQuery.data?.status === "LIV"}>
+                  <span class="h-fit rounded bg-green-100 px-2.5 py-1 text-sm font-medium text-green-800 dark:bg-green-900 dark:text-green-300">
+                    Live
+                  </span>
+                </Match>
+              </Switch>
+            </div>
+            <h1 class="text-pretty text-2xl">
+              <span class="w-fit bg-gradient-to-r from-blue-500 to-green-500 bg-clip-text font-extrabold text-transparent">
+                {tournamentQuery.data?.event?.title}
               </span>
-            </Match>
-            <Match when={tournamentQuery.data?.status === "LIV"}>
-              <span class="h-fit rounded bg-green-100 px-2.5 py-0.5 text-sm font-medium text-green-800 dark:bg-green-900 dark:text-green-300">
-                Live
-              </span>
-            </Match>
-          </Switch>
-        </div>
-        <h1 class="text-pretty text-2xl">
-          <span class="w-fit bg-gradient-to-r from-blue-500 to-green-500 bg-clip-text font-extrabold text-transparent">
-            {tournamentQuery.data?.event?.title}
-          </span>
-        </h1>
-      </div>
-
-      {/* Tournament image or date+location */}
-      <Show
-        when={tournamentQuery.data?.logo_dark}
-        fallback={
-          <LocationAndDate
-            location={tournamentQuery.data?.event?.location}
-            startDate={tournamentQuery.data?.event?.start_date}
-            endDate={tournamentQuery.data?.event?.end_date}
-          />
-        }
-      >
-        <div class="flex justify-center">
-          <img
-            src={tournamentQuery.data?.logo_dark}
-            alt="Tournament logo"
-            class="hidden w-3/4 dark:block"
-          />
-          <img
-            src={tournamentQuery.data?.logo_light}
-            alt="Tournament logo"
-            class="block w-3/4 dark:hidden"
-          />
-        </div>
-      </Show>
-
-      <Show when={playingTeam()}>
-        <A
-          href={`/tournament/${params.slug}/team/${
-            playingTeam().ultimate_central_slug
-          }`}
-          //
-          class="mt-5 block w-full rounded-lg bg-gradient-to-br from-pink-600 to-orange-400 p-0.5 shadow-md"
-        >
-          <div class="rounded-md bg-white p-4 dark:bg-gray-800">
-            <h5 class="mb-2 text-center text-xl tracking-tight">
-              <span class="font-normal">Your team - </span>
-              <span class="bg-gradient-to-br from-orange-400 to-pink-500 bg-clip-text font-bold text-transparent">
-                {playingTeam().name}
-              </span>
-            </h5>
-            <p class="text-center text-sm capitalize">
-              View the matches and roster of your team
-            </p>
+            </h1>
           </div>
-        </A>
-      </Show>
-      <A
-        href={`/tournament/${params.slug}/schedule`}
-        class="mt-5 block w-full rounded-lg  border border-blue-600 bg-white p-4 shadow-md dark:border-blue-400 dark:bg-gray-800"
-      >
-        <h5 class="mb-2 text-center text-xl font-bold capitalize tracking-tight text-blue-600 dark:text-blue-400">
-          Schedule
-        </h5>
-        <p class="text-center text-sm capitalize">
-          View the detailed schedule of matches
-        </p>
-      </A>
-      <A
-        href={`/tournament/${params.slug}/standings`}
-        class="mt-5 block w-full rounded-lg border border-blue-600 bg-white p-4 shadow-md dark:border-blue-400 dark:bg-gray-800"
-      >
-        <h5 class="mb-2 text-center text-xl font-bold capitalize tracking-tight text-blue-600 dark:text-blue-400">
-          Standings
-        </h5>
-        <p class="text-center text-sm capitalize">
-          View the pools, brackets and the detailed standings
-        </p>
-      </A>
-      <Show when={tournamentQuery.data?.rules}>
-        <A
-          href={`/tournament/${params.slug}/rules`}
-          class="mt-5 block w-full rounded-lg border border-blue-600 bg-white p-4 shadow dark:border-blue-400 dark:bg-gray-800"
-        >
-          <h5 class="mb-2 text-center text-xl font-bold capitalize tracking-tight text-blue-600 dark:text-blue-400">
-            Rules & Format
-          </h5>
-          <p class="text-center text-sm capitalize">
-            View the detailed rules and format of the tournament
-          </p>
-        </A>
-      </Show>
 
-      <h2 class="mt-5 text-center text-xl font-bold">Overall Standings</h2>
+          {/* Tournament image or date+location */}
+          <Show
+            when={tournamentQuery.data?.logo_dark == ""}
+            fallback={
+              <LocationAndDate
+                location={tournamentQuery.data?.event?.location}
+                startDate={tournamentQuery.data?.event?.start_date}
+                endDate={tournamentQuery.data?.event?.end_date}
+              />
+            }
+          >
+            <div class="flex justify-center">
+              <img
+                src={tournamentQuery.data?.logo_dark}
+                alt="Tournament logo"
+                class="hidden w-3/4 dark:block"
+              />
+              <img
+                src={tournamentQuery.data?.logo_light}
+                alt="Tournament logo"
+                class="block w-3/4 dark:hidden"
+              />
+            </div>
+          </Show>
+        </div>
+
+        {/* Tournament sections buttons */}
+        <div class="my-4 flex flex-col gap-4">
+          <Show when={derivedPlayingTeam()}>
+            <div class="w-full rounded-lg bg-gradient-to-br from-pink-600 to-orange-400 p-px shadow-md">
+              <A
+                href={`/tournament/${params.slug}/team/${
+                  derivedPlayingTeam().ultimate_central_slug
+                }`}
+              >
+                <div class="flex w-full flex-col items-start gap-2 rounded-lg bg-white px-3.5 py-4 text-center dark:bg-gray-800">
+                  <div class="flex w-full flex-row justify-between">
+                    <span class="text-left">
+                      <span class="text-normal text-lg">{"Your team - "}</span>
+                      <span class="inline-block bg-gradient-to-br from-orange-400 to-pink-500 bg-clip-text text-lg font-bold text-transparent">
+                        {derivedPlayingTeam().name}
+                      </span>
+                    </span>
+                    <span>
+                      <Icon path={arrowUpRight} class="inline w-5" />
+                    </span>
+                  </div>
+                  <div class="text-left text-sm capitalize">
+                    the matches and roster of your team
+                  </div>
+                </div>
+              </A>
+            </div>
+          </Show>
+          <div class="w-full rounded-lg border border-blue-600 bg-white px-4 py-4 shadow-lg dark:border-blue-400/50 dark:bg-gray-800">
+            <A href={`/tournament/${params.slug}/schedule`}>
+              <div class="flex w-full flex-col items-start gap-2">
+                <div class="flex w-full flex-row justify-between">
+                  <span class="text-lg font-bold capitalize tracking-tight text-blue-600 dark:text-blue-400">
+                    Schedule
+                  </span>
+                  <span>
+                    <Icon path={arrowUpRight} class="inline w-5" />
+                  </span>
+                </div>
+                <div class="text-sm capitalize">
+                  the detailed schedule of matches
+                </div>
+              </div>
+            </A>
+          </div>
+          <div class="w-full rounded-lg border border-blue-600 bg-white px-4 py-4 shadow-lg dark:border-blue-400/50 dark:bg-gray-800">
+            <A href={`/tournament/${params.slug}/standings`}>
+              <div class="flex w-full flex-col items-start gap-2">
+                <div class="flex w-full flex-row justify-between">
+                  <span class="text-lg font-bold capitalize tracking-tight text-blue-600 dark:text-blue-400">
+                    Standings
+                  </span>
+                  <span>
+                    <Icon path={arrowUpRight} class="inline w-5" />
+                  </span>
+                </div>
+                <div class="text-sm capitalize">
+                  the pools, brackets and the detailed standings
+                </div>
+              </div>
+            </A>
+          </div>
+          <Show when={tournamentQuery.data?.rules}>
+            <div class="w-full rounded-lg border border-blue-600 bg-white px-4 py-4 shadow-lg dark:border-blue-400/50 dark:bg-gray-800">
+              <A href={`/tournament/${params.slug}/rules`}>
+                <div class="flex w-full flex-col items-start gap-2">
+                  <div class="flex w-full flex-row justify-between">
+                    <span class="text-lg font-bold capitalize tracking-tight text-blue-600 dark:text-blue-400">
+                      Rules
+                    </span>
+                    <span>
+                      <Icon path={arrowUpRight} class="inline w-5" />
+                    </span>
+                  </div>
+                  <div class="text-sm capitalize">
+                    the rules and format of the tournament
+                  </div>
+                </div>
+              </A>
+            </div>
+          </Show>
+        </div>
+
+        <h2 class="mb-2 mt-8 px-1 text-xl font-bold">Overall Standings</h2>
+      </Suspense>
 
       <div class="mb-4 border-b border-gray-200 px-1 dark:border-gray-700">
         <ul
