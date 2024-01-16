@@ -291,16 +291,16 @@ const Tournament = () => {
 
       <h2 class="mt-5 text-center text-xl font-bold">Overall Standings</h2>
 
-      <div class="mb-4 border-b border-gray-200 dark:border-gray-700">
+      <div class="mb-4 border-b border-gray-200 px-1 dark:border-gray-700">
         <ul
-          class="-mb-px flex flex-wrap justify-center text-center text-sm font-medium"
+          class="-mb-px flex flex-wrap justify-start space-x-4 text-sm font-medium"
           id="myTab"
           data-tabs-toggle="#myTabContent"
           role="tablist"
         >
           <li class="mr-2" role="presentation">
             <button
-              class="inline-block rounded-t-lg border-b-2 p-4"
+              class="inline-block rounded-t-lg border-b-2 py-4 pl-1 pr-4"
               id={"tab-current"}
               data-tabs-target={"#current"}
               type="button"
@@ -322,7 +322,7 @@ const Tournament = () => {
           </li>
           <li class="mr-2" role="presentation">
             <button
-              class="inline-block rounded-t-lg border-b-2 p-4"
+              class="inline-block rounded-t-lg border-b-2 py-4 pl-1 pr-4"
               id={"tab-initial"}
               data-tabs-target={"#initial"}
               type="button"
@@ -335,7 +335,7 @@ const Tournament = () => {
           </li>
           <li class="mr-2" role="presentation">
             <button
-              class="inline-block rounded-t-lg border-b-2 p-4"
+              class="inline-block rounded-t-lg border-b-2 py-4 pl-1 pr-4"
               id={"tab-sotg"}
               data-tabs-target={"#sotg"}
               type="button"
@@ -348,10 +348,9 @@ const Tournament = () => {
           </li>
         </ul>
       </div>
-
       <div id="myTabContent">
         <div
-          class="hidden rounded-lg p-2"
+          class="hidden rounded-lg py-2"
           id={"current"}
           role="tabpanel"
           aria-labelledby={"tab-current"}
@@ -404,7 +403,7 @@ const Tournament = () => {
           </div>
         </div>
         <div
-          class="hidden rounded-lg p-2"
+          class="hidden rounded-lg py-2"
           id={"initial"}
           role="tabpanel"
           aria-labelledby={"tab-initial"}
@@ -422,11 +421,11 @@ const Tournament = () => {
                       <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
                         <th
                           scope="row"
-                          class="whitespace-nowrap py-4 pl-10 pr-6 font-normal"
+                          class="whitespace-nowrap py-4 pl-4 font-normal"
                         >
                           {rank}
                         </th>
-                        <td class="px-6 py-4">
+                        <td class="px-2 py-4">
                           <A
                             href={`/tournament/${params.slug}/team/${
                               teamsMap()[team_id]?.ultimate_central_slug
@@ -449,7 +448,7 @@ const Tournament = () => {
           </div>
         </div>
         <div
-          class="hidden rounded-lg p-2"
+          class="hidden rounded-lg py-2"
           id={"sotg"}
           role="tabpanel"
           aria-labelledby={"tab-sotg"}
@@ -478,7 +477,7 @@ const Tournament = () => {
                         <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
                           <th
                             scope="row"
-                            class="whitespace-nowrap px-6 py-4 font-normal"
+                            class="whitespace-nowrap px-2 py-4 font-normal"
                           >
                             {spirit.rank}
                           </th>
