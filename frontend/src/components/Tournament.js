@@ -212,7 +212,7 @@ const Tournament = () => {
 
           {/* Tournament image or date+location */}
           <Show
-            when={tournamentQuery.data?.logo_dark == ""}
+            when={tournamentQuery.data?.logo_dark}
             fallback={
               <LocationAndDate
                 location={tournamentQuery.data?.event?.location}
@@ -221,16 +221,16 @@ const Tournament = () => {
               />
             }
           >
-            <div class="flex justify-center">
+            <div class="flex justify-start">
               <img
                 src={tournamentQuery.data?.logo_dark}
                 alt="Tournament logo"
-                class="hidden w-3/4 dark:block"
+                class="hidden aspect-square w-3/4 max-w-lg dark:block"
               />
               <img
                 src={tournamentQuery.data?.logo_light}
                 alt="Tournament logo"
-                class="block w-3/4 dark:hidden"
+                class="block aspect-square w-3/4 max-w-lg dark:hidden"
               />
             </div>
           </Show>

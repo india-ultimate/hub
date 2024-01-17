@@ -7,10 +7,13 @@ export const TournamentPageSkeleton = () => {
           <div class="h-6 w-24 animate-pulse rounded-md bg-gray-400 dark:bg-gray-700/50" />
           <div class="h-7 w-full animate-pulse rounded-md bg-gray-400 dark:bg-gray-700/50" />
         </div>
-        {/* Tournament location and date */}
-        <div class="mb-4 flex flex-col gap-2">
+        {/* Tournament image or location + date */}
+        {/* <div class="mb-4 flex flex-col gap-2">
           <div class="h-5 w-52 animate-pulse rounded-md bg-gray-400 dark:bg-gray-700/50" />
           <div class="h-5 w-52 animate-pulse rounded-md bg-gray-400 dark:bg-gray-700/50" />
+        </div> */}
+        <div class="mb-4">
+          <div class="aspect-square w-3/4 max-w-lg animate-pulse rounded-md bg-gray-400 dark:block dark:bg-gray-700/50" />
         </div>
       </div>
       {/* Tournament section buttons */}
