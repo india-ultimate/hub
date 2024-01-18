@@ -3,8 +3,11 @@ import { Icon } from "solid-heroicons";
 import { chevronUp } from "solid-heroicons/solid";
 import { createSignal } from "solid-js";
 
+import { useStore } from "../store";
+
 const ScrollUpButton = () => {
   const [visible, setVisible] = createSignal(false);
+  const [store] = useStore();
 
   const toggleVisible = () => {
     const scrolled = window.scrollY;
@@ -24,13 +27,19 @@ const ScrollUpButton = () => {
 
   window.addEventListener("scroll", toggleVisible);
 
+  const isHelpButtonVisible = () => {
+    if (store?.userFetched && store?.data?.username) return true;
+    return false;
+  };
+
   return (
     <button
       type="button"
       onClick={scrollToTop}
       class={clsx(
         visible() ? "visible opacity-100" : "invisible opacity-0",
-        "fixed bottom-20 right-4 me-2 inline-flex items-center rounded-full bg-blue-700 p-2 text-center text-sm font-medium text-white transition-all duration-300 ease-in-out hover:bg-blue-800 focus:outline-none dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 md:bottom-20 md:right-8"
+        isHelpButtonVisible() ? "bottom-20" : "bottom-6",
+        "fixed right-4 me-2 inline-flex items-center rounded-full bg-blue-700 p-2 text-center text-sm font-medium text-white transition-all duration-300 ease-in-out hover:bg-blue-800 focus:outline-none dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 md:bottom-20 md:right-8"
       )}
     >
       <svg
