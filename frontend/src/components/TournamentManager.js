@@ -1049,6 +1049,8 @@ const TournamentManager = () => {
                             timeZone: "UTC"
                           }
                         )}
+                        <hr class="my-1 h-px border-0 bg-gray-200 dark:bg-gray-700" />
+                        {match.duration_mins + " mins"}
                         <Show when={match.status !== "COM"}>
                           <div class="mt-2">
                             <select
