@@ -1695,6 +1695,9 @@ def update_match(
     if match_details.video_url:
         match.video_url = match_details.video_url
 
+    if match_details.duration_mins:
+        match.duration_mins = match_details.duration_mins
+
     if match_details.spirit_score_team_1:
         match.spirit_score_team_1 = create_spirit_scores(match_details.spirit_score_team_1)
 
