@@ -1124,26 +1124,33 @@ const TournamentManager = () => {
                             <button
                               type="button"
                               onClick={() => {
+                                let body = {};
+
                                 if (
                                   updateMatchFields[match.id]["date"] &&
-                                  updateMatchFields[match.id]["time"] &&
-                                  updateMatchFields[match.id]["field"]
+                                  updateMatchFields[match.id]["time"]
                                 ) {
                                   const date = new Date(
                                     updateMatchFields[match.id]["date"]
                                   );
+
+                                  body["time"] =
+                                    date.yyyymmdd() +
+                                    "T" +
+                                    convertTime12to24(
+                                      updateMatchFields[match.id]["time"]
+                                    );
+                                }
+
+                                if (updateMatchFields[match.id]["field"]) {
+                                  body["field"] =
+                                    updateMatchFields[match.id]["field"];
+                                }
+
+                                if (Object.keys(body).length > 0) {
                                   updateMatchMutation.mutate({
                                     match_id: match.id,
-                                    body: {
-                                      time:
-                                        date.yyyymmdd() +
-                                        "T" +
-                                        convertTime12to24(
-                                          updateMatchFields[match.id]["time"]
-                                        ),
-                                      field:
-                                        updateMatchFields[match.id]["field"]
-                                    }
+                                    body: body
                                   });
                                 }
                               }}
