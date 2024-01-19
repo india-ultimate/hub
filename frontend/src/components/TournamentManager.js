@@ -136,10 +136,14 @@ const TournamentManager = () => {
               timeZone: "UTC"
             }
           );
-          const time = new Date(Date.parse(match.time));
+          const startTime = new Date(Date.parse(match.time));
+          const endTime = new Date(
+            startTime.getTime() + match.duration_mins * 60000
+          );
           setMatchDayTimeFieldMap(day, {});
-          setMatchDayTimeFieldMap(day, time, {});
-          setMatchDayTimeFieldMap(day, time, match.field, match);
+          setMatchDayTimeFieldMap(day, startTime, {});
+          setMatchDayTimeFieldMap(day, startTime, endTime, {});
+          setMatchDayTimeFieldMap(day, startTime, endTime, match.field, match);
 
           setFieldMap(day, {});
           setFieldMap(day, match.field, true);
