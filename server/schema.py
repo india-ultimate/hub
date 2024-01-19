@@ -631,6 +631,7 @@ class MatchUpdateSchema(Schema):
     time: str | None
     field: str | None
     video_url: str | None
+    duration_mins: int | None
     spirit_score_team_1: SpiritScoreUpdateSchema | None
     spirit_score_team_2: SpiritScoreUpdateSchema | None
     self_spirit_score_team_1: SpiritScoreUpdateSchema | None
