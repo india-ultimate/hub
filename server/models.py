@@ -278,6 +278,7 @@ class Match(models.Model):
     time = models.DateTimeField(null=True, blank=True)
     field = models.CharField(max_length=25, null=True, blank=True)
     video_url = models.URLField(max_length=255, null=True, blank=True)
+    duration_mins = models.PositiveIntegerField(default=75)
 
     team_1 = models.ForeignKey(
         Team, on_delete=models.CASCADE, related_name="team_1", blank=True, null=True
