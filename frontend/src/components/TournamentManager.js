@@ -68,6 +68,7 @@ const TournamentManager = () => {
   const [updateMatchFields, setUpdateMatchFields] = createStore();
   const [isStandingsEdited, setIsStandingsEdited] = createSignal(false);
   const [addMatchStatus, setAddMatchStatus] = createSignal();
+  const durationList = [75, 90, 100];
 
   onMount(() => {
     const dt = new Date(1970, 0, 1, 6, 0);
@@ -1086,11 +1087,31 @@ const TournamentManager = () => {
                                   e.target.value
                                 );
                               }}
-                              class="block rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
+                              class="mb-2 block rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
                             >
                               <option selected>Choose new time</option>
                               <For each={timesList()}>
                                 {time => <option value={time}>{time}</option>}
+                              </For>
+                            </select>
+                            <select
+                              onChange={e => {
+                                setUpdateMatchFields(match.id, {});
+                                setUpdateMatchFields(
+                                  match.id,
+                                  "duration",
+                                  e.target.value
+                                );
+                              }}
+                              class="block rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
+                            >
+                              <option selected>Choose new duration</option>
+                              <For each={durationList}>
+                                {duration => (
+                                  <option value={duration}>
+                                    {duration} mins
+                                  </option>
+                                )}
                               </For>
                             </select>
                           </div>
@@ -1147,6 +1168,11 @@ const TournamentManager = () => {
                                     updateMatchFields[match.id]["field"];
                                 }
 
+                                if (updateMatchFields[match.id]["duration"]) {
+                                  body["duration_mins"] =
+                                    updateMatchFields[match.id]["duration"];
+                                }
+
                                 if (Object.keys(body).length > 0) {
                                   updateMatchMutation.mutate({
                                     match_id: match.id,
@@ -1156,7 +1182,7 @@ const TournamentManager = () => {
                               }}
                               class="mb-2 mb-5 mr-2 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
                             >
-                              Update Date & Field
+                              Update Details
                             </button>
                             <button
                               type="button"
