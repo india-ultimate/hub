@@ -258,6 +258,15 @@ class SpiritScore(models.Model):
     comments = models.CharField(max_length=500, blank=True, null=True)
 
 
+class TournamentField(models.Model):
+    name = models.CharField(max_length=25)
+    is_broadcasted = models.BooleanField(default=False)
+    tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE)
+
+    class Meta:
+        unique_together = ["tournament", "name"]
+
+
 class Match(models.Model):
     class Status(models.TextChoices):
         YET_TO_FIX = "YTF", _("Yet To Fix")
@@ -276,7 +285,7 @@ class Match(models.Model):
     name = models.CharField(max_length=20, null=True, blank=True)
     status = models.CharField(max_length=3, choices=Status.choices, default=Status.YET_TO_FIX)
     time = models.DateTimeField(null=True, blank=True)
-    field = models.CharField(max_length=25, null=True, blank=True)
+    field = models.ForeignKey(TournamentField, on_delete=models.SET_NULL, null=True, blank=True)
     video_url = models.URLField(max_length=255, null=True, blank=True)
     duration_mins = models.PositiveIntegerField(default=75)
 
