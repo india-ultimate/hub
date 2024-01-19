@@ -42,6 +42,7 @@ import CreateTournamentForm from "./tournament/CreateTournamentForm";
 import MatchCard from "./tournament/MatchCard";
 import ReorderTeams from "./tournament/ReorderTeams";
 import RulesMarkdownEditor from "./tournament/RulesMarkdownEditor";
+import ScheduleTable from "./tournament/ScheduleTable";
 import UpdateSpiritScoreForm from "./tournament/UpdateSpiritScoreForm";
 
 const TournamentManager = () => {
@@ -1369,63 +1370,12 @@ const TournamentManager = () => {
                 <div>
                   <h6 class="my-5 text-center">Schedule - {day}</h6>
                   <div class="relative overflow-x-auto">
-                    <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
-                      <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
-                        <tr>
-                          <th scope="col" class="px-6 py-3 text-center">
-                            Time
-                          </th>
-                          <For each={Object.keys(fieldMap[day]).sort()}>
-                            {field => (
-                              <th scope="col" class="px-6 py-3 text-center">
-                                {field}
-                              </th>
-                            )}
-                          </For>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <For
-                          each={Object.keys(matchDayTimeFieldMap[day]).sort(
-                            (a, b) => new Date(a) - new Date(b)
-                          )}
-                        >
-                          {time => (
-                            <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
-                              <th
-                                scope="row"
-                                class="whitespace-nowrap px-6 py-4 text-center font-medium text-gray-900 dark:text-white"
-                              >
-                                {new Date(time).toLocaleTimeString("en-US", {
-                                  hour: "numeric",
-                                  minute: "numeric",
-                                  timeZone: "UTC"
-                                })}
-                              </th>
-                              <For each={Object.keys(fieldMap[day]).sort()}>
-                                {field => (
-                                  <td class="px-6 py-4">
-                                    <Show
-                                      when={
-                                        matchDayTimeFieldMap[day][time][field]
-                                      }
-                                    >
-                                      <MatchCard
-                                        match={
-                                          matchDayTimeFieldMap[day][time][field]
-                                        }
-                                        showSeed={true}
-                                        setFlash={setFlash}
-                                      />
-                                    </Show>
-                                  </td>
-                                )}
-                              </For>
-                            </tr>
-                          )}
-                        </For>
-                      </tbody>
-                    </table>
+                    <ScheduleTable
+                      fieldMap={fieldMap}
+                      day={day}
+                      matchDayTimeFieldMap={matchDayTimeFieldMap}
+                      setFlash={setFlash}
+                    />
                   </div>
                 </div>
               )}
