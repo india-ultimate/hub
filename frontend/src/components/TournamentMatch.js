@@ -34,6 +34,8 @@ const TournamentMatch = props => {
   const [teamsMap, setTeamsMap] = createSignal({});
   const [currTeamNo, setCurrTeamNo] = createSignal(1);
   const [oppTeamNo, setOppTeamNo] = createSignal(2);
+  const [startTime, setStartTime] = createSignal("");
+  const [endTime, setEndTime] = createSignal("");
 
   const teamsQuery = createQuery(() => ["teams"], fetchTeams);
   const userAccessQuery = createQuery(
@@ -44,6 +46,28 @@ const TournamentMatch = props => {
   createEffect(() => {
     setCurrTeamNo(props.currentTeamNo || 1);
     setOppTeamNo(props.opponentTeamNo || 2);
+  });
+
+  createEffect(() => {
+    const startTimeObject = new Date(Date.parse(props.match.time));
+    const endTimeObject = new Date(
+      startTimeObject.getTime() + props.match.duration_mins * 60000
+    );
+
+    setStartTime(
+      startTimeObject.toLocaleTimeString("en-US", {
+        hour: "numeric",
+        minute: "numeric",
+        timeZone: "UTC"
+      })
+    );
+    setEndTime(
+      endTimeObject.toLocaleTimeString("en-US", {
+        hour: "numeric",
+        minute: "numeric",
+        timeZone: "UTC"
+      })
+    );
   });
 
   createEffect(() => {
@@ -229,11 +253,12 @@ const TournamentMatch = props => {
       <p class="mt-2 text-center text-sm">
         {props.match.field +
           " | " +
-          new Date(Date.parse(props.match.time)).toLocaleTimeString("en-US", {
-            hour: "numeric",
-            minute: "numeric",
-            timeZone: "UTC"
-          })}
+          startTime() +
+          " - " +
+          endTime() +
+          " | " +
+          props.match.duration_mins +
+          " mins"}
       </p>
       <Show when={props.match.video_url}>
         <a
