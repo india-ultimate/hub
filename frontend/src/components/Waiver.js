@@ -489,7 +489,9 @@ const Waiver = () => {
         >
           <p>
             Waiver forms for {player()?.full_name} can only be signed by the
-            guardian.
+            guardian. The guardian can login to Hub with their Email and OTP.
+            They will then be able to find their wards in the Dashboard where
+            they can sign the waiver.
           </p>
         </Match>
         {/* Minors waiver form */}
