@@ -489,7 +489,8 @@ const Waiver = () => {
         >
           <p>
             Waiver forms for {player()?.full_name} can only be signed by the
-            guardian.
+            guardian. The Guardian needs to sign into the Hub with their email
+            address, and sign the waiver form.
           </p>
         </Match>
         {/* Minors waiver form */}
