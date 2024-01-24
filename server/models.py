@@ -502,6 +502,18 @@ class Accreditation(models.Model):
     wfdf_id = models.PositiveIntegerField(unique=True, null=True, blank=True)
 
 
+class CommentaryInfo(models.Model):
+    player = models.OneToOneField(Player, on_delete=models.CASCADE, related_name="commentary_info")
+
+    jersey_number = models.PositiveIntegerField()
+    ultimate_origin = models.TextField()
+    ultimate_attraction = models.TextField()
+    ultimate_fav_role = models.TextField()
+    ultimate_fav_exp = models.TextField()
+    interests = models.TextField()
+    fun_fact = models.TextField()
+
+
 @receiver(pre_save, sender=Membership)
 def create_membership_number(sender: Any, instance: Membership, raw: bool, **kwargs: Any) -> None:
     if raw or instance.membership_number:
