@@ -1,4 +1,6 @@
-import { For, Show } from "solid-js";
+import { Icon } from "solid-heroicons";
+import { videoCamera } from "solid-heroicons/solid-mini";
+import { createMemo, For, Show } from "solid-js";
 
 import MatchCard from "./MatchCard";
 
@@ -11,6 +13,16 @@ const ScheduleTable = props => {
     });
   };
 
+  const fieldIdsSortedByName = createMemo(() => {
+    const fieldIds = Object.keys(props.dayFieldMap[props.day]);
+    fieldIds.sort((a, b) =>
+      props.fieldsMap[Number(a)]?.name < props.fieldsMap[Number(b)]?.name
+        ? -1
+        : 1
+    );
+    return fieldIds;
+  });
+
   return (
     <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
       <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
@@ -18,10 +30,15 @@ const ScheduleTable = props => {
           <th scope="col" class="px-2 py-3 text-center">
             Time
           </th>
-          <For each={Object.keys(props.fieldMap[props.day]).sort()}>
-            {field => (
+          <For each={fieldIdsSortedByName()}>
+            {fieldId => (
               <th scope="col" class="px-1 py-3 text-center">
-                {field}
+                <span class="inline-flex content-center items-center gap-2">
+                  {props.fieldsMap[fieldId]?.name}
+                  <Show when={props.fieldsMap[fieldId]?.is_broadcasted}>
+                    <Icon class="inline w-4 text-red-500" path={videoCamera} />
+                  </Show>
+                </span>
               </th>
             )}
           </For>
@@ -51,21 +68,21 @@ const ScheduleTable = props => {
                     <hr class="my-2 h-px border-0 bg-gray-200 dark:bg-gray-700" />
                     {showReadableTime(endTime)}
                   </th>
-                  <For each={Object.keys(props.fieldMap[props.day]).sort()}>
-                    {field => (
+                  <For each={fieldIdsSortedByName()}>
+                    {fieldId => (
                       <td class="whitespace-nowrap px-2 py-4 text-xs">
                         <Show
                           when={
                             props.matchDayTimeFieldMap[props.day][startTime][
                               endTime
-                            ][field]
+                            ][fieldId]
                           }
                         >
                           <MatchCard
                             match={
                               props.matchDayTimeFieldMap[props.day][startTime][
                                 endTime
-                              ][field]
+                              ][fieldId]
                             }
                             showSeed={true}
                             setFlash={props.setFlash}

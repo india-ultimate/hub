@@ -120,6 +120,11 @@ export const fetchTournament = async tournament_id => {
   return await response.json();
 };
 
+/**
+ *
+ * @param {string} tournament_slug
+ * @returns
+ */
 export const fetchTournamentBySlug = async tournament_slug => {
   const response = await fetch(`/api/tournament?slug=${tournament_slug}`, {
     method: "GET",
@@ -127,6 +132,42 @@ export const fetchTournamentBySlug = async tournament_slug => {
     credentials: "same-origin"
   });
   return await response.json();
+};
+
+/**
+ *
+ * @param {number} tournament_id
+ * @returns
+ */
+export const fetchFieldsByTournamentId = async tournament_id => {
+  const response = await fetch(`/api/tournament/${tournament_id}/fields`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin"
+  });
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.message || JSON.stringify(data));
+  }
+
+  return data;
+};
+
+export const fetchFieldsByTournamentSlug = async slug => {
+  console.log("fetching fields for: ", slug);
+  const response = await fetch(`/api/tournament/slug/${slug}/fields`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin"
+  });
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.message || JSON.stringify(data));
+  }
+
+  return data;
 };
 
 export const fetchPools = async tournament_id => {
@@ -325,6 +366,19 @@ export const deleteTournament = async ({ id }) => {
       "X-CSRFToken": getCookie("csrftoken")
     },
     credentials: "same-origin"
+  });
+  return await response.json();
+};
+
+export const createField = async ({ tournament_id, body }) => {
+  const response = await fetch(`/api/tournament/${tournament_id}/field`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin",
+    body: JSON.stringify(body)
   });
   return await response.json();
 };
