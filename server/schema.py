@@ -488,6 +488,22 @@ class AccreditationFormSchema(ModelSchema):
         model_fields = ["level", "date", "wfdf_id"]
 
 
+class CommentaryInfoFormSchema(ModelSchema):
+    player_id: int
+
+    class Config:
+        model = CommentaryInfo
+        model_fields = [
+            "jersey_number",
+            "ultimate_origin",
+            "ultimate_attraction",
+            "ultimate_fav_role",
+            "ultimate_fav_exp",
+            "interests",
+            "fun_fact",
+        ]
+
+
 class WaiverFormSchema(Schema):
     player_id: int
 

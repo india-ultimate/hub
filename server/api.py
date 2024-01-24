@@ -32,6 +32,7 @@ from server.lib.membership import get_membership_status
 from server.models import (
     Accreditation,
     Bracket,
+    CommentaryInfo,
     CrossPool,
     Event,
     Guardianship,
@@ -63,6 +64,8 @@ from server.schema import (
     AnnualMembershipSchema,
     BracketCreateSchema,
     BracketSchema,
+    CommentaryInfoFormSchema,
+    CommentaryInfoSchema,
     ContactFormSchema,
     Credentials,
     CrossPoolSchema,
@@ -1032,6 +1035,24 @@ def accreditation(
 
     acc.save()
     return 200, acc
+
+
+# Commentary Info #########
+
+
+@api.post("/commentary-info", response={200: CommentaryInfoSchema, 400: Response})
+def upsert_commentary_info(
+    request: AuthenticatedHttpRequest, commentary_info: CommentaryInfoFormSchema
+) -> tuple[int, CommentaryInfo | message_response]:
+    try:
+        player = Player.objects.get(id=commentary_info.player_id)
+    except Player.DoesNotExist:
+        return 400, {"message": "Player does not exist"}
+
+    com_info, created = CommentaryInfo.objects.update_or_create(
+        player=player, defaults=commentary_info.dict()
+    )
+    return 200, com_info
 
 
 # Waiver ##########
