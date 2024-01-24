@@ -7,14 +7,20 @@ import {
   createEffect,
   createSignal,
   For,
+  Match,
   onMount,
   Show,
-  Suspense
+  Suspense,
+  Switch
 } from "solid-js";
 import { createStore, reconcile } from "solid-js/store";
 
 import { matchCardColorToBorderColorMap } from "../colors";
-import { fetchMatchesBySlug, fetchTournamentBySlug } from "../queries";
+import {
+  fetchFieldsByTournamentSlug,
+  fetchMatchesBySlug,
+  fetchTournamentBySlug
+} from "../queries";
 import DayScheduleSkeleton from "../skeletons/Schedule";
 import { TournamentMatches as TournamentMatchesSkeleton } from "../skeletons/TournamentMatch";
 import { getMatchCardColor, getTournamentBreadcrumbName } from "../utils";
@@ -27,7 +33,7 @@ const TournamentSchedule = () => {
   const [tournamentDays, setTournamentDays] = createSignal([]);
   const [flash, setFlash] = createSignal(-1);
   const [matchDayTimeFieldMap, setMatchDayTimeFieldMap] = createStore({});
-  const [fieldMap, setFieldMap] = createStore({});
+  const [dayFieldMap, setDayFieldMap] = createStore({});
   // const [_, setDateTimeMatchMap] = createSignal({});
   const [doneBuildingScheduleMap, setDoneBuildingScheduleMap] =
     createSignal(false);
@@ -39,6 +45,10 @@ const TournamentSchedule = () => {
   const matchesQuery = createQuery(
     () => ["matches", params.slug],
     () => fetchMatchesBySlug(params.slug)
+  );
+  const fieldsQuery = createQuery(
+    () => ["fields", params.slug],
+    () => fetchFieldsByTournamentSlug(params.slug)
   );
 
   function sameDay(d1, d2) {
@@ -68,10 +78,18 @@ const TournamentSchedule = () => {
     }
   });
 
+  const mapFieldIdToField = fields => {
+    let newFieldsMap = {};
+    fields?.map(field => {
+      newFieldsMap[field.id] = field;
+    });
+    return newFieldsMap;
+  };
+
   createEffect(() => {
     if (matchesQuery.status === "success" && !matchesQuery.data?.message) {
       setMatchDayTimeFieldMap(reconcile({}));
-      setFieldMap(reconcile({}));
+      setDayFieldMap(reconcile({}));
       matchesQuery.data?.map(match => {
         if (match.time && match.field) {
           const day = new Date(Date.parse(match.time)).toLocaleDateString(
@@ -90,10 +108,16 @@ const TournamentSchedule = () => {
           setMatchDayTimeFieldMap(day, {});
           setMatchDayTimeFieldMap(day, startTime, {});
           setMatchDayTimeFieldMap(day, startTime, endTime, {});
-          setMatchDayTimeFieldMap(day, startTime, endTime, match.field, match);
+          setMatchDayTimeFieldMap(
+            day,
+            startTime,
+            endTime,
+            match.field?.id,
+            match
+          );
 
-          setFieldMap(day, {});
-          setFieldMap(day, match.field, true);
+          setDayFieldMap(day, {});
+          setDayFieldMap(day, match.field?.id, true);
         }
       });
       setDoneBuildingScheduleMap(true);
@@ -205,12 +229,20 @@ const TournamentSchedule = () => {
                     when={sameDay(day, new Date(Date.parse(day2 + " GMT")))}
                   >
                     <div class="relative mb-8 overflow-x-auto">
-                      <ScheduleTable
-                        fieldMap={fieldMap}
-                        day={day2}
-                        matchDayTimeFieldMap={matchDayTimeFieldMap}
-                        setFlash={setFlash}
-                      />
+                      <Switch>
+                        <Match when={fieldsQuery.isError}>
+                          <p>{fieldsQuery.error.message}</p>
+                        </Match>
+                        <Match when={fieldsQuery.isSuccess}>
+                          <ScheduleTable
+                            dayFieldMap={dayFieldMap}
+                            day={day2}
+                            matchDayTimeFieldMap={matchDayTimeFieldMap}
+                            setFlash={setFlash}
+                            fieldsMap={mapFieldIdToField(fieldsQuery.data)}
+                          />
+                        </Match>
+                      </Switch>
                       <p class="mt-2 text-sm">
                         * CP - Cross Pool | B - Brackets
                       </p>
