@@ -1368,7 +1368,7 @@ def get_pools(
     except Tournament.DoesNotExist:
         return 400, {"message": "Tournament does not exist"}
 
-    return 200, Pool.objects.filter(tournament=tournament)
+    return 200, Pool.objects.filter(tournament=tournament).order_by("name")
 
 
 @api.post(
