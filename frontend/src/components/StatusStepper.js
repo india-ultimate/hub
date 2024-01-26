@@ -11,6 +11,7 @@ import {
   identification,
   shieldCheck,
   shieldExclamation,
+  videoCamera,
   xCircle
 } from "solid-heroicons/solid-mini";
 import { Match, Switch } from "solid-js";
@@ -122,6 +123,12 @@ const StatusStepper = props => {
           color={status.accreditation ? "green" : "red"}
           link={`/accreditation/${props.player.id}`}
           last={true}
+        />
+        <Step
+          title="Commentary Info"
+          icon={videoCamera}
+          color={status.commentary_info ? "green" : "red"}
+          link={`/commentary-info/${props.player.id}`}
         />
       </ol>
     </div>
