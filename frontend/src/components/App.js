@@ -21,6 +21,7 @@ const Membership = lazy(() => import("./Membership"));
 const GroupMembership = lazy(() => import("./GroupMembership"));
 const Vaccination = lazy(() => import("./Vaccination"));
 const Accreditation = lazy(() => import("./Accreditation"));
+const CommentaryInfo = lazy(() => import("./CommentaryInfo"));
 const Waiver = lazy(() => import("./Waiver"));
 const UltimateCentralLogin = lazy(() => import("./UltimateCentralLogin"));
 const RegisteredPlayerList = lazy(() => import("./RegisteredPlayerList"));
@@ -128,6 +129,11 @@ export default function App() {
                   <UserRoute
                     path="/uc-login/:playerId"
                     component={UltimateCentralLogin}
+                    matchFilters={filters}
+                  />
+                  <UserRoute
+                    path="/commentary-info/:playerId"
+                    component={CommentaryInfo}
                     matchFilters={filters}
                   />
                   {/* Transaction */}
