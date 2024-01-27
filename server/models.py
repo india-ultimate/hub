@@ -514,6 +514,32 @@ class CommentaryInfo(models.Model):
     fun_fact = models.TextField()
 
 
+class MatchStats(models.Model):
+    match = models.OneToOneField(Match, on_delete=models.CASCADE, related_name="stats")
+
+    is_active = models.BooleanField(default=True)
+    score_team_1 = models.PositiveIntegerField(default=0)
+    score_team_2 = models.PositiveIntegerField(default=0)
+
+
+class MatchStatsScoreEvent(models.Model):
+    match_stat = models.ForeignKey(
+        MatchStats, on_delete=models.CASCADE, related_name="score_events"
+    )
+    team = models.ForeignKey(
+        Team, on_delete=models.SET_NULL, blank=True, null=True, related_name="score_events"
+    )
+
+    goal_by = models.ForeignKey(
+        Player, on_delete=models.SET_NULL, blank=True, null=True, related_name="goal_score_events"
+    )
+    assist_by = models.ForeignKey(
+        Player, on_delete=models.SET_NULL, blank=True, null=True, related_name="assist_score_events"
+    )
+
+    created_at = models.DateTimeField(blank=True, null=True)
+
+
 @receiver(pre_save, sender=Membership)
 def create_membership_number(sender: Any, instance: Membership, raw: bool, **kwargs: Any) -> None:
     if raw or instance.membership_number:
