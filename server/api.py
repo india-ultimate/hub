@@ -40,6 +40,7 @@ from server.models import (
     Match,
     MatchScore,
     MatchStats,
+    MatchStatsScoreEvent,
     Membership,
     PhonePeTransaction,
     Player,
@@ -81,6 +82,7 @@ from server.schema import (
     MatchSchema,
     MatchScoreSchema,
     MatchStatsSchema,
+    MatchStatsScoreEventCreateSchema,
     MatchUpdateSchema,
     NotVaccinatedFormSchema,
     OrderSchema,
@@ -1876,6 +1878,44 @@ def create_match_stats(
     match_stats = MatchStats.objects.create(match=match)
 
     return 200, match_stats
+
+
+@api.post(
+    "/match/{match_id}/record/score", response={200: MatchStatsSchema, 400: Response, 401: Response}
+)
+def match_stats_record_score_event(
+    request: AuthenticatedHttpRequest, match_id: int, score: MatchStatsScoreEventCreateSchema
+) -> tuple[int, MatchStats | message_response]:
+    if not request.user.is_staff:
+        return 401, {"message": "Only Admins can record match stats"}
+
+    try:
+        match = Match.objects.get(id=match_id)
+        team = Team.objects.get(id=score.team_id)
+        goal_by = Player.objects.get(id=score.goal_by_id)
+        assist_by = Player.objects.get(id=score.assist_by_id)
+    except Match.DoesNotExist:
+        return 400, {"message": "Match does not exist"}
+    except Team.DoesNotExist:
+        return 400, {"message": "Team does not exist"}
+    except Player.DoesNotExist:
+        return 400, {"message": "Player does not exist"}
+
+    try:
+        stats = match.stats
+    except MatchStats.DoesNotExist:
+        return 400, {"message": "Match stats does not exist"}
+
+    MatchStatsScoreEvent.objects.create(
+        match_stat=stats,
+        team=team,
+        goal_by=goal_by,
+        assist_by=assist_by,
+        created_at=now(),
+    )
+
+    match.refresh_from_db()
+    return 200, match.stats
 
 
 # Contact Form ##########

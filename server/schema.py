@@ -13,6 +13,7 @@ from server.models import (
     Match,
     MatchScore,
     MatchStats,
+    MatchStatsScoreEvent,
     Membership,
     PhonePeTransaction,
     Player,
@@ -630,10 +631,28 @@ class MatchSchema(ModelSchema):
         model_exclude = ["tournament"]
 
 
+class MatchStatsScoreEventSchema(ModelSchema):
+    team: TeamSchema | None
+    goal_by: PlayerTinySchema | None
+    assist_by: PlayerTinySchema | None
+
+    class Config:
+        model = MatchStatsScoreEvent
+        model_exclude = ["match_stat"]
+
+
 class MatchStatsSchema(ModelSchema):
+    score_events: list[MatchStatsScoreEventSchema]
+
     class Config:
         model = MatchStats
         model_exclude = ["match"]
+
+
+class MatchStatsScoreEventCreateSchema(Schema):
+    team_id: int
+    goal_by_id: int
+    assist_by_id: int
 
 
 class MatchCreateSchema(Schema):
