@@ -132,10 +132,7 @@ const CommentaryInfo = () => {
                   />
                 )}
               </Field>
-              <Field
-                name="ultimate_attraction"
-                validate={[required("Enter your story!")]}
-              >
+              <Field name="ultimate_attraction">
                 {(field, props) => (
                   <TextInput
                     {...props}
@@ -144,14 +141,10 @@ const CommentaryInfo = () => {
                     type="text"
                     label="What attracted you to Ultimate and made you join the sport?"
                     placeholder="Mixed Gender & Self Refereed"
-                    required
                   />
                 )}
               </Field>
-              <Field
-                name="ultimate_fav_role"
-                validate={[required("Enter your story!")]}
-              >
+              <Field name="ultimate_fav_role">
                 {(field, props) => (
                   <TextInput
                     {...props}
@@ -160,14 +153,10 @@ const CommentaryInfo = () => {
                     type="text"
                     label="What's your favorite thing to do while playing Ultimate? (eg, type of throw, role, playing position)"
                     placeholder="Cutting & IO Hucks"
-                    required
                   />
                 )}
               </Field>
-              <Field
-                name="ultimate_fav_exp"
-                validate={[required("Enter your story!")]}
-              >
+              <Field name="ultimate_fav_exp">
                 {(field, props) => (
                   <TextInput
                     {...props}
@@ -176,14 +165,10 @@ const CommentaryInfo = () => {
                     type="text"
                     label="Share something about your Ultimate tournament experiences (eg. Favorite tournaments, national / state campaigns)"
                     placeholder="Sakkath 2022"
-                    required
                   />
                 )}
               </Field>
-              <Field
-                name="interests"
-                validate={[required("Enter your story!")]}
-              >
+              <Field name="interests">
                 {(field, props) => (
                   <TextInput
                     {...props}
@@ -192,11 +177,10 @@ const CommentaryInfo = () => {
                     type="text"
                     label="Share something about your profession / career interests"
                     placeholder="Love to code!"
-                    required
                   />
                 )}
               </Field>
-              <Field name="fun_fact" validate={[required("Enter your story!")]}>
+              <Field name="fun_fact">
                 {(field, props) => (
                   <TextInput
                     {...props}
@@ -205,7 +189,6 @@ const CommentaryInfo = () => {
                     type="text"
                     label="Share a fun fact about you"
                     placeholder="Dropped a pull every tournament xD"
-                    required
                   />
                 )}
               </Field>
