@@ -10,6 +10,7 @@ import {
   noSymbol,
   shieldCheck,
   shieldExclamation,
+  videoCamera,
   xCircle
 } from "solid-heroicons/solid-mini";
 import { createEffect, createSignal, For, Match, Show, Switch } from "solid-js";
@@ -151,6 +152,16 @@ const ValidationLegend = () => (
         }}
       />{" "}
       — No Accreditation
+    </li>
+    <li class="w-full rounded-b-lg px-4 py-2">
+      <Icon
+        path={videoCamera}
+        style={{
+          width: "20px",
+          display: "inline"
+        }}
+      />{" "}
+      — Commentary Info status
     </li>
   </ul>
 );
@@ -577,6 +588,24 @@ const ValidateRoster = () => {
                                                 }
                                               />
                                             </Show>
+                                          </span>
+                                          <span
+                                            title="Commentary Info updated?"
+                                            class={clsx(
+                                              "mx-2",
+                                              registration.person?.player
+                                                ?.commentary_info
+                                                ? greenText
+                                                : redText
+                                            )}
+                                          >
+                                            <Icon
+                                              path={videoCamera}
+                                              style={{
+                                                width: "20px",
+                                                display: "inline"
+                                              }}
+                                            />
                                           </span>
                                         </Match>
                                       </Switch>
