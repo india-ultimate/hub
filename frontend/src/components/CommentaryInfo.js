@@ -12,6 +12,7 @@ import { createEffect, createSignal, Show } from "solid-js";
 import { useStore } from "../store";
 import { getCookie, getPlayer } from "../utils";
 import Breadcrumbs from "./Breadcrumbs";
+import TextAreaInput from "./TextAreaInput";
 import TextInput from "./TextInput";
 
 const CommentaryInfo = () => {
@@ -121,7 +122,7 @@ const CommentaryInfo = () => {
                 validate={[required("Enter your story!")]}
               >
                 {(field, props) => (
-                  <TextInput
+                  <TextAreaInput
                     {...props}
                     value={field.value}
                     error={field.error}
@@ -134,7 +135,7 @@ const CommentaryInfo = () => {
               </Field>
               <Field name="ultimate_attraction">
                 {(field, props) => (
-                  <TextInput
+                  <TextAreaInput
                     {...props}
                     value={field.value}
                     error={field.error}
@@ -146,7 +147,7 @@ const CommentaryInfo = () => {
               </Field>
               <Field name="ultimate_fav_role">
                 {(field, props) => (
-                  <TextInput
+                  <TextAreaInput
                     {...props}
                     value={field.value}
                     error={field.error}
@@ -158,7 +159,7 @@ const CommentaryInfo = () => {
               </Field>
               <Field name="ultimate_fav_exp">
                 {(field, props) => (
-                  <TextInput
+                  <TextAreaInput
                     {...props}
                     value={field.value}
                     error={field.error}
@@ -170,7 +171,7 @@ const CommentaryInfo = () => {
               </Field>
               <Field name="interests">
                 {(field, props) => (
-                  <TextInput
+                  <TextAreaInput
                     {...props}
                     value={field.value}
                     error={field.error}
@@ -182,7 +183,7 @@ const CommentaryInfo = () => {
               </Field>
               <Field name="fun_fact">
                 {(field, props) => (
-                  <TextInput
+                  <TextAreaInput
                     {...props}
                     value={field.value}
                     error={field.error}
