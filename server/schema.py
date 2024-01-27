@@ -21,6 +21,7 @@ from server.models import (
     SpiritScore,
     Team,
     Tournament,
+    TournamentField,
     UCPerson,
     UCRegistration,
     User,
@@ -627,6 +628,17 @@ class SpiritScoreSchema(ModelSchema):
         model_fields = "__all__"
 
 
+class TournamentFieldSchema(ModelSchema):
+    class Config:
+        model = TournamentField
+        model_exclude = ["tournament"]
+
+
+class TournamentFieldCreateSchema(Schema):
+    name: str
+    is_broadcasted: bool
+
+
 class MatchSchema(ModelSchema):
     pool: PoolSchema | None
     cross_pool: CrossPoolSchema | None
@@ -640,6 +652,7 @@ class MatchSchema(ModelSchema):
     self_spirit_score_team_2: SpiritScoreSchema | None
     suggested_score_team_1: MatchScoreModelSchema | None
     suggested_score_team_2: MatchScoreModelSchema | None
+    field: TournamentFieldSchema | None
 
     class Config:
         model = Match
@@ -651,7 +664,7 @@ class MatchCreateSchema(Schema):
     stage_id: int
     seq_num: int
     time: str
-    field: str
+    field_id: int
     seed_1: int
     seed_2: int
 
@@ -678,7 +691,7 @@ class SpiritScoreSubmitSchema(Schema):
 
 class MatchUpdateSchema(Schema):
     time: str | None
-    field: str | None
+    field_id: int | None
     video_url: str | None
     duration_mins: int | None
     spirit_score_team_1: SpiritScoreUpdateSchema | None
