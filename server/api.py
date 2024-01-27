@@ -47,6 +47,7 @@ from server.models import (
     RazorpayTransaction,
     Team,
     Tournament,
+    TournamentField,
     UCPerson,
     UCRegistration,
     User,
@@ -107,6 +108,8 @@ from server.schema import (
     TeamSchema,
     TopScoreCredentials,
     TournamentCreateSchema,
+    TournamentFieldCreateSchema,
+    TournamentFieldSchema,
     TournamentRulesSchema,
     TournamentSchema,
     TournamentUpdateSeedingSchema,
@@ -1172,6 +1175,78 @@ def get_tournament_team_roster(
         return 400, {"message": "Tournament/Team does not exist"}
 
 
+######## Fields
+
+
+@api.get(
+    "/tournament/{tournament_id}/fields",
+    auth=None,
+    response={200: list[TournamentFieldSchema], 400: Response},
+)
+def get_fields_by_tournament_id(
+    request: AuthenticatedHttpRequest, tournament_id: int
+) -> tuple[int, QuerySet[TournamentField] | message_response]:
+    try:
+        tournament = Tournament.objects.get(id=tournament_id)
+    except Tournament.DoesNotExist:
+        return 400, {"message": "Tournament does not exist"}
+
+    return 200, TournamentField.objects.filter(tournament=tournament).order_by("name")
+
+
+@api.get(
+    "/tournament/slug/{slug}/fields",
+    auth=None,
+    response={200: list[TournamentFieldSchema], 400: Response},
+)
+def get_fields_by_tournament_slug(
+    request: AuthenticatedHttpRequest, slug: str
+) -> tuple[int, QuerySet[TournamentField] | message_response]:
+    try:
+        event = Event.objects.get(ultimate_central_slug=slug)
+        tournament = Tournament.objects.get(event=event)
+    except Event.DoesNotExist:
+        return 400, {"message": "Event does not exist"}
+    except Tournament.DoesNotExist:
+        return 400, {"message": "Tournament does not exist"}
+
+    return 200, TournamentField.objects.filter(tournament=tournament).order_by("name")
+
+
+@api.post(
+    "/tournament/{tournament_id}/field",
+    response={200: TournamentFieldSchema, 400: Response, 401: Response},
+)
+def create_field(
+    request: AuthenticatedHttpRequest,
+    tournament_id: int,
+    field_details: TournamentFieldCreateSchema,
+) -> tuple[int, TournamentField | message_response]:
+    if not request.user.is_staff:
+        return 401, {"message": "Only Admins can create fields"}
+
+    try:
+        tournament = Tournament.objects.get(id=tournament_id)
+    except Tournament.DoesNotExist:
+        return 400, {"message": "Tournament does not exist"}
+
+    field = TournamentField(
+        name=field_details.name.strip(),
+        is_broadcasted=field_details.is_broadcasted,
+        tournament=tournament,
+    )
+
+    try:
+        field.full_clean()
+
+    except ValidationError as e:
+        return 400, {"message": str(e)}
+
+    field.save()
+
+    return 200, field
+
+
 @api.get(
     "/tournament/slug/{slug}/matches", auth=None, response={200: list[MatchSchema], 400: Response}
 )
@@ -1541,11 +1616,16 @@ def create_match(
         ind_tz
     )
 
+    try:
+        field = TournamentField.objects.get(id=match_details.field_id, tournament=tournament)
+    except TournamentField.DoesNotExist:
+        return 400, {"message": "Field does not exist"}
+
     match = Match(
         tournament=tournament,
         sequence_number=match_details.seq_num,
         time=match_datetime,
-        field=match_details.field,
+        field=field,
         placeholder_seed_1=match_details.seed_1,
         placeholder_seed_2=match_details.seed_2,
     )
@@ -1767,8 +1847,15 @@ def update_match(
 
         match.time = match_datetime
 
-    if match_details.field:
-        match.field = match_details.field
+    if match_details.field_id:
+        try:
+            field = TournamentField.objects.get(
+                id=match_details.field_id, tournament=match.tournament
+            )
+        except TournamentField.DoesNotExist:
+            return 400, {"message": "Field does not exist"}
+
+        match.field = field
 
     if match_details.video_url:
         match.video_url = match_details.video_url
