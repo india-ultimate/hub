@@ -5,7 +5,7 @@ import {
   required,
   setValues
 } from "@modular-forms/solid";
-import { useParams } from "@solidjs/router";
+import { useNavigate, useParams } from "@solidjs/router";
 import { inboxStack } from "solid-heroicons/solid";
 import { createEffect, createSignal, Show } from "solid-js";
 
@@ -30,6 +30,8 @@ const CommentaryInfo = () => {
   const [error, setError] = createSignal("");
 
   const params = useParams();
+  const navigate = useNavigate();
+
   createEffect(() => {
     const player = getPlayer(store.data, Number(params.playerId));
     setPlayer(player);
@@ -60,6 +62,8 @@ const CommentaryInfo = () => {
 
         const data = await response.json();
         setPlayerById({ ...player(), commentary_info: data });
+
+        navigate("/dashboard", { replace: true });
       } else {
         const message = await response.json();
         const text = message?.message || JSON.stringify(message);
