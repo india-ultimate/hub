@@ -39,6 +39,7 @@ from server.models import (
     ManualTransaction,
     Match,
     MatchScore,
+    MatchStats,
     Membership,
     PhonePeTransaction,
     Player,
@@ -79,6 +80,7 @@ from server.schema import (
     MatchCreateSchema,
     MatchSchema,
     MatchScoreSchema,
+    MatchStatsSchema,
     MatchUpdateSchema,
     NotVaccinatedFormSchema,
     OrderSchema,
@@ -1849,6 +1851,31 @@ def delete_match(request: AuthenticatedHttpRequest, match_id: int) -> tuple[int,
     match.delete()
 
     return 200, {"message": "Success"}
+
+
+# Match Stats ##########
+
+
+@api.post(
+    "/match/{match_id}/create-stats", response={200: MatchStatsSchema, 400: Response, 401: Response}
+)
+def create_match_stats(
+    request: AuthenticatedHttpRequest, match_id: int
+) -> tuple[int, MatchStats | message_response]:
+    if not request.user.is_staff:
+        return 401, {"message": "Only Admins can create match stats"}
+
+    try:
+        match = Match.objects.get(id=match_id)
+    except Match.DoesNotExist:
+        return 400, {"message": "Match does not exist"}
+
+    if match.status in {Match.Status.YET_TO_FIX} or match.team_1 is None or match.team_2 is None:
+        return 400, {"message": "Match stats cant be created in current status"}
+
+    match_stats = MatchStats.objects.create(match=match)
+
+    return 200, match_stats
 
 
 # Contact Form ##########

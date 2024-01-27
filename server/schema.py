@@ -12,6 +12,7 @@ from server.models import (
     ManualTransaction,
     Match,
     MatchScore,
+    MatchStats,
     Membership,
     PhonePeTransaction,
     Player,
@@ -627,6 +628,12 @@ class MatchSchema(ModelSchema):
     class Config:
         model = Match
         model_exclude = ["tournament"]
+
+
+class MatchStatsSchema(ModelSchema):
+    class Config:
+        model = MatchStats
+        model_exclude = ["match"]
 
 
 class MatchCreateSchema(Schema):
