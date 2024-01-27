@@ -1918,6 +1918,23 @@ def match_stats_record_score_event(
     return 200, match.stats
 
 
+@api.get("/match/{match_id}/stats", auth=None, response={200: MatchStatsSchema, 400: Response})
+def get_match_stats(
+    request: HttpRequest, match_id: int
+) -> tuple[int, MatchStats | message_response]:
+    try:
+        match = Match.objects.get(id=match_id)
+    except Match.DoesNotExist:
+        return 400, {"message": "Match does not exist"}
+
+    try:
+        stats = match.stats
+    except MatchStats.DoesNotExist:
+        return 400, {"message": "Match stats does not exist"}
+
+    return 200, stats
+
+
 # Contact Form ##########
 @api.post("/contact", response={200: Response, 400: Response, 422: Response})
 def contact(
