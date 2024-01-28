@@ -12,6 +12,7 @@ import {
   Match,
   onMount,
   Show,
+  Suspense,
   Switch
 } from "solid-js";
 import { createStore, reconcile } from "solid-js/store";
@@ -20,6 +21,7 @@ import {
   addMatchScore,
   createBracket,
   createCrossPool,
+  createField,
   createMatch,
   createPool,
   createPositionPool,
@@ -27,6 +29,7 @@ import {
   deleteTournament,
   fetchBrackets,
   fetchCrossPool,
+  fetchFieldsByTournamentId,
   fetchMatches,
   fetchPools,
   fetchPositionPools,
@@ -37,6 +40,7 @@ import {
   updateMatch,
   updateSeeding
 } from "../queries";
+import ScheduleSkeleton from "../skeletons/Schedule";
 import { useStore } from "../store";
 import CreateTournamentForm from "./tournament/CreateTournamentForm";
 import MatchCard from "./tournament/MatchCard";
@@ -44,6 +48,8 @@ import ReorderTeams from "./tournament/ReorderTeams";
 import RulesMarkdownEditor from "./tournament/RulesMarkdownEditor";
 import ScheduleTable from "./tournament/ScheduleTable";
 import UpdateSpiritScoreForm from "./tournament/UpdateSpiritScoreForm";
+import CreatedFields from "./tournament-manager/CreatedFields";
+import CreateFieldForm from "./tournament-manager/CreateFieldForm";
 
 const TournamentManager = () => {
   const queryClient = useQueryClient();
@@ -63,7 +69,7 @@ const TournamentManager = () => {
   const [matchFields, setMatchFields] = createStore();
   const [matchScoreFields, setMatchStoreFields] = createStore();
   const [matchDayTimeFieldMap, setMatchDayTimeFieldMap] = createStore({});
-  const [fieldMap, setFieldMap] = createStore({});
+  const [dayFieldMap, setDayFieldMap] = createStore({});
   const [datesList, setDatesList] = createSignal([]);
   const [timesList, setTimesList] = createSignal([]);
   const [updateMatchFields, setUpdateMatchFields] = createStore();
@@ -121,10 +127,18 @@ const TournamentManager = () => {
     }
   });
 
+  const mapFieldIdToField = fields => {
+    let newFieldsMap = {};
+    fields?.map(field => {
+      newFieldsMap[field.id] = field;
+    });
+    return newFieldsMap;
+  };
+
   createEffect(() => {
     if (matchesQuery.status === "success" && !matchesQuery.data?.message) {
       setMatchDayTimeFieldMap(reconcile({}));
-      setFieldMap(reconcile({}));
+      setDayFieldMap(reconcile({}));
       matchesQuery.data?.map(match => {
         if (match.time && match.field) {
           const day = new Date(Date.parse(match.time)).toLocaleDateString(
@@ -143,10 +157,16 @@ const TournamentManager = () => {
           setMatchDayTimeFieldMap(day, {});
           setMatchDayTimeFieldMap(day, startTime, {});
           setMatchDayTimeFieldMap(day, startTime, endTime, {});
-          setMatchDayTimeFieldMap(day, startTime, endTime, match.field, match);
+          setMatchDayTimeFieldMap(
+            day,
+            startTime,
+            endTime,
+            match.field?.id,
+            match
+          );
 
-          setFieldMap(day, {});
-          setFieldMap(day, match.field, true);
+          setDayFieldMap(day, {});
+          setDayFieldMap(day, match.field?.id, true);
         }
       });
 
@@ -156,25 +176,61 @@ const TournamentManager = () => {
 
   const teamsQuery = createQuery(() => ["teams"], fetchTeams);
   const tournamentsQuery = createQuery(() => ["tournaments"], fetchTournaments);
+
+  const fieldsQuery = createQuery(
+    () => ["fields", selectedTournamentID()],
+    () => fetchFieldsByTournamentId(selectedTournamentID()),
+    {
+      get enabled() {
+        return selectedTournamentID() !== 0;
+      }
+    }
+  );
+
   const poolsQuery = createQuery(
     () => ["pools", selectedTournamentID()],
-    () => fetchPools(selectedTournamentID())
+    () => fetchPools(selectedTournamentID()),
+    {
+      get enabled() {
+        return selectedTournamentID() !== 0;
+      }
+    }
   );
   const crossPoolQuery = createQuery(
     () => ["cross-pool", selectedTournamentID()],
-    () => fetchCrossPool(selectedTournamentID())
+    () => fetchCrossPool(selectedTournamentID()),
+    {
+      get enabled() {
+        return selectedTournamentID() !== 0;
+      }
+    }
   );
   const bracketQuery = createQuery(
     () => ["brackets", selectedTournamentID()],
-    () => fetchBrackets(selectedTournamentID())
+    () => fetchBrackets(selectedTournamentID()),
+    {
+      get enabled() {
+        return selectedTournamentID() !== 0;
+      }
+    }
   );
   const postionPoolsQuery = createQuery(
     () => ["position-pools", selectedTournamentID()],
-    () => fetchPositionPools(selectedTournamentID())
+    () => fetchPositionPools(selectedTournamentID()),
+    {
+      get enabled() {
+        return selectedTournamentID() !== 0;
+      }
+    }
   );
   const matchesQuery = createQuery(
     () => ["matches", selectedTournamentID()],
-    () => fetchMatches(selectedTournamentID())
+    () => fetchMatches(selectedTournamentID()),
+    {
+      get enabled() {
+        return selectedTournamentID() !== 0;
+      }
+    }
   );
 
   const updateSeedingMutation = createMutation({
@@ -187,6 +243,15 @@ const TournamentManager = () => {
     mutationFn: deleteTournament,
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ["tournaments"] })
+  });
+
+  const createFieldMutation = createMutation({
+    mutationFn: createField,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["fields", selectedTournamentID()]
+      });
+    }
   });
 
   const createPoolMutation = createMutation({
@@ -777,6 +842,30 @@ const TournamentManager = () => {
               </div>
             </Show>
           </div>
+
+          <div>
+            <h3 class="my-5 text-xl font-bold text-blue-500">Fields</h3>
+            <Suspense>
+              <Switch>
+                <Match when={fieldsQuery.isError}>
+                  <p>{fieldsQuery.error.message}</p>
+                </Match>
+                <Match when={fieldsQuery.isSuccess}>
+                  <CreatedFields fields={fieldsQuery.data} />
+                </Match>
+              </Switch>
+            </Suspense>
+            <div class="mb-2">Add a Field</div>
+            <CreateFieldForm
+              tournamentId={selectedTournamentID()}
+              createFieldMutation={createFieldMutation}
+              disabled={
+                selectedTournament()?.status !== "DFT" ||
+                createFieldMutation.isLoading
+              }
+            />
+          </div>
+
           <div>
             <h3 class="my-5 text-xl font-bold text-blue-500">Matches</h3>
             <Show
@@ -887,14 +976,13 @@ const TournamentManager = () => {
                   </label>
                   <select
                     id="match-field"
-                    onChange={e => setMatchFields("field", e.target.value)}
+                    onChange={e => setMatchFields("field_id", e.target.value)}
                     class="mb-3 block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
                   >
                     <option selected>Choose a field</option>
-                    <option value="Field 1">Field 1</option>
-                    <option value="Field 2">Field 2</option>
-                    <option value="Field 3">Field 3</option>
-                    <option value="Field 4">Field 4</option>
+                    <For each={fieldsQuery.data}>
+                      {field => <option value={field.id}>{field.name}</option>}
+                    </For>
                   </select>
                 </div>
                 <div>
@@ -1123,24 +1211,25 @@ const TournamentManager = () => {
                         </Show>
                       </td>
                       <td class="px-6 py-4">
-                        {match.field}
+                        {match.field?.name}
                         <Show when={match.status !== "COM"}>
                           <select
                             onChange={e => {
                               setUpdateMatchFields(match.id, {});
                               setUpdateMatchFields(
                                 match.id,
-                                "field",
+                                "field_id",
                                 e.target.value
                               );
                             }}
                             class="mb-3 block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
                           >
                             <option selected>Update Field</option>
-                            <option value="Field 1">Field 1</option>
-                            <option value="Field 2">Field 2</option>
-                            <option value="Field 3">Field 3</option>
-                            <option value="Field 4">Field 4</option>
+                            <For each={fieldsQuery.data}>
+                              {field => (
+                                <option value={field.id}>{field.name}</option>
+                              )}
+                            </For>
                           </select>
                         </Show>
                       </td>
@@ -1168,9 +1257,9 @@ const TournamentManager = () => {
                                     );
                                 }
 
-                                if (updateMatchFields[match.id]["field"]) {
-                                  body["field"] =
-                                    updateMatchFields[match.id]["field"];
+                                if (updateMatchFields[match.id]["field_id"]) {
+                                  body["field_id"] =
+                                    updateMatchFields[match.id]["field_id"];
                                 }
 
                                 if (updateMatchFields[match.id]["duration"]) {
@@ -1374,12 +1463,22 @@ const TournamentManager = () => {
                 <div>
                   <h6 class="my-5 text-center">Schedule - {day}</h6>
                   <div class="relative overflow-x-auto">
-                    <ScheduleTable
-                      fieldMap={fieldMap}
-                      day={day}
-                      matchDayTimeFieldMap={matchDayTimeFieldMap}
-                      setFlash={setFlash}
-                    />
+                    <Suspense fallback={<ScheduleSkeleton />}>
+                      <Switch>
+                        <Match when={fieldsQuery.isError}>
+                          <p>{fieldsQuery.error.message}</p>
+                        </Match>
+                        <Match when={fieldsQuery.isSuccess}>
+                          <ScheduleTable
+                            dayFieldMap={dayFieldMap}
+                            day={day}
+                            matchDayTimeFieldMap={matchDayTimeFieldMap}
+                            setFlash={setFlash}
+                            fieldsMap={mapFieldIdToField(fieldsQuery.data)}
+                          />
+                        </Match>
+                      </Switch>
+                    </Suspense>
                   </div>
                 </div>
               )}
