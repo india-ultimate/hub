@@ -106,7 +106,7 @@ const CommentaryInfo = () => {
                 validate={[
                   required("Enter your Jersey Number"),
                   minRange(0, "Jersey Number should be greater than 0"),
-                  maxRange(99, "Jersey Number should be less than 99")
+                  maxRange(9999, "Jersey Number should be less than 9999")
                 ]}
               >
                 {(field, props) => (
