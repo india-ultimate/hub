@@ -48,14 +48,17 @@ const TournamentTeam = () => {
     () => fetchTournamentTeamMatches(params.tournament_slug, params.team_slug)
   );
 
-  const currTeamNo = match =>
-    params.team_slug === match.team_1.ultimate_central_slug ? 1 : 2;
+  const currTeamNo = match => {
+    if (match.team_1) {
+      return params.team_slug === match.team_1.ultimate_central_slug ? 1 : 2;
+    }
+    return params.team_slug === match.team_2.ultimate_central_slug ? 2 : 1;
+  };
 
-  const oppTeamNo = match =>
-    params.team_slug === match.team_1.ultimate_central_slug ? 2 : 1;
+  const oppTeamNo = match => (currTeamNo(match) === 1 ? 2 : 1);
 
   const matchOutcomeColor = match => {
-    if (match.status === "SCH") {
+    if (match.status === "SCH" || match.status === "YTF") {
       return "blue";
     }
     if (match.status === "COM") {
@@ -225,7 +228,6 @@ const TournamentTeam = () => {
                   <Show when={tournamentDates().length > 1}>
                     <div class="mb-5 ml-1">
                       <h3 class="text-center text-lg font-bold">
-                        {/* Object.groupBy coerces the keys to strings */}
                         Day -{" "}
                         {tournamentDates().indexOf(parseInt(tournamentDate)) +
                           1}
