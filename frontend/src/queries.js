@@ -135,9 +135,16 @@ export const fetchTournamentBySlug = async tournament_slug => {
 };
 
 /**
- *
+ * @typedef {object} TournamentField
+ * @property {number} id
+ * @property {string} name
+ * @property {boolean} is_broadcasted
+ */
+
+/**
  * @param {number} tournament_id
- * @returns
+ * @returns {Promise<TournamentField[]>}
+ * @throws
  */
 export const fetchFieldsByTournamentId = async tournament_id => {
   const response = await fetch(`/api/tournament/${tournament_id}/fields`, {
@@ -153,6 +160,12 @@ export const fetchFieldsByTournamentId = async tournament_id => {
 
   return data;
 };
+
+/**
+ * @param {string} slug
+ * @returns {Promise<TournamentField[]>}
+ * @throws
+ */
 
 export const fetchFieldsByTournamentSlug = async slug => {
   console.log("fetching fields for: ", slug);
@@ -381,6 +394,25 @@ export const createField = async ({ tournament_id, body }) => {
     body: JSON.stringify(body)
   });
   return await response.json();
+};
+
+export const updateField = async ({ field_id, body }) => {
+  const response = await fetch(`/api/tournament/field/${field_id}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin",
+    body: JSON.stringify(body)
+  });
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.message || JSON.stringify(data));
+  }
+
+  return data;
 };
 
 export const createPool = async ({
