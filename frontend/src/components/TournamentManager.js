@@ -37,6 +37,7 @@ import {
   fetchTournaments,
   generateTournamentFixtures,
   startTournament,
+  updateField,
   updateMatch,
   updateSeeding
 } from "../queries";
@@ -247,6 +248,15 @@ const TournamentManager = () => {
 
   const createFieldMutation = createMutation({
     mutationFn: createField,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["fields", selectedTournamentID()]
+      });
+    }
+  });
+
+  const updateFieldMutation = createMutation({
+    mutationFn: updateField,
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["fields", selectedTournamentID()]
@@ -851,7 +861,15 @@ const TournamentManager = () => {
                   <p>{fieldsQuery.error.message}</p>
                 </Match>
                 <Match when={fieldsQuery.isSuccess}>
-                  <CreatedFields fields={fieldsQuery.data} />
+                  <CreatedFields
+                    fields={fieldsQuery.data}
+                    tournamentId={selectedTournamentID()}
+                    updateFieldMutation={updateFieldMutation}
+                    editingDisabled={
+                      selectedTournament()?.status !== "DFT" ||
+                      updateFieldMutation.isLoading
+                    }
+                  />
                 </Match>
               </Switch>
             </Suspense>

@@ -22,7 +22,7 @@ const Modal = props => {
 
         <hr class="mt-1 h-px w-full border-0 bg-gray-300 dark:bg-gray-500" />
 
-        <div class="mt-2 w-full">{props.body || ""}</div>
+        <div class="mt-2 w-full">{props.children}</div>
       </div>
     </dialog>
   );

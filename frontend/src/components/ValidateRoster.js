@@ -584,15 +584,14 @@ const ValidateRoster = () => {
                                                 ref={accreditationModalRef}
                                                 title={`Accreditation - ${registration.person.first_name} ${registration.person.last_name}`}
                                                 close={closeAccreditationModal}
-                                                body={
-                                                  <AccreditationInformation
-                                                    accreditation={
-                                                      registration.person.player
-                                                        .accreditation
-                                                    }
-                                                  />
-                                                }
-                                              />
+                                              >
+                                                <AccreditationInformation
+                                                  accreditation={
+                                                    registration.person.player
+                                                      .accreditation
+                                                  }
+                                                />
+                                              </Modal>
                                             </Show>
                                           </span>
                                           <span
