@@ -622,6 +622,12 @@ class TournamentFieldCreateSchema(Schema):
     is_broadcasted: bool
 
 
+class TournamentFieldUpdateSchema(Schema):
+    name: str | None
+    is_broadcasted: bool | None
+    tournament_id: int
+
+
 class MatchSchema(ModelSchema):
     pool: PoolSchema | None
     cross_pool: CrossPoolSchema | None

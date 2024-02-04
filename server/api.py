@@ -110,6 +110,7 @@ from server.schema import (
     TournamentCreateSchema,
     TournamentFieldCreateSchema,
     TournamentFieldSchema,
+    TournamentFieldUpdateSchema,
     TournamentRulesSchema,
     TournamentSchema,
     TournamentUpdateSeedingSchema,
@@ -1239,6 +1240,42 @@ def create_field(
     try:
         field.full_clean()
 
+    except ValidationError as e:
+        return 400, {"message": str(e)}
+
+    field.save()
+
+    return 200, field
+
+
+@api.put(
+    "/tournament/field/{field_id}",
+    response={200: TournamentFieldSchema, 400: Response, 401: Response, 409: Response},
+)
+def update_field(
+    request: AuthenticatedHttpRequest, field_id: int, field_details: TournamentFieldUpdateSchema
+) -> tuple[int, TournamentField | message_response]:
+    if not request.user.is_staff:
+        return 401, {"message": "Only Admins can edit fields"}
+
+    try:
+        tournament = Tournament.objects.get(id=field_details.tournament_id)
+        field = TournamentField.objects.get(id=field_id, tournament=tournament)
+
+    except Tournament.DoesNotExist:
+        return 400, {"message": "Tournament does not exist"}
+
+    except TournamentField.DoesNotExist:
+        return 400, {"message": "Field does not exist"}
+
+    if field_details.name:
+        field.name = field_details.name
+
+    if field_details.is_broadcasted is not None:
+        field.is_broadcasted = field_details.is_broadcasted
+
+    try:
+        field.full_clean()
     except ValidationError as e:
         return 400, {"message": str(e)}
 
