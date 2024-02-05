@@ -881,6 +881,7 @@ const TournamentManager = () => {
                 selectedTournament()?.status !== "DFT" ||
                 createFieldMutation.isLoading
               }
+              alreadyPresentFields={fieldsQuery.data}
             />
           </div>
 

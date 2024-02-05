@@ -1,5 +1,18 @@
-import { createForm, required, reset, toTrimmed } from "@modular-forms/solid";
-import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
+import {
+  createForm,
+  custom,
+  required,
+  reset,
+  toTrimmed
+} from "@modular-forms/solid";
+import {
+  createEffect,
+  createMemo,
+  createSignal,
+  For,
+  onCleanup,
+  Show
+} from "solid-js";
 
 import Checkbox from "../Checkbox";
 import Modal from "../Modal";
@@ -17,6 +30,17 @@ const EditFieldForm = componentProps => {
     });
   });
 
+  const initialFieldName = createMemo(() => componentProps.initialValues.name);
+
+  const otherFieldNames = createMemo(() => {
+    return componentProps.alreadyPresentFields
+      ?.filter(field => field.name !== initialFieldName())
+      .map(field => field.name.toLowerCase());
+  });
+
+  const uniqueFieldName = name =>
+    !otherFieldNames().includes(name.toLowerCase());
+
   return (
     <div>
       <div class="w-fit rounded-lg bg-gray-200 p-6 dark:bg-gray-700/50">
@@ -28,7 +52,10 @@ const EditFieldForm = componentProps => {
             name="name"
             type="string"
             transform={toTrimmed({ on: "input" })}
-            validate={required("Please enter a name for the field")}
+            validate={[
+              required("Please enter a name for the field"),
+              custom(uniqueFieldName, "There is another field with this name !")
+            ]}
           >
             {(field, props) => (
               <TextInput
@@ -179,6 +206,7 @@ const CreatedFields = props => {
             }}
             handleSubmit={handleEditSubmit}
             disabled={props.editingDisabled}
+            alreadyPresentFields={props.fields}
           />
           <div class="m-2">
             <p>{editStatus()}</p>

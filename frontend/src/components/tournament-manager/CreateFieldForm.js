@@ -1,4 +1,10 @@
-import { createForm, required, reset, toTrimmed } from "@modular-forms/solid";
+import {
+  createForm,
+  custom,
+  required,
+  reset,
+  toTrimmed
+} from "@modular-forms/solid";
 
 import Checkbox from "../Checkbox";
 import TextInput from "../TextInput";
@@ -17,6 +23,13 @@ const CreateFieldForm = componentProps => {
     reset(fieldsForm);
   };
 
+  const uniqueFieldName = name => {
+    const alreadyPresentFieldNames = componentProps.alreadyPresentFields.map(
+      field => field.name.toLowerCase()
+    );
+    return !alreadyPresentFieldNames.includes(name.toLowerCase());
+  };
+
   return (
     <div>
       <div class="w-fit rounded-lg bg-gray-200 p-6 dark:bg-gray-700/50">
@@ -25,7 +38,10 @@ const CreateFieldForm = componentProps => {
             name="name"
             type="string"
             transform={toTrimmed({ on: "input" })}
-            validate={required("Please enter a name for the field")}
+            validate={[
+              required("Please enter a name for the field"),
+              custom(uniqueFieldName, "There is another field with this name !")
+            ]}
           >
             {(field, props) => (
               <TextInput
