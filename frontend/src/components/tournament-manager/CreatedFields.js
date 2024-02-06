@@ -86,10 +86,12 @@ const EditFieldForm = componentProps => {
           <button
             type="submit"
             value="default"
-            class="w-fit rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 disabled:dark:bg-gray-400 sm:w-auto"
+            class="w-fit rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 disabled:bg-gray-400 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 disabled:dark:bg-gray-400 sm:w-auto"
             disabled={componentProps.disabled}
           >
-            Edit Field
+            <Show when={componentProps.isMutating} fallback="Edit Field">
+              Updating...
+            </Show>
           </button>
         </Form>
       </div>
@@ -100,21 +102,43 @@ const EditFieldForm = componentProps => {
 const CreatedFields = props => {
   let modalRef;
   let secondsLeftInterval, modalCloseTimeout;
+  const closeDelaySec = 4;
 
   const [editingField, setEditingField] = createSignal();
   const [editStatus, setEditStatus] = createSignal("");
-  const [secsLeftToClose, setSecsLeftToClose] = createSignal(4);
+  const [secsLeftToClose, setSecsLeftToClose] = createSignal(closeDelaySec);
 
-  function handleEditClick(field) {
-    setEditingField(field);
-    modalRef.showModal();
+  // Directly using props.fields breaks the dialog's focus
+  // when focus comes back to the page,
+  const [fields, setFields] = createSignal();
+  // Storing the fields in another signal seems to fix this
+  createEffect(() => {
+    setFields(props.fields);
+  });
+
+  /**
+   * @param {string} statusMessage
+   */
+  function setupDelayedModalClose(statusMessage) {
+    setEditStatus(statusMessage);
+
+    secondsLeftInterval = setInterval(() => {
+      setSecsLeftToClose(prev => prev - 1);
+    }, 1 * 1000);
+
+    modalCloseTimeout = setTimeout(handleEditClose, closeDelaySec * 1000);
   }
 
   function resetModalStatus() {
     setEditStatus("");
     clearInterval(secondsLeftInterval);
     clearTimeout(modalCloseTimeout);
-    setSecsLeftToClose(4);
+    setSecsLeftToClose(closeDelaySec);
+  }
+
+  function handleEditClick(field) {
+    setEditingField(field);
+    modalRef.showModal();
   }
 
   function handleEditClose() {
@@ -123,7 +147,7 @@ const CreatedFields = props => {
     setEditingField();
   }
 
-  async function handleEditSubmit(editedValues) {
+  function handleEditSubmit(editedValues) {
     resetModalStatus();
 
     if (Object.keys(editedValues).length === 0) {
@@ -134,20 +158,15 @@ const CreatedFields = props => {
       field_id: editingField().id,
       body: { ...editedValues, tournament_id: props.tournamentId }
     });
-
-    secondsLeftInterval = setInterval(() => {
-      setSecsLeftToClose(prev => prev - 1);
-    }, 1 * 1000);
-
-    modalCloseTimeout = setTimeout(handleEditClose, 4 * 1000);
   }
 
-  createEffect(function setStatusMessage() {
+  // the modal is closed with a delay once the mutation completes
+  createEffect(function onMutationComplete() {
     if (props.updateFieldMutation.isSuccess) {
-      setEditStatus("Update done ✅");
+      setupDelayedModalClose("✅ Updated");
     }
     if (props.updateFieldMutation.isError) {
-      setEditStatus(props.updateFieldMutation.error.message);
+      setupDelayedModalClose(`❌ ${props.updateFieldMutation.error.message}`);
     }
   });
 
@@ -155,7 +174,8 @@ const CreatedFields = props => {
 
   return (
     <div class="my-4 grid grid-cols-3 gap-4">
-      <For each={props.fields}>
+      {/* Using the fields signal to avoid the dialog focus issues */}
+      <For each={fields()}>
         {field => (
           <div>
             <div class="relative overflow-x-auto rounded-md">
@@ -163,8 +183,9 @@ const CreatedFields = props => {
                 <span>{field.name}</span>
                 <button
                   type="button"
-                  class="rounded-lg bg-yellow-400 px-4 py-1.5 text-sm font-medium text-white hover:bg-yellow-500 focus:outline-none focus:ring-4 focus:ring-yellow-300 dark:text-gray-800 dark:focus:ring-yellow-500"
+                  class="rounded-lg bg-yellow-400 px-4 py-1.5 text-sm font-medium text-white hover:bg-yellow-500 focus:outline-none focus:ring-4 focus:ring-yellow-300 disabled:bg-gray-400 dark:text-gray-800 dark:focus:ring-yellow-500 disabled:dark:bg-gray-400"
                   onClick={() => handleEditClick(field)}
+                  disabled={props.editingDisabled}
                 >
                   Edit
                 </button>
@@ -193,7 +214,7 @@ const CreatedFields = props => {
         close={handleEditClose}
         title={
           <>
-            <span class="font-light">Editing - </span>
+            <span class="mr-1 font-normal">Editing - </span>
             <span class="font-semibold">{editingField()?.name}</span>
           </>
         }
@@ -206,9 +227,10 @@ const CreatedFields = props => {
             }}
             handleSubmit={handleEditSubmit}
             disabled={props.editingDisabled}
-            alreadyPresentFields={props.fields}
+            isMutating={props.updateFieldMutation.isLoading}
+            alreadyPresentFields={fields()}
           />
-          <div class="m-2">
+          <div class="my-2">
             <p>{editStatus()}</p>
             <Show when={editStatus()}>
               <p class="italic">
