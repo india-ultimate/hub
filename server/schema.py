@@ -247,6 +247,12 @@ class TeamSchema(ModelSchema):
         model_fields = "__all__"
 
 
+class PersonTinySchema(ModelSchema):
+    class Config:
+        model = UCPerson
+        model_fields = "__all__"
+
+
 class PlayerSchema(ModelSchema):
     first_name: str
 
@@ -325,6 +331,17 @@ class PlayerSchema(ModelSchema):
             return None
 
     teams: list[TeamSchema]
+
+    uc_person: PersonTinySchema | None
+
+    @staticmethod
+    def resolve_uc_person(player: Player) -> UCPerson | None:
+        if not player.ultimate_central_id:
+            return None
+        try:
+            return UCPerson.objects.get(id=player.ultimate_central_id)
+        except UCPerson.DoesNotExist:
+            return None
 
     class Config:
         model = Player

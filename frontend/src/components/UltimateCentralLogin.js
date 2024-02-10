@@ -80,7 +80,8 @@ const UltimateCentralLogin = () => {
           <p>Player information for player {params.playerId} not accessible.</p>
         </Match>
         <Match when={player()?.ultimate_central_id}>
-          <p>Ultimate Central Profile ID: {player()?.ultimate_central_id}</p>
+          <p>ID: {player()?.ultimate_central_id}</p>
+          <p>Email: {player()?.uc_person?.email}</p>
           <StatusStepper player={player()} />
         </Match>
         <Match when={!player()?.ultimate_central_id}>
