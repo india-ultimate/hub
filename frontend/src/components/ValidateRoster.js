@@ -385,7 +385,7 @@ const ValidateRoster = () => {
                             }
                             )
                           </h4>
-                          <ul class="w-200 my-4 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+                          <ul class="w-200 my-4 rounded-lg border border-gray-200 bg-white text-sm font-medium dark:border-gray-600 dark:bg-gray-700 ">
                             <For
                               each={teamRegistrations.filter(
                                 r =>
@@ -422,9 +422,11 @@ const ValidateRoster = () => {
                                         : ""
                                     )}
                                   >
-                                    <span>
-                                      {registration.person.first_name}{" "}
-                                      {registration.person.last_name}
+                                    <div class="truncate">
+                                      <span class="text-gray-900 dark:text-white">
+                                        {registration.person.first_name}{" "}
+                                        {registration.person.last_name}
+                                      </span>
                                       <Show when={isCaptain(registration)}>
                                         <span class="text-blue-500"> (C)</span>
                                       </Show>
@@ -433,7 +435,11 @@ const ValidateRoster = () => {
                                       >
                                         <span class="text-blue-500"> (SC)</span>
                                       </Show>
-                                    </span>
+                                      <br />
+                                      <span class="text-xs">
+                                        {registration.person.email}
+                                      </span>
+                                    </div>
 
                                     <div>
                                       <Switch>
@@ -441,7 +447,7 @@ const ValidateRoster = () => {
                                           when={!registration?.person?.player}
                                         >
                                           <span
-                                            class={clsx("mx-4", redText)}
+                                            class={clsx("mx-2", redText)}
                                             title="No Hub player linked with UC Profile"
                                           >
                                             <Icon
@@ -459,7 +465,7 @@ const ValidateRoster = () => {
                                           <span
                                             title="Membership valid?"
                                             class={clsx(
-                                              "mx-2",
+                                              "mx-1",
                                               membershipValidForEvent(
                                                 registration.person.player
                                               )
@@ -478,7 +484,7 @@ const ValidateRoster = () => {
                                           <span
                                             title="Liability Waiver signed?"
                                             class={clsx(
-                                              "mx-2",
+                                              "mx-1",
                                               registration.person.player
                                                 ?.membership?.waiver_valid
                                                 ? greenText
@@ -501,7 +507,7 @@ const ValidateRoster = () => {
                                           <span
                                             title="Vaccinated?"
                                             class={clsx(
-                                              "mx-2",
+                                              "mx-1",
                                               registration.person.player
                                                 ?.vaccination?.is_vaccinated
                                                 ? greenText
@@ -535,7 +541,7 @@ const ValidateRoster = () => {
                                                 : `Outdated: ${accreditationDate}`
                                             }`}
                                             class={clsx(
-                                              "mx-2",
+                                              "mx-1",
                                               playerAccreditationValid(
                                                 registration.person.player
                                               )
@@ -592,7 +598,7 @@ const ValidateRoster = () => {
                                           <span
                                             title="Commentary Info updated?"
                                             class={clsx(
-                                              "mx-2",
+                                              "mx-1",
                                               registration.person?.player
                                                 ?.commentary_info
                                                 ? greenText
