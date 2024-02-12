@@ -161,6 +161,7 @@ const Vaccination = () => {
                           value={field.value}
                           error={field.error}
                           label="Upload Certificate"
+                          subLabel="Note: Uploading directly from Google Drive is not supported. Please download to device and upload as a file."
                           required
                         />
                       )}
