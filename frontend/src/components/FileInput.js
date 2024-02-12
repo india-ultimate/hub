@@ -15,7 +15,8 @@ const FileInput = props => {
     "class",
     "value",
     "label",
-    "error"
+    "error",
+    "subLabel"
   ]);
 
   // Create file list
@@ -32,6 +33,7 @@ const FileInput = props => {
       <InputLabel
         name={props.name}
         label={props.label}
+        subLabel={props.subLabel}
         required={props.required}
       />
       <label

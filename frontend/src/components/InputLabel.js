@@ -9,15 +9,27 @@ const InputLabel = props => {
     <Show when={props.label}>
       <label
         class={clsx(
-          "inline-block font-medium md:text-lg lg:text-xl",
+          "inline-block md:text-lg lg:text-xl",
           !props.margin && "mb-4 lg:mb-5"
         )}
         for={props.name}
       >
-        {props.label}{" "}
-        {props.required && (
-          <span class="ml-1 text-red-600 dark:text-red-400">*</span>
-        )}
+        <span class="font-medium">
+          {props.label}{" "}
+          {props.required && (
+            <span class="ml-1 text-red-600 dark:text-red-400">*</span>
+          )}
+        </span>
+        <Show when={props.subLabel}>
+          <span
+            class={clsx(
+              "md:text-md mt-1 block text-sm lg:text-lg",
+              !props.margin && "mb-4 lg:mb-5"
+            )}
+          >
+            {props.subLabel}
+          </span>
+        </Show>
       </label>
     </Show>
   );
