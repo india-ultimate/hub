@@ -57,17 +57,20 @@ const RegistrationForm = props => {
     return store?.data?.email !== value;
   };
 
-  const [ward, setWard] = createSignal(props.ward);
+  const [ward, setWard] = createSignal(false);
+
+  const [selfForm, setSelfForm] = createSignal(true);
+
+  createEffect(() => {
+    setSelfForm(!ward() && !props.others);
+    setWard(props.ward);
+    setSelfForm(!props.ward && !props.others);
+  });
 
   const validateDateOfBirth = value => {
     const age = getAge(value);
     return ward() ? age < majorAge : true;
   };
-
-  const [selfForm, setSelfForm] = createSignal(!props.ward && !props.others);
-  createEffect(() => {
-    setSelfForm(!ward() && !props.others);
-  });
 
   const initialValues = {};
 
