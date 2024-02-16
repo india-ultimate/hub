@@ -10,6 +10,7 @@ from django.dispatch import receiver
 from django.utils.crypto import get_random_string
 from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
+from django_prometheus.models import ExportModelOperationsMixin
 
 from server.constants import ANNUAL_MEMBERSHIP_AMOUNT, MAJOR_AGE, SPONSORED_ANNUAL_MEMBERSHIP_AMOUNT
 
@@ -21,7 +22,7 @@ class User(AbstractUser):
     is_tournament_admin = models.BooleanField(default=False)
 
 
-class Team(models.Model):
+class Team(ExportModelOperationsMixin("team"), models.Model):  # type: ignore[misc]
     ultimate_central_id = models.PositiveIntegerField(
         unique=True, null=True, blank=True, db_index=True
     )
@@ -32,7 +33,7 @@ class Team(models.Model):
     ultimate_central_slug = models.SlugField(default="unknown")
 
 
-class Player(models.Model):
+class Player(ExportModelOperationsMixin("player"), models.Model):  # type: ignore[misc]
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="player_profile")
     date_of_birth = models.DateField()
 
@@ -127,7 +128,7 @@ class Player(models.Model):
         return age < MAJOR_AGE
 
 
-class UCPerson(models.Model):
+class UCPerson(ExportModelOperationsMixin("uc_person"), models.Model):  # type: ignore[misc]
     email = models.EmailField(db_index=True)
     dominant_hand = models.CharField(max_length=10, blank=True)
     first_name = models.CharField(max_length=255)
@@ -136,7 +137,7 @@ class UCPerson(models.Model):
     image_url = models.URLField(null=True, blank=True)
 
 
-class Guardianship(models.Model):
+class Guardianship(ExportModelOperationsMixin("guardianship"), models.Model):  # type: ignore[misc]
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     player = models.OneToOneField(Player, on_delete=models.CASCADE, unique=True)
 
@@ -148,7 +149,7 @@ class Guardianship(models.Model):
     relation = models.TextField(max_length=2, choices=Relation.choices)
 
 
-class Event(models.Model):
+class Event(ExportModelOperationsMixin("event"), models.Model):  # type: ignore[misc]
     title = models.CharField(max_length=255)
     start_date = models.DateField()
     end_date = models.DateField()
@@ -157,7 +158,7 @@ class Event(models.Model):
     location = models.CharField(max_length=255, default="unknown")
 
 
-class Tournament(models.Model):
+class Tournament(ExportModelOperationsMixin("tournament"), models.Model):  # type: ignore[misc]
     class Status(models.TextChoices):
         DRAFT = "DFT", _("Draft")
         LIVE = "LIV", _("Live")
@@ -190,7 +191,7 @@ def update_seeding_on_teams_change(
         instance.save()
 
 
-class Pool(models.Model):
+class Pool(ExportModelOperationsMixin("pool"), models.Model):  # type: ignore[misc]
     sequence_number = models.PositiveIntegerField()
     name = models.CharField(max_length=2, default="NA")
     tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE)
@@ -202,14 +203,14 @@ class Pool(models.Model):
         unique_together = ["name", "tournament"]
 
 
-class CrossPool(models.Model):
+class CrossPool(ExportModelOperationsMixin("cross_pool"), models.Model):  # type: ignore[misc]
     tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE)
 
     initial_seeding = models.JSONField(default=dict)
     current_seeding = models.JSONField(default=dict)
 
 
-class Bracket(models.Model):
+class Bracket(ExportModelOperationsMixin("bracket"), models.Model):  # type: ignore[misc]
     sequence_number = models.PositiveIntegerField()
     name = models.CharField(max_length=5, default="1-8")
     tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE)
@@ -221,7 +222,7 @@ class Bracket(models.Model):
         unique_together = ["name", "tournament"]
 
 
-class PositionPool(models.Model):
+class PositionPool(ExportModelOperationsMixin("position_pool"), models.Model):  # type: ignore[misc]
     sequence_number = models.PositiveIntegerField()
     name = models.CharField(max_length=2, default="NA")
     tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE)
@@ -233,14 +234,14 @@ class PositionPool(models.Model):
         unique_together = ["name", "tournament"]
 
 
-class MatchScore(models.Model):
+class MatchScore(ExportModelOperationsMixin("match_score"), models.Model):  # type: ignore[misc]
     score_team_1 = models.PositiveIntegerField(default=0)
     score_team_2 = models.PositiveIntegerField(default=0)
 
     entered_by = models.ForeignKey(Player, on_delete=models.CASCADE)
 
 
-class SpiritScore(models.Model):
+class SpiritScore(ExportModelOperationsMixin("spirit_score"), models.Model):  # type: ignore[misc]
     rules = models.PositiveIntegerField()
     fouls = models.PositiveIntegerField()
     fair = models.PositiveIntegerField()
@@ -258,7 +259,7 @@ class SpiritScore(models.Model):
     comments = models.CharField(max_length=500, blank=True, null=True)
 
 
-class TournamentField(models.Model):
+class TournamentField(ExportModelOperationsMixin("tournament_field"), models.Model):  # type: ignore[misc]
     name = models.CharField(max_length=25)
     is_broadcasted = models.BooleanField(default=False)
     tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE)
@@ -267,7 +268,7 @@ class TournamentField(models.Model):
         unique_together = ["tournament", "name"]
 
 
-class Match(models.Model):
+class Match(ExportModelOperationsMixin("match"), models.Model):  # type: ignore[misc]
     class Status(models.TextChoices):
         YET_TO_FIX = "YTF", _("Yet To Fix")
         SCHEDULED = "SCH", _("Scheduled")
@@ -349,14 +350,14 @@ class Match(models.Model):
         unique_together = ["tournament", "time", "field"]
 
 
-class UCRegistration(models.Model):
+class UCRegistration(ExportModelOperationsMixin("uc_registration"), models.Model):  # type: ignore[misc]
     event = models.ForeignKey(Event, on_delete=models.CASCADE)
     team = models.ForeignKey(Team, on_delete=models.CASCADE)
     person = models.ForeignKey(UCPerson, on_delete=models.CASCADE)
     roles = models.JSONField()
 
 
-class Membership(models.Model):
+class Membership(ExportModelOperationsMixin("membership"), models.Model):  # type: ignore[misc]
     player = models.OneToOneField(Player, on_delete=models.CASCADE)
     membership_number = models.CharField(max_length=20, unique=True)
     is_annual = models.BooleanField(default=False)
@@ -379,7 +380,7 @@ def create_transaction_from_order_data(cls: Any, data: dict[str, Any]) -> Any:
     return transaction
 
 
-class RazorpayTransaction(models.Model):
+class RazorpayTransaction(ExportModelOperationsMixin("razorpay_transaction"), models.Model):  # type: ignore[misc]
     class TransactionStatusChoices(models.TextChoices):
         PENDING = "pending", _("Pending")
         COMPLETED = "completed", _("Completed")
@@ -415,7 +416,7 @@ class RazorpayTransaction(models.Model):
         return create_transaction_from_order_data(cls, data)
 
 
-class PhonePeTransaction(models.Model):
+class PhonePeTransaction(ExportModelOperationsMixin("phonepe_transaction"), models.Model):  # type: ignore[misc]
     class TransactionStatusChoices(models.TextChoices):
         PENDING = "pending", _("Pending")
         SUCCESS = "success", _("Success")
@@ -448,7 +449,7 @@ class PhonePeTransaction(models.Model):
         return create_transaction_from_order_data(cls, data)
 
 
-class ManualTransaction(models.Model):
+class ManualTransaction(ExportModelOperationsMixin("manual_transaction"), models.Model):  # type: ignore[misc]
     transaction_id = models.CharField(primary_key=True, max_length=255)
     amount = models.IntegerField()
     currency = models.CharField(max_length=5)
@@ -474,7 +475,7 @@ def upload_vaccination_certificates(instance: "Vaccination", filename: str) -> s
     return str(parent / new_name)
 
 
-class Vaccination(models.Model):
+class Vaccination(ExportModelOperationsMixin("vaccination"), models.Model):  # type: ignore[misc]
     player = models.OneToOneField(Player, on_delete=models.CASCADE)
     is_vaccinated = models.BooleanField()
 
@@ -497,7 +498,7 @@ class Vaccination(models.Model):
     explain_not_vaccinated = models.TextField(blank=True, null=True)
 
 
-class Accreditation(models.Model):
+class Accreditation(ExportModelOperationsMixin("accreditation"), models.Model):  # type: ignore[misc]
     player = models.OneToOneField(Player, on_delete=models.CASCADE)
     is_valid = models.BooleanField()
 
@@ -511,7 +512,7 @@ class Accreditation(models.Model):
     wfdf_id = models.PositiveIntegerField(unique=True, null=True, blank=True)
 
 
-class CommentaryInfo(models.Model):
+class CommentaryInfo(ExportModelOperationsMixin("commentary_info"), models.Model):  # type: ignore[misc]
     player = models.OneToOneField(Player, on_delete=models.CASCADE, related_name="commentary_info")
 
     jersey_number = models.PositiveIntegerField()
