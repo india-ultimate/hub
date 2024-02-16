@@ -174,3 +174,10 @@ class TestImportPlayers(TestCase):
             path = self.cert_dir / name
             path.unlink(missing_ok=True)
         self.cert_dir.rmdir()
+
+
+class TestSampleData(TestCase):
+    def test_import_sample_data(self) -> None:
+        fixtures_dir = Path(__file__).parent.parent.joinpath("fixtures")
+        fixture = fixtures_dir / "sample_data.json"
+        call_command("loaddata", fixture)
