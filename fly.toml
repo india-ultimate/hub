@@ -51,5 +51,5 @@ swap_size_mb = 512
   destination="/data"
 
 [metrics]
-    port = 8000
+    port = 80
     path = "/metrics"
