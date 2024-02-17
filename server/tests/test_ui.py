@@ -54,7 +54,7 @@ class TestIntegration(BaseCase):
 
         with running_test_server() as base_url:
             self.open(base_url)
-            self.click('a[href="/login"]')
+            self.click_link("Login")
             self.click("button#password-tab")
             self.type("input#email", username)
             self.type("input#current-password", f"{password}\n")
@@ -103,7 +103,7 @@ class TestIntegration(BaseCase):
             self.click('input[value="Confirm"]')
             self.save_screenshot_to_logs("pay-clicked.png")
 
-            self.click('a[href="/dashboard"]', timeout=45)
+            self.click("#my-account", timeout=45)
             self.click(f'a[href="/vaccination/{player_id}"]')
             self.select_option_by_text("select#name", "Covishield")
             self.choose_file("input#certificate", "frontend/assets/favico.png")
@@ -114,7 +114,7 @@ class TestIntegration(BaseCase):
             self.js_click("input#legal")
             self.click('button:contains("I Agree")')
 
-            self.click('a[href="/dashboard"]')
+            self.click("#my-account")
             self.assert_element("div#accordion-body-player div div table tbody tr:nth-of-type(7)")
             self.assert_element("div#accordion-body-player div div table tbody tr:nth-of-type(8)")
             self.assert_element("div#accordion-body-player div div table tbody tr:nth-of-type(9)")
@@ -127,7 +127,7 @@ class TestIntegration(BaseCase):
 
         with running_test_server() as base_url:
             self.open(base_url)
-            self.click('a[href="/login"]')
+            self.click_link("Login")
             self.click("button#email-otp-tab")
             self.type("input#otp-email", username)
             self.click("button#send-otp-button")
