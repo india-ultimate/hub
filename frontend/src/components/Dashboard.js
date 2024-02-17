@@ -8,6 +8,7 @@ import { createEffect, createSignal, For, Show } from "solid-js";
 import { AccordionDownIcon } from "../icons";
 import { useStore } from "../store";
 import { registerPasskey, showPlayerStatus } from "../utils";
+import { getCookie } from "../utils";
 import Player from "./Player";
 import TransactionList from "./TransactionList";
 
@@ -122,13 +123,30 @@ const StaffActions = () => {
 };
 
 const Dashboard = () => {
-  const [store] = useStore();
+  const [store, { userFetchFailure }] = useStore();
   const [success, setSuccess] = createSignal();
   const [error, setError] = createSignal();
 
   createEffect(() => {
     console.log(success(), error());
   });
+
+  const logout = async () => {
+    const response = await fetch("/api/logout", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCookie("csrftoken")
+      },
+      credentials: "same-origin"
+    });
+    if (response.status == 200) {
+      userFetchFailure();
+      // NOTE: we reload the page to ensure the store is empty. Doesn't seem to
+      // happen with just setData, for some reason?!
+      window.location = "/";
+    }
+  };
 
   return (
     <div>
@@ -371,6 +389,14 @@ const Dashboard = () => {
           </button>
         </div>
       </Show>
+
+      <button
+        onClick={logout}
+        type="button"
+        class="me-2 mt-4 rounded-lg border border-red-700 px-5 py-2.5 text-center text-sm font-medium text-red-700 hover:bg-red-800 hover:text-white focus:outline-none  dark:border-red-500 dark:text-red-500 dark:hover:bg-red-600 dark:hover:text-white "
+      >
+        Logout
+      </button>
     </div>
   );
 };
