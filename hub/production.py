@@ -19,6 +19,9 @@ else:
 MEDIA_ROOT = DATA_DIR / "media"
 MEDIA_URL = "/media/"
 
+PROMETHEUS_METRICS_EXPORT_PORT = 8005
+PROMETHEUS_METRICS_EXPORT_ADDRESS = "0.0.0.0"
+
 SENTRY_DSN = os.environ.get("SENTRY_DSN")
 if SENTRY_DSN:
     import sentry_sdk
