@@ -49,7 +49,3 @@ swap_size_mb = 512
 [mounts]
   source="upai_hub_data"
   destination="/data"
-
-[metrics]
-    port = 8000
-    path = "/metrics"
