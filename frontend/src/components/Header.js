@@ -92,8 +92,8 @@ export default function Header() {
               <li class="flex items-center">
                 <A
                   href="/"
-                  activeClass="block py-2 pl-3 pr-4 rounded bg-transparent text-blue-700 md:p-0 dark:text-blue-500 underline underline-offset-8 font-bold decoration-2"
-                  inactiveClass="block py-2 pl-3 pr-4 text-gray-900 rounded hover:bg-gray-100 md:hover:bg-transparent md:border-0 md:hover:text-blue-700 md:p-0 dark:text-white md:dark:hover:text-blue-500 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent"
+                  activeClass="w-full block py-2 pl-3 pr-4 rounded bg-transparent text-blue-700 md:p-0 dark:text-blue-500 underline underline-offset-8 font-bold decoration-2"
+                  inactiveClass="w-full block py-2 pl-3 pr-4 text-gray-900 rounded hover:bg-gray-100 md:hover:bg-transparent md:border-0 md:hover:text-blue-700 md:p-0 dark:text-white md:dark:hover:text-blue-500 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent"
                   end={true}
                 >
                   Home
@@ -102,8 +102,8 @@ export default function Header() {
               <li class="flex items-center">
                 <A
                   href="/tournaments"
-                  activeClass="block py-2 pl-3 pr-4 rounded bg-transparent text-blue-700 md:p-0 dark:text-blue-500 underline underline-offset-8 font-bold decoration-2"
-                  inactiveClass="block py-2 pl-3 pr-4 text-gray-900 rounded hover:bg-gray-100 md:hover:bg-transparent md:border-0 md:hover:text-blue-700 md:p-0 dark:text-white md:dark:hover:text-blue-500 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent"
+                  activeClass="w-full block py-2 pl-3 pr-4 rounded bg-transparent text-blue-700 md:p-0 dark:text-blue-500 underline underline-offset-8 font-bold decoration-2"
+                  inactiveClass="w-full block py-2 pl-3 pr-4 text-gray-900 rounded hover:bg-gray-100 md:hover:bg-transparent md:border-0 md:hover:text-blue-700 md:p-0 dark:text-white md:dark:hover:text-blue-500 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent"
                   end={true}
                 >
                   Tournaments
