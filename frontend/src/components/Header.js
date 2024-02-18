@@ -1,8 +1,7 @@
 import { A } from "@solidjs/router";
-import { Icon } from "solid-heroicons";
-import { bars_3, xMark } from "solid-heroicons/solid-mini";
 import { createSignal, Show } from "solid-js";
 
+import { Hamburger, XMark } from "../icons";
 import { useStore } from "../store";
 import { assetURL, fetchUserData } from "../utils";
 
@@ -83,11 +82,8 @@ export default function Header() {
               onClick={() => setHamburgerOpen(!hamburgerOpen())}
             >
               <span class="sr-only">Open main menu</span>
-              <Show
-                when={!hamburgerOpen()}
-                fallback={<Icon path={xMark} style={{ width: "24px" }} />}
-              >
-                <Icon path={bars_3} style={{ width: "24px" }} />
+              <Show when={!hamburgerOpen()} fallback={<XMark />}>
+                <Hamburger />
               </Show>
             </button>
           </div>
