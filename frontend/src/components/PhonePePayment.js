@@ -93,6 +93,7 @@ const PhonePePayment = props => {
               amount={props.amount}
               setStatus={props.setStatus}
               successCallback={props.successCallback}
+              event={props.event}
             />
           </div>
         </details>
