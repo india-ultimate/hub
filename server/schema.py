@@ -637,12 +637,14 @@ class TournamentFieldSchema(ModelSchema):
 class TournamentFieldCreateSchema(Schema):
     name: str
     is_broadcasted: bool
+    address: str | None
 
 
 class TournamentFieldUpdateSchema(Schema):
     name: str | None
     is_broadcasted: bool | None
     tournament_id: int
+    address: str | None
 
 
 class MatchSchema(ModelSchema):

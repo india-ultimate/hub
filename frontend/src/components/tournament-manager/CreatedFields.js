@@ -83,6 +83,23 @@ const EditFieldForm = componentProps => {
               />
             )}
           </Field>
+          <Field
+            name="address"
+            type="string"
+            transform={toTrimmed({ on: "input" })}
+          >
+            {(field, props) => (
+              <TextInput
+                {...props}
+                type="text"
+                label="Field Address"
+                placeholder="KG Farms"
+                value={field.value}
+                error={field.error}
+                padding
+              />
+            )}
+          </Field>
           <button
             type="submit"
             value="default"
@@ -203,6 +220,18 @@ const CreatedFields = props => {
                       {field.is_broadcasted ? "Yes" : "No"}
                     </td>
                   </tr>
+
+                  <tr class="bg-gray-200 dark:border-gray-700 dark:bg-gray-800">
+                    <th
+                      scope="row"
+                      class="px-4 py-4 font-medium text-gray-900 dark:text-white"
+                    >
+                      Address
+                    </th>
+                    <td class="px-6 py-4">
+                      {field.address ? field.address : "-"}
+                    </td>
+                  </tr>
                 </tbody>
               </table>
             </div>
@@ -223,7 +252,8 @@ const CreatedFields = props => {
           <EditFieldForm
             initialValues={{
               name: editingField()?.name,
-              is_broadcasted: editingField()?.is_broadcasted
+              is_broadcasted: editingField()?.is_broadcasted,
+              address: editingField()?.address
             }}
             handleSubmit={handleEditSubmit}
             disabled={props.editingDisabled}
