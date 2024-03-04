@@ -1233,6 +1233,7 @@ def create_field(
 
     field = TournamentField(
         name=field_details.name.strip(),
+        address=field_details.address,
         is_broadcasted=field_details.is_broadcasted,
         tournament=tournament,
     )
@@ -1273,6 +1274,9 @@ def update_field(
 
     if field_details.is_broadcasted is not None:
         field.is_broadcasted = field_details.is_broadcasted
+
+    if field_details.address:
+        field.address = field_details.address
 
     try:
         field.full_clean()

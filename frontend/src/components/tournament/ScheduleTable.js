@@ -25,20 +25,25 @@ const ScheduleTable = props => {
 
   return (
     <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
-      <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
+      <thead class="bg-gray-50 text-xs text-gray-700 dark:bg-gray-700 dark:text-gray-400">
         <tr>
-          <th scope="col" class="px-2 py-3 text-center">
+          <th scope="col" class="px-2 py-3 text-center uppercase">
             Time
           </th>
           <For each={fieldIdsSortedByName()}>
             {fieldId => (
               <th scope="col" class="px-1 py-3 text-center">
-                <span class="inline-flex content-center items-center gap-2">
+                <span class="inline-flex content-center items-center gap-2 uppercase">
                   {props.fieldsMap[fieldId]?.name}
                   <Show when={props.fieldsMap[fieldId]?.is_broadcasted}>
                     <Icon class="inline w-4 text-red-500" path={videoCamera} />
                   </Show>
                 </span>
+                <Show when={props.fieldsMap[fieldId]?.address}>
+                  <span class="block font-normal">
+                    {`(${props.fieldsMap[fieldId]?.address})`}
+                  </span>
+                </Show>
               </th>
             )}
           </For>

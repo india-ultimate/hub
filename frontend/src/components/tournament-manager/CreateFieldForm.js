@@ -56,6 +56,23 @@ const CreateFieldForm = componentProps => {
               />
             )}
           </Field>
+          <Field
+            name="address"
+            type="string"
+            transform={toTrimmed({ on: "input" })}
+          >
+            {(field, props) => (
+              <TextInput
+                {...props}
+                type="text"
+                label="Field Address"
+                placeholder="KG Farms"
+                value={field.value}
+                error={field.error}
+                padding
+              />
+            )}
+          </Field>
           <Field name="is_broadcasted" type="boolean">
             {(field, props) => (
               <Checkbox

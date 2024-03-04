@@ -261,6 +261,7 @@ class SpiritScore(ExportModelOperationsMixin("spirit_score"), models.Model):  # 
 
 class TournamentField(ExportModelOperationsMixin("tournament_field"), models.Model):  # type: ignore[misc]
     name = models.CharField(max_length=25)
+    address = models.CharField(max_length=25, blank=True, null=True)
     is_broadcasted = models.BooleanField(default=False)
     tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE)
 
