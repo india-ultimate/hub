@@ -32,7 +32,7 @@ import {
 } from "../utils";
 import Breadcrumbs from "./Breadcrumbs";
 import MembershipPlayerList from "./MembershipPlayerList";
-import PhonePePayment from "./PhonePePayment";
+import RazorpayPayment from "./RazorpayPayment";
 
 const PlayerSearchDropdown = props => {
   const query = createQuery(() => ["players"], fetchPlayers, {
@@ -386,7 +386,7 @@ const GroupMembership = () => {
         <div>
           <Switch>
             <Match when={!paymentSuccess()}>
-              <PhonePePayment
+              <RazorpayPayment
                 disabled={payDisabled()}
                 annual={true}
                 year={year()}
