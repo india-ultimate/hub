@@ -1,6 +1,6 @@
 import { useParams } from "@solidjs/router";
 import { inboxStack } from "solid-heroicons/solid";
-import { createEffect, createSignal, onMount } from "solid-js";
+import { createEffect, createSignal, For, Show } from "solid-js";
 
 import {
   annualMembershipFee,
@@ -8,36 +8,38 @@ import {
   membershipEndDate,
   membershipStartDate,
   minAge,
+  minAgeWarning,
   sponsoredAnnualMembershipFee
 } from "../constants";
 import { useStore } from "../store";
 import {
-  fetchUrl,
+  displayDate,
   findPlayerById,
   getAge,
   membershipYearOptions
 } from "../utils";
-import Info from "./alerts/Info";
 import Breadcrumbs from "./Breadcrumbs";
+import MembershipEventSelector from "./MembershipEventSelector";
+import RazorpayPayment from "./RazorpayPayment";
+// import PhonePePayment from "./PhonePePayment";
+import StatusStepper from "./StatusStepper";
 
 const Membership = () => {
   const [store] = useStore();
 
   const [player, setPlayer] = createSignal();
-  const [_membership, setMembership] = createSignal();
+  const [membership, setMembership] = createSignal();
 
   const years = membershipYearOptions();
   const [year, setYear] = createSignal(years?.[0]);
-  const [_startDate, setStartDate] = createSignal("");
-  const [_endDate, setEndDate] = createSignal("");
-  const [annual, _setAnnual] = createSignal(true);
-  const [_ageRestricted, setAgeRestricted] = createSignal(false);
-
-  const [events, setEvents] = createSignal([]);
+  const [startDate, setStartDate] = createSignal("");
+  const [endDate, setEndDate] = createSignal("");
+  const [annual, setAnnual] = createSignal(true);
+  const [ageRestricted, setAgeRestricted] = createSignal(false);
 
   const [event, setEvent] = createSignal();
 
-  // const [status, setStatus] = createSignal();
+  const [status, setStatus] = createSignal();
 
   const params = useParams();
   createEffect(() => {
@@ -46,29 +48,8 @@ const Membership = () => {
     setMembership(player?.membership);
   });
 
-  const isShortEvent = event =>
-    (new Date(event.end_date) - new Date(event.start_date)) / (1000 * 86400) <=
-    5;
-
-  const eventsSuccessHandler = async response => {
-    const data = await response.json();
-    if (response.ok) {
-      setEvents(data.filter(isShortEvent));
-    } else {
-      console.log(data);
-    }
-  };
-
-  onMount(() => {
-    fetchUrl("/api/events", eventsSuccessHandler, error => console.log(error));
-  });
-
-  const _handleYearChange = e => {
+  const handleYearChange = e => {
     setYear(Number(e.target.value));
-  };
-
-  const _handleEventChange = e => {
-    setEvent(events().find(ev => ev.id === Number(e.target.value)));
   };
 
   const formatDate = dateArray => {
@@ -89,14 +70,8 @@ const Membership = () => {
     }
   });
 
-  createEffect(() => {
-    // Set event when we have a list of events
-    if (events()?.length > 0) {
-      setEvent(events()?.[0]);
-    }
-  });
+  const [payDisabled, setPayDisabled] = createSignal(false);
 
-  const [_payDisabled, setPayDisabled] = createSignal(false);
   createEffect(() => {
     const dob = player()?.date_of_birth;
     const [endDay, endMonth] = membershipEndDate;
@@ -109,7 +84,7 @@ const Membership = () => {
     setPayDisabled(noSelection || age < minAge);
   });
 
-  const _getAmount = () =>
+  const getAmount = () =>
     (annual()
       ? player()?.sponsored
         ? sponsoredAnnualMembershipFee
@@ -126,11 +101,10 @@ const Membership = () => {
         ]}
       />
       <h1 class="text-2xl font-bold text-blue-500">Membership</h1>
-      <Info text="Membership is coming soon for the next season" />
-      {/* <Show
+      <Show
         when={!membership()?.is_active}
         fallback={
-          <div>
+          <div id="membership-exist">
             Membership for {player().full_name} is active until{" "}
             {displayDate(membership().end_date)}
             <StatusStepper player={player()} />
@@ -153,7 +127,6 @@ const Membership = () => {
               Annual membership
             </span>
           </label>
-
           <Show when={annual()}>
             <select
               id="year"
@@ -175,28 +148,14 @@ const Membership = () => {
               period from {displayDate(startDate())} to {displayDate(endDate())}
             </p>
           </Show>
-
-          <Show when={!annual() && events()?.length > 0}>
-            <select
-              id="event"
-              class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
-              value={event()?.id}
-              onInput={handleEventChange}
-              required
-            >
-              <For each={events()}>
-                {event => <option value={event?.id}>{event?.title}</option>}
-              </For>
-            </select>
-            <p>
-              Pay India Ultimate membership fee (₹ {eventMembershipFee / 100})
-              for the {event().title} ({displayDate(startDate())} to{" "}
-              {displayDate(endDate())})
-            </p>
-          </Show>
-          <Show when={!annual() && events()?.length === 0}>
-            <p>No upcoming events found, for membership...</p>
-          </Show>
+          <MembershipEventSelector
+            event={event()}
+            setEvent={setEvent}
+            annual={annual()}
+            startDate={startDate()}
+            endDate={endDate()}
+          />
+          s{" "}
           <Show when={ageRestricted()}>
             <div
               class="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-800 dark:bg-gray-800 dark:text-red-400"
@@ -206,7 +165,7 @@ const Membership = () => {
             </div>
           </Show>
         </div>
-        <PhonePePayment
+        <RazorpayPayment
           disabled={payDisabled()}
           annual={annual()}
           year={year()}
@@ -216,7 +175,7 @@ const Membership = () => {
           setStatus={setStatus}
         />
         <p>{status()}</p>
-      </Show> */}
+      </Show>
     </div>
   );
 };
