@@ -57,7 +57,7 @@ export default function App() {
             cta={{ text: "more", href: "/help" }}
           />
           <section class="grow">
-            <div class="mx-auto max-w-screen-xl px-4 py-8 lg:px-6 lg:py-16">
+            <div class="mx-auto max-w-screen-xl px-4 py-4 lg:px-6 lg:py-16">
               <div class="text-gray-500 dark:text-gray-400 sm:text-lg">
                 <Routes>
                   {/* Simple pages */}

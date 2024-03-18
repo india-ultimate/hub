@@ -6,7 +6,9 @@ import { For, Suspense } from "solid-js";
 import { WALink } from "../constants";
 import { fetchContributors } from "../queries";
 import ContributorsSkeleton from "../skeletons/Contributors";
-import Tournaments from "./Tournaments";
+import BlogSection from "./home/BlogSection";
+import PlayerSection from "./home/PlayerSection";
+import TournamentSection from "./home/TournamentSection";
 
 const Home = () => {
   const query = createQuery(() => ["contributors"], fetchContributors, {
@@ -15,16 +17,16 @@ const Home = () => {
 
   return (
     <div>
-      <h1 class="text-center">India Ultimate</h1>
+      {/* <h1 class="text-center">India Ultimate</h1>
       <h1 class="text-center">
         <span class="w-fit bg-gradient-to-r from-blue-500 to-green-500 bg-clip-text text-8xl font-extrabold text-transparent">
           Hub
         </span>
       </h1>
-      <h2 class="text-center">By UPAI & FDSF(I)</h2>
-      <div class="mt-5">
-        <Tournaments />
-      </div>
+      <h2 class="text-center">By UPAI & FDSF(I)</h2> */}
+      <BlogSection />
+      <TournamentSection />
+      <PlayerSection />
       <div class="mt-10">
         <h3 class="text-center text-2xl font-extrabold">
           <a href="https://github.com/india-ultimate/hub" target="_blank">
