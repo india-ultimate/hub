@@ -492,7 +492,7 @@ class UserWardFormSchema(ModelSchema):
 class PlayerFormSchema(ModelSchema):
     class Config:
         model = Player
-        model_exclude = ["user", "teams", "id"]
+        model_exclude = ["user", "teams", "id", "ultimate_central_id"]
         model_fields_optional = "__all__"
 
 
