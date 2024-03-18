@@ -26,6 +26,7 @@ from django.utils.timezone import now
 from django.views.decorators.csrf import csrf_exempt
 from ninja import File, NinjaAPI, UploadedFile
 from ninja.security import django_auth
+from PIL import Image
 from thefuzz import fuzz, process
 
 from hub.settings import OCR_API_KEY
@@ -1078,10 +1079,17 @@ def college_id(
     college_id_data["card_back"] = card_back
     college_id_data["player"] = player
 
-    payload = {"apikey": OCR_API_KEY}
+    card_front_content = card_front.read()
+    img = Image.open(io.BytesIO(card_front_content))
+    img = img.resize((640, 480), Image.LANCZOS)
+
+    img_byte_arr = io.BytesIO()
+    img.save(img_byte_arr, format="PNG", optimize=True, quality=85)
+
+    payload = {"apikey": OCR_API_KEY, "filetype": "PNG"}
     r = requests.post(
         "https://api.ocr.space/parse/image",
-        files={"filename": card_front},
+        files={"filename": img_byte_arr.getvalue()},
         data=payload,
         timeout=10,
     )
