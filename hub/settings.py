@@ -199,6 +199,9 @@ PASSKEY_SECRET_API_KEY = os.environ.get("PASSKEY_SECRET_API_KEY", "")
 # Prometheus Settings
 PROMETHEUS_METRIC_NAMESPACE = "hub"
 
+# OCR API Keys
+OCR_API_KEY = os.environ.get("OCR_API_KEY", "")
+
 
 ########################################################################
 import django_stubs_ext

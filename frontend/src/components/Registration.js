@@ -544,7 +544,9 @@ const RegistrationForm = props => {
             </Show>
             <Show
               when={
-                ward() || getValue(registrationForm, "occupation") === "Student"
+                ward() ||
+                getValue(registrationForm, "occupation") === "Student" ||
+                getValue(registrationForm, "occupation") === "College-Student"
               }
             >
               <Field

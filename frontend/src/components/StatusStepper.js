@@ -1,6 +1,7 @@
 import { A } from "@solidjs/router";
 import clsx from "clsx";
 import { Icon } from "solid-heroicons";
+import { creditCard } from "solid-heroicons/solid";
 import {
   arrowTopRightOnSquare,
   currencyRupee,
@@ -14,7 +15,7 @@ import {
   videoCamera,
   xCircle
 } from "solid-heroicons/solid-mini";
-import { Match, Switch } from "solid-js";
+import { Match, Show, Switch } from "solid-js";
 
 import { getStatusAndPercent } from "../utils";
 
@@ -80,7 +81,7 @@ const StatusStepper = props => {
           </Switch>
         </div>
       </div>
-      <ol class="mt-2 w-full items-center space-y-4 md:flex md:space-x-8 md:space-y-0">
+      <ol class="mt-2 w-full items-center space-y-4 md:flex md:space-x-2 md:space-y-0">
         <Step
           title="Profile Info"
           link={`/edit/registration/${props.player.id}`}
@@ -130,6 +131,14 @@ const StatusStepper = props => {
           color={status.commentary_info ? "green" : "red"}
           link={`/commentary-info/${props.player.id}`}
         />
+        <Show when={props?.player?.occupation === "College-Student"}>
+          <Step
+            title="College ID"
+            icon={creditCard}
+            color={status.college_id ? "green" : "red"}
+            link={`/college-id/${props.player.id}`}
+          />
+        </Show>
       </ol>
     </div>
   );

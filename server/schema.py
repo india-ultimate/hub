@@ -5,6 +5,7 @@ from ninja import ModelSchema, Schema
 from server.models import (
     Accreditation,
     Bracket,
+    CollegeId,
     CommentaryInfo,
     CrossPool,
     Event,
@@ -236,6 +237,12 @@ class AccreditationSchema(ModelSchema):
         model_fields = "__all__"
 
 
+class CollegeIdSchema(ModelSchema):
+    class Config:
+        model = CollegeId
+        model_fields = "__all__"
+
+
 class CommentaryInfoSchema(ModelSchema):
     class Config:
         model = CommentaryInfo
@@ -310,6 +317,15 @@ class PlayerSchema(ModelSchema):
         try:
             return player.accreditation
         except Accreditation.DoesNotExist:
+            return None
+
+    college_id: CollegeIdSchema | None
+
+    @staticmethod
+    def resolve_college_id(player: Player) -> CollegeId | None:
+        try:
+            return player.college_id
+        except CollegeId.DoesNotExist:
             return None
 
     commentary_info: CommentaryInfoSchema | None
@@ -504,6 +520,14 @@ class AccreditationFormSchema(ModelSchema):
     class Config:
         model = Accreditation
         model_fields = ["level", "date", "wfdf_id"]
+
+
+class CollegeIdFormSchema(ModelSchema):
+    player_id: int
+
+    class Config:
+        model = CollegeId
+        model_fields = ["expiry"]
 
 
 class CommentaryInfoFormSchema(ModelSchema):
