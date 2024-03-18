@@ -97,6 +97,7 @@ class Player(ExportModelOperationsMixin("player"), models.Model):  # type: ignor
 
     class OccupationTypes(models.TextChoices):
         STUDENT = "Student", _("Student")
+        COLLEGE_STUDENT = "College-Student", _("College Student")
         BUSINESS = "Business", _("Own business")
         GOVERNMENT = "Government", _("Government")
         NONPROFIT = "Non-profit", _("NGO / NPO")
@@ -511,6 +512,15 @@ class Accreditation(ExportModelOperationsMixin("accreditation"), models.Model): 
     date = models.DateField()
     certificate = models.FileField(upload_to="accreditation_certificates/", max_length=256)
     wfdf_id = models.PositiveIntegerField(unique=True, null=True, blank=True)
+
+
+class CollegeId(ExportModelOperationsMixin("college_id"), models.Model):  # type: ignore[misc]
+    player = models.OneToOneField(Player, on_delete=models.CASCADE, related_name="college_id")
+    expiry = models.DateField()
+    card_front = models.FileField(upload_to="college_ids/", max_length=256)
+    card_back = models.FileField(upload_to="college_ids/", max_length=256)
+    ocr_name = models.PositiveIntegerField(null=True, blank=True)
+    ocr_college = models.PositiveIntegerField(null=True, blank=True)
 
 
 class CommentaryInfo(ExportModelOperationsMixin("commentary_info"), models.Model):  # type: ignore[misc]

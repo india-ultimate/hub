@@ -9,6 +9,7 @@ from base64 import b32encode, b64decode
 from typing import Any, cast
 
 import pyotp
+import requests
 from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.base_user import AbstractBaseUser
@@ -25,13 +26,16 @@ from django.utils.timezone import now
 from django.views.decorators.csrf import csrf_exempt
 from ninja import File, NinjaAPI, UploadedFile
 from ninja.security import django_auth
+from thefuzz import fuzz, process
 
+from hub.settings import OCR_API_KEY
 from server.constants import EVENT_MEMBERSHIP_AMOUNT, MEMBERSHIP_END, MEMBERSHIP_START
 from server.lib.manual_transactions import validate_manual_transactions
 from server.lib.membership import get_membership_status
 from server.models import (
     Accreditation,
     Bracket,
+    CollegeId,
     CommentaryInfo,
     CrossPool,
     Event,
@@ -65,6 +69,8 @@ from server.schema import (
     AnnualMembershipSchema,
     BracketCreateSchema,
     BracketSchema,
+    CollegeIdFormSchema,
+    CollegeIdSchema,
     CommentaryInfoFormSchema,
     CommentaryInfoSchema,
     ContactFormSchema,
@@ -1039,6 +1045,75 @@ def accreditation(
 
     acc.save()
     return 200, acc
+
+
+# College ID Card ##########
+
+
+@api.post("/college-id", response={200: CollegeIdSchema, 400: Response})
+def college_id(
+    request: AuthenticatedHttpRequest,
+    college_id: CollegeIdFormSchema,
+    card_front: UploadedFile = File(...),  # noqa: B008
+    card_back: UploadedFile = File(...),  # noqa: B008
+) -> tuple[int, CollegeId | message_response]:
+    if not card_front:
+        return 400, {"message": "ID Card front side needs to be uploaded!"}
+    if not card_back:
+        return 400, {"message": "ID Card back side needs to be uploaded!"}
+
+    try:
+        player = Player.objects.get(id=college_id.player_id)
+    except Player.DoesNotExist:
+        return 400, {"message": "Player does not exist"}
+
+    try:
+        c_id = player.college_id
+        edit = True
+    except CollegeId.DoesNotExist:
+        edit = False
+
+    college_id_data = college_id.dict()
+    college_id_data["card_front"] = card_front
+    college_id_data["card_back"] = card_back
+    college_id_data["player"] = player
+
+    payload = {"apikey": OCR_API_KEY}
+    r = requests.post(
+        "https://api.ocr.space/parse/image",
+        files={"filename": card_front},
+        data=payload,
+        timeout=10,
+    )
+    resp = r.json()
+    if (
+        not resp["IsErroredOnProcessing"]
+        and len(resp["ParsedResults"]) > 0
+        and resp["ParsedResults"][0]["ParsedText"]
+    ):
+        collection = [player.user.get_full_name(), player.educational_institution]
+        fuzz_result = process.extract(
+            resp["ParsedResults"][0]["ParsedText"], collection, scorer=fuzz.token_set_ratio
+        )
+        college_id_data["ocr_name"] = fuzz_result[0][1]
+        college_id_data["ocr_college"] = fuzz_result[1][1]
+
+    if not edit:
+        c_id = CollegeId(**college_id_data)
+    else:
+        c_id.card_front = card_front
+        c_id.card_back = card_back
+        c_id.expiry = college_id_data.get("expiry", None)
+        c_id.ocr_name = college_id_data.get("ocr_name", None)
+        c_id.ocr_college = college_id_data.get("ocr_college", None)
+
+    try:
+        c_id.full_clean()
+    except ValidationError as e:
+        return 400, {"message": " ".join(e.messages)}
+
+    c_id.save()
+    return 200, c_id
 
 
 # Commentary Info #########

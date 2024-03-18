@@ -131,7 +131,9 @@ export const getStatusAndPercent = player => {
     membership: player?.membership?.is_active,
     waiver: player?.membership?.waiver_valid,
     accreditation: player?.accreditation?.is_valid,
-    commentary_info: !!player?.commentary_info
+    commentary_info: !!player?.commentary_info,
+    college_id:
+      player?.occupation === "College-Student" ? player.college_id : true
   };
   const percent = Math.round(
     (Object.values(status).filter(x => x).length * 100) /

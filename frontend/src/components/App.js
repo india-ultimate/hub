@@ -37,6 +37,7 @@ const TournamentTeam = lazy(() => import("./TournamentTeam"));
 const Error404 = lazy(() => import("./Error404"));
 const PhonePeTransaction = lazy(() => import("./PhonePeTransaction"));
 const CheckMemberships = lazy(() => import("./CheckMemberships"));
+const CollegeID = lazy(() => import("./CollegeID"));
 
 const filters = {
   id: /^\d+$/ // only allow numbers
@@ -119,6 +120,11 @@ export default function App() {
                   <UserRoute
                     path="/accreditation/:playerId"
                     component={Accreditation}
+                    matchFilters={filters}
+                  />
+                  <UserRoute
+                    path="/college-id/:playerId"
+                    component={CollegeID}
                     matchFilters={filters}
                   />
                   <UserRoute
