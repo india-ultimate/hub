@@ -2,6 +2,7 @@ import { A } from "@solidjs/router";
 import clsx from "clsx";
 import { Icon } from "solid-heroicons";
 import {
+  creditCard,
   currencyRupee,
   document,
   documentCheck,
@@ -606,6 +607,24 @@ const ValidateRoster = () => {
                                           >
                                             <Icon
                                               path={videoCamera}
+                                              style={{
+                                                width: "20px",
+                                                display: "inline"
+                                              }}
+                                            />
+                                          </span>
+                                          <span
+                                            title="College ID Card Added?"
+                                            class={clsx(
+                                              "mx-1",
+                                              registration.person?.player
+                                                ?.college_id
+                                                ? greenText
+                                                : redText
+                                            )}
+                                          >
+                                            <Icon
+                                              path={creditCard}
                                               style={{
                                                 width: "20px",
                                                 display: "inline"
