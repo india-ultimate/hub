@@ -9,7 +9,6 @@ from base64 import b32encode, b64decode
 from typing import Any, cast
 
 import pyotp
-import requests
 from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.base_user import AbstractBaseUser
@@ -26,10 +25,7 @@ from django.utils.timezone import now
 from django.views.decorators.csrf import csrf_exempt
 from ninja import File, NinjaAPI, UploadedFile
 from ninja.security import django_auth
-from PIL import Image
-from thefuzz import fuzz, process
 
-from hub.settings import OCR_API_KEY
 from server.constants import EVENT_MEMBERSHIP_AMOUNT, MEMBERSHIP_END, MEMBERSHIP_START
 from server.lib.manual_transactions import validate_manual_transactions
 from server.lib.membership import get_membership_status
@@ -1079,32 +1075,32 @@ def college_id(
     college_id_data["card_back"] = card_back
     college_id_data["player"] = player
 
-    card_front_content = card_front.read()
-    img = Image.open(io.BytesIO(card_front_content))
-    img = img.resize((640, 480), Image.LANCZOS)
+    # card_front_content = card_front.read()
+    # img = Image.open(io.BytesIO(card_front_content))
+    # img = img.resize((640, 480), Image.LANCZOS)
 
-    img_byte_arr = io.BytesIO()
-    img.save(img_byte_arr, format="PNG", optimize=True, quality=85)
+    # img_byte_arr = io.BytesIO()
+    # img.save(img_byte_arr, format="PNG", optimize=True, quality=85)
 
-    payload = {"apikey": OCR_API_KEY, "filetype": "PNG"}
-    r = requests.post(
-        "https://api.ocr.space/parse/image",
-        files={"filename": img_byte_arr.getvalue()},
-        data=payload,
-        timeout=10,
-    )
-    resp = r.json()
-    if (
-        not resp["IsErroredOnProcessing"]
-        and len(resp["ParsedResults"]) > 0
-        and resp["ParsedResults"][0]["ParsedText"]
-    ):
-        collection = [player.user.get_full_name(), player.educational_institution]
-        fuzz_result = process.extract(
-            resp["ParsedResults"][0]["ParsedText"], collection, scorer=fuzz.token_set_ratio
-        )
-        college_id_data["ocr_name"] = fuzz_result[0][1]
-        college_id_data["ocr_college"] = fuzz_result[1][1]
+    # payload = {"apikey": OCR_API_KEY, "filetype": "PNG"}
+    # r = requests.post(
+    #     "https://api.ocr.space/parse/image",
+    #     files={"filename": img_byte_arr.getvalue()},
+    #     data=payload,
+    #     timeout=10,
+    # )
+    # resp = r.json()
+    # if (
+    #     not resp["IsErroredOnProcessing"]
+    #     and len(resp["ParsedResults"]) > 0
+    #     and resp["ParsedResults"][0]["ParsedText"]
+    # ):
+    #     collection = [player.user.get_full_name(), player.educational_institution]
+    #     fuzz_result = process.extract(
+    #         resp["ParsedResults"][0]["ParsedText"], collection, scorer=fuzz.token_set_ratio
+    #     )
+    #     college_id_data["ocr_name"] = fuzz_result[0][1]
+    #     college_id_data["ocr_college"] = fuzz_result[1][1]
 
     if not edit:
         c_id = CollegeId(**college_id_data)
