@@ -21,6 +21,7 @@ import { accreditationChoices, matchUpChoices, minAge } from "../constants";
 import { useStore } from "../store";
 import { fetchUrl, getAge, getLabel } from "../utils";
 import AccreditationInformation from "./AccreditationInformation";
+import CollegeIDInformation from "./CollegeIDInformation";
 import Modal from "./Modal";
 
 const groupByTeam = registrations => {
@@ -410,9 +411,13 @@ const ValidateRoster = () => {
                                     ?.level;
 
                                 let accreditationModalRef;
+                                let collegeIDModalRef;
 
                                 const closeAccreditationModal = () => {
                                   accreditationModalRef.close();
+                                };
+                                const closeCollegeIDModal = () => {
+                                  collegeIDModalRef.close();
                                 };
                                 return (
                                   <li
@@ -623,13 +628,47 @@ const ValidateRoster = () => {
                                                 : redText
                                             )}
                                           >
-                                            <Icon
-                                              path={creditCard}
-                                              style={{
-                                                width: "20px",
-                                                display: "inline"
-                                              }}
-                                            />
+                                            <Show
+                                              when={
+                                                registration.person?.player
+                                                  ?.college_id
+                                              }
+                                              fallback={
+                                                <Icon
+                                                  path={creditCard}
+                                                  style={{
+                                                    width: "20px",
+                                                    display: "inline"
+                                                  }}
+                                                />
+                                              }
+                                            >
+                                              <button
+                                                onClick={() =>
+                                                  collegeIDModalRef.showModal()
+                                                }
+                                              >
+                                                <Icon
+                                                  path={creditCard}
+                                                  style={{
+                                                    width: "20px",
+                                                    display: "inline"
+                                                  }}
+                                                />
+                                              </button>
+                                              <Modal
+                                                ref={collegeIDModalRef}
+                                                title={`College ID Card - ${registration.person.first_name} ${registration.person.last_name}`}
+                                                close={closeCollegeIDModal}
+                                              >
+                                                <CollegeIDInformation
+                                                  college_id={
+                                                    registration.person.player
+                                                      .college_id
+                                                  }
+                                                />
+                                              </Modal>
+                                            </Show>
                                           </span>
                                         </Match>
                                       </Switch>
