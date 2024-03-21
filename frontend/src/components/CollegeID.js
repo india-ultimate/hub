@@ -63,9 +63,8 @@ const CollegeID = () => {
         setPlayerById({ ...player(), college_id: data });
         setEdit(false);
       } else {
-        const message = await response.json();
-        const text = message?.message || JSON.stringify(message);
-        setStatus(`${text}`);
+        const message = await response.text();
+        setStatus(`${message}`);
       }
     } catch (error) {
       setError(`An error occurred while submitting College ID Card: ${error}`);
