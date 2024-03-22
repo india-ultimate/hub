@@ -206,7 +206,7 @@ export const getTournamentBreadcrumbName = tournamentSlug => {
     level = "Sectionals";
   } else if (slugWords.has("regionals")) {
     level = "Regionals";
-  } else if (slugWords.has("nationals")) {
+  } else if (slugWords.has("nationals") || slugWords.has("ncuc")) {
     level = "Nationals";
   } else if (slugWords.has("qualifiers")) {
     level = "Qualifiers";
