@@ -199,6 +199,8 @@ export const getTournamentBreadcrumbName = tournamentSlug => {
     category = "College";
   } else if (slugWords.has("nsuc") || slugWords.has("school")) {
     category = "School";
+  } else if (slugWords.has("masters")) {
+    category = "Masters";
   }
 
   // Level
