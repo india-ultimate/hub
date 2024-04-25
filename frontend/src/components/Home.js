@@ -1,7 +1,8 @@
 import { createQuery } from "@tanstack/solid-query";
+import { initFlowbite } from "flowbite";
 import { Icon } from "solid-heroicons";
 import { chatBubbleBottomCenterText } from "solid-heroicons/solid";
-import { For, Suspense } from "solid-js";
+import { For, onMount, Suspense } from "solid-js";
 
 import { WALink } from "../constants";
 import { fetchContributors } from "../queries";
@@ -13,6 +14,10 @@ import TournamentSection from "./home/TournamentSection";
 const Home = () => {
   const query = createQuery(() => ["contributors"], fetchContributors, {
     refetchOnWindowFocus: false
+  });
+
+  onMount(() => {
+    initFlowbite();
   });
 
   return (
