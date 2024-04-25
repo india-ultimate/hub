@@ -2,6 +2,7 @@ import { A } from "@solidjs/router";
 import { Show } from "solid-js";
 
 import { useStore } from "../../store";
+import { assetURL } from "../../utils";
 
 const PlayerSection = () => {
   const [store] = useStore();
@@ -64,7 +65,7 @@ const PlayerSection = () => {
               </A>
             </Show>
           </div>
-          <img class="w-1/3" src="/assets/hub-player.png" />
+          <img class="w-1/3" src={assetURL("hub-player.png")} />
         </div>
       </div>
     </>
