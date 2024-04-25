@@ -72,15 +72,19 @@ export const useStore = () => {
 };
 
 const getDefaultTheme = () => {
-  let theme;
-  if (localStorage.getItem("theme")) {
-    theme = localStorage.getItem("theme");
-  } else if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
-    theme = "dark";
-    localStorage.setItem("theme", "dark");
-  } else {
-    theme = "light";
-    localStorage.setItem("theme", "light");
-  }
-  return theme;
+  return "light";
+
+  // Disabling dark mode
+  // ---------------------
+  // let theme;
+  // if (localStorage.getItem("theme")) {
+  //   theme = localStorage.getItem("theme");
+  // } else if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
+  //   theme = "dark";
+  //   localStorage.setItem("theme", "dark");
+  // } else {
+  //   theme = "light";
+  //   localStorage.setItem("theme", "light");
+  // }
+  // return theme;
 };
