@@ -103,7 +103,7 @@ const data = [
   {
     title: "Team India (Mixed) for WUC 2024",
     category: "National Team Announcement",
-    img: "https://d36m266ykvepgv.cloudfront.net/uploads/media/5Qb87icCfs/o/india-masters.png",
+    img: "https://d36m266ykvepgv.cloudfront.net/uploads/media/WWrQgHecGp/o/img-1459.jpg",
     link: "https://indiaultimate.org/en_in/p/national-team-announcement-team-india-mixed-for-wuc-2024",
     body: "India Ultimate's National Teams Committee is happy to announce the Head Coach, Manager and final list of athletes selected to represent Team India in the Mixed division at the WFDF 2024 World Ultimate Championships from 31 August - 7 September, 2024"
   },
