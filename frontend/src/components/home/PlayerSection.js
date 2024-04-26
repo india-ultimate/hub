@@ -11,7 +11,7 @@ const PlayerSection = () => {
     <>
       <div class="rounded-lg bg-blue-200 md:hidden">
         <div class="p-4">
-          <img class="w-full" src="/assets/hub-player.png" />
+          <img class="w-full" src={assetURL("hub-player.png")} />
           <h3 class="mt-2 text-xl font-bold text-black">Are you a player?</h3>
           <p class="mt-1 text-sm text-gray-700">
             Manage your memberships, accreditation and payments in one place.
