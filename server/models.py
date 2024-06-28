@@ -31,6 +31,7 @@ class Team(ExportModelOperationsMixin("team"), models.Model):  # type: ignore[mi
     image_url = models.URLField(null=True, blank=True)
     name = models.CharField(max_length=100)
     ultimate_central_slug = models.SlugField(default="unknown")
+    admins = models.ManyToManyField(User, related_name="admin_teams")
 
 
 class Player(ExportModelOperationsMixin("player"), models.Model):  # type: ignore[misc]
