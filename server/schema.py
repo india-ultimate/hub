@@ -249,7 +249,21 @@ class CommentaryInfoSchema(ModelSchema):
         model_fields = "__all__"
 
 
+class UserMinSchema(ModelSchema):
+    full_name: str
+
+    @staticmethod
+    def resolve_full_name(user: User) -> str:
+        return user.get_full_name()
+
+    class Config:
+        model = User
+        model_fields = "__all__"
+
+
 class TeamSchema(ModelSchema):
+    admins: list[UserMinSchema]
+
     class Config:
         model = Team
         model_fields = "__all__"
