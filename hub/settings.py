@@ -32,8 +32,6 @@ ALLOWED_HOSTS = [
     "upai-hub-staging.fly.dev",
     "127.0.0.1",
     "localhost",
-    gethostname(), 
-    gethostbyname(gethostname()),
 ]
 
 # Application definition
