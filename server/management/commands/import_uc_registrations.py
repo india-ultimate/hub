@@ -157,6 +157,16 @@ class Command(BaseCommand):
                 )
             )
 
+            # Add admins
+            for team in teams:
+                try:
+                    player = Player.objects.get(
+                        ultimate_central_id=team["ultimate_central_creator_id"]
+                    )
+                    team.admins.add(player.user)
+                except Player.DoesNotExist:
+                    continue
+
             # Delete existing registration objects, since some incorrect
             # registrations may be removed
             UCRegistration.objects.filter(event=event).delete()
