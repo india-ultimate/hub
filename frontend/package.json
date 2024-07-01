@@ -44,6 +44,7 @@
   },
   "dependencies": {
     "@tanstack/solid-query": "^4.33.0",
+    "@tanstack/solid-table": "^8.19.2",
     "@thisbeyond/solid-dnd": "^0.7.4"
   },
   "prettier": {
