@@ -1,6 +1,6 @@
 import { useParams } from "@solidjs/router";
 import { inboxStack } from "solid-heroicons/solid";
-import { createEffect, createSignal, For, onMount, Show } from "solid-js";
+import { createEffect, createSignal, For, Show } from "solid-js";
 
 import {
   annualMembershipFee,
@@ -14,13 +14,14 @@ import {
 import { useStore } from "../store";
 import {
   displayDate,
-  fetchUrl,
   findPlayerById,
   getAge,
   membershipYearOptions
 } from "../utils";
 import Breadcrumbs from "./Breadcrumbs";
-import PhonePePayment from "./PhonePePayment";
+import MembershipEventSelector from "./MembershipEventSelector";
+import RazorpayPayment from "./RazorpayPayment";
+// import PhonePePayment from "./PhonePePayment";
 import StatusStepper from "./StatusStepper";
 
 const Membership = () => {
@@ -36,8 +37,6 @@ const Membership = () => {
   const [annual, setAnnual] = createSignal(true);
   const [ageRestricted, setAgeRestricted] = createSignal(false);
 
-  const [events, setEvents] = createSignal([]);
-
   const [event, setEvent] = createSignal();
 
   const [status, setStatus] = createSignal();
@@ -49,29 +48,8 @@ const Membership = () => {
     setMembership(player?.membership);
   });
 
-  const isShortEvent = event =>
-    (new Date(event.end_date) - new Date(event.start_date)) / (1000 * 86400) <=
-    5;
-
-  const eventsSuccessHandler = async response => {
-    const data = await response.json();
-    if (response.ok) {
-      setEvents(data.filter(isShortEvent));
-    } else {
-      console.log(data);
-    }
-  };
-
-  onMount(() => {
-    fetchUrl("/api/events", eventsSuccessHandler, error => console.log(error));
-  });
-
   const handleYearChange = e => {
     setYear(Number(e.target.value));
-  };
-
-  const handleEventChange = e => {
-    setEvent(events().find(ev => ev.id === Number(e.target.value)));
   };
 
   const formatDate = dateArray => {
@@ -89,13 +67,6 @@ const Membership = () => {
     } else if (event()) {
       setStartDate(event().start_date);
       setEndDate(event().end_date);
-    }
-  });
-
-  createEffect(() => {
-    // Set event when we have a list of events
-    if (events()?.length > 0) {
-      setEvent(events()?.[0]);
     }
   });
 
@@ -155,7 +126,6 @@ const Membership = () => {
               Annual membership
             </span>
           </label>
-
           <Show when={annual()}>
             <select
               id="year"
@@ -177,28 +147,14 @@ const Membership = () => {
               period from {displayDate(startDate())} to {displayDate(endDate())}
             </p>
           </Show>
-
-          <Show when={!annual() && events()?.length > 0}>
-            <select
-              id="event"
-              class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
-              value={event()?.id}
-              onInput={handleEventChange}
-              required
-            >
-              <For each={events()}>
-                {event => <option value={event?.id}>{event?.title}</option>}
-              </For>
-            </select>
-            <p>
-              Pay India Ultimate membership fee (₹ {eventMembershipFee / 100})
-              for the {event().title} ({displayDate(startDate())} to{" "}
-              {displayDate(endDate())})
-            </p>
-          </Show>
-          <Show when={!annual() && events()?.length === 0}>
-            <p>No upcoming events found, for membership...</p>
-          </Show>
+          <MembershipEventSelector
+            event={event()}
+            setEvent={setEvent}
+            annual={annual()}
+            startDate={startDate()}
+            endDate={endDate()}
+          />
+          s{" "}
           <Show when={ageRestricted()}>
             <div
               class="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-800 dark:bg-gray-800 dark:text-red-400"
@@ -208,7 +164,7 @@ const Membership = () => {
             </div>
           </Show>
         </div>
-        <PhonePePayment
+        <RazorpayPayment
           disabled={payDisabled()}
           annual={annual()}
           year={year()}
