@@ -249,7 +249,27 @@ class CommentaryInfoSchema(ModelSchema):
         model_fields = "__all__"
 
 
+class UserMinSchema(ModelSchema):
+    full_name: str
+
+    @staticmethod
+    def resolve_full_name(user: User) -> str:
+        return user.get_full_name()
+
+    class Config:
+        model = User
+        model_fields = [
+            "id",
+            "username",
+            "email",
+            "first_name",
+            "last_name",
+        ]
+
+
 class TeamSchema(ModelSchema):
+    admins: list[UserMinSchema]
+
     class Config:
         model = Team
         model_fields = "__all__"
@@ -463,6 +483,12 @@ class UserSchema(ModelSchema):
     def resolve_wards(user: User) -> list[PlayerSchema]:
         wards = Player.objects.filter(guardianship__user=user)
         return [PlayerSchema.from_orm(p) for p in wards]
+
+    admin_teams: list[TeamSchema]
+
+    @staticmethod
+    def resolve_admin_teams(user: User) -> list[TeamSchema]:
+        return [TeamSchema.from_orm(team) for team in user.admin_teams.all()]
 
     class Config:
         model = User

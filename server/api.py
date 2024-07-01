@@ -24,6 +24,7 @@ from django.utils.text import slugify
 from django.utils.timezone import now
 from django.views.decorators.csrf import csrf_exempt
 from ninja import File, NinjaAPI, UploadedFile
+from ninja.pagination import PageNumberPagination, paginate
 from ninja.security import django_auth
 
 from server.constants import EVENT_MEMBERSHIP_AMOUNT, MEMBERSHIP_END, MEMBERSHIP_START
@@ -210,6 +211,12 @@ def list_players(
 @api.get("/teams", auth=None, response={200: list[TeamSchema]})
 def list_teams(request: AuthenticatedHttpRequest) -> QuerySet[Team]:
     return Team.objects.all().order_by("name")
+
+
+@api.get("/teams/search", auth=None, response={200: list[TeamSchema]})
+@paginate(PageNumberPagination, page_size=10)
+def search_teams(request: AuthenticatedHttpRequest, text: str = "") -> QuerySet[Team]:
+    return Team.objects.filter(name__icontains=text.lower()).order_by("name")
 
 
 @api.get("/team/{team_slug}", auth=None, response={200: TeamSchema, 400: Response})

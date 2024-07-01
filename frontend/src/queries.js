@@ -77,6 +77,22 @@ export const fetchTeams = async () => {
   return await response.json();
 };
 
+export const searchTeams = async (searchText, pagination) => {
+  let baseUrl = "/api/teams/search?";
+  if (searchText) {
+    baseUrl = baseUrl + "text=" + searchText + "&";
+  }
+  if (pagination.pageIndex) {
+    baseUrl = baseUrl + "page=" + (pagination.pageIndex + 1);
+  }
+  const response = await fetch(baseUrl, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin"
+  });
+  return await response.json();
+};
+
 export const fetchTeamBySlug = async team_slug => {
   const response = await fetch(`/api/team/${team_slug}`, {
     method: "GET",
@@ -331,6 +347,21 @@ export const fetchUserAccessByTournamentSlug = async tournament_slug => {
     }
   );
   return await response.json();
+};
+
+export const fetchUser = async () => {
+  const response = await fetch("/api/me", {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin"
+  });
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.message || JSON.stringify(data));
+  }
+
+  return data;
 };
 
 // Mutations ----------------
