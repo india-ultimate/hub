@@ -13,10 +13,25 @@ const defaultColumns = [
   {
     accessorKey: "name",
     id: "name",
-    header: () => <span>Team Name</span>
+    header: () => <span>Team Name</span>,
+    cell: props => (
+      <div class="flex items-center gap-4">
+        <img
+          class="h-8 w-8 rounded-full"
+          src={props.row.original.image_url}
+          alt=""
+        />
+        <div class="font-medium dark:text-white">
+          <div>{props.getValue()}</div>
+        </div>
+      </div>
+    )
   },
   {
-    accessorFn: row => row.admins.map(admin => admin.full_name).join(", "),
+    accessorFn: row =>
+      row.admins
+        .map(admin => admin.full_name + ` (${admin.username})`)
+        .join(", "),
     id: "admins",
     header: () => <span>Admins</span>
   }
