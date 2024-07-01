@@ -349,6 +349,21 @@ export const fetchUserAccessByTournamentSlug = async tournament_slug => {
   return await response.json();
 };
 
+export const fetchUser = async () => {
+  const response = await fetch("/api/me", {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin"
+  });
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.message || JSON.stringify(data));
+  }
+
+  return data;
+};
+
 // Mutations ----------------
 
 export const createTournament = async formData => {
