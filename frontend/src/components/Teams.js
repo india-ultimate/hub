@@ -4,10 +4,12 @@ import {
   flexRender,
   getCoreRowModel
 } from "@tanstack/solid-table";
-import { createSignal, For } from "solid-js";
+import { createSignal, For, Show } from "solid-js";
 
 import { ChevronLeft, ChevronRight } from "../icons";
-import { searchTeams } from "../queries";
+import { fetchUser, searchTeams } from "../queries";
+import Error from "./alerts/Error";
+import Info from "./alerts/Info";
 
 const defaultColumns = [
   {
@@ -49,6 +51,8 @@ const Teams = () => {
     () => searchTeams(search(), pagination())
   );
 
+  const userQuery = createQuery(() => ["me"], fetchUser);
+
   const table = createSolidTable({
     get data() {
       return dataQuery.data?.items ?? [];
@@ -82,7 +86,60 @@ const Teams = () => {
       </h1>
 
       <div class="relative flex flex-wrap justify-center overflow-x-auto">
-        <h2 class="w-full text-left text-lg font-bold">All Teams</h2>
+        <h2 class="w-full text-left text-lg font-bold text-blue-600">
+          My Teams
+        </h2>
+        <h3 class="mb-2 w-full text-left text-sm italic">
+          Teams in which you are an admin
+        </h3>
+        <Show
+          when={userQuery.isSuccess}
+          fallback={<Error text="Please login to view your teams" />}
+        >
+          <Show
+            when={
+              userQuery.data.admin_teams &&
+              userQuery.data.admin_teams.length > 0
+            }
+            fallback={<Info text="No teams to show" />}
+          >
+            <For each={userQuery.data.admin_teams}>
+              {team => (
+                <div class="mt-1 flex w-full justify-between gap-4">
+                  <div class="flex items-center gap-2">
+                    <img
+                      class="h-8 w-8 rounded-full"
+                      src={team.image_url}
+                      alt="logo"
+                    />
+                    <div class="font-medium dark:text-white">
+                      <div>{team.name}</div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    class="mb-2 me-2 rounded-lg border border-blue-700 px-5 py-1.5 text-center text-sm font-medium text-blue-700 hover:bg-blue-800 hover:text-white focus:outline-none focus:ring-4 focus:ring-blue-300 dark:border-blue-500 dark:text-blue-500 dark:hover:bg-blue-500 dark:hover:text-white dark:focus:ring-blue-800"
+                  >
+                    Edit
+                  </button>
+                </div>
+              )}
+            </For>
+          </Show>
+          <button
+            type="button"
+            class="me-2 mt-4 w-full rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+          >
+            Create New Team
+          </button>
+        </Show>
+
+        <hr class="my-4 h-px w-full border-0 bg-gray-200 dark:bg-gray-700" />
+
+        <h2 class="w-full text-left text-lg font-bold text-blue-600">
+          All Teams
+        </h2>
+        <h3 class="w-full text-left text-sm italic">All teams in Hub</h3>
         <div class="relative m-2 mx-1 w-full">
           <div class="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-3">
             <svg
