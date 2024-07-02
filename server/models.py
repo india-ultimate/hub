@@ -62,6 +62,13 @@ class StatesUTs(models.TextChoices):
     WB = "WB", _("West Bengal")
 
 
+def upload_team_logos(instance: "Team", filename: str) -> str:
+    parent = Path("team_logos")
+    path = Path(filename)
+    new_name = f"{path.stem}-{get_random_string(12)}{path.suffix}"
+    return str(parent / new_name)
+
+
 class Team(ExportModelOperationsMixin("team"), models.Model):  # type: ignore[misc]
     ultimate_central_id = models.PositiveIntegerField(
         unique=True, null=True, blank=True, db_index=True
@@ -73,6 +80,16 @@ class Team(ExportModelOperationsMixin("team"), models.Model):  # type: ignore[mi
     ultimate_central_slug = models.SlugField(default="unknown")
     admins = models.ManyToManyField(User, related_name="admin_teams")
     state_ut = models.CharField(max_length=5, choices=StatesUTs.choices, null=True, blank=True)
+    city = models.CharField(max_length=30, null=True, blank=True)
+    image = models.FileField(upload_to=upload_team_logos, blank=True, max_length=256)
+
+    class CategoryTypes(models.TextChoices):
+        CLUB = "Club", _("Club")
+        COLLEGE = "College", _("College")
+        STATE = "State", _("State")
+        NATIONAL = "National", _("National")
+
+    category = models.CharField(max_length=25, choices=CategoryTypes.choices, null=True, blank=True)
 
 
 class Player(ExportModelOperationsMixin("player"), models.Model):  # type: ignore[misc]
