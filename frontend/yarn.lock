@@ -1156,6 +1156,11 @@
   resolved "https://registry.yarnpkg.com/@thisbeyond/solid-dnd/-/solid-dnd-0.7.4.tgz#c6291e6a33d2f23d09867c1a427dce8113190f09"
   integrity sha512-jgV9EtR3gAtVsILG8p1OAGrhHIgnK4W04YxpyLgJRCDKEFYQWuDrMdUe8F5Kc6pcVXlC4IMXr4cB8fS2Ut3/Ow==
 
+"@thisbeyond/solid-select@^0.14.0":
+  version "0.14.0"
+  resolved "https://registry.yarnpkg.com/@thisbeyond/solid-select/-/solid-select-0.14.0.tgz#1f6ed9e2c54818a13943624f4a66e32d5c933062"
+  integrity sha512-ecq4U3Vnc/nJbU84ARuPg2scNuYt994ljF5AmBlzuZW87x43mWiGJ5hEWufIJJMpDT6CcnCIx/xbrdDkaDEHQw==
+
 "@types/body-parser@*":
   version "1.19.2"
   resolved "https://registry.yarnpkg.com/@types/body-parser/-/body-parser-1.19.2.tgz#aea2059e28b7658639081347ac4fab3de166e6f0"
