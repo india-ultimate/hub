@@ -7,10 +7,18 @@ from django.core.files.base import ContentFile
 from django.core.management.base import BaseCommand, CommandParser
 from django.utils.text import slugify
 
-from server.models import Accreditation, Guardianship, Player, UCPerson, User, Vaccination
+from server.models import (
+    Accreditation,
+    Guardianship,
+    Player,
+    StatesUTs,
+    UCPerson,
+    User,
+    Vaccination,
+)
 
 GENDERS = {t.label: t for t in Player.GenderTypes}
-STATE_UT = {t.label: t for t in Player.StatesUTs}
+STATE_UT = {t.label: t for t in StatesUTs}
 OCCUPATIONS = {t.label: t for t in Player.OccupationTypes}
 RELATIONS = {t.label: str(t) for t in Guardianship.Relation}
 ACCREDITATIONS = {t.label: str(t) for t in Accreditation.AccreditationLevel}
