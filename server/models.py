@@ -188,17 +188,27 @@ class Guardianship(ExportModelOperationsMixin("guardianship"), models.Model):  #
 
 
 class Event(ExportModelOperationsMixin("event"), models.Model):  # type: ignore[misc]
+    class Type(models.TextChoices):
+        MIXED = "MXD", _("Mixed")
+        OPENS = "OPN", _("Opens")
+        WOMENS = "WMN", _("Womens")
+
     title = models.CharField(max_length=255)
     start_date = models.DateField()
     end_date = models.DateField()
+    registration_start_date = models.DateField(null=True, blank=True)
+    registration_end_date = models.DateField(null=True, blank=True)
     ultimate_central_id = models.PositiveIntegerField(unique=True, null=True, blank=True)
     ultimate_central_slug = models.SlugField(max_length=200, default="unknown")
     location = models.CharField(max_length=255, default="unknown")
+    type = models.CharField(max_length=3, choices=Type.choices, default=Type.MIXED)
 
 
 class Tournament(ExportModelOperationsMixin("tournament"), models.Model):  # type: ignore[misc]
     class Status(models.TextChoices):
         DRAFT = "DFT", _("Draft")
+        REGISTERING = "REG", _("Registering")
+        SCHEDULING = "SCH", _("Scheduling")
         LIVE = "LIV", _("Live")
         COMPLETED = "COM", _("Completed")
 
