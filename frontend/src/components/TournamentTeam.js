@@ -36,7 +36,7 @@ const TournamentTeam = () => {
     () => fetchTournamentBySlug(params.tournament_slug)
   );
   const teamQuery = createQuery(
-    () => ["team", params.team_slug],
+    () => ["teams", params.team_slug],
     () => fetchTeamBySlug(params.team_slug)
   );
   const rosterQuery = createQuery(

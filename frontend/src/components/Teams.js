@@ -1,3 +1,4 @@
+import { A } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
 import {
   createSolidTable,
@@ -30,12 +31,17 @@ const defaultColumns = [
     )
   },
   {
-    accessorFn: row =>
-      row.admins
-        .map(admin => admin.full_name + ` (${admin.username})`)
-        .join(", "),
-    id: "admins",
-    header: () => <span>Admins</span>
+    accessorKey: "slug",
+    id: "actions",
+    header: () => <span>Actions</span>,
+    cell: props => (
+      <A
+        href={`/team/${props.getValue()}`}
+        class="mb-2 me-2 rounded-lg border border-blue-700 px-5 py-1.5 text-center text-sm font-medium text-blue-700 hover:bg-blue-800 hover:text-white focus:outline-none focus:ring-4 focus:ring-blue-300 dark:border-blue-500 dark:text-blue-500 dark:hover:bg-blue-500 dark:hover:text-white dark:focus:ring-blue-800"
+      >
+        View
+      </A>
+    )
   }
 ];
 
@@ -116,12 +122,12 @@ const Teams = () => {
                       <div>{team.name}</div>
                     </div>
                   </div>
-                  <button
-                    type="button"
+                  <A
+                    href={`/team/${team.slug}`}
                     class="mb-2 me-2 rounded-lg border border-blue-700 px-5 py-1.5 text-center text-sm font-medium text-blue-700 hover:bg-blue-800 hover:text-white focus:outline-none focus:ring-4 focus:ring-blue-300 dark:border-blue-500 dark:text-blue-500 dark:hover:bg-blue-500 dark:hover:text-white dark:focus:ring-blue-800"
                   >
                     Edit
-                  </button>
+                  </A>
                 </div>
               )}
             </For>

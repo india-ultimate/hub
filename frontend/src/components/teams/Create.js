@@ -1,19 +1,15 @@
-import { userGroup } from "solid-heroicons/solid";
 import { createForm, required } from "@modular-forms/solid";
-import { createSignal, Show } from "solid-js";
 import { useNavigate } from "@solidjs/router";
-import {
-  createMutation,
-  createQuery,
-  useQueryClient
-} from "@tanstack/solid-query";
+import { createMutation, useQueryClient } from "@tanstack/solid-query";
+import { userGroup } from "solid-heroicons/solid";
+import { createSignal, Show } from "solid-js";
 
+import { stateChoices, teamCategoryChoices } from "../../constants";
+import { createTeam } from "../../queries";
 import Breadcrumbs from "../Breadcrumbs";
+import FileInput from "../FileInput";
 import DefaultSelect from "../Select";
 import TextInput from "../TextInput";
-import FileInput from "../FileInput";
-import { createTeam } from "../../queries";
-import { stateChoices, teamCategoryChoices } from "../../constants";
 
 const Create = () => {
   const navigate = useNavigate();
