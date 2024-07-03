@@ -275,6 +275,13 @@ class TeamSchema(ModelSchema):
         model_fields = "__all__"
 
 
+class TeamCreateSchema(Schema):
+    name: str
+    category: str
+    state_ut: str
+    city: str
+
+
 class PersonTinySchema(ModelSchema):
     class Config:
         model = UCPerson

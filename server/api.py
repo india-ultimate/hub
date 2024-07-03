@@ -109,6 +109,7 @@ from server.schema import (
     RegistrationWardSchema,
     Response,
     SpiritScoreSubmitSchema,
+    TeamCreateSchema,
     TeamSchema,
     TopScoreCredentials,
     TournamentCreateSchema,
@@ -227,6 +228,28 @@ def get_team(
         team = Team.objects.get(ultimate_central_slug=team_slug)
     except Team.DoesNotExist:
         return 400, {"message": "Team does not exist"}
+
+    return 200, team
+
+
+@api.post("/teams", response={200: TeamSchema, 400: Response})
+def create_team(
+    request: AuthenticatedHttpRequest,
+    team_details: TeamCreateSchema,
+    image: UploadedFile = File(...),  # noqa: B008
+) -> tuple[int, Team | message_response]:
+    if not image:
+        return 400, {"message": "Team logo needs to be uploaded!"}
+
+    team = Team(
+        name=team_details.name,
+        category=team_details.category,
+        state_ut=team_details.state_ut,
+        city=team_details.city,
+        image=image,
+    )
+    team.save()
+    team.admins.add(request.user)
 
     return 200, team
 
