@@ -635,6 +635,10 @@ class TournamentUpdateSeedingSchema(Schema):
     seeding: dict[int, int]
 
 
+class AddOrRemoveTeamRegistrationSchema(Schema):
+    team_id: int
+
+
 class PoolSchema(ModelSchema):
     class Config:
         model = Pool
