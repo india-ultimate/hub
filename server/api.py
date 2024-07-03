@@ -225,7 +225,7 @@ def get_team(
     request: AuthenticatedHttpRequest, team_slug: str
 ) -> tuple[int, Team | message_response]:
     try:
-        team = Team.objects.get(ultimate_central_slug=team_slug)
+        team = Team.objects.get(slug=team_slug)
     except Team.DoesNotExist:
         return 400, {"message": "Team does not exist"}
 
