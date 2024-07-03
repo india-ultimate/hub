@@ -7,6 +7,7 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.db.models.signals import m2m_changed, pre_save
 from django.dispatch import receiver
+from django.template.defaultfilters import slugify
 from django.utils.crypto import get_random_string
 from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
@@ -82,6 +83,7 @@ class Team(ExportModelOperationsMixin("team"), models.Model):  # type: ignore[mi
     state_ut = models.CharField(max_length=5, choices=StatesUTs.choices, null=True, blank=True)
     city = models.CharField(max_length=30, null=True, blank=True)
     image = models.FileField(upload_to=upload_team_logos, blank=True, max_length=256)
+    slug = models.SlugField(null=True, blank=True, db_index=True)
 
     class CategoryTypes(models.TextChoices):
         CLUB = "Club", _("Club")
@@ -90,6 +92,22 @@ class Team(ExportModelOperationsMixin("team"), models.Model):  # type: ignore[mi
         NATIONAL = "National", _("National")
 
     category = models.CharField(max_length=25, choices=CategoryTypes.choices, null=True, blank=True)
+
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        if not self.slug:
+            self.slug = self.get_slug()
+        return super().save(*args, **kwargs)
+
+    def get_slug(self) -> str:
+        slug = slugify(self.name)
+        unique_slug = slug
+
+        number = 1
+        while Team.objects.filter(slug=unique_slug).exists():
+            unique_slug = slugify(f"{slug}-{number}")
+            number += 1
+
+        return unique_slug
 
 
 class Player(ExportModelOperationsMixin("player"), models.Model):  # type: ignore[misc]
