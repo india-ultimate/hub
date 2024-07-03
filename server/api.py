@@ -64,6 +64,7 @@ from server.phonepe_utils import (
 from server.schema import (
     AccreditationFormSchema,
     AccreditationSchema,
+    AddOrRemoveTeamRegistrationSchema,
     AnnualMembershipSchema,
     BracketCreateSchema,
     BracketSchema,
@@ -1520,6 +1521,72 @@ def create_tournament(
 
     tournament.rules = get_default_rules()
 
+    tournament.save()
+
+    return 200, tournament
+
+
+@api.put(
+    "/tournament/{tournament_id}/register-team",
+    response={200: TournamentSchema, 400: Response, 401: Response},
+)
+def add_team_registration(
+    request: AuthenticatedHttpRequest,
+    tournament_id: int,
+    team_details: AddOrRemoveTeamRegistrationSchema,
+) -> tuple[int, Tournament] | tuple[int, message_response]:
+    try:
+        team = Team.objects.get(id=team_details.team_id)
+    except Team.DoesNotExist:
+        return 400, {"message": "Team does not exist"}
+
+    if request.user not in team.admins:
+        return 401, {"message": "Only team admins can register a team to a tournament !"}
+
+    try:
+        tournament = Tournament.objects.get(id=tournament_id)
+    except Tournament.DoesNotExist:
+        return 400, {"message": "Tournament does not exist"}
+
+    if tournament.status != Tournament.Status.REGISTERING:
+        return 400, {
+            "message": f"You can't register a team now ! Teams can be registered from {tournament.event.registration_start_date} to {tournament.event.registration_start_date}"
+        }
+
+    tournament.teams.add(team)
+    tournament.save()
+
+    return 200, tournament
+
+
+@api.put(
+    "/tournament/{tournament_id}/deregister-team",
+    response={200: TournamentSchema, 400: Response, 401: Response},
+)
+def remove_team_registration(
+    request: AuthenticatedHttpRequest,
+    tournament_id: int,
+    team_details: AddOrRemoveTeamRegistrationSchema,
+) -> tuple[int, Tournament] | tuple[int, message_response]:
+    try:
+        team = Team.objects.get(id=team_details.team_id)
+    except Team.DoesNotExist:
+        return 400, {"message": "Team does not exist"}
+
+    if request.user not in team.admins:
+        return 401, {"message": "Only team admins can de-register a team to a tournament !"}
+
+    try:
+        tournament = Tournament.objects.get(id=tournament_id)
+    except Tournament.DoesNotExist:
+        return 400, {"message": "Tournament does not exist"}
+
+    if tournament.status != Tournament.Status.REGISTERING:
+        return 400, {
+            "message": f"You can't de-register a team now ! Teams can be registered from {tournament.event.registration_start_date} to {tournament.event.registration_start_date}"
+        }
+
+    tournament.teams.remove(team)
     tournament.save()
 
     return 200, tournament
