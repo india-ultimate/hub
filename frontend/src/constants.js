@@ -88,6 +88,13 @@ export const transactionTypes = [
   { value: "R", label: "Razorpay" }
 ];
 
+export const teamCategoryChoices = [
+  { value: "Club", label: "Club" },
+  { value: "College", label: "College" },
+  { value: "State", label: "State" },
+  { value: "National", label: "National" }
+];
+
 // NOTE: Memberships go from 1st June to 31st May
 export const membershipStartDate = [1, 6];
 export const membershipEndDate = [31, 5];

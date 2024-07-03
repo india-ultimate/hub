@@ -28,6 +28,7 @@ const RegisteredPlayerList = lazy(() => import("./RegisteredPlayerList"));
 const ValidateRoster = lazy(() => import("./ValidateRoster"));
 const ValidateTransactions = lazy(() => import("./ValidateTransactions"));
 const Teams = lazy(() => import("./Teams"));
+const CreateTeam = lazy(() => import("./teams/Create"));
 const TournamentManager = lazy(() => import("./TournamentManager"));
 const Tournaments = lazy(() => import("./Tournaments"));
 const Tournament = lazy(() => import("./Tournament"));
@@ -88,6 +89,8 @@ export default function App() {
                   />
                   {/* Team Public Routes */}
                   <Route path={"/teams"} component={Teams} />
+                  {/* Team Private Routes */}
+                  <UserRoute path="/teams/new" component={CreateTeam} />
                   {/* Registration routes */}
                   <UserRoute path="/registration/me" component={Registration} />
                   <UserRoute

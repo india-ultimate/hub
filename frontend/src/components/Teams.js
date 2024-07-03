@@ -20,8 +20,8 @@ const defaultColumns = [
       <div class="flex items-center gap-4">
         <img
           class="h-8 w-8 rounded-full"
-          src={props.row.original.image_url}
-          alt=""
+          src={props.row.original.image ?? props.row.original.image_url}
+          alt="logo"
         />
         <div class="font-medium dark:text-white">
           <div>{props.getValue()}</div>
@@ -109,7 +109,7 @@ const Teams = () => {
                   <div class="flex items-center gap-2">
                     <img
                       class="h-8 w-8 rounded-full"
-                      src={team.image_url}
+                      src={team.image ?? team.image_url}
                       alt="logo"
                     />
                     <div class="font-medium dark:text-white">

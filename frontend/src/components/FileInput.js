@@ -55,6 +55,7 @@ const FileInput = props => {
           {...inputProps}
           class="absolute h-full w-full cursor-pointer opacity-0"
           type="file"
+          accept={props.accept}
           id={props.name}
           aria-invalid={!!props.error}
           aria-errormessage={`${props.name}-error`}
