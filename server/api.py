@@ -111,6 +111,7 @@ from server.schema import (
     SpiritScoreSubmitSchema,
     TeamCreateSchema,
     TeamSchema,
+    TeamUpdateSchema,
     TopScoreCredentials,
     TournamentCreateSchema,
     TournamentFieldCreateSchema,
@@ -122,6 +123,7 @@ from server.schema import (
     UCRegistrationSchema,
     UserAccessSchema,
     UserFormSchema,
+    UserMinSchema,
     UserSchema,
     VaccinatedFormSchema,
     VaccinationSchema,
@@ -193,6 +195,18 @@ def me_access(
     }
 
 
+# Users ##########
+
+
+@api.get("/users/search", response={200: list[UserMinSchema]})
+def search_users(request: AuthenticatedHttpRequest, text: str = "") -> QuerySet[User]:
+    return User.objects.filter(
+        Q(first_name__icontains=text.lower())
+        | Q(last_name__icontains=text.lower())
+        | Q(username__icontains=text.lower())
+    ).order_by("first_name")
+
+
 # Players ##########
 
 
@@ -228,6 +242,41 @@ def get_team(
         team = Team.objects.get(slug=team_slug)
     except Team.DoesNotExist:
         return 400, {"message": "Team does not exist"}
+
+    return 200, team
+
+
+@api.post("/teams/edit", response={200: TeamSchema, 400: Response})
+def update_team(
+    request: AuthenticatedHttpRequest,
+    team_details: TeamUpdateSchema,
+    image: UploadedFile | None = File(None),  # noqa: B008
+) -> tuple[int, Team | message_response]:
+    try:
+        team = Team.objects.get(id=team_details.id)
+    except Team.DoesNotExist:
+        return 400, {"message": "Team does not exist"}
+
+    if request.user not in team.admins.all():
+        return 400, {"message": "User not an admin of the team"}
+
+    if team_details.admin_ids is not None and len(team_details.admin_ids) == 0:
+        return 400, {"message": "Admin IDs cant be empty"}
+
+    if team_details.category is not None:
+        team.category = team_details.category
+    if team_details.state_ut is not None:
+        team.state_ut = team_details.state_ut
+    if team_details.city is not None:
+        team.city = team_details.city
+    if image is not None:
+        team.image = image
+
+    team.save()
+
+    if team_details.admin_ids is not None:
+        admins = User.objects.filter(id__in=team_details.admin_ids)
+        team.admins.add(*admins)
 
     return 200, team
 
