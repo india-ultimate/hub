@@ -1,12 +1,12 @@
 import { A } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
+import clsx from "clsx";
 import { For, Match, Show, Switch } from "solid-js";
 
 import { fetchTournaments } from "../queries";
 
 const Tournaments = () => {
   const tournamentsQuery = createQuery(() => ["tournaments"], fetchTournaments);
-
   return (
     <div>
       <h1 class="mb-5 text-center">
@@ -23,28 +23,51 @@ const Tournaments = () => {
           {tournament => (
             <Show when={tournament.status !== "DFT"}>
               <A
-                href={`/tournament/${tournament.event?.ultimate_central_slug}`}
+                href={
+                  tournament.status === "REG" || tournament.status === "SCH"
+                    ? `/tournament/${tournament.event?.ultimate_central_slug}/register`
+                    : `/tournament/${tournament.event?.ultimate_central_slug}`
+                }
                 class="block w-full rounded-lg border border-blue-600 bg-white p-4 shadow dark:border-blue-400 dark:bg-gray-800"
               >
-                <h5 class="mb-2 text-xl font-bold capitalize tracking-tight text-blue-600 dark:text-blue-400">
+                <Switch>
+                  <Match when={tournament.status === "REG"}>
+                    <span class="h-fit rounded bg-green-200 px-2.5 py-0.5 text-sm font-medium text-green-800 dark:bg-green-900 dark:text-green-300">
+                      Registrations open
+                    </span>
+                  </Match>
+                  <Match when={tournament.status === "SCH"}>
+                    <span class="h-fit rounded bg-yellow-100 px-2.5 py-0.5 text-sm font-medium text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">
+                      Registrations closed
+                    </span>
+                  </Match>
+                  <Match when={tournament.status === "LIV"}>
+                    <span
+                      class={clsx(
+                        "h-fit rounded px-2.5 py-0.5 text-sm font-medium",
+                        new Date(Date.now()) < Date.parse(tournament.start_date)
+                          ? "bg-blue-200 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
+                          : "bg-red-200 text-red-800 dark:bg-red-900 dark:text-red-300"
+                      )}
+                    >
+                      {new Date(Date.now()) < Date.parse(tournament.start_date)
+                        ? "Upcoming"
+                        : "Live"}
+                    </span>
+                  </Match>
+                  <Match when={tournament.status === "COM"}>
+                    <span class="h-fit rounded bg-gray-300 px-2.5 py-0.5 text-sm font-medium text-gray-700 dark:bg-gray-900 dark:text-gray-300">
+                      Completed
+                    </span>
+                  </Match>
+                </Switch>
+                <h5 class="mb-2 mt-2 text-xl font-bold capitalize tracking-tight text-blue-600 dark:text-blue-400">
                   {tournament.event.title}
                 </h5>
                 <div class="flex justify-between">
                   <span class="flex-grow text-sm capitalize">
                     {tournament.event.location}
                   </span>
-                  <Switch>
-                    <Match when={tournament.status === "COM"}>
-                      <span class="mr-2 h-fit rounded bg-blue-100 px-2.5 py-0.5 text-sm font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-300">
-                        Completed
-                      </span>
-                    </Match>
-                    <Match when={tournament.status === "LIV"}>
-                      <span class="mr-2 h-fit rounded bg-green-100 px-2.5 py-0.5 text-sm font-medium text-green-800 dark:bg-green-900 dark:text-green-300">
-                        Live
-                      </span>
-                    </Match>
-                  </Switch>
                 </div>
                 <p class="text-sm text-blue-600 dark:text-blue-400">
                   {new Date(
