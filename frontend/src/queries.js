@@ -78,13 +78,18 @@ export const fetchTeams = async () => {
 };
 
 export const searchTeams = async (searchText, pagination) => {
-  let baseUrl = "/api/teams/search?";
+  let baseUrl = "/api/teams/search";
+  let params = new URLSearchParams();
   if (searchText) {
-    baseUrl = baseUrl + "text=" + searchText + "&";
+    params.set("text", searchText);
   }
   if (pagination.pageIndex) {
-    baseUrl = baseUrl + "page=" + (pagination.pageIndex + 1);
+    params.set("page", pagination.pageIndex + 1);
   }
+  if (params.toString().length > 0) {
+    baseUrl = baseUrl + "?" + params.toString();
+  }
+
   const response = await fetch(baseUrl, {
     method: "GET",
     headers: { "Content-Type": "application/json" },
@@ -94,9 +99,13 @@ export const searchTeams = async (searchText, pagination) => {
 };
 
 export const searchUsers = async searchText => {
-  let baseUrl = "/api/users/search?";
+  let baseUrl = "/api/users/search";
+  let params = new URLSearchParams();
   if (searchText) {
-    baseUrl = baseUrl + "text=" + searchText + "&";
+    params.set("text", searchText);
+  }
+  if (params.toString().length > 0) {
+    baseUrl = baseUrl + "?" + params.toString();
   }
   const response = await fetch(baseUrl, {
     method: "GET",
