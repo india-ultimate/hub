@@ -436,6 +436,38 @@ export const deleteTournament = async ({ id }) => {
   return await response.json();
 };
 
+export const addTeamRegistration = async ({ tournament_id, body }) => {
+  const response = await fetch(
+    `/api/tournament/${tournament_id}/register-team`,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCookie("csrftoken")
+      },
+      credentials: "same-origin",
+      body: JSON.stringify(body)
+    }
+  );
+  return await response.json();
+};
+
+export const removeTeamRegistration = async ({ tournament_id, body }) => {
+  const response = await fetch(
+    `/api/tournament/${tournament_id}/deregister-team`,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCookie("csrftoken")
+      },
+      credentials: "same-origin",
+      body: JSON.stringify(body)
+    }
+  );
+  return await response.json();
+};
+
 export const createField = async ({ tournament_id, body }) => {
   const response = await fetch(`/api/tournament/${tournament_id}/field`, {
     method: "POST",
