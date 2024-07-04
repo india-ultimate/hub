@@ -1,18 +1,27 @@
 import { useParams } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
 import { userGroup } from "solid-heroicons/solid";
-import { Suspense } from "solid-js";
+import { createEffect, createSignal, Show, Suspense } from "solid-js";
 
-import { fetchTeamBySlug } from "../../queries";
+import { fetchTeamBySlug, fetchUser } from "../../queries";
 import Breadcrumbs from "../Breadcrumbs";
+import Edit from "./Edit";
 
 const View = () => {
   const params = useParams();
+  const [teamData, setTeamData] = createSignal();
 
   const teamQuery = createQuery(
     () => ["teams", params.slug],
     () => fetchTeamBySlug(params.slug)
   );
+  const userQuery = createQuery(() => ["me"], fetchUser);
+
+  createEffect(() => {
+    if (teamQuery.status === "success" && teamQuery.data) {
+      setTeamData(teamQuery.data);
+    }
+  });
 
   return (
     <div>
@@ -39,38 +48,55 @@ const View = () => {
           </Suspense>
         </span>
       </h1>
-      <dl class="max-w-md divide-y divide-gray-200 text-gray-900 dark:divide-gray-700 dark:text-white">
-        <div class="flex flex-col pb-3">
-          <dt class="mb-1 text-gray-500 dark:text-gray-400 md:text-lg">
-            Category
-          </dt>
-          <dd class="text-lg font-semibold">
-            {teamQuery.data?.category || "-"}
-          </dd>
-        </div>
-        <div class="flex flex-col py-3">
-          <dt class="mb-1 text-gray-500 dark:text-gray-400 md:text-lg">
-            State
-          </dt>
-          <dd class="text-lg font-semibold">
-            {teamQuery.data?.state_ut || "-"}
-          </dd>
-        </div>
-        <div class="flex flex-col pt-3">
-          <dt class="mb-1 text-gray-500 dark:text-gray-400 md:text-lg">City</dt>
-          <dd class="text-lg font-semibold">{teamQuery.data?.city || "-"}</dd>
-        </div>
-        <div class="flex flex-col pt-3">
-          <dt class="mb-1 text-gray-500 dark:text-gray-400 md:text-lg">
-            Admins
-          </dt>
-          <dd class="text-lg font-semibold">
-            {teamQuery.data?.admins
-              .map(admin => admin.full_name + ` (${admin.username})`)
-              .join("\n") || "-"}
-          </dd>
-        </div>
-      </dl>
+
+      <Show
+        when={
+          userQuery.isSuccess &&
+          userQuery.data?.admin_teams
+            ?.map(team => team.id)
+            .includes(teamQuery.data?.id)
+        }
+        fallback={
+          <dl class="max-w-md divide-y divide-gray-200 text-gray-900 dark:divide-gray-700 dark:text-white">
+            <div class="flex flex-col pb-3">
+              <dt class="mb-1 text-gray-500 dark:text-gray-400 md:text-lg">
+                Category
+              </dt>
+              <dd class="text-lg font-semibold">
+                {teamQuery.data?.category || "-"}
+              </dd>
+            </div>
+            <div class="flex flex-col py-3">
+              <dt class="mb-1 text-gray-500 dark:text-gray-400 md:text-lg">
+                State
+              </dt>
+              <dd class="text-lg font-semibold">
+                {teamQuery.data?.state_ut || "-"}
+              </dd>
+            </div>
+            <div class="flex flex-col pt-3">
+              <dt class="mb-1 text-gray-500 dark:text-gray-400 md:text-lg">
+                City
+              </dt>
+              <dd class="text-lg font-semibold">
+                {teamQuery.data?.city || "-"}
+              </dd>
+            </div>
+            <div class="flex flex-col pt-3">
+              <dt class="mb-1 text-gray-500 dark:text-gray-400 md:text-lg">
+                Admins
+              </dt>
+              <dd class="text-lg font-semibold">
+                {teamQuery.data?.admins
+                  .map(admin => admin.full_name + ` (${admin.username})`)
+                  .join("\n") || "-"}
+              </dd>
+            </div>
+          </dl>
+        }
+      >
+        <Edit teamData={teamData()} />
+      </Show>
     </div>
   );
 };
