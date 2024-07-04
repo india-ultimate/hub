@@ -103,14 +103,7 @@ class PaymentFormSchema(Schema):
 class EventSchema(ModelSchema):
     class Config:
         model = Event
-        model_fields = [
-            "id",
-            "title",
-            "start_date",
-            "end_date",
-            "ultimate_central_slug",
-            "location",
-        ]
+        model_exclude = ["ultimate_central_id"]
 
 
 class UserFormSchema(ModelSchema):
