@@ -132,12 +132,12 @@ const Teams = () => {
               )}
             </For>
           </Show>
-          <button
-            type="button"
-            class="me-2 mt-4 w-full rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+          <A
+            href={"/teams/new"}
+            class="me-2 mt-4 w-full rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
           >
             Create New Team
-          </button>
+          </A>
         </Show>
 
         <hr class="my-4 h-px w-full border-0 bg-gray-200 dark:bg-gray-700" />
