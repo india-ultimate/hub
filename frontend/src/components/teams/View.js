@@ -3,11 +3,13 @@ import { createQuery } from "@tanstack/solid-query";
 import { userGroup } from "solid-heroicons/solid";
 import { createEffect, createSignal, Show, Suspense } from "solid-js";
 
-import { fetchTeamBySlug, fetchUser } from "../../queries";
+import { fetchTeamBySlug } from "../../queries";
+import { useStore } from "../../store";
 import Breadcrumbs from "../Breadcrumbs";
 import Edit from "./Edit";
 
 const View = () => {
+  const [store] = useStore();
   const params = useParams();
   const [teamData, setTeamData] = createSignal();
 
@@ -15,7 +17,6 @@ const View = () => {
     () => ["teams", params.slug],
     () => fetchTeamBySlug(params.slug)
   );
-  const userQuery = createQuery(() => ["me"], fetchUser);
 
   createEffect(() => {
     if (teamQuery.status === "success" && teamQuery.data) {
@@ -51,8 +52,8 @@ const View = () => {
 
       <Show
         when={
-          userQuery.isSuccess &&
-          userQuery.data?.admin_teams
+          store.loggedIn &&
+          store.data?.admin_teams
             ?.map(team => team.id)
             .includes(teamQuery.data?.id)
         }
