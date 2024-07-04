@@ -282,6 +282,14 @@ class TeamCreateSchema(Schema):
     city: str
 
 
+class TeamUpdateSchema(Schema):
+    id: str
+    category: str | None
+    state_ut: str | None
+    city: str | None
+    admin_ids: list[str] | None
+
+
 class PersonTinySchema(ModelSchema):
     class Config:
         model = UCPerson
