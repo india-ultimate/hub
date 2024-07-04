@@ -77,7 +77,11 @@ const TournamentSection = () => {
 const TournamentCard = props => (
   <A
     class="my-2 flex items-center gap-3 rounded-md bg-gray-100 p-3 md:gap-6"
-    href={"/tournament/" + props.tournament.event.ultimate_central_slug}
+    href={
+      props.tournament.status === "REG" || props.tournament.status === "SCH"
+        ? `/tournament/${props.tournament.event.ultimate_central_slug}/register`
+        : `/tournament/${props.tournament.event.ultimate_central_slug}`
+    }
   >
     <Show when={props.tournament.logo_light}>
       <img src={props.tournament.logo_light} class="w-12 rounded-sm md:w-24" />
