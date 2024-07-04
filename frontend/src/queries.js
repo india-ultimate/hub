@@ -93,6 +93,19 @@ export const searchTeams = async (searchText, pagination) => {
   return await response.json();
 };
 
+export const searchUsers = async searchText => {
+  let baseUrl = "/api/users/search?";
+  if (searchText) {
+    baseUrl = baseUrl + "text=" + searchText + "&";
+  }
+  const response = await fetch(baseUrl, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin"
+  });
+  return await response.json();
+};
+
 export const fetchTeamBySlug = async team_slug => {
   const response = await fetch(`/api/team/${team_slug}`, {
     method: "GET",
@@ -687,6 +700,25 @@ export const updateTournamentRules = async ({ tournament_id, body }) => {
 
 export const createTeam = async formData => {
   const response = await fetch("/api/teams", {
+    method: "POST",
+    headers: {
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin",
+    body: formData
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.message || JSON.stringify(data));
+  }
+
+  return data;
+};
+
+export const updateTeam = async formData => {
+  const response = await fetch("/api/teams/edit", {
     method: "POST",
     headers: {
       "X-CSRFToken": getCookie("csrftoken")

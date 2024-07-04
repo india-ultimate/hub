@@ -7,8 +7,6 @@
 }
 .solid-select-container {
   position: relative;
-  margin-left: 2rem;
-  margin-right: 2rem;
 }
 .solid-select-control[data-disabled="true"] {
   background-color: rgb(243, 244, 246);
@@ -89,7 +87,7 @@
   caret-color: currentColor;
 }
 .solid-select-list {
-  background-color: inherit;
+  background-color: white;
   border-radius: 0.125rem;
   margin-top: 0.25rem;
   max-height: 50vh;
