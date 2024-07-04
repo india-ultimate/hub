@@ -1540,7 +1540,7 @@ def add_team_registration(
     except Team.DoesNotExist:
         return 400, {"message": "Team does not exist"}
 
-    if request.user not in team.admins:
+    if request.user not in team.admins.all():
         return 401, {"message": "Only team admins can register a team to a tournament !"}
 
     try:
@@ -1554,7 +1554,6 @@ def add_team_registration(
         }
 
     tournament.teams.add(team)
-    tournament.save()
 
     return 200, tournament
 
@@ -1573,8 +1572,8 @@ def remove_team_registration(
     except Team.DoesNotExist:
         return 400, {"message": "Team does not exist"}
 
-    if request.user not in team.admins:
-        return 401, {"message": "Only team admins can de-register a team to a tournament !"}
+    if request.user not in team.admins.all():
+        return 401, {"message": "Only team admins can de-register a team from a tournament !"}
 
     try:
         tournament = Tournament.objects.get(id=tournament_id)
@@ -1587,7 +1586,6 @@ def remove_team_registration(
         }
 
     tournament.teams.remove(team)
-    tournament.save()
 
     return 200, tournament
 
