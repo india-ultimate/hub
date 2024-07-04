@@ -15,14 +15,14 @@ class Command(BaseCommand):
         today = now().date()
 
         registrations_open_today = Tournament.objects.filter(
-            event__registration_start_date__exact=today, status="DFT"
+            event__registration_start_date__exact=today, status=Tournament.Status.DRAFT
         )
         registrations_closed_today = Tournament.objects.filter(
-            event__registration_end_date__lt=today, status="REG"
+            event__registration_end_date__lt=today, status=Tournament.Status.REGISTERING
         )
 
         if registrations_open_today.count() > 0:
-            registrations_open_today.update(status="REG")
+            registrations_open_today.update(status=Tournament.Status.REGISTERING)
 
         if registrations_closed_today.count() > 0:
-            registrations_closed_today.update(status="SCH")
+            registrations_closed_today.update(status=Tournament.Status.SCHEDULING)
