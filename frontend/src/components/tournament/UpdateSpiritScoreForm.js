@@ -11,25 +11,25 @@ const UpdateSpiritScoreForm = props => {
   const rosterQueryTeam1 = createQuery(
     () => [
       "tournament-roster",
-      props.tournament?.event?.ultimate_central_slug,
-      props.match?.team_1?.ultimate_central_slug
+      props.tournament?.event?.slug,
+      props.match?.team_1?.slug
     ],
     () =>
       fetchTournamentTeamBySlug(
-        props.tournament?.event?.ultimate_central_slug,
-        props.match?.team_1?.ultimate_central_slug
+        props.tournament?.event?.slug,
+        props.match?.team_1?.slug
       )
   );
   const rosterQueryTeam2 = createQuery(
     () => [
       "tournament-roster",
-      props.tournament?.event?.ultimate_central_slug,
-      props.match?.team_2?.ultimate_central_slug
+      props.tournament?.event?.slug,
+      props.match?.team_2?.slug
     ],
     () =>
       fetchTournamentTeamBySlug(
-        props.tournament?.event?.ultimate_central_slug,
-        props.match?.team_2?.ultimate_central_slug
+        props.tournament?.event?.slug,
+        props.match?.team_2?.slug
       )
   );
 

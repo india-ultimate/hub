@@ -50,9 +50,9 @@ const TournamentTeam = () => {
 
   const currTeamNo = match => {
     if (match.team_1) {
-      return params.team_slug === match.team_1.ultimate_central_slug ? 1 : 2;
+      return params.team_slug === match.team_1.slug ? 1 : 2;
     }
-    return params.team_slug === match.team_2.ultimate_central_slug ? 2 : 1;
+    return params.team_slug === match.team_2.slug ? 2 : 1;
   };
 
   const oppTeamNo = match => (currTeamNo(match) === 1 ? 2 : 1);
@@ -153,7 +153,7 @@ const TournamentTeam = () => {
           {
             url: `/tournament/${params.tournament_slug}`,
             name: getTournamentBreadcrumbName(
-              tournamentQuery.data?.event?.ultimate_central_slug || ""
+              tournamentQuery.data?.event?.slug || ""
             )
           }
         ]}

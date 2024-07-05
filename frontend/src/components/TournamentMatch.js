@@ -155,7 +155,7 @@ const TournamentMatch = props => {
             >
               <A
                 href={`/tournament/${props.tournamentSlug}/team/${
-                  props.match[`team_${currTeamNo()}`].ultimate_central_slug
+                  props.match[`team_${currTeamNo()}`].slug
                 }`}
               >
                 {`${props.match[`team_${currTeamNo()}`].name} (${
@@ -178,7 +178,7 @@ const TournamentMatch = props => {
           <span class="w-1/3 text-center font-medium text-gray-600 dark:text-gray-300">
             <A
               href={`/tournament/${props.tournamentSlug}/team/${
-                props.match[`team_${oppTeamNo()}`].ultimate_central_slug
+                props.match[`team_${oppTeamNo()}`].slug
               }`}
             >
               {`${props.match[`team_${oppTeamNo()}`].name} (${
