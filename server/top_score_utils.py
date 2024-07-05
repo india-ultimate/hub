@@ -127,7 +127,13 @@ class TopScoreClient:
 
     def _request(self, url: str) -> Any | None:
         try:
-            response = requests.get(url, headers=self.headers, timeout=30)
+            if self.headers is None:
+                headers = {
+                    "User-Agent": "Python:hub (by /fly)",
+                }
+                response = requests.get(url, headers=headers, timeout=30)
+            else:
+                response = requests.get(url, headers=self.headers, timeout=30)
         except requests.exceptions.RequestException as e:
             logger.error("Failed to get data: %s", e)
             return None
