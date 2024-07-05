@@ -171,7 +171,7 @@ const TournamentSchedule = () => {
           {
             url: `/tournament/${params.slug}`,
             name: getTournamentBreadcrumbName(
-              tournamentQuery.data?.event?.ultimate_central_slug || ""
+              tournamentQuery.data?.event?.slug || ""
             )
           }
         ]}

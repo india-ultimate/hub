@@ -79,8 +79,8 @@ const TournamentCard = props => (
     class="my-2 flex items-center gap-3 rounded-md bg-gray-100 p-3 md:gap-6"
     href={
       props.tournament.status === "REG" || props.tournament.status === "SCH"
-        ? `/tournament/${props.tournament.event.ultimate_central_slug}/register`
-        : `/tournament/${props.tournament.event.ultimate_central_slug}`
+        ? `/tournament/${props.tournament.event.slug}/register`
+        : `/tournament/${props.tournament.event.slug}`
     }
   >
     <Show when={props.tournament.logo_light}>

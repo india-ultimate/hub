@@ -131,7 +131,7 @@ const TournamentStandings = () => {
           {
             url: `/tournament/${params.slug}`,
             name: getTournamentBreadcrumbName(
-              tournamentQuery.data?.event?.ultimate_central_slug || ""
+              tournamentQuery.data?.event?.slug || ""
             )
           }
         ]}
@@ -233,8 +233,7 @@ const TournamentStandings = () => {
                             <td class="px-4 py-4">
                               <A
                                 href={`/tournament/${params.slug}/team/${
-                                  teamsMap()[result.team_id]
-                                    ?.ultimate_central_slug
+                                  teamsMap()[result.team_id]?.slug
                                 }`}
                               >
                                 {teamsMap()[result.team_id]?.name}
@@ -298,7 +297,7 @@ const TournamentStandings = () => {
                             />
                             <A
                               href={`/tournament/${params.slug}/team/${
-                                teamsMap()[team_id]?.ultimate_central_slug
+                                teamsMap()[team_id]?.slug
                               }`}
                             >
                               {teamsMap()[team_id]?.name}
@@ -337,7 +336,7 @@ const TournamentStandings = () => {
                             />
                             <A
                               href={`/tournament/${params.slug}/team/${
-                                teamsMap()[team_id]?.ultimate_central_slug
+                                teamsMap()[team_id]?.slug
                               }`}
                             >
                               {teamsMap()[team_id]?.name}
@@ -401,7 +400,7 @@ const TournamentStandings = () => {
                                   />
                                   <A
                                     href={`/tournament/${params.slug}/team/${
-                                      teamsMap()[team_id]?.ultimate_central_slug
+                                      teamsMap()[team_id]?.slug
                                     }`}
                                   >
                                     {teamsMap()[team_id]?.name}
@@ -438,7 +437,7 @@ const TournamentStandings = () => {
                                   />
                                   <A
                                     href={`/tournament/${params.slug}/team/${
-                                      teamsMap()[team_id]?.ultimate_central_slug
+                                      teamsMap()[team_id]?.slug
                                     }`}
                                   >
                                     {teamsMap()[team_id]?.name}
@@ -489,8 +488,7 @@ const TournamentStandings = () => {
                             <td class="px-4 py-4">
                               <A
                                 href={`/tournament/${params.slug}/team/${
-                                  teamsMap()[result.team_id]
-                                    ?.ultimate_central_slug
+                                  teamsMap()[result.team_id]?.slug
                                 }`}
                               >
                                 {teamsMap()[result.team_id]?.name}

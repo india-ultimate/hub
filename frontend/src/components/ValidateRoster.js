@@ -333,7 +333,7 @@ const ValidateRoster = () => {
             </Match>
           </Switch>
         </Match>
-        <Match when={eventData()?.ultimate_central_slug}>
+        <Match when={eventData()?.slug}>
           <h2 class="text-2xl font-bold text-blue-500">{eventData()?.title}</h2>
           <h3 class="font-bold">
             No. of Teams - {(eventData()?.teams || []).length}

@@ -202,9 +202,7 @@ const Tournament = () => {
       </div>
       <Show when={playingTeam()}>
         <A
-          href={`/tournament/${params.slug}/team/${
-            playingTeam().ultimate_central_slug
-          }`}
+          href={`/tournament/${params.slug}/team/${playingTeam().slug}`}
           //
           class="mt-5 block w-full rounded-lg bg-gradient-to-br from-pink-600 to-orange-400 p-0.5 shadow-md"
         >
@@ -344,7 +342,7 @@ const Tournament = () => {
                         <td class="px-2 py-4">
                           <A
                             href={`/tournament/${params.slug}/team/${
-                              teamsMap()[team_id]?.ultimate_central_slug
+                              teamsMap()[team_id]?.slug
                             }`}
                           >
                             <img
@@ -397,7 +395,7 @@ const Tournament = () => {
                         <td class="px-2 py-4">
                           <A
                             href={`/tournament/${params.slug}/team/${
-                              teamsMap()[team_id]?.ultimate_central_slug
+                              teamsMap()[team_id]?.slug
                             }`}
                           >
                             <img
@@ -453,8 +451,7 @@ const Tournament = () => {
                           <td class="px-2 py-4">
                             <A
                               href={`/tournament/${params.slug}/team/${
-                                teamsMap()[spirit.team_id]
-                                  ?.ultimate_central_slug
+                                teamsMap()[spirit.team_id]?.slug
                               }`}
                             >
                               <img

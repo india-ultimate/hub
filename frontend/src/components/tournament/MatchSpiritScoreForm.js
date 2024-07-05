@@ -41,14 +41,12 @@ const MatchSpiritScoreForm = componentProps => {
     () => [
       "tournament-roster",
       componentProps.tournamentSlug,
-      componentProps.match[`team_${componentProps.oppTeamNo}`]
-        .ultimate_central_slug
+      componentProps.match[`team_${componentProps.oppTeamNo}`].slug
     ],
     () =>
       fetchTournamentTeamBySlug(
         componentProps.tournamentSlug,
-        componentProps.match[`team_${componentProps.oppTeamNo}`]
-          .ultimate_central_slug
+        componentProps.match[`team_${componentProps.oppTeamNo}`].slug
       )
   );
 
