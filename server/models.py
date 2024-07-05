@@ -204,6 +204,22 @@ class Event(ExportModelOperationsMixin("event"), models.Model):  # type: ignore[
     type = models.CharField(max_length=3, choices=Type.choices, default=Type.MIXED)
     slug = models.SlugField(null=True, blank=True, db_index=True)
 
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        if not self.slug:
+            self.slug = self.get_slug()
+        return super().save(*args, **kwargs)
+
+    def get_slug(self) -> str:
+        slug = slugify(self.title)
+        unique_slug = slug
+
+        number = 1
+        while Event.objects.filter(slug=unique_slug).exists():
+            unique_slug = slugify(f"{slug}-{number}")
+            number += 1
+
+        return unique_slug
+
 
 class Tournament(ExportModelOperationsMixin("tournament"), models.Model):  # type: ignore[misc]
     class Status(models.TextChoices):
