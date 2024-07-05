@@ -47,6 +47,7 @@ from server.models import (
     Pool,
     PositionPool,
     RazorpayTransaction,
+    Registration,
     Team,
     Tournament,
     TournamentField,
@@ -65,6 +66,7 @@ from server.schema import (
     AccreditationFormSchema,
     AccreditationSchema,
     AddOrRemoveTeamRegistrationSchema,
+    AddToRosterSchema,
     AnnualMembershipSchema,
     BracketCreateSchema,
     BracketSchema,
@@ -108,6 +110,7 @@ from server.schema import (
     RegistrationOthersSchema,
     RegistrationSchema,
     RegistrationWardSchema,
+    RemoveFromRosterSchema,
     Response,
     SpiritScoreSubmitSchema,
     TeamCreateSchema,
@@ -118,6 +121,7 @@ from server.schema import (
     TournamentFieldCreateSchema,
     TournamentFieldSchema,
     TournamentFieldUpdateSchema,
+    TournamentPlayerRegistrationSchema,
     TournamentRulesSchema,
     TournamentSchema,
     TournamentUpdateSeedingSchema,
@@ -1319,18 +1323,121 @@ def get_tournament(
     return 200, tournament
 
 
+@api.post(
+    "/tournament/add-to-roster",
+    response={200: TournamentPlayerRegistrationSchema, 400: Response, 401: Response},
+)
+def add_player_to_roster(
+    request: AuthenticatedHttpRequest,
+    event_id: int,
+    registration_details: AddToRosterSchema,
+) -> tuple[int, Registration] | tuple[int, message_response]:
+    try:
+        team = Team.objects.get(id=registration_details.team_id)
+        event = Event.objects.get(id=event_id)
+        tournament = Tournament.objects.get(event=event)
+    except (Event.DoesNotExist, Team.DoesNotExist, Tournament.DoesNotExist):
+        return 400, {"message": "Team/Event/Tournament does not exist"}
+
+    if tournament.status != Tournament.Status.REGISTERING:
+        return 400, {
+            "message": f"You can't roster players now ! Rostering open from {tournament.event.registration_start_date} to {tournament.event.registration_start_date}"
+        }
+
+    if request.user not in team.admins.all():
+        return 401, {"message": "Only team admins can roster players to the team"}
+
+    try:
+        player = Player.objects.get(id=registration_details.player_id)
+    except Player.DoesNotExist:
+        return 400, {"message": "Player does not exist"}
+
+    if registration_details.role not in Registration.Role._value2member_map_:
+        return 400, {"message": "Invalid role"}
+
+    registration = Registration(
+        event=event,
+        team=team,
+        player=player,
+        is_playing=registration_details.is_playing,
+        role=registration_details.role,
+    )
+    registration.save()
+
+    return 200, registration
+
+
+@api.put(
+    "/tournament/remove-from-roster",
+    response={200: message_response, 400: message_response, 401: message_response},
+)
+def remove_from_roster(
+    request: AuthenticatedHttpRequest, event_id: int, player_details: RemoveFromRosterSchema
+) -> tuple[int, message_response]:
+    try:
+        event = Event.objects.get(id=event_id)
+        team = Team.objects.get(id=player_details.team_id)
+        tournament = Tournament.objects.get(event=event)
+    except (Event.DoesNotExist, Team.DoesNotExist, Tournament.DoesNotExist):
+        return 400, {"message": "Team/Event/Tournament does not exist"}
+
+    if tournament.status != Tournament.Status.REGISTERING:
+        return 400, {
+            "message": f"You can't roster players now ! Rostering open from {tournament.event.registration_start_date} to {tournament.event.registration_start_date}"
+        }
+
+    if request.user not in team.admins.all():
+        return 401, {"message": "Only team admins can remove players from the roster"}
+
+    try:
+        registration = Registration.objects.get(
+            id=player_details.registration_id, event=event, team=team
+        )
+        registration.delete()
+        return 200, {"message": "Player registration removed succesfully"}
+
+    except Registration.DoesNotExist:
+        return 400, {"message": "Registration does not exist"}
+
+
 @api.get("/tournament/roster", auth=None, response={200: list[UCRegistrationSchema], 400: Response})
 def get_tournament_team_roster(
     request: AuthenticatedHttpRequest, tournament_slug: str, team_slug: str
-) -> tuple[int, QuerySet[UCRegistration] | message_response]:
+) -> tuple[int, list[UCRegistration] | message_response]:
     try:
         event = Event.objects.get(ultimate_central_slug=tournament_slug)
         team = Team.objects.get(ultimate_central_slug=team_slug)
-        registrations = UCRegistration.objects.filter(team=team, event=event).order_by(
+        uc_registrations = UCRegistration.objects.filter(team=team, event=event).order_by(
             "person__first_name"
         )
 
-        return 200, registrations
+        registrations = Registration.objects.filter(event=event, team=team).order_by(
+            "player__user__first_name"
+        )
+
+        def _reg_to_uc_reg(reg: Registration) -> UCRegistration:
+            if reg.player.ultimate_central_id:
+                person = UCPerson.objects.get(id=reg.player.ultimate_central_id)
+            else:
+                person = UCPerson(
+                    email=reg.player.user.email,
+                    first_name=reg.player.user.first_name,
+                    last_name=reg.player.user.last_name,
+                    slug="",
+                    dominant_hand="",
+                    image_url="",
+                )
+
+            role_label = Registration.Role._value2member_map_[reg.role].label  # type: ignore[attr-defined]
+            return UCRegistration(event=reg.event, team=reg.team, person=person, roles=[role_label])
+
+        regs_to_uc_regs = list(map(_reg_to_uc_reg, registrations))
+
+        if uc_registrations.count() == 0:
+            return 200, regs_to_uc_regs
+        else:
+            return 200, list(uc_registrations)
+
     except (Event.DoesNotExist, Team.DoesNotExist):
         return 400, {"message": "Tournament/Team does not exist"}
 
