@@ -104,6 +104,12 @@ export const playerRoles = [
   { value: "MNGR", label: "Manager" }
 ];
 
+export const tournamentTypeChoices = [
+  { value: "MXD", label: "Mixed" },
+  { value: "OPN", label: "Opens" },
+  { value: "WMN", label: "Womens" }
+];
+
 // NOTE: Memberships go from 1st June to 31st May
 export const membershipStartDate = [1, 6];
 export const membershipEndDate = [31, 5];

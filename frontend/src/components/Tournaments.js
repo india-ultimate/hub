@@ -25,8 +25,8 @@ const Tournaments = () => {
               <A
                 href={
                   tournament.status === "REG" || tournament.status === "SCH"
-                    ? `/tournament/${tournament.event?.ultimate_central_slug}/register`
-                    : `/tournament/${tournament.event?.ultimate_central_slug}`
+                    ? `/tournament/${tournament.event?.slug}/register`
+                    : `/tournament/${tournament.event?.slug}`
                 }
                 class="block w-full rounded-lg border border-blue-600 bg-white p-4 shadow dark:border-blue-400 dark:bg-gray-800"
               >
