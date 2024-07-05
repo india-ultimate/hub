@@ -7,13 +7,14 @@ def add_admins(apps: StateApps, schema: BaseDatabaseSchemaEditor) -> None:
     Team = apps.get_model("server", "Team")  # noqa: N806
     Player = apps.get_model("server", "Player")  # noqa: N806
 
-    teams = Team.objects.all()
+    teams = Team.objects.exclude(ultimate_central_creator_id__isnull=True)
     for team in teams:
-        try:
-            player = Player.objects.get(ultimate_central_id=team.ultimate_central_creator_id)
-            team.admins.add(player.user)
-        except Player.DoesNotExist:
-            continue
+        if team.ultimate_central_creator_id is not None:
+            try:
+                player = Player.objects.get(ultimate_central_id=team.ultimate_central_creator_id)
+                team.admins.add(player.user)
+            except Player.DoesNotExist:
+                continue
 
 
 class Migration(migrations.Migration):
