@@ -132,6 +132,7 @@ class Command(BaseCommand):
                     ultimate_central_id=team_id,
                     ultimate_central_creator_id=team["creator_id"],
                     ultimate_central_slug=team["slug"],
+                    slug=team["slug"],
                     facebook_url=team["facebook_url"],
                     image_url=team["images"]["200"],
                     name=team["name"],
@@ -147,6 +148,7 @@ class Command(BaseCommand):
                     "facebook_url",
                     "ultimate_central_slug",
                     "ultimate_central_creator_id",
+                    "slug",
                 ],
                 unique_fields=["ultimate_central_id"],
             )
