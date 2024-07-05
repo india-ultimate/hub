@@ -160,7 +160,8 @@ class Command(BaseCommand):
             )
 
             # Add admins
-            for team in teams:
+            created_teams = Team.objects.filter(ultimate_central_id__in=team_ids)
+            for team in created_teams:
                 try:
                     player = Player.objects.get(
                         ultimate_central_id=team.ultimate_central_creator_id
