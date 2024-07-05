@@ -399,6 +399,22 @@ class Match(ExportModelOperationsMixin("match"), models.Model):  # type: ignore[
         unique_together = ["tournament", "time", "field"]
 
 
+class Registration(ExportModelOperationsMixin("registration"), models.Model):  # type: ignore[misc]
+    class Role(models.TextChoices):
+        DEFAULT = "DFLT", _("Default")
+        CAPTAIN = "CAP", _("Captain")
+        SPIRIT_CAPTAIN = "SCAP", _("Spirit Captain")
+        COACH = "COACH", _("Coach")
+        ASSISTANT_COACH = "ACOACH", _("Assistant Coach")
+        MANAGER = "MNGR", _("Manager")
+
+    event = models.ForeignKey(Event, on_delete=models.CASCADE)
+    team = models.ForeignKey(Team, on_delete=models.CASCADE)
+    player = models.ForeignKey(Player, on_delete=models.CASCADE)
+    is_playing = models.BooleanField(default=True)
+    role = models.CharField(max_length=6, choices=Role.choices, default=Role.DEFAULT)
+
+
 class UCRegistration(ExportModelOperationsMixin("uc_registration"), models.Model):  # type: ignore[misc]
     event = models.ForeignKey(Event, on_delete=models.CASCADE)
     team = models.ForeignKey(Team, on_delete=models.CASCADE)
