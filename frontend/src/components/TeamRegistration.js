@@ -133,123 +133,131 @@ const TeamRegistration = () => {
         </Warning>
       </div>
 
-      <div class="mt-8">
-        <h4 class="text-lg font-bold text-blue-500">Register your team(s)</h4>
-        <Show
-          when={tournamentQuery.data?.status == "REG"}
-          fallback={
-            <p class="mt-4 text-sm italic text-gray-500">
-              Registrations have closed !
-            </p>
-          }
-        >
-          <Switch>
-            <Match when={!store.loggedIn}>
+      <div class="mx-auto max-w-screen-md">
+        <div class="mt-12">
+          <h4 class="text-lg font-bold text-blue-500">Register your team(s)</h4>
+          <Show
+            when={tournamentQuery.data?.status == "REG"}
+            fallback={
               <p class="mt-4 text-sm italic text-gray-500">
-                You must be logged in to register teams !
+                Registrations have closed !
               </p>
-            </Match>
-            <Match
-              when={
-                store.loggedIn &&
-                (!store.data.admin_teams || store.data.admin_teams?.length == 0)
-              }
-            >
-              <p class="mt-4 text-sm italic text-gray-500">
-                You must be an admin of a team to register !
-              </p>
-            </Match>
-            <Match when={store.loggedIn && store.data.admin_teams?.length > 0}>
-              <div class="my-6">
-                <For each={store.data.admin_teams}>
-                  {team => (
-                    <div class="mb-4 flex items-center justify-between gap-x-4 border-b border-gray-400/50 pb-4">
-                      <div class="flex items-center gap-x-4">
-                        <img
-                          src={team.image_url}
-                          class="h-8 w-8 rounded-full"
-                        />
-                        <span class="font-medium">{team.name}</span>
+            }
+          >
+            <Switch>
+              <Match when={!store.loggedIn}>
+                <p class="mt-4 text-sm italic text-gray-500">
+                  You must be logged in to register teams !
+                </p>
+              </Match>
+              <Match
+                when={
+                  store.loggedIn &&
+                  (!store.data.admin_teams ||
+                    store.data.admin_teams?.length == 0)
+                }
+              >
+                <p class="mt-4 text-sm italic text-gray-500">
+                  You must be an admin of a team to register !
+                </p>
+              </Match>
+              <Match
+                when={store.loggedIn && store.data.admin_teams?.length > 0}
+              >
+                <div class="my-6">
+                  <For each={store.data.admin_teams}>
+                    {team => (
+                      <div class="mb-4 flex items-center justify-between gap-x-4 border-b border-gray-400/50 pb-4">
+                        <div class="flex items-center gap-x-4">
+                          <img
+                            src={team.image_url}
+                            class="h-8 w-8 rounded-full"
+                          />
+                          <span class="font-medium">{team.name}</span>
+                        </div>
+                        <Show when={registeredTeamIds().includes(team.id)}>
+                          <button
+                            type="button"
+                            class={clsx(
+                              "justify-self-end rounded-lg px-4 py-2 text-sm font-medium text-white focus:outline-none focus:ring-4",
+                              "bg-red-500 hover:bg-red-600 focus:ring-red-300 dark:bg-red-600 dark:hover:bg-red-700 dark:focus:ring-red-800"
+                            )}
+                            onClick={() =>
+                              deRegisterTeamMutation.mutate({
+                                tournament_id: tournamentQuery.data?.id,
+                                body: {
+                                  team_id: team.id
+                                }
+                              })
+                            }
+                          >
+                            De-register
+                          </button>
+                        </Show>
+                        <Show when={!registeredTeamIds().includes(team.id)}>
+                          <button
+                            type="button"
+                            class={clsx(
+                              "justify-self-end rounded-lg px-4 py-2 text-sm font-medium text-white focus:outline-none focus:ring-4",
+                              "bg-blue-500  hover:bg-blue-600 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+                            )}
+                            onClick={() =>
+                              registerTeamMutation.mutate({
+                                tournament_id: tournamentQuery.data?.id,
+                                body: {
+                                  team_id: team.id
+                                }
+                              })
+                            }
+                          >
+                            Register
+                          </button>
+                        </Show>
                       </div>
-                      <Show when={registeredTeamIds().includes(team.id)}>
-                        <button
-                          type="button"
-                          class={clsx(
-                            "justify-self-end rounded-lg px-4 py-2 text-sm font-medium text-white focus:outline-none focus:ring-4",
-                            "bg-red-500 hover:bg-red-600 focus:ring-red-300 dark:bg-red-600 dark:hover:bg-red-700 dark:focus:ring-red-800"
-                          )}
-                          onClick={() =>
-                            deRegisterTeamMutation.mutate({
-                              tournament_id: tournamentQuery.data?.id,
-                              body: {
-                                team_id: team.id
-                              }
-                            })
-                          }
-                        >
-                          De-register
-                        </button>
-                      </Show>
-                      <Show when={!registeredTeamIds().includes(team.id)}>
-                        <button
-                          type="button"
-                          class={clsx(
-                            "justify-self-end rounded-lg px-4 py-2 text-sm font-medium text-white focus:outline-none focus:ring-4",
-                            "bg-blue-500  hover:bg-blue-600 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
-                          )}
-                          onClick={() =>
-                            registerTeamMutation.mutate({
-                              tournament_id: tournamentQuery.data?.id,
-                              body: {
-                                team_id: team.id
-                              }
-                            })
-                          }
-                        >
-                          Register
-                        </button>
-                      </Show>
-                    </div>
-                  )}
-                </For>
-              </div>
-            </Match>
-          </Switch>
-        </Show>
-      </div>
-
-      <div class="mt-12">
-        <h4 class="text-lg font-bold text-blue-500">Registered teams</h4>
-        <Show
-          when={tournamentQuery.data?.teams.length > 0}
-          fallback={
-            <p class="mt-4 text-sm italic text-gray-500">
-              No team has registered yet
-            </p>
-          }
-        >
-          <div class="my-6">
-            <For each={tournamentQuery.data?.teams}>
-              {team => (
-                <div class="mb-4 flex items-center justify-between gap-x-4 border-b border-gray-400/50 pb-4">
-                  <div class="flex items-center gap-x-4">
-                    <img src={team.image_url} class="h-8 w-8 rounded-full" />
-                    <span class="font-medium">{team.name}</span>
-                  </div>
-                  <button
-                    class={clsx(
-                      "inline-flex items-center justify-self-end rounded-lg px-4 py-2 text-sm font-medium text-white focus:outline-none focus:ring-4",
-                      "bg-blue-500  hover:bg-blue-600 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
                     )}
-                  >
-                    <span class="mr-2 self-center">Roster</span>
-                    <Icon path={arrowUpRight} class="mb-1 w-3 text-gray-100" />
-                  </button>
+                  </For>
                 </div>
-              )}
-            </For>
-          </div>
-        </Show>
+              </Match>
+            </Switch>
+          </Show>
+        </div>
+
+        <div class="mt-12">
+          <h4 class="text-lg font-bold text-blue-500">Registered teams</h4>
+          <Show
+            when={tournamentQuery.data?.teams.length > 0}
+            fallback={
+              <p class="mt-4 text-sm italic text-gray-500">
+                No team has registered yet
+              </p>
+            }
+          >
+            <div class="my-6">
+              <For each={tournamentQuery.data?.teams}>
+                {team => (
+                  <div class="mb-4 flex items-center justify-between gap-x-4 border-b pb-4">
+                    <div class="flex items-center gap-x-4">
+                      <img src={team.image_url} class="h-8 w-8 rounded-full" />
+                      <span class="font-medium">{team.name}</span>
+                    </div>
+                    <button
+                      class={clsx(
+                        "inline-flex items-center justify-self-end rounded-lg px-4 py-2 text-sm font-medium text-white focus:outline-none focus:ring-4",
+                        "bg-blue-500  hover:bg-blue-600 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+                      )}
+                    >
+                      <span class="mr-2 self-center">Roster</span>
+                      <Icon
+                        path={arrowUpRight}
+                        class="mb-1 w-3 text-gray-100"
+                      />
+                    </button>
+                  </div>
+                )}
+              </For>
+            </div>
+          </Show>
+        </div>
       </div>
     </Show>
   );
