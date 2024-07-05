@@ -161,7 +161,7 @@ class Command(BaseCommand):
             for team in teams:
                 try:
                     player = Player.objects.get(
-                        ultimate_central_id=team["ultimate_central_creator_id"]
+                        ultimate_central_id=team.ultimate_central_creator_id
                     )
                     team.admins.add(player.user)
                 except Player.DoesNotExist:
