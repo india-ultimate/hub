@@ -95,6 +95,15 @@ export const teamCategoryChoices = [
   { value: "National", label: "National" }
 ];
 
+export const playerRoles = [
+  { value: "DFLT", label: "Default" },
+  { value: "CAP", label: "Captain" },
+  { value: "SCAP", label: "Spirit Captain" },
+  { value: "COACH", label: "Coach" },
+  { value: "ACOACH", label: "Assistant Coach" },
+  { value: "MNGR", label: "Manager" }
+];
+
 // NOTE: Memberships go from 1st June to 31st May
 export const membershipStartDate = [1, 6];
 export const membershipEndDate = [31, 5];
