@@ -6,7 +6,7 @@ import {
 } from "@tanstack/solid-query";
 import clsx from "clsx";
 import { Icon } from "solid-heroicons";
-import { arrowUpRight, informationCircle, trophy } from "solid-heroicons/solid";
+import { arrowUpRight, trophy } from "solid-heroicons/solid";
 import { createEffect, createSignal, For, Match, Show, Switch } from "solid-js";
 
 import {
@@ -15,6 +15,7 @@ import {
   removeTeamRegistration
 } from "../queries";
 import { useStore } from "../store";
+import Warning from "./alerts/Warning";
 import Breadcrumbs from "./Breadcrumbs";
 
 const TeamRegistration = () => {
@@ -105,17 +106,9 @@ const TeamRegistration = () => {
         </p>
       </div>
 
-      <div
-        class="mb-4 mt-6 flex w-fit items-center rounded-lg bg-yellow-50 p-4 text-sm text-yellow-800 dark:bg-gray-800 dark:text-yellow-300"
-        role="alert"
-      >
-        <Icon
-          path={informationCircle}
-          class="me-3 inline h-5 w-5 flex-shrink-0"
-        />
-        <span class="sr-only">Info</span>
-        <div>
-          Registrations are open from{" "}
+      <div class="mx-auto mb-4 mt-6 w-fit">
+        <Warning>
+          Registrations open from{" "}
           <span class="inline-flex font-medium">
             {new Date(
               Date.parse(tournamentQuery.data?.event?.registration_start_date)
@@ -137,7 +130,7 @@ const TeamRegistration = () => {
               timeZone: "UTC"
             })}
           </span>
-        </div>
+        </Warning>
       </div>
 
       <div class="mt-8">
