@@ -58,7 +58,12 @@ class TopScoreClient:
             return None
 
         if response.status_code != HTTP_SUCCESS:
-            logger.error("Failed to get access token: Server returned %s", response.status_code)
+            logger.error(
+                "Failed to get access token: Server returned %s, error: %s, data: %s",
+                response.status_code,
+                response.text,
+                repr(data),
+            )
             return None
 
         logger.info("Fetched access token")
@@ -121,7 +126,11 @@ class TopScoreClient:
             return None
 
         if response.status_code != HTTP_SUCCESS:
-            logger.error("Failed to get data: Server returned %s", response.status_code)
+            logger.error(
+                "Failed to get data: Server returned %s, error: %s",
+                response.status_code,
+                response.text,
+            )
             return None
 
         try:
