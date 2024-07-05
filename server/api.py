@@ -117,6 +117,7 @@ from server.schema import (
     TeamSchema,
     TeamUpdateSchema,
     TopScoreCredentials,
+    TournamentCreateFromEventSchema,
     TournamentCreateSchema,
     TournamentFieldCreateSchema,
     TournamentFieldSchema,
@@ -1597,10 +1598,45 @@ def get_tournament_team_matches(
     return 200, tournament_team_matches
 
 
-@api.post("/tournament", response={200: TournamentSchema, 400: Response, 401: Response})
+@api.post("/tournaments", response={200: TournamentSchema, 400: Response, 401: Response})
 def create_tournament(
     request: AuthenticatedHttpRequest,
     tournament_details: TournamentCreateSchema,
+    logo_light: UploadedFile | None = File(None),  # noqa: B008
+    logo_dark: UploadedFile | None = File(None),  # noqa: B008
+) -> tuple[int, Tournament] | tuple[int, message_response]:
+    if not request.user.is_staff:
+        return 401, {"message": "Only Admins can create tournament"}
+
+    event = Event(
+        title=tournament_details.title,
+        start_date=tournament_details.start_date,
+        end_date=tournament_details.end_date,
+        registration_start_date=tournament_details.registration_start_date,
+        registration_end_date=tournament_details.registration_end_date,
+        location=tournament_details.location,
+        type=tournament_details.type,
+    )
+    event.save()
+
+    tournament = Tournament(event=event)
+
+    if logo_light:
+        tournament.logo_light = logo_light
+    if logo_dark:
+        tournament.logo_dark = logo_dark
+
+    tournament.rules = get_default_rules()
+
+    tournament.save()
+
+    return 200, tournament
+
+
+@api.post("/tournaments/event", response={200: TournamentSchema, 400: Response, 401: Response})
+def create_tournament_from_event(
+    request: AuthenticatedHttpRequest,
+    tournament_details: TournamentCreateFromEventSchema,
     logo_light: UploadedFile | None = File(None),  # noqa: B008
     logo_dark: UploadedFile | None = File(None),  # noqa: B008
 ) -> tuple[int, Tournament] | tuple[int, message_response]:

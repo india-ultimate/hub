@@ -6,15 +6,15 @@ import {
 } from "@tanstack/solid-query";
 import { createEffect, createSignal, Show } from "solid-js";
 
-import { createTournament, fetchEvents } from "../../queries";
+import { createTournamentFromEvent, fetchEvents } from "../../queries";
 import FileInput from "../FileInput";
 import Select from "../Select";
 
-const CreateTournamentForm = () => {
+const CreateTournamentFromEventForm = () => {
   const queryClient = useQueryClient();
   const eventsQuery = createQuery(() => ["events"], fetchEvents);
-  const createTournamentMutation = createMutation({
-    mutationFn: createTournament,
+  const createTournamentFromEventMutation = createMutation({
+    mutationFn: createTournamentFromEvent,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tournaments"] });
       setStatus("Created Tournament!");
@@ -57,7 +57,7 @@ const CreateTournamentForm = () => {
     setStatus("");
     setError("");
 
-    createTournamentMutation.mutate(formData);
+    createTournamentFromEventMutation.mutate(formData);
   };
 
   return (
@@ -126,4 +126,4 @@ const CreateTournamentForm = () => {
   );
 };
 
-export default CreateTournamentForm;
+export default CreateTournamentFromEventForm;

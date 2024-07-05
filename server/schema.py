@@ -621,8 +621,18 @@ class TournamentSchema(ModelSchema):
         model_fields = "__all__"
 
 
-class TournamentCreateSchema(Schema):
+class TournamentCreateFromEventSchema(Schema):
     event_id: int
+
+
+class TournamentCreateSchema(Schema):
+    title: str
+    start_date: str
+    end_date: str
+    registration_start_date: str
+    registration_end_date: str
+    location: str
+    type: str
 
 
 class TournamentUpdateSeedingSchema(Schema):
