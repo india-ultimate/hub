@@ -388,8 +388,8 @@ export const fetchUser = async () => {
 
 // Mutations ----------------
 
-export const createTournament = async formData => {
-  const response = await fetch("/api/tournament", {
+export const createTournamentFromEvent = async formData => {
+  const response = await fetch("/api/tournaments/event", {
     method: "POST",
     headers: {
       "X-CSRFToken": getCookie("csrftoken")

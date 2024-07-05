@@ -43,7 +43,7 @@ import {
 } from "../queries";
 import ScheduleSkeleton from "../skeletons/Schedule";
 import { useStore } from "../store";
-import CreateTournamentForm from "./tournament/CreateTournamentForm";
+import CreateTournamentFromEventForm from "./tournament/CreateTournamentFromEventForm";
 import MatchCard from "./tournament/MatchCard";
 import ReorderTeams from "./tournament/ReorderTeams";
 import RulesMarkdownEditor from "./tournament/RulesMarkdownEditor";
@@ -401,7 +401,7 @@ const TournamentManager = () => {
         <h1 class="text-center text-2xl font-bold text-blue-500">
           New Tournament
         </h1>
-        <CreateTournamentForm />
+        <CreateTournamentFromEventForm />
       </div>
       <hr class="my-8 h-px border-0 bg-gray-200 dark:bg-gray-700" />
       <div>
