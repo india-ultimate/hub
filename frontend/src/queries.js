@@ -388,6 +388,25 @@ export const fetchUser = async () => {
 
 // Mutations ----------------
 
+export const createTournament = async formData => {
+  const response = await fetch("/api/tournaments", {
+    method: "POST",
+    headers: {
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin",
+    body: formData
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.message || JSON.stringify(data));
+  }
+
+  return data;
+};
+
 export const createTournamentFromEvent = async formData => {
   const response = await fetch("/api/tournaments/event", {
     method: "POST",
