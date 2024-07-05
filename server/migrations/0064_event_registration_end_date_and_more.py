@@ -5,7 +5,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("server", "0058_alter_player_occupation_collegeid"),
+        ("server", "0063_copy_uc_slug_field"),
     ]
 
     operations = [
