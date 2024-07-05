@@ -109,3 +109,19 @@ def ordinal_suffix(num: int) -> str:
 
     # all other numbers have 'th' as suffix
     return "th"
+
+
+def if_dates_are_not_in_order(first_date: str, second_date: str) -> bool:
+    ind_tz = datetime.timezone(datetime.timedelta(hours=5, minutes=30), name="IND")
+    return (
+        datetime.datetime.strptime(first_date, "%Y-%m-%d").astimezone(ind_tz).date()
+        > datetime.datetime.strptime(second_date, "%Y-%m-%d").astimezone(ind_tz).date()
+    )
+
+
+def if_today(date: str) -> bool:
+    ind_tz = datetime.timezone(datetime.timedelta(hours=5, minutes=30), name="IND")
+    return (
+        datetime.datetime.strptime(date, "%Y-%m-%d").astimezone(ind_tz).date()
+        == datetime.datetime.now(ind_tz).date()
+    )

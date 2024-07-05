@@ -157,6 +157,8 @@ from server.utils import (
     RAZORPAY_DESCRIPTION_MAX,
     RAZORPAY_NOTES_MAX,
     create_razorpay_order,
+    if_dates_are_not_in_order,
+    if_today,
     verify_razorpay_payment,
     verify_razorpay_webhook_payload,
 )
@@ -1608,6 +1610,20 @@ def create_tournament(
     if not request.user.is_staff:
         return 401, {"message": "Only Admins can create tournament"}
 
+    datetime.timezone(datetime.timedelta(hours=5, minutes=30), name="IND")
+    if if_dates_are_not_in_order(tournament_details.start_date, tournament_details.end_date):
+        return 400, {"message": "Start date can't be after end date"}
+
+    if if_dates_are_not_in_order(
+        tournament_details.registration_start_date, tournament_details.registration_end_date
+    ):
+        return 400, {"message": "Registration Start date can't be after Registration end date"}
+
+    if if_dates_are_not_in_order(
+        tournament_details.registration_end_date, tournament_details.start_date
+    ):
+        return 400, {"message": "Registration End date can't be after Tournament Start date"}
+
     event = Event(
         title=tournament_details.title,
         start_date=tournament_details.start_date,
@@ -1627,6 +1643,9 @@ def create_tournament(
         tournament.logo_dark = logo_dark
 
     tournament.rules = get_default_rules()
+
+    if if_today(tournament_details.registration_start_date):
+        tournament.status = Tournament.Status.REGISTERING
 
     tournament.save()
 
