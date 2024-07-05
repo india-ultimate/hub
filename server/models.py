@@ -202,6 +202,7 @@ class Event(ExportModelOperationsMixin("event"), models.Model):  # type: ignore[
     ultimate_central_slug = models.SlugField(max_length=200, default="unknown")
     location = models.CharField(max_length=255, default="unknown")
     type = models.CharField(max_length=3, choices=Type.choices, default=Type.MIXED)
+    slug = models.SlugField(null=True, blank=True, db_index=True)
 
 
 class Tournament(ExportModelOperationsMixin("tournament"), models.Model):  # type: ignore[misc]
