@@ -19,6 +19,7 @@ from server.models import (
     Pool,
     PositionPool,
     RazorpayTransaction,
+    Registration,
     SpiritScore,
     Team,
     Tournament,
@@ -630,6 +631,31 @@ class TournamentUpdateSeedingSchema(Schema):
 
 class AddOrRemoveTeamRegistrationSchema(Schema):
     team_id: int
+
+
+class AddToRosterSchema(Schema):
+    team_id: int
+    player_id: int
+    is_playing: bool
+    role: str
+
+
+class RemoveFromRosterSchema(Schema):
+    team_id: int
+    registration_id: int
+
+
+class TournamentPlayerRegistrationSchema(Schema):
+    team: TeamSchema
+    player: PlayerSchema
+
+    # @staticmethod
+    # def resolve_role_full(registration: Registration) -> str:
+    #     return Registration.Role._value2member_map_[registration.role].label
+
+    class Config:
+        model = Registration
+        model_fields = "__all__"
 
 
 class PoolSchema(ModelSchema):
