@@ -186,7 +186,7 @@ def me_access(
     request: AuthenticatedHttpRequest, tournament_slug: str
 ) -> tuple[int, dict[str, bool | set[int] | str | int | None]]:
     try:
-        event = Event.objects.get(ultimate_central_slug=tournament_slug)
+        event = Event.objects.get(slug=tournament_slug)
         tournament = Tournament.objects.get(event=event)
     except Tournament.DoesNotExist:
         return 400, {"message": "Tournament does not exist"}
@@ -1318,7 +1318,7 @@ def get_tournament(
         if id is not None:
             tournament = Tournament.objects.get(id=id)
         else:
-            event = Event.objects.get(ultimate_central_slug=slug)
+            event = Event.objects.get(slug=slug)
             tournament = Tournament.objects.get(event=event)
     except (Tournament.DoesNotExist, Event.DoesNotExist):
         return 400, {"message": "Tournament does not exist"}
@@ -1408,8 +1408,8 @@ def get_tournament_team_roster(
     request: AuthenticatedHttpRequest, tournament_slug: str, team_slug: str
 ) -> tuple[int, list[UCRegistration] | message_response]:
     try:
-        event = Event.objects.get(ultimate_central_slug=tournament_slug)
-        team = Team.objects.get(ultimate_central_slug=team_slug)
+        event = Event.objects.get(slug=tournament_slug)
+        team = Team.objects.get(slug=team_slug)
         uc_registrations = UCRegistration.objects.filter(team=team, event=event).order_by(
             "person__first_name"
         )
@@ -1473,7 +1473,7 @@ def get_fields_by_tournament_slug(
     request: AuthenticatedHttpRequest, slug: str
 ) -> tuple[int, QuerySet[TournamentField] | message_response]:
     try:
-        event = Event.objects.get(ultimate_central_slug=slug)
+        event = Event.objects.get(slug=slug)
         tournament = Tournament.objects.get(event=event)
     except Event.DoesNotExist:
         return 400, {"message": "Event does not exist"}
@@ -1564,7 +1564,7 @@ def get_tournament_matches_by_slug(
     request: AuthenticatedHttpRequest, slug: str
 ) -> tuple[int, QuerySet[Match] | message_response]:
     try:
-        event = Event.objects.get(ultimate_central_slug=slug)
+        event = Event.objects.get(slug=slug)
         tournament = Tournament.objects.get(event=event)
     except Tournament.DoesNotExist:
         return 400, {"message": "Tournament does not exist"}
@@ -1583,9 +1583,9 @@ def get_tournament_team_matches(
     request: AuthenticatedHttpRequest, tournament_slug: str, team_slug: str
 ) -> tuple[int, QuerySet[Match] | message_response]:
     try:
-        event = Event.objects.get(ultimate_central_slug=tournament_slug)
+        event = Event.objects.get(slug=tournament_slug)
         tournament = Tournament.objects.get(event=event)
-        team = Team.objects.get(ultimate_central_slug=team_slug)
+        team = Team.objects.get(slug=team_slug)
     except Tournament.DoesNotExist:
         return 400, {"message": "Tournament does not exist"}
     except Event.DoesNotExist:
@@ -1864,7 +1864,7 @@ def get_pools(
         if id != 0:
             tournament = Tournament.objects.get(id=id)
         else:
-            event = Event.objects.get(ultimate_central_slug=slug)
+            event = Event.objects.get(slug=slug)
             tournament = Tournament.objects.get(event=event)
     except Tournament.DoesNotExist:
         return 400, {"message": "Tournament does not exist"}
@@ -1903,7 +1903,7 @@ def get_cross_pool(
         if id is not None:
             tournament = Tournament.objects.get(id=id)
         else:
-            event = Event.objects.get(ultimate_central_slug=slug)
+            event = Event.objects.get(slug=slug)
             tournament = Tournament.objects.get(event=event)
         cross_pool = CrossPool.objects.get(tournament=tournament)
     except Tournament.DoesNotExist:
@@ -1958,7 +1958,7 @@ def get_brackets(
         if id is not None:
             tournament = Tournament.objects.get(id=id)
         else:
-            event = Event.objects.get(ultimate_central_slug=slug)
+            event = Event.objects.get(slug=slug)
             tournament = Tournament.objects.get(event=event)
     except (Tournament.DoesNotExist, Event.DoesNotExist):
         return 400, {"message": "Tournament does not exist"}
@@ -2015,7 +2015,7 @@ def get_position_pools(
         if id is not None:
             tournament = Tournament.objects.get(id=id)
         else:
-            event = Event.objects.get(ultimate_central_slug=slug)
+            event = Event.objects.get(slug=slug)
             tournament = Tournament.objects.get(event=event)
     except (Tournament.DoesNotExist, Event.DoesNotExist):
         return 400, {"message": "Tournament does not exist"}
