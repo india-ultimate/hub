@@ -52,23 +52,30 @@ class TopScoreClient:
         }
         logger.debug("Fetching user access token")
         try:
-            response = requests.post(f"{self.site_url}/api/oauth/server", data=data, timeout=15)
+            headers = {
+                "User-Agent": "Python:hub (by /fly)",
+            }
+            response = requests.post(
+                f"{self.site_url}/api/oauth/server", json=data, headers=headers, timeout=15
+            )
         except requests.exceptions.RequestException as e:
             logger.error("Failed to get access token: %s", e)
             return None
 
         if response.status_code != HTTP_SUCCESS:
             logger.error(
-                "Failed to get access token: Server returned %s, error: %s, data: %s",
+                "Failed to get access token: Server returned %s, error: %s",
                 response.status_code,
                 response.text,
-                repr(data),
             )
             return None
 
         logger.info("Fetched access token")
         access_token = response.json()["access_token"]
-        self.headers = {"Authorization": f"Bearer {access_token}"}
+        self.headers = {
+            "Authorization": f"Bearer {access_token}",
+            "User-Agent": "Python:hub (by /fly)",
+        }
 
     def get_person(self) -> dict[str, Any] | None:
         if self.headers is None:
