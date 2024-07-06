@@ -652,7 +652,7 @@ class AddToRosterSchema(Schema):
 
 class RemoveFromRosterSchema(Schema):
     team_id: int
-    registration_id: int
+    event_id: int
 
 
 class TournamentPlayerRegistrationSchema(Schema):

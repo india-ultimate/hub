@@ -1371,14 +1371,14 @@ def add_player_to_roster(
 
 
 @api.put(
-    "/tournament/remove-from-roster",
+    "/tournament/remove-from-roster/{registration_id}",
     response={200: message_response, 400: message_response, 401: message_response},
 )
 def remove_from_roster(
-    request: AuthenticatedHttpRequest, event_id: int, player_details: RemoveFromRosterSchema
+    request: AuthenticatedHttpRequest, registration_id: int, player_details: RemoveFromRosterSchema
 ) -> tuple[int, message_response]:
     try:
-        event = Event.objects.get(id=event_id)
+        event = Event.objects.get(id=player_details.event_id)
         team = Team.objects.get(id=player_details.team_id)
         tournament = Tournament.objects.get(event=event)
     except (Event.DoesNotExist, Team.DoesNotExist, Tournament.DoesNotExist):
@@ -1393,9 +1393,7 @@ def remove_from_roster(
         return 401, {"message": "Only team admins can remove players from the roster"}
 
     try:
-        registration = Registration.objects.get(
-            id=player_details.registration_id, event=event, team=team
-        )
+        registration = Registration.objects.get(id=registration_id, event=event, team=team)
         registration.delete()
         return 200, {"message": "Player registration removed succesfully"}
 
@@ -1438,7 +1436,9 @@ def get_tournament_team_roster(
             if reg.is_playing:
                 roles.append("player")
 
-            return UCRegistration(event=reg.event, team=reg.team, person=person, roles=roles)
+            return UCRegistration(
+                id=reg.id, event=reg.event, team=reg.team, person=person, roles=roles
+            )
 
         regs_to_uc_regs = list(map(_reg_to_uc_reg, registrations))
 
