@@ -1402,7 +1402,7 @@ class TestTournaments(ApiBaseTestCase):
     def test_user_with_team_admin_access(self) -> None:
         c = self.client
         c.force_login(self.user)
-        response = c.get(f"/api/me/access?tournament_slug={self.event.ultimate_central_slug}")
+        response = c.get(f"/api/me/access?tournament_slug={self.event.slug}")
         self.assertEqual(200, response.status_code)
 
         data = response.json()
@@ -1415,7 +1415,7 @@ class TestTournaments(ApiBaseTestCase):
         c = self.client
         c.force_login(self.user_with_admin_player_roles_in_diff_teams)
 
-        response = c.get(f"/api/me/access?tournament_slug={self.event.ultimate_central_slug}")
+        response = c.get(f"/api/me/access?tournament_slug={self.event.slug}")
         self.assertEqual(200, response.status_code)
 
         data = response.json()
@@ -1428,7 +1428,7 @@ class TestTournaments(ApiBaseTestCase):
         c = self.client
         c.force_login(self.user2)
 
-        response = c.get(f"/api/me/access?tournament_slug={self.event.ultimate_central_slug}")
+        response = c.get(f"/api/me/access?tournament_slug={self.event.slug}")
         self.assertEqual(200, response.status_code)
 
         data = response.json()
@@ -1441,7 +1441,7 @@ class TestTournaments(ApiBaseTestCase):
         c = self.client
         c.force_login(self.user_with_no_event)
 
-        response = c.get(f"/api/me/access?tournament_slug={self.event.ultimate_central_slug}")
+        response = c.get(f"/api/me/access?tournament_slug={self.event.slug}")
         self.assertEqual(200, response.status_code)
 
         data = response.json()
@@ -1456,7 +1456,7 @@ class TestTournaments(ApiBaseTestCase):
         self.user.save()
         c.force_login(self.user)
 
-        response = c.get(f"/api/me/access?tournament_slug={self.event.ultimate_central_slug}")
+        response = c.get(f"/api/me/access?tournament_slug={self.event.slug}")
         self.assertEqual(200, response.status_code)
 
         data = response.json()
@@ -1471,7 +1471,7 @@ class TestTournaments(ApiBaseTestCase):
         self.user.save()
         c.force_login(self.user)
 
-        response = c.get(f"/api/me/access?tournament_slug={self.event.ultimate_central_slug}")
+        response = c.get(f"/api/me/access?tournament_slug={self.event.slug}")
         self.assertEqual(200, response.status_code)
 
         data = response.json()
