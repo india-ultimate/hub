@@ -243,9 +243,11 @@ const TeamRegistration = () => {
                       <span class="font-medium">{team.name}</span>
                     </div>
                     <button
+                      disabled // todo: Navigate to rostering page
                       class={clsx(
                         "inline-flex items-center justify-self-end rounded-lg px-4 py-2 text-sm font-medium text-white focus:outline-none focus:ring-4",
-                        "bg-blue-500  hover:bg-blue-600 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+                        "bg-blue-500  hover:bg-blue-600 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800",
+                        "disabled:cursor-not-allowed disabled:bg-gray-400"
                       )}
                     >
                       <span class="mr-2 self-center">Roster</span>
