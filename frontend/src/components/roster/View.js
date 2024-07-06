@@ -11,6 +11,8 @@ import {
 import { useStore } from "../../store";
 import Warning from "../alerts/Warning";
 import Breadcrumbs from "../Breadcrumbs";
+import EditRosteredPlayer from "./EditRosteredPlayer";
+import RemoveFromRoster from "./RemoveFromRoster";
 
 const Roster = () => {
   const params = useParams();
@@ -239,6 +241,14 @@ const Roster = () => {
                         </span>
                       </Show>
                     </div>
+                    <div class="flex gap-x-3 justify-self-end">
+                      <Show when={store.loggedIn && currentUserIsTeamAdmin()}>
+                        <RemoveFromRoster />
+                      </Show>
+                      <Show when={store.loggedIn && currentUserIsTeamAdmin()}>
+                        <EditRosteredPlayer />
+                      </Show>
+                    </div>
                   </div>
                 )}
               </For>
@@ -292,6 +302,14 @@ const Roster = () => {
                         <span class="me-2 h-fit rounded-full bg-pink-100 px-2.5 py-0.5 text-xs text-pink-800 dark:bg-pink-900 dark:text-pink-300">
                           Manager
                         </span>
+                      </Show>
+                    </div>
+                    <div class="flex gap-x-3 justify-self-end">
+                      <Show when={store.loggedIn && currentUserIsTeamAdmin()}>
+                        <RemoveFromRoster />
+                      </Show>
+                      <Show when={store.loggedIn && currentUserIsTeamAdmin()}>
+                        <EditRosteredPlayer />
                       </Show>
                     </div>
                   </div>
