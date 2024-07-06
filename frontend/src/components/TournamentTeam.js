@@ -125,24 +125,32 @@ const TournamentTeam = () => {
     setTimeout(() => initFlowbite(), 8000);
   });
 
-  const isPlayer = registration => {
-    return registration?.roles?.indexOf("player") > -1;
-  };
+  const isPlayer = registration => registration?.roles?.includes("player");
 
   const isCaptain = registration => {
-    return registration?.roles?.indexOf("captain") > -1;
+    return (
+      registration?.roles?.includes("captain") ||
+      registration?.roles?.includes("Captain")
+    );
   };
 
   const isSpiritCaptain = registration => {
-    return registration?.roles?.indexOf("spirit captain") > -1;
+    return (
+      registration?.roles?.includes("spirit captain") ||
+      registration?.roles?.includes("Spirit Captain")
+    );
   };
 
   const isCoach = registration => {
     return (
-      registration?.roles?.indexOf("coach") > -1 ||
-      registration?.roles?.indexOf("assistant coach") > -1
+      registration?.roles?.includes("coach") ||
+      registration?.roles?.includes("Coach") ||
+      registration?.roles?.includes("assistant coach") ||
+      registration?.roles?.includes("Assistant Coach")
     );
   };
+
+  const isManager = registration => registration?.roles?.includes("Manager");
 
   return (
     <Show when={!teamQuery.data?.message}>
@@ -300,6 +308,11 @@ const TournamentTeam = () => {
                     <Show when={isSpiritCaptain(registration)}>
                       <span class="me-2 h-fit rounded-full bg-green-100 px-2.5 py-0.5 text-xs text-green-800 dark:bg-green-900 dark:text-green-300">
                         Spirit Captain
+                      </span>
+                    </Show>
+                    <Show when={isManager(registration)}>
+                      <span class="me-2 h-fit rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">
+                        Manager
                       </span>
                     </Show>
                   </div>
