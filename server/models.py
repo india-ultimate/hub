@@ -7,13 +7,13 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.db.models.signals import m2m_changed, pre_save
 from django.dispatch import receiver
-from django.template.defaultfilters import slugify
 from django.utils.crypto import get_random_string
 from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 from django_prometheus.models import ExportModelOperationsMixin
 
 from server.constants import ANNUAL_MEMBERSHIP_AMOUNT, MAJOR_AGE, SPONSORED_ANNUAL_MEMBERSHIP_AMOUNT
+from server.utils import slugify_max
 
 
 class User(AbstractUser):
@@ -99,12 +99,12 @@ class Team(ExportModelOperationsMixin("team"), models.Model):  # type: ignore[mi
         return super().save(*args, **kwargs)
 
     def get_slug(self) -> str:
-        slug = slugify(self.name)
+        slug = slugify_max(self.name, 45)
         unique_slug = slug
 
         number = 1
         while Team.objects.filter(slug=unique_slug).exists():
-            unique_slug = slugify(f"{slug}-{number}")
+            unique_slug = f"{unique_slug}-{number}"
             number += 1
 
         return unique_slug
@@ -210,12 +210,12 @@ class Event(ExportModelOperationsMixin("event"), models.Model):  # type: ignore[
         return super().save(*args, **kwargs)
 
     def get_slug(self) -> str:
-        slug = slugify(self.title)
+        slug = slugify_max(self.title, 45)
         unique_slug = slug
 
         number = 1
         while Event.objects.filter(slug=unique_slug).exists():
-            unique_slug = slugify(f"{slug}-{number}")
+            unique_slug = f"{unique_slug}-{number}"
             number += 1
 
         return unique_slug

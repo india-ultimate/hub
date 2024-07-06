@@ -4,6 +4,7 @@ from typing import Any
 
 import razorpay
 from django.conf import settings
+from django.template.defaultfilters import slugify
 from django.utils.timezone import now
 from requests.exceptions import RequestException
 
@@ -125,3 +126,14 @@ def if_today(date: str) -> bool:
         datetime.datetime.strptime(date, "%Y-%m-%d").astimezone(ind_tz).date()
         == datetime.datetime.now(ind_tz).date()
     )
+
+
+def slugify_max(text: str, max_length: int = 50) -> str:
+    slug = slugify(text)
+    if len(slug) <= max_length:
+        return str(slug)
+    trimmed_slug = slug[:max_length].rsplit("-", 1)[0]
+    if len(trimmed_slug) <= max_length:
+        return trimmed_slug
+    # First word is > max_length chars, so we have to break it
+    return slug[:max_length]

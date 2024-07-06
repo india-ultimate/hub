@@ -3,10 +3,12 @@ from django.db.backends.base.schema import BaseDatabaseSchemaEditor
 from django.db.migrations.state import StateApps
 from django.db.models import F
 
+from server.utils import slugify_max
+
 
 def copy_field(apps: StateApps, schema: BaseDatabaseSchemaEditor) -> None:
     Team = apps.get_model("server", "Team")  # noqa: N806
-    Team.objects.all().update(slug=F("ultimate_central_slug"))
+    Team.objects.all().update(slug=slugify_max(str(F("ultimate_central_slug"))))
 
 
 class Migration(migrations.Migration):
