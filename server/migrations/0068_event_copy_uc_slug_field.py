@@ -1,14 +1,23 @@
 from django.db import migrations
 from django.db.backends.base.schema import BaseDatabaseSchemaEditor
 from django.db.migrations.state import StateApps
-from django.db.models import F
 
 from server.utils import slugify_max
 
 
 def copy_field(apps: StateApps, schema: BaseDatabaseSchemaEditor) -> None:
     Event = apps.get_model("server", "Event")  # noqa: N806
-    Event.objects.all().update(slug=slugify_max(str(F("ultimate_central_slug"))))
+    for event in Event.objects.all():
+        if event.ultimate_central_slug != "unknown":
+            event.slug = slugify_max(event.ultimate_central_slug)
+            event.save()
+
+
+def reverse_field(apps: StateApps, schema: BaseDatabaseSchemaEditor) -> None:
+    Event = apps.get_model("server", "Event")  # noqa: N806
+    for event in Event.objects.all():
+        event.slug = None
+        event.save()
 
 
 class Migration(migrations.Migration):
@@ -17,5 +26,5 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunPython(code=copy_field),
+        migrations.RunPython(code=copy_field, reverse_code=reverse_field),
     ]
