@@ -95,7 +95,9 @@ class Team(ExportModelOperationsMixin("team"), models.Model):  # type: ignore[mi
 
     def save(self, *args: Any, **kwargs: Any) -> None:
         if not self.slug:
-            self.slug = self.get_slug()
+            slug = self.get_slug()
+            self.slug = slug
+            self.ultimate_central_slug = slug
         return super().save(*args, **kwargs)
 
     def get_slug(self) -> str:
@@ -206,7 +208,9 @@ class Event(ExportModelOperationsMixin("event"), models.Model):  # type: ignore[
 
     def save(self, *args: Any, **kwargs: Any) -> None:
         if not self.slug:
-            self.slug = self.get_slug()
+            slug = self.get_slug()
+            self.slug = slug
+            self.ultimate_central_slug = slug
         return super().save(*args, **kwargs)
 
     def get_slug(self) -> str:
