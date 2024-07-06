@@ -76,6 +76,20 @@ const TeamRegistration = () => {
       </h1>
 
       <div>
+        <Show when={tournamentQuery.data?.logo_dark}>
+          <div class="flex justify-center">
+            <img
+              src={tournamentQuery.data?.logo_dark}
+              alt="Tournament logo"
+              class="lg:1/4 hidden w-3/4 dark:block sm:w-1/2 md:w-2/5"
+            />
+            <img
+              src={tournamentQuery.data?.logo_light}
+              alt="Tournament logo"
+              class="lg:1/4 block w-3/4 dark:hidden sm:w-1/2 md:w-2/5"
+            />
+          </div>
+        </Show>
         <p class="mt-2 text-center text-sm">
           {tournamentQuery.data?.event?.location}
         </p>
