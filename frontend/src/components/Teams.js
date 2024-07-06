@@ -8,8 +8,7 @@ import {
 import { createSignal, For, Show } from "solid-js";
 
 import { ChevronLeft, ChevronRight } from "../icons";
-import { searchTeams } from "../queries";
-import { useStore } from "../store";
+import { fetchUser, searchTeams } from "../queries";
 import Error from "./alerts/Error";
 import Info from "./alerts/Info";
 
@@ -47,7 +46,6 @@ const defaultColumns = [
 ];
 
 const Teams = () => {
-  const [store] = useStore();
   const [pagination, setPagination] = createSignal({
     pageIndex: 0,
     pageSize: 10
@@ -58,6 +56,7 @@ const Teams = () => {
     () => ["teams", "search", search(), pagination()],
     () => searchTeams(search(), pagination())
   );
+  const userQuery = createQuery(() => ["me"], fetchUser);
 
   const table = createSolidTable({
     get data() {
@@ -99,14 +98,17 @@ const Teams = () => {
           Teams in which you are an admin
         </h3>
         <Show
-          when={store.loggedIn}
+          when={userQuery.isSuccess}
           fallback={<Error text="Please login to view your teams" />}
         >
           <Show
-            when={store.data.admin_teams && store.data.admin_teams.length > 0}
+            when={
+              userQuery.data.admin_teams &&
+              userQuery.data.admin_teams.length > 0
+            }
             fallback={<Info text="No teams to show" />}
           >
-            <For each={store.data.admin_teams}>
+            <For each={userQuery.data.admin_teams}>
               {team => (
                 <div class="mt-1 flex w-full justify-between gap-4">
                   <div class="flex items-center gap-2">
