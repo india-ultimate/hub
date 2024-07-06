@@ -34,6 +34,7 @@ const TournamentManager = lazy(() => import("./TournamentManager"));
 const Tournaments = lazy(() => import("./Tournaments"));
 const Tournament = lazy(() => import("./Tournament"));
 const TeamRegistration = lazy(() => import("./TeamRegistration"));
+const Roster = lazy(() => import("./roster/View"));
 const TournamentRules = lazy(() => import("./TournamentRules"));
 const TournamentSchedule = lazy(() => import("./TournamentSchedule"));
 const TournamentStandings = lazy(() => import("./TournamentStandings"));
@@ -98,6 +99,11 @@ export default function App() {
                   <Route path={"/team/:slug"} component={ViewTeam} />
                   {/* Team Private Routes */}
                   <UserRoute path="/teams/new" component={CreateTeam} />
+                  {/* Roster Public Route */}
+                  <Route
+                    path={"/tournament/:tournament_slug/team/:team_slug/roster"}
+                    component={Roster}
+                  />
                   {/* Registration routes */}
                   <UserRoute path="/registration/me" component={Registration} />
                   <UserRoute
