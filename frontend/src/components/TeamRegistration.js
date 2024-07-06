@@ -25,18 +25,20 @@ const TeamRegistration = () => {
   const [store] = useStore();
 
   const tournamentQuery = createQuery(
-    () => ["tournament", params.slug],
+    () => ["tournaments", params.slug],
     () => fetchTournamentBySlug(params.slug)
   );
 
   const registerTeamMutation = createMutation({
     mutationFn: addTeamRegistration,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["tournament"] })
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["tournaments"] })
   });
 
   const deRegisterTeamMutation = createMutation({
     mutationFn: removeTeamRegistration,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["tournament"] })
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["tournaments"] })
   });
 
   const [registeredTeamIds, setRegisteredTeamIds] = createSignal([]);
@@ -170,7 +172,7 @@ const TeamRegistration = () => {
                       <div class="mb-4 flex items-center justify-between gap-x-4 border-b border-gray-400/50 pb-4">
                         <div class="flex items-center gap-x-4">
                           <img
-                            src={team.image_url}
+                            src={team.image ?? team.image_url}
                             class="h-8 w-8 rounded-full"
                           />
                           <span class="font-medium">{team.name}</span>
