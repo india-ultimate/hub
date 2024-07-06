@@ -1,12 +1,18 @@
 import { A, useParams } from "@solidjs/router";
-import { createQuery } from "@tanstack/solid-query";
+import {
+  createMutation,
+  createQuery,
+  useQueryClient
+} from "@tanstack/solid-query";
+import clsx from "clsx";
 import { trophy } from "solid-heroicons/solid";
 import { For, Match, Show, Switch } from "solid-js";
 
 import {
   fetchTeamBySlug,
   fetchTournamentBySlug,
-  fetchTournamentTeamBySlug
+  fetchTournamentTeamBySlug,
+  removeFromRoster
 } from "../../queries";
 import { useStore } from "../../store";
 import Warning from "../alerts/Warning";
@@ -15,6 +21,7 @@ import EditRosteredPlayer from "./EditRosteredPlayer";
 import RemoveFromRoster from "./RemoveFromRoster";
 
 const Roster = () => {
+  const queryClient = useQueryClient();
   const params = useParams();
   const [store] = useStore();
 
@@ -32,6 +39,12 @@ const Roster = () => {
     () => ["tournament-roster", params.tournament_slug, params.team_slug],
     () => fetchTournamentTeamBySlug(params.tournament_slug, params.team_slug)
   );
+
+  const removeFromRosterMutation = createMutation({
+    mutationFn: removeFromRoster,
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["tournament-roster"] })
+  });
 
   const currentUserIsTeamAdmin = () =>
     teamQuery.data?.admins.filter(user => user.id === store.data.id).length ==
@@ -156,7 +169,7 @@ const Roster = () => {
 
       <div class="mx-auto max-w-screen-md">
         <div class="mt-10">
-          <h4 class="text-lg font-bold text-blue-500">Add to Roster</h4>
+          <h4 class="text-xl font-bold text-blue-500">Add to Roster</h4>
           <Show
             when={tournamentQuery.data?.status == "REG"}
             fallback={
@@ -180,6 +193,9 @@ const Roster = () => {
                 <p class="mt-4 text-sm italic text-gray-500">
                   You must be a team admin to perform rostering !
                 </p>
+                <p class="mt-4 text-sm italic text-gray-500">
+                  Your team admins are:
+                </p>
               </Match>
               <Match when={store.loggedIn && currentUserIsTeamAdmin()}>
                 <p class="mt-4 text-sm italic text-gray-500">
@@ -200,10 +216,17 @@ const Roster = () => {
               </p>
             }
           >
-            <div class="mt-4 divide-y">
+            <div
+              class={clsx("mt-4", currentUserIsTeamAdmin() ? "divide-y" : "")}
+            >
               <For each={players()}>
                 {registration => (
-                  <div class="mr-6 flex w-full items-center justify-between space-x-4 py-4 pr-2">
+                  <div
+                    class={clsx(
+                      "mr-6 flex w-full items-center justify-between space-x-4 pr-2",
+                      currentUserIsTeamAdmin() ? "py-4" : "py-2"
+                    )}
+                  >
                     <div class="flex items-center gap-x-4">
                       <img
                         class="h-10 w-10 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
@@ -243,7 +266,13 @@ const Roster = () => {
                     </div>
                     <div class="flex gap-x-3 justify-self-end">
                       <Show when={store.loggedIn && currentUserIsTeamAdmin()}>
-                        <RemoveFromRoster />
+                        <RemoveFromRoster
+                          regId={registration.id}
+                          eventId={tournamentQuery.data.event.id}
+                          teamId={registration.team.id}
+                          playerName={`${registration.person.first_name} ${registration.person.last_name}`.trim()}
+                          removeMutation={removeFromRosterMutation}
+                        />
                       </Show>
                       <Show when={store.loggedIn && currentUserIsTeamAdmin()}>
                         <EditRosteredPlayer />
