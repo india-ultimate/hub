@@ -1431,8 +1431,14 @@ def get_tournament_team_roster(
                     image_url="",
                 )
 
+            roles = []
             role_label = Registration.Role._value2member_map_[reg.role].label  # type: ignore[attr-defined]
-            return UCRegistration(event=reg.event, team=reg.team, person=person, roles=[role_label])
+            roles.append(role_label)
+
+            if reg.is_playing:
+                roles.append("player")
+
+            return UCRegistration(event=reg.event, team=reg.team, person=person, roles=roles)
 
         regs_to_uc_regs = list(map(_reg_to_uc_reg, registrations))
 
