@@ -28,6 +28,7 @@ const Create = () => {
     mutationFn: createTeam,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["teams"] });
+      queryClient.invalidateQueries({ queryKey: ["me"] });
       setStatus("Created Team!");
       navigate("/teams", { replace: true });
     },
