@@ -1327,7 +1327,7 @@ def get_tournament(
 
 
 @api.post(
-    "/tournament/add-to-roster",
+    "/tournament/{event_id}/add-to-roster",
     response={200: TournamentPlayerRegistrationSchema, 400: Response, 401: Response},
 )
 def add_player_to_roster(
@@ -1346,6 +1346,9 @@ def add_player_to_roster(
         return 400, {
             "message": f"You can't roster players now ! Rostering open from {tournament.event.registration_start_date} to {tournament.event.registration_start_date}"
         }
+
+    if team not in tournament.teams.all():
+        return 400, {"message": f"{team.name} is not registered for ${event.title} !"}
 
     if request.user not in team.admins.all():
         return 401, {"message": "Only team admins can roster players to the team"}
