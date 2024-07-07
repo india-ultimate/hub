@@ -4,7 +4,7 @@ import { initFlowbite } from "flowbite";
 import { createSignal, Show } from "solid-js";
 
 import {
-  fetchTournamentTeamBySlug,
+  fetchTournamentTeamBySlugV1,
   submitMatchSpiritScore
 } from "../../queries";
 import Select from "../Select";
@@ -44,7 +44,7 @@ const MatchSpiritScoreForm = componentProps => {
       componentProps.match[`team_${componentProps.oppTeamNo}`].slug
     ],
     () =>
-      fetchTournamentTeamBySlug(
+      fetchTournamentTeamBySlugV1(
         componentProps.tournamentSlug,
         componentProps.match[`team_${componentProps.oppTeamNo}`].slug
       )

@@ -1509,7 +1509,7 @@ def get_tournament_team_roster(
 
 
 @api.get(
-    "/tournament/{tournament_slug}/roster/{team_slug}/new",
+    "/tournament/{tournament_slug}/team/{team_slug}/roster/v2",
     auth=None,
     response={200: list[TournamentPlayerRegistrationSchema], 400: Response},
 )

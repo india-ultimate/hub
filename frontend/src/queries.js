@@ -347,7 +347,10 @@ export const fetchTournamentTeamMatches = async (
   return await response.json();
 };
 
-export const fetchTournamentTeamBySlug = async (tournament_slug, team_slug) => {
+export const fetchTournamentTeamBySlugV1 = async (
+  tournament_slug,
+  team_slug
+) => {
   const response = await fetch(
     `/api/tournament/${tournament_slug}/team/${team_slug}/roster/v1`,
     {
@@ -359,12 +362,12 @@ export const fetchTournamentTeamBySlug = async (tournament_slug, team_slug) => {
   return await response.json();
 };
 
-export const fetchTournamentTeamBySlugNew = async (
+export const fetchTournamentTeamBySlugV2 = async (
   tournament_slug,
   team_slug
 ) => {
   const response = await fetch(
-    `/api/tournament/${tournament_slug}/roster/${team_slug}/new`,
+    `/api/tournament/${tournament_slug}/team/${team_slug}/roster/v2`,
     {
       method: "GET",
       headers: { "Content-Type": "application/json" },

@@ -16,7 +16,7 @@ import { matchCardColorToBorderColorMap } from "../colors";
 import {
   fetchTeamBySlug,
   fetchTournamentBySlug,
-  fetchTournamentTeamBySlug,
+  fetchTournamentTeamBySlugV1,
   fetchTournamentTeamMatches
 } from "../queries";
 import RosterSkeleton from "../skeletons/Roster";
@@ -41,7 +41,7 @@ const TournamentTeam = () => {
   );
   const rosterQuery = createQuery(
     () => ["tournament-roster", params.tournament_slug, params.team_slug],
-    () => fetchTournamentTeamBySlug(params.tournament_slug, params.team_slug)
+    () => fetchTournamentTeamBySlugV1(params.tournament_slug, params.team_slug)
   );
   const matchesQuery = createQuery(
     () => ["team-matches", params.tournament_slug, params.team_slug],
