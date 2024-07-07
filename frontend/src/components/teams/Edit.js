@@ -38,7 +38,8 @@ const Edit = props => {
     setSelectedValues(selected);
   };
   const selectProps = createAsyncOptions(searchUsers);
-  const selectFormat = item => item.full_name;
+  const selectFormat = item =>
+    item.full_name ? item.full_name + ` (${item.username})` : item.username;
 
   const queryClient = useQueryClient();
   const updateTeamMutation = createMutation({
