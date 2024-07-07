@@ -359,6 +359,27 @@ export const fetchTournamentTeamBySlug = async (tournament_slug, team_slug) => {
   return await response.json();
 };
 
+export const fetchTournamentTeamBySlugNew = async (
+  tournament_slug,
+  team_slug
+) => {
+  const response = await fetch(
+    `/api/tournament/${tournament_slug}/roster/${team_slug}/new`,
+    {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin"
+    }
+  );
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.message || JSON.stringify(data));
+  }
+
+  return data;
+};
+
 export const fetchUserAccessByTournamentSlug = async tournament_slug => {
   const response = await fetch(
     `/api/me/access?tournament_slug=${tournament_slug}`,

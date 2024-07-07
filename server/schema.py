@@ -663,16 +663,18 @@ class TournamentPlayerRegistrationUpdateSchema(Schema):
 
 
 class TournamentPlayerRegistrationSchema(Schema):
+    id: int
     team: TeamSchema
     player: PlayerSchema
+    is_playing: bool
+    role: str
 
     # @staticmethod
     # def resolve_role_full(registration: Registration) -> str:
-    #     return Registration.Role._value2member_map_[registration.role].label
+    #     return Registration.Role._value2member_map_[registration.role]._label_  # type: ignore[attr-defined]
 
     class Config:
         model = Registration
-        model_fields = "__all__"
 
 
 class PoolSchema(ModelSchema):
