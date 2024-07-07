@@ -1454,7 +1454,11 @@ def update_registration(
     return 200, registration
 
 
-@api.get("/tournament/roster", auth=None, response={200: list[UCRegistrationSchema], 400: Response})
+@api.get(
+    "/tournament/{tournament_slug}/team/{team_slug}/roster/v1",
+    auth=None,
+    response={200: list[UCRegistrationSchema], 400: Response},
+)
 def get_tournament_team_roster(
     request: AuthenticatedHttpRequest, tournament_slug: str, team_slug: str
 ) -> tuple[int, list[UCRegistration] | message_response]:
