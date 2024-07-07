@@ -67,10 +67,10 @@ const EditRosteredPlayer = props => {
 
     props.updateRegistrationMutation.mutate({
       registration_id: props.registration.id,
+      team_id: props.teamId,
+      event_id: props.eventId,
       body: {
-        ...editedValues,
-        team_id: props.teamId,
-        event_id: props.eventId
+        ...editedValues
       }
     });
 
