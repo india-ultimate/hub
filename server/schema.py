@@ -645,8 +645,8 @@ class AddOrRemoveTeamRegistrationSchema(Schema):
 
 class AddToRosterSchema(Schema):
     player_id: int
-    is_playing: bool
-    role: str
+    is_playing: bool | None
+    role: str | None
 
 
 class TournamentPlayerRegistrationUpdateSchema(Schema):

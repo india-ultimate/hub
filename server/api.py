@@ -1362,16 +1362,21 @@ def add_player_to_roster(
     except Player.DoesNotExist:
         return 400, {"message": "Player does not exist"}
 
-    if registration_details.role not in Registration.Role._value2member_map_:
+    if (
+        registration_details.role is not None
+        and registration_details.role not in Registration.Role._value2member_map_
+    ):
         return 400, {"message": "Invalid role"}
 
     registration = Registration(
         event=event,
         team=team,
         player=player,
-        is_playing=registration_details.is_playing,
-        role=registration_details.role,
     )
+    if registration_details.is_playing:
+        registration.is_playing = registration_details.is_playing
+    if registration_details.role:
+        registration.role = registration_details.role
     registration.save()
 
     return 200, registration
@@ -1455,7 +1460,7 @@ def update_registration(
 
 
 @api.get(
-    "/tournament/{tournament_slug}/team/{team_slug}/roster/v1",
+    "/v1/tournament/{tournament_slug}/team/{team_slug}/roster",
     auth=None,
     response={200: list[UCRegistrationSchema], 400: Response},
 )
@@ -1509,7 +1514,7 @@ def get_tournament_team_roster(
 
 
 @api.get(
-    "/tournament/{tournament_slug}/team/{team_slug}/roster/v2",
+    "/v2/tournament/{tournament_slug}/team/{team_slug}/roster",
     auth=None,
     response={200: list[TournamentPlayerRegistrationSchema], 400: Response},
 )
