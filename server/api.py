@@ -1436,7 +1436,7 @@ def update_registration(
     except Registration.DoesNotExist:
         return 400, {"message": "Registration does not exist"}
 
-    if registration_details.is_playing:
+    if registration_details.is_playing is not None:
         registration.is_playing = registration_details.is_playing
 
     if registration_details.role:
