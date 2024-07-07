@@ -1498,6 +1498,27 @@ def get_tournament_team_roster(
         return 400, {"message": "Tournament/Team does not exist"}
 
 
+@api.get(
+    "/tournament/{tournament_slug}/roster/{team_slug}/new",
+    auth=None,
+    response={200: list[TournamentPlayerRegistrationSchema], 400: Response},
+)
+def get_tournament_team_roster_new(
+    request: AuthenticatedHttpRequest, tournament_slug: str, team_slug: str
+) -> tuple[int, QuerySet[Registration]] | tuple[int, message_response]:
+    try:
+        event = Event.objects.get(slug=tournament_slug)
+        team = Team.objects.get(slug=team_slug)
+    except (Event.DoesNotExist, Team.DoesNotExist):
+        return 400, {"message": "Tournament/Team does not exist"}
+
+    registrations = Registration.objects.filter(event=event, team=team).order_by(
+        "player__user__first_name"
+    )
+
+    return 200, registrations
+
+
 ######## Fields
 
 
