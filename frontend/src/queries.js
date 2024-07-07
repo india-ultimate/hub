@@ -515,16 +515,19 @@ export const removeTeamRegistration = async ({ tournament_id, body }) => {
   return data;
 };
 
-export const addToRoster = async ({ event_id, body }) => {
-  const response = await fetch(`/api/tournament/${event_id}/add-to-roster`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      "X-CSRFToken": getCookie("csrftoken")
-    },
-    credentials: "same-origin",
-    body: JSON.stringify(body)
-  });
+export const addToRoster = async ({ event_id, team_id, body }) => {
+  const response = await fetch(
+    `/api/tournament/${event_id}/team/${team_id}/roster`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCookie("csrftoken")
+      },
+      credentials: "same-origin",
+      body: JSON.stringify(body)
+    }
+  );
 
   const data = await response.json();
 

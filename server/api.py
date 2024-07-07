@@ -1327,17 +1327,21 @@ def get_tournament(
     return 200, tournament
 
 
+# Tournaments - Roster ##########
+
+
 @api.post(
-    "/tournament/{event_id}/add-to-roster",
+    "/tournament/{event_id}/team/{team_id}/roster",
     response={200: TournamentPlayerRegistrationSchema, 400: Response, 401: Response},
 )
 def add_player_to_roster(
     request: AuthenticatedHttpRequest,
     event_id: int,
+    team_id: int,
     registration_details: AddToRosterSchema,
 ) -> tuple[int, Registration] | tuple[int, message_response]:
     try:
-        team = Team.objects.get(id=registration_details.team_id)
+        team = Team.objects.get(id=team_id)
         event = Event.objects.get(id=event_id)
         tournament = Tournament.objects.get(event=event)
     except (Event.DoesNotExist, Team.DoesNotExist, Tournament.DoesNotExist):
