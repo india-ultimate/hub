@@ -3,7 +3,7 @@ import { createMutation, createQuery } from "@tanstack/solid-query";
 import { initFlowbite } from "flowbite";
 import { createSignal, Show } from "solid-js";
 
-import { fetchTournamentTeamBySlug, updateMatch } from "../../queries";
+import { fetchTournamentTeamBySlugV1, updateMatch } from "../../queries";
 import Select from "../Select";
 import TextInput from "../TextInput";
 
@@ -15,7 +15,7 @@ const UpdateSpiritScoreForm = props => {
       props.match?.team_1?.slug
     ],
     () =>
-      fetchTournamentTeamBySlug(
+      fetchTournamentTeamBySlugV1(
         props.tournament?.event?.slug,
         props.match?.team_1?.slug
       )
@@ -27,7 +27,7 @@ const UpdateSpiritScoreForm = props => {
       props.match?.team_2?.slug
     ],
     () =>
-      fetchTournamentTeamBySlug(
+      fetchTournamentTeamBySlugV1(
         props.tournament?.event?.slug,
         props.match?.team_2?.slug
       )

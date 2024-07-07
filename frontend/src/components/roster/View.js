@@ -11,7 +11,7 @@ import { createEffect, createSignal, For, Match, Show, Switch } from "solid-js";
 import {
   fetchTeamBySlug,
   fetchTournamentBySlug,
-  fetchTournamentTeamBySlugNew,
+  fetchTournamentTeamBySlugV2,
   removeFromRoster,
   updatePlayerRegistration
 } from "../../queries";
@@ -42,7 +42,7 @@ const Roster = () => {
 
   const rosterQuery = createQuery(
     () => ["tournament-roster", params.tournament_slug, params.team_slug],
-    () => fetchTournamentTeamBySlugNew(params.tournament_slug, params.team_slug)
+    () => fetchTournamentTeamBySlugV2(params.tournament_slug, params.team_slug)
   );
 
   const removeFromRosterMutation = createMutation({
