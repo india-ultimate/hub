@@ -22,7 +22,11 @@ import EditRosteredPlayer from "./EditRosteredPlayer";
 import RemoveFromRoster from "./RemoveFromRoster";
 
 const Roster = () => {
+  let successPopoverRef, errorPopoverRef;
+  const [editStatus, setEditStatus] = createSignal("");
+
   const queryClient = useQueryClient();
+
   const params = useParams();
   const [store] = useStore();
 
@@ -51,6 +55,17 @@ const Roster = () => {
     mutationFn: updatePlayerRegistration,
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ["tournament-roster"] })
+  });
+
+  createEffect(function onMutationComplete() {
+    if (updateRegistrationMutation.isSuccess) {
+      setEditStatus("Successfully edited registration");
+      successPopoverRef.showPopover();
+    }
+    if (updateRegistrationMutation.isError) {
+      setEditStatus("Editing registration failed");
+      errorPopoverRef.showPopover();
+    }
   });
 
   const currentUserIsTeamAdmin = () =>
@@ -362,6 +377,22 @@ const Roster = () => {
             </div>
           </Show>
         </div>
+      </div>
+      <div
+        popover
+        ref={successPopoverRef}
+        role="alert"
+        class="mb-4 w-fit rounded-lg bg-green-200 p-4 text-sm text-green-800 dark:bg-gray-800 dark:text-green-400"
+      >
+        <span class="font-medium">{editStatus()}</span>
+      </div>
+      <div
+        popover
+        ref={errorPopoverRef}
+        role="alert"
+        class="mb-4 w-fit rounded-lg bg-red-200 p-4 text-sm text-red-800 dark:bg-gray-800 dark:text-red-400"
+      >
+        <span class="font-medium">{editStatus()}</span>
       </div>
     </Show>
   );
