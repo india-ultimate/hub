@@ -655,6 +655,13 @@ class RemoveFromRosterSchema(Schema):
     event_id: int
 
 
+class TournamentPlayerRegistrationUpdateSchema(Schema):
+    team_id: int
+    event_id: int
+    role: str | None
+    is_playing: bool | None
+
+
 class TournamentPlayerRegistrationSchema(Schema):
     team: TeamSchema
     player: PlayerSchema
