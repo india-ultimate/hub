@@ -140,7 +140,12 @@ const Edit = props => {
           )}
         </Field>
         <div class="px-8 lg:px-10">
-          <InputLabel name="admins" label="Select the admins" required={true} />
+          <InputLabel
+            name="admins"
+            label="Select the admins"
+            subLabel="Search by name or email"
+            required={true}
+          />
           <Select
             name="admins"
             multiple
