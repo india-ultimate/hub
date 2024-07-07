@@ -1412,17 +1412,19 @@ def remove_from_roster(
 
 
 @api.put(
-    "tournament/roster/update-registration/{registration_id}",
+    "/tournament/{event_id}/team/{team_id}/roster/{registration_id}",
     response={200: TournamentPlayerRegistrationSchema, 400: Response, 401: Response},
 )
 def update_registration(
     request: AuthenticatedHttpRequest,
+    event_id: int,
+    team_id: int,
     registration_id: int,
     registration_details: TournamentPlayerRegistrationUpdateSchema,
 ) -> tuple[int, Registration] | tuple[int, message_response]:
     try:
-        event = Event.objects.get(id=registration_details.event_id)
-        team = Team.objects.get(id=registration_details.team_id)
+        event = Event.objects.get(id=event_id)
+        team = Team.objects.get(id=team_id)
         tournament = Tournament.objects.get(event=event)
     except (Event.DoesNotExist, Team.DoesNotExist, Tournament.DoesNotExist):
         return 400, {"message": "Team/Event/Tournament does not exist"}

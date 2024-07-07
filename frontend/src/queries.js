@@ -563,9 +563,14 @@ export const removeFromRoster = async ({
   return data;
 };
 
-export const updatePlayerRegistration = async ({ registration_id, body }) => {
+export const updatePlayerRegistration = async ({
+  event_id,
+  team_id,
+  registration_id,
+  body
+}) => {
   const response = await fetch(
-    `/api/tournament/roster/update-registration/${registration_id}`,
+    `/api/tournament/${event_id}/team/${team_id}/roster/${registration_id}`,
     {
       method: "PUT",
       headers: {
