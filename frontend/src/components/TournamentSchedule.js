@@ -39,7 +39,7 @@ const TournamentSchedule = () => {
     createSignal(false);
 
   const tournamentQuery = createQuery(
-    () => ["tournament", params.slug],
+    () => ["tournaments", params.slug],
     () => fetchTournamentBySlug(params.slug)
   );
   const matchesQuery = createQuery(

@@ -22,7 +22,7 @@ const TournamentStandings = () => {
   const [positionPoolsMap, setPositionPoolsMap] = createSignal({});
 
   const tournamentQuery = createQuery(
-    () => ["tournament", params.slug],
+    () => ["tournaments", params.slug],
     () => fetchTournamentBySlug(params.slug)
   );
   const teamsQuery = createQuery(() => ["teams"], fetchTeams);

@@ -12,7 +12,7 @@ const TournamentRules = () => {
   const params = useParams();
 
   const tournamentQuery = createQuery(
-    () => ["tournament", params.slug],
+    () => ["tournaments", params.slug],
     () => fetchTournamentBySlug(params.slug)
   );
 
