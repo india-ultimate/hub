@@ -6,13 +6,14 @@ import {
 } from "@tanstack/solid-query";
 import clsx from "clsx";
 import { trophy } from "solid-heroicons/solid";
-import { For, Match, Show, Switch } from "solid-js";
+import { createEffect, createSignal, For, Match, Show, Switch } from "solid-js";
 
 import {
   fetchTeamBySlug,
   fetchTournamentBySlug,
-  fetchTournamentTeamBySlug,
-  removeFromRoster
+  fetchTournamentTeamBySlugNew,
+  removeFromRoster,
+  updatePlayerRegistration
 } from "../../queries";
 import { useStore } from "../../store";
 import Warning from "../alerts/Warning";
@@ -37,7 +38,7 @@ const Roster = () => {
 
   const rosterQuery = createQuery(
     () => ["tournament-roster", params.tournament_slug, params.team_slug],
-    () => fetchTournamentTeamBySlug(params.tournament_slug, params.team_slug)
+    () => fetchTournamentTeamBySlugNew(params.tournament_slug, params.team_slug)
   );
 
   const removeFromRosterMutation = createMutation({
@@ -46,27 +47,26 @@ const Roster = () => {
       queryClient.invalidateQueries({ queryKey: ["tournament-roster"] })
   });
 
+  const updateRegistrationMutation = createMutation({
+    mutationFn: updatePlayerRegistration,
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["tournament-roster"] })
+  });
+
   const currentUserIsTeamAdmin = () =>
     teamQuery.data?.admins.filter(user => user.id === store.data.id).length ==
     1;
 
-  const isPlayer = registration => registration?.roles?.includes("player");
+  const isPlayer = registration => registration?.is_playing;
 
-  const isCaptain = registration =>
-    registration?.roles?.includes("captain") ||
-    registration?.roles?.includes("Captain");
+  const isCaptain = registration => registration?.role === "CAP";
 
-  const isSpiritCaptain = registration =>
-    registration?.roles?.includes("spirit captain") ||
-    registration?.roles?.includes("Spirit Captain");
+  const isSpiritCaptain = registration => registration?.role === "SCAP";
 
   const isCoach = registration =>
-    registration?.roles?.includes("coach") ||
-    registration?.roles?.includes("Coach") ||
-    registration?.roles?.includes("assistant coach") ||
-    registration?.roles?.includes("Assistant Coach");
+    registration?.role === "COACH" || registration?.role === "ACOACH";
 
-  const isManager = registration => registration?.roles?.includes("Manager");
+  const isManager = registration => registration?.role === "MNGR";
 
   const players = () => rosterQuery.data?.filter(reg => isPlayer(reg));
   const nonPlayers = () => rosterQuery.data?.filter(reg => !isPlayer(reg));
@@ -207,7 +207,9 @@ const Roster = () => {
         </div>
         <div class="mt-12">
           <h4 class="text-xl font-bold text-blue-500">Current Roster</h4>
-          <h2 class="mt-4 text-lg font-bold">Players</h2>
+          <h2 class="mt-4 text-lg font-bold underline underline-offset-2">
+            Players
+          </h2>
           <Show
             when={players()?.length !== 0}
             fallback={
@@ -216,9 +218,7 @@ const Roster = () => {
               </p>
             }
           >
-            <div
-              class={clsx("mt-4", currentUserIsTeamAdmin() ? "divide-y" : "")}
-            >
+            <div class="mt-4 w-full divide-y">
               <For each={players()}>
                 {registration => (
                   <div
@@ -228,19 +228,12 @@ const Roster = () => {
                     )}
                   >
                     <div class="flex items-center gap-x-4">
-                      <img
-                        class="h-10 w-10 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
-                        src={registration.person.image_url}
-                        alt="Bordered avatar"
-                      />
                       <div class="font-medium">
                         <div>
-                          {registration.person.first_name +
-                            " " +
-                            registration.person.last_name}
+                          {registration.player.full_name}
                           <Show
-                            when={registration.person?.player?.gender}
-                          >{` (${registration.person?.player?.gender})`}</Show>
+                            when={registration.player?.gender}
+                          >{` (${registration.player?.gender})`}</Show>
                         </div>
                       </div>
                       <Show when={isCaptain(registration)}>
@@ -260,7 +253,7 @@ const Roster = () => {
                       </Show>
                       <Show when={isCoach(registration)}>
                         <span class="me-2 h-fit rounded-full bg-pink-100 px-2.5 py-0.5 text-xs text-pink-800 dark:bg-pink-900 dark:text-pink-300">
-                          Manager
+                          Coach
                         </span>
                       </Show>
                     </div>
@@ -270,12 +263,20 @@ const Roster = () => {
                           regId={registration.id}
                           eventId={tournamentQuery.data.event.id}
                           teamId={registration.team.id}
-                          playerName={`${registration.person.first_name} ${registration.person.last_name}`.trim()}
+                          playerName={registration?.player?.full_name}
                           removeMutation={removeFromRosterMutation}
                         />
                       </Show>
                       <Show when={store.loggedIn && currentUserIsTeamAdmin()}>
-                        <EditRosteredPlayer />
+                        <EditRosteredPlayer
+                          registration={registration}
+                          eventId={tournamentQuery.data.event.id}
+                          teamId={registration.team.id}
+                          playerName={registration?.player?.full_name}
+                          updateRegistrationMutation={
+                            updateRegistrationMutation
+                          }
+                        />
                       </Show>
                     </div>
                   </div>
@@ -283,7 +284,9 @@ const Roster = () => {
               </For>
             </div>
           </Show>
-          <h2 class="mt-6 text-lg font-bold">Non-players</h2>
+          <h2 class="mt-8 text-lg font-bold underline underline-offset-2">
+            Non-players
+          </h2>
           <Show
             when={nonPlayers()?.length !== 0}
             fallback={
@@ -292,24 +295,22 @@ const Roster = () => {
               </p>
             }
           >
-            <div class="mt-4 divide-y">
+            <div class="mt-4 w-full divide-y">
               <For each={nonPlayers()}>
                 {registration => (
-                  <div class="mr-6 flex w-full items-center justify-between space-x-4 py-4 pr-2">
+                  <div
+                    class={clsx(
+                      "mr-6 flex w-full items-center justify-between space-x-4",
+                      currentUserIsTeamAdmin() ? "py-4" : "py-2"
+                    )}
+                  >
                     <div class="flex items-center gap-x-4">
-                      <img
-                        class="h-10 w-10 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
-                        src={registration.person.image_url}
-                        alt="Bordered avatar"
-                      />
                       <div class="font-medium">
                         <div>
-                          {registration.person.first_name +
-                            " " +
-                            registration.person.last_name}
+                          {registration.player.full_name}
                           <Show
-                            when={registration.person?.player?.gender}
-                          >{` (${registration.person?.player?.gender})`}</Show>
+                            when={registration.player?.gender}
+                          >{` (${registration.player?.gender})`}</Show>
                         </div>
                       </div>
                       <Show when={isCaptain(registration)}>
@@ -329,16 +330,30 @@ const Roster = () => {
                       </Show>
                       <Show when={isCoach(registration)}>
                         <span class="me-2 h-fit rounded-full bg-pink-100 px-2.5 py-0.5 text-xs text-pink-800 dark:bg-pink-900 dark:text-pink-300">
-                          Manager
+                          Coach
                         </span>
                       </Show>
                     </div>
                     <div class="flex gap-x-3 justify-self-end">
                       <Show when={store.loggedIn && currentUserIsTeamAdmin()}>
-                        <RemoveFromRoster />
+                        <RemoveFromRoster
+                          regId={registration.id}
+                          eventId={tournamentQuery.data.event.id}
+                          teamId={registration.team.id}
+                          playerName={registration.player?.full_name}
+                          removeMutation={removeFromRosterMutation}
+                        />
                       </Show>
                       <Show when={store.loggedIn && currentUserIsTeamAdmin()}>
-                        <EditRosteredPlayer />
+                        <EditRosteredPlayer
+                          registration={registration}
+                          eventId={tournamentQuery.data.event.id}
+                          teamId={registration.team.id}
+                          playerName={registration.player?.full_name}
+                          updateRegistrationMutation={
+                            updateRegistrationMutation
+                          }
+                        />
                       </Show>
                     </div>
                   </div>
