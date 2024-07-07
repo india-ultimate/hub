@@ -32,7 +32,7 @@ const TournamentTeam = () => {
   const [doneFetching, setDoneFetching] = createSignal(false);
 
   const tournamentQuery = createQuery(
-    () => ["tournament", params.tournament_slug],
+    () => ["tournaments", params.tournament_slug],
     () => fetchTournamentBySlug(params.tournament_slug)
   );
   const teamQuery = createQuery(

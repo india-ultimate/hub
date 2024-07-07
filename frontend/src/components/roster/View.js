@@ -31,12 +31,12 @@ const Roster = () => {
   const [store] = useStore();
 
   const tournamentQuery = createQuery(
-    () => ["tournament", params.tournament_slug],
+    () => ["tournaments", params.tournament_slug],
     () => fetchTournamentBySlug(params.tournament_slug)
   );
 
   const teamQuery = createQuery(
-    () => ["team", params.team_slug],
+    () => ["teams", params.team_slug],
     () => fetchTeamBySlug(params.team_slug)
   );
 
