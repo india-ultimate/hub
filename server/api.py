@@ -123,6 +123,7 @@ from server.schema import (
     TournamentFieldSchema,
     TournamentFieldUpdateSchema,
     TournamentPlayerRegistrationSchema,
+    TournamentPlayerRegistrationUpdateSchema,
     TournamentRulesSchema,
     TournamentSchema,
     TournamentUpdateSeedingSchema,
@@ -1375,14 +1376,16 @@ def add_player_to_roster(
 
 @api.put(
     "/tournament/remove-from-roster/{registration_id}",
-    response={200: message_response, 400: message_response, 401: message_response},
+    response={200: Response, 400: Response, 401: Response},
 )
 def remove_from_roster(
-    request: AuthenticatedHttpRequest, registration_id: int, player_details: RemoveFromRosterSchema
+    request: AuthenticatedHttpRequest,
+    registration_id: int,
+    registration_details: RemoveFromRosterSchema,
 ) -> tuple[int, message_response]:
     try:
-        event = Event.objects.get(id=player_details.event_id)
-        team = Team.objects.get(id=player_details.team_id)
+        event = Event.objects.get(id=registration_details.event_id)
+        team = Team.objects.get(id=registration_details.team_id)
         tournament = Tournament.objects.get(event=event)
     except (Event.DoesNotExist, Team.DoesNotExist, Tournament.DoesNotExist):
         return 400, {"message": "Team/Event/Tournament does not exist"}
@@ -1402,6 +1405,47 @@ def remove_from_roster(
 
     except Registration.DoesNotExist:
         return 400, {"message": "Registration does not exist"}
+
+
+@api.put(
+    "tournament/roster/update-registration/{registration_id}",
+    response={200: TournamentPlayerRegistrationSchema, 400: Response, 401: Response},
+)
+def update_registration(
+    request: AuthenticatedHttpRequest,
+    registration_id: int,
+    registration_details: TournamentPlayerRegistrationUpdateSchema,
+) -> tuple[int, Registration] | tuple[int, message_response]:
+    try:
+        event = Event.objects.get(id=registration_details.event_id)
+        team = Team.objects.get(id=registration_details.team_id)
+        tournament = Tournament.objects.get(event=event)
+    except (Event.DoesNotExist, Team.DoesNotExist, Tournament.DoesNotExist):
+        return 400, {"message": "Team/Event/Tournament does not exist"}
+
+    if tournament.status != Tournament.Status.REGISTERING:
+        return 400, {
+            "message": f"You can't edit registrations now ! Rostering open from {tournament.event.registration_start_date} to {tournament.event.registration_start_date}"
+        }
+
+    if request.user not in team.admins.all():
+        return 401, {"message": "Only team admins can remove players from the roster"}
+
+    try:
+        registration = Registration.objects.get(id=registration_id, event=event, team=team)
+    except Registration.DoesNotExist:
+        return 400, {"message": "Registration does not exist"}
+
+    if registration_details.is_playing:
+        registration.is_playing = registration_details.is_playing
+
+    if registration_details.role:
+        if registration_details.role not in Registration.Role._value2member_map_:
+            return 400, {"message": "Invalid role"}
+        registration.role = registration_details.role
+
+    registration.save()
+    return 200, registration
 
 
 @api.get("/tournament/roster", auth=None, response={200: list[UCRegistrationSchema], 400: Response})
