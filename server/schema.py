@@ -649,11 +649,6 @@ class AddToRosterSchema(Schema):
     role: str
 
 
-class RemoveFromRosterSchema(Schema):
-    team_id: int
-    event_id: int
-
-
 class TournamentPlayerRegistrationUpdateSchema(Schema):
     team_id: int
     event_id: int
