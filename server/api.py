@@ -110,7 +110,6 @@ from server.schema import (
     RegistrationOthersSchema,
     RegistrationSchema,
     RegistrationWardSchema,
-    RemoveFromRosterSchema,
     Response,
     SpiritScoreSubmitSchema,
     TeamCreateSchema,
@@ -1378,18 +1377,19 @@ def add_player_to_roster(
     return 200, registration
 
 
-@api.put(
-    "/tournament/remove-from-roster/{registration_id}",
+@api.delete(
+    "/tournament/{event_id}/team/{team_id}/roster/{registration_id}",
     response={200: Response, 400: Response, 401: Response},
 )
 def remove_from_roster(
     request: AuthenticatedHttpRequest,
+    event_id: int,
+    team_id: int,
     registration_id: int,
-    registration_details: RemoveFromRosterSchema,
 ) -> tuple[int, message_response]:
     try:
-        event = Event.objects.get(id=registration_details.event_id)
-        team = Team.objects.get(id=registration_details.team_id)
+        event = Event.objects.get(id=event_id)
+        team = Team.objects.get(id=team_id)
         tournament = Tournament.objects.get(event=event)
     except (Event.DoesNotExist, Team.DoesNotExist, Tournament.DoesNotExist):
         return 400, {"message": "Team/Event/Tournament does not exist"}
@@ -1405,7 +1405,7 @@ def remove_from_roster(
     try:
         registration = Registration.objects.get(id=registration_id, event=event, team=team)
         registration.delete()
-        return 200, {"message": "Player registration removed succesfully"}
+        return 200, {"message": "Player registration removed successfully"}
 
     except Registration.DoesNotExist:
         return 400, {"message": "Registration does not exist"}
