@@ -152,7 +152,9 @@ const TeamRegistration = () => {
 
       <div class="mx-auto max-w-screen-md">
         <div class="mt-4">
-          <h4 class="mb-4 text-lg font-bold text-blue-500">Registered teams</h4>
+          <h4 class="mb-4 text-lg font-bold text-blue-500">
+            Registered Teams {`(${tournamentQuery.data?.teams.length})`}
+          </h4>
           <Show
             when={tournamentQuery.data?.teams.length > 0}
             fallback={<Info text="No team has registered yet!" />}
