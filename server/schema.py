@@ -611,6 +611,11 @@ class RegistrationWardSchema(UserWardFormSchema, PlayerFormSchema, GuardianshipF
         pass
 
 
+class RegistrationCount(Schema):
+    team_id: int
+    count: int
+
+
 class TournamentSchema(ModelSchema):
     event: EventSchema
     teams: list[TeamSchema]
@@ -618,6 +623,19 @@ class TournamentSchema(ModelSchema):
     @staticmethod
     def resolve_teams(tournament: Tournament) -> QuerySet[Team]:
         return tournament.teams.all().order_by("name")
+
+    reg_count: list[RegistrationCount]
+
+    @staticmethod
+    def resolve_reg_count(tournament: Tournament) -> list[RegistrationCount]:
+        teams = tournament.teams.all()
+        return [
+            RegistrationCount(
+                team_id=team.id,
+                count=Registration.objects.filter(team=team, event=tournament.event).count(),
+            )
+            for team in teams
+        ]
 
     class Config:
         model = Tournament

@@ -168,7 +168,14 @@ const TeamRegistration = () => {
                         src={team.image ?? team.image_url}
                         class="h-8 w-8 rounded-full"
                       />
-                      <span class="font-medium">{team.name}</span>
+                      <span class="font-medium">
+                        {team.name}
+                        {" ("}
+                        {tournamentQuery.data?.reg_count.filter(
+                          reg => reg.team_id === team.id
+                        )[0].count || "-"}
+                        {")"}
+                      </span>
                     </div>
                     <div class="justify-self-end">
                       <A
