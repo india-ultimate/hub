@@ -3,21 +3,25 @@ import {
   createQuery,
   useQueryClient
 } from "@tanstack/solid-query";
-import { createAsyncOptions, Select } from "@thisbeyond/solid-select";
+import {
+  createSolidTable,
+  flexRender,
+  getCoreRowModel
+} from "@tanstack/solid-table";
 import { Icon } from "solid-heroicons";
 import { handRaised } from "solid-heroicons/outline";
 import { plus } from "solid-heroicons/solid";
-import { createEffect, createSignal, Show } from "solid-js";
+import { createEffect, createSignal, For, Show } from "solid-js";
 
+import { ChevronLeft, ChevronRight, Spinner } from "../../icons";
 import { addToRoster, fetchUser, searchPlayers } from "../../queries";
-import InputLabel from "../InputLabel";
+import Info from "../alerts/Info";
 import Modal from "../Modal";
 
 const AddToRoster = props => {
   let modalRef;
   let successPopoverRef, errorPopoverRef;
   const [status, setStatus] = createSignal("");
-  const [initialValue, setInitialValue] = createSignal(null, { equals: false });
 
   const queryClient = useQueryClient();
   const userQuery = createQuery(() => ["me"], fetchUser);
@@ -37,21 +41,6 @@ const AddToRoster = props => {
       errorPopoverRef.showPopover();
     }
   });
-
-  const [selectedValue, setSelectedValue] = createSignal();
-
-  const handleSubmit = () => {
-    addToRosterMutation.mutate({
-      event_id: props.eventId,
-      team_id: props.teamId,
-      body: {
-        player_id: selectedValue()?.id
-      }
-    });
-    setInitialValue(null);
-
-    modalRef.close();
-  };
 
   return (
     <div class="mt-4 flex justify-center gap-2">
@@ -94,9 +83,8 @@ const AddToRoster = props => {
       >
         <AddPlayerRegistrationForm
           roster={props.roster}
-          setSelectedValue={setSelectedValue}
-          handleSubmit={handleSubmit}
-          initialValue={initialValue()}
+          eventId={props.eventId}
+          teamId={props.teamId}
         />
       </Modal>
       <div
@@ -119,42 +107,244 @@ const AddToRoster = props => {
   );
 };
 
-const AddPlayerRegistrationForm = props => {
-  const onChange = selected => {
-    console.log(selected);
-    props.setSelectedValue(selected);
-  };
-  const selectProps = createAsyncOptions(searchPlayers);
-  const selectFormat = item =>
-    item.full_name ? item.full_name + ` (${item.email})` : item.email;
+const AddPlayerRegistrationForm = componentProps => {
+  const [search, setSearch] = createSignal("");
+  const [pagination, setPagination] = createSignal({
+    pageIndex: 0,
+    pageSize: 10
+  });
+  const [status, setStatus] = createSignal();
+
+  const queryClient = useQueryClient();
+  const addToRosterMutation = createMutation({
+    mutationFn: addToRoster,
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["tournament-roster"] })
+  });
+
+  createEffect(function onMutationComplete() {
+    if (addToRosterMutation.isSuccess) {
+      setStatus("Successfully added player to the roster");
+    }
+    if (addToRosterMutation.isError) {
+      setStatus("Adding to the roster failed");
+    }
+  });
+
+  const dataQuery = createQuery(
+    () => ["players", "search", search(), pagination()],
+    () =>
+      search().trim().length > 4 ? searchPlayers(search(), pagination()) : []
+  );
+
+  const defaultColumns = [
+    {
+      accessorKey: "full_name",
+      id: "full_name",
+      header: () => <span>Player Name</span>,
+      cell: props => (
+        <div class="font-medium dark:text-white">
+          <div>{props.getValue()}</div>
+        </div>
+      )
+    },
+    {
+      accessorKey: "id",
+      id: "actions",
+      header: () => <span>Actions</span>,
+      cell: props => (
+        <Show
+          when={
+            !componentProps.roster
+              .map(reg => reg.player.id)
+              .includes(props.getValue())
+          }
+          fallback={<span>Added</span>}
+        >
+          <button
+            onClick={() =>
+              addToRosterMutation.mutate({
+                event_id: componentProps.eventId,
+                team_id: componentProps.teamId,
+                body: {
+                  player_id: props.getValue()
+                }
+              })
+            }
+            class="mb-2 me-2 rounded-lg border border-blue-700 px-5 py-1.5 text-center text-sm font-medium text-blue-700 hover:bg-blue-800 hover:text-white focus:outline-none focus:ring-4 focus:ring-blue-300 dark:border-blue-500 dark:text-blue-500 dark:hover:bg-blue-500 dark:hover:text-white dark:focus:ring-blue-800"
+          >
+            Add
+          </button>
+        </Show>
+      )
+    }
+  ];
+
+  const table = createSolidTable({
+    get data() {
+      return dataQuery.data?.items ?? [];
+    },
+    columns: defaultColumns,
+    get rowCount() {
+      return dataQuery.data?.count;
+    },
+    // pageCount: dataQuery.data?.count ?? -1, //you can now pass in `rowCount` instead of pageCount and `pageCount` will be calculated internally (new in v8.13.0)
+    // rowCount: dataQuery.data?.count, // new in v8.13.0 - alternatively, just pass in `pageCount` directly
+    get state() {
+      return {
+        get pagination() {
+          return pagination();
+        }
+      };
+    },
+    onPaginationChange: setPagination,
+    getCoreRowModel: getCoreRowModel(),
+    manualPagination: true, //we're doing manual "server-side" pagination
+    // getPaginationRowModel: getPaginationRowModel(), // If only doing manual pagination, you don't need this
+    debugTable: true
+  });
 
   return (
-    <div class="h-96 w-full rounded-lg p-6">
-      <InputLabel
-        name="players"
-        label="Select the player"
-        subLabel="Search by name or email"
-        required={true}
-      />
-      <Select
-        name="players"
-        format={selectFormat}
-        onChange={onChange}
-        isOptionDisabled={value =>
-          props.roster?.map(reg => reg.player.id).includes(value.id)
-        }
-        initialValue={props.initialValue}
-        {...selectProps}
-      />
-      <div class="mt-8 flex w-full justify-center">
+    <div class="h-screen w-full rounded-lg p-2">
+      <h2 class="w-full text-left text-lg font-bold text-blue-600">
+        Add Players to Roster
+      </h2>
+      <h3 class="w-full text-left text-sm italic">
+        Search players by name or email (min. 5 letters)
+      </h3>
+      <div class="relative my-4 w-full">
+        <div class="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-3">
+          <svg
+            class="h-4 w-4 text-gray-500 dark:text-gray-400"
+            aria-hidden="true"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 20 20"
+          >
+            <path
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z"
+            />
+          </svg>
+        </div>
+        <input
+          type="search"
+          id="player-search"
+          class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-4 ps-10 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
+          placeholder="Search Player Names/Email"
+          required
+          value={search()}
+          onChange={e => {
+            setSearch(e.target.value);
+          }}
+        />
         <button
-          onClick={() => props.handleSubmit()}
           type="submit"
-          class="w-full rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 md:w-auto"
+          class="absolute bottom-2.5 end-2.5 rounded-lg bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-800 focus:outline-none dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
         >
-          Add to roster
+          Search
         </button>
       </div>
+
+      <Show
+        when={table.getRowModel().rows.length > 0}
+        fallback={
+          <div>
+            <Show
+              when={dataQuery.isLoading}
+              fallback={
+                <Info
+                  text={
+                    search().trim().length > 4
+                      ? "No players found."
+                      : "Please enter min. 5 letters to search"
+                  }
+                />
+              }
+            >
+              <Spinner />
+            </Show>
+          </div>
+        }
+      >
+        <table class="w-full text-left text-sm text-gray-500 rtl:text-right dark:text-gray-400">
+          <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
+            <For each={table.getHeaderGroups()}>
+              {headerGroup => (
+                <tr>
+                  <For each={headerGroup.headers}>
+                    {header => {
+                      return (
+                        <th colSpan={header.colSpan} class="px-6 py-3">
+                          {header.isPlaceholder ? null : (
+                            <div>
+                              {flexRender(
+                                header.column.columnDef.header,
+                                header.getContext()
+                              )}
+                            </div>
+                          )}
+                        </th>
+                      );
+                    }}
+                  </For>
+                </tr>
+              )}
+            </For>
+          </thead>
+          <tbody>
+            <For each={table.getRowModel().rows}>
+              {row => {
+                return (
+                  <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
+                    <For each={row.getVisibleCells()}>
+                      {cell => {
+                        return (
+                          <td class="px-6 py-4">
+                            {flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext()
+                            )}
+                          </td>
+                        );
+                      }}
+                    </For>
+                  </tr>
+                );
+              }}
+            </For>
+          </tbody>
+        </table>
+        <div class="mt-4 flex items-center justify-center gap-2">
+          <button
+            onClick={() => table.previousPage()}
+            disabled={!table.getCanPreviousPage()}
+            class="flex h-8 w-24 items-center justify-center rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-700 disabled:text-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
+          >
+            <ChevronLeft width={20} />
+            Previous
+          </button>
+          <span class="flex items-center gap-1">
+            <div>Page</div>
+            <strong>
+              {table.getState().pagination.pageIndex + 1} of{" "}
+              {table.getPageCount().toLocaleString()}
+            </strong>
+          </span>
+          <button
+            onClick={() => table.nextPage()}
+            disabled={!table.getCanNextPage()}
+            class="flex h-8 w-24 items-center justify-center rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-700 disabled:text-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
+          >
+            Next
+            <ChevronRight width={20} />
+          </button>
+        </div>
+      </Show>
+      <p class="my-2">{status()}</p>
     </div>
   );
 };

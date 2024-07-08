@@ -231,6 +231,7 @@ def list_players(
 
 
 @api.get("/players/search", response={200: list[PlayerTinySchema]})
+@paginate(PageNumberPagination, page_size=10)
 def search_players(request: AuthenticatedHttpRequest, text: str = "") -> QuerySet[Player]:
     return Player.objects.filter(
         Q(user__first_name__icontains=text.lower())
