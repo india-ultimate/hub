@@ -111,7 +111,7 @@ const AddPlayerRegistrationForm = componentProps => {
   const [search, setSearch] = createSignal("");
   const [pagination, setPagination] = createSignal({
     pageIndex: 0,
-    pageSize: 10
+    pageSize: 5
   });
   const [status, setStatus] = createSignal();
 
