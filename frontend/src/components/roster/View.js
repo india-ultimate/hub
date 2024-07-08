@@ -201,20 +201,14 @@ const Roster = () => {
 
       <div class="mx-auto max-w-screen-md">
         <div class="mt-4">
-          <h4 class="text-xl font-bold text-blue-500">Add to Roster</h4>
+          <h4 class="mb-2 text-xl font-bold text-blue-500">Add to Roster</h4>
           <Show
             when={tournamentQuery.data?.status == "REG"}
-            fallback={
-              <p class="mt-4 text-sm italic text-gray-500">
-                Registrations have closed !
-              </p>
-            }
+            fallback={<Info text="Registrations have closed!" />}
           >
             <Switch>
               <Match when={!store.loggedIn}>
-                <p class="mt-4 text-sm italic text-gray-500">
-                  You must be logged in to add/remove players from the roster !
-                </p>
+                <Info text="You must be logged in to add/remove players from the roster!" />
               </Match>
               <Match
                 when={
@@ -222,12 +216,7 @@ const Roster = () => {
                   (!teamQuery.data?.admins || !currentUserIsTeamAdmin())
                 }
               >
-                <p class="mt-4 text-sm italic text-gray-500">
-                  You must be a team admin to perform rostering !
-                </p>
-                <p class="mt-4 text-sm italic text-gray-500">
-                  Your team admins are:
-                </p>
+                <Info text="You must be a team admin to perform rostering!" />
               </Match>
               <Match when={store.loggedIn && currentUserIsTeamAdmin()}>
                 <AddToRoster

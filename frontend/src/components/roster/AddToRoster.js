@@ -54,7 +54,7 @@ const AddToRoster = props => {
   };
 
   return (
-    <div class="mt-2  flex justify-center">
+    <div class="flex justify-center">
       <Show
         when={
           !props.roster
