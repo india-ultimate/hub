@@ -307,7 +307,7 @@ class TestPlayers(ApiBaseTestCase):
         user_data = data[0]
         self.assertIn("city", user_data)
         self.assertIn("state_ut", user_data)
-        self.assertEqual("usxxxxme@foo.com", user_data["email"])
+        self.assertEqual("username@foo.com", user_data["email"])
         self.assertNotIn("membership", user_data)
         self.assertNotIn("guardian", user_data)
 
@@ -333,7 +333,7 @@ class TestPlayers(ApiBaseTestCase):
         user_data = data[0]
         self.assertIn("city", user_data)
         self.assertIn("state_ut", user_data)
-        self.assertEqual("usxxxxme@foo.com", user_data["email"])
+        self.assertEqual("username@foo.com", user_data["email"])
         self.assertNotIn("membership", user_data)
         self.assertNotIn("guardian", user_data)
 
