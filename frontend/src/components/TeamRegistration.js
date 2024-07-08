@@ -223,9 +223,12 @@ const TeamRegistration = () => {
         </div>
 
         <div class="mt-4" ref={registerYourTeamRef}>
-          <h4 class="mb-4 text-lg font-bold text-blue-500">
+          <h4 class="mb-1 text-lg font-bold text-blue-500">
             Register your team(s)
           </h4>
+          <A href="/teams" class="mb-4 text-sm underline">
+            Click to create, edit or view all teams
+          </A>
           <Show
             when={tournamentQuery.data?.status == "REG"}
             fallback={<Info text="Registrations has closed !" />}
