@@ -16,8 +16,11 @@ import {
   updatePlayerRegistration
 } from "../../queries";
 import { useStore } from "../../store";
+import { getTournamentBreadcrumbName } from "../../utils";
+import Info from "../alerts/Info";
 import Warning from "../alerts/Warning";
 import Breadcrumbs from "../Breadcrumbs";
+import AddToRoster from "./AddToRoster";
 import EditRosteredPlayer from "./EditRosteredPlayer";
 import RemoveFromRoster from "./RemoveFromRoster";
 
@@ -109,7 +112,9 @@ const Roster = () => {
               tournamentQuery.data?.status === "REG"
                 ? `/tournament/${params.tournament_slug}/register`
                 : `/tournament/${params.tournament_slug}`,
-            name: tournamentQuery.data?.event?.title || ""
+            name: getTournamentBreadcrumbName(
+              tournamentQuery.data?.event?.slug || ""
+            )
           }
         ]}
       />
@@ -153,7 +158,19 @@ const Roster = () => {
         </p>
       </div> */}
 
-      <div class="text-center text-lg">{teamQuery.data?.name}</div>
+      <div class="flex justify-center">
+        <img
+          class="mr-3 inline-block h-24 w-24 rounded-full p-1 ring-2 ring-gray-300 dark:ring-blue-500"
+          src={teamQuery.data?.image ?? teamQuery.data?.image_url}
+          alt="Bordered avatar"
+        />
+      </div>
+      <div class="mt-4 text-center text-lg font-bold">
+        {teamQuery.data?.name}
+      </div>
+      <div class="text-center text-sm">
+        {(teamQuery.data?.city || "") + ", " + (teamQuery.data?.state_ut || "")}
+      </div>
 
       <div class="mx-auto mb-4 mt-6 w-fit">
         <Warning>
@@ -183,7 +200,7 @@ const Roster = () => {
       </div>
 
       <div class="mx-auto max-w-screen-md">
-        <div class="mt-10">
+        <div class="mt-4">
           <h4 class="text-xl font-bold text-blue-500">Add to Roster</h4>
           <Show
             when={tournamentQuery.data?.status == "REG"}
@@ -213,27 +230,25 @@ const Roster = () => {
                 </p>
               </Match>
               <Match when={store.loggedIn && currentUserIsTeamAdmin()}>
-                <p class="mt-4 text-sm italic text-gray-500">
-                  Rostering here...
-                </p>
+                <AddToRoster
+                  roster={rosterQuery.data}
+                  eventId={tournamentQuery.data.event.id}
+                  teamId={teamQuery.data.id}
+                />
               </Match>
             </Switch>
           </Show>
         </div>
-        <div class="mt-12">
+        <div class="mt-4">
           <h4 class="text-xl font-bold text-blue-500">Current Roster</h4>
-          <h2 class="mt-4 text-lg font-bold underline underline-offset-2">
+          <h2 class="my-4 text-lg font-bold underline underline-offset-2">
             Players
           </h2>
           <Show
             when={players()?.length !== 0}
-            fallback={
-              <p class="mt-4 text-sm italic text-gray-500">
-                0 players in roster yet...
-              </p>
-            }
+            fallback={<Info text="No Players in the roster yet" />}
           >
-            <div class="mt-4 w-full divide-y">
+            <div class="w-full divide-y">
               <For each={players()}>
                 {registration => (
                   <div
@@ -252,22 +267,22 @@ const Roster = () => {
                         </div>
                       </div>
                       <Show when={isCaptain(registration)}>
-                        <span class="me-2 h-fit rounded-full bg-blue-100 px-2.5 py-0.5 text-xs text-blue-800 dark:bg-blue-900 dark:text-blue-300">
+                        <span class="me-2 h-fit rounded-full bg-blue-100 px-2.5 py-0.5 text-center text-xs text-blue-800 dark:bg-blue-900 dark:text-blue-300">
                           Captain
                         </span>
                       </Show>
                       <Show when={isSpiritCaptain(registration)}>
-                        <span class="me-2 h-fit rounded-full bg-green-100 px-2.5 py-0.5 text-xs text-green-800 dark:bg-green-900 dark:text-green-300">
+                        <span class="me-2 h-fit rounded-full bg-green-100 px-2.5 py-0.5 text-center text-xs text-green-800 dark:bg-green-900 dark:text-green-300">
                           Spirit Captain
                         </span>
                       </Show>
                       <Show when={isManager(registration)}>
-                        <span class="me-2 h-fit rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">
+                        <span class="me-2 h-fit rounded-full bg-yellow-100 px-2.5 py-0.5 text-center text-xs text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">
                           Manager
                         </span>
                       </Show>
                       <Show when={isCoach(registration)}>
-                        <span class="me-2 h-fit rounded-full bg-pink-100 px-2.5 py-0.5 text-xs text-pink-800 dark:bg-pink-900 dark:text-pink-300">
+                        <span class="me-2 h-fit rounded-full bg-pink-100 px-2.5 py-0.5 text-center text-xs text-pink-800 dark:bg-pink-900 dark:text-pink-300">
                           Coach
                         </span>
                       </Show>
@@ -299,18 +314,14 @@ const Roster = () => {
               </For>
             </div>
           </Show>
-          <h2 class="mt-8 text-lg font-bold underline underline-offset-2">
+          <h2 class="mb-4 mt-8 text-lg font-bold underline underline-offset-2">
             Non-players
           </h2>
           <Show
             when={nonPlayers()?.length !== 0}
-            fallback={
-              <p class="mt-4 text-sm italic text-gray-500">
-                0 non-players in roster yet...
-              </p>
-            }
+            fallback={<Info text="No Non-Players in the roster yet" />}
           >
-            <div class="mt-4 w-full divide-y">
+            <div class="w-full divide-y">
               <For each={nonPlayers()}>
                 {registration => (
                   <div
@@ -329,22 +340,22 @@ const Roster = () => {
                         </div>
                       </div>
                       <Show when={isCaptain(registration)}>
-                        <span class="me-2 h-fit rounded-full bg-blue-100 px-2.5 py-0.5 text-xs text-blue-800 dark:bg-blue-900 dark:text-blue-300">
+                        <span class=" me-2 h-fit rounded-full bg-blue-100 px-2.5 py-0.5 text-center text-xs text-blue-800 dark:bg-blue-900 dark:text-blue-300">
                           Captain
                         </span>
                       </Show>
                       <Show when={isSpiritCaptain(registration)}>
-                        <span class="me-2 h-fit rounded-full bg-green-100 px-2.5 py-0.5 text-xs text-green-800 dark:bg-green-900 dark:text-green-300">
+                        <span class="me-2 h-fit rounded-full bg-green-100 px-2.5 py-0.5 text-center text-xs text-green-800 dark:bg-green-900 dark:text-green-300">
                           Spirit Captain
                         </span>
                       </Show>
                       <Show when={isManager(registration)}>
-                        <span class="me-2 h-fit rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">
+                        <span class="me-2 h-fit rounded-full bg-yellow-100 px-2.5 py-0.5 text-center text-xs text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">
                           Manager
                         </span>
                       </Show>
                       <Show when={isCoach(registration)}>
-                        <span class="me-2 h-fit rounded-full bg-pink-100 px-2.5 py-0.5 text-xs text-pink-800 dark:bg-pink-900 dark:text-pink-300">
+                        <span class="me-2 h-fit rounded-full bg-pink-100 px-2.5 py-0.5 text-center text-xs text-pink-800 dark:bg-pink-900 dark:text-pink-300">
                           Coach
                         </span>
                       </Show>
