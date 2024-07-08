@@ -181,7 +181,7 @@ export const getMatchCardColor = match => {
 
 export const getTournamentBreadcrumbName = tournamentSlug => {
   let category,
-    level,
+    level = "",
     area = "";
 
   const slugWords = new Set(tournamentSlug.toLowerCase().split("-"));
@@ -201,6 +201,8 @@ export const getTournamentBreadcrumbName = tournamentSlug => {
     category = "School";
   } else if (slugWords.has("masters")) {
     category = "Masters";
+  } else if (slugWords.has("sakkath")) {
+    category = "Sakkath";
   }
 
   // Level

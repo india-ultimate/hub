@@ -115,6 +115,23 @@ export const searchUsers = async searchText => {
   return await response.json();
 };
 
+export const searchPlayers = async searchText => {
+  let baseUrl = "/api/players/search";
+  let params = new URLSearchParams();
+  if (searchText) {
+    params.set("text", searchText);
+  }
+  if (params.toString().length > 0) {
+    baseUrl = baseUrl + "?" + params.toString();
+  }
+  const response = await fetch(baseUrl, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin"
+  });
+  return await response.json();
+};
+
 export const fetchTeamBySlug = async team_slug => {
   const response = await fetch(`/api/team/${team_slug}`, {
     method: "GET",

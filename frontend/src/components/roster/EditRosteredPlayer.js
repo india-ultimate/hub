@@ -40,18 +40,19 @@ const EditPlayerRegistrationForm = componentProps => {
               label="Will this person play in the tournament ?"
               checked={field.value}
               value={field.value}
-              padding
               class="my-2"
             />
           )}
         </Field>
-        <button
-          type="submit"
-          class="w-fit rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 disabled:bg-gray-400 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 disabled:dark:bg-gray-400 sm:w-auto"
-          disabled={componentProps.disabled}
-        >
-          Edit registration
-        </button>
+        <div class="px-8 lg:px-10">
+          <button
+            type="submit"
+            class="w-fit rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 disabled:bg-gray-400 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 disabled:dark:bg-gray-400 sm:w-auto"
+            disabled={componentProps.disabled}
+          >
+            Edit registration
+          </button>
+        </div>
       </Form>
     </div>
   );
