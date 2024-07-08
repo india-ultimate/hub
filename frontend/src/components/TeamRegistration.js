@@ -7,7 +7,7 @@ import {
 import clsx from "clsx";
 import { Icon } from "solid-heroicons";
 import { trophy } from "solid-heroicons/solid";
-import { plus } from "solid-heroicons/solid";
+import { bolt, plus } from "solid-heroicons/solid";
 import { createEffect, createSignal, For, Match, Show, Switch } from "solid-js";
 
 import {
@@ -157,7 +157,7 @@ const TeamRegistration = () => {
 
       <div class="mx-auto max-w-screen-md">
         <div class="mt-4">
-          <div class="mb-4 flex items-center justify-between ">
+          <div class="mb-2 flex items-center justify-between ">
             <h4 class="text-lg font-bold text-blue-500">
               Registered Teams {`(${tournamentQuery.data?.teams.length})`}
             </h4>
@@ -169,6 +169,9 @@ const TeamRegistration = () => {
               Add your team
             </button>
           </div>
+          <p class="inline-flex items-center">
+            <Icon class="h-4 w-4 text-blue-600" path={bolt} /> - Your team
+          </p>
 
           <Show
             when={tournamentQuery.data?.teams.length > 0}
@@ -191,6 +194,13 @@ const TeamRegistration = () => {
                         )[0].count || "-"}
                         {")"}
                       </span>
+                      <Show
+                        when={userQuery.data?.admin_teams
+                          .map(team => team.id)
+                          .includes(team.id)}
+                      >
+                        <Icon class="h-4 w-4 text-blue-600" path={bolt} />
+                      </Show>
                     </div>
                     <div class="justify-self-end">
                       <A
@@ -201,8 +211,8 @@ const TeamRegistration = () => {
                             .map(team => team.id)
                             .includes(team.id) &&
                             tournamentQuery.data?.status === "REG"
-                            ? "bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
-                            : "border  border-blue-700 bg-transparent text-blue-600 hover:bg-blue-600 focus:ring-blue-300 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+                            ? "bg-blue-600 text-white hover:bg-blue-600 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+                            : "border  border-blue-700 bg-transparent text-blue-600  focus:ring-blue-300 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
                         )}
                       >
                         <span class="self-center">
