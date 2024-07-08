@@ -23,5 +23,5 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunPython(code=add_admins),
+        migrations.RunPython(code=add_admins, reverse_code=migrations.RunPython.noop),
     ]
