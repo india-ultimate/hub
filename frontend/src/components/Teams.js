@@ -1,11 +1,11 @@
-import { A } from "@solidjs/router";
+import { A, useSearchParams } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
 import {
   createSolidTable,
   flexRender,
   getCoreRowModel
 } from "@tanstack/solid-table";
-import { createSignal, For, Show } from "solid-js";
+import { createEffect, createSignal, For, Show } from "solid-js";
 
 import { ChevronLeft, ChevronRight } from "../icons";
 import { fetchUser, searchTeams } from "../queries";
@@ -46,11 +46,32 @@ const defaultColumns = [
 ];
 
 const Teams = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [pagination, setPagination] = createSignal({
-    pageIndex: 0,
+    pageIndex: searchParams.page ? Number(searchParams.page) : 0,
     pageSize: 10
   });
-  const [search, setSearch] = createSignal("");
+  const [search, setSearch] = createSignal(searchParams.text ?? "");
+
+  // update query params whenever we search or change page
+  createEffect(() => {
+    setSearchParams({
+      text: search(),
+      page: pagination().pageIndex
+    });
+  });
+
+  // search and pageIndex should also track query params changes
+  createEffect(() => {
+    setSearch(searchParams.text ?? "");
+  });
+
+  createEffect(() => {
+    setPagination({
+      pageIndex: searchParams.page ? Number(searchParams.page) : 0,
+      pageSize: 10
+    });
+  });
 
   const dataQuery = createQuery(
     () => ["teams", "search", search(), pagination()],
