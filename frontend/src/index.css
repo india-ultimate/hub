@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+html {
+  scroll-behavior: smooth;
+}
+
 .solid-select-container[data-disabled="true"] {
   pointer-events: none;
 }
