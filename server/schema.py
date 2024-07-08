@@ -1,5 +1,6 @@
 from typing import Any
 
+from django.db.models import QuerySet
 from ninja import ModelSchema, Schema
 
 from server.models import (
@@ -613,6 +614,10 @@ class RegistrationWardSchema(UserWardFormSchema, PlayerFormSchema, GuardianshipF
 class TournamentSchema(ModelSchema):
     event: EventSchema
     teams: list[TeamSchema]
+
+    @staticmethod
+    def resolve_teams(tournament: Tournament) -> QuerySet[Team]:
+        return tournament.teams.all().order_by("name")
 
     class Config:
         model = Tournament
