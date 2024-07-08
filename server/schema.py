@@ -405,9 +405,7 @@ class PlayerTinySchema(ModelSchema):
 
     @staticmethod
     def resolve_email(player: Player) -> str:
-        username, suffix = ([*player.user.email.split("@"), ""])[:2]
-        masked_username = mask_string(username)
-        return f"{masked_username}@{suffix}"
+        return player.user.email
 
     phone: str
 

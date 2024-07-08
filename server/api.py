@@ -230,6 +230,15 @@ def list_players(
         return [PlayerTinySchema.from_orm(p) for p in players]
 
 
+@api.get("/players/search", response={200: list[PlayerTinySchema]})
+def search_players(request: AuthenticatedHttpRequest, text: str = "") -> QuerySet[Player]:
+    return Player.objects.filter(
+        Q(user__first_name__icontains=text.lower())
+        | Q(user__last_name__icontains=text.lower())
+        | Q(user__username__icontains=text.lower())
+    ).order_by("user__first_name")
+
+
 # Teams #########
 @api.get("/teams", auth=None, response={200: list[TeamSchema]})
 def list_teams(request: AuthenticatedHttpRequest) -> QuerySet[Team]:
