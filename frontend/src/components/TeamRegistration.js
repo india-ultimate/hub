@@ -5,7 +5,9 @@ import {
   useQueryClient
 } from "@tanstack/solid-query";
 import clsx from "clsx";
+import { Icon } from "solid-heroicons";
 import { trophy } from "solid-heroicons/solid";
+import { plus } from "solid-heroicons/solid";
 import { createEffect, createSignal, For, Match, Show, Switch } from "solid-js";
 
 import {
@@ -49,6 +51,10 @@ const TeamRegistration = () => {
       setRegisteredTeamIds(teamIds);
     }
   });
+
+  let registerYourTeamRef;
+
+  const scrollToMyTeams = () => registerYourTeamRef.scrollIntoView();
 
   return (
     <Show
@@ -151,9 +157,19 @@ const TeamRegistration = () => {
 
       <div class="mx-auto max-w-screen-md">
         <div class="mt-4">
-          <h4 class="mb-4 text-lg font-bold text-blue-500">
-            Registered Teams {`(${tournamentQuery.data?.teams.length})`}
-          </h4>
+          <div class="mb-4 flex items-center justify-between ">
+            <h4 class="text-lg font-bold text-blue-500">
+              Registered Teams {`(${tournamentQuery.data?.teams.length})`}
+            </h4>
+            <button
+              onClick={scrollToMyTeams}
+              class="inline-flex items-center gap-1 text-sm text-blue-600"
+            >
+              <Icon class="h-4 w-4 text-blue-700" path={plus} />
+              Add your team
+            </button>
+          </div>
+
           <Show
             when={tournamentQuery.data?.teams.length > 0}
             fallback={<Info text="No team has registered yet!" />}
@@ -206,7 +222,7 @@ const TeamRegistration = () => {
           </Show>
         </div>
 
-        <div class="mt-4">
+        <div class="mt-4" ref={registerYourTeamRef}>
           <h4 class="mb-4 text-lg font-bold text-blue-500">
             Register your team(s)
           </h4>
