@@ -200,7 +200,7 @@ const Roster = () => {
       </div>
 
       <div class="mx-auto max-w-screen-md">
-        <div class="mt-4">
+        <div class="mt-6">
           <h4 class="mb-2 text-xl font-bold text-blue-500">Add to Roster</h4>
           <Show
             when={tournamentQuery.data?.status == "REG"}
@@ -231,7 +231,7 @@ const Roster = () => {
         <div class="mt-4">
           <h4 class="text-xl font-bold text-blue-500">Current Roster</h4>
           <h2 class="my-4 text-lg font-bold underline underline-offset-2">
-            Players
+            Players {`(${players()?.length})`}
           </h2>
           <Show
             when={players()?.length !== 0}
@@ -304,7 +304,7 @@ const Roster = () => {
             </div>
           </Show>
           <h2 class="mb-4 mt-8 text-lg font-bold underline underline-offset-2">
-            Non-players
+            Non-players {`(${nonPlayers()?.length})`}
           </h2>
           <Show
             when={nonPlayers()?.length !== 0}

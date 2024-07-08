@@ -54,7 +54,7 @@ const AddToRoster = props => {
   };
 
   return (
-    <div class="flex justify-center">
+    <div class="mt-4 flex justify-center gap-2">
       <Show
         when={
           !props.roster
