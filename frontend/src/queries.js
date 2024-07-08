@@ -115,11 +115,14 @@ export const searchUsers = async searchText => {
   return await response.json();
 };
 
-export const searchPlayers = async searchText => {
+export const searchPlayers = async (searchText, pagination) => {
   let baseUrl = "/api/players/search";
   let params = new URLSearchParams();
   if (searchText) {
     params.set("text", searchText);
+  }
+  if (pagination.pageIndex) {
+    params.set("page", pagination.pageIndex + 1);
   }
   if (params.toString().length > 0) {
     baseUrl = baseUrl + "?" + params.toString();
