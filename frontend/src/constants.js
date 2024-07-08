@@ -96,7 +96,7 @@ export const teamCategoryChoices = [
 ];
 
 export const playerRoles = [
-  { value: "DFLT", label: "Default" },
+  { value: "DFLT", label: "None" },
   { value: "CAP", label: "Captain" },
   { value: "SCAP", label: "Spirit Captain" },
   { value: "COACH", label: "Coach" },
