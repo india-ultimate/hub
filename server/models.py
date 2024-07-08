@@ -435,6 +435,9 @@ class Registration(ExportModelOperationsMixin("registration"), models.Model):  #
     is_playing = models.BooleanField(default=True)
     role = models.CharField(max_length=6, choices=Role.choices, default=Role.DEFAULT)
 
+    class Meta:
+        unique_together = ("event", "player")
+
 
 class UCRegistration(ExportModelOperationsMixin("uc_registration"), models.Model):  # type: ignore[misc]
     event = models.ForeignKey(Event, on_delete=models.CASCADE)
