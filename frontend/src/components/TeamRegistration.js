@@ -5,16 +5,15 @@ import {
   useQueryClient
 } from "@tanstack/solid-query";
 import clsx from "clsx";
-import { Icon } from "solid-heroicons";
-import { arrowUpRight, trophy } from "solid-heroicons/solid";
+import { trophy } from "solid-heroicons/solid";
 import { createEffect, createSignal, For, Match, Show, Switch } from "solid-js";
 
 import {
   addTeamRegistration,
   fetchTournamentBySlug,
+  fetchUser,
   removeTeamRegistration
 } from "../queries";
-import { useStore } from "../store";
 import Info from "./alerts/Info";
 import Warning from "./alerts/Warning";
 import Breadcrumbs from "./Breadcrumbs";
@@ -23,12 +22,12 @@ const TeamRegistration = () => {
   const queryClient = useQueryClient();
 
   const params = useParams();
-  const [store] = useStore();
 
   const tournamentQuery = createQuery(
     () => ["tournaments", params.slug],
     () => fetchTournamentBySlug(params.slug)
   );
+  const userQuery = createQuery(() => ["me"], fetchUser);
 
   const registerTeamMutation = createMutation({
     mutationFn: addTeamRegistration,
@@ -181,15 +180,23 @@ const TeamRegistration = () => {
                       <A
                         href={`/tournament/${params.slug}/team/${team.slug}/roster`}
                         class={clsx(
-                          "inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium text-white focus:outline-none focus:ring-4",
-                          "bg-blue-500  hover:bg-blue-600 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+                          "inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium  focus:outline-none focus:ring-4",
+                          userQuery.data?.admin_teams
+                            .map(team => team.id)
+                            .includes(team.id) &&
+                            tournamentQuery.data?.status === "REG"
+                            ? "bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+                            : "border  border-blue-700 bg-transparent text-blue-600 hover:bg-blue-600 focus:ring-blue-300 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
                         )}
                       >
-                        <span class="mr-2 self-center">Roster</span>
-                        <Icon
-                          path={arrowUpRight}
-                          class="mb-1 w-3 text-gray-100"
-                        />
+                        <span class="self-center">
+                          {userQuery.data?.admin_teams
+                            .map(team => team.id)
+                            .includes(team.id) &&
+                          tournamentQuery.data?.status === "REG"
+                            ? "Edit Roster"
+                            : "View Roster"}
+                        </span>
                       </A>
                     </div>
                   </div>
@@ -208,23 +215,25 @@ const TeamRegistration = () => {
             fallback={<Info text="Registrations has closed !" />}
           >
             <Switch>
-              <Match when={!store.loggedIn}>
+              <Match when={!userQuery.isSuccess}>
                 <Info text="You must be logged in to register teams !" />
               </Match>
               <Match
                 when={
-                  store.loggedIn &&
-                  (!store.data.admin_teams ||
-                    store.data.admin_teams?.length == 0)
+                  userQuery.isSuccess &&
+                  (!userQuery.data.admin_teams ||
+                    userQuery.data.admin_teams?.length == 0)
                 }
               >
                 <Info text="You must be an admin of a team to register !" />
               </Match>
               <Match
-                when={store.loggedIn && store.data.admin_teams?.length > 0}
+                when={
+                  userQuery.isSuccess && userQuery.data.admin_teams?.length > 0
+                }
               >
                 <div class="my-6">
-                  <For each={store.data.admin_teams}>
+                  <For each={userQuery.data.admin_teams}>
                     {team => (
                       <div class="mb-4 flex items-center justify-between gap-x-4 border-b border-gray-400/50 pb-4">
                         <div class="flex items-center gap-x-4">
@@ -258,7 +267,7 @@ const TeamRegistration = () => {
                             type="button"
                             class={clsx(
                               "justify-self-end rounded-lg px-4 py-2 text-sm font-medium text-white focus:outline-none focus:ring-4",
-                              "bg-blue-500  hover:bg-blue-600 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+                              "bg-blue-600  hover:bg-blue-700 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
                             )}
                             onClick={() =>
                               registerTeamMutation.mutate({
