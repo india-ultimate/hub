@@ -1386,7 +1386,10 @@ def add_player_to_roster(
         registration.is_playing = registration_details.is_playing
     if registration_details.role:
         registration.role = registration_details.role
-    registration.save()
+    try:
+        registration.save()
+    except IntegrityError:
+        return 400, {"message": "Player already added to another team for this event"}
 
     return 200, registration
 
