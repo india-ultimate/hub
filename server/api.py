@@ -1688,12 +1688,12 @@ def create_tournament(
         return 400, {"message": "Start date can't be after end date"}
 
     if if_dates_are_not_in_order(
-        tournament_details.registration_start_date, tournament_details.registration_end_date
+        tournament_details.team_registration_start_date, tournament_details.team_registration_end_date
     ):
         return 400, {"message": "Registration Start date can't be after Registration end date"}
 
     if if_dates_are_not_in_order(
-        tournament_details.registration_end_date, tournament_details.start_date
+        tournament_details.team_registration_end_date, tournament_details.start_date
     ):
         return 400, {"message": "Registration End date can't be after Tournament Start date"}
 
@@ -1701,8 +1701,8 @@ def create_tournament(
         title=tournament_details.title,
         start_date=tournament_details.start_date,
         end_date=tournament_details.end_date,
-        registration_start_date=tournament_details.registration_start_date,
-        registration_end_date=tournament_details.registration_end_date,
+        team_registration_start_date=tournament_details.team_registration_start_date,
+        team_registration_end_date=tournament_details.team_registration_end_date,
         location=tournament_details.location,
         type=tournament_details.type,
     )
@@ -1717,7 +1717,7 @@ def create_tournament(
 
     tournament.rules = get_default_rules()
 
-    if if_today(tournament_details.registration_start_date):
+    if if_today(tournament_details.team_registration_start_date):
         tournament.status = Tournament.Status.REGISTERING
 
     tournament.save()
