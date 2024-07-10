@@ -15,7 +15,8 @@ from django.contrib.auth.base_user import AbstractBaseUser
 from django.core import mail
 from django.core.exceptions import ValidationError
 from django.core.files.storage import default_storage
-from django.db.models import Model, Q, QuerySet
+from django.db.models import Model, Q, QuerySet, Value
+from django.db.models.functions import Concat
 from django.db.utils import IntegrityError
 from django.http import HttpRequest
 from django.template.loader import render_to_string
@@ -208,11 +209,12 @@ def me_access(
 
 @api.get("/users/search", response={200: list[UserMinSchema]})
 def search_users(request: AuthenticatedHttpRequest, text: str = "") -> QuerySet[User]:
-    return User.objects.filter(
-        Q(first_name__icontains=text.lower())
-        | Q(last_name__icontains=text.lower())
-        | Q(username__icontains=text.lower())
-    ).order_by("first_name")
+    text = text.strip().lower()
+    return (
+        User.objects.annotate(full_name=Concat("first_name", Value(" "), "last_name"))
+        .filter(Q(full_name__icontains=text) | Q(username__icontains=text))
+        .order_by("full_name")
+    )
 
 
 # Players ##########
@@ -233,11 +235,12 @@ def list_players(
 @api.get("/players/search", response={200: list[PlayerTinySchema]})
 @paginate(PageNumberPagination, page_size=5)
 def search_players(request: AuthenticatedHttpRequest, text: str = "") -> QuerySet[Player]:
-    return Player.objects.filter(
-        Q(user__first_name__icontains=text.lower())
-        | Q(user__last_name__icontains=text.lower())
-        | Q(user__username__icontains=text.lower())
-    ).order_by("user__first_name")
+    text = text.strip().lower()
+    return (
+        Player.objects.annotate(full_name=Concat("user__first_name", Value(" "), "user__last_name"))
+        .filter(Q(full_name__icontains=text) | Q(user__username__icontains=text))
+        .order_by("full_name")
+    )
 
 
 # Teams #########
