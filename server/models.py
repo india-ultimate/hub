@@ -200,6 +200,8 @@ class Event(ExportModelOperationsMixin("event"), models.Model):  # type: ignore[
     end_date = models.DateField()
     team_registration_start_date = models.DateField()
     team_registration_end_date = models.DateField()
+    player_registration_start_date = models.DateField()
+    player_registration_end_date = models.DateField()
     ultimate_central_id = models.PositiveIntegerField(unique=True, null=True, blank=True)
     ultimate_central_slug = models.SlugField(max_length=200, default="unknown")
     location = models.CharField(max_length=255, default="unknown")
