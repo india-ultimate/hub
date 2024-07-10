@@ -134,7 +134,7 @@ const AddPlayerRegistrationForm = componentProps => {
   const dataQuery = createQuery(
     () => ["players", "search", search(), pagination()],
     () =>
-      search().trim().length > 4 ? searchPlayers(search(), pagination()) : []
+      search().trim().length > 2 ? searchPlayers(search(), pagination()) : []
   );
 
   const defaultColumns = [
@@ -210,7 +210,7 @@ const AddPlayerRegistrationForm = componentProps => {
         Add Players to Roster
       </h2>
       <h3 class="w-full text-left text-sm italic">
-        Search players by name or email (min. 5 letters)
+        Search players by name or email (min. 3 letters)
       </h3>
       <div class="relative my-4 w-full">
         <div class="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-3">
@@ -258,9 +258,9 @@ const AddPlayerRegistrationForm = componentProps => {
               fallback={
                 <Info
                   text={
-                    search().trim().length > 4
+                    search().trim().length > 2
                       ? "No players found."
-                      : "Please enter min. 5 letters to search"
+                      : "Please enter min. 3 letters to search"
                   }
                 />
               }
