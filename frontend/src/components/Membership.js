@@ -1,6 +1,6 @@
 import { useParams } from "@solidjs/router";
 import { inboxStack } from "solid-heroicons/solid";
-import { createEffect, createSignal, For, onMount, Show } from "solid-js";
+import { createEffect, createSignal, onMount } from "solid-js";
 
 import {
   annualMembershipFee,
@@ -8,39 +8,36 @@ import {
   membershipEndDate,
   membershipStartDate,
   minAge,
-  minAgeWarning,
   sponsoredAnnualMembershipFee
 } from "../constants";
 import { useStore } from "../store";
 import {
-  displayDate,
   fetchUrl,
   findPlayerById,
   getAge,
   membershipYearOptions
 } from "../utils";
+import Info from "./alerts/Info";
 import Breadcrumbs from "./Breadcrumbs";
-import PhonePePayment from "./PhonePePayment";
-import StatusStepper from "./StatusStepper";
 
 const Membership = () => {
   const [store] = useStore();
 
   const [player, setPlayer] = createSignal();
-  const [membership, setMembership] = createSignal();
+  const [_membership, setMembership] = createSignal();
 
   const years = membershipYearOptions();
   const [year, setYear] = createSignal(years?.[0]);
-  const [startDate, setStartDate] = createSignal("");
-  const [endDate, setEndDate] = createSignal("");
-  const [annual, setAnnual] = createSignal(true);
-  const [ageRestricted, setAgeRestricted] = createSignal(false);
+  const [_startDate, setStartDate] = createSignal("");
+  const [_endDate, setEndDate] = createSignal("");
+  const [annual, _setAnnual] = createSignal(true);
+  const [_ageRestricted, setAgeRestricted] = createSignal(false);
 
   const [events, setEvents] = createSignal([]);
 
   const [event, setEvent] = createSignal();
 
-  const [status, setStatus] = createSignal();
+  // const [status, setStatus] = createSignal();
 
   const params = useParams();
   createEffect(() => {
@@ -66,11 +63,11 @@ const Membership = () => {
     fetchUrl("/api/events", eventsSuccessHandler, error => console.log(error));
   });
 
-  const handleYearChange = e => {
+  const _handleYearChange = e => {
     setYear(Number(e.target.value));
   };
 
-  const handleEventChange = e => {
+  const _handleEventChange = e => {
     setEvent(events().find(ev => ev.id === Number(e.target.value)));
   };
 
@@ -99,7 +96,7 @@ const Membership = () => {
     }
   });
 
-  const [payDisabled, setPayDisabled] = createSignal(false);
+  const [_payDisabled, setPayDisabled] = createSignal(false);
   createEffect(() => {
     const dob = player()?.date_of_birth;
     const [endDay, endMonth] = membershipEndDate;
@@ -112,7 +109,7 @@ const Membership = () => {
     setPayDisabled(noSelection || age < minAge);
   });
 
-  const getAmount = () =>
+  const _getAmount = () =>
     (annual()
       ? player()?.sponsored
         ? sponsoredAnnualMembershipFee
@@ -129,7 +126,8 @@ const Membership = () => {
         ]}
       />
       <h1 class="text-2xl font-bold text-blue-500">Membership</h1>
-      <Show
+      <Info text="Membership is coming soon for the next season" />
+      {/* <Show
         when={!membership()?.is_active}
         fallback={
           <div>
@@ -218,7 +216,7 @@ const Membership = () => {
           setStatus={setStatus}
         />
         <p>{status()}</p>
-      </Show>
+      </Show> */}
     </div>
   );
 };
