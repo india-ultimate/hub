@@ -109,13 +109,18 @@ const Player = props => {
                   displayDate(props.player.membership.end_date)}
                 <Show when={!props.player?.membership?.is_active}>
                   <p class="mb-4">
-                    You need a valid India Ultimate membership to participate in
-                    India Ultimate events.
+                    <span>
+                      You need a India Ultimate membership to participate in{" "}
+                    </span>
+                    <span class="font-semibold">
+                      India Ultimate events only
+                    </span>
                   </p>
                   <button
                     type="submit"
-                    class="w-full rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 sm:w-auto"
+                    class="w-full rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 disabled:bg-gray-400 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 sm:w-auto"
                     onClick={e => navMembership(e, props.player?.id)}
+                    disabled //TODO: remove after sakkath
                   >
                     Renew
                   </button>
@@ -158,13 +163,16 @@ const Player = props => {
               </th>
               <td class="px-6 py-4">
                 <p class="mb-4">
-                  You need a India Ultimate membership to participate in India
-                  Ultimate events.
+                  <span>
+                    You need a India Ultimate membership to participate in{" "}
+                  </span>
+                  <span class="font-semibold">India Ultimate events only</span>
                 </p>
                 <button
                   type="submit"
-                  class="w-full rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 sm:w-auto"
+                  class="w-full rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 disabled:bg-gray-400 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 sm:w-auto"
                   onClick={e => navMembership(e, props.player?.id)}
+                  disabled //TODO: remove after sakkath
                 >
                   Enroll
                 </button>

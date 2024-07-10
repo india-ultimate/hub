@@ -19,6 +19,7 @@ import {
   getAge,
   membershipYearOptions
 } from "../utils";
+import Info from "./alerts/Info";
 import Breadcrumbs from "./Breadcrumbs";
 import PhonePePayment from "./PhonePePayment";
 import StatusStepper from "./StatusStepper";
@@ -99,7 +100,7 @@ const Membership = () => {
     }
   });
 
-  const [payDisabled, setPayDisabled] = createSignal(false);
+  const [payDisabled, setPayDisabled] = createSignal(false); // eslint-disable-line no-unused-vars
   createEffect(() => {
     const dob = player()?.date_of_birth;
     const [endDay, endMonth] = membershipEndDate;
@@ -140,6 +141,16 @@ const Membership = () => {
         }
       >
         <h3>Renew membership for {player()?.full_name}</h3>
+        <Info
+          text={
+            <>
+              <span>
+                You need a India Ultimate membership to participate in{" "}
+              </span>
+              <span class="font-semibold">India Ultimate events only.</span>
+            </>
+          }
+        />
 
         <div class="my-2">
           <label class="relative inline-flex cursor-pointer items-center">
@@ -209,7 +220,8 @@ const Membership = () => {
           </Show>
         </div>
         <PhonePePayment
-          disabled={payDisabled()}
+          // disabled={payDisabled()}
+          disabled={true} //TODO: remove after sakkath
           annual={annual()}
           year={year()}
           event={event()}
