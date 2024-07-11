@@ -426,7 +426,7 @@ const TournamentManager = () => {
           <div class="relative my-5 overflow-x-auto">
             <div class="mb-4 text-xl font-bold text-blue-500">Seeding</div>
             <Switch>
-              <Match when={selectedTournament()?.status === "DFT"}>
+              <Match when={selectedTournament()?.status === "SCH"}>
                 <div class="w-full md:w-1/2">
                   <ReorderTeams
                     teams={teams()}
@@ -487,10 +487,10 @@ const TournamentManager = () => {
                 setIsStandingsEdited(false);
               }}
               disabled={
-                selectedTournament()?.status !== "DFT" ||
+                selectedTournament()?.status !== "SCH" ||
                 updateSeedingMutation.isLoading
               }
-              class="my-2 mb-2 mr-2 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
+              class="my-2 mb-2 mr-2 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 disabled:bg-gray-400 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
             >
               <Show
                 when={updateSeedingMutation.isLoading}
@@ -657,8 +657,8 @@ const TournamentManager = () => {
                         seeding_list: enteredSeedingList()
                       })
                     }
-                    disabled={selectedTournament()?.status !== "DFT"}
-                    class="mb-2 mr-2 mt-5 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
+                    disabled={selectedTournament()?.status !== "SCH"}
+                    class="mb-2 mr-2 mt-5 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 disabled:bg-gray-400 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
                   >
                     Create Pool
                   </button>
@@ -680,8 +680,8 @@ const TournamentManager = () => {
                     tournament_id: selectedTournamentID()
                   })
                 }
-                disabled={selectedTournament()?.status !== "DFT"}
-                class="mb-2 mr-2 mt-5 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
+                disabled={selectedTournament()?.status !== "SCH"}
+                class="mb-2 mr-2 mt-5 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 disabled:bg-gray-400 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
               >
                 Create Cross Pool
               </button>
@@ -752,8 +752,8 @@ const TournamentManager = () => {
                         seq_num: bracketQuery.data.length + 1
                       })
                     }
-                    disabled={selectedTournament()?.status !== "DFT"}
-                    class="mb-2 mr-2 mt-5 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
+                    disabled={selectedTournament()?.status !== "SCH"}
+                    class="mb-2 mr-2 mt-5 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 disabled:bg-gray-400 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
                   >
                     Create Bracket
                   </button>
@@ -844,8 +844,8 @@ const TournamentManager = () => {
                         seeding_list: enteredPositionPoolSeedingList()
                       })
                     }
-                    disabled={selectedTournament()?.status !== "DFT"}
-                    class="mb-2 mr-2 mt-5 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
+                    disabled={selectedTournament()?.status !== "SCH"}
+                    class="mb-2 mr-2 mt-5 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 disabled:bg-gray-400 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
                   >
                     Create Position Pool
                   </button>
@@ -867,7 +867,7 @@ const TournamentManager = () => {
                     tournamentId={selectedTournamentID()}
                     updateFieldMutation={updateFieldMutation}
                     editingDisabled={
-                      selectedTournament()?.status !== "DFT" ||
+                      selectedTournament()?.status !== "SCH" ||
                       updateFieldMutation.isLoading
                     }
                   />
@@ -879,7 +879,7 @@ const TournamentManager = () => {
               tournamentId={selectedTournamentID()}
               createFieldMutation={createFieldMutation}
               disabled={
-                selectedTournament()?.status !== "DFT" ||
+                selectedTournament()?.status !== "SCH" ||
                 createFieldMutation.isLoading
               }
               alreadyPresentFields={fieldsQuery.data}
@@ -1042,8 +1042,8 @@ const TournamentManager = () => {
                       body: matchFields
                     });
                   }}
-                  disabled={selectedTournament()?.status !== "DFT"}
-                  class="mb-1 mb-2 mr-2 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
+                  disabled={selectedTournament()?.status !== "SCH"}
+                  class="mb-2 mr-2 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 disabled:bg-gray-400 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
                 >
                   Add Match
                 </button>
@@ -1517,7 +1517,7 @@ const TournamentManager = () => {
             </For>
           </div>
           <Switch>
-            <Match when={selectedTournament()?.status === "DFT"}>
+            <Match when={selectedTournament()?.status === "SCH"}>
               <button
                 type="button"
                 onClick={() =>
