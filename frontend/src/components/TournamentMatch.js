@@ -251,7 +251,7 @@ const TournamentMatch = props => {
       </Show>
       {/* Field and duration */}
       <p class="mt-2 text-center text-sm">
-        {props.match.field.name +
+        {props.match.field?.name +
           " | " +
           startTime() +
           " - " +
