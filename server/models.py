@@ -244,6 +244,8 @@ class Tournament(ExportModelOperationsMixin("tournament"), models.Model):  # typ
     current_seeding = models.JSONField(default=dict)
     spirit_ranking = models.JSONField(default=list)
 
+    use_uc_registrations = models.BooleanField(default=False)
+
 
 @receiver(m2m_changed, sender=Tournament.teams.through)
 def update_seeding_on_teams_change(
