@@ -367,6 +367,17 @@ export const fetchTournamentTeamMatches = async (
   return await response.json();
 };
 
+export const fetchTournamentTeamBySlug = async (
+  tournament_slug,
+  team_slug,
+  use_uc_registrations
+) => {
+  if (use_uc_registrations) {
+    return await fetchTournamentTeamBySlugV1(tournament_slug, team_slug);
+  }
+  return await fetchTournamentTeamBySlugV2(tournament_slug, team_slug);
+};
+
 export const fetchTournamentTeamBySlugV1 = async (
   tournament_slug,
   team_slug
@@ -379,7 +390,13 @@ export const fetchTournamentTeamBySlugV1 = async (
       credentials: "same-origin"
     }
   );
-  return await response.json();
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.message || JSON.stringify(data));
+  }
+
+  return data;
 };
 
 export const fetchTournamentTeamBySlugV2 = async (
