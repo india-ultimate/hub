@@ -1482,51 +1482,19 @@ def update_registration(
 )
 def get_tournament_team_roster(
     request: AuthenticatedHttpRequest, tournament_slug: str, team_slug: str
-) -> tuple[int, list[UCRegistration] | message_response]:
+) -> tuple[int, QuerySet[UCRegistration] | message_response]:
     try:
         event = Event.objects.get(slug=tournament_slug)
         team = Team.objects.get(slug=team_slug)
-        uc_registrations = UCRegistration.objects.filter(team=team, event=event).order_by(
-            "person__first_name"
-        )
-
-        registrations = Registration.objects.filter(event=event, team=team).order_by(
-            "player__user__first_name"
-        )
-
-        def _reg_to_uc_reg(reg: Registration) -> UCRegistration:
-            if reg.player.ultimate_central_id:
-                person = UCPerson.objects.get(id=reg.player.ultimate_central_id)
-            else:
-                person = UCPerson(
-                    email=reg.player.user.email,
-                    first_name=reg.player.user.first_name,
-                    last_name=reg.player.user.last_name,
-                    slug="",
-                    dominant_hand="",
-                    image_url="",
-                )
-
-            roles = []
-            role_label = Registration.Role._value2member_map_[reg.role].label  # type: ignore[attr-defined]
-            roles.append(role_label)
-
-            if reg.is_playing:
-                roles.append("player")
-
-            return UCRegistration(
-                id=reg.id, event=reg.event, team=reg.team, person=person, roles=roles
-            )
-
-        regs_to_uc_regs = list(map(_reg_to_uc_reg, registrations))
-
-        if uc_registrations.count() == 0:
-            return 200, regs_to_uc_regs
-        else:
-            return 200, list(uc_registrations)
 
     except (Event.DoesNotExist, Team.DoesNotExist):
         return 400, {"message": "Tournament/Team does not exist"}
+
+    uc_registrations = UCRegistration.objects.filter(team=team, event=event).order_by(
+        "person__first_name"
+    )
+
+    return 200, uc_registrations
 
 
 @api.get(
