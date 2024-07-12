@@ -173,37 +173,42 @@ const Roster = () => {
       </div>
 
       <div class="mx-auto mb-4 mt-6 w-fit">
-        <Warning>
-          Rostering open from{" "}
-          <span class="inline-flex font-medium">
-            {new Date(
-              Date.parse(tournamentQuery.data?.event?.registration_start_date)
-            ).toLocaleDateString("en-US", {
-              year: "numeric",
-              month: "short",
-              day: "numeric",
-              timeZone: "UTC"
-            })}
-          </span>{" "}
-          to{" "}
-          <span class="inline-flex font-medium">
-            {new Date(
-              Date.parse(tournamentQuery.data?.event?.registration_end_date)
-            ).toLocaleDateString("en-US", {
-              year: "numeric",
-              month: "short",
-              day: "numeric",
-              timeZone: "UTC"
-            })}
-          </span>
-        </Warning>
+        <Show
+          when={tournamentQuery.data?.status === "REG"}
+          fallback={<Warning>Rostering window is now closed!</Warning>}
+        >
+          <Warning>
+            Rostering window is open from{" "}
+            <span class="inline-flex font-medium">
+              {new Date(
+                Date.parse(tournamentQuery.data?.event?.registration_start_date)
+              ).toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+                timeZone: "UTC"
+              })}
+            </span>{" "}
+            to{" "}
+            <span class="inline-flex font-medium">
+              {new Date(
+                Date.parse(tournamentQuery.data?.event?.registration_end_date)
+              ).toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+                timeZone: "UTC"
+              })}
+            </span>
+          </Warning>
+        </Show>
       </div>
 
       <div class="mx-auto max-w-screen-md">
         <div class="mt-6">
           <h4 class="mb-2 text-xl font-bold text-blue-500">Add to Roster</h4>
           <Show
-            when={tournamentQuery.data?.status == "REG"}
+            when={tournamentQuery.data?.status === "REG"}
             fallback={<Info text="Registrations have closed!" />}
           >
             <Switch>
@@ -277,7 +282,13 @@ const Roster = () => {
                       </Show>
                     </div>
                     <div class="flex gap-x-3 justify-self-end">
-                      <Show when={store.loggedIn && currentUserIsTeamAdmin()}>
+                      <Show
+                        when={
+                          store.loggedIn &&
+                          currentUserIsTeamAdmin() &&
+                          tournamentQuery.data?.status === "REG"
+                        }
+                      >
                         <RemoveFromRoster
                           regId={registration.id}
                           eventId={tournamentQuery.data.event.id}
@@ -286,7 +297,13 @@ const Roster = () => {
                           removeMutation={removeFromRosterMutation}
                         />
                       </Show>
-                      <Show when={store.loggedIn && currentUserIsTeamAdmin()}>
+                      <Show
+                        when={
+                          store.loggedIn &&
+                          currentUserIsTeamAdmin() &&
+                          tournamentQuery.data?.status === "REG"
+                        }
+                      >
                         <EditRosteredPlayer
                           registration={registration}
                           eventId={tournamentQuery.data.event.id}
@@ -350,7 +367,13 @@ const Roster = () => {
                       </Show>
                     </div>
                     <div class="flex gap-x-3 justify-self-end">
-                      <Show when={store.loggedIn && currentUserIsTeamAdmin()}>
+                      <Show
+                        when={
+                          store.loggedIn &&
+                          currentUserIsTeamAdmin() &&
+                          tournamentQuery.data?.status === "REG"
+                        }
+                      >
                         <RemoveFromRoster
                           regId={registration.id}
                           eventId={tournamentQuery.data.event.id}
@@ -359,7 +382,13 @@ const Roster = () => {
                           removeMutation={removeFromRosterMutation}
                         />
                       </Show>
-                      <Show when={store.loggedIn && currentUserIsTeamAdmin()}>
+                      <Show
+                        when={
+                          store.loggedIn &&
+                          currentUserIsTeamAdmin() &&
+                          tournamentQuery.data?.status === "REG"
+                        }
+                      >
                         <EditRosteredPlayer
                           registration={registration}
                           eventId={tournamentQuery.data.event.id}
