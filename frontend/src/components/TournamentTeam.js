@@ -217,7 +217,7 @@ const TournamentTeam = () => {
               type="button"
               role="tab"
               aria-controls="roster"
-              aria-selected="true"
+              aria-selected="false"
             >
               Roster
             </button>
