@@ -16,13 +16,16 @@ import { matchCardColorToBorderColorMap } from "../colors";
 import {
   fetchTeamBySlug,
   fetchTournamentBySlug,
-  fetchTournamentTeamBySlugV1,
+  fetchTournamentTeamBySlug,
   fetchTournamentTeamMatches
 } from "../queries";
 import RosterSkeleton from "../skeletons/Roster";
 import { TournamentTeamMatches as TournamentTeamMatchesSkeleton } from "../skeletons/TournamentMatch";
 import { getTournamentBreadcrumbName } from "../utils";
+import Info from "./alerts/Info";
 import Breadcrumbs from "./Breadcrumbs";
+import Registration from "./roster/Registration";
+import UCRegistration from "./roster/UCRegistration";
 import TournamentMatch from "./TournamentMatch";
 
 const TournamentTeam = () => {
@@ -32,7 +35,7 @@ const TournamentTeam = () => {
   const [doneFetching, setDoneFetching] = createSignal(false);
 
   const tournamentQuery = createQuery(
-    () => ["tournaments", params.tournament_slug],
+    () => ["tournament", params.tournament_slug],
     () => fetchTournamentBySlug(params.tournament_slug)
   );
   const teamQuery = createQuery(
@@ -41,7 +44,17 @@ const TournamentTeam = () => {
   );
   const rosterQuery = createQuery(
     () => ["tournament-roster", params.tournament_slug, params.team_slug],
-    () => fetchTournamentTeamBySlugV1(params.tournament_slug, params.team_slug)
+    () =>
+      fetchTournamentTeamBySlug(
+        params.tournament_slug,
+        params.team_slug,
+        tournamentQuery.data.use_uc_registrations
+      ),
+    {
+      get enabled() {
+        return tournamentQuery.data?.use_uc_registrations !== undefined;
+      }
+    }
   );
   const matchesQuery = createQuery(
     () => ["team-matches", params.tournament_slug, params.team_slug],
@@ -125,32 +138,24 @@ const TournamentTeam = () => {
     setTimeout(() => initFlowbite(), 8000);
   });
 
-  const isPlayer = registration => registration?.roles?.includes("player");
-
-  const isCaptain = registration => {
-    return (
-      registration?.roles?.includes("captain") ||
-      registration?.roles?.includes("Captain")
-    );
+  const players = () => {
+    if (tournamentQuery.data?.use_uc_registrations) {
+      return rosterQuery.data?.filter(r => r?.roles?.includes("player"));
+    } else {
+      return rosterQuery.data?.filter(r => r?.is_playing);
+    }
   };
 
-  const isSpiritCaptain = registration => {
-    return (
-      registration?.roles?.includes("spirit captain") ||
-      registration?.roles?.includes("Spirit Captain")
-    );
+  const nonPlayers = () => {
+    if (tournamentQuery.data?.use_uc_registrations) {
+      return rosterQuery.data?.filter(
+        r =>
+          r?.roles?.includes("coach") || r?.roles?.includes("assistant coach")
+      );
+    } else {
+      return rosterQuery.data?.filter(r => !r?.is_playing);
+    }
   };
-
-  const isCoach = registration => {
-    return (
-      registration?.roles?.includes("coach") ||
-      registration?.roles?.includes("Coach") ||
-      registration?.roles?.includes("assistant coach") ||
-      registration?.roles?.includes("Assistant Coach")
-    );
-  };
-
-  const isManager = registration => registration?.roles?.includes("Manager");
 
   return (
     <Show when={!teamQuery.data?.message}>
@@ -212,7 +217,7 @@ const TournamentTeam = () => {
               type="button"
               role="tab"
               aria-controls="roster"
-              aria-selected="false"
+              aria-selected="true"
             >
               Roster
             </button>
@@ -277,76 +282,57 @@ const TournamentTeam = () => {
           aria-labelledby="tab-roster"
         >
           <Suspense fallback={<RosterSkeleton />}>
-            <Show when={rosterQuery.data?.filter(r => isPlayer(r)).length > 0}>
-              <h2 class="text-center text-xl font-bold">Players</h2>
+            <h2 class="my-4 text-xl font-bold underline underline-offset-2">
+              Players {`(${players()?.length || "-"})`}
+            </h2>
+            <Show
+              when={players()?.length !== 0}
+              fallback={<Info text="No Players in the roster" />}
+            >
+              <div class="w-full divide-y sm:divide-y-0">
+                <For each={players()}>
+                  {registration => (
+                    <Show
+                      when={tournamentQuery.data?.use_uc_registrations}
+                      fallback={<Registration registration={registration} />}
+                    >
+                      <UCRegistration registration={registration} />
+                    </Show>
+                  )}
+                </For>
+              </div>
             </Show>
-
-            <For each={rosterQuery.data?.filter(r => isPlayer(r))}>
-              {registration => (
-                <div class="mx-4 my-3 flex items-center space-x-4">
-                  <div class="flex items-center space-x-4">
-                    <img
-                      class="h-10 w-10 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
-                      src={registration.person.image_url}
-                      alt="Bordered avatar"
-                    />
-                    <div class="font-medium">
-                      <div>
-                        {registration.person.first_name +
-                          " " +
-                          registration.person.last_name}
-                        <Show
-                          when={registration.person?.player?.gender}
-                        >{` (${registration.person?.player?.gender})`}</Show>
-                      </div>
-                    </div>
-                    <Show when={isCaptain(registration)}>
-                      <span class="me-2 h-fit rounded-full bg-blue-100 px-2.5 py-0.5 text-xs text-blue-800 dark:bg-blue-900 dark:text-blue-300">
-                        Captain
-                      </span>
+            <h2 class="mb-4 mt-8 text-xl font-bold underline underline-offset-2">
+              {tournamentQuery.data?.use_uc_registrations
+                ? "Coaches"
+                : "Non-players"}{" "}
+              {`(${nonPlayers()?.length || "-"})`}
+            </h2>
+            <Show
+              when={nonPlayers()?.length !== 0}
+              fallback={
+                <Info
+                  text={`No ${
+                    tournamentQuery.data?.use_uc_registrations
+                      ? "Coaches"
+                      : "Non-players"
+                  } in roster`}
+                />
+              }
+            >
+              <div class="w-full divide-y sm:divide-y-0">
+                <For each={nonPlayers()}>
+                  {registration => (
+                    <Show
+                      when={tournamentQuery.data?.use_uc_registrations}
+                      fallback={<Registration registration={registration} />}
+                    >
+                      <UCRegistration registration={registration} />
                     </Show>
-                    <Show when={isSpiritCaptain(registration)}>
-                      <span class="me-2 h-fit rounded-full bg-green-100 px-2.5 py-0.5 text-xs text-green-800 dark:bg-green-900 dark:text-green-300">
-                        Spirit Captain
-                      </span>
-                    </Show>
-                    <Show when={isManager(registration)}>
-                      <span class="me-2 h-fit rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">
-                        Manager
-                      </span>
-                    </Show>
-                  </div>
-                </div>
-              )}
-            </For>
-
-            <Show when={rosterQuery.data?.filter(r => isCoach(r)).length > 0}>
-              <h2 class="text-center text-xl font-bold">Coaches</h2>
+                  )}
+                </For>
+              </div>
             </Show>
-
-            <For each={rosterQuery.data?.filter(r => isCoach(r))}>
-              {registration => (
-                <div class="mx-4 my-3 flex items-center space-x-4">
-                  <div class="flex items-center space-x-4">
-                    <img
-                      class="h-10 w-10 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
-                      src={registration.person.image_url}
-                      alt="Bordered avatar"
-                    />
-                    <div class="font-medium">
-                      <div>
-                        {registration.person.first_name +
-                          " " +
-                          registration.person.last_name}
-                        <Show
-                          when={registration.person?.player?.gender}
-                        >{` (${registration.person?.player?.gender})`}</Show>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </For>
           </Suspense>
         </div>
       </div>
