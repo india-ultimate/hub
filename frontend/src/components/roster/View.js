@@ -23,6 +23,10 @@ import Breadcrumbs from "../Breadcrumbs";
 import AddToRoster from "./AddToRoster";
 import EditRosteredPlayer from "./EditRosteredPlayer";
 import RemoveFromRoster from "./RemoveFromRoster";
+import CaptainBadge from "./role-badges/Captain";
+import CoachBadge from "./role-badges/Coach";
+import ManagerBadge from "./role-badges/Manager";
+import SpiritCaptainBadge from "./role-badges/SpiritCaptain";
 
 const Roster = () => {
   let successPopoverRef, errorPopoverRef;
@@ -124,39 +128,6 @@ const Roster = () => {
           {tournamentQuery.data?.event?.title}
         </span>
       </h1>
-      {/* 
-      <div>
-        <p class="mt-2 text-center text-sm">
-          {tournamentQuery.data?.event?.location}
-        </p>
-        <p class="mt-2 text-center text-sm">
-          {new Date(
-            Date.parse(tournamentQuery.data?.event.start_date)
-          ).toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-            timeZone: "UTC"
-          })}
-          <Show
-            when={
-              tournamentQuery.data?.event.start_date !==
-              tournamentQuery.data?.event.end_date
-            }
-          >
-            {" "}
-            to{" "}
-            {new Date(
-              Date.parse(tournamentQuery.data?.event.end_date)
-            ).toLocaleDateString("en-US", {
-              year: "numeric",
-              month: "short",
-              day: "numeric",
-              timeZone: "UTC"
-            })}
-          </Show>
-        </p>
-      </div> */}
 
       <div class="flex justify-center">
         <img
@@ -261,24 +232,16 @@ const Roster = () => {
                         </div>
                       </div>
                       <Show when={isCaptain(registration)}>
-                        <span class="me-2 h-fit rounded-full bg-blue-100 px-2.5 py-0.5 text-center text-xs text-blue-800 dark:bg-blue-900 dark:text-blue-300">
-                          Captain
-                        </span>
+                        <CaptainBadge />
                       </Show>
                       <Show when={isSpiritCaptain(registration)}>
-                        <span class="me-2 h-fit rounded-full bg-green-100 px-2.5 py-0.5 text-center text-xs text-green-800 dark:bg-green-900 dark:text-green-300">
-                          Spirit Captain
-                        </span>
+                        <SpiritCaptainBadge />
                       </Show>
                       <Show when={isManager(registration)}>
-                        <span class="me-2 h-fit rounded-full bg-yellow-100 px-2.5 py-0.5 text-center text-xs text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">
-                          Manager
-                        </span>
+                        <ManagerBadge />
                       </Show>
                       <Show when={isCoach(registration)}>
-                        <span class="me-2 h-fit rounded-full bg-pink-100 px-2.5 py-0.5 text-center text-xs text-pink-800 dark:bg-pink-900 dark:text-pink-300">
-                          Coach
-                        </span>
+                        <CoachBadge />
                       </Show>
                     </div>
                     <div class="flex gap-x-3 justify-self-end">
@@ -346,24 +309,16 @@ const Roster = () => {
                         </div>
                       </div>
                       <Show when={isCaptain(registration)}>
-                        <span class=" me-2 h-fit rounded-full bg-blue-100 px-2.5 py-0.5 text-center text-xs text-blue-800 dark:bg-blue-900 dark:text-blue-300">
-                          Captain
-                        </span>
+                        <CaptainBadge />
                       </Show>
                       <Show when={isSpiritCaptain(registration)}>
-                        <span class="me-2 h-fit rounded-full bg-green-100 px-2.5 py-0.5 text-center text-xs text-green-800 dark:bg-green-900 dark:text-green-300">
-                          Spirit Captain
-                        </span>
+                        <SpiritCaptainBadge />
                       </Show>
                       <Show when={isManager(registration)}>
-                        <span class="me-2 h-fit rounded-full bg-yellow-100 px-2.5 py-0.5 text-center text-xs text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">
-                          Manager
-                        </span>
+                        <ManagerBadge />
                       </Show>
                       <Show when={isCoach(registration)}>
-                        <span class="me-2 h-fit rounded-full bg-pink-100 px-2.5 py-0.5 text-center text-xs text-pink-800 dark:bg-pink-900 dark:text-pink-300">
-                          Coach
-                        </span>
+                        <CoachBadge />
                       </Show>
                     </div>
                     <div class="flex gap-x-3 justify-self-end">
