@@ -40,9 +40,22 @@ const ScheduleTable = props => {
                   </Show>
                 </span>
                 <Show when={props.fieldsMap[fieldId]?.address}>
-                  <span class="block font-normal">
-                    {`(${props.fieldsMap[fieldId]?.address})`}
-                  </span>
+                  <Show
+                    when={props.fieldsMap[fieldId]?.location_url}
+                    fallback={
+                      <span class="block font-normal">
+                        {props.fieldsMap[fieldId]?.address}
+                      </span>
+                    }
+                  >
+                    <a
+                      href={props.fieldsMap[fieldId]?.location_url}
+                      target="_blank"
+                      class="block cursor-pointer font-normal text-blue-500 underline"
+                    >
+                      {props.fieldsMap[fieldId]?.address}
+                    </a>
+                  </Show>
                 </Show>
               </th>
             )}
