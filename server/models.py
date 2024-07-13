@@ -335,6 +335,7 @@ class TournamentField(ExportModelOperationsMixin("tournament_field"), models.Mod
     address = models.CharField(max_length=25, blank=True, null=True)
     is_broadcasted = models.BooleanField(default=False)
     tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE)
+    location_url = models.URLField(max_length=255, null=True, blank=True)
 
     class Meta:
         unique_together = ["tournament", "name"]
