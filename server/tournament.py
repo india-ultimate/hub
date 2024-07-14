@@ -11,6 +11,7 @@ from server.models import (
     Player,
     Pool,
     PositionPool,
+    Registration,
     SpiritScore,
     Team,
     Tournament,
@@ -22,7 +23,14 @@ from server.schema import SpiritScoreUpdateSchema
 from server.types import validation_error_dict
 from server.utils import ordinal_suffix
 
-ROLES_ELIGIBLE_TO_SUBMIT_SCORES = ["captain", "admin", "spirit captain", "coach"]
+ROLES_ELIGIBLE_TO_SUBMIT_SCORES = [
+    "admin",
+    "captain",
+    "spirit captain",
+    "coach",
+    "assistant coach",
+    "manager",
+]
 PLAYER_ROLE = "player"
 
 
@@ -600,24 +608,39 @@ def user_tournament_teams(tournament: Tournament, user: User) -> tuple[int | Non
     except Player.DoesNotExist:
         return player_team_id, admin_team_ids
 
-    if player.ultimate_central_id is None:
+    if tournament.use_uc_registrations:
+        if player.ultimate_central_id is None:
+            return player_team_id, admin_team_ids
+
+        registrations = UCRegistration.objects.filter(
+            event=tournament.event, person_id=player.ultimate_central_id
+        )
+
+        for reg in registrations:
+            is_player = PLAYER_ROLE in reg.roles
+            is_admin = any(role in reg.roles for role in ROLES_ELIGIBLE_TO_SUBMIT_SCORES)
+
+            if is_player:
+                player_team_id = reg.team.id
+
+            if is_admin:
+                admin_team_ids.add(reg.team.id)
+
         return player_team_id, admin_team_ids
 
-    registrations = UCRegistration.objects.filter(
-        event=tournament.event, person_id=player.ultimate_central_id
-    )
+    else:
+        registrations = Registration.objects.filter(event=tournament.event, player=player)
 
-    for reg in registrations:
-        is_player = PLAYER_ROLE in reg.roles
-        is_admin = any(role in reg.roles for role in ROLES_ELIGIBLE_TO_SUBMIT_SCORES)
+        for reg in registrations:
+            if reg.is_playing:
+                player_team_id = reg.team.id
 
-        if is_player:
-            player_team_id = reg.team.id
+            reg_role_name = Registration.Role._value2member_map_[reg.role].label.lower()  # type: ignore[attr-defined]
+            is_admin = reg_role_name in ROLES_ELIGIBLE_TO_SUBMIT_SCORES
+            if is_admin:
+                admin_team_ids.add(reg.team.id)
 
-        if is_admin:
-            admin_team_ids.add(reg.team.id)
-
-    return player_team_id, admin_team_ids
+        return player_team_id, admin_team_ids
 
 
 def is_submitted_scores_equal(match: Match) -> bool:

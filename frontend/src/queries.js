@@ -226,7 +226,6 @@ export const fetchFieldsByTournamentId = async tournament_id => {
  */
 
 export const fetchFieldsByTournamentSlug = async slug => {
-  console.log("fetching fields for: ", slug);
   const response = await fetch(`/api/tournament/slug/${slug}/fields`, {
     method: "GET",
     headers: { "Content-Type": "application/json" },
