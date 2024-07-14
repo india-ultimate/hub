@@ -801,38 +801,34 @@ def validate_seeds_and_teams(
 ) -> tuple[bool, validation_error_dict]:
     incoming_seeds = seeding.keys()
     incoming_teams = seeding.values()
-    # [5, 6, 7, 8, 9, 10, 14, 15, 87, 88, 99, 1286] for Sectionals Bangalore
-    rostered_team_ids = (
-        UCRegistration.objects.filter(event=tournament.event)
-        .values_list("team", flat=True)
-        .distinct()
-    )
-    roster_size = len(rostered_team_ids)
-    roster_seeds = range(1, roster_size + 1)
+
+    tournament_team_ids = tournament.teams.all().values_list("id", flat=True)
+
+    seeds = range(1, len(tournament_team_ids) + 1)
 
     valid_seeds_and_teams = True
     errors = {}
 
     # incoming seeding list should be equal to range(len(roster_size))
-    missing_seeds = set(roster_seeds) - set(incoming_seeds)
+    missing_seeds = set(seeds) - set(incoming_seeds)
     if missing_seeds:
         valid_seeds_and_teams = False
         errors["missing_seeds"] = list(missing_seeds)
 
     # Seeds must be an integer between 1 and {roster_size}
-    wrong_seeds = set(incoming_seeds) - set(roster_seeds)
+    wrong_seeds = set(incoming_seeds) - set(seeds)
     if wrong_seeds:
         valid_seeds_and_teams = False
         errors["wrong_seeds"] = list(wrong_seeds)
 
     # incoming teams list should be same as rostered teams list
-    missing_teams = set(rostered_team_ids) - set(incoming_teams)
+    missing_teams = set(tournament_team_ids) - set(incoming_teams)
     if missing_teams:
         errors["missing_teams"] = list(missing_teams)
         valid_seeds_and_teams = False
 
     # all teams in the update should belong to the roster
-    wrong_teams = set(incoming_teams) - set(rostered_team_ids)
+    wrong_teams = set(incoming_teams) - set(tournament_team_ids)
     if wrong_teams:
         valid_seeds_and_teams = False
         errors["wrong_teams"] = list(wrong_teams)
@@ -863,13 +859,10 @@ def validate_new_pool(
 
     repeated_seeds_in_new_pool = already_present_seeds.intersection(new_pool)
     # the seed shouldn't negative, 0 or more than roster size
-    tournament_roster_size = (
-        UCRegistration.objects.filter(event=tournament.event)
-        .values_list("team", flat=True)
-        .distinct()
-        .count()
-    )
-    invalid_seeds = list(filter(lambda seed: not 1 <= seed <= tournament_roster_size, new_pool))
+
+    num_teams_in_tournament = tournament.teams.all().values_list("id", flat=True).count()
+
+    invalid_seeds = list(filter(lambda seed: not 1 <= seed <= num_teams_in_tournament, new_pool))
     valid_pool = True
     errors = {}
 
