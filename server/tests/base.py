@@ -68,7 +68,7 @@ def add_teams_to_event(event: Event, no_of_teams: int) -> list[Team]:
 
 
 def create_tournament(event: Event) -> Tournament:
-    tournament = Tournament.objects.create(event=event)
+    tournament = Tournament.objects.create(event=event, use_uc_registrations=True)
 
     team_list = UCRegistration.objects.filter(event=event).values_list("team", flat=True).distinct()
     for team_id in team_list:
