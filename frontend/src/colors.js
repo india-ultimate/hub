@@ -1,7 +1,19 @@
 export const matchCardColors = {
-  pool: ["blue", "green", "pink", "purple"],
+  pool: [
+    "blue",
+    "green",
+    "pink",
+    "indigo",
+    "purple",
+    "lime",
+    "red",
+    "fuchsia",
+    "cyan"
+  ],
   cross_pool: ["yellow", "red", "fuchsia"],
   bracket: [
+    ["cyan", "indigo", "sky"],
+    ["cyan", "indigo", "sky"],
     ["cyan", "indigo", "sky"],
     ["cyan", "indigo", "sky"],
     ["cyan", "indigo", "sky"]
