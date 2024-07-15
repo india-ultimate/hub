@@ -2,7 +2,7 @@ import { Icon } from "solid-heroicons";
 import { videoCamera } from "solid-heroicons/solid-mini";
 import { createMemo, For, Show } from "solid-js";
 
-import MatchCard from "./MatchCard";
+import MatchHeader from "../match/MatchHeader";
 
 const ScheduleTable = props => {
   const showReadableTime = time => {
@@ -96,7 +96,7 @@ const ScheduleTable = props => {
                             ][fieldId]
                           }
                         >
-                          <MatchCard
+                          <MatchHeader
                             match={
                               props.matchDayTimeFieldMap[props.day][startTime][
                                 endTime

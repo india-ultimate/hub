@@ -43,8 +43,8 @@ import {
 } from "../queries";
 import ScheduleSkeleton from "../skeletons/Schedule";
 import { useStore } from "../store";
+import MatchHeader from "./match/MatchHeader";
 import CreateTournamentForm from "./tournament/CreateTournamentForm";
-import MatchCard from "./tournament/MatchCard";
 import ReorderTeams from "./tournament/ReorderTeams";
 import RulesMarkdownEditor from "./tournament/RulesMarkdownEditor";
 import ScheduleTable from "./tournament/ScheduleTable";
@@ -1144,7 +1144,7 @@ const TournamentManager = () => {
                         </Show>
                       </td>
                       <td class="px-6 py-4">
-                        <MatchCard match={match} />
+                        <MatchHeader match={match} />
                         <Show when={match.cross_pool || match.bracket}>
                           <span class="whitespace-nowrap">
                             Seq Num - {match.sequence_number}

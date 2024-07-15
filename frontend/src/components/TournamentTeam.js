@@ -24,9 +24,9 @@ import { TournamentTeamMatches as TournamentTeamMatchesSkeleton } from "../skele
 import { getTournamentBreadcrumbName } from "../utils";
 import Info from "./alerts/Info";
 import Breadcrumbs from "./Breadcrumbs";
+import MatchCard from "./match/MatchCard";
 import Registration from "./roster/Registration";
 import UCRegistration from "./roster/UCRegistration";
-import TournamentMatch from "./TournamentMatch";
 
 const TournamentTeam = () => {
   const params = useParams();
@@ -257,7 +257,7 @@ const TournamentTeam = () => {
                           ]
                         )}
                       >
-                        <TournamentMatch
+                        <MatchCard
                           match={match}
                           currentTeamNo={currTeamNo(match)}
                           opponentTeamNo={oppTeamNo(match)}
