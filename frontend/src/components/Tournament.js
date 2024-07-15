@@ -347,7 +347,10 @@ const Tournament = () => {
                           >
                             <img
                               class="mr-3 inline-block h-8 w-8 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
-                              src={teamsMap()[team_id]?.image_url}
+                              src={
+                                teamsMap()[team_id]?.image ??
+                                teamsMap()[team_id]?.image_url
+                              }
                               alt="Bordered avatar"
                             />
                             {teamsMap()[team_id]?.name}
@@ -400,7 +403,10 @@ const Tournament = () => {
                           >
                             <img
                               class="mr-3 inline-block h-8 w-8 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
-                              src={teamsMap()[team_id]?.image_url}
+                              src={
+                                teamsMap()[team_id]?.image ??
+                                teamsMap()[team_id]?.image_url
+                              }
                               alt="Bordered avatar"
                             />
                             {teamsMap()[team_id]?.name}
@@ -456,7 +462,10 @@ const Tournament = () => {
                             >
                               <img
                                 class="mr-3 inline-block h-8 w-8 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
-                                src={teamsMap()[spirit.team_id]?.image_url}
+                                src={
+                                  teamsMap()[spirit.team_id]?.image ??
+                                  teamsMap()[spirit.team_id]?.image_url
+                                }
                                 alt="Bordered avatar"
                               />
                               {teamsMap()[spirit.team_id]?.name}

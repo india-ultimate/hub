@@ -110,6 +110,10 @@ const TournamentStandings = () => {
     setTimeout(() => initFlowbite(), 8000);
   });
 
+  const getTeamImage = team => {
+    return team?.image ?? team?.image_url;
+  };
+
   return (
     <Show
       when={!tournamentQuery.data?.message}
@@ -292,7 +296,7 @@ const TournamentStandings = () => {
                           <td class="px-6 py-4">
                             <img
                               class="mr-3 inline-block h-8 w-8 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
-                              src={teamsMap()[team_id]?.image_url}
+                              src={getTeamImage(teamsMap()[team_id])}
                               alt="Bordered avatar"
                             />
                             <A
@@ -331,7 +335,7 @@ const TournamentStandings = () => {
                           <td class="px-6 py-4">
                             <img
                               class="mr-3 inline-block h-8 w-8 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
-                              src={teamsMap()[team_id]?.image_url}
+                              src={getTeamImage(teamsMap()[team_id])}
                               alt="Bordered avatar"
                             />
                             <A
@@ -395,7 +399,7 @@ const TournamentStandings = () => {
                                 <td class="px-6 py-4">
                                   <img
                                     class="mr-3 inline-block h-8 w-8 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
-                                    src={teamsMap()[team_id]?.image_url}
+                                    src={getTeamImage(teamsMap()[team_id])}
                                     alt="Bordered avatar"
                                   />
                                   <A
@@ -432,7 +436,7 @@ const TournamentStandings = () => {
                                 <td class="px-6 py-4">
                                   <img
                                     class="mr-3 inline-block h-8 w-8 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
-                                    src={teamsMap()[team_id]?.image_url}
+                                    src={getTeamImage(teamsMap()[team_id])}
                                     alt="Bordered avatar"
                                   />
                                   <A
