@@ -1755,6 +1755,7 @@ def create_tournament_from_event(
         tournament.logo_dark = logo_dark
 
     tournament.rules = get_default_rules()
+    tournament.use_uc_registrations = True
 
     tournament.save()
 
