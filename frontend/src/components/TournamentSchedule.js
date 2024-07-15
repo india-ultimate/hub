@@ -25,8 +25,8 @@ import DayScheduleSkeleton from "../skeletons/Schedule";
 import { TournamentMatches as TournamentMatchesSkeleton } from "../skeletons/TournamentMatch";
 import { getMatchCardColor, getTournamentBreadcrumbName } from "../utils";
 import Breadcrumbs from "./Breadcrumbs";
+import MatchCard from "./match/MatchCard";
 import ScheduleTable from "./tournament/ScheduleTable";
-import TournamentMatch from "./TournamentMatch";
 
 const TournamentSchedule = () => {
   const params = useParams();
@@ -294,7 +294,7 @@ const TournamentSchedule = () => {
                           ]
                         )}
                       >
-                        <TournamentMatch
+                        <MatchCard
                           match={match}
                           tournamentSlug={params.slug}
                           bothTeamsClickable

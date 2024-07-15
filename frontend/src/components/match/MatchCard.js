@@ -9,13 +9,13 @@ import { createEffect, createSignal, Match, Show, Switch } from "solid-js";
 import {
   matchCardColorToButtonStyles,
   matchCardColorToRingColorMap
-} from "../colors";
-import { fetchTeams, fetchUserAccessByTournamentSlug } from "../queries";
-import { getMatchCardColor } from "../utils";
-import MatchCard from "./tournament/MatchCard";
-import MatchScoreForm from "./tournament/MatchScoreForm";
-import MatchSpiritScoreForm from "./tournament/MatchSpiritScoreForm";
-import SpiritScoreTable from "./tournament/SpiritScoreTable";
+} from "../../colors";
+import { fetchTeams, fetchUserAccessByTournamentSlug } from "../../queries";
+import { getMatchCardColor } from "../../utils";
+import MatchScoreForm from "../tournament/MatchScoreForm";
+import MatchSpiritScoreForm from "../tournament/MatchSpiritScoreForm";
+import SpiritScoreTable from "../tournament/SpiritScoreTable";
+import MatchCard from "./MatchHeader";
 /**
  * Returns a match block between 2 teams.
  * If a team should appear first, pass `currentTeamNo` = team id in match object (1 or 2).
