@@ -118,6 +118,10 @@ const TournamentMatch = props => {
     );
   };
 
+  const getTeamImage = team => {
+    return team?.image ?? team?.image_url;
+  };
+
   return (
     <>
       <div class="mb-4">
@@ -143,7 +147,9 @@ const TournamentMatch = props => {
                 ? matchCardColorToRingColorMap[props.imgRingColor]
                 : matchCardColorToRingColorMap[getMatchCardColor(props.match)]
             )}
-            src={teamsMap()[props.match[`team_${currTeamNo()}`].id]?.image_url}
+            src={getTeamImage(
+              teamsMap()[props.match[`team_${currTeamNo()}`].id]
+            )}
             alt="Bordered avatar"
           />
           <span class="w-1/3 text-center font-bold text-gray-600 dark:text-gray-300">
@@ -194,7 +200,9 @@ const TournamentMatch = props => {
                 ? matchCardColorToRingColorMap[props.imgRingColor]
                 : matchCardColorToRingColorMap[getMatchCardColor(props.match)]
             )}
-            src={teamsMap()[props.match[`team_${oppTeamNo()}`].id]?.image_url}
+            src={getTeamImage(
+              teamsMap()[props.match[`team_${oppTeamNo()}`].id]
+            )}
             alt="Bordered avatar"
           />
         </Show>

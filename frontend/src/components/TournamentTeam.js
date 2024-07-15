@@ -174,7 +174,7 @@ const TournamentTeam = () => {
       <div class="flex justify-center">
         <img
           class="mr-3 inline-block h-24 w-24 rounded-full p-1 ring-2 ring-blue-600 dark:ring-blue-500"
-          src={teamQuery.data?.image_url}
+          src={teamQuery.data?.image ?? teamQuery.data?.image_url}
           alt="Bordered avatar"
         />
       </div>
