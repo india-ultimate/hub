@@ -4,6 +4,8 @@ import { initFlowbite } from "flowbite";
 import { createSignal, Show } from "solid-js";
 
 import { submitMatchScore } from "../../queries";
+import Error from "../alerts/Error";
+import Info from "../alerts/Info";
 import TextInput from "../TextInput";
 
 const MatchScoreForm = componentProps => {
@@ -93,10 +95,12 @@ const MatchScoreForm = componentProps => {
         </button>
         <Show when={error()}>
           <p class="my-2 text-sm text-red-600 dark:text-red-500">
-            <span class="font-medium">Oops!</span> {error()}
+            <Error text={`Oops ! ${error()}`} />
           </p>
         </Show>
-        <p>{status()}</p>
+        <Show when={status()}>
+          <Info text={status()} />
+        </Show>
       </div>
     </Form>
   );

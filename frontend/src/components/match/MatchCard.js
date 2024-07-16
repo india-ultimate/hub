@@ -16,6 +16,7 @@ import MatchScoreForm from "../tournament/MatchScoreForm";
 import MatchSpiritScoreForm from "../tournament/MatchSpiritScoreForm";
 import SpiritScoreTable from "../tournament/SpiritScoreTable";
 import MatchCard from "./MatchHeader";
+import SubmitScore from "./SubmitScore";
 /**
  * Returns a match block between 2 teams.
  * If a team should appear first, pass `currentTeamNo` = team id in match object (1 or 2).
@@ -102,6 +103,12 @@ const TournamentMatch = props => {
       -1 ||
       userAccessQuery?.data?.admin_team_ids.indexOf(props.match["team_2"].id) >
         -1);
+
+  const isCurrentTeamMatchAdmin = () =>
+    userAccessQuery?.data?.admin_team_ids?.length > 0 &&
+    userAccessQuery?.data?.admin_team_ids.indexOf(
+      props.match[`team_${currTeamNo()}`].id
+    ) > -1;
 
   const isTeamAdminOf = team_id => {
     return (
@@ -637,41 +644,37 @@ const TournamentMatch = props => {
           >
             <p class="text-center text-sm">No scores have been submitted yet</p>
           </Show>
-          <Show when={isMatchTeamAdmin()}>
-            <button
-              data-modal-target={"submit-score-modal" + props.match?.id}
-              data-modal-toggle={"submit-score-modal" + props.match?.id}
-              type="button"
-              class={clsx(
-                "relative mb-2 mr-2 inline-flex items-center justify-center overflow-hidden rounded-lg p-0.5 font-medium",
-                "text-xs text-gray-900 hover:text-white focus:outline-none focus:ring-4 dark:text-white",
+          <Show when={isCurrentTeamMatchAdmin()}>
+            <SubmitScore
+              currTeamNo={currTeamNo()}
+              oppTeamNo={oppTeamNo()}
+              match={props.match}
+              buttonColor={
                 props.buttonColor
                   ? matchCardColorToButtonStyles[props.buttonColor]
                   : matchCardColorToButtonStyles[getMatchCardColor(props.match)]
-              )}
-            >
-              <Show
-                when={
-                  (isTeamAdminOf(props.match["team_1"].id) &&
-                    !props.match["suggested_score_team_1"]) ||
-                  (isTeamAdminOf(props.match["team_2"].id) &&
-                    !props.match["suggested_score_team_2"])
-                }
-                fallback={
-                  <>
-                    <span class="relative inline-flex items-center rounded-md bg-white px-3 py-2.5 transition-all duration-75 ease-in group-hover:bg-opacity-0 dark:bg-gray-800">
-                      Edit Score
-                      <Icon path={pencil} class="ml-1.5 w-4" />
-                    </span>
-                  </>
-                }
-              >
-                <span class="relative inline-flex items-center rounded-md bg-white px-3 py-2.5 transition-all duration-75 ease-in group-hover:bg-opacity-0 dark:bg-gray-800">
-                  Submit Score
-                  <Icon path={arrowRight} class="ml-1.5 w-4" />
-                </span>
-              </Show>
-            </button>
+              }
+              buttonText={
+                isCurrentTeamMatchAdmin() &&
+                !props.match[`suggested_score_team_${currTeamNo()}`]
+                  ? "Submit Score"
+                  : "Edit Score"
+              }
+              buttonIcon={
+                isCurrentTeamMatchAdmin() &&
+                !props.match[`suggested_score_team_${currTeamNo()}`]
+                  ? arrowRight
+                  : pencil
+              }
+              refreshMatchesOnClose={() => {
+                queryClient.invalidateQueries({
+                  queryKey: ["matches", props.tournamentSlug]
+                });
+                queryClient.invalidateQueries({
+                  queryKey: ["team-matches", props.tournamentSlug]
+                });
+              }}
+            />
           </Show>
 
           {/*Submit Score modal*/}
