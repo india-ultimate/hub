@@ -94,9 +94,7 @@ const MatchScoreForm = componentProps => {
           Submit Score
         </button>
         <Show when={error()}>
-          <p class="my-2 text-sm text-red-600 dark:text-red-500">
-            <Error text={`Oops ! ${error()}`} />
-          </p>
+          <Error text={`Oops ! ${error()}`} />
         </Show>
         <Show when={status()}>
           <Info text={status()} />
