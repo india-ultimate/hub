@@ -4,7 +4,8 @@ import { initFlowbite } from "flowbite";
 import { createSignal, Show } from "solid-js";
 
 import {
-  fetchTournamentTeamBySlugV1,
+  fetchTournamentBySlug,
+  fetchTournamentTeamBySlug,
   submitMatchSpiritScore
 } from "../../queries";
 import Select from "../Select";
@@ -37,6 +38,11 @@ const MatchSpiritScoreForm = componentProps => {
   const [status, setStatus] = createSignal("");
   const [error, setError] = createSignal("");
 
+  const tournamentQuery = createQuery(
+    () => ["tournaments", componentProps.tournamentSlug],
+    () => fetchTournamentBySlug(componentProps.tournamentSlug)
+  );
+
   const oppRosterQuery = createQuery(
     () => [
       "tournament-roster",
@@ -44,10 +50,16 @@ const MatchSpiritScoreForm = componentProps => {
       componentProps.match[`team_${componentProps.oppTeamNo}`].slug
     ],
     () =>
-      fetchTournamentTeamBySlugV1(
+      fetchTournamentTeamBySlug(
         componentProps.tournamentSlug,
-        componentProps.match[`team_${componentProps.oppTeamNo}`].slug
-      )
+        componentProps.match[`team_${componentProps.oppTeamNo}`].slug,
+        tournamentQuery.data.use_uc_registrations
+      ),
+    {
+      get enabled() {
+        return tournamentQuery.data?.use_uc_registrations !== undefined;
+      }
+    }
   );
 
   const submitSpiritScoreMutation = createMutation({
@@ -186,8 +198,12 @@ const MatchSpiritScoreForm = componentProps => {
                 error={field.error}
                 options={oppRosterQuery.data?.map(r => {
                   return {
-                    value: r.person.id.toString(),
-                    label: r.person.first_name + " " + r.person.last_name
+                    value: tournamentQuery.data?.use_uc_registrations
+                      ? r.person.id.toString()
+                      : r.player.id.toString(),
+                    label: tournamentQuery.data?.use_uc_registrations
+                      ? r.person.first_name + " " + r.person.last_name
+                      : r.player.full_name
                   };
                 })}
                 type="text"
@@ -204,8 +220,12 @@ const MatchSpiritScoreForm = componentProps => {
                 error={field.error}
                 options={oppRosterQuery.data?.map(r => {
                   return {
-                    value: r.person.id.toString(),
-                    label: r.person.first_name + " " + r.person.last_name
+                    value: tournamentQuery.data?.use_uc_registrations
+                      ? r.person.id.toString()
+                      : r.player.id.toString(),
+                    label: tournamentQuery.data?.use_uc_registrations
+                      ? r.person.first_name + " " + r.person.last_name
+                      : r.player.full_name
                   };
                 })}
                 type="text"
