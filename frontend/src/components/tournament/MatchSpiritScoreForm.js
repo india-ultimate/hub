@@ -8,6 +8,8 @@ import {
   fetchTournamentTeamBySlug,
   submitMatchSpiritScore
 } from "../../queries";
+import Error from "../alerts/Error";
+import Info from "../alerts/Info";
 import Select from "../Select";
 import TextInput from "../TextInput";
 
@@ -352,11 +354,11 @@ const MatchSpiritScoreForm = componentProps => {
             Submit
           </button>
           <Show when={error()}>
-            <p class="my-2 text-sm text-red-600 dark:text-red-500">
-              <span class="font-medium">Oops!</span> {error()}
-            </p>
+            <Error text={`Oops ! ${error()}`} />
           </Show>
-          <p>{status()}</p>
+          <Show when={status()}>
+            <Info text={status()} />
+          </Show>
         </div>
       </Form>
     </div>
