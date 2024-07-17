@@ -19,7 +19,7 @@ const SpiritScoreTable = props => {
           <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-700">
             <th
               scope="row"
-              class="px-2 py-4 font-medium text-gray-900 dark:text-white"
+              class="py-4 pl-2 pr-6 font-medium text-gray-900 dark:text-white sm:pr-20"
             >
               Rules Knowledge & Use
             </th>
@@ -29,7 +29,7 @@ const SpiritScoreTable = props => {
           <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-700">
             <th
               scope="row"
-              class="px-2 py-4 font-medium text-gray-900 dark:text-white"
+              class="py-4 pl-2 pr-6 font-medium text-gray-900 dark:text-white sm:pr-20"
             >
               Fouls & Body Contact
             </th>
@@ -39,7 +39,7 @@ const SpiritScoreTable = props => {
           <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-700">
             <th
               scope="row"
-              class="px-2 py-4 font-medium text-gray-900 dark:text-white"
+              class="py-4 pl-2 pr-6 font-medium text-gray-900 dark:text-white sm:pr-20"
             >
               Fair-Mindedness
             </th>
@@ -49,7 +49,7 @@ const SpiritScoreTable = props => {
           <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-700">
             <th
               scope="row"
-              class="px-2 py-4 font-medium text-gray-900 dark:text-white"
+              class="py-4 pl-2 pr-6 font-medium text-gray-900 dark:text-white sm:pr-20"
             >
               Positive Attitude & Self-Control
             </th>
@@ -59,7 +59,7 @@ const SpiritScoreTable = props => {
           <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-700">
             <th
               scope="row"
-              class="px-2 py-4 font-medium text-gray-900 dark:text-white"
+              class="py-4 pl-2 pr-6 font-medium text-gray-900 dark:text-white sm:pr-20"
             >
               Communication
             </th>
