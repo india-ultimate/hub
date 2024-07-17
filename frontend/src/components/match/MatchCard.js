@@ -1,7 +1,6 @@
 import { A } from "@solidjs/router";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { clsx } from "clsx";
-import { initFlowbite } from "flowbite";
 import { Icon } from "solid-heroicons";
 import { arrowRight, chevronRight, pencil, play } from "solid-heroicons/solid";
 import { createEffect, createSignal, Match, Show, Switch } from "solid-js";
@@ -16,7 +15,8 @@ import MatchScoreForm from "../tournament/MatchScoreForm";
 import MatchSpiritScoreForm from "../tournament/MatchSpiritScoreForm";
 import SpiritScoreTable from "../tournament/SpiritScoreTable";
 import MatchCard from "./MatchHeader";
-import SubmitScore from "./SubmitScore";
+import SubmitScoreModal from "./SubmitScore";
+import SubmitSpiritScoreModal from "./SubmitSpiritScore";
 /**
  * Returns a match block between 2 teams.
  * If a team should appear first, pass `currentTeamNo` = team id in match object (1 or 2).
@@ -104,16 +104,31 @@ const TournamentMatch = props => {
       userAccessQuery?.data?.admin_team_ids.indexOf(props.match["team_2"].id) >
         -1);
 
-  const isCurrentTeamMatchAdmin = () =>
-    userAccessQuery?.data?.admin_team_ids?.length > 0 &&
-    userAccessQuery?.data?.admin_team_ids.indexOf(
-      props.match[`team_${currTeamNo()}`].id
-    ) > -1;
-
   const isTeamAdminOf = team_id => {
     return (
       userAccessQuery?.data?.admin_team_ids?.length > 0 &&
       userAccessQuery?.data?.admin_team_ids.indexOf(team_id) > -1
+    );
+  };
+
+  const hasUserSubmittedScores = () => {
+    return (
+      (isTeamAdminOf(props.match["team_1"].id) &&
+        !props.match["suggested_score_team_1"]) ||
+      (isTeamAdminOf(props.match["team_2"].id) &&
+        !props.match["suggested_score_team_2"])
+    );
+  };
+
+  const canUserSubmitSpiritScores = () => {
+    return (
+      (isTeamAdminOf(props.match["team_1"].id) &&
+        !props.match["spirit_score_team_2"] &&
+        (props.match["suggested_score_team_1"] ||
+          props.match.status === "COM")) ||
+      (isTeamAdminOf(props.match["team_2"].id) &&
+        !props.match["spirit_score_team_1"] &&
+        (props.match["suggested_score_team_2"] || props.match.status === "COM"))
     );
   };
 
@@ -644,29 +659,20 @@ const TournamentMatch = props => {
           >
             <p class="text-center text-sm">No scores have been submitted yet</p>
           </Show>
-          <Show when={isCurrentTeamMatchAdmin()}>
-            <SubmitScore
-              currTeamNo={currTeamNo()}
-              oppTeamNo={oppTeamNo()}
-              match={props.match}
+
+          <Show when={isMatchTeamAdmin()}>
+            <SubmitScoreModal
               buttonColor={
                 props.buttonColor
                   ? matchCardColorToButtonStyles[props.buttonColor]
                   : matchCardColorToButtonStyles[getMatchCardColor(props.match)]
               }
-              buttonText={
-                isCurrentTeamMatchAdmin() &&
-                !props.match[`suggested_score_team_${currTeamNo()}`]
-                  ? "Submit Score"
-                  : "Edit Score"
+              button={
+                hasUserSubmittedScores()
+                  ? { text: "Submit Score", icon: arrowRight }
+                  : { text: "Edit Score", icon: pencil }
               }
-              buttonIcon={
-                isCurrentTeamMatchAdmin() &&
-                !props.match[`suggested_score_team_${currTeamNo()}`]
-                  ? arrowRight
-                  : pencil
-              }
-              refreshMatchesOnClose={() => {
+              onClose={() => {
                 queryClient.invalidateQueries({
                   queryKey: ["matches", props.tournamentSlug]
                 });
@@ -674,84 +680,15 @@ const TournamentMatch = props => {
                   queryKey: ["team-matches", props.tournamentSlug]
                 });
               }}
-            />
-          </Show>
-
-          {/*Submit Score modal*/}
-          <Show when={isMatchTeamAdmin()}>
-            <div
-              id={"submit-score-modal" + props.match?.id}
-              data-modal-backdrop="static"
-              tabIndex="-1"
-              aria-hidden="true"
-              class="fixed left-0 right-0 top-0 z-50 hidden h-[calc(100%-1rem)] max-h-full w-full overflow-y-auto overflow-x-hidden p-4 md:inset-0"
             >
-              <div class="relative max-h-full w-full max-w-2xl">
-                <div class="relative rounded-lg bg-white shadow dark:bg-gray-700">
-                  <div class="flex items-start justify-between rounded-t border-b p-4 dark:border-gray-600">
-                    <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
-                      Submit Score
-                    </h3>
-                    <button
-                      type="button"
-                      class="ml-auto inline-flex h-8 w-8 items-center justify-center rounded-lg bg-transparent text-sm text-gray-400 hover:bg-gray-200 hover:text-gray-900 dark:hover:bg-gray-600 dark:hover:text-white"
-                      data-modal-hide={"submit-score-modal" + props.match?.id}
-                      onClick={() => {
-                        queryClient.invalidateQueries({
-                          queryKey: ["matches", props.tournamentSlug]
-                        });
-                        queryClient.invalidateQueries({
-                          queryKey: ["team-matches", props.tournamentSlug]
-                        });
-                        setTimeout(() => initFlowbite(), 500);
-                      }}
-                    >
-                      <svg
-                        class="h-3 w-3"
-                        aria-hidden="true"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 14 14"
-                      >
-                        <path
-                          stroke="currentColor"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"
-                        />
-                      </svg>
-                      <span class="sr-only">Close modal</span>
-                    </button>
-                  </div>
-                  <div class="space-y-6 p-6">
-                    <MatchScoreForm
-                      match={props.match}
-                      currTeamNo={currTeamNo()}
-                      oppTeamNo={oppTeamNo()}
-                    />
-                  </div>
-                  <div class="flex items-center rounded-b border-t border-gray-200 p-4 dark:border-gray-600 md:p-5">
-                    <button
-                      data-modal-hide={"submit-score-modal" + props.match?.id}
-                      type="button"
-                      onClick={() => {
-                        queryClient.invalidateQueries({
-                          queryKey: ["matches", props.tournamentSlug]
-                        });
-                        queryClient.invalidateQueries({
-                          queryKey: ["team-matches", props.tournamentSlug]
-                        });
-                        setTimeout(() => initFlowbite(), 500);
-                      }}
-                      class="ms-3 rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-900 focus:z-10 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:border-gray-500 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 dark:hover:text-white dark:focus:ring-gray-600"
-                    >
-                      Go Back
-                    </button>
-                  </div>
-                </div>
+              <div class="rounded-lg bg-white p-4 shadow dark:bg-gray-700">
+                <MatchScoreForm
+                  match={props.match}
+                  currTeamNo={currTeamNo()}
+                  oppTeamNo={oppTeamNo()}
+                />
               </div>
-            </div>
+            </SubmitScoreModal>
           </Show>
         </div>
       </Show>
@@ -781,18 +718,12 @@ const TournamentMatch = props => {
           </p>
         </Show>
       </Show>
+
       <Show
         when={
           (props.match.status === "COM" || props.match.status === "SCH") &&
           isMatchTeamAdmin() &&
-          ((isTeamAdminOf(props.match["team_1"].id) &&
-            !props.match["spirit_score_team_2"] &&
-            (props.match["suggested_score_team_1"] ||
-              props.match.status === "COM")) ||
-            (isTeamAdminOf(props.match["team_2"].id) &&
-              !props.match["spirit_score_team_1"] &&
-              (props.match["suggested_score_team_2"] ||
-                props.match.status === "COM")))
+          canUserSubmitSpiritScores()
         }
       >
         <div class="inline-flex w-full items-center justify-center">
@@ -802,113 +733,38 @@ const TournamentMatch = props => {
           </span>
         </div>
         <div class="mb-3 flex flex-wrap justify-center">
-          <button
-            data-modal-target={"submit-spirit-score-modal" + props.match?.id}
-            data-modal-toggle={"submit-spirit-score-modal" + props.match?.id}
-            type="button"
-            class={clsx(
-              "relative mb-2 mr-2 inline-flex items-center justify-center overflow-hidden rounded-lg p-0.5 font-medium",
-              "text-xs text-gray-900 hover:text-white focus:outline-none focus:ring-4 dark:text-white",
+          <SubmitSpiritScoreModal
+            buttonColor={
               props.buttonColor
                 ? matchCardColorToButtonStyles[props.buttonColor]
                 : matchCardColorToButtonStyles[getMatchCardColor(props.match)]
-            )}
+            }
+            onClose={() => {
+              queryClient.invalidateQueries({
+                queryKey: ["matches", props.tournamentSlug]
+              });
+              queryClient.invalidateQueries({
+                queryKey: ["team-matches", props.tournamentSlug]
+              });
+            }}
           >
-            <span class="relative inline-flex items-center rounded-md bg-white px-3 py-2.5 transition-all duration-75 ease-in group-hover:bg-opacity-0 dark:bg-gray-800">
-              Submit Spirit Score
-              <Icon path={arrowRight} class="ml-1.5 w-4" />
-            </span>
-          </button>
-
-          {/*Submit Spirit Score modal*/}
-          <div
-            id={"submit-spirit-score-modal" + props.match?.id}
-            data-modal-backdrop="static"
-            tabIndex="-1"
-            aria-hidden="true"
-            class="fixed left-0 right-0 top-0 z-50 hidden h-[calc(100%-1rem)] max-h-full w-full overflow-y-auto overflow-x-hidden p-4 md:inset-0"
-          >
-            <div class="relative max-h-full w-full max-w-2xl">
-              <div class="relative rounded-lg bg-white shadow dark:bg-gray-700">
-                <div class="flex items-start justify-between rounded-t border-b p-4 dark:border-gray-600">
-                  <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
-                    Submit Spirit Score
-                  </h3>
-                  <button
-                    type="button"
-                    class="ml-auto inline-flex h-8 w-8 items-center justify-center rounded-lg bg-transparent text-sm text-gray-400 hover:bg-gray-200 hover:text-gray-900 dark:hover:bg-gray-600 dark:hover:text-white"
-                    data-modal-hide={
-                      "submit-spirit-score-modal" + props.match?.id
-                    }
-                    onClick={() => {
-                      queryClient.invalidateQueries({
-                        queryKey: ["matches", props.tournamentSlug]
-                      });
-                      queryClient.invalidateQueries({
-                        queryKey: ["team-matches", props.tournamentSlug]
-                      });
-                      setTimeout(() => initFlowbite(), 500);
-                    }}
-                  >
-                    <svg
-                      class="h-3 w-3"
-                      aria-hidden="true"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 14 14"
-                    >
-                      <path
-                        stroke="currentColor"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"
-                      />
-                    </svg>
-                    <span class="sr-only">Close modal</span>
-                  </button>
-                </div>
-                <div class="space-y-6 p-6">
-                  <Show when={isTeamAdminOf(props.match["team_1"].id)}>
-                    <MatchSpiritScoreForm
-                      match={props.match}
-                      tournamentSlug={props.tournamentSlug}
-                      oppTeamNo={2}
-                      curTeamNo={1}
-                    />
-                  </Show>
-                  <Show when={isTeamAdminOf(props.match["team_2"].id)}>
-                    <MatchSpiritScoreForm
-                      match={props.match}
-                      tournamentSlug={props.tournamentSlug}
-                      oppTeamNo={1}
-                      curTeamNo={2}
-                    />
-                  </Show>
-                </div>
-                <div class="flex items-center rounded-b border-t border-gray-200 p-4 dark:border-gray-600 md:p-5">
-                  <button
-                    data-modal-hide={
-                      "submit-spirit-score-modal" + props.match?.id
-                    }
-                    type="button"
-                    onClick={() => {
-                      queryClient.invalidateQueries({
-                        queryKey: ["matches", props.tournamentSlug]
-                      });
-                      queryClient.invalidateQueries({
-                        queryKey: ["team-matches", props.tournamentSlug]
-                      });
-                      setTimeout(() => initFlowbite(), 500);
-                    }}
-                    class="ms-3 rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-900 focus:z-10 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:border-gray-500 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 dark:hover:text-white dark:focus:ring-gray-600"
-                  >
-                    Go Back
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
+            <Show when={isTeamAdminOf(props.match["team_1"].id)}>
+              <MatchSpiritScoreForm
+                match={props.match}
+                tournamentSlug={props.tournamentSlug}
+                oppTeamNo={2}
+                curTeamNo={1}
+              />
+            </Show>
+            <Show when={isTeamAdminOf(props.match["team_2"].id)}>
+              <MatchSpiritScoreForm
+                match={props.match}
+                tournamentSlug={props.tournamentSlug}
+                oppTeamNo={1}
+                curTeamNo={2}
+              />
+            </Show>
+          </SubmitSpiritScoreModal>
         </div>
       </Show>
     </>
