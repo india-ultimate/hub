@@ -133,7 +133,9 @@ const TeamRegistration = () => {
           Registrations open from{" "}
           <span class="inline-flex font-medium">
             {new Date(
-              Date.parse(tournamentQuery.data?.event?.registration_start_date)
+              Date.parse(
+                tournamentQuery.data?.event?.team_registration_start_date
+              )
             ).toLocaleDateString("en-US", {
               year: "numeric",
               month: "short",
@@ -144,7 +146,9 @@ const TeamRegistration = () => {
           to{" "}
           <span class="inline-flex font-medium">
             {new Date(
-              Date.parse(tournamentQuery.data?.event?.registration_end_date)
+              Date.parse(
+                tournamentQuery.data?.event?.team_registration_end_date
+              )
             ).toLocaleDateString("en-US", {
               year: "numeric",
               month: "short",
