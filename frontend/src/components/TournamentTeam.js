@@ -262,6 +262,9 @@ const TournamentTeam = () => {
                           currentTeamNo={currTeamNo(match)}
                           opponentTeamNo={oppTeamNo(match)}
                           tournamentSlug={params.tournament_slug}
+                          useUCRegistrations={
+                            tournamentQuery.data?.use_uc_registrations
+                          }
                           imgRingColor={"gray"}
                           matchCardColorOverride={matchOutcomeColor(match)}
                           buttonColor={matchOutcomeColor(match)}
