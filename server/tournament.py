@@ -656,7 +656,7 @@ def is_submitted_scores_equal(match: Match) -> bool:
     return False
 
 
-def create_spirit_scores(spirit_score: SpiritScoreUpdateSchema) -> SpiritScore:
+def create_spirit_scores(spirit_score: SpiritScoreUpdateSchema, use_uc_reg: bool) -> SpiritScore:
     score = SpiritScore(
         rules=spirit_score.rules,
         fouls=spirit_score.fouls,
@@ -674,12 +674,20 @@ def create_spirit_scores(spirit_score: SpiritScoreUpdateSchema) -> SpiritScore:
     )
 
     if spirit_score.mvp_id:
-        mvp = UCPerson.objects.get(id=spirit_score.mvp_id)
-        score.mvp = mvp
+        if use_uc_reg:
+            mvp = UCPerson.objects.get(id=spirit_score.mvp_id)
+            score.mvp = mvp
+        else:
+            mvp_v2 = Player.objects.get(id=spirit_score.mvp_id)
+            score.mvp_v2 = mvp_v2
 
     if spirit_score.msp_id:
-        msp = UCPerson.objects.get(id=spirit_score.msp_id)
-        score.msp = msp
+        if use_uc_reg:
+            msp = UCPerson.objects.get(id=spirit_score.msp_id)
+            score.msp = msp
+        else:
+            msp_v2 = Player.objects.get(id=spirit_score.msp_id)
+            score.msp_v2 = msp_v2
 
     score.save()
     return score

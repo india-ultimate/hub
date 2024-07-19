@@ -2382,6 +2382,8 @@ def update_match(
 
         match.field = field
 
+    use_uc_reg = match.tournament.use_uc_registrations
+
     if match_details.video_url:
         match.video_url = match_details.video_url
 
@@ -2389,19 +2391,23 @@ def update_match(
         match.duration_mins = match_details.duration_mins
 
     if match_details.spirit_score_team_1:
-        match.spirit_score_team_1 = create_spirit_scores(match_details.spirit_score_team_1)
+        match.spirit_score_team_1 = create_spirit_scores(
+            match_details.spirit_score_team_1, use_uc_reg
+        )
 
     if match_details.spirit_score_team_2:
-        match.spirit_score_team_2 = create_spirit_scores(match_details.spirit_score_team_2)
+        match.spirit_score_team_2 = create_spirit_scores(
+            match_details.spirit_score_team_2, use_uc_reg
+        )
 
     if match_details.self_spirit_score_team_1:
         match.self_spirit_score_team_1 = create_spirit_scores(
-            match_details.self_spirit_score_team_1
+            match_details.self_spirit_score_team_1, use_uc_reg
         )
 
     if match_details.self_spirit_score_team_2:
         match.self_spirit_score_team_2 = create_spirit_scores(
-            match_details.self_spirit_score_team_2
+            match_details.self_spirit_score_team_2, use_uc_reg
         )
 
     match.save()
@@ -2434,12 +2440,14 @@ def submit_match_spirit_score(
     if spirit_score.team_id not in admin_team_ids:
         return 401, {"message": "User not authorised to add score for this match"}
 
+    use_uc_reg = match.tournament.use_uc_registrations
+
     if match.team_1 is not None and match.team_1.id == spirit_score.team_id:
-        match.spirit_score_team_2 = create_spirit_scores(spirit_score.opponent)
-        match.self_spirit_score_team_1 = create_spirit_scores(spirit_score.self)
+        match.spirit_score_team_2 = create_spirit_scores(spirit_score.opponent, use_uc_reg)
+        match.self_spirit_score_team_1 = create_spirit_scores(spirit_score.self, use_uc_reg)
     elif match.team_2 is not None and match.team_2.id == spirit_score.team_id:
-        match.spirit_score_team_1 = create_spirit_scores(spirit_score.opponent)
-        match.self_spirit_score_team_2 = create_spirit_scores(spirit_score.self)
+        match.spirit_score_team_1 = create_spirit_scores(spirit_score.opponent, use_uc_reg)
+        match.self_spirit_score_team_2 = create_spirit_scores(spirit_score.self, use_uc_reg)
     else:
         return 401, {"message": "User not authorised to add score for this match"}
 
