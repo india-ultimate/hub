@@ -329,6 +329,13 @@ class SpiritScore(ExportModelOperationsMixin("spirit_score"), models.Model):  # 
         UCPerson, on_delete=models.CASCADE, related_name="msp", blank=True, null=True
     )
 
+    mvp_v2 = models.ForeignKey(
+        Player, on_delete=models.CASCADE, related_name="mvp_v2", blank=True, null=True
+    )
+    msp_v2 = models.ForeignKey(
+        Player, on_delete=models.CASCADE, related_name="msp_v2", blank=True, null=True
+    )
+
     comments = models.CharField(max_length=500, blank=True, null=True)
 
 
