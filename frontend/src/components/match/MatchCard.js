@@ -15,7 +15,7 @@ import MatchScoreForm from "../tournament/MatchScoreForm";
 import MatchSpiritScoreForm from "../tournament/MatchSpiritScoreForm";
 import SpiritScoreTable from "../tournament/SpiritScoreTable";
 import FinalSpiritScoresModal from "./FinalSpiritScores";
-import MatchCard from "./MatchHeader";
+import MatchHeader from "./MatchHeader";
 import SubmitScoreModal from "./SubmitScore";
 import SubmitSpiritScoreModal from "./SubmitSpiritScore";
 /**
@@ -148,7 +148,7 @@ const TournamentMatch = props => {
   return (
     <>
       <div class="mb-4">
-        <MatchCard
+        <MatchHeader
           match={props.match}
           dontMinimiseMatchName
           matchCardColorOverride={props.matchCardColorOverride}
@@ -359,106 +359,212 @@ const TournamentMatch = props => {
               <h2 class="text-center font-bold text-blue-600 dark:text-blue-500">
                 MVPs
               </h2>
-              <Show when={props.match[`spirit_score_team_${currTeamNo()}`].mvp}>
-                <div class="mx-5 flex items-center space-x-4">
-                  <img
-                    class="h-10 w-10 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
-                    src={
-                      props.match[`spirit_score_team_${currTeamNo()}`].mvp
-                        ?.image_url
-                    }
-                    alt="Image"
-                  />
-                  <div class="font-medium dark:text-white">
+
+              <Switch>
+                <Match
+                  when={
+                    !props.useUCRegistrations &&
+                    props.match[`spirit_score_team_${currTeamNo()}`].mvp_v2
+                  }
+                >
+                  <div class="mx-5 font-medium dark:text-white">
                     <div>
-                      {props.match[`spirit_score_team_${currTeamNo()}`].mvp
-                        ?.first_name +
-                        " " +
-                        props.match[`spirit_score_team_${currTeamNo()}`].mvp
-                          ?.last_name}
+                      {
+                        props.match[`spirit_score_team_${currTeamNo()}`].mvp_v2
+                          ?.full_name
+                      }
                     </div>
                     <div class="text-sm text-gray-500 dark:text-gray-400">
                       {props.match[`team_${currTeamNo()}`].name}
                     </div>
                   </div>
-                </div>
-              </Show>
-              <Show when={props.match[`spirit_score_team_${oppTeamNo()}`].mvp}>
-                <div class="mx-5 flex items-center space-x-4">
-                  <img
-                    class="h-10 w-10 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
-                    src={
-                      props.match[`spirit_score_team_${oppTeamNo()}`].mvp
-                        ?.image_url
-                    }
-                    alt="Image"
-                  />
-                  <div class="font-medium dark:text-white">
+                </Match>
+                <Match
+                  when={
+                    props.useUCRegistrations &&
+                    props.match[`spirit_score_team_${currTeamNo()}`].mvp
+                  }
+                >
+                  <div class="mx-5 flex items-center space-x-4">
+                    <img
+                      class="h-10 w-10 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
+                      src={
+                        props.match[`spirit_score_team_${currTeamNo()}`].mvp
+                          ?.image_url
+                      }
+                      alt="Image"
+                    />
+                    <div class="font-medium dark:text-white">
+                      <div>
+                        {props.match[`spirit_score_team_${currTeamNo()}`].mvp
+                          ?.first_name +
+                          " " +
+                          props.match[`spirit_score_team_${currTeamNo()}`].mvp
+                            ?.last_name}
+                      </div>
+                      <div class="text-sm text-gray-500 dark:text-gray-400">
+                        {props.match[`team_${currTeamNo()}`].name}
+                      </div>
+                    </div>
+                  </div>
+                </Match>
+              </Switch>
+
+              <Switch>
+                <Match
+                  when={
+                    !props.useUCRegistrations &&
+                    props.match[`spirit_score_team_${oppTeamNo()}`].mvp_v2
+                  }
+                >
+                  <div class="mx-5 font-medium dark:text-white">
                     <div>
-                      {props.match[`spirit_score_team_${oppTeamNo()}`].mvp
-                        ?.first_name +
-                        " " +
-                        props.match[`spirit_score_team_${oppTeamNo()}`].mvp
-                          ?.last_name}
+                      {
+                        props.match[`spirit_score_team_${oppTeamNo()}`].mvp_v2
+                          ?.full_name
+                      }
                     </div>
                     <div class="text-sm text-gray-500 dark:text-gray-400">
                       {props.match[`team_${oppTeamNo()}`].name}
                     </div>
                   </div>
-                </div>
-              </Show>
+                </Match>
+                <Match
+                  when={
+                    props.useUCRegistrations &&
+                    props.match[`spirit_score_team_${oppTeamNo()}`].mvp
+                  }
+                >
+                  <div class="mx-5 flex items-center space-x-4">
+                    <img
+                      class="h-10 w-10 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
+                      src={
+                        props.match[`spirit_score_team_${oppTeamNo()}`].mvp
+                          ?.image_url
+                      }
+                      alt="Image"
+                    />
+                    <div class="font-medium dark:text-white">
+                      <div>
+                        {props.match[`spirit_score_team_${oppTeamNo()}`].mvp
+                          ?.first_name +
+                          " " +
+                          props.match[`spirit_score_team_${oppTeamNo()}`].mvp
+                            ?.last_name}
+                      </div>
+                      <div class="text-sm text-gray-500 dark:text-gray-400">
+                        {props.match[`team_${oppTeamNo()}`].name}
+                      </div>
+                    </div>
+                  </div>
+                </Match>
+              </Switch>
 
               <h2 class="text-center font-bold text-blue-600 dark:text-blue-500">
                 MSPs
               </h2>
-              <Show when={props.match[`spirit_score_team_${currTeamNo()}`].msp}>
-                <div class="mx-5 flex items-center space-x-4">
-                  <img
-                    class="h-10 w-10 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
-                    src={
-                      props.match[`spirit_score_team_${currTeamNo()}`].msp
-                        ?.image_url
-                    }
-                    alt="Image"
-                  />
-                  <div class="font-medium dark:text-white">
-                    <div>
-                      {props.match[`spirit_score_team_${currTeamNo()}`].msp
-                        ?.first_name +
-                        " " +
+              <Switch>
+                <Match
+                  when={
+                    !props.useUCRegistrations &&
+                    props.match[`spirit_score_team_${currTeamNo()}`].msp_v2
+                  }
+                >
+                  <div class="mx-5 flex items-center space-x-4">
+                    <div class="font-medium dark:text-white">
+                      <div>
+                        {
+                          props.match[`spirit_score_team_${currTeamNo()}`]
+                            .msp_v2?.full_name
+                        }
+                      </div>
+                      <div class="text-sm text-gray-500 dark:text-gray-400">
+                        {props.match[`team_${currTeamNo()}`].name}
+                      </div>
+                    </div>
+                  </div>
+                </Match>
+                <Match
+                  when={
+                    props.useUCRegistrations &&
+                    props.match[`spirit_score_team_${currTeamNo()}`].msp
+                  }
+                >
+                  <div class="mx-5 flex items-center space-x-4">
+                    <img
+                      class="h-10 w-10 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
+                      src={
                         props.match[`spirit_score_team_${currTeamNo()}`].msp
-                          ?.last_name}
-                    </div>
-                    <div class="text-sm text-gray-500 dark:text-gray-400">
-                      {props.match[`team_${currTeamNo()}`].name}
+                          ?.image_url
+                      }
+                      alt="Image"
+                    />
+                    <div class="font-medium dark:text-white">
+                      <div>
+                        {props.match[`spirit_score_team_${currTeamNo()}`].msp
+                          ?.first_name +
+                          " " +
+                          props.match[`spirit_score_team_${currTeamNo()}`].msp
+                            ?.last_name}
+                      </div>
+                      <div class="text-sm text-gray-500 dark:text-gray-400">
+                        {props.match[`team_${currTeamNo()}`].name}
+                      </div>
                     </div>
                   </div>
-                </div>
-              </Show>
-              <Show when={props.match[`spirit_score_team_${oppTeamNo()}`].msp}>
-                <div class="mx-5 flex items-center space-x-4">
-                  <img
-                    class="h-10 w-10 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
-                    src={
-                      props.match[`spirit_score_team_${oppTeamNo()}`].msp
-                        ?.image_url
-                    }
-                    alt="Image"
-                  />
-                  <div class="font-medium dark:text-white">
-                    <div>
-                      {props.match[`spirit_score_team_${oppTeamNo()}`].msp
-                        ?.first_name +
-                        " " +
+                </Match>
+              </Switch>
+              <Switch>
+                <Match
+                  when={
+                    !props.useUCRegistrations &&
+                    props.match[`spirit_score_team_${oppTeamNo()}`].msp_v2
+                  }
+                >
+                  <div class="mx-5 flex items-center space-x-4">
+                    <div class="font-medium dark:text-white">
+                      <div>
+                        {
+                          props.match[`spirit_score_team_${oppTeamNo()}`].msp_v2
+                            ?.full_name
+                        }
+                      </div>
+                      <div class="text-sm text-gray-500 dark:text-gray-400">
+                        {props.match[`team_${oppTeamNo()}`].name}
+                      </div>
+                    </div>
+                  </div>
+                </Match>
+                <Match
+                  when={
+                    props.useUCRegistrations &&
+                    props.match[`spirit_score_team_${oppTeamNo()}`].msp
+                  }
+                >
+                  <div class="mx-5 flex items-center space-x-4">
+                    <img
+                      class="h-10 w-10 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
+                      src={
                         props.match[`spirit_score_team_${oppTeamNo()}`].msp
-                          ?.last_name}
-                    </div>
-                    <div class="text-sm text-gray-500 dark:text-gray-400">
-                      {props.match[`team_${oppTeamNo()}`].name}
+                          ?.image_url
+                      }
+                      alt="Image"
+                    />
+                    <div class="font-medium dark:text-white">
+                      <div>
+                        {props.match[`spirit_score_team_${oppTeamNo()}`].msp
+                          ?.first_name +
+                          " " +
+                          props.match[`spirit_score_team_${oppTeamNo()}`].msp
+                            ?.last_name}
+                      </div>
+                      <div class="text-sm text-gray-500 dark:text-gray-400">
+                        {props.match[`team_${oppTeamNo()}`].name}
+                      </div>
                     </div>
                   </div>
-                </div>
-              </Show>
+                </Match>
+              </Switch>
 
               <Show
                 when={
