@@ -160,6 +160,7 @@ from server.utils import (
     create_razorpay_order,
     if_dates_are_not_in_order,
     if_today,
+    is_today_in_between_dates,
     verify_razorpay_payment,
     verify_razorpay_webhook_payload,
 )
@@ -1359,10 +1360,11 @@ def add_player_to_roster(
     except (Event.DoesNotExist, Team.DoesNotExist, Tournament.DoesNotExist):
         return 400, {"message": "Team/Event/Tournament does not exist"}
 
-    if tournament.status != Tournament.Status.REGISTERING:
-        return 400, {
-            "message": f"You can't roster players now ! Rostering open from {tournament.event.registration_start_date} to {tournament.event.registration_start_date}"
-        }
+    if not is_today_in_between_dates(
+        from_date=tournament.event.player_registration_start_date,
+        to_date=tournament.event.player_registration_end_date,
+    ):
+        return 400, {"message": "Rostering has closed, you can't roster players now !"}
 
     if team not in tournament.teams.all():
         return 400, {"message": f"{team.name} is not registered for ${event.title} !"}
@@ -1415,10 +1417,11 @@ def remove_from_roster(
     except (Event.DoesNotExist, Team.DoesNotExist, Tournament.DoesNotExist):
         return 400, {"message": "Team/Event/Tournament does not exist"}
 
-    if tournament.status != Tournament.Status.REGISTERING:
-        return 400, {
-            "message": f"You can't roster players now ! Rostering open from {tournament.event.registration_start_date} to {tournament.event.registration_start_date}"
-        }
+    if not is_today_in_between_dates(
+        from_date=tournament.event.player_registration_start_date,
+        to_date=tournament.event.player_registration_end_date,
+    ):
+        return 400, {"message": "Rostering has closed, you can't remove players now !"}
 
     if request.user not in team.admins.all():
         return 401, {"message": "Only team admins can remove players from the roster"}
@@ -1450,10 +1453,11 @@ def update_registration(
     except (Event.DoesNotExist, Team.DoesNotExist, Tournament.DoesNotExist):
         return 400, {"message": "Team/Event/Tournament does not exist"}
 
-    if tournament.status != Tournament.Status.REGISTERING:
-        return 400, {
-            "message": f"You can't edit registrations now ! Rostering open from {tournament.event.registration_start_date} to {tournament.event.registration_start_date}"
-        }
+    if not is_today_in_between_dates(
+        from_date=tournament.event.player_registration_start_date,
+        to_date=tournament.event.player_registration_end_date,
+    ):
+        return 400, {"message": "Rostering has closed, you can't edit registrations now !"}
 
     if request.user not in team.admins.all():
         return 401, {"message": "Only team admins can remove players from the roster"}
@@ -1688,14 +1692,37 @@ def create_tournament(
         return 400, {"message": "Start date can't be after end date"}
 
     if if_dates_are_not_in_order(
-        tournament_details.team_registration_start_date, tournament_details.team_registration_end_date
+        tournament_details.team_registration_start_date,
+        tournament_details.team_registration_end_date,
     ):
-        return 400, {"message": "Registration Start date can't be after Registration end date"}
+        return 400, {
+            "message": "Team Registration Start date can't be after Team Registration end date"
+        }
 
     if if_dates_are_not_in_order(
         tournament_details.team_registration_end_date, tournament_details.start_date
     ):
         return 400, {"message": "Registration End date can't be after Tournament Start date"}
+
+    if if_dates_are_not_in_order(
+        tournament_details.player_registration_start_date,
+        tournament_details.player_registration_end_date,
+    ):
+        return 400, {
+            "message": "Player Registration Start date can't be after Player Registration End date"
+        }
+
+    if if_dates_are_not_in_order(
+        tournament_details.team_registration_start_date,
+        tournament_details.player_registration_start_date,
+    ):
+        return 400, {"message": "Player registration can't start before Team registration starts"}
+
+    if if_dates_are_not_in_order(
+        tournament_details.team_registration_end_date,
+        tournament_details.player_registration_end_date,
+    ):
+        return 400, {"message": "Player registration can't end before Team registration ends"}
 
     event = Event(
         title=tournament_details.title,
@@ -1703,6 +1730,8 @@ def create_tournament(
         end_date=tournament_details.end_date,
         team_registration_start_date=tournament_details.team_registration_start_date,
         team_registration_end_date=tournament_details.team_registration_end_date,
+        player_registration_start_date=tournament_details.player_registration_start_date,
+        player_registration_end_date=tournament_details.player_registration_end_date,
         location=tournament_details.location,
         type=tournament_details.type,
     )
@@ -1785,9 +1814,7 @@ def add_team_registration(
         return 400, {"message": "Tournament does not exist"}
 
     if tournament.status != Tournament.Status.REGISTERING:
-        return 400, {
-            "message": f"You can't register a team now ! Teams can be registered from {tournament.event.registration_start_date} to {tournament.event.registration_start_date}"
-        }
+        return 400, {"message": "Team registration has closed, you can't register a team now !"}
 
     tournament.teams.add(team)
 
@@ -1817,9 +1844,7 @@ def remove_team_registration(
         return 400, {"message": "Tournament does not exist"}
 
     if tournament.status != Tournament.Status.REGISTERING:
-        return 400, {
-            "message": f"You can't de-register a team now ! Teams can be registered from {tournament.event.registration_start_date} to {tournament.event.registration_start_date}"
-        }
+        return 400, {"message": "Team registration has closed, you can't de-register a team now !"}
 
     tournament.teams.remove(team)
 
