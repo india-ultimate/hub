@@ -2,7 +2,7 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-    dependencies = [("server", "0070_backfill_registration_start_end_dates")]
+    dependencies = [("server", "0073_backfill_registration_start_end_dates")]
 
     operations = [
         migrations.AlterField(

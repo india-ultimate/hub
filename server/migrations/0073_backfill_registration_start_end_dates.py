@@ -30,7 +30,7 @@ def remove_registration_dates(apps: StateApps, schema_editor: BaseDatabaseSchema
 
 
 class Migration(migrations.Migration):
-    dependencies = [("server", "0069_alter_registration_unique_together")]
+    dependencies = [("server", "0072_alter_tournament_use_uc_registrations")]
 
     operations = [
         migrations.RunPython(code=add_registration_dates, reverse_code=remove_registration_dates)
