@@ -652,6 +652,8 @@ class TournamentCreateSchema(Schema):
     end_date: str
     team_registration_start_date: str
     team_registration_end_date: str
+    player_registration_start_date: str
+    player_registration_end_date: str
     location: str
     type: str
 
