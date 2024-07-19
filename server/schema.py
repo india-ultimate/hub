@@ -744,6 +744,8 @@ class MatchScoreModelSchema(ModelSchema):
 class SpiritScoreSchema(ModelSchema):
     mvp: PersonSchema | None
     msp: PersonSchema | None
+    mvp_v2: PlayerTinySchema | None
+    msp_v2: PlayerTinySchema | None
 
     class Config:
         model = SpiritScore
