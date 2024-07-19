@@ -329,7 +329,7 @@ const TournamentMatch = props => {
               props.match[`spirit_score_team_${oppTeamNo()}`].total
             }
           >
-            <div class="space-y-2 py-2 sm:px-4">
+            <div class="space-y-2 py-2 pr-2 sm:pl-2 sm:pr-4">
               <h2 class="text-center font-bold text-blue-600 dark:text-blue-500">
                 Spirit Scores
               </h2>
@@ -367,7 +367,7 @@ const TournamentMatch = props => {
                     props.match[`spirit_score_team_${currTeamNo()}`].mvp_v2
                   }
                 >
-                  <div class="mx-5 font-medium dark:text-white">
+                  <div class="mx-2 font-medium dark:text-white">
                     <div>
                       {
                         props.match[`spirit_score_team_${currTeamNo()}`].mvp_v2
@@ -385,7 +385,7 @@ const TournamentMatch = props => {
                     props.match[`spirit_score_team_${currTeamNo()}`].mvp
                   }
                 >
-                  <div class="mx-5 flex items-center space-x-4">
+                  <div class="mx-2 flex items-center space-x-4">
                     <img
                       class="h-10 w-10 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
                       src={
@@ -417,7 +417,7 @@ const TournamentMatch = props => {
                     props.match[`spirit_score_team_${oppTeamNo()}`].mvp_v2
                   }
                 >
-                  <div class="mx-5 font-medium dark:text-white">
+                  <div class="mx-2 font-medium dark:text-white">
                     <div>
                       {
                         props.match[`spirit_score_team_${oppTeamNo()}`].mvp_v2
@@ -435,7 +435,7 @@ const TournamentMatch = props => {
                     props.match[`spirit_score_team_${oppTeamNo()}`].mvp
                   }
                 >
-                  <div class="mx-5 flex items-center space-x-4">
+                  <div class="mx-2 flex items-center space-x-4">
                     <img
                       class="h-10 w-10 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
                       src={
@@ -470,7 +470,7 @@ const TournamentMatch = props => {
                     props.match[`spirit_score_team_${currTeamNo()}`].msp_v2
                   }
                 >
-                  <div class="mx-5 flex items-center space-x-4">
+                  <div class="mx-2 flex items-center space-x-4">
                     <div class="font-medium dark:text-white">
                       <div>
                         {
@@ -490,7 +490,7 @@ const TournamentMatch = props => {
                     props.match[`spirit_score_team_${currTeamNo()}`].msp
                   }
                 >
-                  <div class="mx-5 flex items-center space-x-4">
+                  <div class="mx-2 flex items-center space-x-4">
                     <img
                       class="h-10 w-10 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
                       src={
@@ -521,7 +521,7 @@ const TournamentMatch = props => {
                     props.match[`spirit_score_team_${oppTeamNo()}`].msp_v2
                   }
                 >
-                  <div class="mx-5 flex items-center space-x-4">
+                  <div class="mx-2 flex items-center space-x-4">
                     <div class="font-medium dark:text-white">
                       <div>
                         {
@@ -541,7 +541,7 @@ const TournamentMatch = props => {
                     props.match[`spirit_score_team_${oppTeamNo()}`].msp
                   }
                 >
-                  <div class="mx-5 flex items-center space-x-4">
+                  <div class="mx-2 flex items-center space-x-4">
                     <img
                       class="h-10 w-10 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
                       src={
@@ -582,7 +582,7 @@ const TournamentMatch = props => {
                       ?.comments
                   }
                 >
-                  <div class="mx-5 flex items-center space-x-4">
+                  <div class="mx-2 flex items-center space-x-4">
                     <div class="font-medium dark:text-white">
                       <div>
                         {
@@ -602,7 +602,7 @@ const TournamentMatch = props => {
                       ?.comments
                   }
                 >
-                  <div class="mx-5 flex items-center space-x-4">
+                  <div class="mx-2 flex items-center space-x-4">
                     <div class="font-medium dark:text-white">
                       <div>
                         {

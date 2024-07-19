@@ -11,7 +11,7 @@ const SubmitScoreModal = props => {
         type="button"
         class={clsx(
           "relative mb-2 mr-2 inline-flex items-center justify-center overflow-hidden rounded-lg p-0.5 font-medium",
-          "text-xs text-gray-900 hover:text-white focus:outline-none focus:ring-4 dark:text-white",
+          "text-xs text-gray-900 focus:outline-none focus:ring-4 dark:text-white",
           props.buttonColor
         )}
         onClick={() => modalRef.showModal()}
