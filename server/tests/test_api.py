@@ -534,7 +534,13 @@ class TestPayment(ApiBaseTestCase):
         # Player exists, event exists, membership does not exist
         player = self.player
         event = Event.objects.create(
-            start_date="2023-09-08", end_date="2023-09-10", title="South Regionals"
+            start_date="2023-09-08",
+            end_date="2023-09-10",
+            title="South Regionals",
+            team_registration_start_date="2023-08-01",
+            team_registration_end_date="2023-08-10",
+            player_registration_start_date="2023-08-12",
+            player_registration_end_date="2023-08-30",
         )
         event.refresh_from_db()
         amount = EVENT_MEMBERSHIP_AMOUNT
@@ -577,7 +583,13 @@ class TestPayment(ApiBaseTestCase):
         # Player exists, event exists, membership does not exist
         player = self.player
         event = Event.objects.create(
-            start_date="2023-09-08", end_date="2023-09-10", title="South Regionals"
+            start_date="2023-09-08",
+            end_date="2023-09-10",
+            title="South Regionals",
+            team_registration_start_date="2023-08-01",
+            team_registration_end_date="2023-08-10",
+            player_registration_start_date="2023-08-12",
+            player_registration_end_date="2023-08-30",
         )
         event.refresh_from_db()
         transaction_id = "1231231234"
@@ -826,8 +838,24 @@ class TestPayment(ApiBaseTestCase):
         start_date = "2023-06-01"
         end_date = "2024-05-31"
         player = self.player
-        event_old = Event.objects.create(start_date=start_old, end_date=end_old, title="Old")
-        event = Event.objects.create(start_date=start_date, end_date=end_date, title="New")
+        event_old = Event.objects.create(
+            start_date=start_old,
+            end_date=end_old,
+            title="Old",
+            team_registration_start_date="2022-05-01",
+            team_registration_end_date="2022-05-10",
+            player_registration_start_date="2022-05-12",
+            player_registration_end_date="2022-05-30",
+        )
+        event = Event.objects.create(
+            start_date=start_date,
+            end_date=end_date,
+            title="New",
+            team_registration_start_date="2023-05-01",
+            team_registration_end_date="2023-05-10",
+            player_registration_start_date="2023-05-12",
+            player_registration_end_date="2023-05-30",
+        )
         event.refresh_from_db()
         membership = Membership.objects.create(
             start_date=start_old, end_date=end_old, player=player, event=event_old
