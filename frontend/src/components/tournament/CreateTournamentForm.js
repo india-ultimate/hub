@@ -111,8 +111,10 @@ const CreateTournamentForm = () => {
             )}
           </Field>
           <Field
-            name="registration_start_date"
-            validate={[required("Please enter the registration start date.")]}
+            name="team_registration_start_date"
+            validate={[
+              required("Please enter the team registration start date.")
+            ]}
           >
             {(field, props) => (
               <TextInput
@@ -128,8 +130,10 @@ const CreateTournamentForm = () => {
             )}
           </Field>
           <Field
-            name="registration_end_date"
-            validate={[required("Please enter the registration end date.")]}
+            name="team_registration_end_date"
+            validate={[
+              required("Please enter the team registration end date.")
+            ]}
           >
             {(field, props) => (
               <TextInput
@@ -139,6 +143,42 @@ const CreateTournamentForm = () => {
                 type="date"
                 min={minDate}
                 label="Registration End Date"
+                placeholder={minDate}
+                required
+              />
+            )}
+          </Field>
+          <Field
+            name="player_registration_start_date"
+            validate={[
+              required("Please enter the player rostering start date.")
+            ]}
+          >
+            {(field, props) => (
+              <TextInput
+                {...props}
+                value={field.value}
+                error={field.error}
+                type="date"
+                min={minDate}
+                label="Player Rostering Start Date"
+                placeholder={minDate}
+                required
+              />
+            )}
+          </Field>
+          <Field
+            name="player_registration_end_date"
+            validate={[required("Please enter the player rostering end date.")]}
+          >
+            {(field, props) => (
+              <TextInput
+                {...props}
+                value={field.value}
+                error={field.error}
+                type="date"
+                min={minDate}
+                label="Player Rostering End Date"
                 placeholder={minDate}
                 required
               />
