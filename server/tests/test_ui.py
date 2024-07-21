@@ -28,7 +28,19 @@ def create_event(title: str) -> Event:
     days = random.randint(30, 100)  # noqa: S311
     start = (datetime.timedelta(days=days) + today).date()
     end = (datetime.timedelta(days=days + 2) + today).date()
-    return Event.objects.create(title=title, start_date=start, end_date=end)
+    team_reg_start = today - datetime.timedelta(days=14)
+    team_reg_end = today - datetime.timedelta(days=7)
+    player_reg_start = team_reg_end + datetime.timedelta(days=1)
+    player_reg_end = end - datetime.timedelta(days - 1)
+    return Event.objects.create(
+        title=title,
+        start_date=start,
+        end_date=end,
+        team_registration_start_date=team_reg_start,
+        team_registration_end_date=team_reg_end,
+        player_registration_start_date=player_reg_start,
+        player_registration_end_date=player_reg_end,
+    )
 
 
 @pytest.mark.django_db(transaction=True)
