@@ -16,6 +16,7 @@ import {
   fetchUser,
   removeTeamRegistration
 } from "../queries";
+import { ifTodayInBetweenDates } from "../utils";
 import Info from "./alerts/Info";
 import Warning from "./alerts/Warning";
 import Breadcrumbs from "./Breadcrumbs";
@@ -55,6 +56,18 @@ const TeamRegistration = () => {
   let registerYourTeamRef;
 
   const scrollToMyTeams = () => registerYourTeamRef.scrollIntoView();
+
+  const isAdminAndPlayerRegInProgress = teamId => {
+    return (
+      userQuery.data?.admin_teams
+        .map(adminTeam => adminTeam.id)
+        .includes(teamId) &&
+      ifTodayInBetweenDates(
+        Date.parse(tournamentQuery.data?.event?.player_registration_start_date),
+        Date.parse(tournamentQuery.data?.event?.player_registration_end_date)
+      )
+    );
+  };
 
   return (
     <Show
@@ -130,32 +143,66 @@ const TeamRegistration = () => {
 
       <div class="mx-auto mb-4 mt-6 w-fit">
         <Warning>
-          Registrations open from{" "}
-          <span class="inline-flex font-medium">
-            {new Date(
-              Date.parse(
-                tournamentQuery.data?.event?.team_registration_start_date
-              )
-            ).toLocaleDateString("en-US", {
-              year: "numeric",
-              month: "short",
-              day: "numeric",
-              timeZone: "UTC"
-            })}
-          </span>{" "}
-          to{" "}
-          <span class="inline-flex font-medium">
-            {new Date(
-              Date.parse(
-                tournamentQuery.data?.event?.team_registration_end_date
-              )
-            ).toLocaleDateString("en-US", {
-              year: "numeric",
-              month: "short",
-              day: "numeric",
-              timeZone: "UTC"
-            })}
-          </span>
+          <span class="mb-2 block font-bold">Registration Timelines!</span>
+          <ul class="max-w-md list-inside list-disc space-y-1">
+            <li>
+              Team Registrations window open from{" "}
+              <span class="inline-flex font-medium">
+                {new Date(
+                  Date.parse(
+                    tournamentQuery.data?.event?.team_registration_start_date
+                  )
+                ).toLocaleDateString("en-US", {
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                  timeZone: "UTC"
+                })}
+              </span>{" "}
+              to{" "}
+              <span class="inline-flex font-medium">
+                {new Date(
+                  Date.parse(
+                    tournamentQuery.data?.event?.team_registration_end_date
+                  )
+                ).toLocaleDateString("en-US", {
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                  timeZone: "UTC"
+                })}
+              </span>
+            </li>
+            <li>
+              Player Registrations window open from{" "}
+              <span class="inline-flex font-medium">
+                {new Date(
+                  Date.parse(
+                    tournamentQuery.data?.event?.player_registration_start_date
+                  )
+                ).toLocaleDateString("en-US", {
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                  timeZone: "UTC"
+                })}
+              </span>{" "}
+              to{" "}
+              <span class="inline-flex font-medium">
+                {new Date(
+                  Date.parse(
+                    tournamentQuery.data?.event?.player_registration_end_date
+                  )
+                ).toLocaleDateString("en-US", {
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                  timeZone: "UTC"
+                })}
+              </span>
+            </li>
+          </ul>
+          {/* <hr class="my-2 h-px border-0 bg-yellow-600 dark:bg-gray-700" /> */}
         </Warning>
       </div>
 
@@ -211,19 +258,13 @@ const TeamRegistration = () => {
                         href={`/tournament/${params.slug}/team/${team.slug}/roster`}
                         class={clsx(
                           "inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium  focus:outline-none focus:ring-4",
-                          userQuery.data?.admin_teams
-                            .map(team => team.id)
-                            .includes(team.id) &&
-                            tournamentQuery.data?.status === "REG"
+                          isAdminAndPlayerRegInProgress(team.id)
                             ? "bg-blue-600 text-white hover:bg-blue-600 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
                             : "border  border-blue-700 bg-transparent text-blue-600  focus:ring-blue-300 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
                         )}
                       >
                         <span class="self-center">
-                          {userQuery.data?.admin_teams
-                            .map(team => team.id)
-                            .includes(team.id) &&
-                          tournamentQuery.data?.status === "REG"
+                          {isAdminAndPlayerRegInProgress(team.id)
                             ? "Edit Roster"
                             : "View Roster"}
                         </span>

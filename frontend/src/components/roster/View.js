@@ -17,6 +17,7 @@ import {
 } from "../../queries";
 import { useStore } from "../../store";
 import { getTournamentBreadcrumbName } from "../../utils";
+import { ifTodayInBetweenDates } from "../../utils";
 import Info from "../alerts/Info";
 import Warning from "../alerts/Warning";
 import Breadcrumbs from "../Breadcrumbs";
@@ -93,6 +94,13 @@ const Roster = () => {
   const players = () => rosterQuery.data?.filter(reg => isPlayer(reg));
   const nonPlayers = () => rosterQuery.data?.filter(reg => !isPlayer(reg));
 
+  const isPlayerRegInProgress = () => {
+    return ifTodayInBetweenDates(
+      Date.parse(tournamentQuery.data?.event?.player_registration_start_date),
+      Date.parse(tournamentQuery.data?.event?.player_registration_end_date)
+    );
+  };
+
   return (
     <Show
       when={!tournamentQuery.data?.message}
@@ -113,7 +121,8 @@ const Roster = () => {
           { url: "/tournaments", name: "All Tournaments" },
           {
             url:
-              tournamentQuery.data?.status === "REG"
+              tournamentQuery.data?.status === "REG" ||
+              tournamentQuery.data?.status === "SCH"
                 ? `/tournament/${params.tournament_slug}/register`
                 : `/tournament/${params.tournament_slug}`,
             name: getTournamentBreadcrumbName(
@@ -145,14 +154,16 @@ const Roster = () => {
 
       <div class="mx-auto mb-4 mt-6 w-fit">
         <Show
-          when={tournamentQuery.data?.status === "REG"}
-          fallback={<Warning>Rostering window is now closed!</Warning>}
+          when={isPlayerRegInProgress()}
+          fallback={<Warning>Player Rostering window is now closed!</Warning>}
         >
           <Warning>
-            Rostering window is open from{" "}
+            Player Rostering window is open from{" "}
             <span class="inline-flex font-medium">
               {new Date(
-                Date.parse(tournamentQuery.data?.event?.registration_start_date)
+                Date.parse(
+                  tournamentQuery.data?.event?.player_registration_start_date
+                )
               ).toLocaleDateString("en-US", {
                 year: "numeric",
                 month: "short",
@@ -163,7 +174,9 @@ const Roster = () => {
             to{" "}
             <span class="inline-flex font-medium">
               {new Date(
-                Date.parse(tournamentQuery.data?.event?.registration_end_date)
+                Date.parse(
+                  tournamentQuery.data?.event?.player_registration_end_date
+                )
               ).toLocaleDateString("en-US", {
                 year: "numeric",
                 month: "short",
@@ -179,8 +192,8 @@ const Roster = () => {
         <div class="mt-6">
           <h4 class="mb-2 text-xl font-bold text-blue-500">Add to Roster</h4>
           <Show
-            when={tournamentQuery.data?.status === "REG"}
-            fallback={<Info text="Registrations have closed!" />}
+            when={isPlayerRegInProgress()}
+            fallback={<Info text="Player Registrations have closed!" />}
           >
             <Switch>
               <Match when={!store.loggedIn}>
@@ -249,7 +262,7 @@ const Roster = () => {
                         when={
                           store.loggedIn &&
                           currentUserIsTeamAdmin() &&
-                          tournamentQuery.data?.status === "REG"
+                          isPlayerRegInProgress()
                         }
                       >
                         <RemoveFromRoster
@@ -264,7 +277,7 @@ const Roster = () => {
                         when={
                           store.loggedIn &&
                           currentUserIsTeamAdmin() &&
-                          tournamentQuery.data?.status === "REG"
+                          isPlayerRegInProgress()
                         }
                       >
                         <EditRosteredPlayer
@@ -326,7 +339,7 @@ const Roster = () => {
                         when={
                           store.loggedIn &&
                           currentUserIsTeamAdmin() &&
-                          tournamentQuery.data?.status === "REG"
+                          isPlayerRegInProgress()
                         }
                       >
                         <RemoveFromRoster
@@ -341,7 +354,7 @@ const Roster = () => {
                         when={
                           store.loggedIn &&
                           currentUserIsTeamAdmin() &&
-                          tournamentQuery.data?.status === "REG"
+                          isPlayerRegInProgress()
                         }
                       >
                         <EditRosteredPlayer

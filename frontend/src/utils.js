@@ -314,3 +314,16 @@ export const registerPasskey = async () => {
 
   return { success: "Created passkey!" };
 };
+
+export const ifTodayInBetweenDates = (start, end) => {
+  const currentDate = new Date(Date.now());
+  currentDate.setHours(5, 30, 0, 0);
+
+  let startDate = new Date(start);
+  let endDate = new Date(end);
+
+  if (currentDate >= startDate && currentDate <= endDate) {
+    return true;
+  }
+  return false;
+};
