@@ -23,6 +23,7 @@ import {
   SpiritStandings as SpiritStandingsSkeleton,
   Standings as StandingsSkeleton
 } from "../skeletons/Standings";
+import { ifTodayInBetweenDates } from "../utils";
 import Breadcrumbs from "./Breadcrumbs";
 
 /**
@@ -109,6 +110,13 @@ const Tournament = () => {
       setTeamsInitialSeeding(teamsInitialSeedingMap);
     }
   });
+
+  const isPlayerRegInProgress = () => {
+    return ifTodayInBetweenDates(
+      Date.parse(tournamentQuery.data?.event?.player_registration_start_date),
+      Date.parse(tournamentQuery.data?.event?.player_registration_end_date)
+    );
+  };
 
   return (
     <Show
@@ -251,6 +259,31 @@ const Tournament = () => {
           </h5>
           <p class="text-center text-sm capitalize">
             View the detailed rules and format of the tournament
+          </p>
+        </A>
+      </Show>
+      <Show when={isPlayerRegInProgress()}>
+        <A
+          href={`/tournament/${params.slug}/register`}
+          class="mt-5 block w-full rounded-lg border border-blue-600 bg-white p-4 shadow-md dark:border-blue-400 dark:bg-gray-800"
+        >
+          <h5 class="mb-2 text-center text-xl font-bold capitalize tracking-tight text-blue-600 dark:text-blue-400">
+            Player Registrations
+          </h5>
+          <p class="text-center text-sm capitalize">
+            Open till{" "}
+            <span class="inline-flex font-medium">
+              {new Date(
+                Date.parse(
+                  tournamentQuery.data?.event?.player_registration_end_date
+                )
+              ).toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+                timeZone: "UTC"
+              })}
+            </span>
           </p>
         </A>
       </Show>
