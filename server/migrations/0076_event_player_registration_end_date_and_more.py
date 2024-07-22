@@ -5,7 +5,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("server", "0074_team_registration_non_nullable_rename_fields"),
+        ("server", "0075_team_registration_non_nullable_rename_fields"),
     ]
 
     operations = [

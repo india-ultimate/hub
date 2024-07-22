@@ -39,7 +39,7 @@ def remove_player_registration_dates(
 
 
 class Migration(migrations.Migration):
-    dependencies = [("server", "0075_event_player_registration_end_date_and_more")]
+    dependencies = [("server", "0076_event_player_registration_end_date_and_more")]
 
     operations = [
         migrations.RunPython(
