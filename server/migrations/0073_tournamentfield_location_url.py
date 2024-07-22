@@ -5,7 +5,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("server", "0077_player_registrations_non_nullable"),
+        ("server", "0072_alter_tournament_use_uc_registrations"),
     ]
 
     operations = [
