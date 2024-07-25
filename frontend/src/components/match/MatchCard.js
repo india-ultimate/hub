@@ -14,10 +14,10 @@ import { getMatchCardColor } from "../../utils";
 import MatchScoreForm from "../tournament/MatchScoreForm";
 import MatchSpiritScoreForm from "../tournament/MatchSpiritScoreForm";
 import SpiritScoreTable from "../tournament/SpiritScoreTable";
-import FinalSpiritScoresModal from "./FinalSpiritScores";
+import FinalSpiritScores from "./FinalSpiritScores";
 import MatchHeader from "./MatchHeader";
-import SubmitScoreModal from "./SubmitScore";
-import SubmitSpiritScoreModal from "./SubmitSpiritScore";
+import SubmitScore from "./SubmitScore";
+import SubmitSpiritScore from "./SubmitSpiritScore";
 /**
  * Returns a match block between 2 teams.
  * If a team should appear first, pass `currentTeamNo` = team id in match object (1 or 2).
@@ -112,7 +112,7 @@ const TournamentMatch = props => {
     );
   };
 
-  const hasUserSubmittedScores = () => {
+  const hasUserNotSubmittedScores = () => {
     return (
       (isTeamAdminOf(props.match["team_1"].id) &&
         !props.match["suggested_score_team_1"]) ||
@@ -314,7 +314,7 @@ const TournamentMatch = props => {
         }
       >
         <div class="mt-2 flex justify-center">
-          <FinalSpiritScoresModal
+          <FinalSpiritScores
             bgColor={`bg-${
               props.buttonColor || getMatchCardColor(props.match)
             }-100`}
@@ -618,7 +618,7 @@ const TournamentMatch = props => {
                 </Show>
               </Show>
             </div>
-          </FinalSpiritScoresModal>
+          </FinalSpiritScores>
         </div>
       </Show>
       {/*Team Admin Actions*/}
@@ -701,14 +701,14 @@ const TournamentMatch = props => {
           </Show>
 
           <Show when={isMatchTeamAdmin()}>
-            <SubmitScoreModal
+            <SubmitScore
               buttonColor={
                 props.buttonColor
                   ? matchCardColorToButtonStyles[props.buttonColor]
                   : matchCardColorToButtonStyles[getMatchCardColor(props.match)]
               }
               button={
-                hasUserSubmittedScores()
+                hasUserNotSubmittedScores()
                   ? { text: "Submit Score", icon: arrowRight }
                   : { text: "Edit Score", icon: pencil }
               }
@@ -728,7 +728,7 @@ const TournamentMatch = props => {
                   oppTeamNo={oppTeamNo()}
                 />
               </div>
-            </SubmitScoreModal>
+            </SubmitScore>
           </Show>
         </div>
       </Show>
@@ -773,7 +773,7 @@ const TournamentMatch = props => {
           </span>
         </div>
         <div class="mb-3 flex flex-wrap justify-center">
-          <SubmitSpiritScoreModal
+          <SubmitSpiritScore
             buttonColor={
               props.buttonColor
                 ? matchCardColorToButtonStyles[props.buttonColor]
@@ -804,7 +804,7 @@ const TournamentMatch = props => {
                 curTeamNo={2}
               />
             </Show>
-          </SubmitSpiritScoreModal>
+          </SubmitSpiritScore>
         </div>
       </Show>
     </>

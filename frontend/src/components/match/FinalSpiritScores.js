@@ -4,7 +4,7 @@ import { chevronRight } from "solid-heroicons/solid";
 
 import Modal from "../Modal";
 
-const FinalSpiritScoresModal = props => {
+const FinalSpiritScores = props => {
   let modalRef;
   return (
     <>
@@ -49,4 +49,4 @@ const FinalSpiritScoresModal = props => {
   );
 };
 
-export default FinalSpiritScoresModal;
+export default FinalSpiritScores;

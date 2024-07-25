@@ -3,7 +3,7 @@ import { Icon } from "solid-heroicons";
 
 import Modal from "../Modal";
 
-const SubmitScoreModal = props => {
+const SubmitScore = props => {
   let modalRef;
   return (
     <>
@@ -40,4 +40,4 @@ const SubmitScoreModal = props => {
   );
 };
 
-export default SubmitScoreModal;
+export default SubmitScore;
