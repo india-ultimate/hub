@@ -1,3 +1,4 @@
+import contextlib
 import os
 from collections import Counter
 from functools import cmp_to_key, partial
@@ -677,6 +678,8 @@ def create_spirit_scores(spirit_score: SpiritScoreUpdateSchema, use_uc_reg: bool
         if use_uc_reg:
             mvp = UCPerson.objects.get(id=spirit_score.mvp_id)
             score.mvp = mvp
+            with contextlib.suppress(Player.DoesNotExist):
+                score.mvp_v2 = Player.objects.get(ultimate_central_id=spirit_score.mvp_id)
         else:
             mvp_v2 = Player.objects.get(id=spirit_score.mvp_id)
             score.mvp_v2 = mvp_v2
@@ -685,6 +688,8 @@ def create_spirit_scores(spirit_score: SpiritScoreUpdateSchema, use_uc_reg: bool
         if use_uc_reg:
             msp = UCPerson.objects.get(id=spirit_score.msp_id)
             score.msp = msp
+            with contextlib.suppress(Player.DoesNotExist):
+                score.msp_v2 = Player.objects.get(ultimate_central_id=spirit_score.msp_id)
         else:
             msp_v2 = Player.objects.get(id=spirit_score.msp_id)
             score.msp_v2 = msp_v2
