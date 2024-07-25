@@ -297,6 +297,9 @@ const TournamentSchedule = () => {
                         <MatchCard
                           match={match}
                           tournamentSlug={params.slug}
+                          useUCRegistrations={
+                            tournamentQuery.data?.use_uc_registrations
+                          }
                           bothTeamsClickable
                         />
                       </div>

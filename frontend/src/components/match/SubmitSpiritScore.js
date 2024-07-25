@@ -4,7 +4,7 @@ import { arrowRight } from "solid-heroicons/solid";
 
 import Modal from "../Modal";
 
-const SubmitSpiritScoreModal = props => {
+const SubmitSpiritScore = props => {
   let modalRef;
   return (
     <>
@@ -39,4 +39,4 @@ const SubmitSpiritScoreModal = props => {
   );
 };
 
-export default SubmitSpiritScoreModal;
+export default SubmitSpiritScore;
