@@ -143,8 +143,17 @@ const AddPlayerRegistrationForm = componentProps => {
       id: "full_name",
       header: () => <span>Player Name</span>,
       cell: props => (
-        <div class="font-medium dark:text-white">
-          <div>{props.getValue()}</div>
+        <div>
+          <div class="font-medium">{props.getValue()}</div>
+          <div class="flex flex-wrap">
+            <For each={props.row.original.teams}>
+              {team => (
+                <span class="my-2 me-2 rounded bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-300">
+                  {team.name}
+                </span>
+              )}
+            </For>
+          </div>
         </div>
       )
     },
