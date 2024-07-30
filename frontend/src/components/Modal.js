@@ -5,9 +5,9 @@ const Modal = props => {
   return (
     <dialog
       ref={props.ref}
-      class="w-fit rounded-xl p-0 backdrop:bg-gray-700/90"
+      class="w-fit rounded-xl p-0 backdrop:bg-gray-700/90 md:w-1/2"
     >
-      <div class="flex w-full flex-col items-start gap-2 rounded-xl border border-gray-800 bg-gray-50 p-4 text-gray-600 dark:border-gray-300 dark:bg-gray-600 dark:text-gray-100">
+      <div class="flex w-full flex-col items-start gap-2 rounded-xl bg-gray-50 p-4 text-gray-600 dark:bg-gray-600 dark:text-gray-100">
         <div class="flex w-full items-center justify-between text-base sm:text-lg">
           <div class="flex">{props.title || ""}</div>
           <button
