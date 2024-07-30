@@ -10,7 +10,7 @@ import {
 } from "@tanstack/solid-table";
 import { Icon } from "solid-heroicons";
 import { handRaised } from "solid-heroicons/outline";
-import { plus } from "solid-heroicons/solid";
+import { plus, xMark } from "solid-heroicons/solid";
 import { createEffect, createSignal, For, Show } from "solid-js";
 
 import { ChevronLeft, ChevronRight, Spinner } from "../../icons";
@@ -243,13 +243,20 @@ const AddPlayerRegistrationForm = componentProps => {
           type="search"
           id="player-search"
           class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-4 ps-10 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
-          placeholder="Search Player Names/Email"
+          placeholder="Player Name / Email"
           required
           value={search()}
           onChange={e => {
             setSearch(e.target.value);
           }}
         />
+        <button
+          type="button"
+          onClick={() => setSearch("")}
+          class="absolute bottom-2.5 end-24 rounded-full px-2 py-2 text-sm font-medium text-gray-400 hover:text-gray-700 focus:outline-none "
+        >
+          <Icon path={xMark} style={{ width: "20px" }} />
+        </button>
         <button
           type="submit"
           class="absolute bottom-2.5 end-2.5 rounded-lg bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-800 focus:outline-none dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
