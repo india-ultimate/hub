@@ -1,6 +1,16 @@
 from django.contrib import admin
 
-from server.models import Event, Match, Player, Pool, Team, Tournament, TournamentField, User
+from server.models import (
+    Event,
+    Match,
+    Membership,
+    Player,
+    Pool,
+    Team,
+    Tournament,
+    TournamentField,
+    User,
+)
 
 
 @admin.register(Player)
@@ -61,7 +71,7 @@ class PoolAdmin(admin.ModelAdmin[Pool]):
     list_display = ["get_name", "name"]
 
     @admin.display(description="Tournament Name", ordering="tournament__event__title")
-    def get_name(self, obj: TournamentField) -> str:
+    def get_name(self, obj: Pool) -> str:
         return obj.tournament.event.title
 
 
@@ -71,5 +81,22 @@ class MatchAdmin(admin.ModelAdmin[Match]):
     list_display = ["get_name", "name"]
 
     @admin.display(description="Tournament Name", ordering="tournament__event__title")
-    def get_name(self, obj: TournamentField) -> str:
+    def get_name(self, obj: Match) -> str:
         return obj.tournament.event.title
+
+
+@admin.register(Membership)
+class MembershipAdmin(admin.ModelAdmin[Membership]):
+    search_fields = ["player__user__first_name"]
+    list_display = [
+        "get_name",
+        "membership_number",
+        "is_annual",
+        "start_date",
+        "end_date",
+        "is_active",
+    ]
+
+    @admin.display(description="Player Name", ordering="player__user__first_name")
+    def get_name(self, obj: Membership) -> str:
+        return obj.player.user.first_name
