@@ -203,6 +203,8 @@ export const getTournamentBreadcrumbName = tournamentSlug => {
     category = "Masters";
   } else if (slugWords.has("sakkath")) {
     category = "Sakkath";
+  } else if (slugWords.has("u24")) {
+    category = "U24";
   }
 
   // Level
