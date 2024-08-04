@@ -205,6 +205,8 @@ export const getTournamentBreadcrumbName = tournamentSlug => {
     category = "Sakkath";
   } else if (slugWords.has("u24")) {
     category = "U24";
+  } else if (slugWords.has("bharat")) {
+    category = "States";
   }
 
   // Level
