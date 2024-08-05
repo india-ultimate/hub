@@ -1,4 +1,8 @@
+import csv
+
 from django.contrib import admin
+from django.db.models import QuerySet
+from django.http import HttpRequest, HttpResponse
 
 from server.models import (
     Event,
@@ -11,6 +15,24 @@ from server.models import (
     TournamentField,
     User,
 )
+
+
+@admin.action(description="Export Selected")
+def export_as_csv(
+    self: admin.ModelAdmin[Membership], request: HttpRequest, queryset: QuerySet[Membership]
+) -> HttpResponse:
+    meta = self.model._meta
+    field_names = [field.name for field in meta.fields]
+
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = f"attachment; filename={meta}.csv"
+    writer = csv.writer(response)
+
+    writer.writerow(field_names)
+    for obj in queryset:
+        writer.writerow([getattr(obj, field) for field in field_names])
+
+    return response
 
 
 @admin.register(Player)
@@ -96,6 +118,7 @@ class MembershipAdmin(admin.ModelAdmin[Membership]):
         "end_date",
         "is_active",
     ]
+    actions = [export_as_csv]
 
     @admin.display(description="Player Name", ordering="player__user__first_name")
     def get_name(self, obj: Membership) -> str:
