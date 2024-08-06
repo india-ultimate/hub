@@ -6,10 +6,13 @@ from django.http import HttpRequest, HttpResponse
 
 from server.models import (
     Event,
+    ManualTransaction,
     Match,
     Membership,
+    PhonePeTransaction,
     Player,
     Pool,
+    RazorpayTransaction,
     Team,
     Tournament,
     TournamentField,
@@ -123,3 +126,36 @@ class MembershipAdmin(admin.ModelAdmin[Membership]):
     @admin.display(description="Player Name", ordering="player__user__first_name")
     def get_name(self, obj: Membership) -> str:
         return obj.player.user.first_name
+
+
+@admin.register(RazorpayTransaction)
+class RazorpayTransactionAdmin(admin.ModelAdmin[RazorpayTransaction]):
+    search_fields = ["user__first_name"]
+    list_display = ["get_name", "order_id", "payment_id", "amount", "payment_date", "status"]
+    actions = [export_as_csv]
+
+    @admin.display(description="User Name", ordering="user__first_name")
+    def get_name(self, obj: RazorpayTransaction) -> str:
+        return obj.user.first_name
+
+
+@admin.register(PhonePeTransaction)
+class PhonePeTransactionAdmin(admin.ModelAdmin[PhonePeTransaction]):
+    search_fields = ["user__first_name"]
+    list_display = ["get_name", "transaction_id", "amount", "transaction_date", "status"]
+    actions = [export_as_csv]
+
+    @admin.display(description="User Name", ordering="user__first_name")
+    def get_name(self, obj: PhonePeTransaction) -> str:
+        return obj.user.first_name
+
+
+@admin.register(ManualTransaction)
+class ManualTransactionAdmin(admin.ModelAdmin[ManualTransaction]):
+    search_fields = ["user__first_name"]
+    list_display = ["get_name", "transaction_id", "amount", "payment_date"]
+    actions = [export_as_csv]
+
+    @admin.display(description="User Name", ordering="user__first_name")
+    def get_name(self, obj: ManualTransaction) -> str:
+        return obj.user.first_name
