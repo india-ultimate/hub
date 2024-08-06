@@ -22,7 +22,11 @@ from server.models import (
 
 @admin.action(description="Export Selected")
 def export_as_csv(
-    self: admin.ModelAdmin[Membership], request: HttpRequest, queryset: QuerySet[Membership]
+    self: admin.ModelAdmin[
+        Membership | RazorpayTransaction | PhonePeTransaction | ManualTransaction
+    ],
+    request: HttpRequest,
+    queryset: QuerySet[Membership | RazorpayTransaction | PhonePeTransaction | ManualTransaction],
 ) -> HttpResponse:
     meta = self.model._meta
     field_names = [field.name for field in meta.fields]
