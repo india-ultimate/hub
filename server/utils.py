@@ -134,6 +134,12 @@ def is_today_in_between_dates(from_date: datetime.date, to_date: datetime.date) 
     return from_date <= today <= to_date
 
 
+def default_invitation_expiry_date() -> datetime.date:
+    ind_tz = datetime.timezone(datetime.timedelta(hours=5, minutes=30), name="IND")
+    today = datetime.datetime.now(ind_tz).date()
+    return today + datetime.timedelta(days=4)
+
+
 def slugify_max(text: str, max_length: int = 50) -> str:
     slug = slugify(text)
     if len(slug) <= max_length:

@@ -5,24 +5,27 @@ from functools import cmp_to_key, partial
 
 from django.db.models import Q
 
-from server.models import (
-    Bracket,
-    CrossPool,
-    Match,
+from server.core.models import (
     Player,
-    Pool,
-    PositionPool,
-    Registration,
-    SpiritScore,
     Team,
-    Tournament,
     UCPerson,
-    UCRegistration,
     User,
 )
 from server.schema import SpiritScoreUpdateSchema
 from server.types import validation_error_dict
 from server.utils import ordinal_suffix
+
+from .models import (
+    Bracket,
+    CrossPool,
+    Match,
+    Pool,
+    PositionPool,
+    Registration,
+    SpiritScore,
+    Tournament,
+    UCRegistration,
+)
 
 ROLES_ELIGIBLE_TO_SUBMIT_SCORES = [
     "admin",
