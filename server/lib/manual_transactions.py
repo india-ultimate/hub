@@ -3,7 +3,7 @@ from io import StringIO
 from pathlib import Path
 from typing import Any
 
-from server.models import ManualTransaction
+from server.membership.models import ManualTransaction
 
 
 def read_bank_statement(bank_statement: Path | StringIO) -> dict[str, Any]:

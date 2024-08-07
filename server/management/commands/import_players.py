@@ -7,7 +7,7 @@ from django.core.files.base import ContentFile
 from django.core.management.base import BaseCommand, CommandParser
 from django.utils.text import slugify
 
-from server.models import (
+from server.core.models import (
     Accreditation,
     Guardianship,
     Player,

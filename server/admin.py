@@ -4,19 +4,23 @@ from django.contrib import admin
 from django.db.models import QuerySet
 from django.http import HttpRequest, HttpResponse
 
-from server.models import (
-    Event,
+from server.core.models import (
+    Player,
+    Team,
+    User,
+)
+from server.membership.models import (
     ManualTransaction,
-    Match,
     Membership,
     PhonePeTransaction,
-    Player,
-    Pool,
     RazorpayTransaction,
-    Team,
+)
+from server.tournament.models import (
+    Event,
+    Match,
+    Pool,
     Tournament,
     TournamentField,
-    User,
 )
 
 

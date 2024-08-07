@@ -3,7 +3,8 @@ from typing import Any
 from django.core.management.base import BaseCommand
 from django.utils.timezone import now
 
-from server.models import Membership, Player
+from server.core.models import Player
+from server.membership.models import Membership
 
 
 class Command(BaseCommand):

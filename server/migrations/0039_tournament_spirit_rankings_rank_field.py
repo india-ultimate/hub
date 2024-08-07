@@ -4,7 +4,7 @@ from django.db import migrations
 from django.db.backends.base.schema import BaseDatabaseSchemaEditor
 from django.db.migrations.state import StateApps
 
-from server.tournament import rank_spirit_scores
+from server.tournament.utils import rank_spirit_scores
 
 
 def code(apps: StateApps, schema_editor: BaseDatabaseSchemaEditor) -> None:

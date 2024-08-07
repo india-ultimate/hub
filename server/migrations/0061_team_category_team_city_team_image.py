@@ -2,7 +2,7 @@
 
 from django.db import migrations, models
 
-import server.models
+from server.core.models import upload_team_logos
 
 
 class Migration(migrations.Migration):
@@ -34,8 +34,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="team",
             name="image",
-            field=models.FileField(
-                blank=True, max_length=256, upload_to=server.models.upload_team_logos
-            ),
+            field=models.FileField(blank=True, max_length=256, upload_to=upload_team_logos),
         ),
     ]

@@ -2,7 +2,7 @@
 
 from django.db import migrations, models
 
-import server.models
+from server.core.models import upload_vaccination_certificates
 
 
 class Migration(migrations.Migration):
@@ -15,7 +15,7 @@ class Migration(migrations.Migration):
             model_name="vaccination",
             name="certificate",
             field=models.FileField(
-                blank=True, max_length=256, upload_to=server.models.upload_vaccination_certificates
+                blank=True, max_length=256, upload_to=upload_vaccination_certificates
             ),
         ),
     ]

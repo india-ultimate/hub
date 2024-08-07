@@ -3,7 +3,7 @@ from typing import Any
 from django.conf import settings
 from django.core.management.base import BaseCommand
 
-from server.models import Accreditation, Vaccination
+from server.core.models import Accreditation, Vaccination
 
 
 class Command(BaseCommand):

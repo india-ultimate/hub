@@ -2,8 +2,9 @@ from io import StringIO
 
 from django.test import TestCase
 
+from server.core.models import Player, User
 from server.lib.membership import get_membership_status
-from server.models import Membership, Player, User
+from server.membership.models import Membership
 
 
 class MembershipStatusTestCase(TestCase):

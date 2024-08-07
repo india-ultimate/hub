@@ -18,21 +18,21 @@ from server.constants import (
     EVENT_MEMBERSHIP_AMOUNT,
     SPONSORED_ANNUAL_MEMBERSHIP_AMOUNT,
 )
-from server.models import (
-    Event,
+from server.core.models import (
     Guardianship,
+    Player,
+    UCPerson,
+    User,
+)
+from server.membership.models import (
     ManualTransaction,
-    Match,
     Membership,
     PhonePeTransaction,
-    Player,
     RazorpayTransaction,
-    UCPerson,
-    UCRegistration,
-    User,
 )
 from server.tests.base import ApiBaseTestCase, create_pool, fake_id, fake_order, start_tournament
 from server.tests.test_membership import MembershipStatusTestCase
+from server.tournament.models import Event, Match, UCRegistration
 
 
 class TestLogin(ApiBaseTestCase):

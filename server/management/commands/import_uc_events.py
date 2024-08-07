@@ -2,8 +2,8 @@ from typing import Any
 
 from django.core.management.base import BaseCommand, CommandParser
 
-from server.models import Event
 from server.top_score_utils import TopScoreClient
+from server.tournament.models import Event
 
 
 class Command(BaseCommand):

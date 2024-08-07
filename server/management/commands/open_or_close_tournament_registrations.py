@@ -3,7 +3,7 @@ from typing import Any
 from django.core.management.base import BaseCommand
 from django.utils.timezone import now
 
-from server.models import Tournament
+from server.tournament.models import Tournament
 
 
 class Command(BaseCommand):

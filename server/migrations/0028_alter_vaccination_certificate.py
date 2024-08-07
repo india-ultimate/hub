@@ -2,7 +2,7 @@
 
 from django.db import migrations, models
 
-import server.models
+from server.core.models import upload_vaccination_certificates
 
 
 class Migration(migrations.Migration):
@@ -14,8 +14,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name="vaccination",
             name="certificate",
-            field=models.FileField(
-                blank=True, upload_to=server.models.upload_vaccination_certificates
-            ),
+            field=models.FileField(blank=True, upload_to=upload_vaccination_certificates),
         ),
     ]
