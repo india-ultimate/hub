@@ -8,7 +8,7 @@ from phonepe.sdk.pg.env import Env
 from phonepe.sdk.pg.payments.v1.models.request.pg_pay_request import PgPayRequest
 from phonepe.sdk.pg.payments.v1.payment_client import PhonePePaymentClient
 
-from server.models import User
+from server.core.models import User
 
 env = Env.UAT if not settings.PHONEPE_PRODUCTION else Env.PROD
 phonepe_client = PhonePePaymentClient(

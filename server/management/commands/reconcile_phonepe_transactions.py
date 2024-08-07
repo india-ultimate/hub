@@ -3,7 +3,7 @@ from typing import Any
 from django.core.management.base import BaseCommand
 
 from server.api import check_and_update_phonepe_transaction
-from server.models import PhonePeTransaction
+from server.membership.models import PhonePeTransaction
 
 
 class Command(BaseCommand):

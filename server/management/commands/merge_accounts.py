@@ -5,16 +5,18 @@ from django.core.management.base import BaseCommand, CommandError, CommandParser
 from django.db.utils import IntegrityError
 from prettytable import PrettyTable
 
-from server.models import (
+from server.core.models import (
     Guardianship,
+    Player,
+    User,
+)
+from server.membership.models import (
     ManualTransaction,
     Membership,
     PhonePeTransaction,
-    Player,
     RazorpayTransaction,
-    UCRegistration,
-    User,
 )
+from server.tournament.models import UCRegistration
 
 
 def calculate_completeness_score(username: str) -> tuple[float, dict[str, Any]]:

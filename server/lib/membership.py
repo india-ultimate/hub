@@ -3,7 +3,7 @@ from io import StringIO
 from pathlib import Path
 from typing import Any
 
-from server.models import Player
+from server.core.models import Player
 
 EMAIL_HEADER_NAME = "email"
 

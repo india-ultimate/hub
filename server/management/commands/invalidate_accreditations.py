@@ -4,7 +4,7 @@ from dateutil.relativedelta import relativedelta
 from django.core.management.base import BaseCommand
 from django.utils.timezone import now
 
-from server.models import Accreditation
+from server.core.models import Accreditation
 
 
 class Command(BaseCommand):

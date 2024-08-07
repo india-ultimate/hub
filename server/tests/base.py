@@ -6,16 +6,18 @@ from typing import Any
 from django.test import TestCase
 from django.utils.timezone import now
 
-from server.models import (
+from server.core.models import (
+    Player,
+    Team,
+    UCPerson,
+    User,
+)
+from server.tournament.models import (
     Event,
     Match,
-    Player,
     Pool,
-    Team,
     Tournament,
-    UCPerson,
     UCRegistration,
-    User,
 )
 
 

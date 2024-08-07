@@ -8,7 +8,7 @@ import django
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "hub.settings")
 django.setup()
 
-from server.models import User
+from server.core.models import User
 
 DEV_EMAIL = "developer@example.com"
 

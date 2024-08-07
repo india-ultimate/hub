@@ -5,12 +5,7 @@ from functools import cmp_to_key, partial
 
 from django.db.models import Q
 
-from server.core.models import (
-    Player,
-    Team,
-    UCPerson,
-    User,
-)
+from server.core.models import Player, Team, UCPerson, User
 from server.schema import SpiritScoreUpdateSchema
 from server.types import validation_error_dict
 from server.utils import ordinal_suffix

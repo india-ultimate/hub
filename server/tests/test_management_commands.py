@@ -6,13 +6,15 @@ from django.core.management import call_command
 from django.test import TestCase
 from django.utils.timezone import now
 
-from server.models import (
+from server.core.models import (
     Accreditation,
     Guardianship,
-    ManualTransaction,
-    Membership,
     Player,
     Vaccination,
+)
+from server.membership.models import (
+    ManualTransaction,
+    Membership,
 )
 
 User = get_user_model()

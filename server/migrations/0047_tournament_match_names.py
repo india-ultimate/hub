@@ -2,7 +2,7 @@ from django.db import migrations
 from django.db.backends.base.schema import BaseDatabaseSchemaEditor
 from django.db.migrations.state import StateApps
 
-from server.tournament import get_bracket_match_name
+from server.tournament.utils import get_bracket_match_name
 
 
 def generate_pool_match_names(apps: StateApps, is_pool: bool) -> None:

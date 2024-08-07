@@ -7,9 +7,10 @@ from django.utils.timezone import now
 from seleniumbase import BaseCase
 
 from hub.settings import BASE_DIR
-from server.models import Event, Player, User
+from server.core.models import Player, User
 from server.tests.localserver import running_test_server
 from server.tests.utils import create_empty_directory, get_otp_from_email_logs
+from server.tournament.models import Event
 
 
 def create_login_user() -> tuple[str, str, int]:

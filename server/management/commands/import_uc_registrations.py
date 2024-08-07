@@ -7,8 +7,9 @@ from django.core.management.base import BaseCommand, CommandError, CommandParser
 from django.db.utils import IntegrityError
 from django.utils.timezone import now
 
-from server.models import Event, Player, Team, UCPerson, UCRegistration
+from server.core.models import Player, Team, UCPerson
 from server.top_score_utils import TopScoreClient
+from server.tournament.models import Event, UCRegistration
 
 
 def to_date(date: str) -> datetime.date:
