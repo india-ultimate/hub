@@ -77,7 +77,7 @@ class Tournament(ExportModelOperationsMixin("tournament"), models.Model):  # typ
 def update_seeding_on_teams_change(
     sender: Any, instance: Tournament, action: str, **kwargs: Any
 ) -> None:
-    if action == "post_add":
+    if action in ("post_add", "post_remove"):
         seeding = {}
 
         for i, team in enumerate(instance.teams.all(), start=1):
