@@ -3,32 +3,36 @@ from typing import Any
 from django.db.models import QuerySet
 from ninja import ModelSchema, Schema
 
-from server.models import (
+from server.core.models import (
     Accreditation,
-    Bracket,
     CollegeId,
     CommentaryInfo,
-    CrossPool,
-    Event,
     Guardianship,
-    ManualTransaction,
-    Match,
-    MatchScore,
-    Membership,
-    PhonePeTransaction,
     Player,
-    Pool,
-    PositionPool,
-    RazorpayTransaction,
-    Registration,
-    SpiritScore,
     Team,
-    Tournament,
-    TournamentField,
     UCPerson,
-    UCRegistration,
     User,
     Vaccination,
+)
+from server.membership.models import (
+    ManualTransaction,
+    Membership,
+    PhonePeTransaction,
+    RazorpayTransaction,
+)
+from server.tournament.models import (
+    Bracket,
+    CrossPool,
+    Event,
+    Match,
+    MatchScore,
+    Pool,
+    PositionPool,
+    Registration,
+    SpiritScore,
+    Tournament,
+    TournamentField,
+    UCRegistration,
 )
 from server.utils import mask_string
 

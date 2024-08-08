@@ -29,33 +29,24 @@ from ninja.pagination import PageNumberPagination, paginate
 from ninja.security import django_auth
 
 from server.constants import EVENT_MEMBERSHIP_AMOUNT, MEMBERSHIP_END, MEMBERSHIP_START
-from server.lib.manual_transactions import validate_manual_transactions
-from server.lib.membership import get_membership_status
-from server.models import (
+from server.core.models import (
     Accreditation,
-    Bracket,
     CollegeId,
     CommentaryInfo,
-    CrossPool,
-    Event,
     Guardianship,
-    ManualTransaction,
-    Match,
-    MatchScore,
-    Membership,
-    PhonePeTransaction,
     Player,
-    Pool,
-    PositionPool,
-    RazorpayTransaction,
-    Registration,
     Team,
-    Tournament,
-    TournamentField,
     UCPerson,
-    UCRegistration,
     User,
     Vaccination,
+)
+from server.lib.manual_transactions import validate_manual_transactions
+from server.lib.membership import get_membership_status
+from server.membership.models import (
+    ManualTransaction,
+    Membership,
+    PhonePeTransaction,
+    RazorpayTransaction,
 )
 from server.passkey_utils import PassKeyClient
 from server.phonepe_utils import (
@@ -138,7 +129,20 @@ from server.schema import (
     WaiverFormSchema,
 )
 from server.top_score_utils import TopScoreClient
-from server.tournament import (
+from server.tournament.models import (
+    Bracket,
+    CrossPool,
+    Event,
+    Match,
+    MatchScore,
+    Pool,
+    PositionPool,
+    Registration,
+    Tournament,
+    TournamentField,
+    UCRegistration,
+)
+from server.tournament.utils import (
     create_bracket_matches,
     create_pool_matches,
     create_position_pool_matches,
