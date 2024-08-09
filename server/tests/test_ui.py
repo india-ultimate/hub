@@ -57,7 +57,7 @@ class TestIntegration(BaseCase):
         create_empty_directory(test_email_dir)
 
     @pytest.mark.skipif(
-        not os.environ.get("PHONEPE_MERCHANT_ID"), reason="no PhonePe configuration found"
+        not os.environ.get("RAZORPAY_KEY_ID"), reason="no Razorpay configuration found"
     )
     def test_new_user_login(self) -> None:
         username, password, user_id = create_login_user()
@@ -100,21 +100,21 @@ class TestIntegration(BaseCase):
             self.assert_element(f'a[href="/waiver/{player_id}"]')
             print("Successfully registered!")
 
-            # self.click(f'a[href="/membership/{player_id}"]')
-            # self.js_click("div.my-2 label div")
-            # self.click("select#event")
-            # self.assert_element("select#event option")
-            # self.check_if_unchecked("input")
-            # self.assert_element('button:contains("Pay")')
-            # self.click('button:contains("Pay")')
+            self.click(f'a[href="/membership/{player_id}"]')
+            self.js_click("div.my-2 label div")
+            self.click("select#event")
+            self.assert_element("select#event option")
+            self.check_if_unchecked("input")
+            self.assert_element('button:contains("Pay")')
+            self.click('button:contains("Pay")')
 
-            # Redirect to PhonePe page
-            # self.js_click("input#net-banking", timeout=45)
-            # self.js_click("button#b2bOnboardingSubmitButton")
-            # self.type("input#username", "test")
-            # self.type("input#password", "test\n")
-            # self.click('input[value="Confirm"]')
-            # self.save_screenshot_to_logs("pay-clicked.png")
+            # Redirect to Razorpay modal
+            self.js_click('button[method="upi"]', timeout=45)
+            self.js_click("div.upi-field-container")
+            self.type("input#username", "test")
+            self.type("input#password", "test\n")
+            self.click('input[value="Confirm"]')
+            self.save_screenshot_to_logs("pay-clicked.png")
 
             self.click("#my-account", timeout=45)
             self.click(f'a[href="/vaccination/{player_id}"]')
@@ -122,10 +122,10 @@ class TestIntegration(BaseCase):
             self.choose_file("input#certificate", "frontend/assets/favico.png")
             self.click('button:contains("Submit")')
             self.click("div#root section div")
-            # self.click(f'a[href="/waiver/{player_id}"]')
-            # self.js_click("input#waiver")
-            # self.js_click("input#legal")
-            # self.click('button:contains("I Agree")')
+            self.click(f'a[href="/waiver/{player_id}"]')
+            self.js_click("input#waiver")
+            self.js_click("input#legal")
+            self.click('button:contains("I Agree")')
 
             self.click("#my-account")
             self.assert_element("div#accordion-body-player div div table tbody tr:nth-of-type(7)")
