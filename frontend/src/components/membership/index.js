@@ -10,19 +10,18 @@ import {
   minAge,
   minAgeWarning,
   sponsoredAnnualMembershipFee
-} from "../constants";
-import { useStore } from "../store";
+} from "../../constants";
+import { useStore } from "../../store";
 import {
   displayDate,
   findPlayerById,
   getAge,
   membershipYearOptions
-} from "../utils";
-import Breadcrumbs from "./Breadcrumbs";
+} from "../../utils";
+import Breadcrumbs from "../Breadcrumbs";
+import RazorpayPayment from "../RazorpayPayment";
+import StatusStepper from "../StatusStepper";
 import MembershipEventSelector from "./MembershipEventSelector";
-import RazorpayPayment from "./RazorpayPayment";
-// import PhonePePayment from "./PhonePePayment";
-import StatusStepper from "./StatusStepper";
 
 const Membership = () => {
   const [store] = useStore();
@@ -154,8 +153,7 @@ const Membership = () => {
             annual={annual()}
             startDate={startDate()}
             endDate={endDate()}
-          />
-          s{" "}
+          />{" "}
           <Show when={ageRestricted()}>
             <div
               class="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-800 dark:bg-gray-800 dark:text-red-400"
