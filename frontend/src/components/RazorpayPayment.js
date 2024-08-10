@@ -3,7 +3,6 @@ import { createSignal, onMount, Show } from "solid-js";
 import { Spinner } from "../icons";
 import { useStore } from "../store";
 import { fetchUserData, getCookie, loadRazorpayScript } from "../utils";
-import ManualPaymentModal from "./ManualPaymentModal";
 
 const RazorpayPayment = props => {
   const [loading, setLoading] = createSignal(false);
@@ -127,7 +126,7 @@ const RazorpayPayment = props => {
       >
         Pay
       </button>
-      <div
+      {/* <div
         class="mb-4 rounded-lg bg-yellow-50 p-4 text-sm text-yellow-800 dark:bg-gray-800 dark:text-yellow-300"
         role="alert"
       >
@@ -149,7 +148,7 @@ const RazorpayPayment = props => {
             />
           </div>
         </details>
-      </div>
+      </div> */}
     </>
   );
 };
