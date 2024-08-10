@@ -1,7 +1,7 @@
 import { createEffect, createSignal, For, onMount, Show } from "solid-js";
 
-import { eventMembershipFee } from "../constants";
-import { displayDate, fetchUrl } from "../utils";
+import { eventMembershipFee } from "../../constants";
+import { displayDate, fetchUrl } from "../../utils";
 
 const MembershipEventSelector = props => {
   const [events, setEvents] = createSignal([]);
