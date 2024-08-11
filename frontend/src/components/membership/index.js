@@ -112,6 +112,67 @@ const Membership = () => {
       >
         <h3>Renew membership for {player()?.full_name}</h3>
 
+        <div class="my-2 rounded-lg bg-blue-50 p-4 text-sm " role="alert">
+          <details>
+            <summary class="text-blue-600">
+              More Information about India Ultimate Membership
+            </summary>
+            <div class="my-2 space-y-2 text-sm">
+              <p>
+                The membership fees are designed to cover the bare-bone needs of
+                the organisation. Which is paying WFDF, Auditor, Accounting and
+                legal fees along with the expense of 1 Ops executive.
+              </p>
+              <ul class="list-inside list-disc space-y-1">
+                <li>Annual Membership fee for 2024-25: INR 700</li>
+                <li>Discounted membership fee for 2024-25: INR 200 </li>
+              </ul>
+              <h2 class="text-base font-semibold text-gray-600 dark:text-white">
+                Discounted Membership:
+              </h2>
+              <ul class="list-inside list-disc space-y-1">
+                <li>
+                  IU operations will be able to grant a Case by Case Waiver to
+                  those who have a genuine need. The decision taken by the
+                  Operations team will be final on this.
+                </li>
+                <li>
+                  We request you to not avail this unless necessary. Every
+                  contribution helps us to add to a more robust team who can
+                  work towards the growth of Ultimate in the country.{" "}
+                </li>
+              </ul>
+              <h2 class="text-base font-semibold text-gray-600 dark:text-white">
+                Apart from helping sustain India Ultimate, what does your
+                membership get you?
+              </h2>
+              <ul class="list-inside list-disc space-y-1">
+                <li>
+                  Opportunity to participate in all state/national tryouts
+                </li>
+                <li>Access to all IU tournaments, 7+ annually</li>
+                <li>
+                  Opportunity for you to participate in WFDF recognised events
+                  through your club
+                </li>
+                <li>Access to all coaching certification programs</li>
+                <li>
+                  Opportunity to voice your opinion with issues and decisions in
+                  IU going ahead
+                </li>
+                <li>
+                  Credibility of your participation -- Certificates &
+                  recognition
+                </li>
+                <li>
+                  All access to the present future features of the Hub such as
+                  rostering statistics, schedules, live scores etc.
+                </li>
+              </ul>
+            </div>
+          </details>
+        </div>
+
         <div class="my-2">
           <label class="relative inline-flex cursor-pointer items-center">
             <input
