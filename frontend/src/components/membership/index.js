@@ -21,7 +21,6 @@ import {
 import Breadcrumbs from "../Breadcrumbs";
 import RazorpayPayment from "../RazorpayPayment";
 import StatusStepper from "../StatusStepper";
-import MembershipEventSelector from "./MembershipEventSelector";
 
 const Membership = () => {
   const [store] = useStore();
@@ -33,10 +32,10 @@ const Membership = () => {
   const [year, setYear] = createSignal(years?.[0]);
   const [startDate, setStartDate] = createSignal("");
   const [endDate, setEndDate] = createSignal("");
-  const [annual, setAnnual] = createSignal(true);
+  const [annual, _setAnnual] = createSignal(true);
   const [ageRestricted, setAgeRestricted] = createSignal(false);
 
-  const [event, setEvent] = createSignal();
+  const [event, _setEvent] = createSignal();
 
   const [status, setStatus] = createSignal();
 
@@ -174,7 +173,7 @@ const Membership = () => {
         </div>
 
         <div class="my-2">
-          <label class="relative inline-flex cursor-pointer items-center">
+          {/* <label class="relative inline-flex cursor-pointer items-center">
             <input
               type="checkbox"
               value=""
@@ -186,7 +185,7 @@ const Membership = () => {
             <span class="ml-3 text-sm font-medium text-gray-900 dark:text-gray-300">
               Annual membership
             </span>
-          </label>
+          </label> */}
           <Show when={annual()}>
             <select
               id="year"
@@ -208,13 +207,13 @@ const Membership = () => {
               period from {displayDate(startDate())} to {displayDate(endDate())}
             </p>
           </Show>
-          <MembershipEventSelector
+          {/* <MembershipEventSelector
             event={event()}
             setEvent={setEvent}
             annual={annual()}
             startDate={startDate()}
             endDate={endDate()}
-          />{" "}
+          /> */}
           <Show when={ageRestricted()}>
             <div
               class="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-800 dark:bg-gray-800 dark:text-red-400"
