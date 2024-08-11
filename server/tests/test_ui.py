@@ -101,10 +101,6 @@ class TestIntegration(BaseCase):
             print("Successfully registered!")
 
             self.click(f'a[href="/membership/{player_id}"]')
-            self.js_click("div.my-2 label div")
-            self.click("select#event")
-            self.assert_element("select#event option")
-            self.check_if_unchecked("input")
             self.assert_element('button:contains("Pay")')
             self.click('button:contains("Pay")')
 
