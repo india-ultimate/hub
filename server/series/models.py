@@ -3,13 +3,8 @@ from django.utils.translation import gettext_lazy as _
 from django_prometheus.models import ExportModelOperationsMixin
 
 from server.core.models import Player, Team, User
+from server.season.models import Season
 from server.utils import default_invitation_expiry_date
-
-
-class Season(ExportModelOperationsMixin("season"), models.Model):  # type: ignore[misc]
-    start_date = models.DateField()
-    end_date = models.DateField()
-    name = models.CharField(max_length=255)
 
 
 class Series(ExportModelOperationsMixin("series"), models.Model):  # type: ignore[misc]

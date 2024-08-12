@@ -17,8 +17,10 @@ from server.membership.models import (  # noqa: F401
     PhonePeTransaction,
     RazorpayTransaction,
 )
-from server.series.models import (  # noqa: F401
+from server.season.models import (  # noqa: F401
     Season,
+)
+from server.series.models import (  # noqa: F401
     Series,
     SeriesRegistration,
     SeriesRosterInvitation,
