@@ -197,8 +197,6 @@ const AddPlayerRegistrationForm = componentProps => {
     get rowCount() {
       return dataQuery.data?.count;
     },
-    // pageCount: dataQuery.data?.count ?? -1, //you can now pass in `rowCount` instead of pageCount and `pageCount` will be calculated internally (new in v8.13.0)
-    // rowCount: dataQuery.data?.count, // new in v8.13.0 - alternatively, just pass in `pageCount` directly
     get state() {
       return {
         get pagination() {
@@ -208,9 +206,7 @@ const AddPlayerRegistrationForm = componentProps => {
     },
     onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
-    manualPagination: true, //we're doing manual "server-side" pagination
-    // getPaginationRowModel: getPaginationRowModel(), // If only doing manual pagination, you don't need this
-    debugTable: true
+    manualPagination: true
   });
 
   return (
