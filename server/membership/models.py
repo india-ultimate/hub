@@ -63,6 +63,7 @@ class RazorpayTransaction(ExportModelOperationsMixin("razorpay_transaction"), mo
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     players = models.ManyToManyField(Player)
     event = models.ForeignKey(Event, on_delete=models.SET_NULL, blank=True, null=True)
+    season = models.ForeignKey(Season, on_delete=models.SET_NULL, blank=True, null=True)
 
     def __str__(self) -> str:
         return self.order_id
