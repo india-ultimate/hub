@@ -87,10 +87,13 @@ class Team(ExportModelOperationsMixin("team"), models.Model):  # type: ignore[mi
     class CategoryTypes(models.TextChoices):
         CLUB = "Club", _("Club")
         COLLEGE = "College", _("College")
+        SCHOOL = "School", _("School")
         STATE = "State", _("State")
         NATIONAL = "National", _("National")
 
-    category = models.CharField(max_length=25, choices=CategoryTypes.choices, null=True, blank=True)
+    category = models.CharField(
+        max_length=25, choices=CategoryTypes.choices, default=CategoryTypes.CLUB
+    )
 
     def save(self, *args: Any, **kwargs: Any) -> None:
         if not self.slug:
