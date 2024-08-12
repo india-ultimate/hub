@@ -8,6 +8,7 @@ from django.utils.translation import gettext_lazy as _
 from django_prometheus.models import ExportModelOperationsMixin
 
 from server.core.models import Player, User
+from server.season.models import Season
 from server.tournament.models import Event
 
 
@@ -22,6 +23,7 @@ class Membership(ExportModelOperationsMixin("membership"), models.Model):  # typ
     waiver_valid = models.BooleanField(default=False)
     waiver_signed_by = models.ForeignKey(User, on_delete=models.SET_NULL, blank=True, null=True)
     waiver_signed_at = models.DateTimeField(blank=True, null=True)
+    season = models.ForeignKey(Season, on_delete=models.CASCADE, blank=True, null=True)
 
 
 def create_transaction_from_order_data(cls: Any, data: dict[str, Any]) -> Any:
