@@ -276,6 +276,15 @@ class TeamSchema(ModelSchema):
         model_fields = "__all__"
 
 
+class TeamMinSchema(ModelSchema):
+    name: str
+    slug: str
+
+    class Config:
+        model = Team
+        model_fields = ["name", "slug"]
+
+
 class TeamCreateSchema(Schema):
     name: str
     category: str
@@ -443,6 +452,18 @@ class PlayerTinySchema(ModelSchema):
             "educational_institution",
             "sponsored",
         ]
+
+
+class PlayerMinSchema(ModelSchema):
+    full_name: str
+
+    @staticmethod
+    def resolve_full_name(player: Player) -> str:
+        return player.user.get_full_name()
+
+    class Config:
+        model = Player
+        model_fields = ["state_ut", "match_up"]
 
 
 class PersonSchema(ModelSchema):
