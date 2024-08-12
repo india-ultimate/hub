@@ -11,15 +11,13 @@ import { createEffect, createSignal, For, Match, Show, Switch } from "solid-js";
 
 import {
   annualMembershipFee,
-  membershipEndDate,
-  membershipStartDate,
   minAge,
   minAgeWarning,
   sponsoredAnnualMembershipFee
 } from "../../constants";
 import { ChevronLeft, ChevronRight, Spinner } from "../../icons";
 import { searchPlayers } from "../../queries";
-import { displayDate, membershipYearOptions } from "../../utils";
+import { displayDate } from "../../utils";
 import Info from "../alerts/Info";
 import RazorpayPayment from "../RazorpayPayment";
 import MembershipPlayerList from "./MembershipPlayerList";
@@ -268,23 +266,14 @@ const PlayerSearchDropdown = componentProps => {
   );
 };
 
-const GroupMembership = () => {
+const GroupMembership = props => {
   const [status, setStatus] = createSignal();
-
-  const years = membershipYearOptions();
-  const [year, setYear] = createSignal(years?.[0]);
-  const [startDate, setStartDate] = createSignal("");
-  const [endDate, setEndDate] = createSignal("");
 
   const [payingPlayers, setPayingPlayers] = createSignal([]);
   const [paymentSuccess, setPaymentSuccess] = createSignal(false);
 
   const paymentSuccessCallback = () => {
     setPaymentSuccess(true);
-  };
-
-  const handleYearChange = e => {
-    setYear(Number(e.target.value));
   };
 
   const handlePlayerPayingStatus = (player, isPaying) => {
@@ -304,18 +293,6 @@ const GroupMembership = () => {
     }
   };
 
-  const formatDate = dateArray => {
-    const [dd, mm, YYYY] = dateArray;
-    const DD = dd.toString().padStart(2, "0");
-    const MM = mm.toString().padStart(2, "0");
-    return `${YYYY}-${MM}-${DD}`;
-  };
-
-  createEffect(() => {
-    setStartDate(formatDate([...membershipStartDate, year()]));
-    setEndDate(formatDate([...membershipEndDate, year() + 1]));
-  });
-
   const [payDisabled, setPayDisabled] = createSignal(false);
   createEffect(() => {
     setPayDisabled(payingPlayers().length === 0);
@@ -333,21 +310,6 @@ const GroupMembership = () => {
 
   return (
     <div>
-      <select
-        id="year"
-        class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
-        value={year()}
-        onInput={handleYearChange}
-        required
-      >
-        <For each={years}>
-          {year => (
-            <option value={year}>
-              {year} &mdash; {year + 1}
-            </option>
-          )}
-        </For>
-      </select>
       <Show when={!paymentSuccess()}>
         <PlayerSearchDropdown
           payingPlayers={payingPlayers()}
@@ -357,8 +319,8 @@ const GroupMembership = () => {
       <MembershipPlayerList
         players={payingPlayers()}
         fee={getAmount()}
-        startDate={displayDate(startDate())}
-        endDate={displayDate(endDate())}
+        startDate={displayDate(props.season?.start_date)}
+        endDate={displayDate(props.season?.end_date)}
         onPlayerPayingStatusChange={handlePlayerPayingStatus}
       />
       <Show when={payingPlayers()?.find(p => p.is_minor)}>
@@ -367,7 +329,7 @@ const GroupMembership = () => {
           role="alert"
         >
           * {minAgeWarning} Please ensure that all the players are atleast{" "}
-          {minAge} years old before {displayDate(endDate())}.
+          {minAge} years old before {displayDate(props.season?.end_date)}.
         </div>
       </Show>
       <div>
@@ -376,7 +338,7 @@ const GroupMembership = () => {
             <RazorpayPayment
               disabled={payDisabled() || payingPlayers().length === 0}
               annual={true}
-              year={year()}
+              season={props.season}
               player_ids={payingPlayers().map(p => p.id)}
               amount={getAmount()}
               setStatus={setStatus}

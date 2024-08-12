@@ -47,6 +47,15 @@ export const displayDate = dateString => {
   return date;
 };
 
+export const razorpayScriptExists = () => {
+  var scripts = document.getElementsByTagName("script");
+  for (var i = scripts.length; i--; ) {
+    if (scripts[i].src == "https://checkout.razorpay.com/v1/checkout.js")
+      return true;
+  }
+  return false;
+};
+
 export const loadRazorpayScript = () => {
   return new Promise(resolve => {
     const script = document.createElement("script");

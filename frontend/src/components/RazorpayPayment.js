@@ -2,7 +2,12 @@ import { createSignal, onMount, Show } from "solid-js";
 
 import { Spinner } from "../icons";
 import { useStore } from "../store";
-import { fetchUserData, getCookie, loadRazorpayScript } from "../utils";
+import {
+  fetchUserData,
+  getCookie,
+  loadRazorpayScript,
+  razorpayScriptExists
+} from "../utils";
 
 const RazorpayPayment = props => {
   const [loading, setLoading] = createSignal(false);
@@ -10,14 +15,14 @@ const RazorpayPayment = props => {
   const [_, { userFetchSuccess, userFetchFailure }] = useStore();
 
   onMount(async () => {
-    const res = await loadRazorpayScript(
-      "https://checkout.razorpay.com/v1/checkout.js"
-    );
+    if (!razorpayScriptExists()) {
+      const res = await loadRazorpayScript();
 
-    if (!res) {
-      props.setStatus(
-        "Razorpay SDK failed to load. please check are you online?"
-      );
+      if (!res) {
+        props.setStatus(
+          "Razorpay SDK failed to load. please check are you online?"
+        );
+      }
     }
   });
 
