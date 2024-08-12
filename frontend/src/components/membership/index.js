@@ -20,7 +20,7 @@ import {
 } from "../../utils";
 import Breadcrumbs from "../Breadcrumbs";
 import RazorpayPayment from "../RazorpayPayment";
-import StatusStepper from "../StatusStepper";
+import GroupMembership from "./GroupMembership";
 
 const Membership = () => {
   const [store] = useStore();
@@ -99,80 +99,117 @@ const Membership = () => {
         ]}
       />
       <h1 class="text-2xl font-bold text-blue-500">Membership</h1>
-      <Show
-        when={!membership()?.is_active}
-        fallback={
-          <div id="membership-exist">
-            Membership for {player().full_name} is active until{" "}
-            {displayDate(membership().end_date)}
-            <StatusStepper player={player()} />
+
+      <div class="my-2 rounded-lg bg-blue-50 p-4 text-sm " role="alert">
+        <details>
+          <summary class="text-blue-600">
+            More Information about India Ultimate Membership
+          </summary>
+          <div class="my-2 space-y-2 text-sm">
+            <p>
+              The membership fees are designed to cover the bare-bone needs of
+              the organisation. Which is paying WFDF, Auditor, Accounting and
+              legal fees along with the expense of 1 Ops executive.
+            </p>
+            <ul class="list-inside list-disc space-y-1">
+              <li>Annual Membership fee for 2024-25: INR 700</li>
+              <li>Discounted membership fee for 2024-25: INR 200 </li>
+            </ul>
+            <h2 class="text-base font-semibold text-gray-600 dark:text-white">
+              Discounted Membership:
+            </h2>
+            <ul class="list-inside list-disc space-y-1">
+              <li>
+                IU operations will be able to grant a Case by Case Waiver to
+                those who have a genuine need. The decision taken by the
+                Operations team will be final on this.
+              </li>
+              <li>
+                We request you to not avail this unless necessary. Every
+                contribution helps us to add to a more robust team who can work
+                towards the growth of Ultimate in the country.{" "}
+              </li>
+            </ul>
+            <h2 class="text-base font-semibold text-gray-600 dark:text-white">
+              Apart from helping sustain India Ultimate, what does your
+              membership get you?
+            </h2>
+            <ul class="list-inside list-disc space-y-1">
+              <li>Opportunity to participate in all state/national tryouts</li>
+              <li>Access to all IU tournaments, 7+ annually</li>
+              <li>
+                Opportunity for you to participate in WFDF recognised events
+                through your club
+              </li>
+              <li>Access to all coaching certification programs</li>
+              <li>
+                Opportunity to voice your opinion with issues and decisions in
+                IU going ahead
+              </li>
+              <li>
+                Credibility of your participation -- Certificates & recognition
+              </li>
+              <li>
+                All access to the present future features of the Hub such as
+                rostering statistics, schedules, live scores etc.
+              </li>
+            </ul>
           </div>
-        }
-      >
-        <h3>Renew membership for {player()?.full_name}</h3>
+        </details>
+      </div>
 
-        <div class="my-2 rounded-lg bg-blue-50 p-4 text-sm " role="alert">
-          <details>
-            <summary class="text-blue-600">
-              More Information about India Ultimate Membership
-            </summary>
-            <div class="my-2 space-y-2 text-sm">
-              <p>
-                The membership fees are designed to cover the bare-bone needs of
-                the organisation. Which is paying WFDF, Auditor, Accounting and
-                legal fees along with the expense of 1 Ops executive.
-              </p>
-              <ul class="list-inside list-disc space-y-1">
-                <li>Annual Membership fee for 2024-25: INR 700</li>
-                <li>Discounted membership fee for 2024-25: INR 200 </li>
-              </ul>
-              <h2 class="text-base font-semibold text-gray-600 dark:text-white">
-                Discounted Membership:
-              </h2>
-              <ul class="list-inside list-disc space-y-1">
-                <li>
-                  IU operations will be able to grant a Case by Case Waiver to
-                  those who have a genuine need. The decision taken by the
-                  Operations team will be final on this.
-                </li>
-                <li>
-                  We request you to not avail this unless necessary. Every
-                  contribution helps us to add to a more robust team who can
-                  work towards the growth of Ultimate in the country.{" "}
-                </li>
-              </ul>
-              <h2 class="text-base font-semibold text-gray-600 dark:text-white">
-                Apart from helping sustain India Ultimate, what does your
-                membership get you?
-              </h2>
-              <ul class="list-inside list-disc space-y-1">
-                <li>
-                  Opportunity to participate in all state/national tryouts
-                </li>
-                <li>Access to all IU tournaments, 7+ annually</li>
-                <li>
-                  Opportunity for you to participate in WFDF recognised events
-                  through your club
-                </li>
-                <li>Access to all coaching certification programs</li>
-                <li>
-                  Opportunity to voice your opinion with issues and decisions in
-                  IU going ahead
-                </li>
-                <li>
-                  Credibility of your participation -- Certificates &
-                  recognition
-                </li>
-                <li>
-                  All access to the present future features of the Hub such as
-                  rostering statistics, schedules, live scores etc.
-                </li>
-              </ul>
+      <div class="mb-4 border-b border-gray-200 dark:border-gray-700">
+        <ul
+          class="-mb-px flex flex-wrap justify-center text-center text-sm font-medium"
+          id="myTab"
+          data-tabs-toggle="#myTabContent"
+          role="tablist"
+        >
+          <li class="mr-2" role="presentation">
+            <button
+              class="inline-block rounded-t-lg border-b-2 p-4"
+              id="tab-individual"
+              data-tabs-target="#individual"
+              type="button"
+              role="tab"
+              aria-controls="individual"
+              aria-selected="false"
+            >
+              Individual Membership
+            </button>
+          </li>
+          <li class="mr-2" role="presentation">
+            <button
+              class="inline-block rounded-t-lg border-b-2 p-4"
+              id="tab-group"
+              data-tabs-target="#group"
+              type="button"
+              role="tab"
+              aria-controls="group"
+              aria-selected="false"
+            >
+              Group Membership
+            </button>
+          </li>
+        </ul>
+      </div>
+
+      <div id="individual">
+        <h1 class="text-lg font-semibold text-blue-500">
+          Individual Membership
+        </h1>
+        <h3 class="text-sm italic">
+          Renew membership for {player()?.full_name}
+        </h3>
+        <Show
+          when={!membership()?.is_active}
+          fallback={
+            <div id="membership-exist">
+              Membership for {player().full_name} is active until{" "}
+              {displayDate(membership().end_date)}
             </div>
-          </details>
-        </div>
-
-        <div class="my-2">
+          }
+        >
           {/* <label class="relative inline-flex cursor-pointer items-center">
             <input
               type="checkbox"
@@ -222,18 +259,27 @@ const Membership = () => {
               {minAgeWarning}
             </div>
           </Show>
+          <RazorpayPayment
+            disabled={payDisabled()}
+            annual={annual()}
+            year={year()}
+            event={event()}
+            player_id={player().id}
+            amount={getAmount()}
+            setStatus={setStatus}
+          />
+          <p>{status()}</p>
+        </Show>
+      </div>
+
+      <div class="space-y-2" id="group">
+        <div>
+          <h1 class="text-lg font-semibold text-blue-500">Group Membership</h1>
+          <h3 class="text-sm italic">Renew membership for a group</h3>
         </div>
-        <RazorpayPayment
-          disabled={payDisabled()}
-          annual={annual()}
-          year={year()}
-          event={event()}
-          player_id={player().id}
-          amount={getAmount()}
-          setStatus={setStatus}
-        />
-        <p>{status()}</p>
-      </Show>
+
+        <GroupMembership />
+      </div>
     </div>
   );
 };

@@ -1,7 +1,6 @@
 import { createQuery } from "@tanstack/solid-query";
 import { initFlowbite } from "flowbite";
 import { Icon } from "solid-heroicons";
-import { inboxStack } from "solid-heroicons/solid";
 import { magnifyingGlass } from "solid-heroicons/solid-mini";
 import {
   createEffect,
@@ -30,7 +29,6 @@ import {
   membershipYearOptions,
   playerMatches
 } from "../../utils";
-import Breadcrumbs from "../Breadcrumbs";
 import RazorpayPayment from "../RazorpayPayment";
 import MembershipPlayerList from "./MembershipPlayerList";
 
@@ -336,84 +334,73 @@ const GroupMembership = () => {
 
   return (
     <div>
-      <Breadcrumbs
-        icon={inboxStack}
-        pageList={[
-          { url: "/dashboard", name: "Dashboard" },
-          { name: "Group Membership" }
-        ]}
-      />
-      <h1 class="text-2xl font-bold text-blue-500">Group Membership</h1>
-      <h3>Renew membership for a group</h3>
-      <div class="my-2">
-        <select
-          id="year"
-          class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
-          value={year()}
-          onInput={handleYearChange}
-          required
-        >
-          <For each={years}>
-            {year => (
-              <option value={year}>
-                {year} &mdash; {year + 1}
-              </option>
-            )}
-          </For>
-        </select>
-        <Show when={!paymentSuccess()}>
-          <PlayerSearchDropdown
-            teams={teams()}
-            payingPlayers={payingPlayers()}
-            onPlayerChecked={handlePlayerChecked}
-          />
-        </Show>
-        <MembershipPlayerList
-          players={payingPlayers()}
-          fee={getAmount()}
-          startDate={displayDate(startDate())}
-          endDate={displayDate(endDate())}
+      <select
+        id="year"
+        class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
+        value={year()}
+        onInput={handleYearChange}
+        required
+      >
+        <For each={years}>
+          {year => (
+            <option value={year}>
+              {year} &mdash; {year + 1}
+            </option>
+          )}
+        </For>
+      </select>
+      <Show when={!paymentSuccess()}>
+        <PlayerSearchDropdown
+          teams={teams()}
+          payingPlayers={payingPlayers()}
+          onPlayerChecked={handlePlayerChecked}
         />
-        <Show when={payingPlayers()?.find(p => p.is_minor)}>
-          <div
-            class="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-800 dark:bg-gray-800 dark:text-red-400"
-            role="alert"
-          >
-            * {minAgeWarning} Please ensure that all the players are atleast{" "}
-            {minAge} years old before {displayDate(endDate())}.
-          </div>
-        </Show>
-        <div>
-          <Switch>
-            <Match when={!paymentSuccess()}>
-              <RazorpayPayment
-                disabled={payDisabled()}
-                annual={true}
-                year={year()}
-                player_ids={payingPlayers().map(p => p.id)}
-                amount={getAmount()}
-                setStatus={setStatus}
-                successCallback={paymentSuccessCallback}
-              />
-            </Match>
-            <Match when={paymentSuccess()}>
-              <button
-                class={`my-2 w-full rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 sm:w-auto ${
-                  payDisabled() ? "cursor-not-allowed" : ""
-                } `}
-                onClick={() => {
-                  setPaymentSuccess(false);
-                  setPayingPlayers([]);
-                  setStatus("");
-                  initFlowbite();
-                }}
-                disabled={!paymentSuccess()}
-              >
-                Make another Payment
-              </button>
-            </Match>
-          </Switch>
+      </Show>
+      <MembershipPlayerList
+        players={payingPlayers()}
+        fee={getAmount()}
+        startDate={displayDate(startDate())}
+        endDate={displayDate(endDate())}
+      />
+      <Show when={payingPlayers()?.find(p => p.is_minor)}>
+        <div
+          class="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-800 dark:bg-gray-800 dark:text-red-400"
+          role="alert"
+        >
+          * {minAgeWarning} Please ensure that all the players are atleast{" "}
+          {minAge} years old before {displayDate(endDate())}.
         </div>
+      </Show>
+      <div>
+        <Switch>
+          <Match when={!paymentSuccess()}>
+            <RazorpayPayment
+              disabled={payDisabled()}
+              annual={true}
+              year={year()}
+              player_ids={payingPlayers().map(p => p.id)}
+              amount={getAmount()}
+              setStatus={setStatus}
+              successCallback={paymentSuccessCallback}
+            />
+          </Match>
+          <Match when={paymentSuccess()}>
+            <button
+              class={`my-2 w-full rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 sm:w-auto ${
+                payDisabled() ? "cursor-not-allowed" : ""
+              } `}
+              onClick={() => {
+                setPaymentSuccess(false);
+                setPayingPlayers([]);
+                setStatus("");
+                initFlowbite();
+              }}
+              disabled={!paymentSuccess()}
+            >
+              Make another Payment
+            </button>
+          </Match>
+        </Switch>
       </div>
       <p>{status()}</p>
     </div>
