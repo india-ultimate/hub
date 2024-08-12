@@ -77,6 +77,15 @@ export const fetchTeams = async () => {
   return await response.json();
 };
 
+export const fetchSeasons = async () => {
+  const response = await fetch("/api/seasons", {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin"
+  });
+  return await response.json();
+};
+
 export const searchTeams = async (searchText, pagination) => {
   let baseUrl = "/api/teams/search";
   let params = new URLSearchParams();
