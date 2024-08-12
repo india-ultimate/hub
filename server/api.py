@@ -128,6 +128,7 @@ from server.schema import (
     ValidationStatsSchema,
     WaiverFormSchema,
 )
+from server.season.api import router as season_router
 from server.top_score_utils import TopScoreClient
 from server.tournament.models import (
     Bracket,
@@ -174,6 +175,10 @@ api = NinjaAPI(auth=django_auth, csrf=True)
 
 class AuthenticatedHttpRequest(HttpRequest):
     user: User
+
+
+# Routers
+api.add_router("/seasons", season_router)
 
 
 # User #########
