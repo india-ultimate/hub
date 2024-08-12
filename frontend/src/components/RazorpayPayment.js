@@ -24,12 +24,12 @@ const RazorpayPayment = props => {
   const initiatePayment = () => {
     const player_id = props?.player_id;
     const player_ids = props?.player_ids;
-    const year = props.year;
+    const season_id = props.season?.id;
     const event_id = props.event?.id;
     const data = props.annual
       ? player_ids
-        ? { player_ids, year }
-        : { player_id, year }
+        ? { player_ids, season_id }
+        : { player_id, season_id }
       : { player_id, event_id };
 
     setLoading(true);
