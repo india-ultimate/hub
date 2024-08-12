@@ -1,23 +1,19 @@
 import { useParams } from "@solidjs/router";
+import { createQuery } from "@tanstack/solid-query";
 import { inboxStack } from "solid-heroicons/solid";
 import { createEffect, createSignal, For, Show } from "solid-js";
 
 import {
   annualMembershipFee,
   eventMembershipFee,
-  membershipEndDate,
-  membershipStartDate,
   minAge,
   minAgeWarning,
   sponsoredAnnualMembershipFee
 } from "../../constants";
+import { fetchSeasons } from "../../queries";
 import { useStore } from "../../store";
-import {
-  displayDate,
-  findPlayerById,
-  getAge,
-  membershipYearOptions
-} from "../../utils";
+import { displayDate, findPlayerById, getAge } from "../../utils";
+import Info from "../alerts/Info";
 import Breadcrumbs from "../Breadcrumbs";
 import RazorpayPayment from "../RazorpayPayment";
 import GroupMembership from "./GroupMembership";
@@ -28,10 +24,7 @@ const Membership = () => {
   const [player, setPlayer] = createSignal();
   const [membership, setMembership] = createSignal();
 
-  const years = membershipYearOptions();
-  const [year, setYear] = createSignal(years?.[0]);
-  const [startDate, setStartDate] = createSignal("");
-  const [endDate, setEndDate] = createSignal("");
+  const [season, setSeason] = createSignal();
   const [annual, _setAnnual] = createSignal(true);
   const [ageRestricted, setAgeRestricted] = createSignal(false);
 
@@ -46,38 +39,31 @@ const Membership = () => {
     setMembership(player?.membership);
   });
 
-  const handleYearChange = e => {
-    setYear(Number(e.target.value));
-  };
-
-  const formatDate = dateArray => {
-    const [dd, mm, YYYY] = dateArray;
-    const DD = dd.toString().padStart(2, "0");
-    const MM = mm.toString().padStart(2, "0");
-    return `${YYYY}-${MM}-${DD}`;
-  };
+  const seasonsQuery = createQuery(() => ["seasons"], fetchSeasons);
 
   createEffect(() => {
-    if (annual()) {
-      // Set startDate and endDate based on selected year
-      setStartDate(formatDate([...membershipStartDate, year()]));
-      setEndDate(formatDate([...membershipEndDate, year() + 1]));
-    } else if (event()) {
-      setStartDate(event().start_date);
-      setEndDate(event().end_date);
+    if (seasonsQuery.isSuccess && seasonsQuery.data?.length > 0) {
+      setSeason(seasonsQuery.data[0]);
     }
   });
+
+  const handleSeasonChange = e => {
+    setSeason(
+      seasonsQuery.data?.filter(
+        season => season.id === Number(e.target.value)
+      )[0]
+    );
+  };
 
   const [payDisabled, setPayDisabled] = createSignal(false);
 
   createEffect(() => {
     const dob = player()?.date_of_birth;
-    const [endDay, endMonth] = membershipEndDate;
-    const seasonEnd = new Date(year() + 1, endMonth - 1, endDay);
+    const seasonEnd = new Date(season()?.end_date);
     const age = annual()
       ? getAge(dob, seasonEnd)
       : getAge(dob, new Date(event()?.start_date));
-    const noSelection = annual() ? !year() : !event();
+    const noSelection = annual() ? !season() : !event();
     setAgeRestricted(age < minAge);
     setPayDisabled(noSelection || age < minAge);
   });
@@ -158,59 +144,79 @@ const Membership = () => {
         </details>
       </div>
 
-      <div class="mb-4 border-b border-gray-200 dark:border-gray-700">
-        <ul
-          class="-mb-px flex flex-wrap justify-center text-center text-sm font-medium"
-          id="myTab"
-          data-tabs-toggle="#myTabContent"
-          role="tablist"
-        >
-          <li class="mr-2" role="presentation">
-            <button
-              class="inline-block rounded-t-lg border-b-2 p-4"
-              id="tab-individual"
-              data-tabs-target="#individual"
-              type="button"
-              role="tab"
-              aria-controls="individual"
-              aria-selected="false"
-            >
-              Individual Membership
-            </button>
-          </li>
-          <li class="mr-2" role="presentation">
-            <button
-              class="inline-block rounded-t-lg border-b-2 p-4"
-              id="tab-group"
-              data-tabs-target="#group"
-              type="button"
-              role="tab"
-              aria-controls="group"
-              aria-selected="false"
-            >
-              Group Membership
-            </button>
-          </li>
-        </ul>
-      </div>
+      <select
+        id="year"
+        class="mt-4 block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900  focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
+        value={season()?.id}
+        onInput={handleSeasonChange}
+        required
+      >
+        <For each={seasonsQuery.data || []}>
+          {season => <option value={season.id}>{season.name}</option>}
+        </For>
+      </select>
 
-      <div id="individual">
-        <h1 class="text-lg font-semibold text-blue-500">
-          Individual Membership
-        </h1>
-        <h3 class="text-sm italic">
-          Renew membership for {player()?.full_name}
-        </h3>
-        <Show
-          when={!membership()?.is_active}
-          fallback={
-            <div id="membership-exist">
-              Membership for {player().full_name} is active until{" "}
-              {displayDate(membership().end_date)}
-            </div>
-          }
-        >
-          {/* <label class="relative inline-flex cursor-pointer items-center">
+      <Show
+        when={season()}
+        fallback={
+          <div class="mt-4">
+            <Info text="Please select a season" />
+          </div>
+        }
+      >
+        <div class="mb-4 mt-2 border-b border-gray-200 dark:border-gray-700">
+          <ul
+            class="-mb-px flex flex-wrap justify-center text-center text-sm font-medium"
+            id="myTab"
+            data-tabs-toggle="#myTabContent"
+            role="tablist"
+          >
+            <li class="mr-2" role="presentation">
+              <button
+                class="inline-block rounded-t-lg border-b-2 p-4"
+                id="tab-individual"
+                data-tabs-target="#individual"
+                type="button"
+                role="tab"
+                aria-controls="individual"
+                aria-selected="false"
+              >
+                Individual Membership
+              </button>
+            </li>
+            <li class="mr-2" role="presentation">
+              <button
+                class="inline-block rounded-t-lg border-b-2 p-4"
+                id="tab-group"
+                data-tabs-target="#group"
+                type="button"
+                role="tab"
+                aria-controls="group"
+                aria-selected="false"
+              >
+                Group Membership
+              </button>
+            </li>
+          </ul>
+        </div>
+
+        <div id="individual">
+          <h1 class="text-lg font-semibold text-blue-500">
+            Individual Membership
+          </h1>
+          <h3 class="text-sm italic">
+            Renew membership for {player()?.full_name}
+          </h3>
+          <Show
+            when={!membership()?.is_active}
+            fallback={
+              <div id="membership-exist">
+                Membership for {player().full_name} is active until{" "}
+                {displayDate(membership().end_date)}
+              </div>
+            }
+          >
+            {/* <label class="relative inline-flex cursor-pointer items-center">
             <input
               type="checkbox"
               value=""
@@ -223,63 +229,52 @@ const Membership = () => {
               Annual membership
             </span>
           </label> */}
-          <Show when={annual()}>
-            <select
-              id="year"
-              class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
-              value={year()}
-              onInput={handleYearChange}
-              required
-            >
-              <For each={years}>
-                {year => (
-                  <option value={year}>
-                    {year} &mdash; {year + 1}
-                  </option>
-                )}
-              </For>
-            </select>
-            <p>
-              Pay India Ultimate membership fee (₹ {getAmount()}) valid for the
-              period from {displayDate(startDate())} to {displayDate(endDate())}
-            </p>
-          </Show>
-          {/* <MembershipEventSelector
+            <Show when={annual()}>
+              <p class="my-4">
+                Pay India Ultimate membership fee (₹ {getAmount()}) valid for
+                the period from {displayDate(season()?.start_date)} to{" "}
+                {displayDate(season()?.end_date)}
+              </p>
+            </Show>
+            {/* <MembershipEventSelector
             event={event()}
             setEvent={setEvent}
             annual={annual()}
             startDate={startDate()}
             endDate={endDate()}
           /> */}
-          <Show when={ageRestricted()}>
-            <div
-              class="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-800 dark:bg-gray-800 dark:text-red-400"
-              role="alert"
-            >
-              {minAgeWarning}
-            </div>
+            <Show when={ageRestricted()}>
+              <div
+                class="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-800 dark:bg-gray-800 dark:text-red-400"
+                role="alert"
+              >
+                {minAgeWarning}
+              </div>
+            </Show>
+            <RazorpayPayment
+              disabled={payDisabled()}
+              annual={annual()}
+              season={season()}
+              event={event()}
+              player_id={player().id}
+              amount={getAmount()}
+              setStatus={setStatus}
+            />
+            <p>{status()}</p>
           </Show>
-          <RazorpayPayment
-            disabled={payDisabled()}
-            annual={annual()}
-            year={year()}
-            event={event()}
-            player_id={player().id}
-            amount={getAmount()}
-            setStatus={setStatus}
-          />
-          <p>{status()}</p>
-        </Show>
-      </div>
-
-      <div class="space-y-2" id="group">
-        <div>
-          <h1 class="text-lg font-semibold text-blue-500">Group Membership</h1>
-          <h3 class="text-sm italic">Renew membership for a group</h3>
         </div>
 
-        <GroupMembership />
-      </div>
+        <div class="space-y-2" id="group">
+          <div>
+            <h1 class="text-lg font-semibold text-blue-500">
+              Group Membership
+            </h1>
+            <h3 class="text-sm italic">Renew membership for a group</h3>
+          </div>
+
+          <GroupMembership season={season()} />
+        </div>
+      </Show>
     </div>
   );
 };

@@ -8,6 +8,7 @@ from seleniumbase import BaseCase
 
 from hub.settings import BASE_DIR
 from server.core.models import Player, User
+from server.season.models import Season
 from server.tests.localserver import running_test_server
 from server.tests.utils import create_empty_directory, get_otp_from_email_logs
 from server.tournament.models import Event
@@ -64,6 +65,7 @@ class TestIntegration(BaseCase):
         names = ["NCS 23-24 SW Sectionals (Bangalore)", "NCS 23-24 North Sectionals (Delhi)"]
         for name in names:
             create_event(name)
+        Season.objects.create(name="Season 24-25", start_date="2024-08-01", end_date="2025-07-30")
 
         with running_test_server() as base_url:
             self.open(base_url)
