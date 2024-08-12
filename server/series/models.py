@@ -23,7 +23,7 @@ class Series(ExportModelOperationsMixin("series"), models.Model):  # type: ignor
     end_date = models.DateField()
     name = models.CharField(max_length=255)
     type = models.CharField(max_length=3, choices=Type.choices)
-    catgory = models.CharField(max_length=7, choices=Category.choices)
+    category = models.CharField(max_length=7, choices=Category.choices)
     series_roster_max_players = models.PositiveSmallIntegerField()
     event_min_players_male = models.PositiveSmallIntegerField()
     event_min_players_female = models.PositiveSmallIntegerField()
@@ -62,3 +62,4 @@ class SeriesRosterInvitation(ExportModelOperationsMixin("series_roster_invitatio
     team = models.ForeignKey(Team, on_delete=models.CASCADE)
     status = models.CharField(max_length=8, choices=Status.choices, default=Status.PENDING)
     expires_on = models.DateField(default=default_invitation_expiry_date)
+    rsvp_date = models.DateField(blank=True, null=True)
