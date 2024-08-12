@@ -16,6 +16,7 @@ from server.membership.models import (
     PhonePeTransaction,
     RazorpayTransaction,
 )
+from server.season.models import Season
 from server.tournament.models import (
     Event,
     Match,
@@ -194,3 +195,9 @@ class ManualTransactionAdmin(admin.ModelAdmin[ManualTransaction]):
     @admin.display(description="User Name", ordering="user__first_name")
     def get_name(self, obj: ManualTransaction) -> str:
         return obj.user.first_name
+
+
+@admin.register(Season)
+class SeasonAdmin(admin.ModelAdmin[Season]):
+    search_fields = ["name"]
+    list_display = ["name"]
