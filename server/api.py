@@ -28,7 +28,7 @@ from ninja import File, NinjaAPI, UploadedFile
 from ninja.pagination import PageNumberPagination, paginate
 from ninja.security import django_auth
 
-from server.constants import EVENT_MEMBERSHIP_AMOUNT, MEMBERSHIP_END, MEMBERSHIP_START
+from server.constants import EVENT_MEMBERSHIP_AMOUNT
 from server.core.models import (
     Accreditation,
     CollegeId,
@@ -129,6 +129,7 @@ from server.schema import (
     WaiverFormSchema,
 )
 from server.season.api import router as season_router
+from server.season.models import Season
 from server.top_score_utils import TopScoreClient
 from server.tournament.models import (
     Bracket,
@@ -745,8 +746,12 @@ def create_transaction(
             return 422, {"message": "Player does not exist!"}
 
     if isinstance(order, GroupMembershipSchema | AnnualMembershipSchema):
-        start_date = datetime.date(order.year, *MEMBERSHIP_START)
-        end_date = datetime.date(order.year + 1, *MEMBERSHIP_END)
+        try:
+            season = Season.objects.get(id=order.season_id)
+        except Season.DoesNotExist:
+            return 422, {"message": "Season does not exist!"}
+        start_date = season.start_date
+        end_date = season.end_date
         is_annual = True
         event = None
         amount = (
@@ -765,6 +770,7 @@ def create_transaction(
         end_date = event.end_date
         is_annual = False
         amount = EVENT_MEMBERSHIP_AMOUNT
+        season = None
 
     else:
         # NOTE: We should never be here, thanks to request validation!
@@ -777,6 +783,7 @@ def create_transaction(
         "start_date": start_date,
         "end_date": end_date,
         "event": event,
+        "season": season,
     }
     if group_payment:
         player_names = ", ".join(sorted([player.user.get_full_name() for player in players]))
@@ -822,6 +829,7 @@ def create_transaction(
             "user": user,
             "players": [player] if not group_payment else players,
             "event": event,
+            "season": season,
         }
     )
     if gateway == PaymentGateway.RAZORPAY:
@@ -961,6 +969,7 @@ def update_transaction_player_memberships(
         "start_date": transaction.start_date,
         "end_date": transaction.end_date,
         "event": transaction.event,
+        "season": transaction.season,
         "is_active": True,
     }
     for player in transaction.players.all():

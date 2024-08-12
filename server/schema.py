@@ -87,7 +87,7 @@ class MembershipSchema(ModelSchema):
 
 class AnnualMembershipSchema(Schema):
     player_id: int
-    year: int
+    season_id: int
 
 
 class EventMembershipSchema(Schema):
@@ -97,7 +97,7 @@ class EventMembershipSchema(Schema):
 
 class GroupMembershipSchema(Schema):
     player_ids: list[int]
-    year: int
+    season_id: int
 
 
 class PaymentFormSchema(Schema):
