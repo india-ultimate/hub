@@ -1,17 +1,13 @@
 import { createQuery } from "@tanstack/solid-query";
+import {
+  createSolidTable,
+  flexRender,
+  getCoreRowModel
+} from "@tanstack/solid-table";
 import { initFlowbite } from "flowbite";
 import { Icon } from "solid-heroicons";
-import { magnifyingGlass } from "solid-heroicons/solid-mini";
-import {
-  createEffect,
-  createSignal,
-  For,
-  Match,
-  onMount,
-  Show,
-  Suspense,
-  Switch
-} from "solid-js";
+import { xMark } from "solid-heroicons/solid";
+import { createEffect, createSignal, For, Match, Show, Switch } from "solid-js";
 
 import {
   annualMembershipFee,
@@ -21,229 +17,253 @@ import {
   minAgeWarning,
   sponsoredAnnualMembershipFee
 } from "../../constants";
-import { fetchPlayers } from "../../queries";
-import PlayersSkeleton from "../../skeletons/Players";
-import {
-  displayDate,
-  fetchUrl,
-  membershipYearOptions,
-  playerMatches
-} from "../../utils";
+import { ChevronLeft, ChevronRight, Spinner } from "../../icons";
+import { searchPlayers } from "../../queries";
+import { displayDate, membershipYearOptions } from "../../utils";
+import Info from "../alerts/Info";
 import RazorpayPayment from "../RazorpayPayment";
 import MembershipPlayerList from "./MembershipPlayerList";
 
-const PlayerSearchDropdown = props => {
-  const query = createQuery(() => ["players"], fetchPlayers, {
-    refetchOnWindowFocus: false
+const PlayerSearchDropdown = componentProps => {
+  const [search, setSearch] = createSignal("");
+  const [pagination, setPagination] = createSignal({
+    pageIndex: 0,
+    pageSize: 5
   });
-  const [searchText, setSearchText] = createSignal("");
-  const [selectedTeam, setSelectedTeam] = createSignal("");
-  const [selectAll, setSelectAll] = createSignal(false);
-  const [checkedPlayers, setCheckedPlayers] = createSignal({});
-  const [allTeamsSearch, setAllTeamsSearch] = createSignal(false);
-  const [searchResults, setSearchResults] = createSignal([]);
+  const [status, _setStatus] = createSignal();
+  const [payingPlayers, setPayingPlayers] = createSignal({});
 
-  const handleSelectAll = e => {
-    query?.data
-      .filter(p => playerMatches(p, searchText(), selectedTeam()))
-      .map(p => props.onPlayerChecked(e, p));
-
-    setSelectAll(e.target.checked);
-  };
+  const dataQuery = createQuery(
+    () => ["players", "search", search(), pagination()],
+    () =>
+      search().trim().length > 2 ? searchPlayers(search(), pagination()) : []
+  );
 
   createEffect(() => {
-    setSelectAll(false);
-  });
+    let newPayingPlayers = {};
 
-  createEffect(() => {
-    let newCheckedPlayers = {};
-
-    props.payingPlayers.map(p => {
-      newCheckedPlayers[p.id] = true;
+    componentProps.payingPlayers.map(p => {
+      newPayingPlayers[p.id] = true;
     });
 
-    setCheckedPlayers(newCheckedPlayers);
+    setPayingPlayers(newPayingPlayers);
   });
 
-  const [timer, setTimer] = createSignal();
-
-  const onSearchInput = e => {
-    if (timer()) {
-      clearTimeout(timer());
+  const defaultColumns = [
+    {
+      accessorKey: "full_name",
+      id: "full_name",
+      header: () => <span>Player Name</span>,
+      cell: props => (
+        <div>
+          <div class="font-medium">{props.getValue()}</div>
+          <div class="flex flex-wrap">
+            <For each={props.row.original.teams}>
+              {team => (
+                <span class="my-2 me-2 rounded bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-300">
+                  {team.name}
+                </span>
+              )}
+            </For>
+          </div>
+        </div>
+      )
+    },
+    {
+      accessorKey: "id",
+      id: "actions",
+      header: () => <span>Actions</span>,
+      cell: props => (
+        <Switch
+          fallback={
+            <button
+              onClick={() =>
+                componentProps.onPlayerPayingStatusChange(
+                  props.row.original,
+                  true
+                )
+              }
+              class="mb-2 me-2 rounded-lg border border-blue-700 px-5 py-1.5 text-center text-sm font-medium text-blue-700 hover:bg-blue-800 hover:text-white "
+            >
+              Add
+            </button>
+          }
+        >
+          <Match when={props.row.original.has_membership}>
+            Membership already exists
+          </Match>
+          <Match when={payingPlayers()[props.getValue()]}>Added</Match>
+        </Switch>
+      )
     }
-    const timeout = setTimeout(() => setSearchText(e.target.value), 700);
-    setTimer(timeout);
-  };
+  ];
 
-  createEffect(() => {
-    let results = query?.data?.filter(p =>
-      playerMatches(p, searchText(), selectedTeam())
-    );
-    if (results?.length > 0) {
-      setAllTeamsSearch(false);
-    } else if (query?.data?.length > 0) {
-      setAllTeamsSearch(true);
-      results = query?.data?.filter(p => playerMatches(p, searchText()));
-    }
-    setSearchResults(results);
+  const table = createSolidTable({
+    get data() {
+      return dataQuery.data?.items ?? [];
+    },
+    columns: defaultColumns,
+    get rowCount() {
+      return dataQuery.data?.count;
+    },
+    get state() {
+      return {
+        get pagination() {
+          return pagination();
+        }
+      };
+    },
+    onPaginationChange: setPagination,
+    getCoreRowModel: getCoreRowModel(),
+    manualPagination: true
   });
 
   return (
     <>
-      <div
-        id="accordion-flush"
-        data-accordion="collapse"
-        class="mb-10"
-        data-active-classes="bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
-        data-inactive-classes="text-gray-500 dark:text-gray-400"
-      >
-        <h2 id="accordion-flush-heading-1">
-          <button
-            type="button"
-            class="flex w-full items-center justify-between border-b border-gray-200 py-5 text-left font-medium text-gray-500 dark:border-gray-700 dark:text-gray-400"
-            data-accordion-target="#accordion-flush-body-1"
-            aria-expanded="true"
-            aria-controls="accordion-flush-body-1"
+      <div class="relative mt-4 w-full">
+        <div class="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-3">
+          <svg
+            class="h-4 w-4 text-gray-500 dark:text-gray-400"
+            aria-hidden="true"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 20 20"
           >
-            <span>Search Players</span>
-            <svg
-              data-accordion-icon
-              class="h-3 w-3 shrink-0 rotate-180"
-              aria-hidden="true"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 10 6"
-            >
-              <path
-                stroke="currentColor"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M9 5 5 1 1 5"
-              />
-            </svg>
-          </button>
-        </h2>
-        <div
-          id="accordion-flush-body-1"
-          class="hidden"
-          aria-labelledby="accordion-flush-heading-1"
-        >
-          <div class="flex flex-wrap p-3">
-            <select
-              id="countries"
-              class="mb-4 mr-5 block w-1/4 min-w-fit rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500 md:mb-0"
-              onChange={e => setSelectedTeam(e.target.value)}
-              value={selectedTeam()}
-            >
-              <option value="" selected>
-                All Teams
-              </option>
-              <For each={props.teams}>
-                {team => <option value={team.id}>{team.name}</option>}
-              </For>
-            </select>
-            <div class="relative flex-grow">
-              <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                <Icon path={magnifyingGlass} style={{ width: "20px" }} />
-              </div>
-              <input
-                type="search"
-                id="default-search"
-                class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-4 pl-10 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
-                placeholder="Search Player Names"
-                onInput={onSearchInput}
-              />
-            </div>
-          </div>
-          <ul
-            class="h-48 overflow-y-auto px-3 pb-3 text-sm text-gray-700 dark:text-gray-200"
-            aria-labelledby="playerSearchButton"
-          >
-            <li>
-              <div class="flex items-center rounded pl-2 hover:bg-gray-100 dark:hover:bg-gray-600">
-                <input
-                  id={"checkbox-item-0"}
-                  type="checkbox"
-                  class="h-4 w-4 rounded border-gray-300 bg-gray-100 text-blue-600 focus:ring-2 focus:ring-blue-500 dark:border-gray-500 dark:bg-gray-600 dark:ring-offset-gray-700 dark:focus:ring-blue-600 dark:focus:ring-offset-gray-700"
-                  onChange={handleSelectAll}
-                  checked={selectAll()}
-                />
-                <label
-                  for={"checkbox-item-0"}
-                  class="ml-2 w-full rounded py-2 text-sm font-medium text-gray-600 dark:text-gray-400"
-                >
-                  <div class="w-full pl-3">Select All</div>
-                </label>
-              </div>
-            </li>
-            <Suspense fallback={<PlayersSkeleton n={10} />}>
-              <For each={searchResults()}>
-                {player => (
-                  <li>
-                    <div class="flex items-center rounded pl-2 hover:bg-gray-100 dark:hover:bg-gray-600">
-                      <input
-                        id={`checkbox-item-${player.id}`}
-                        type="checkbox"
-                        class="h-4 w-4 rounded border-gray-300 bg-gray-100 text-blue-600 focus:ring-2 focus:ring-blue-500 dark:border-gray-500 dark:bg-gray-600 dark:ring-offset-gray-700 dark:focus:ring-blue-600 dark:focus:ring-offset-gray-700"
-                        onChange={e => props.onPlayerChecked(e, player)}
-                        checked={
-                          player.has_membership || checkedPlayers()[player.id]
-                        }
-                        disabled={player.has_membership}
-                      />
-                      <label
-                        for={`checkbox-item-${player.id}`}
-                        class="ml-2 w-full rounded py-2 text-sm font-medium text-gray-900 dark:text-gray-300"
-                      >
-                        <div class="w-full pl-3">
-                          <div class="mb-1.5 text-sm text-gray-500 dark:text-gray-400">
-                            <span
-                              class={`font-semibold ${
-                                player.has_membership
-                                  ? "text-gray-300 dark:text-gray-400"
-                                  : "text-gray-900 dark:text-white"
-                              }`}
-                            >
-                              {player.full_name}
-                            </span>
-                          </div>
-                          <div class="text-xs text-blue-600 dark:text-blue-500">
-                            {player.teams.map(team => team["name"]).join(", ")}{" "}
-                            ({player.city})
-                          </div>
-                        </div>
-                      </label>
-                    </div>
-                  </li>
-                )}
-              </For>
-            </Suspense>
-            <Show when={allTeamsSearch() && searchResults()?.length > 0}>
-              <div
-                class="mb-4 rounded-lg bg-yellow-50 p-4 text-sm text-yellow-800 dark:bg-gray-800 dark:text-yellow-300"
-                role="alert"
-              >
-                Searching for players across all teams, since no player was
-                found in "
-                {props?.teams?.find(t => t.id === Number(selectedTeam()))?.name}
-                " with the current search text. If the player is rostered with
-                the team on Ultimate Central but not showing up in the team's
-                search, they need to link their Ultimate Central account.
-              </div>
-            </Show>
-            <Show when={searchResults()?.length == 0}>
-              <div
-                class="mb-4 rounded-lg bg-yellow-50 p-4 text-sm text-yellow-800 dark:bg-gray-800 dark:text-yellow-300"
-                role="alert"
-              >
-                Could not find any player matching "{searchText()}"; Make sure
-                that the player has registered on The Hub.
-              </div>
-            </Show>
-          </ul>
+            <path
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z"
+            />
+          </svg>
         </div>
+        <input
+          type="search"
+          id="player-search"
+          class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-4 ps-10 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
+          placeholder="Player Name / Email"
+          required
+          value={search()}
+          onChange={e => {
+            setSearch(e.target.value);
+          }}
+        />
+        <button
+          type="button"
+          onClick={() => setSearch("")}
+          class="absolute bottom-2.5 end-24 rounded-full px-2 py-2 text-sm font-medium text-gray-400 hover:text-gray-700 focus:outline-none "
+        >
+          <Icon path={xMark} style={{ width: "20px" }} />
+        </button>
+        <button
+          type="submit"
+          class="absolute bottom-2.5 end-2.5 rounded-lg bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-800 focus:outline-none dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+        >
+          Search
+        </button>
       </div>
+
+      <h3 class="mb-4 mt-1 w-full text-left text-sm italic">
+        Search players by name or email (min. 3 letters)
+      </h3>
+
+      <Show
+        when={table.getRowModel().rows.length > 0}
+        fallback={
+          <div>
+            <Show
+              when={dataQuery.isLoading}
+              fallback={
+                <Info
+                  text={
+                    search().trim().length > 2
+                      ? "No players found."
+                      : "Please enter min. 3 letters to search"
+                  }
+                />
+              }
+            >
+              <Spinner />
+            </Show>
+          </div>
+        }
+      >
+        <table class="w-full text-left text-sm text-gray-500 rtl:text-right dark:text-gray-400">
+          <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
+            <For each={table.getHeaderGroups()}>
+              {headerGroup => (
+                <tr>
+                  <For each={headerGroup.headers}>
+                    {header => {
+                      return (
+                        <th colSpan={header.colSpan} class="px-6 py-3">
+                          {header.isPlaceholder ? null : (
+                            <div>
+                              {flexRender(
+                                header.column.columnDef.header,
+                                header.getContext()
+                              )}
+                            </div>
+                          )}
+                        </th>
+                      );
+                    }}
+                  </For>
+                </tr>
+              )}
+            </For>
+          </thead>
+          <tbody>
+            <For each={table.getRowModel().rows}>
+              {row => {
+                return (
+                  <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
+                    <For each={row.getVisibleCells()}>
+                      {cell => {
+                        return (
+                          <td class="px-6 py-4">
+                            {flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext()
+                            )}
+                          </td>
+                        );
+                      }}
+                    </For>
+                  </tr>
+                );
+              }}
+            </For>
+          </tbody>
+        </table>
+        <div class="mt-4 flex items-center justify-center gap-2">
+          <button
+            onClick={() => table.previousPage()}
+            disabled={!table.getCanPreviousPage()}
+            class="flex h-8 w-24 items-center justify-center rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-700 disabled:text-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
+          >
+            <ChevronLeft width={20} />
+            Previous
+          </button>
+          <span class="flex items-center gap-1">
+            <div>Page</div>
+            <strong>
+              {table.getState().pagination.pageIndex + 1} of{" "}
+              {table.getPageCount().toLocaleString()}
+            </strong>
+          </span>
+          <button
+            onClick={() => table.nextPage()}
+            disabled={!table.getCanNextPage()}
+            class="flex h-8 w-24 items-center justify-center rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-700 disabled:text-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
+          >
+            Next
+            <ChevronRight width={20} />
+          </button>
+        </div>
+      </Show>
+      <p class="my-2">{status()}</p>
     </>
   );
 };
@@ -256,44 +276,23 @@ const GroupMembership = () => {
   const [startDate, setStartDate] = createSignal("");
   const [endDate, setEndDate] = createSignal("");
 
-  const [teams, setTeams] = createSignal([]);
   const [payingPlayers, setPayingPlayers] = createSignal([]);
   const [paymentSuccess, setPaymentSuccess] = createSignal(false);
-
-  const teamsSuccessHandler = async response => {
-    const data = await response.json();
-    if (response.ok) {
-      setTeams(
-        data.sort((a, b) => a.name.toLowerCase() > b.name.toLowerCase())
-      );
-    } else {
-      console.log(data);
-    }
-  };
-
-  const fetchTeams = () => {
-    console.log("Fetching teams info...");
-    fetchUrl("/api/teams", teamsSuccessHandler, error => console.log(error));
-  };
 
   const paymentSuccessCallback = () => {
     setPaymentSuccess(true);
   };
 
-  onMount(() => {
-    fetchTeams();
-  });
-
   const handleYearChange = e => {
     setYear(Number(e.target.value));
   };
 
-  const handlePlayerChecked = (e, player) => {
+  const handlePlayerPayingStatus = (player, isPaying) => {
     // Don't perform any actions on a player who already has a membership
     if (player?.has_membership) {
       return;
     }
-    if (e.target.checked) {
+    if (isPaying) {
       // Add player to paying Players
       setPayingPlayers([
         ...payingPlayers().filter(p => p.id !== player.id),
@@ -351,9 +350,8 @@ const GroupMembership = () => {
       </select>
       <Show when={!paymentSuccess()}>
         <PlayerSearchDropdown
-          teams={teams()}
           payingPlayers={payingPlayers()}
-          onPlayerChecked={handlePlayerChecked}
+          onPlayerPayingStatusChange={handlePlayerPayingStatus}
         />
       </Show>
       <MembershipPlayerList
@@ -361,6 +359,7 @@ const GroupMembership = () => {
         fee={getAmount()}
         startDate={displayDate(startDate())}
         endDate={displayDate(endDate())}
+        onPlayerPayingStatusChange={handlePlayerPayingStatus}
       />
       <Show when={payingPlayers()?.find(p => p.is_minor)}>
         <div
@@ -375,7 +374,7 @@ const GroupMembership = () => {
         <Switch>
           <Match when={!paymentSuccess()}>
             <RazorpayPayment
-              disabled={payDisabled()}
+              disabled={payDisabled() || payingPlayers().length === 0}
               annual={true}
               year={year()}
               player_ids={payingPlayers().map(p => p.id)}
