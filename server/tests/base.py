@@ -12,6 +12,7 @@ from server.core.models import (
     UCPerson,
     User,
 )
+from server.season.models import Season
 from server.tournament.models import (
     Event,
     Match,
@@ -175,3 +176,6 @@ class ApiBaseTestCase(TestCase):
             event=self.event, team=self.teams[0], person=person, roles=["admin", "player"]
         )
         self.tournament = create_tournament(self.event)
+        self.season = Season.objects.create(
+            name="Season 24-25", start_date="2024-08-01", end_date="2025-07-30"
+        )

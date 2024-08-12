@@ -357,7 +357,7 @@ class TestPayment(ApiBaseTestCase):
                 "/api/create-order",
                 data={
                     "player_id": player_id,
-                    "year": 2023,
+                    "season_id": self.season.id,
                 },
                 content_type="application/json",
             )
@@ -373,7 +373,7 @@ class TestPayment(ApiBaseTestCase):
             f"/api/manual-transaction/{transaction_id}",
             data={
                 "player_id": player.id,
-                "year": 2023,
+                "season_id": self.season.id,
             },
             content_type="application/json",
         )
@@ -387,8 +387,8 @@ class TestPayment(ApiBaseTestCase):
         self.assertEqual(amount, transaction.amount)
         self.assertIn(player, transaction.players.all())
         self.assertFalse(transaction.validated)
-        self.assertEqual("2023-06-01", player.membership.start_date.strftime("%Y-%m-%d"))
-        self.assertEqual("2024-05-31", player.membership.end_date.strftime("%Y-%m-%d"))
+        self.assertEqual("2024-08-01", player.membership.start_date.strftime("%Y-%m-%d"))
+        self.assertEqual("2025-07-30", player.membership.end_date.strftime("%Y-%m-%d"))
 
     def test_create_manual_transaction_membership_exists(self) -> None:
         c = self.client
@@ -402,7 +402,7 @@ class TestPayment(ApiBaseTestCase):
             f"/api/manual-transaction/{transaction_id}",
             data={
                 "player_id": player.id,
-                "year": 2023,
+                "season_id": self.season.id,
             },
             content_type="application/json",
         )
@@ -417,8 +417,8 @@ class TestPayment(ApiBaseTestCase):
         self.assertIn(player, transaction.players.all())
         self.assertFalse(transaction.validated)
         membership.refresh_from_db()
-        self.assertEqual("2023-06-01", membership.start_date.strftime("%Y-%m-%d"))
-        self.assertEqual("2024-05-31", membership.end_date.strftime("%Y-%m-%d"))
+        self.assertEqual("2024-08-01", membership.start_date.strftime("%Y-%m-%d"))
+        self.assertEqual("2025-07-30", membership.end_date.strftime("%Y-%m-%d"))
 
     def test_create_order_player_exists(self) -> None:
         c = self.client
@@ -432,7 +432,7 @@ class TestPayment(ApiBaseTestCase):
                 "/api/create-order",
                 data={
                     "player_id": player.id,
-                    "year": 2023,
+                    "season_id": self.season.id,
                 },
                 content_type="application/json",
             )
@@ -450,8 +450,11 @@ class TestPayment(ApiBaseTestCase):
             RazorpayTransaction.TransactionStatusChoices.PENDING,
             transaction.status,
         )
-        self.assertEqual("2023-06-01", transaction.start_date.strftime("%Y-%m-%d"))
-        self.assertEqual("2024-05-31", transaction.end_date.strftime("%Y-%m-%d"))
+        self.assertEqual("2024-08-01", transaction.start_date.strftime("%Y-%m-%d"))
+        self.assertEqual("2025-07-30", transaction.end_date.strftime("%Y-%m-%d"))
+        self.assertIsNotNone(transaction.season)
+        if transaction.season is not None:
+            self.assertEqual(self.season.id, transaction.season.id)
 
     def test_create_order_sponsored_player_exists(self) -> None:
         c = self.client
@@ -467,7 +470,7 @@ class TestPayment(ApiBaseTestCase):
                 "/api/create-order",
                 data={
                     "player_id": player.id,
-                    "year": 2023,
+                    "season_id": self.season.id,
                 },
                 content_type="application/json",
             )
@@ -485,8 +488,11 @@ class TestPayment(ApiBaseTestCase):
             RazorpayTransaction.TransactionStatusChoices.PENDING,
             transaction.status,
         )
-        self.assertEqual("2023-06-01", transaction.start_date.strftime("%Y-%m-%d"))
-        self.assertEqual("2024-05-31", transaction.end_date.strftime("%Y-%m-%d"))
+        self.assertEqual("2024-08-01", transaction.start_date.strftime("%Y-%m-%d"))
+        self.assertEqual("2025-07-30", transaction.end_date.strftime("%Y-%m-%d"))
+        self.assertIsNotNone(transaction.season)
+        if transaction.season is not None:
+            self.assertEqual(self.season.id, transaction.season.id)
 
     def test_create_order_event_membership_no_player(self) -> None:
         c = self.client
@@ -631,7 +637,7 @@ class TestPayment(ApiBaseTestCase):
                 "/api/create-order",
                 data={
                     "player_ids": player_ids,
-                    "year": 2023,
+                    "season_id": self.season.id,
                 },
                 content_type="application/json",
             )
@@ -660,7 +666,7 @@ class TestPayment(ApiBaseTestCase):
                 "/api/create-order",
                 data={
                     "player_ids": player_ids,
-                    "year": 2023,
+                    "season_id": self.season.id,
                 },
                 content_type="application/json",
             )
@@ -701,7 +707,7 @@ class TestPayment(ApiBaseTestCase):
             f"/api/manual-transaction/{transaction_id}",
             data={
                 "player_ids": player_ids,
-                "year": 2023,
+                "season_id": self.season.id,
             },
             content_type="application/json",
         )
@@ -973,7 +979,7 @@ class TestPayment(ApiBaseTestCase):
                 "/api/create-order",
                 data={
                     "player_id": player.id,
-                    "year": 2023,
+                    "season_id": self.season.id,
                 },
                 content_type="application/json",
             )
