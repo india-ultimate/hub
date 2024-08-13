@@ -5,7 +5,6 @@ import { genderChoices, occupationChoices, stateChoices } from "../constants";
 import { displayDate } from "../utils";
 import { getLabel } from "../utils";
 import StatusStepper from "./StatusStepper";
-import VaccinationInformation from "./VaccinationInformation";
 
 const Player = props => {
   const navigate = useNavigate();
@@ -20,15 +19,15 @@ const Player = props => {
     navigate(`/waiver/${playerId}`);
   };
 
-  const navVaccination = (e, playerId) => {
-    e.preventDefault();
-    navigate(`/vaccination/${playerId}`);
-  };
+  // const navVaccination = (e, playerId) => {
+  //   e.preventDefault();
+  //   navigate(`/vaccination/${playerId}`);
+  // };
 
-  const navUltimateCentral = (e, playerId) => {
-    e.preventDefault();
-    navigate(`/uc-login/${playerId}`);
-  };
+  // const navUltimateCentral = (e, playerId) => {
+  //   e.preventDefault();
+  //   navigate(`/uc-login/${playerId}`);
+  // };
 
   return (
     <div class="relative overflow-x-auto">
@@ -63,7 +62,7 @@ const Player = props => {
             </th>
             <td class="px-6 py-4">
               <Switch>
-                <Match when={!props.player?.ultimate_central_id}>
+                {/* <Match when={!props.player?.ultimate_central_id}>
                   <p class="mb-4">
                     Player's Ultimate Central profile is not linked
                   </p>
@@ -74,7 +73,7 @@ const Player = props => {
                   >
                     Link profile
                   </button>
-                </Match>
+                </Match> */}
                 <Match when={!props.player?.teams?.length}>
                   <p>No teams associated with player.</p>
                 </Match>
@@ -171,7 +170,7 @@ const Player = props => {
               </td>
             </tr>
           </Show>
-          <Show when={props.player?.vaccination}>
+          {/* <Show when={props.player?.vaccination}>
             <VaccinationInformation vaccination={props.player?.vaccination} />
           </Show>
           <Show when={!props.player?.vaccination}>
@@ -193,7 +192,7 @@ const Player = props => {
                 </button>
               </td>
             </tr>
-          </Show>
+          </Show> */}
           <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
             <th
               scope="row"
