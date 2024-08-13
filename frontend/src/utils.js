@@ -149,8 +149,8 @@ export const getAge = (value, on = today) => {
 export const getStatusAndPercent = player => {
   const status = {
     profile: !!player?.id,
-    vaccine: !!player?.vaccination,
-    ucLink: !!player?.ultimate_central_id,
+    // vaccine: !!player?.vaccination,
+    // ucLink: !!player?.ultimate_central_id,
     membership: player?.membership?.is_active,
     waiver: player?.membership?.waiver_valid,
     accreditation: player?.accreditation?.is_valid,

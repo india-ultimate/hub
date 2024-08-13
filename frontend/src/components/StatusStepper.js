@@ -3,15 +3,12 @@ import clsx from "clsx";
 import { Icon } from "solid-heroicons";
 import { creditCard } from "solid-heroicons/solid";
 import {
-  arrowTopRightOnSquare,
   currencyRupee,
   document,
   documentCheck,
   handThumbDown,
   handThumbUp,
   identification,
-  shieldCheck,
-  shieldExclamation,
   videoCamera,
   xCircle
 } from "solid-heroicons/solid-mini";
@@ -88,7 +85,7 @@ const StatusStepper = props => {
           icon={identification}
           color={status.profile ? "green" : "red"}
         />
-        <Step
+        {/* <Step
           title="Vaccine Info"
           icon={status.vaccine ? shieldCheck : shieldExclamation}
           link={`/vaccination/${props.player.id}`}
@@ -99,7 +96,7 @@ const StatusStepper = props => {
           icon={arrowTopRightOnSquare}
           link={`/uc-login/${props.player.id}`}
           color={status.ucLink ? "green" : "red"}
-        />
+        /> */}
         <Step
           title="Membership info"
           icon={currencyRupee}
