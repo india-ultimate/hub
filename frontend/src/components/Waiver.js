@@ -6,7 +6,6 @@ import { createEffect, createSignal, Match, Show, Switch } from "solid-js";
 import { useStore } from "../store";
 import { displayDate, getCookie, getPlayer } from "../utils";
 import Breadcrumbs from "./Breadcrumbs";
-import StatusStepper from "./StatusStepper";
 
 const Legal = props => (
   <div class="my-10">
@@ -343,7 +342,7 @@ const WaiverForm = props => {
 
   return (
     <div>
-      <h1 class="text-4xl font-bold text-blue-500">{headline()}</h1>
+      <h1 class="mb-4 text-2xl font-bold text-blue-500">{headline()}</h1>
       <Show
         fallback={
           <p>
@@ -377,7 +376,6 @@ const WaiverForm = props => {
           >
             Show full text
           </button>
-          <StatusStepper player={props.player} />
         </Show>
         <Show when={detailed()}>
           <span>
