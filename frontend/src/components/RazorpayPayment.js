@@ -2,27 +2,18 @@ import { createSignal, onMount, Show } from "solid-js";
 
 import { Spinner } from "../icons";
 import { useStore } from "../store";
-import {
-  fetchUserData,
-  getCookie,
-  loadRazorpayScript,
-  razorpayScriptExists
-} from "../utils";
+import { fetchUserData, getCookie } from "../utils";
 
 const RazorpayPayment = props => {
   const [loading, setLoading] = createSignal(false);
 
   const [_, { userFetchSuccess, userFetchFailure }] = useStore();
 
-  onMount(async () => {
-    if (!razorpayScriptExists()) {
-      const res = await loadRazorpayScript();
-
-      if (!res) {
-        props.setStatus(
-          "Razorpay SDK failed to load. please check are you online?"
-        );
-      }
+  onMount(() => {
+    if (!window.Razorpay) {
+      props.setStatus(
+        "Razorpay SDK failed to load. please check are you online?"
+      );
     }
   });
 
