@@ -110,6 +110,7 @@ class EventAdmin(admin.ModelAdmin[Event]):
 class TournamentAdmin(admin.ModelAdmin[Tournament]):
     search_fields = ["event__title"]
     list_display = ["get_name"]
+    filter_horizontal = ("volunteers",)
 
     @admin.display(description="Name", ordering="event__title")
     def get_name(self, obj: Tournament) -> str:
