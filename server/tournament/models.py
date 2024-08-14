@@ -72,6 +72,8 @@ class Tournament(ExportModelOperationsMixin("tournament"), models.Model):  # typ
 
     use_uc_registrations = models.BooleanField(default=False)
 
+    volunteers = models.ManyToManyField(User, related_name="tournament_volunteer")
+
 
 @receiver(m2m_changed, sender=Tournament.teams.through)
 def update_seeding_on_teams_change(
