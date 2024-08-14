@@ -1,6 +1,7 @@
 import csv
 
 from django.contrib import admin
+from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 from django.db.models import QuerySet
 from django.http import HttpRequest, HttpResponse
 
@@ -61,7 +62,7 @@ class PlayerAdmin(admin.ModelAdmin[Player]):
 
 
 @admin.register(User)
-class UserAdmin(admin.ModelAdmin[User]):
+class UserAdmin(DjangoUserAdmin):
     search_fields = ["first_name", "last_name", "username"]
     list_display = [
         "first_name",
@@ -72,6 +73,24 @@ class UserAdmin(admin.ModelAdmin[User]):
         "is_tournament_admin",
     ]
     list_filter = ["is_staff", "is_superuser", "is_tournament_admin"]
+    fieldsets = (
+        (None, {"fields": ("username", "password")}),
+        (("Personal info"), {"fields": ("first_name", "last_name", "email", "phone")}),
+        (
+            ("Permissions"),
+            {
+                "fields": (
+                    "is_active",
+                    "is_staff",
+                    "is_superuser",
+                    "groups",
+                    "user_permissions",
+                    "is_tournament_admin",
+                ),
+            },
+        ),
+        (("Important dates"), {"fields": ("last_login", "date_joined")}),
+    )
 
 
 @admin.register(Team)
