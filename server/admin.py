@@ -63,7 +63,15 @@ class PlayerAdmin(admin.ModelAdmin[Player]):
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin[User]):
     search_fields = ["first_name", "last_name", "username"]
-    list_display = ["first_name", "last_name", "username"]
+    list_display = [
+        "first_name",
+        "last_name",
+        "username",
+        "is_staff",
+        "is_superuser",
+        "is_tournament_admin",
+    ]
+    list_filter = ["is_staff", "is_superuser", "is_tournament_admin"]
 
 
 @admin.register(Team)
