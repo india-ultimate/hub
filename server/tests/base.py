@@ -177,5 +177,9 @@ class ApiBaseTestCase(TestCase):
         )
         self.tournament = create_tournament(self.event)
         self.season = Season.objects.create(
-            name="Season 24-25", start_date="2024-08-01", end_date="2025-07-30"
+            name="Season 24-25",
+            start_date="2024-08-01",
+            end_date="2025-07-30",
+            annual_membership_amount=70000,
+            sponsored_annual_membership_amount=20000,
         )

@@ -65,7 +65,13 @@ class TestIntegration(BaseCase):
         names = ["NCS 23-24 SW Sectionals (Bangalore)", "NCS 23-24 North Sectionals (Delhi)"]
         for name in names:
             create_event(name)
-        Season.objects.create(name="Season 24-25", start_date="2024-08-01", end_date="2025-07-30")
+        Season.objects.create(
+            name="Season 24-25",
+            start_date="2024-08-01",
+            end_date="2025-07-30",
+            annual_membership_amount=70000,
+            sponsored_annual_membership_amount=20000,
+        )
 
         with running_test_server() as base_url:
             self.open(base_url)
