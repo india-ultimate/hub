@@ -10,4 +10,4 @@ router = Router()
 
 @router.get("/", auth=None, response={200: list[SeasonSchema]})
 def list_seasons(request: HttpRequest) -> QuerySet[Season]:
-    return Season.objects.all().order_by("start_date")
+    return Season.objects.all().order_by("-start_date")
