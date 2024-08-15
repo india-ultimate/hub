@@ -755,9 +755,20 @@ def create_transaction(
         is_annual = True
         event = None
         amount = (
-            sum(player.membership_amount for player in players)
+            sum(
+                (
+                    season.sponsored_annual_membership_amount
+                    if player.sponsored
+                    else season.annual_membership_amount
+                )
+                for player in players
+            )
             if isinstance(order, GroupMembershipSchema)
-            else player.membership_amount
+            else (
+                season.sponsored_annual_membership_amount
+                if player.sponsored
+                else season.annual_membership_amount
+            )
         )
 
     elif isinstance(order, EventMembershipSchema):
