@@ -44,23 +44,19 @@ const groupByTeam = registrations => {
 };
 
 const isPlayer = registration => {
-  return registration?.roles?.indexOf("player") > -1;
+  return registration?.is_playing;
 };
 
 const isCaptain = registration => {
-  return registration?.roles?.indexOf("captain") > -1;
+  return registration?.role === "CAP";
 };
 
 const isSpiritCaptain = registration => {
-  return registration?.roles?.indexOf("spirit captain") > -1;
+  return registration?.role === "SCAP";
 };
 
 const isNonPlayer = registration => {
-  return (
-    registration?.roles?.indexOf("coach") > -1 ||
-    registration?.roles?.indexOf("assistant coach") > -1 ||
-    registration?.roles?.indexOf("admin") > -1
-  );
+  return !registration?.is_playing;
 };
 
 const ValidationLegend = () => (
@@ -181,7 +177,7 @@ const ValidateRoster = () => {
     setLoading(false);
     if (response.ok) {
       data = await response.json();
-      setEvents(data.sort((a, b) => a.start_date < b.start_date));
+      setEvents(data.sort((a, b) => a.event.start_date < b.event.start_date));
       setEvent(data[0]);
     } else {
       data = await response.text();
@@ -195,6 +191,7 @@ const ValidateRoster = () => {
       const registrations = await response.json();
       const groupedData = groupByTeam(registrations);
       setEventData({ ...event(), ...groupedData });
+      console.log({ ...event(), ...groupedData });
     } else {
       if (response.status / 100 === 4) {
         const responseBody = await response.json();
@@ -212,7 +209,7 @@ const ValidateRoster = () => {
   onMount(() => {
     console.log("Fetching events info...");
     setLoading(true);
-    fetchUrl("/api/events?include_all=1", eventsSuccessHandler, error => {
+    fetchUrl("/api/tournaments", eventsSuccessHandler, error => {
       console.log(error);
       setLoading(false);
     });
@@ -220,13 +217,17 @@ const ValidateRoster = () => {
 
   createEffect(() => {
     if (event()?.id) {
-      const eventID = event()?.id;
+      const tournamentId = event()?.id;
       setLoading(true);
       setStatus("");
-      fetchUrl(`/api/registrations/${eventID}`, eventDataFetched, error => {
-        console.log(error);
-        setLoading(false);
-      });
+      fetchUrl(
+        `/api/registrations/tournament/${tournamentId}`,
+        eventDataFetched,
+        error => {
+          console.log(error);
+          setLoading(false);
+        }
+      );
     }
   });
 
@@ -282,14 +283,14 @@ const ValidateRoster = () => {
           <option value="" placeholder disabled>
             Select event
           </option>
-          <For each={events()?.filter(e => e.end_date >= today)}>
-            {event => <option value={event?.id}>{event?.title}</option>}
+          <For each={events()?.filter(e => e.event.end_date >= today)}>
+            {event => <option value={event?.id}>{event?.event?.title}</option>}
           </For>
           <option value="" placeholder disabled>
             Past events
           </option>
-          <For each={events()?.filter(e => e.end_date < today)}>
-            {event => <option value={event?.id}>{event?.title}</option>}
+          <For each={events()?.filter(e => e.event.end_date < today)}>
+            {event => <option value={event?.id}>{event?.event?.title}</option>}
           </For>
         </select>
       </div>
@@ -333,18 +334,20 @@ const ValidateRoster = () => {
             </Match>
           </Switch>
         </Match>
-        <Match when={eventData()?.slug}>
-          <h2 class="text-2xl font-bold text-blue-500">{eventData()?.title}</h2>
+        <Match when={eventData()?.event?.slug}>
+          <h2 class="text-2xl font-bold text-blue-500">
+            {eventData()?.event?.title}
+          </h2>
           <h3 class="font-bold">
             No. of Teams - {(eventData()?.teams || []).length}
           </h3>
-          <a
+          {/* <a
             href={`https://indiaultimate.org/en_in/e/${
               eventData()?.ultimate_central_slug
             }`}
           >
             View event on Ultimate Central
-          </a>
+          </a> */}
           <Show when={(eventData()?.teams || []).length === 0}>
             <div
               class="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-800 dark:bg-gray-800 dark:text-red-400"
@@ -360,7 +363,7 @@ const ValidateRoster = () => {
                   team.id
                 ].filter(r => isPlayer(r));
                 const matchUps =
-                  teamRegistrations.filter(r => !r.person.player).length > 0
+                  teamRegistrations.filter(r => !r.player).length > 0
                     ? [...matchUpChoices, { label: "Unknown" }]
                     : matchUpChoices;
 
@@ -381,8 +384,8 @@ const ValidateRoster = () => {
                             {
                               teamRegistrations.filter(
                                 r =>
-                                  (!matchUp.value && !r.person.player) ||
-                                  r.person.player?.match_up === matchUp.value
+                                  (!matchUp.value && !r.player) ||
+                                  r.player?.match_up === matchUp.value
                               ).length
                             }
                             )
@@ -391,24 +394,20 @@ const ValidateRoster = () => {
                             <For
                               each={teamRegistrations.filter(
                                 r =>
-                                  (!matchUp.value && !r.person.player) ||
-                                  r.person.player?.match_up === matchUp.value
+                                  (!matchUp.value && !r.player) ||
+                                  r.player?.match_up === matchUp.value
                               )}
                             >
                               {registration => {
                                 const age = getAge(
-                                  new Date(
-                                    registration.person.player?.date_of_birth
-                                  ),
+                                  new Date(registration.player?.date_of_birth),
                                   new Date(eventData()?.start_date)
                                 );
                                 const displayAge = Math.round(age * 100) / 100;
                                 const accreditationDate =
-                                  registration?.person?.player?.accreditation
-                                    ?.date;
+                                  registration?.player?.accreditation?.date;
                                 const accreditationLevel =
-                                  registration?.person?.player?.accreditation
-                                    ?.level;
+                                  registration?.player?.accreditation?.level;
 
                                 let accreditationModalRef;
                                 let collegeIDModalRef;
@@ -430,8 +429,7 @@ const ValidateRoster = () => {
                                   >
                                     <div class="truncate">
                                       <span class="text-gray-900 dark:text-white">
-                                        {registration.person.first_name}{" "}
-                                        {registration.person.last_name}
+                                        {registration.player.full_name}
                                       </span>
                                       <Show when={isCaptain(registration)}>
                                         <span class="text-blue-500"> (C)</span>
@@ -443,37 +441,19 @@ const ValidateRoster = () => {
                                       </Show>
                                       <br />
                                       <span class="text-xs">
-                                        {registration.person.email}
+                                        {registration.email}
                                       </span>
                                     </div>
 
                                     <div>
                                       <Switch>
-                                        <Match
-                                          when={!registration?.person?.player}
-                                        >
-                                          <span
-                                            class={clsx("mx-2", redText)}
-                                            title="No Hub player linked with UC Profile"
-                                          >
-                                            <Icon
-                                              path={noSymbol}
-                                              style={{
-                                                width: "20px",
-                                                display: "inline"
-                                              }}
-                                            />
-                                          </span>
-                                        </Match>
-                                        <Match
-                                          when={registration?.person?.player}
-                                        >
+                                        <Match when={registration?.player}>
                                           <span
                                             title="Membership valid?"
                                             class={clsx(
                                               "mx-1",
                                               membershipValidForEvent(
-                                                registration.person.player
+                                                registration.player
                                               )
                                                 ? greenText
                                                 : redText
@@ -491,16 +471,16 @@ const ValidateRoster = () => {
                                             title="Liability Waiver signed?"
                                             class={clsx(
                                               "mx-1",
-                                              registration.person.player
-                                                ?.membership?.waiver_valid
+                                              registration.player?.membership
+                                                ?.waiver_valid
                                                 ? greenText
                                                 : redText
                                             )}
                                           >
                                             <Icon
                                               path={
-                                                registration.person.player
-                                                  ?.membership?.waiver_valid
+                                                registration.player?.membership
+                                                  ?.waiver_valid
                                                   ? handThumbUp
                                                   : handThumbDown
                                               }
@@ -514,16 +494,16 @@ const ValidateRoster = () => {
                                             title="Vaccinated?"
                                             class={clsx(
                                               "mx-1",
-                                              registration.person.player
-                                                ?.vaccination?.is_vaccinated
+                                              registration.player?.vaccination
+                                                ?.is_vaccinated
                                                 ? greenText
                                                 : redText
                                             )}
                                           >
                                             <Icon
                                               path={
-                                                registration.person.player
-                                                  ?.vaccination?.is_vaccinated
+                                                registration.player?.vaccination
+                                                  ?.is_vaccinated
                                                   ? shieldCheck
                                                   : shieldExclamation
                                               }
@@ -536,7 +516,7 @@ const ValidateRoster = () => {
                                           <span
                                             title={`Accreditation - ${
                                               playerAccreditationValid(
-                                                registration.person.player
+                                                registration.player
                                               )
                                                 ? `${getLabel(
                                                     accreditationChoices,
@@ -549,7 +529,7 @@ const ValidateRoster = () => {
                                             class={clsx(
                                               "mx-1",
                                               playerAccreditationValid(
-                                                registration.person.player
+                                                registration.player
                                               )
                                                 ? greenText
                                                 : redText
@@ -557,7 +537,7 @@ const ValidateRoster = () => {
                                           >
                                             <Show
                                               when={playerAccreditationValid(
-                                                registration.person.player
+                                                registration.player
                                               )}
                                               fallback={
                                                 <Icon
@@ -588,12 +568,12 @@ const ValidateRoster = () => {
                                               </button>
                                               <Modal
                                                 ref={accreditationModalRef}
-                                                title={`Accreditation - ${registration.person.first_name} ${registration.person.last_name}`}
+                                                title={`Accreditation - ${registration.first_name} ${registration.last_name}`}
                                                 close={closeAccreditationModal}
                                               >
                                                 <AccreditationInformation
                                                   accreditation={
-                                                    registration.person.player
+                                                    registration.player
                                                       .accreditation
                                                   }
                                                 />
@@ -604,7 +584,7 @@ const ValidateRoster = () => {
                                             title="Commentary Info updated?"
                                             class={clsx(
                                               "mx-1",
-                                              registration.person?.player
+                                              registration?.player
                                                 ?.commentary_info
                                                 ? greenText
                                                 : redText
@@ -622,16 +602,14 @@ const ValidateRoster = () => {
                                             title="College ID Card Added?"
                                             class={clsx(
                                               "mx-1",
-                                              registration.person?.player
-                                                ?.college_id
+                                              registration?.player?.college_id
                                                 ? greenText
                                                 : redText
                                             )}
                                           >
                                             <Show
                                               when={
-                                                registration.person?.player
-                                                  ?.college_id
+                                                registration?.player?.college_id
                                               }
                                               fallback={
                                                 <Icon
@@ -658,12 +636,12 @@ const ValidateRoster = () => {
                                               </button>
                                               <Modal
                                                 ref={collegeIDModalRef}
-                                                title={`College ID Card - ${registration.person.first_name} ${registration.person.last_name}`}
+                                                title={`College ID Card - ${registration.first_name} ${registration.last_name}`}
                                                 close={closeCollegeIDModal}
                                               >
                                                 <CollegeIDInformation
                                                   college_id={
-                                                    registration.person.player
+                                                    registration.player
                                                       .college_id
                                                   }
                                                 />
@@ -697,10 +675,9 @@ const ValidateRoster = () => {
                         <For each={teamNonPlayersRegistrations}>
                           {registration => (
                             <li class="w-full rounded-t-lg border-b border-gray-200 px-4 py-2 dark:border-gray-600">
-                              {registration.person.first_name}{" "}
-                              {registration.person.last_name}{" "}
+                              {registration.first_name} {registration.last_name}{" "}
                               <span class="text-blue-500">
-                                ({registration.roles.join(", ")})
+                                ({registration.role})
                               </span>
                             </li>
                           )}
