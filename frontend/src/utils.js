@@ -186,16 +186,16 @@ export const assetURL = name =>
 
 export const getMatchCardColor = match => {
   let color = "";
-  if (match.pool) {
+  if (match && match.pool) {
     color = matchCardColors["pool"][match.pool.sequence_number - 1];
-  } else if (match.cross_pool) {
+  } else if (match && match.cross_pool) {
     color = matchCardColors["cross_pool"][match.sequence_number - 1];
-  } else if (match.bracket) {
+  } else if (match && match.bracket) {
     color =
       matchCardColors["bracket"][match.bracket.sequence_number - 1][
         match.sequence_number - 1
       ];
-  } else if (match.position_pool) {
+  } else if (match && match.position_pool) {
     color =
       matchCardColors["position_pool"][match.position_pool.sequence_number - 1];
   }
