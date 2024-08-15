@@ -243,7 +243,7 @@ const ValidateRoster = () => {
     if (!event()) {
       return player?.accreditation?.is_valid;
     }
-    let lastValid = new Date(event()?.end_date);
+    let lastValid = new Date(event()?.event?.end_date);
     lastValid.setMonth(lastValid.getMonth() - 18); // 18 months validity for accreditations
     return new Date(player?.accreditation?.date) > lastValid;
   };
@@ -255,8 +255,8 @@ const ValidateRoster = () => {
     if (!event()) {
       return player?.membership?.is_active;
     }
-    const eventStart = new Date(event()?.start_date);
-    const eventEnd = new Date(event()?.end_date);
+    const eventStart = new Date(event()?.event?.start_date);
+    const eventEnd = new Date(event()?.event?.end_date);
 
     const membershipStart = new Date(player.membership.start_date);
     const membershipEnd = new Date(player.membership.end_date);
