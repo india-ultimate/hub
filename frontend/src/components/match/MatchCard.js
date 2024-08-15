@@ -16,6 +16,7 @@ import MatchSpiritScoreForm from "../tournament/MatchSpiritScoreForm";
 import SpiritScoreTable from "../tournament/SpiritScoreTable";
 import FinalSpiritScores from "./FinalSpiritScores";
 import MatchHeader from "./MatchHeader";
+import CreateStatsButton from "./stats/CreateStatsButton";
 import SubmitScore from "./SubmitScore";
 import SubmitSpiritScore from "./SubmitSpiritScore";
 /**
@@ -137,7 +138,8 @@ const TournamentMatch = props => {
     return (
       userAccessQuery.data &&
       (userAccessQuery.data.is_staff ||
-        userAccessQuery.data.is_tournament_admin)
+        userAccessQuery.data.is_tournament_admin ||
+        userAccessQuery.data.is_tournament_volunteer)
     );
   };
 
@@ -805,6 +807,37 @@ const TournamentMatch = props => {
               />
             </Show>
           </SubmitSpiritScore>
+        </div>
+      </Show>
+
+      <Show
+        when={
+          (props.match.status === "COM" || props.match.status === "SCH") &&
+          isStaff()
+        }
+      >
+        <div class="inline-flex w-full items-center justify-center">
+          <hr class="my-6 h-px w-64 border-0 bg-gray-200 dark:bg-gray-700" />
+          <span class="absolute left-1/2 -translate-x-1/2 bg-white px-3 text-sm dark:bg-gray-800">
+            Stats
+          </span>
+        </div>
+        <div class="flex flex-wrap justify-center">
+          <Show
+            when={props.match?.stats}
+            fallback={
+              <CreateStatsButton
+                match={props.match}
+                tournamentSlug={props.tournamentSlug}
+              />
+            }
+          >
+            <A
+              href={`/tournament/${props.tournamentSlug}/match/${props.match?.id}/edit-stats`}
+            >
+              Edit Stats
+            </A>
+          </Show>
         </div>
       </Show>
     </>
