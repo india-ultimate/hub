@@ -6,3 +6,5 @@ class Season(ExportModelOperationsMixin("season"), models.Model):  # type: ignor
     start_date = models.DateField()
     end_date = models.DateField()
     name = models.CharField(max_length=255)
+    annual_membership_amount = models.PositiveIntegerField(default=0)
+    sponsored_annual_membership_amount = models.PositiveIntegerField(default=0)
