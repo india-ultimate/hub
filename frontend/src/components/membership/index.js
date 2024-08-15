@@ -1,4 +1,4 @@
-import { useParams } from "@solidjs/router";
+import { A, useParams } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
 import { inboxStack } from "solid-heroicons/solid";
 import { createEffect, createSignal, For, Show } from "solid-js";
@@ -91,25 +91,6 @@ const Membership = () => {
               the organisation. Which is paying WFDF, Auditor, Accounting and
               legal fees along with the expense of 1 Ops executive.
             </p>
-            <ul class="list-inside list-disc space-y-1">
-              <li>Annual Membership fee for 2024-25: INR 700</li>
-              <li>Discounted membership fee for 2024-25: INR 200 </li>
-            </ul>
-            <h2 class="text-base font-semibold text-gray-600 dark:text-white">
-              Discounted Membership:
-            </h2>
-            <ul class="list-inside list-disc space-y-1">
-              <li>
-                IU operations will be able to grant a Case by Case Waiver to
-                those who have a genuine need. The decision taken by the
-                Operations team will be final on this.
-              </li>
-              <li>
-                We request you to not avail this unless necessary. Every
-                contribution helps us to add to a more robust team who can work
-                towards the growth of Ultimate in the country.{" "}
-              </li>
-            </ul>
             <h2 class="text-base font-semibold text-gray-600 dark:text-white">
               Apart from helping sustain India Ultimate, what does your
               membership get you?
@@ -134,6 +115,28 @@ const Membership = () => {
                 rostering statistics, schedules, live scores etc.
               </li>
             </ul>
+            <hr />
+            <p>
+              Regular full membership = Rs. 700 a year. This comes to Rs. 58 per
+              month.
+            </p>
+            <p class="my-2">
+              If you, or players on your college/NGO team need assistance in
+              paying this, then you can apply for discounted membership{" "}
+              <A
+                class="cursor-pointer text-blue-500 underline"
+                href="https://forms.gle/G2e18rjDjdDkmUKh7"
+                target="_blank"
+              >
+                {" "}
+                here.
+              </A>
+            </p>
+            <p>
+              If you're comfortable paying the annual membership to support the
+              growth of Ultimate in the country then you DON'T need to fill this
+              form.
+            </p>
           </div>
         </details>
       </div>
