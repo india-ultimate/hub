@@ -212,6 +212,7 @@ def me_access(
         "is_tournament_admin": request.user.is_tournament_admin,
         "playing_team_id": player_team_id,
         "admin_team_ids": admin_team_ids,
+        "is_tournament_volunteer": request.user in tournament.volunteers.all(),
     }
 
 
