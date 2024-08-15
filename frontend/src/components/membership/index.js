@@ -224,11 +224,14 @@ const Membership = () => {
             </span>
           </label> */}
             <Show when={annual()}>
-              <p class="my-4">
-                Pay India Ultimate membership fee (₹ {getAmount()}) valid for
-                the period from {displayDate(season()?.start_date)} to{" "}
+              <p class="mt-4 font-bold">
+                Paying India Ultimate membership fee:
+              </p>
+              <p class="mt-1">
+                Validity: {displayDate(season()?.start_date)} to{" "}
                 {displayDate(season()?.end_date)}
               </p>
+              <p class="mt-1 font-extrabold">Total Amount: ₹ {getAmount()}</p>
             </Show>
             {/* <MembershipEventSelector
             event={event()}
