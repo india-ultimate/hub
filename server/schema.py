@@ -25,7 +25,9 @@ from server.tournament.models import (
     CrossPool,
     Event,
     Match,
+    MatchEvent,
     MatchScore,
+    MatchStats,
     Pool,
     PositionPool,
     Registration,
@@ -775,6 +777,50 @@ class TournamentFieldUpdateSchema(Schema):
     address: str | None
 
 
+class MatchEventSchema(ModelSchema):
+    team: TeamSchema | None
+    players: list[PlayerTinySchema]
+
+    @staticmethod
+    def resolve_players(match_event: MatchEvent) -> QuerySet[Player]:
+        return match_event.players.all().order_by("first_name")
+
+    scored_by: PlayerTinySchema | None
+    assisted_by: PlayerTinySchema | None
+    drop_by: PlayerTinySchema | None
+    throwaway_by: PlayerTinySchema | None
+    block_by: PlayerTinySchema | None
+
+    class Config:
+        model = MatchEvent
+        model_exclude = ["stats"]
+
+
+class MatchStatsSchema(ModelSchema):
+    initial_possession: TeamSchema
+    current_possession: TeamSchema
+    events: list[MatchEventSchema]
+
+    class Config:
+        model = MatchStats
+        model_exclude = ["match", "tournament"]
+
+
+class MatchStatsCreateSchema(Schema):
+    initial_possession_team_id: int
+
+
+class MatchEventCreateSchema(Schema):
+    event: str
+    team_id: int
+    player_ids: list[int] | None
+    scored_by_id: int | None
+    assisted_by_id: int | None
+    drop_by_id: int | None
+    throwaway_by_id: int | None
+    block_by_id: int | None
+
+
 class MatchSchema(ModelSchema):
     pool: PoolSchema | None
     cross_pool: CrossPoolSchema | None
@@ -789,6 +835,15 @@ class MatchSchema(ModelSchema):
     suggested_score_team_1: MatchScoreModelSchema | None
     suggested_score_team_2: MatchScoreModelSchema | None
     field: TournamentFieldSchema | None
+
+    stats: MatchStatsSchema | None
+
+    @staticmethod
+    def resolve_stats(match: Match) -> MatchStatsSchema | None:
+        try:
+            return MatchStatsSchema.from_orm(match.stats)
+        except MatchStats.DoesNotExist:
+            return None
 
     class Config:
         model = Match
@@ -846,6 +901,7 @@ class UserAccessSchema(Schema):
     is_tournament_admin: bool
     playing_team_id: int
     admin_team_ids: list[int]
+    is_tournament_volunteer: bool
 
 
 class TournamentRulesSchema(Schema):
