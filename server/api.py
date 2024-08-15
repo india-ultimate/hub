@@ -77,8 +77,11 @@ from server.schema import (
     ManualTransactionSchema,
     ManualTransactionValidationFormSchema,
     MatchCreateSchema,
+    MatchEventCreateSchema,
     MatchSchema,
     MatchScoreSchema,
+    MatchStatsCreateSchema,
+    MatchStatsSchema,
     MatchUpdateSchema,
     NotVaccinatedFormSchema,
     OrderSchema,
@@ -136,7 +139,9 @@ from server.tournament.models import (
     CrossPool,
     Event,
     Match,
+    MatchEvent,
     MatchScore,
+    MatchStats,
     Pool,
     PositionPool,
     Registration,
@@ -2526,6 +2531,60 @@ def delete_match(request: AuthenticatedHttpRequest, match_id: int) -> tuple[int,
     match.delete()
 
     return 200, {"message": "Success"}
+
+
+# Match Stats ##########
+
+
+@api.post("/match/{match_id}/stats", response={200: MatchStatsSchema, 400: Response, 401: Response})
+def create_match_stats(
+    request: AuthenticatedHttpRequest, match_id: int, body: MatchStatsCreateSchema
+) -> tuple[int, MatchStats | message_response]:
+    try:
+        match = Match.objects.get(id=match_id)
+        team = Team.objects.get(id=body.initial_possession_team_id)
+    except (Match.DoesNotExist, Team.DoesNotExist):
+        return 400, {"message": "Match or Team does not exist"}
+
+    if request.user not in match.tournament.volunteers.all():
+        return 401, {"message": "Only Tournament volunteers can create match stats"}
+
+    if match.status in {Match.Status.YET_TO_FIX} or match.team_1 is None or match.team_2 is None:
+        return 400, {"message": "Match stats cant be created in current status"}
+
+    match_stats = MatchStats.objects.create(
+        match=match, tournament=match.tournament, initial_possession=team, current_possession=team
+    )
+
+    return 200, match_stats
+
+
+@api.post(
+    "/match/{match_id}/stats/event",
+    response={200: MatchStatsSchema, 400: Response, 401: Response, 422: Response},
+)
+def create_match_stats_event(
+    request: AuthenticatedHttpRequest, match_id: int, body: MatchEventCreateSchema
+) -> tuple[int, MatchStats | message_response]:
+    try:
+        match = Match.objects.get(id=match_id)
+        stats = MatchStats.objects.get(match=match)
+    except (Match.DoesNotExist, MatchStats.DoesNotExist):
+        return 400, {"message": "Match or Stats does not exist"}
+
+    if request.user not in match.tournament.volunteers.all():
+        return 401, {"message": "Only Tournament volunteers can create match stats"}
+
+    if body.event == MatchEvent.Event.LINE_SELECTED:
+        if body.player_ids is None or len(body.player_ids) == 0:
+            return 422, {"message": "No players exist for line selected event"}
+    elif body.event == MatchEvent.Event.SCORE:
+        if body.scored_by_id is None or body.assisted_by_id is None:
+            return 422, {"message": "Scored by or assisted by empty for score event"}
+    else:
+        return 422, {"message": "Invalid event type"}
+
+    return 200, stats
 
 
 # Contact Form ##########
