@@ -304,3 +304,76 @@ class Match(ExportModelOperationsMixin("match"), models.Model):  # type: ignore[
 
     class Meta:
         unique_together = ["tournament", "time", "field"]
+
+
+class MatchStats(models.Model):
+    class Status(models.TextChoices):
+        FIRST_HALF = "FH", _("First Half")
+        SECOND_HALF = "SH", _("Second Half")
+        COMPLETED = "COM", _("Completed")
+
+    # For the UI to know what options to show: weather Line selection page or Offense page or Defense Page
+    class TeamStatus(models.TextChoices):
+        PENDING_LINE_SELECTION = "PLS", _("Pending Line Selection")
+        COMPLETED_LINE_SELECTION = "CLS", _("Completed Line Selection")
+
+    match = models.OneToOneField(Match, on_delete=models.CASCADE, related_name="stats")
+    tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE, related_name="match_stats")
+    status = models.CharField(max_length=3, choices=Status.choices, default=Status.FIRST_HALF)
+    score_team_1 = models.PositiveIntegerField(default=0)
+    score_team_2 = models.PositiveIntegerField(default=0)
+    initial_possession = models.ForeignKey(
+        Team, on_delete=models.CASCADE, related_name="initial_possession"
+    )
+    current_possession = models.ForeignKey(
+        Team, on_delete=models.CASCADE, related_name="current_possession"
+    )
+    status_team_1 = models.CharField(
+        max_length=3, choices=TeamStatus.choices, default=TeamStatus.PENDING_LINE_SELECTION
+    )
+    status_team_2 = models.CharField(
+        max_length=3, choices=TeamStatus.choices, default=TeamStatus.PENDING_LINE_SELECTION
+    )
+
+
+class MatchEvent(models.Model):
+    class Event(models.TextChoices):
+        LINE_SELECTED = "LS", _("Line Selected")
+        SCORE = "SC", _("Score")
+        DROP = "DR", _("Drop")
+        THROWAWAY = "TA", _("Throwaway")
+        BLOCK = "BL", _("Block")
+
+    class Mode(models.TextChoices):
+        OFFENSE = "OF", _("Offense")
+        DEFENSE = "DE", _("Defense")
+
+    stats = models.ForeignKey(MatchStats, on_delete=models.CASCADE, related_name="events")
+    team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name="match_events")
+    players = models.ManyToManyField(Player, related_name="match_events_played")
+    started_on = models.CharField(max_length=3, choices=Mode.choices)
+    time = models.DateTimeField(auto_now_add=True)
+
+    scored_by = models.ForeignKey(
+        Player, on_delete=models.CASCADE, related_name="match_events_scored", blank=True, null=True
+    )
+    assisted_by = models.ForeignKey(
+        Player,
+        on_delete=models.CASCADE,
+        related_name="match_events_assisted",
+        blank=True,
+        null=True,
+    )
+    drop_by = models.ForeignKey(
+        Player, on_delete=models.CASCADE, related_name="match_events_drops", blank=True, null=True
+    )
+    throwaway_by = models.ForeignKey(
+        Player,
+        on_delete=models.CASCADE,
+        related_name="match_events_throwaways",
+        blank=True,
+        null=True,
+    )
+    block_by = models.ForeignKey(
+        Player, on_delete=models.CASCADE, related_name="match_events_blocks", blank=True, null=True
+    )
