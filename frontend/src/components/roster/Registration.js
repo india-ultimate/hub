@@ -22,6 +22,9 @@ const Registration = props => (
         <Show
           when={props.registration.player?.gender}
         >{` (${props.registration.player?.gender})`}</Show>
+        <Show
+          when={props.registration.player?.commentary_info?.jersey_number}
+        >{` | ${props.registration.player?.commentary_info?.jersey_number}`}</Show>
       </div>
     </div>
     <Show when={isCaptain(props.registration)}>
