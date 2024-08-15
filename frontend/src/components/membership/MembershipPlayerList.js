@@ -2,11 +2,6 @@ import { Icon } from "solid-heroicons";
 import { trash } from "solid-heroicons/solid";
 import { For, Show } from "solid-js";
 
-import {
-  annualMembershipFee,
-  sponsoredAnnualMembershipFee
-} from "../../constants";
-
 const MembershipPlayerList = props => {
   return (
     <div>
@@ -51,8 +46,8 @@ const MembershipPlayerList = props => {
                   <td class="px-6 py-4">
                     ₹
                     {player?.sponsored
-                      ? sponsoredAnnualMembershipFee / 100
-                      : annualMembershipFee / 100}
+                      ? props.season?.sponsored_annual_membership_amount / 100
+                      : props.season?.annual_membership_amount / 100}
                   </td>
                   <td>
                     <button
