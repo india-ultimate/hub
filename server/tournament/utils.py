@@ -698,7 +698,7 @@ def create_spirit_scores(spirit_score: SpiritScoreUpdateSchema, use_uc_reg: bool
 
 def get_default_rules() -> str:
     module_dir = os.path.dirname(__file__)
-    file_path = os.path.join(module_dir, "templates", "rules_default.md")
+    file_path = os.path.join(module_dir, os.pardir, "templates", "rules_default.md")
 
     with open(file_path) as data_file:
         data = data_file.read()
