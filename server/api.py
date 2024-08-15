@@ -2334,6 +2334,16 @@ def update_rules(
     return 200, tournament
 
 
+@api.get("/match/{match_id}", auth=None, response={200: MatchSchema, 400: Response})
+def get_match(request: HttpRequest, match_id: int) -> tuple[int, Match | message_response]:
+    try:
+        match = Match.objects.get(id=match_id)
+    except Match.DoesNotExist:
+        return 400, {"message": "Match does not exist"}
+
+    return 200, match
+
+
 @api.post("/match/{match_id}/score", response={200: MatchSchema, 400: Response, 401: Response})
 def add_match_score(
     request: AuthenticatedHttpRequest, match_id: int, match_scores: MatchScoreSchema
