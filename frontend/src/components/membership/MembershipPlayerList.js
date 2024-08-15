@@ -68,12 +68,12 @@ const MembershipPlayerList = props => {
           </tbody>
         </table>
       </div>
-      <p class="mt-8">
-        Paying India Ultimate membership fee for {props.players.length} players
-        (₹
-        {props.fee}) valid for the period from {props.startDate} to{" "}
-        {props.endDate}
+      <p class="mt-8 font-bold">Paying India Ultimate membership fee:</p>
+      <p class="mt-1">Number of players: {props.players.length}</p>
+      <p class="mt-1">
+        Validity: {props.startDate} to {props.endDate}
       </p>
+      <p class="mt-1 font-extrabold">Total Amount: ₹{props.fee}</p>
     </div>
   );
 };
