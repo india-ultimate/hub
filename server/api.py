@@ -621,6 +621,23 @@ def list_events(request: AuthenticatedHttpRequest, include_all: bool = False) ->
 
 
 @api.get(
+    "/registrations/tournament/{tournament_id}",
+    response={200: list[TournamentPlayerRegistrationSchema], 400: Response, 404: Response},
+)
+def list_registrations_for_tournament(
+    request: AuthenticatedHttpRequest, tournament_id: int
+) -> tuple[int, QuerySet[Registration] | dict[str, str]]:
+    try:
+        tournament = Tournament.objects.get(id=tournament_id)
+    except Tournament.DoesNotExist:
+        return 404, {"message": f"Tournament with {tournament} not found."}
+
+    registrations = Registration.objects.filter(event=tournament.event)
+
+    return 200, registrations
+
+
+@api.get(
     "/registrations/{event_id}",
     response={200: list[UCRegistrationSchema], 400: Response, 404: Response},
 )
