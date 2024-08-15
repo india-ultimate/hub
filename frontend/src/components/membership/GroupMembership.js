@@ -9,12 +9,7 @@ import { Icon } from "solid-heroicons";
 import { xMark } from "solid-heroicons/solid";
 import { createEffect, createSignal, For, Match, Show, Switch } from "solid-js";
 
-import {
-  annualMembershipFee,
-  minAge,
-  minAgeWarning,
-  sponsoredAnnualMembershipFee
-} from "../../constants";
+import { minAge, minAgeWarning } from "../../constants";
 import { ChevronLeft, ChevronRight, Spinner } from "../../icons";
 import { searchPlayers } from "../../queries";
 import { displayDate } from "../../utils";
@@ -303,8 +298,8 @@ const GroupMembership = props => {
       (acc, player) =>
         acc +
         (player?.sponsored
-          ? sponsoredAnnualMembershipFee
-          : annualMembershipFee),
+          ? props.season?.sponsored_annual_membership_amount
+          : props.season?.annual_membership_amount),
       0
     ) / 100;
 
@@ -322,6 +317,7 @@ const GroupMembership = props => {
         startDate={displayDate(props.season?.start_date)}
         endDate={displayDate(props.season?.end_date)}
         onPlayerPayingStatusChange={handlePlayerPayingStatus}
+        season={props.season}
       />
       <Show when={payingPlayers()?.find(p => p.is_minor)}>
         <div

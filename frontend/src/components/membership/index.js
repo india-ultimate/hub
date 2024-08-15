@@ -3,13 +3,7 @@ import { createQuery } from "@tanstack/solid-query";
 import { inboxStack } from "solid-heroicons/solid";
 import { createEffect, createSignal, For, Show } from "solid-js";
 
-import {
-  annualMembershipFee,
-  eventMembershipFee,
-  minAge,
-  minAgeWarning,
-  sponsoredAnnualMembershipFee
-} from "../../constants";
+import { eventMembershipFee, minAge, minAgeWarning } from "../../constants";
 import { fetchSeasons } from "../../queries";
 import { useStore } from "../../store";
 import { displayDate, findPlayerById, getAge } from "../../utils";
@@ -71,8 +65,8 @@ const Membership = () => {
   const getAmount = () =>
     (annual()
       ? player()?.sponsored
-        ? sponsoredAnnualMembershipFee
-        : annualMembershipFee
+        ? season()?.sponsored_annual_membership_amount
+        : season()?.annual_membership_amount
       : eventMembershipFee) / 100;
 
   return (
@@ -210,7 +204,7 @@ const Membership = () => {
           <Show
             when={!membership()?.is_active}
             fallback={
-              <div id="membership-exist">
+              <div id="membership-exist" class="mt-4">
                 Membership for {player().full_name} is active until{" "}
                 {displayDate(membership().end_date)}
               </div>
