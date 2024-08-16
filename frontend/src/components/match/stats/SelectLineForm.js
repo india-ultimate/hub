@@ -6,6 +6,7 @@ import {
   fetchTournamentTeamBySlug
 } from "../../../queries";
 import Error from "../../alerts/Error";
+import Info from "../../alerts/Info";
 
 const SelectLineForm = props => {
   const [selectedPlayers, setSelectedPlayers] = createSignal([]);
@@ -91,16 +92,16 @@ const SelectLineForm = props => {
         type="submit"
         disabled={selectedPlayers().length !== 7}
         onClick={handleSubmit}
-        class="w-full rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 disabled:bg-gray-500"
+        class="mb-2 w-full rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 disabled:bg-gray-500"
       >
         Submit
       </button>
       <Show when={error()}>
-        <p class="my-2 text-sm text-red-600 dark:text-red-500">
-          <span class="font-medium">Oops!</span> {error()}
-        </p>
+        <Error text={`Oops ! ${error()}`} />
       </Show>
-      <p>{status()}</p>
+      <Show when={status()}>
+        <Info text={status()} />
+      </Show>
       <h2 class="mb-2 mt-4 text-lg font-bold text-blue-500">All Players</h2>
       <For each={rosterQuery.data || []}>
         {reg => (
