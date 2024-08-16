@@ -110,6 +110,11 @@ export const tournamentTypeChoices = [
   { value: "WMN", label: "Womens" }
 ];
 
+export const matchStatsTeamStatus = {
+  PLS: "Pending Line Selection",
+  CLS: "Completed Line Selection"
+};
+
 // NOTE: Memberships go from 1st June to 31st May
 export const membershipStartDate = [1, 6];
 export const membershipEndDate = [31, 5];
