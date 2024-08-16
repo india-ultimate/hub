@@ -1,4 +1,7 @@
+from typing import Any
+
 from django.db import models
+from django.template.defaultfilters import slugify
 from django.utils.translation import gettext_lazy as _
 from django_prometheus.models import ExportModelOperationsMixin
 
@@ -21,7 +24,8 @@ class Series(ExportModelOperationsMixin("series"), models.Model):  # type: ignor
 
     start_date = models.DateField()
     end_date = models.DateField()
-    name = models.CharField(max_length=255)
+    name = models.CharField(max_length=100)
+    slug = models.SlugField(max_length=100, null=True, blank=True, db_index=True)
     type = models.CharField(max_length=3, choices=Type.choices)
     category = models.CharField(max_length=7, choices=Category.choices)
     series_roster_max_players = models.PositiveSmallIntegerField()
@@ -31,8 +35,19 @@ class Series(ExportModelOperationsMixin("series"), models.Model):  # type: ignor
     event_max_players_female = models.PositiveSmallIntegerField()
     player_transfer_window_start_date = models.DateField(blank=True, null=True)
     player_transfer_window_end_date = models.DateField(blank=True, null=True)
-    season = models.ForeignKey(Season, on_delete=models.SET_NULL, null=True, blank=True)
+    season = models.ForeignKey(
+        Season, on_delete=models.SET_NULL, null=True, blank=True, related_name="series"
+    )
     teams = models.ManyToManyField(Team, related_name="series")
+
+    class Meta:
+        unique_together = ["season", "name"]
+
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        if not self.slug:
+            self.slug = slugify(self.name)
+
+        return super().save(*args, **kwargs)
 
 
 class SeriesRegistration(ExportModelOperationsMixin("series_registration"), models.Model):  # type: ignore[misc]
