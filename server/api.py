@@ -134,7 +134,7 @@ from server.schema import (
 from server.season.api import router as season_router
 from server.season.models import Season
 from server.top_score_utils import TopScoreClient
-from server.tournament.match_stats import handle_all_events
+from server.tournament.match_stats import handle_all_events, handle_full_time, handle_half_time
 from server.tournament.models import (
     Bracket,
     CrossPool,
@@ -2577,6 +2577,44 @@ def create_match_stats_event(
         return 401, {"message": "Only Tournament volunteers can create match stats"}
 
     return handle_all_events(match_event=body, match=match, team=team)
+
+
+@api.post(
+    "/match/{match_id}/stats/half-time",
+    response={200: MatchStatsSchema, 400: Response, 401: Response},
+)
+def match_stats_half_time(
+    request: AuthenticatedHttpRequest, match_id: int
+) -> tuple[int, MatchStats | message_response]:
+    try:
+        match = Match.objects.get(id=match_id)
+        MatchStats.objects.get(match=match)
+    except (Match.DoesNotExist, MatchStats.DoesNotExist):
+        return 400, {"message": "Match or Team does not exist"}
+
+    if request.user not in match.tournament.volunteers.all():
+        return 401, {"message": "Only Tournament volunteers can update match stats"}
+
+    return handle_half_time(match)
+
+
+@api.post(
+    "/match/{match_id}/stats/full-time",
+    response={200: MatchStatsSchema, 400: Response, 401: Response},
+)
+def match_stats_full_time(
+    request: AuthenticatedHttpRequest, match_id: int
+) -> tuple[int, MatchStats | message_response]:
+    try:
+        match = Match.objects.get(id=match_id)
+        MatchStats.objects.get(match=match)
+    except (Match.DoesNotExist, MatchStats.DoesNotExist):
+        return 400, {"message": "Match or Team does not exist"}
+
+    if request.user not in match.tournament.volunteers.all():
+        return 401, {"message": "Only Tournament volunteers can update match stats"}
+
+    return handle_full_time(match)
 
 
 # Contact Form ##########

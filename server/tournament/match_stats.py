@@ -20,6 +20,33 @@ def handle_all_events(
         return 422, {"message": "Invalid event type"}
 
 
+def handle_half_time(match: Match) -> tuple[int, MatchStats | dict[str, str]]:
+    if (
+        match.team_1 is not None
+        and match.team_2 is not None
+        and match.team_1.id == match.stats.initial_possession
+    ):
+        match.stats.current_possession = match.team_2
+    elif (
+        match.team_1 is not None
+        and match.team_2 is not None
+        and match.team_2.id == match.stats.initial_possession
+    ):
+        match.stats.current_possession = match.team_1
+
+    match.stats.status = MatchStats.Status.SECOND_HALF
+    match.stats.save()
+
+    return 200, match.stats
+
+
+def handle_full_time(match: Match) -> tuple[int, MatchStats | dict[str, str]]:
+    match.stats.status = MatchStats.Status.COMPLETED
+    match.stats.save()
+
+    return 200, match.stats
+
+
 def handle_line_selected(
     match_event: MatchEventCreateSchema, match: Match, team: Team
 ) -> tuple[int, MatchStats | dict[str, str]]:
