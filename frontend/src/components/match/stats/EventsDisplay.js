@@ -56,11 +56,19 @@ const EventsDisplay = props => {
                 <div class="flex flex-wrap justify-start">
                   <h2
                     class={clsx(
-                      "w-full font-bold",
+                      "flex w-full justify-between font-bold",
                       event.type === "SC" ? "text-white" : "text-blue-600"
                     )}
                   >
-                    <EventTitle event={event} />
+                    <span>
+                      <EventTitle event={event} />
+                    </span>
+                    <span class="text-sm font-normal italic">
+                      {new Date(event.time).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit"
+                      })}
+                    </span>
                   </h2>
                   <p
                     class={clsx(
@@ -83,11 +91,19 @@ const EventsDisplay = props => {
                 <div class="flex flex-wrap justify-end">
                   <h2
                     class={clsx(
-                      "w-full text-right font-bold",
+                      "flex w-full justify-between text-right font-bold",
                       event.type === "SC" ? "text-white" : "text-green-600"
                     )}
                   >
-                    <EventTitle event={event} />
+                    <span class="text-sm font-normal italic">
+                      {new Date(event.time).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit"
+                      })}
+                    </span>
+                    <span>
+                      <EventTitle event={event} />
+                    </span>
                   </h2>
                   <p
                     class={clsx(
