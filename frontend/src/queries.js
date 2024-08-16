@@ -982,3 +982,23 @@ export const createMatchStats = async ({ match_id, body }) => {
 
   return data;
 };
+
+export const createMatchStatsEvent = async ({ match_id, body }) => {
+  const response = await fetch(`/api/match/${match_id}/stats/event`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin",
+    body: JSON.stringify(body)
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.message || JSON.stringify(data));
+  }
+
+  return data;
+};
