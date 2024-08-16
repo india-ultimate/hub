@@ -72,9 +72,17 @@ const SelectLineForm = props => {
       >
         <For each={selectedPlayers()}>
           {player => (
-            <div class="flex justify-between">
-              <span>{player?.full_name}</span>
-              <button onClick={() => removeFromSelected(player)}>Remove</button>
+            <div class="my-2 flex flex-wrap justify-between text-base font-bold">
+              <span>{`${player?.full_name} (${player?.gender || ""}) | # ${
+                player?.commentary_info?.jersey_number || ""
+              }`}</span>
+              <button
+                class="rounded-lg bg-red-600 px-2 text-white"
+                onClick={() => removeFromSelected(player)}
+              >
+                Remove
+              </button>
+              <hr class="m-1 w-full" />
             </div>
           )}
         </For>
@@ -93,7 +101,7 @@ const SelectLineForm = props => {
         </p>
       </Show>
       <p>{status()}</p>
-      <h2 class="mb-2 text-lg font-bold text-blue-500">All Players</h2>
+      <h2 class="mb-2 mt-4 text-lg font-bold text-blue-500">All Players</h2>
       <For each={rosterQuery.data || []}>
         {reg => (
           <Show
@@ -102,9 +110,19 @@ const SelectLineForm = props => {
               0
             }
           >
-            <div class="flex justify-between">
-              <span>{reg.player?.full_name}</span>
-              <button onClick={() => addToSelected(reg.player)}>Add</button>
+            <div class="my-2 flex flex-wrap justify-between text-base font-bold">
+              <span>{`${reg.player?.full_name} (${
+                reg.player?.gender || ""
+              }) | # ${
+                reg.player?.commentary_info?.jersey_number || ""
+              }`}</span>
+              <button
+                class="rounded-lg bg-blue-600 px-2 text-white"
+                onClick={() => addToSelected(reg.player)}
+              >
+                Add
+              </button>
+              <hr class="m-1 w-full" />
             </div>
           </Show>
         )}
