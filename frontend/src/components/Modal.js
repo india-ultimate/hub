@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { Icon } from "solid-heroicons";
 import { xMark } from "solid-heroicons/solid-mini";
 
@@ -5,7 +6,10 @@ const Modal = props => {
   return (
     <dialog
       ref={props.ref}
-      class="w-fit rounded-xl p-0 backdrop:bg-gray-700/90 md:w-1/2"
+      class={clsx(
+        "rounded-xl p-0 backdrop:bg-gray-700/90 md:w-1/2",
+        props.fullWidth ? "w-full" : "w-fit"
+      )}
     >
       <div class="flex w-full flex-col items-start gap-2 rounded-xl bg-gray-50 p-4 text-gray-600 dark:bg-gray-600 dark:text-gray-100">
         <div class="flex w-full items-center justify-between text-base sm:text-lg">

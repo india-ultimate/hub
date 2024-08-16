@@ -833,6 +833,7 @@ const TournamentMatch = props => {
             }
           >
             <A
+              class="rounded-lg bg-blue-500 px-2 py-1 text-white"
               href={`/tournament/${props.tournamentSlug}/match/${props.match?.id}/edit-stats`}
             >
               Edit Stats
