@@ -42,6 +42,7 @@ const Error404 = lazy(() => import("./Error404"));
 const PhonePeTransaction = lazy(() => import("./PhonePeTransaction"));
 const CheckMemberships = lazy(() => import("./CheckMemberships"));
 const CollegeID = lazy(() => import("./CollegeID"));
+const EditStats = lazy(() => import("./match/stats/EditStats"));
 
 const filters = {
   id: /^\d+$/ // only allow numbers
@@ -185,6 +186,10 @@ export default function App() {
                     path="/tournament-manager"
                     component={TournamentManager}
                     admin={true}
+                  />
+                  <UserRoute
+                    path="/tournament/:tournamentSlug/match/:matchId/edit-stats"
+                    component={EditStats}
                   />
                   <Route path="*" component={Error404} />
                 </Routes>
