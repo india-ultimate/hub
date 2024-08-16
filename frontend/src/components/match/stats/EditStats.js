@@ -141,6 +141,28 @@ const EditStats = () => {
         </div>
       </div>
 
+      <div class="my-2 rounded-lg bg-gray-50 p-4 text-sm " role="alert">
+        <details>
+          <summary class="text-gray-600">Match Info</summary>
+          <div class="mt-4 space-y-2">
+            <div>
+              <span class="font-bold">Status:</span>{" "}
+              {matchQuery.data?.stats?.status === "FH"
+                ? "First Half"
+                : matchQuery.data?.stats?.status === "SH"
+                ? "Second Half"
+                : "Completed"}
+            </div>
+            <div>
+              <span class="font-bold">
+                Team which started the game on Offense:
+              </span>{" "}
+              {matchQuery.data?.stats?.initial_possession?.name}
+            </div>
+          </div>
+        </details>
+      </div>
+
       <div class="my-2 rounded-lg bg-blue-50 p-4 text-sm " role="alert">
         <details>
           <summary class="text-blue-600">
