@@ -36,6 +36,7 @@ const ButtonWithModal = props => {
           modalRef.close();
           props.onClose();
         }}
+        fullWidth={true}
       >
         {props.children}
       </Modal>
