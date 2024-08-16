@@ -337,7 +337,7 @@ class MatchStats(models.Model):
 
 
 class MatchEvent(models.Model):
-    class Event(models.TextChoices):
+    class EventType(models.TextChoices):
         LINE_SELECTED = "LS", _("Line Selected")
         SCORE = "SC", _("Score")
         DROP = "DR", _("Drop")
@@ -353,6 +353,7 @@ class MatchEvent(models.Model):
     players = models.ManyToManyField(Player, related_name="match_events_played")
     started_on = models.CharField(max_length=3, choices=Mode.choices)
     time = models.DateTimeField(auto_now_add=True)
+    type = models.CharField(max_length=3, choices=EventType.choices)
 
     scored_by = models.ForeignKey(
         Player, on_delete=models.CASCADE, related_name="match_events_scored", blank=True, null=True
