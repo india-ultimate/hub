@@ -783,7 +783,7 @@ class MatchEventSchema(ModelSchema):
 
     @staticmethod
     def resolve_players(match_event: MatchEvent) -> QuerySet[Player]:
-        return match_event.players.all().order_by("first_name")
+        return match_event.players.all().order_by("user__first_name")
 
     scored_by: PlayerTinySchema | None
     assisted_by: PlayerTinySchema | None
@@ -799,7 +799,12 @@ class MatchEventSchema(ModelSchema):
 class MatchStatsSchema(ModelSchema):
     initial_possession: TeamSchema
     current_possession: TeamSchema
+
     events: list[MatchEventSchema]
+
+    @staticmethod
+    def resolve_events(match_stats: MatchStats) -> QuerySet[MatchEvent]:
+        return match_stats.events.order_by("-time")
 
     class Config:
         model = MatchStats
@@ -811,7 +816,7 @@ class MatchStatsCreateSchema(Schema):
 
 
 class MatchEventCreateSchema(Schema):
-    event: str
+    type: str
     team_id: int
     player_ids: list[int] | None
     scored_by_id: int | None
