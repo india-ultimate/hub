@@ -2,7 +2,7 @@ import { A, useParams } from "@solidjs/router";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { clsx } from "clsx";
 import { userGroup } from "solid-heroicons/solid";
-import { Match, Show, Switch } from "solid-js";
+import { createEffect, createSignal, Match, Show, Switch } from "solid-js";
 
 import {
   matchCardColorToButtonStyles,
@@ -21,11 +21,25 @@ import ThrowawayForm from "./ThrowawayForm";
 const EditStats = () => {
   const queryClient = useQueryClient();
   const params = useParams();
+  const [shouldRefetch, setShouldRefetch] = createSignal(false);
 
   const matchQuery = createQuery(
     () => ["match", params.matchId],
-    () => fetchMatch(params.matchId)
+    () => fetchMatch(params.matchId),
+    {
+      refetchInterval: shouldRefetch ? 2000 : 2000000,
+      staleTime: shouldRefetch ? 5000 : 5000000,
+      refetchOnWindowFocus: true
+    }
   );
+
+  createEffect(() => {
+    if (matchQuery.isSuccess && matchQuery.data) {
+      if (matchQuery.data.stats && matchQuery.data.stats.status !== "COM") {
+        setShouldRefetch(true);
+      }
+    }
+  });
 
   const tournamentQuery = createQuery(
     () => ["tournaments", params.tournamentSlug],
