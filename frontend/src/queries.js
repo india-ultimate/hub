@@ -1002,3 +1002,41 @@ export const createMatchStatsEvent = async ({ match_id, body }) => {
 
   return data;
 };
+
+export const matchStatsHalfTime = async ({ match_id }) => {
+  const response = await fetch(`/api/match/${match_id}/stats/half-time`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin"
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.message || JSON.stringify(data));
+  }
+
+  return data;
+};
+
+export const matchStatsFullTime = async ({ match_id }) => {
+  const response = await fetch(`/api/match/${match_id}/stats/full-time`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin"
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.message || JSON.stringify(data));
+  }
+
+  return data;
+};
