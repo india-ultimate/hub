@@ -1,5 +1,9 @@
 import { A, useParams } from "@solidjs/router";
-import { createQuery, useQueryClient } from "@tanstack/solid-query";
+import {
+  createMutation,
+  createQuery,
+  useQueryClient
+} from "@tanstack/solid-query";
 import { clsx } from "clsx";
 import { userGroup } from "solid-heroicons/solid";
 import { createEffect, createSignal, Match, Show, Switch } from "solid-js";
@@ -9,7 +13,12 @@ import {
   matchCardColorToRingColorMap
 } from "../../../colors";
 import { matchStatsTeamStatus } from "../../../constants";
-import { fetchMatch, fetchTournamentBySlug } from "../../../queries";
+import {
+  fetchMatch,
+  fetchTournamentBySlug,
+  matchStatsFullTime,
+  matchStatsHalfTime
+} from "../../../queries";
 import ButtonWithModal from "../../modal/ButtonWithModal";
 import BlockForm from "./BlockForm";
 import DropForm from "./DropForm";
@@ -50,6 +59,20 @@ const EditStats = () => {
     return team?.image ?? team?.image_url;
   };
 
+  const matchStatsHalfTimeMutation = createMutation({
+    mutationFn: matchStatsHalfTime,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["match", params.matchId] });
+    }
+  });
+
+  const matchStatsFullTimeMutation = createMutation({
+    mutationFn: matchStatsFullTime,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["match", params.matchId] });
+    }
+  });
+
   return (
     <Show
       when={!matchQuery.data?.message}
@@ -64,39 +87,51 @@ const EditStats = () => {
       }
     >
       <div class="grid w-full grid-cols-12 gap-4">
-        <div class="col-span-4 flex justify-center">
-          <Show
-            when={
-              matchQuery.data?.stats?.current_possession?.id ===
-              matchQuery.data?.team_1?.id
-            }
-          >
-            <div class="flex animate-bounce items-center justify-center rounded-xl bg-blue-100 px-2 py-1 text-sm font-bold text-blue-500">
-              Offense
+        <Show
+          when={matchQuery.data?.stats?.status !== "COM"}
+          fallback={
+            <div class="col-span-12 flex justify-center">
+              <div class="flex items-center justify-center rounded-xl bg-green-100 px-2 py-1">
+                <span class="text-sm font-bold text-green-500">Completed</span>
+              </div>
             </div>
-          </Show>
-        </div>
-        <div class="col-span-4">
-          <div class="flex items-center justify-center rounded-xl bg-red-100 py-1">
-            <span class="relative flex h-2.5 w-2.5">
-              <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
-              <span class="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500" />
-            </span>
-            <span class="ml-2 text-sm font-bold text-rose-500">Live</span>
+          }
+        >
+          <div class="col-span-4 flex justify-center">
+            <Show
+              when={
+                matchQuery.data?.stats?.current_possession?.id ===
+                matchQuery.data?.team_1?.id
+              }
+            >
+              <div class="flex animate-bounce items-center justify-center rounded-xl bg-blue-100 px-2 py-1 text-sm font-bold text-blue-500">
+                Offense
+              </div>
+            </Show>
           </div>
-        </div>
-        <div class="col-span-4 flex justify-center">
-          <Show
-            when={
-              matchQuery.data?.stats?.current_possession?.id ===
-              matchQuery.data?.team_2?.id
-            }
-          >
-            <div class="flex animate-bounce items-center justify-center rounded-xl bg-green-100 px-2 py-1 text-sm font-bold text-green-500">
-              Offense
+          <div class="col-span-4">
+            <div class="flex items-center justify-center rounded-xl bg-red-100 py-1">
+              <span class="relative flex h-2.5 w-2.5">
+                <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+                <span class="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500" />
+              </span>
+              <span class="ml-2 text-sm font-bold text-rose-500">Live</span>
             </div>
-          </Show>
-        </div>
+          </div>
+          <div class="col-span-4 flex justify-center">
+            <Show
+              when={
+                matchQuery.data?.stats?.current_possession?.id ===
+                matchQuery.data?.team_2?.id
+              }
+            >
+              <div class="flex animate-bounce items-center justify-center rounded-xl bg-green-100 px-2 py-1 text-sm font-bold text-green-500">
+                Offense
+              </div>
+            </Show>
+          </div>
+        </Show>
+
         <div class="col-span-4 flex justify-center">
           <img
             class={clsx(
@@ -160,6 +195,26 @@ const EditStats = () => {
               {matchQuery.data?.stats?.initial_possession?.name}
             </div>
           </div>
+          <button
+            class="mt-2 rounded-lg bg-blue-500 px-2 py-1 text-white"
+            onClick={() =>
+              matchStatsHalfTimeMutation.mutate({
+                match_id: params.matchId
+              })
+            }
+          >
+            Half Time
+          </button>
+          <button
+            class="mx-2 rounded-lg bg-blue-500 px-2 py-1 text-white"
+            onClick={() =>
+              matchStatsFullTimeMutation.mutate({
+                match_id: params.matchId
+              })
+            }
+          >
+            Full Time
+          </button>
         </details>
       </div>
 
