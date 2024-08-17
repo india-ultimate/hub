@@ -43,6 +43,7 @@ const PhonePeTransaction = lazy(() => import("./PhonePeTransaction"));
 const CheckMemberships = lazy(() => import("./CheckMemberships"));
 const CollegeID = lazy(() => import("./CollegeID"));
 const EditStats = lazy(() => import("./match/stats/EditStats"));
+const ViewStats = lazy(() => import("./match/stats/ViewStats"));
 
 const filters = {
   id: /^\d+$/ // only allow numbers
@@ -93,6 +94,10 @@ export default function App() {
                   <Route
                     path={"/tournament/:tournament_slug/team/:team_slug"}
                     component={TournamentTeam}
+                  />
+                  <Route
+                    path="/tournament/:tournamentSlug/match/:matchId/live"
+                    component={ViewStats}
                   />
                   {/* Team Public Routes */}
                   <Route path={"/teams"} component={Teams} />
