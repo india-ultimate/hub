@@ -16,7 +16,6 @@ import MatchSpiritScoreForm from "../tournament/MatchSpiritScoreForm";
 import SpiritScoreTable from "../tournament/SpiritScoreTable";
 import FinalSpiritScores from "./FinalSpiritScores";
 import MatchHeader from "./MatchHeader";
-import CreateStatsButton from "./stats/CreateStatsButton";
 import SubmitScore from "./SubmitScore";
 import SubmitSpiritScore from "./SubmitSpiritScore";
 /**
@@ -827,7 +826,7 @@ const TournamentMatch = props => {
         </div>
       </Show>
 
-      <Show
+      {/* <Show
         when={
           (props.match.status === "COM" || props.match.status === "SCH") &&
           isStaff()
@@ -857,7 +856,7 @@ const TournamentMatch = props => {
             </A>
           </Show>
         </div>
-      </Show>
+      </Show> */}
     </>
   );
 };
