@@ -5,7 +5,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("server", "0083_season_annual_membership_amount_and_more"),
+        ("server", "0085_matchstats_matchevent"),
     ]
 
     operations = [
