@@ -133,6 +133,7 @@ from server.schema import (
 )
 from server.season.api import router as season_router
 from server.season.models import Season
+from server.series.api import router as series_router
 from server.top_score_utils import TopScoreClient
 from server.tournament.match_stats import handle_all_events, handle_full_time, handle_half_time
 from server.tournament.models import (
@@ -177,6 +178,7 @@ from server.utils import (
 )
 
 api = NinjaAPI(auth=django_auth, csrf=True)
+api.add_router("/series/", series_router)
 
 
 class AuthenticatedHttpRequest(HttpRequest):
