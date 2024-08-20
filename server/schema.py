@@ -282,7 +282,7 @@ class TeamMinSchema(ModelSchema):
 
     class Config:
         model = Team
-        model_fields = ["name", "slug"]
+        model_fields = ["id", "name", "slug", "image", "image_url"]
 
 
 class TeamCreateSchema(Schema):
