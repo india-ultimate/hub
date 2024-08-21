@@ -331,19 +331,19 @@ def series_roster_invitations_received(
 
 
 @router.get(
-    "/{series_id}/team/{team_id}/invitations-received",
+    "/{series_slug}/team/{team_slug}/invitations-received",
     response={200: list[SeriesRosterInvitationSchema], 400: Response},
 )
 def series_team_roster_invitations_received(
-    request: AuthenticatedHttpRequest, series_id: int, team_id: int
+    request: AuthenticatedHttpRequest, series_slug: str, team_slug: str
 ) -> tuple[int, QuerySet[SeriesRosterInvitation] | message_response]:
     try:
-        series = Series.objects.get(id=series_id)
+        series = Series.objects.get(slug=series_slug)
     except Series.DoesNotExist:
         return 400, {"message": "Series does not exist"}
 
     try:
-        team = Team.objects.get(id=team_id)
+        team = Team.objects.get(slug=team_slug)
     except Team.DoesNotExist:
         return 400, {"message": "Team does not exist"}
 
@@ -356,19 +356,19 @@ def series_team_roster_invitations_received(
 
 
 @router.get(
-    "/{series_id}/team/{team_id}/invitations-sent",
+    "/{series_slug}/team/{team_slug}/invitations-sent",
     response={200: list[SeriesRosterInvitationSchema], 400: Response, 401: Response},
 )
 def series_team_roster_invitations_sent(
-    request: AuthenticatedHttpRequest, series_id: int, team_id: int
+    request: AuthenticatedHttpRequest, series_slug: str, team_slug: str
 ) -> tuple[int, QuerySet[SeriesRosterInvitation] | message_response]:
     try:
-        series = Series.objects.get(id=series_id)
+        series = Series.objects.get(slug=series_slug)
     except Series.DoesNotExist:
         return 400, {"message": "Series does not exist"}
 
     try:
-        team = Team.objects.get(id=team_id)
+        team = Team.objects.get(slug=team_slug)
     except Team.DoesNotExist:
         return 400, {"message": "Team does not exist"}
 
@@ -381,25 +381,25 @@ def series_team_roster_invitations_sent(
 
 
 @router.get(
-    "/{series_id}/team/{team_id}/roster",
-    response={200: SeriesTeamRosterSchema, 400: Response, 401: Response},
+    "/{series_slug}/team/{team_slug}/roster",
+    response={200: list[SeriesTeamRosterSchema], 400: Response, 401: Response},
 )
 def get_team_series_roster(
-    request: AuthenticatedHttpRequest, series_id: int, team_id: int
+    request: AuthenticatedHttpRequest, series_slug: str, team_slug: str
 ) -> tuple[int, Any | message_response]:
     try:
-        series = Series.objects.get(id=series_id)
+        series = Series.objects.get(slug=series_slug)
     except Series.DoesNotExist:
         return 400, {"message": "Series does not exist"}
 
     try:
-        team = Team.objects.get(id=team_id)
+        team = Team.objects.get(slug=team_slug)
     except Team.DoesNotExist:
         return 400, {"message": "Team does not exist"}
 
-    return 200, SeriesRegistration.objects.filter(series=series, team=team).values(
-        "player"
-    ).order_by("player__user__first_name")
+    return 200, SeriesRegistration.objects.filter(series=series, team=team).order_by(
+        "player__user__first_name"
+    )
 
 
 @router.put(
