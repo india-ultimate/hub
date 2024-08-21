@@ -6,7 +6,7 @@ from ninja import Router
 
 from server.core.models import Player, Team, User
 from server.membership.models import Membership
-from server.schema import Response
+from server.schema import Response, TeamSchema
 from server.season.models import Season
 from server.types import message_response
 from server.utils import today
@@ -137,6 +137,26 @@ def remove_team_series_registration(
     series.teams.remove(team)
 
     return 200, series
+
+
+@router.get("/{series_slug}/team/{team_slug}", response={200: TeamSchema, 400: Response})
+def get_series_team(
+    request: AuthenticatedHttpRequest, series_slug: str, team_slug: str
+) -> tuple[int, Team | message_response]:
+    try:
+        series = Series.objects.get(slug=series_slug)
+    except Series.DoesNotExist:
+        return 400, {"message": "Series does not exist"}
+
+    try:
+        team = Team.objects.get(slug=team_slug)
+    except Team.DoesNotExist:
+        return 400, {"message": "Team does not exist"}
+
+    if team not in series.teams.all():
+        return 400, {"message": f"{team.name} is not registered for {series.name} !"}
+
+    return 200, team
 
 
 @router.post(
