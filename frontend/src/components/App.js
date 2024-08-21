@@ -17,6 +17,7 @@ const Login = lazy(() => import("./Login"));
 const Registration = lazy(() => import("./Registration"));
 const Help = lazy(() => import("./Help"));
 const Legal = lazy(() => import("./Legal"));
+const TermsAndConditions = lazy(() => import("./TermsAndConditions"));
 const Membership = lazy(() => import("./membership"));
 const Vaccination = lazy(() => import("./Vaccination"));
 const Accreditation = lazy(() => import("./Accreditation"));
@@ -126,6 +127,10 @@ export default function App() {
                   />
                   <Route path="/help" component={Help} />
                   <Route path="/legal" component={Legal} />
+                  <Route
+                    path="/terms-and-conditions"
+                    component={TermsAndConditions}
+                  />
                   {/* Membership, vaccination, waiver, etc. */}
                   <UserRoute
                     path="/membership/:playerId"
