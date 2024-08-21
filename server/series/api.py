@@ -209,6 +209,15 @@ def send_series_invitation(
     except Player.DoesNotExist:
         return 400, {"message": "Player does not exist"}
 
+    if not to_player.membership.is_active:
+        return 400, {"message": "You need an active IU membership to register for the series"}
+
+    can_register, error = can_invite_player_to_series_roster(
+        series=series, team=team, player=to_player
+    )
+    if not can_register and error:
+        return 400, error
+
     invitation = SeriesRosterInvitation(
         series=series, from_user=request.user, to_player=to_player, team=team
     )
@@ -260,15 +269,6 @@ def accept_series_invitation(
 
     if request.user != invitation.to_player.user:
         return 401, {"message": "This invitation was not sent to you !"}
-
-    has_season_membership = Membership.objects.filter(
-        player=invitation.to_player, season=invitation.series.season
-    ).exists()
-
-    if not has_season_membership:
-        return 400, {
-            "message": f"You need an IU membership to take part in {invitation.series.name}"
-        }
 
     match invitation.status:
         case SeriesRosterInvitation.Status.EXPIRED:
