@@ -19,7 +19,7 @@ For the purposes of this Privacy Policy:
 - **Account** means a unique account created for You to access our Service or parts of our Service.
 - **Affiliate** means an entity that controls, is controlled by or is under common control with a party, where "control" means ownership of 50% or more of the shares, equity interest or other securities entitled to vote for election of directors or other managing authority.
 
-- **Company** (referred to as either "the Company", "We", "Us" or "Our" in this Agreement) refers to India Ultimate.
+- **Company** (referred to as either "the Company", "We", "Us" or "Our" in this Agreement) refers to Flying Disc Sports Federation (India) (also referred to as India Ultimate).
 
 - **Cookies** are small files that are placed on Your computer, mobile device or any other device by a website, containing the details of Your browsing history on that website among its many uses.
 
