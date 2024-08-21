@@ -6,7 +6,6 @@ from ninja import Router
 from ninja.pagination import PageNumberPagination, paginate
 
 from server.core.models import Player, Team, User
-from server.membership.models import Membership
 from server.schema import PlayerTinySchema, Response, TeamSchema
 from server.season.models import Season
 from server.types import message_response
@@ -22,7 +21,12 @@ from .schema import (
     SeriesSchema,
     SeriesTeamRosterSchema,
 )
-from .utils import RegistrationError, register_player, series_team_players_search_list
+from .utils import (
+    RegistrationError,
+    can_invite_player_to_series_roster,
+    register_player,
+    series_team_players_search_list,
+)
 
 router = Router()
 
@@ -87,7 +91,7 @@ def create_series(
     return 200, series
 
 
-@router.put(
+@router.post(
     "/{series_slug}/register-team", response={200: SeriesSchema, 400: Response, 401: Response}
 )
 def add_team_series_registration(
@@ -117,7 +121,7 @@ def add_team_series_registration(
     return 200, series
 
 
-@router.put(
+@router.delete(
     "/{series_slug}/deregister-team", response={200: SeriesSchema, 400: Response, 401: Response}
 )
 def remove_team_series_registration(
@@ -137,6 +141,26 @@ def remove_team_series_registration(
     series.teams.remove(team)
 
     return 200, series
+
+
+@router.get("/{series_slug}/team/{team_slug}", response={200: TeamSchema, 400: Response})
+def get_series_team(
+    request: AuthenticatedHttpRequest, series_slug: str, team_slug: str
+) -> tuple[int, Team | message_response]:
+    try:
+        series = Series.objects.get(slug=series_slug)
+    except Series.DoesNotExist:
+        return 400, {"message": "Series does not exist"}
+
+    try:
+        team = Team.objects.get(slug=team_slug)
+    except Team.DoesNotExist:
+        return 400, {"message": "Team does not exist"}
+
+    if team not in series.teams.all():
+        return 400, {"message": f"{team.name} is not registered for {series.name} !"}
+
+    return 200, team
 
 
 @router.get(
@@ -160,26 +184,6 @@ def search_players(
     return series_team_players_search_list(
         series=series, team=team, search_text=text.strip().lower()
     )
-
-
-@router.get("/{series_slug}/team/{team_slug}", response={200: TeamSchema, 400: Response})
-def get_series_team(
-    request: AuthenticatedHttpRequest, series_slug: str, team_slug: str
-) -> tuple[int, Team | message_response]:
-    try:
-        series = Series.objects.get(slug=series_slug)
-    except Series.DoesNotExist:
-        return 400, {"message": "Series does not exist"}
-
-    try:
-        team = Team.objects.get(slug=team_slug)
-    except Team.DoesNotExist:
-        return 400, {"message": "Team does not exist"}
-
-    if team not in series.teams.all():
-        return 400, {"message": f"{team.name} is not registered for {series.name} !"}
-
-    return 200, team
 
 
 @router.post(
