@@ -403,34 +403,33 @@ def get_team_series_roster(
 
 
 @router.put(
-    "/{series_id}/team/{team_id}/roster",
+    "/{series_slug}/team/{team_slug}/roster/add-self",
     response={200: SeriesRegistrationSchema, 400: Response, 401: Response},
 )
 def add_myself_to_team_series_roster(
     request: AuthenticatedHttpRequest,
-    series_id: int,
-    team_id: int,
-    player_details: SeriesRegistrationAddSchema,
+    series_slug: str,
+    team_slug: str,
 ) -> tuple[int, SeriesRegistration | message_response]:
     try:
-        series = Series.objects.get(id=series_id)
+        series = Series.objects.get(slug=series_slug)
     except Series.DoesNotExist:
         return 400, {"message": "Series does not exist"}
 
     try:
-        team = Team.objects.get(id=team_id)
+        team = Team.objects.get(slug=team_slug)
     except Team.DoesNotExist:
         return 400, {"message": "Team does not exist"}
 
     if request.user not in team.admins.all():
         return 401, {"message": "Only team admins can add themselves to a series roster"}
 
-    try:
-        player = Player.objects.get(id=player_details.player_id)
-    except Player.DoesNotExist:
+    if not hasattr(request.user, "player_profile"):
         return 400, {"message": "Player not found, please complete your registration first."}
 
-    if request.user.player_profile == player:
-        return 200, register_player(series=series, team=team, player=player)
+    try:
+        series_registration = register_player(series=series, team=team, player=request.user.player_profile)
+    except RegistrationError as error:
+        return 400, {"message": str(error)}
 
-    return 400, {"message": "Wrong player info sent"}
+    return 200, series_registration
