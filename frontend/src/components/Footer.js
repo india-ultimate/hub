@@ -21,6 +21,14 @@ export default function Footer() {
               </A>
             </li>
             <li>
+              <A
+                href="/terms-and-conditions"
+                class="mr-4 hover:underline md:mr-6 "
+              >
+                Terms & Conditions
+              </A>
+            </li>
+            <li>
               <A href="/legal" class="mr-4 hover:underline md:mr-6">
                 Refund Policy
               </A>
