@@ -1,3 +1,6 @@
+from django.db.models import Q, QuerySet, Value
+from django.db.models.functions import Concat
+
 from server.core.models import Player, Team
 from server.types import message_response
 
@@ -77,6 +80,33 @@ def register_player(series: Series, team: Team, player: Player) -> SeriesRegistr
     if not can_register and error:
         raise RegistrationError(error["message"])
 
-    print("can register:", player.user.first_name, "with", team.name)
-
     return SeriesRegistration.objects.create(series=series, team=team, player=player)
+
+
+def series_team_players_search_list(
+    series: Series, team: Team, search_text: str
+) -> list[Player] | QuerySet[Player]:
+    # Off-season (meaning not hosted by IU) series or tournaments don't need a membership
+    # IU season/series rules don't apply
+    if series.season is not None:
+        players = (
+            Player.objects.filter(membership__is_active=True)
+            .annotate(full_name=Concat("user__first_name", Value(" "), "user__last_name"))
+            .filter(Q(full_name__icontains=search_text) | Q(user__username__icontains=search_text))
+            .order_by("full_name")
+        )
+        return list(
+            filter(
+                lambda player: can_invite_player_to_series_roster(
+                    series=series, team=team, player=player
+                )[0]
+                is True,
+                players,
+            )
+        )
+
+    return (
+        Player.objects.annotate(full_name=Concat("user__first_name", Value(" "), "user__last_name"))
+        .filter(Q(full_name__icontains=search_text) | Q(user__username__icontains=search_text))
+        .order_by("full_name")
+    )

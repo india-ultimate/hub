@@ -3,10 +3,11 @@ from typing import Any
 from django.db.models import QuerySet
 from django.http import HttpRequest
 from ninja import Router
+from ninja.pagination import PageNumberPagination, paginate
 
 from server.core.models import Player, Team, User
 from server.membership.models import Membership
-from server.schema import Response, TeamSchema
+from server.schema import PlayerTinySchema, Response, TeamSchema
 from server.season.models import Season
 from server.types import message_response
 from server.utils import today
@@ -15,14 +16,13 @@ from .models import Series, SeriesRegistration, SeriesRosterInvitation
 from .schema import (
     AddOrRemoveTeamSeriesRegistrationSchema,
     SeriesCreateSchema,
-    SeriesRegistrationAddSchema,
     SeriesRegistrationSchema,
     SeriesRosterInvitationCreateSchema,
     SeriesRosterInvitationSchema,
     SeriesSchema,
     SeriesTeamRosterSchema,
 )
-from .utils import RegistrationError, register_player
+from .utils import RegistrationError, register_player, series_team_players_search_list
 
 router = Router()
 
@@ -137,6 +137,29 @@ def remove_team_series_registration(
     series.teams.remove(team)
 
     return 200, series
+
+
+@router.get(
+    "/{series_slug}/team/{team_slug}/players/search",
+    response={200: list[PlayerTinySchema]},
+)
+@paginate(PageNumberPagination, page_size=5)
+def search_players(
+    request: AuthenticatedHttpRequest, series_slug: str, team_slug: str, text: str = ""
+) -> list[Player] | QuerySet[Player]:
+    try:
+        series = Series.objects.get(slug=series_slug)
+    except Series.DoesNotExist:
+        return []
+
+    try:
+        team = Team.objects.get(slug=team_slug)
+    except Team.DoesNotExist:
+        return []
+
+    return series_team_players_search_list(
+        series=series, team=team, search_text=text.strip().lower()
+    )
 
 
 @router.get("/{series_slug}/team/{team_slug}", response={200: TeamSchema, 400: Response})
@@ -428,7 +451,9 @@ def add_myself_to_team_series_roster(
         return 400, {"message": "Player not found, please complete your registration first."}
 
     try:
-        series_registration = register_player(series=series, team=team, player=request.user.player_profile)
+        series_registration = register_player(
+            series=series, team=team, player=request.user.player_profile
+        )
     except RegistrationError as error:
         return 400, {"message": str(error)}
 
