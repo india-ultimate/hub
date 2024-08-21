@@ -3,15 +3,8 @@ from datetime import date
 from ninja import ModelSchema, Schema
 
 from server.schema import PlayerMinSchema, PlayerTinySchema, TeamMinSchema, UserMinSchema
-from server.season.models import Season
 
 from .models import Series, SeriesRegistration, SeriesRosterInvitation
-
-
-class SeasonSchema(ModelSchema):
-    class Config:
-        model = Season
-        model_fields = "__all__"
 
 
 class SeriesSchema(ModelSchema):

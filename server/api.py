@@ -134,6 +134,7 @@ from server.schema import (
 from server.season.api import router as season_router
 from server.season.models import Season
 from server.series.api import router as series_router
+from server.series.models import SeriesRegistration
 from server.top_score_utils import TopScoreClient
 from server.tournament.match_stats import handle_all_events, handle_full_time, handle_half_time
 from server.tournament.models import (
@@ -178,7 +179,6 @@ from server.utils import (
 )
 
 api = NinjaAPI(auth=django_auth, csrf=True)
-api.add_router("/series/", series_router)
 
 
 class AuthenticatedHttpRequest(HttpRequest):
@@ -187,6 +187,7 @@ class AuthenticatedHttpRequest(HttpRequest):
 
 # Routers
 api.add_router("/seasons", season_router)
+api.add_router("/series/", series_router)
 
 
 # User #########
@@ -1395,6 +1396,49 @@ def get_tournament(
 
 
 # Tournaments - Roster ##########
+
+
+@api.get(
+    "/tournament/{event_slug}/team/{team_slug}/players/search",
+    response={200: list[PlayerTinySchema], 400: Response},
+)
+@paginate(PageNumberPagination, page_size=5)
+def event_roster_player_search(
+    request: AuthenticatedHttpRequest, event_slug: str, team_slug: str, text: str = ""
+) -> list[Player] | QuerySet[Player]:
+    try:
+        event = Event.objects.get(slug=event_slug)
+    except Event.DoesNotExist:
+        return []
+
+    try:
+        team = Team.objects.get(slug=team_slug)
+    except Team.DoesNotExist:
+        return []
+
+    text = text.strip().lower()
+
+    if not event.series:
+        return (
+            Player.objects.annotate(
+                full_name=Concat("user__first_name", Value(" "), "user__last_name")
+            )
+            .filter(Q(full_name__icontains=text) | Q(user__username__icontains=text))
+            .order_by("full_name")
+        )
+
+    # Players have to be in the series roster first, to be added to the event roster
+    # Membership active status already checked before adding to the season roster
+    series_roster_player_ids = SeriesRegistration.objects.filter(
+        series=event.series, team=team
+    ).values_list("player__id", flat=True)
+
+    return (
+        Player.objects.filter(id__in=series_roster_player_ids)
+        .annotate(full_name=Concat("user__first_name", Value(" "), "user__last_name"))
+        .filter(Q(full_name__icontains=text) | Q(user__username__icontains=text))
+        .order_by("full_name")
+    )
 
 
 @api.post(
