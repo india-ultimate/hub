@@ -3,7 +3,7 @@ import { A } from "@solidjs/router";
 import { WALink } from "../constants";
 
 export default function Footer() {
-  const email = "operations+hub@indiaultimate.org";
+  const _email = "operations+hub@indiaultimate.org";
   return (
     <div>
       <footer class="m-4 rounded-lg bg-white shadow dark:bg-gray-800">
@@ -39,6 +39,11 @@ export default function Footer() {
               </A>
             </li>
             <li>
+              <A href="/contact-us" class="mr-4 hover:underline md:mr-6">
+                Contact Us
+              </A>
+            </li>
+            {/* <li>
               <a
                 class="mr-4 hover:underline md:mr-6"
                 title={email}
@@ -46,7 +51,7 @@ export default function Footer() {
               >
                 Email Us
               </a>
-            </li>
+            </li> */}
             <li>
               <a href={WALink} class="mr-4 hover:underline md:mr-6">
                 WhatsApp Us
