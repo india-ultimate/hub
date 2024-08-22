@@ -66,6 +66,7 @@ class SeriesRosterInvitation(ExportModelOperationsMixin("series_roster_invitatio
         ACCEPTED = "Accepted", _("Accepted")
         DECLINED = "Declined", _("Declined")
         EXPIRED = "Expired", _("Expired")
+        REVOKED = "Revoked", _("Revoked")
 
     series = models.ForeignKey(Series, on_delete=models.CASCADE)
     from_user = models.ForeignKey(
@@ -77,4 +78,5 @@ class SeriesRosterInvitation(ExportModelOperationsMixin("series_roster_invitatio
     team = models.ForeignKey(Team, on_delete=models.CASCADE)
     status = models.CharField(max_length=8, choices=Status.choices, default=Status.PENDING)
     expires_on = models.DateField(default=default_invitation_expiry_date)
+    created_at = models.DateTimeField(auto_now_add=True)
     rsvp_date = models.DateField(blank=True, null=True)
