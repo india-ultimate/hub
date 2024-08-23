@@ -22,6 +22,8 @@ from .schema import (
 )
 from .utils import (
     RegistrationError,
+    can_invite_player_to_series_roster,
+    can_register_player_to_series_roster,
     register_player,
 )
 
@@ -210,14 +212,17 @@ def send_series_invitation(
     except Player.DoesNotExist:
         return 400, {"message": "Player does not exist"}
 
-    # if not to_player.membership.is_active:
-    #     return 400, {"message": "You need an active IU membership to register for the series"}
+    can_invite, error = can_invite_player_to_series_roster(
+        series=series, team=team, player=to_player
+    )
+    if not can_invite and error:
+        return 400, error
 
-    # can_register, error = can_register_player_to_series_roster(
-    #     series=series, team=team, player=to_player
-    # )
-    # if not can_register and error:
-    #     return 400, error
+    can_register, error = can_register_player_to_series_roster(
+        series=series, team=team, player=to_player
+    )
+    if not can_register and error:
+        return 400, {"message": "Player has already registered with another team for this series"}
 
     invitation = SeriesRosterInvitation(
         series=series, from_user=request.user, to_player=to_player, team=team
