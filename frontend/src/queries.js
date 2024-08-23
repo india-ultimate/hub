@@ -231,36 +231,6 @@ export const fetchSeriesTeamBySlug = async (series_slug, team_slug) => {
   return data;
 };
 
-// export const searchSeriesTeamPlayers = async (
-//   series_slug,
-//   team_slug,
-//   searchText,
-//   pagination
-// ) => {
-//   let baseUrl = `/api/series/${series_slug}/team/${team_slug}/players/search`;
-//   let params = new URLSearchParams();
-//   if (searchText) {
-//     params.set("text", searchText);
-//   }
-//   if (pagination.pageIndex) {
-//     params.set("page", pagination.pageIndex + 1);
-//   }
-//   if (params.toString().length > 0) {
-//     baseUrl = baseUrl + "?" + params.toString();
-//   }
-//   const response = await fetch(baseUrl, {
-//     method: "GET",
-//     headers: { "Content-Type": "application/json" },
-//     credentials: "same-origin"
-//   });
-
-//   const data = await response.json();
-
-//   if (!response.ok) {
-//     throw new Error(data?.message || JSON.stringify(data));
-//   }
-//   return data;
-// };
 
 export const fetchTeamSeriesRoster = async (series_slug, team_slug) => {
   const response = await fetch(
@@ -493,6 +463,27 @@ export const fetchMatchesBySlug = async tournament_slug => {
       credentials: "same-origin"
     }
   );
+  return await response.json();
+};
+
+export const searchSeriesRosterPlayers = async (tournament_slug, team_slug, searchText, pagination) => {
+  let baseUrl = `/api/tournament/${tournament_slug}/team/${team_slug}/players/search`;
+  let params = new URLSearchParams();
+  if (searchText) {
+    params.set("text", searchText);
+  }
+  if (pagination.pageIndex) {
+    params.set("page", pagination.pageIndex + 1);
+  }
+  if (params.toString().length > 0) {
+    baseUrl = baseUrl + "?" + params.toString();
+  }
+  console.log(baseUrl);
+  const response = await fetch(baseUrl, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin"
+  });
   return await response.json();
 };
 
