@@ -25,6 +25,7 @@ from .utils import (
     can_invite_player_to_series_roster,
     can_register_player_to_series_roster,
     register_player,
+    send_invitation_email,
 )
 
 router = Router()
@@ -232,6 +233,9 @@ def send_series_invitation(
         invitation.expires_on = invitation_details.expires_on
 
     invitation.save()
+
+    send_invitation_email(from_user=request.user, to_player=to_player, team=team, series=series)
+
     return 200, invitation
 
 
