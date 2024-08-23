@@ -460,7 +460,7 @@ class PlayerMinSchema(ModelSchema):
 
     class Config:
         model = Player
-        model_fields = ["state_ut", "match_up"]
+        model_fields = ["id", "state_ut", "match_up"]
 
 
 class PersonSchema(ModelSchema):
