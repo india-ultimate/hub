@@ -47,6 +47,15 @@ export const displayDate = dateString => {
   return date;
 };
 
+export const displayDateShort = dateString => {
+  const date = new Date(dateString).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric"
+  });
+  return date;
+};
+
 export const razorpayScriptExists = () => {
   var scripts = document.getElementsByTagName("script");
   for (var i = scripts.length; i--; ) {
@@ -275,13 +284,10 @@ export const getTournamentBreadcrumbName = tournamentSlug => {
 };
 
 /**
- * @param {Response} response
- * @param {number} delay_ms
+ * @param {number} delay_ms Delay in milliseconds
  */
-export function artificialDelay(response, delay_ms) {
-  return new Promise(res =>
-    setTimeout(async () => res(await response.json()), delay_ms)
-  );
+export function delay(delay_ms) {
+  return new Promise(res => setTimeout(async () => res(), delay_ms));
 }
 
 export const registerPasskey = async () => {
