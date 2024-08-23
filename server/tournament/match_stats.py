@@ -1,6 +1,7 @@
 from server.core.models import Player, Team
-from server.schema import MatchEventCreateSchema
 from server.tournament.models import Match, MatchEvent, MatchStats
+
+from .schema import MatchEventCreateSchema
 
 
 def handle_all_events(

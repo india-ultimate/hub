@@ -6,7 +6,6 @@ from functools import cmp_to_key, partial
 from django.db.models import Q
 
 from server.core.models import Player, Team, UCPerson, User
-from server.schema import SpiritScoreUpdateSchema
 from server.tournament.models import Event
 from server.types import message_response, validation_error_dict
 from server.utils import ordinal_suffix
@@ -22,6 +21,7 @@ from .models import (
     Tournament,
     UCRegistration,
 )
+from .schema import SpiritScoreUpdateSchema
 
 ROLES_ELIGIBLE_TO_SUBMIT_SCORES = [
     "admin",
