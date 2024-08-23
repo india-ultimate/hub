@@ -220,7 +220,7 @@ const TeamRegistration = () => {
               Add your team
             </button>
           </div>
-          <p class="inline-flex items-center">
+          <p class="mb-2 inline-flex items-center">
             <Icon class="h-4 w-4 text-blue-600" path={bolt} /> - Your team
           </p>
 

@@ -127,7 +127,11 @@ const Teams = () => {
               userQuery.data.admin_teams &&
               userQuery.data.admin_teams.length > 0
             }
-            fallback={<Info text="No teams to show" />}
+            fallback={
+              <div class="my-2">
+                <Info text="No teams to show" />
+              </div>
+            }
           >
             <For each={userQuery.data.admin_teams}>
               {team => (

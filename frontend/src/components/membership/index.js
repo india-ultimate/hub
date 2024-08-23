@@ -156,7 +156,7 @@ const Membership = () => {
       <Show
         when={season()}
         fallback={
-          <div class="mt-4">
+          <div class="my-4">
             <Info text="Please select a season" />
           </div>
         }
