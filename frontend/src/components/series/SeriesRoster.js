@@ -32,7 +32,7 @@ function groupInvitationsByPlayerId(invitations) {
   return groupedInvitations;
 }
 
-const SeriesRoster = props => {
+const SeriesRoster = () => {
   const params = useParams();
   const [store] = useStore();
   const [latestInvitationsPerPlayer, setLatestInvitationsPerPlayer] =
