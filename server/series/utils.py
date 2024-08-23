@@ -1,6 +1,3 @@
-from django.db.models import Q, QuerySet, Value
-from django.db.models.functions import Concat
-
 from server.core.models import Player, Team
 from server.types import message_response
 
@@ -15,7 +12,7 @@ class RegistrationError(Exception):
         return self.message
 
 
-def can_invite_player_to_series_roster(
+def can_register_player_to_series_roster(
     series: Series, team: Team, player: Player
 ) -> tuple[bool, message_response | None]:
     registered_teams_categories = SeriesRegistration.objects.filter(
@@ -73,7 +70,17 @@ def register_player(series: Series, team: Team, player: Player) -> SeriesRegistr
     if not player.membership.is_active:
         raise RegistrationError("You need an active IU membership to register for the series")
 
-    can_register, error = can_invite_player_to_series_roster(
+    if not player.membership.waiver_valid:
+        raise RegistrationError("You need to sign the waiver first, to register for the series")
+
+    num_registrations = SeriesRegistration.objects.filter(series=series, team=team).count()
+
+    if not num_registrations + 1 <= series.series_roster_max_players:
+        raise RegistrationError(
+            f"Only {series.series_roster_max_players} can register for this series"
+        )
+
+    can_register, error = can_register_player_to_series_roster(
         series=series, team=team, player=player
     )
 
@@ -83,30 +90,30 @@ def register_player(series: Series, team: Team, player: Player) -> SeriesRegistr
     return SeriesRegistration.objects.create(series=series, team=team, player=player)
 
 
-def series_team_players_search_list(
-    series: Series, team: Team, search_text: str
-) -> list[Player] | QuerySet[Player]:
-    # Off-season (meaning not hosted by IU) series or tournaments don't need a membership
-    # IU season/series rules don't apply
-    if series.season is not None:
-        players = (
-            Player.objects.filter(membership__is_active=True)
-            .annotate(full_name=Concat("user__first_name", Value(" "), "user__last_name"))
-            .filter(Q(full_name__icontains=search_text) | Q(user__username__icontains=search_text))
-            .order_by("full_name")
-        )
-        return list(
-            filter(
-                lambda player: can_invite_player_to_series_roster(
-                    series=series, team=team, player=player
-                )[0]
-                is True,
-                players,
-            )
-        )
+# def series_team_players_search_list(
+#     series: Series, team: Team, search_text: str
+# ) -> list[Player] | QuerySet[Player]:
+#     # Off-season (meaning not hosted by IU) series or tournaments don't need a membership
+#     # IU season/series rules don't apply
+#     if series.season is not None:
+#         players = (
+#             Player.objects.filter(membership__is_active=True)
+#             .annotate(full_name=Concat("user__first_name", Value(" "), "user__last_name"))
+#             .filter(Q(full_name__icontains=search_text) | Q(user__username__icontains=search_text))
+#             .order_by("full_name")
+#         )
+#         return list(
+#             filter(
+#                 lambda player: can_register_player_to_series_roster(
+#                     series=series, team=team, player=player
+#                 )[0]
+#                 is True,
+#                 players,
+#             )
+#         )
 
-    return (
-        Player.objects.annotate(full_name=Concat("user__first_name", Value(" "), "user__last_name"))
-        .filter(Q(full_name__icontains=search_text) | Q(user__username__icontains=search_text))
-        .order_by("full_name")
-    )
+#     return (
+#         Player.objects.annotate(full_name=Concat("user__first_name", Value(" "), "user__last_name"))
+#         .filter(Q(full_name__icontains=search_text) | Q(user__username__icontains=search_text))
+#         .order_by("full_name")
+#     )
