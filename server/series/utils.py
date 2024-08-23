@@ -1,4 +1,9 @@
-from server.core.models import Player, Team
+from django.conf import settings
+from django.core import mail
+from django.template.loader import render_to_string
+from django.utils.html import strip_tags
+
+from server.core.models import Player, Team, User
 from server.membership.models import Membership
 from server.types import message_response
 
@@ -120,6 +125,19 @@ def register_player(series: Series, team: Team, player: Player) -> SeriesRegistr
         raise RegistrationError(error["message"])
 
     return SeriesRegistration.objects.create(series=series, team=team, player=player)
+
+
+def send_invitation_email(from_user: User, to_player: Player, team: Team, series: Series) -> None:
+    subject = f"Hub | Invitation to join {team.name}'s roster"
+    html_message = render_to_string(
+        "series_roster_invitation_email.html",
+        {"team_name": team.name, "from_name": from_user.username, "series_name": series.name},
+    )
+    plain_message = strip_tags(html_message)
+    from_email = settings.EMAIL_HOST_USER
+    to = to_player.user.email.strip().lower()
+
+    mail.send_mail(subject, plain_message, from_email, [to], html_message=html_message)
 
 
 # def series_team_players_search_list(
