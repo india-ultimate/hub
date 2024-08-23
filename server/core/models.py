@@ -95,6 +95,9 @@ class Team(ExportModelOperationsMixin("team"), models.Model):  # type: ignore[mi
         max_length=25, choices=CategoryTypes.choices, default=CategoryTypes.CLUB
     )
 
+    def __str__(self) -> str:
+        return self.name
+
     def save(self, *args: Any, **kwargs: Any) -> None:
         if not self.slug:
             slug = self.get_slug()
