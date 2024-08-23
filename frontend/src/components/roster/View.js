@@ -132,59 +132,124 @@ const Roster = () => {
         ]}
       />
 
-      <h1 class="mb-5 text-center">
-        <span class="w-fit bg-gradient-to-r from-blue-500 to-green-500 bg-clip-text text-2xl font-extrabold text-transparent">
-          {tournamentQuery.data?.event?.title}
-        </span>
-      </h1>
+      <div class="my-2 flex flex-row items-center justify-start gap-x-6 rounded-xl border border-gray-200 bg-gray-100 p-4">
+        <div>
+          <img
+            class="h-24 w-24 rounded-full p-1 ring-2 ring-gray-300 dark:ring-blue-500"
+            src={teamQuery.data?.image ?? teamQuery.data?.image_url}
+            alt="Bordered avatar"
+          />
+        </div>
+        <div class="flex flex-col items-start justify-center gap-y-1">
+          <div class="text-lg font-bold text-gray-700">
+            {teamQuery.data?.name}
+          </div>
+          <div class="text-md text-right">
+            {(teamQuery.data?.city || "") +
+              ", " +
+              (teamQuery.data?.state_ut || "")}
+          </div>
+          <div class="mt-1 rounded-md border border-blue-300 bg-blue-100 px-2 py-0.5 text-sm font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-300">
+            {teamQuery.data?.category}
+          </div>
+        </div>
+      </div>
 
-      <div class="flex justify-center">
-        <img
-          class="mr-3 inline-block h-24 w-24 rounded-full p-1 ring-2 ring-gray-300 dark:ring-blue-500"
-          src={teamQuery.data?.image ?? teamQuery.data?.image_url}
-          alt="Bordered avatar"
-        />
-      </div>
-      <div class="mt-4 text-center text-lg font-bold">
-        {teamQuery.data?.name}
-      </div>
-      <div class="text-center text-sm">
-        {(teamQuery.data?.city || "") + ", " + (teamQuery.data?.state_ut || "")}
-      </div>
-
-      <div class="mx-auto mb-4 mt-6 w-fit">
+      <div class="mx-auto mb-2 mt-2 w-full">
         <Show
           when={isPlayerRegInProgress()}
           fallback={<Warning>Player Rostering window is now closed!</Warning>}
         >
-          <Warning>
-            Player Rostering window is open from{" "}
-            <span class="inline-flex font-medium">
-              {new Date(
-                Date.parse(
-                  tournamentQuery.data?.event?.player_registration_start_date
-                )
-              ).toLocaleDateString("en-US", {
-                year: "numeric",
-                month: "short",
-                day: "numeric",
-                timeZone: "UTC"
-              })}
-            </span>{" "}
-            to{" "}
-            <span class="inline-flex font-medium">
-              {new Date(
-                Date.parse(
-                  tournamentQuery.data?.event?.player_registration_end_date
-                )
-              ).toLocaleDateString("en-US", {
-                year: "numeric",
-                month: "short",
-                day: "numeric",
-                timeZone: "UTC"
-              })}
-            </span>
-          </Warning>
+          <details class="w-full select-none bg-yellow-50 p-4 text-yellow-800 hover:cursor-pointer">
+            <summary class="text-md font-semibold">Rostering rules</summary>
+            <div class="mt-2 space-y-2 text-sm">
+              <ul class="list-inside list-disc space-y-1">
+                <li>
+                  <span>Rostering is open from </span>
+                  <span class="inline-flex font-medium">
+                    {new Date(
+                      Date.parse(
+                        tournamentQuery.data?.event
+                          ?.player_registration_start_date
+                      )
+                    ).toLocaleDateString("en-US", {
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                      timeZone: "UTC"
+                    })}
+                  </span>{" "}
+                  to{" "}
+                  <span class="inline-flex font-medium">
+                    {new Date(
+                      Date.parse(
+                        tournamentQuery.data?.event
+                          ?.player_registration_end_date
+                      )
+                    ).toLocaleDateString("en-US", {
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                      timeZone: "UTC"
+                    })}
+                  </span>
+                </li>
+                <li>
+                  <span class="font-semibold">Min male matching</span> players:{" "}
+                  <span>
+                    {
+                      tournamentQuery.data?.event?.series
+                        ?.event_min_players_male
+                    }
+                  </span>
+                </li>
+                <li>
+                  <span class="font-semibold">Min female matching</span>{" "}
+                  players:{" "}
+                  <span>
+                    {
+                      tournamentQuery.data?.event?.series
+                        ?.event_min_players_female
+                    }
+                  </span>
+                </li>
+
+                <Show
+                  when={["Mixed", "Opens"].includes(
+                    tournamentQuery.data?.event?.series?.type
+                  )}
+                >
+                  <li>
+                    <span class="font-semibold">Max male matching</span>{" "}
+                    players:{" "}
+                    <span>
+                      {
+                        tournamentQuery.data?.event?.series
+                          ?.event_max_players_male
+                      }
+                    </span>
+                  </li>
+                </Show>
+                <Show
+                  when={["Mixed", "Womens"].includes(
+                    tournamentQuery.data?.event?.series?.type
+                  )}
+                >
+                  <li>
+                    <span class="font-semibold">Max female matching</span>{" "}
+                    players:{" "}
+                    <span>
+                      {
+                        tournamentQuery.data?.event?.series
+                          ?.event_max_players_female
+                      }
+                    </span>
+                  </li>
+                </Show>
+              </ul>
+            </div>
+          </details>
+          <Show></Show>
         </Show>
       </div>
 

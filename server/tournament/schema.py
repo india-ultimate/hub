@@ -39,7 +39,7 @@ class UCRegistrationSchema(ModelSchema):
 
 
 class EventSchema(ModelSchema):
-    series: SeriesSchema
+    series: SeriesSchema | None
 
     class Config:
         model = Event
