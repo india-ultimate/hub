@@ -153,6 +153,14 @@ export const fetchTeamBySlug = async team_slug => {
   return await response.json();
 };
 
+export const fetchAllSeries = async () => {
+  const response = await fetch("/api/series/all", {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin"
+  });
+  return await response.json();
+};
 export const fetchTournaments = async () => {
   const response = await fetch("/api/tournaments", {
     method: "GET",
