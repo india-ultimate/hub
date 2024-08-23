@@ -21,6 +21,8 @@ import {
 } from "../../queries";
 import Info from "../alerts/Info";
 import Modal from "../Modal";
+import ErrorPopover from "../popover/ErrorPopover";
+import SuccessPopover from "../popover/SuccessPopover";
 
 const AddToRoster = props => {
   let modalRef;
@@ -93,22 +95,13 @@ const AddToRoster = props => {
           teamSlug={props.teamSlug}
         />
       </Modal>
-      <div
-        popover
-        ref={successPopoverRef}
-        role="alert"
-        class="mb-4 w-fit rounded-lg bg-green-200 p-4 text-sm text-green-800 dark:bg-gray-800 dark:text-green-400"
-      >
+      <SuccessPopover ref={successPopoverRef}>
         <span class="font-medium">{status()}</span>
-      </div>
-      <div
-        popover
-        ref={errorPopoverRef}
-        role="alert"
-        class="mb-4 w-fit rounded-lg bg-red-200 p-4 text-sm text-red-800 dark:bg-gray-800 dark:text-red-400"
-      >
+      </SuccessPopover>
+
+      <ErrorPopover ref={errorPopoverRef}>
         <span class="font-medium">{status()}</span>
-      </div>
+      </ErrorPopover>
     </div>
   );
 };

@@ -186,3 +186,52 @@ details[open] > summary.custom::after {
     font-size: 1em;
   }
 }
+
+/* [popover] {
+  bottom: 0;
+  opacity: 0;
+  transition: all 0.3s allow-discrete;
+}
+
+[popover]:popover-open {
+  bottom: 10px;
+  opacity: 1;
+}
+
+@starting-style {
+  [popover]:popover-open {
+    bottom: 0;
+    opacity: 0;
+  }
+} */
+
+[popover] {
+  --padding: 2rem;
+
+  inset: unset;
+  left: 0;
+  right: 0;
+
+  width: calc(100vw - var(--padding));
+
+  top: -20px;
+  opacity: 0;
+
+  transition: all 0.3s allow-discrete;
+}
+
+[popover]:popover-open {
+  top: 10px;
+  opacity: 1;
+}
+
+@starting-style {
+  [popover]:popover-open {
+    inset: unset;
+    left: 0;
+    right: 0;
+
+    top: -20px;
+    opacity: 0;
+  }
+}
