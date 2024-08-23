@@ -3,10 +3,9 @@ from typing import Any
 from django.db.models import QuerySet
 from django.http import HttpRequest
 from ninja import Router
-from ninja.pagination import PageNumberPagination, paginate
 
 from server.core.models import Player, Team, User
-from server.schema import PlayerTinySchema, Response, TeamSchema
+from server.schema import Response, TeamSchema
 from server.season.models import Season
 from server.types import message_response
 from server.utils import today
@@ -23,9 +22,7 @@ from .schema import (
 )
 from .utils import (
     RegistrationError,
-    can_invite_player_to_series_roster,
     register_player,
-    series_team_players_search_list,
 )
 
 router = Router()
@@ -163,42 +160,42 @@ def get_series_team(
     return 200, team
 
 
-@router.get(
-    "/{series_slug}/team/{team_slug}/players/search",
-    response={200: list[PlayerTinySchema]},
-)
-@paginate(PageNumberPagination, page_size=5)
-def search_players(
-    request: AuthenticatedHttpRequest, series_slug: str, team_slug: str, text: str = ""
-) -> list[Player] | QuerySet[Player]:
-    try:
-        series = Series.objects.get(slug=series_slug)
-    except Series.DoesNotExist:
-        return []
+# @router.get(
+#     "/{series_slug}/team/{team_slug}/players/search",
+#     response={200: list[PlayerTinySchema]},
+# )
+# @paginate(PageNumberPagination, page_size=5)
+# def search_players(
+#     request: AuthenticatedHttpRequest, series_slug: str, team_slug: str, text: str = ""
+# ) -> list[Player] | QuerySet[Player]:
+#     try:
+#         series = Series.objects.get(slug=series_slug)
+#     except Series.DoesNotExist:
+#         return []
 
-    try:
-        team = Team.objects.get(slug=team_slug)
-    except Team.DoesNotExist:
-        return []
+#     try:
+#         team = Team.objects.get(slug=team_slug)
+#     except Team.DoesNotExist:
+#         return []
 
-    return series_team_players_search_list(
-        series=series, team=team, search_text=text.strip().lower()
-    )
+#     return series_team_players_search_list(
+#         series=series, team=team, search_text=text.strip().lower()
+#     )
 
 
 @router.post(
-    "/{series_id}/team/{team_id}/invitation",
+    "/{series_slug}/team/{team_slug}/invitation",
     response={200: SeriesRosterInvitationCreateSchema, 400: Response, 401: Response},
 )
 def send_series_invitation(
     request: AuthenticatedHttpRequest,
-    series_id: int,
-    team_id: int,
+    series_slug: str,
+    team_slug: str,
     invitation_details: SeriesRosterInvitationCreateSchema,
 ) -> tuple[int, SeriesRosterInvitation | message_response]:
     try:
-        series = Series.objects.get(id=series_id)
-        team = Team.objects.get(id=team_id)
+        series = Series.objects.get(slug=series_slug)
+        team = Team.objects.get(slug=team_slug)
     except (Series.DoesNotExist, Team.DoesNotExist):
         return 400, {"message": "Series does not exist"}
 
@@ -213,14 +210,14 @@ def send_series_invitation(
     except Player.DoesNotExist:
         return 400, {"message": "Player does not exist"}
 
-    if not to_player.membership.is_active:
-        return 400, {"message": "You need an active IU membership to register for the series"}
+    # if not to_player.membership.is_active:
+    #     return 400, {"message": "You need an active IU membership to register for the series"}
 
-    can_register, error = can_invite_player_to_series_roster(
-        series=series, team=team, player=to_player
-    )
-    if not can_register and error:
-        return 400, error
+    # can_register, error = can_register_player_to_series_roster(
+    #     series=series, team=team, player=to_player
+    # )
+    # if not can_register and error:
+    #     return 400, error
 
     invitation = SeriesRosterInvitation(
         series=series, from_user=request.user, to_player=to_player, team=team
@@ -241,7 +238,7 @@ def revoke_series_invitation(
     request: AuthenticatedHttpRequest, invitation_id: int
 ) -> tuple[int, message_response]:
     try:
-        invitation = SeriesRosterInvitation(id=invitation_id)
+        invitation = SeriesRosterInvitation.objects.get(id=invitation_id)
     except SeriesRosterInvitation.DoesNotExist:
         return 400, {"messsage": "Series/Invitation does not exist"}
 
@@ -267,7 +264,7 @@ def accept_series_invitation(
     request: AuthenticatedHttpRequest, invitation_id: int
 ) -> tuple[int, SeriesRegistration | message_response]:
     try:
-        invitation = SeriesRosterInvitation(id=invitation_id)
+        invitation = SeriesRosterInvitation.objects.get(id=invitation_id)
     except SeriesRosterInvitation.DoesNotExist:
         return 400, {"messsage": "Invitation does not exist"}
 
@@ -287,16 +284,17 @@ def accept_series_invitation(
             }
 
         case SeriesRosterInvitation.Status.PENDING:
-            invitation.status = SeriesRosterInvitation.Status.ACCEPTED
-            invitation.rsvp_date = today()
-            invitation.save()
-
             try:
-                return 200, register_player(
+                series_registration = register_player(
                     series=invitation.series, team=invitation.team, player=invitation.to_player
                 )
             except RegistrationError as error:
                 return 400, {"message": str(error)}
+
+            invitation.status = SeriesRosterInvitation.Status.ACCEPTED
+            invitation.rsvp_date = today()
+            invitation.save()
+            return 200, series_registration
 
     return 400, {"message": f"'{invitation.status}' is not a valid invitation status"}
 
@@ -309,10 +307,9 @@ def decline_series_invitation(
     request: AuthenticatedHttpRequest, invitation_id: int
 ) -> tuple[int, SeriesRosterInvitation | message_response]:
     try:
-        invitation = SeriesRosterInvitation(id=invitation_id)
+        invitation = SeriesRosterInvitation.objects.get(id=invitation_id)
     except SeriesRosterInvitation.DoesNotExist:
         return 400, {"messsage": "Invitation does not exist"}
-
     if request.user != invitation.to_player.user:
         return 401, {"message": "This invitation was not sent to you !"}
 
@@ -429,7 +426,7 @@ def get_team_series_roster(
     )
 
 
-@router.put(
+@router.post(
     "/{series_slug}/team/{team_slug}/roster/add-self",
     response={200: SeriesRegistrationSchema, 400: Response, 401: Response},
 )

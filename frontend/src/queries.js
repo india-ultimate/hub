@@ -541,6 +541,93 @@ export const deleteTournament = async ({ id }) => {
   return await response.json();
 };
 
+export const invitePlayerToSeries = async ({
+  series_slug,
+  team_slug,
+  body
+}) => {
+  const response = await fetch(
+    `/api/series/${series_slug}/team/${team_slug}/invitation`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCookie("csrftoken")
+      },
+      credentials: "same-origin",
+      body: JSON.stringify(body)
+    }
+  );
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.message || JSON.stringify(data));
+  }
+  return data;
+};
+
+export const acceptSeriesInvitation = async ({ invitation_id }) => {
+  const response = await fetch(
+    `/api/series/invitation/${invitation_id}/accept`,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCookie("csrftoken")
+      },
+      credentials: "same-origin"
+    }
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.message || JSON.stringify(data));
+  }
+  return data;
+};
+
+export const declineSeriesInvitation = async ({ invitation_id }) => {
+  const response = await fetch(
+    `/api/series/invitation/${invitation_id}/decline`,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCookie("csrftoken")
+      },
+      credentials: "same-origin"
+    }
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.message || JSON.stringify(data));
+  }
+  return data;
+};
+
+export const registerYourselfToSeries = async ({ series_slug, team_slug }) => {
+  const response = await fetch(
+    `/api/series/${series_slug}/team/${team_slug}/roster/add-self`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCookie("csrftoken")
+      },
+      credentials: "same-origin"
+    }
+  );
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.message || JSON.stringify(data));
+  }
+  return data;
+};
+
 export const addTeamRegistration = async ({ tournament_id, body }) => {
   const response = await fetch(
     `/api/tournament/${tournament_id}/register-team`,
