@@ -1399,15 +1399,15 @@ def get_tournament(
 
 
 @api.get(
-    "/tournament/{event_slug}/team/{team_slug}/players/search",
+    "/tournament/{tournament_slug}/team/{team_slug}/players/search",
     response={200: list[PlayerTinySchema], 400: Response},
 )
 @paginate(PageNumberPagination, page_size=5)
 def event_roster_player_search(
-    request: AuthenticatedHttpRequest, event_slug: str, team_slug: str, text: str = ""
+    request: AuthenticatedHttpRequest, tournament_slug: str, team_slug: str, text: str = ""
 ) -> list[Player] | QuerySet[Player]:
     try:
-        event = Event.objects.get(slug=event_slug)
+        event = Event.objects.get(slug=tournament_slug)
     except Event.DoesNotExist:
         return []
 

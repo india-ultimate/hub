@@ -14,7 +14,11 @@ import { plus, xMark } from "solid-heroicons/solid";
 import { createEffect, createSignal, For, Show } from "solid-js";
 
 import { ChevronLeft, ChevronRight, Spinner } from "../../icons";
-import { addToRoster, fetchUser, searchPlayers } from "../../queries";
+import {
+  addToRoster,
+  fetchUser,
+  searchSeriesRosterPlayers
+} from "../../queries";
 import Info from "../alerts/Info";
 import Modal from "../Modal";
 
@@ -85,6 +89,8 @@ const AddToRoster = props => {
           roster={props.roster}
           eventId={props.eventId}
           teamId={props.teamId}
+          tournamentSlug={props.tournamentSlug}
+          teamSlug={props.teamSlug}
         />
       </Modal>
       <div
@@ -132,9 +138,23 @@ const AddPlayerRegistrationForm = componentProps => {
   });
 
   const dataQuery = createQuery(
-    () => ["players", "search", search(), pagination()],
+    () => [
+      componentProps.tournamentSlug,
+      componentProps.teamSlug,
+      "players",
+      "search",
+      search(),
+      pagination()
+    ],
     () =>
-      search().trim().length > 2 ? searchPlayers(search(), pagination()) : []
+      search().trim().length > 2
+        ? searchSeriesRosterPlayers(
+            componentProps.tournamentSlug,
+            componentProps.teamSlug,
+            search(),
+            pagination()
+          )
+        : []
   );
 
   const defaultColumns = [

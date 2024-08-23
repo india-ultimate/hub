@@ -212,6 +212,8 @@ const Roster = () => {
                   roster={rosterQuery.data}
                   eventId={tournamentQuery.data.event.id}
                   teamId={teamQuery.data.id}
+                  tournamentSlug={params.tournament_slug}
+                  teamSlug={params.team_slug}
                 />
               </Match>
             </Switch>
