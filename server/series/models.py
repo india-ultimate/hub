@@ -37,7 +37,7 @@ class Series(ExportModelOperationsMixin("series"), models.Model):  # type: ignor
     season = models.ForeignKey(
         Season, on_delete=models.SET_NULL, null=True, blank=True, related_name="series"
     )
-    teams = models.ManyToManyField(Team, related_name="series")
+    teams = models.ManyToManyField(Team, related_name="series", blank=True)
 
     class Meta:
         unique_together = ["season", "name"]
