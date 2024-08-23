@@ -6,6 +6,7 @@ from functools import cmp_to_key, partial
 from django.db.models import Q
 
 from server.core.models import Player, Team, UCPerson, User
+from server.series.models import SeriesRegistration
 from server.tournament.models import Event
 from server.types import message_response, validation_error_dict
 from server.utils import ordinal_suffix
@@ -946,6 +947,11 @@ def can_register_player_to_series_event(
 ) -> tuple[bool, message_response | None]:
     if not event.series:
         return True, None
+
+    if not SeriesRegistration.objects.filter(
+        series=event.series, team=team, player=player
+    ).exists():
+        return False, {"message": "Player is not part of event roster"}
 
     match player.match_up:
         case player.MatchupTypes.MALE:
