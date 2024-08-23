@@ -1926,6 +1926,9 @@ def add_team_registration(
     if tournament.status != Tournament.Status.REGISTERING:
         return 400, {"message": "Team registration has closed, you can't register a team now !"}
 
+    if tournament.event.series and team not in tournament.event.series.teams.all():
+        return 400, {"message": "Team is not part of the series"}
+
     tournament.teams.add(team)
 
     return 200, tournament
