@@ -237,11 +237,11 @@ def send_series_invitation(
 
 @router.delete(
     "/invitation/{invitation_id}",
-    response={200: Response, 400: Response, 401: Response},
+    response={200: SeriesRosterInvitationSchema, 400: Response, 401: Response},
 )
 def revoke_series_invitation(
     request: AuthenticatedHttpRequest, invitation_id: int
-) -> tuple[int, message_response]:
+) -> tuple[int, SeriesRosterInvitation | message_response]:
     try:
         invitation = SeriesRosterInvitation.objects.get(id=invitation_id)
     except SeriesRosterInvitation.DoesNotExist:
@@ -257,8 +257,9 @@ def revoke_series_invitation(
             "message": f"You cannot revoke an invitation that has been {invitation.status}"
         }
 
-    invitation.delete()
-    return 200, {"message": "Successfully revoked invitation"}
+    invitation.status = SeriesRosterInvitation.Status.REVOKED
+    invitation.save()
+    return 200, invitation
 
 
 @router.put(
