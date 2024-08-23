@@ -1,7 +1,7 @@
 from server.core.models import Player, Team
 from server.types import message_response
 
-from .models import Series, SeriesRegistration
+from .models import Series, SeriesRegistration, SeriesRosterInvitation
 
 
 class RegistrationError(Exception):
@@ -61,6 +61,30 @@ def can_register_player_to_series_roster(
         # Player can register with 1 club/state/national team for the series"
         return False, {
             "message": "You can register with 1 club/state/national team for this series"
+        }
+
+    return True, None
+
+
+def can_invite_player_to_series_roster(
+    series: Series, team: Team, player: Player
+) -> tuple[bool, message_response | None]:
+    is_invitation_pending = SeriesRosterInvitation.objects.filter(
+        series=series, team=team, to_player=player, status=SeriesRosterInvitation.Status.PENDING
+    ).exists()
+
+    if is_invitation_pending:
+        return False, {"message": "This player has already been invited to your team"}
+
+    num_registrations = SeriesRegistration.objects.filter(series=series, team=team).count()
+
+    num_pending_invitations = SeriesRosterInvitation.objects.filter(
+        series=series, team=team, status=SeriesRosterInvitation.Status.PENDING
+    ).count()
+
+    if not (num_registrations + num_pending_invitations + 1) <= series.series_roster_max_players:
+        return False, {
+            "message": f"You can't invite any more players. You've sent out {num_pending_invitations} invitations, there are {num_registrations} players in the roster"
         }
 
     return True, None
