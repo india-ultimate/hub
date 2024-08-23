@@ -1,6 +1,14 @@
 [
   {
     "model": "sessions.session",
+    "pk": "6t4g7ukuvc29jwxpyk0jatoil0s0hpck",
+    "fields": {
+      "session_data": ".eJxVjEsOAiEQRO_C2hCHn41L956BdAMtowaSYWZlvLuSzEJ3lXqv6iUCbmsJW89LmJM4i0kcfjvC-Mh1gHTHemsytrouM8mhyJ12eW0pPy-7-3dQsJexNuSZI7NRoDN_owbtlYmgjkjoo9OJs9OKkrZoDMCJIU9kLZBDNuL9ARX7ONw:1sh7ij:9LJW26ckp626H2jcLVJvj1N6MQPeV4Jl2oef_V1iBmM",
+      "expire_date": "2024-09-05T13:19:21.751Z"
+    }
+  },
+  {
+    "model": "sessions.session",
     "pk": "bjtaqmfkqmwcox2ztdws6r7oshw9985t",
     "fields": {
       "session_data": ".eJxVjEsOAiEQRO_C2hCHn41L956BdAMtowaSYWZlvLuSzEJ3lXqv6iUCbmsJW89LmJM4i0kcfjvC-Mh1gHTHemsytrouM8mhyJ12eW0pPy-7-3dQsJexNuSZI7NRoDN_owbtlYmgjkjoo9OJs9OKkrZoDMCJIU9kLZBDNuL9ARX7ONw:1sUmPN:gsOUlTW4Tm99-uL6t_CFvEVoHDPoGqoSCEDRIo8UCvg",
@@ -17,10 +25,34 @@
   },
   {
     "model": "sessions.session",
+    "pk": "m7luf4m6gl6ioojfmj7d3py7pwvrr7q9",
+    "fields": {
+      "session_data": ".eJxVjEsOAiEQRO_C2hCHn41L956BdAMtowaSYWZlvLuSzEJ3lXqv6iUCbmsJW89LmJM4i0kcfjvC-Mh1gHTHemsytrouM8mhyJ12eW0pPy-7-3dQsJexNuSZI7NRoDN_owbtlYmgjkjoo9OJs9OKkrZoDMCJIU9kLZBDNuL9ARX7ONw:1sgdTH:xFQVqmVsU-7OWrEdi6reVDf7NU1uUe-ffw_PsSXRqe0",
+      "expire_date": "2024-09-04T05:01:23.514Z"
+    }
+  },
+  {
+    "model": "sessions.session",
     "pk": "nsyb71r40oxystq9uefzj0hqg3sdw1sd",
     "fields": {
       "session_data": ".eJxVjEsOAiEQRO_C2hCHn41L956BdAMtowaSYWZlvLuSzEJ3lXqv6iUCbmsJW89LmJM4i0kcfjvC-Mh1gHTHemsytrouM8mhyJ12eW0pPy-7-3dQsJexNuSZI7NRoDN_owbtlYmgjkjoo9OJs9OKkrZoDMCJIU9kLZBDNuL9ARX7ONw:1sQVPw:MorSRhjMdd3v2N12K1Yoq0kEifilmzN3ZqIiuio2OZ8",
       "expire_date": "2024-07-21T17:11:16.900Z"
+    }
+  },
+  {
+    "model": "sessions.session",
+    "pk": "obosd19gkvy3n784hf3hgzuloipj8pjr",
+    "fields": {
+      "session_data": ".eJxVjEsOAiEQRO_C2hCHn41L956BdAMtowaSYWZlvLuSzEJ3lXqv6iUCbmsJW89LmJM4i0kcfjvC-Mh1gHTHemsytrouM8mhyJ12eW0pPy-7-3dQsJexNuSZI7NRoDN_owbtlYmgjkjoo9OJs9OKkrZoDMCJIU9kLZBDNuL9ARX7ONw:1sgdTL:hD-Gez78YEXX3le39K7zp-7Uf1HJuKc3XSSxV7qYbYc",
+      "expire_date": "2024-09-04T05:01:27.674Z"
+    }
+  },
+  {
+    "model": "sessions.session",
+    "pk": "qb68qfvhkr6g3ny7cm6y6nlf7pyam3j1",
+    "fields": {
+      "session_data": ".eJxVjEsOAiEQRO_C2hCHn41L956BdAMtowaSYWZlvLuSzEJ3lXqv6iUCbmsJW89LmJM4i0kcfjvC-Mh1gHTHemsytrouM8mhyJ12eW0pPy-7-3dQsJexNuSZI7NRoDN_owbtlYmgjkjoo9OJs9OKkrZoDMCJIU9kLZBDNuL9ARX7ONw:1sgdTL:hD-Gez78YEXX3le39K7zp-7Uf1HJuKc3XSSxV7qYbYc",
+      "expire_date": "2024-09-04T05:01:27.245Z"
     }
   },
   {
@@ -35,8 +67,16 @@
     "model": "sessions.session",
     "pk": "u5l7fqo9ohb12tqe2xr07t5rvqtw3rb8",
     "fields": {
-      "session_data": ".eJxVjEsOAiEQRO_C2hCHn41L956BdAMtowaSYWZlvLuSzEJ3lXqv6iUCbmsJW89LmJM4i0kcfjvC-Mh1gHTHemsytrouM8mhyJ12eW0pPy-7-3dQsJexNuSZI7NRoDN_owbtlYmgjkjoo9OJs9OKkrZoDMCJIU9kLZBDNuL9ARX7ONw:1sg62x:ohf43F0Jpeh3X_k8RqVrbCPN1vRfUuUZTwWTOYmo_Q8",
-      "expire_date": "2024-09-02T17:19:59.162Z"
+      "session_data": ".eJxVjEsOAiEQRO_C2hCHn41L956BdAMtowaSYWZlvLuSzEJ3lXqv6iUCbmsJW89LmJM4i0kcfjvC-Mh1gHTHemsytrouM8mhyJ12eW0pPy-7-3dQsJexNuSZI7NRoDN_owbtlYmgjkjoo9OJs9OKkrZoDMCJIU9kLZBDNuL9ARX7ONw:1shK5K:B7huwuDob49GSpzq83_u9gfX6Lb-2HLc-o6TbFxNccU",
+      "expire_date": "2024-09-06T02:31:30.250Z"
+    }
+  },
+  {
+    "model": "sessions.session",
+    "pk": "vha7oykyftdoh1e2mpnx1zeot5s2jvrr",
+    "fields": {
+      "session_data": ".eJxVjEsOAiEQRO_C2hCHn41L956BdAMtowaSYWZlvLuSzEJ3lXqv6iUCbmsJW89LmJM4i0kcfjvC-Mh1gHTHemsytrouM8mhyJ12eW0pPy-7-3dQsJexNuSZI7NRoDN_owbtlYmgjkjoo9OJs9OKkrZoDMCJIU9kLZBDNuL9ARX7ONw:1sgdTL:hD-Gez78YEXX3le39K7zp-7Uf1HJuKc3XSSxV7qYbYc",
+      "expire_date": "2024-09-04T05:01:27.613Z"
     }
   },
   {
@@ -56,11 +96,19 @@
     }
   },
   {
+    "model": "sessions.session",
+    "pk": "zjy78om671467gxz48xuhrf9q9f7szag",
+    "fields": {
+      "session_data": ".eJxVjEsOAiEQRO_C2hCHn41L956BdAMtowaSYWZlvLuSzEJ3lXqv6iUCbmsJW89LmJM4i0kcfjvC-Mh1gHTHemsytrouM8mhyJ12eW0pPy-7-3dQsJexNuSZI7NRoDN_owbtlYmgjkjoo9OJs9OKkrZoDMCJIU9kLZBDNuL9ARX7ONw:1sgdTL:hD-Gez78YEXX3le39K7zp-7Uf1HJuKc3XSSxV7qYbYc",
+      "expire_date": "2024-09-04T05:01:27.401Z"
+    }
+  },
+  {
     "model": "server.user",
     "pk": 1,
     "fields": {
       "password": "pbkdf2_sha256$600000$iSivAK2jSAmAcUzOcRyZVI$/w0DCFvNbbbXrcCMoj2mLE49XOEVdqveLWt5NhhR8cg=",
-      "last_login": "2024-08-19T17:19:59.141Z",
+      "last_login": "2024-08-23T02:31:30.224Z",
       "is_superuser": true,
       "username": "developer@example.com",
       "first_name": "John",
@@ -805,8 +853,8 @@
       "image_url": "https://d36m266ykvepgv.cloudfront.net/uploads/media/bnRXb8AwZn/s-200-200/awadh-kheladis-tee-crop-logo.jpg",
       "name": "Awadh KHELadis",
       "ultimate_central_slug": "awadh-kheladis",
-      "state_ut": null,
-      "city": null,
+      "state_ut": "UP",
+      "city": "Lucknow",
       "image": "",
       "slug": "awadh-kheladis",
       "category": "Club",
@@ -12276,7 +12324,7 @@
     "pk": 1,
     "fields": {
       "start_date": "2024-08-01",
-      "end_date": "2024-07-31",
+      "end_date": "2025-07-31",
       "name": "Season 2024-2025",
       "annual_membership_amount": 70000,
       "sponsored_annual_membership_amount": 20000
@@ -12311,7 +12359,7 @@
       "player_transfer_window_start_date": null,
       "player_transfer_window_end_date": null,
       "season": 1,
-      "teams": [2, 5, 6, 7, 13, 27, 28, 30]
+      "teams": [1, 2, 5, 6, 7, 13, 27, 28, 30]
     }
   },
   {
@@ -12357,6 +12405,26 @@
     }
   },
   {
+    "model": "server.seriesregistration",
+    "pk": 1,
+    "fields": { "series": 1, "team": 1, "player": 5 }
+  },
+  {
+    "model": "server.seriesregistration",
+    "pk": 2,
+    "fields": { "series": 1, "team": 1, "player": 6 }
+  },
+  {
+    "model": "server.seriesregistration",
+    "pk": 7,
+    "fields": { "series": 1, "team": 1, "player": 13 }
+  },
+  {
+    "model": "server.seriesregistration",
+    "pk": 8,
+    "fields": { "series": 1, "team": 1, "player": 16 }
+  },
+  {
     "model": "server.seriesrosterinvitation",
     "pk": 1,
     "fields": {
@@ -12366,6 +12434,91 @@
       "team": 29,
       "status": "Pending",
       "expires_on": "2024-08-21",
+      "created_at": "2024-08-23T02:30:07.433Z",
+      "rsvp_date": null
+    }
+  },
+  {
+    "model": "server.seriesrosterinvitation",
+    "pk": 2,
+    "fields": {
+      "series": 1,
+      "from_user": 1,
+      "to_player": 7,
+      "team": 1,
+      "status": "Pending",
+      "expires_on": "2024-08-25",
+      "created_at": "2024-08-23T02:30:07.433Z",
+      "rsvp_date": null
+    }
+  },
+  {
+    "model": "server.seriesrosterinvitation",
+    "pk": 5,
+    "fields": {
+      "series": 1,
+      "from_user": 1,
+      "to_player": 12,
+      "team": 1,
+      "status": "Expired",
+      "expires_on": "2024-08-25",
+      "created_at": "2024-08-23T02:30:07.433Z",
+      "rsvp_date": null
+    }
+  },
+  {
+    "model": "server.seriesrosterinvitation",
+    "pk": 6,
+    "fields": {
+      "series": 1,
+      "from_user": 1,
+      "to_player": 11,
+      "team": 1,
+      "status": "Declined",
+      "expires_on": "2024-08-25",
+      "created_at": "2024-08-23T02:30:07.433Z",
+      "rsvp_date": null
+    }
+  },
+  {
+    "model": "server.seriesrosterinvitation",
+    "pk": 8,
+    "fields": {
+      "series": 1,
+      "from_user": 1,
+      "to_player": 12,
+      "team": 1,
+      "status": "Pending",
+      "expires_on": "2024-08-26",
+      "created_at": "2024-08-23T02:30:07.433Z",
+      "rsvp_date": "2024-08-22"
+    }
+  },
+  {
+    "model": "server.seriesrosterinvitation",
+    "pk": 9,
+    "fields": {
+      "series": 1,
+      "from_user": 1,
+      "to_player": 11,
+      "team": 1,
+      "status": "Pending",
+      "expires_on": "2024-08-27",
+      "created_at": "2024-08-23T02:30:31.875Z",
+      "rsvp_date": null
+    }
+  },
+  {
+    "model": "server.seriesrosterinvitation",
+    "pk": 10,
+    "fields": {
+      "series": 1,
+      "from_user": 1,
+      "to_player": 9,
+      "team": 1,
+      "status": "Pending",
+      "expires_on": "2024-08-27",
+      "created_at": "2024-08-23T02:31:43.965Z",
       "rsvp_date": null
     }
   },
@@ -24242,6 +24395,176 @@
       "spirit_score_team_2": 51,
       "self_spirit_score_team_1": 52,
       "self_spirit_score_team_2": 54
+    }
+  },
+  {
+    "model": "server.membership",
+    "pk": 1,
+    "fields": {
+      "player": 5,
+      "membership_number": "6a39ea1f",
+      "is_annual": true,
+      "start_date": "2024-08-01",
+      "end_date": "2025-07-31",
+      "event": null,
+      "is_active": true,
+      "waiver_valid": false,
+      "waiver_signed_by": null,
+      "waiver_signed_at": null,
+      "season": 1
+    }
+  },
+  {
+    "model": "server.membership",
+    "pk": 2,
+    "fields": {
+      "player": 6,
+      "membership_number": "f2562215",
+      "is_annual": true,
+      "start_date": "2024-08-01",
+      "end_date": "2025-07-31",
+      "event": null,
+      "is_active": true,
+      "waiver_valid": false,
+      "waiver_signed_by": null,
+      "waiver_signed_at": null,
+      "season": 1
+    }
+  },
+  {
+    "model": "server.membership",
+    "pk": 3,
+    "fields": {
+      "player": 7,
+      "membership_number": "bbc199b0",
+      "is_annual": true,
+      "start_date": "2024-08-01",
+      "end_date": "2025-07-31",
+      "event": null,
+      "is_active": true,
+      "waiver_valid": false,
+      "waiver_signed_by": null,
+      "waiver_signed_at": null,
+      "season": 1
+    }
+  },
+  {
+    "model": "server.membership",
+    "pk": 4,
+    "fields": {
+      "player": 9,
+      "membership_number": "b86005e4",
+      "is_annual": true,
+      "start_date": "2024-08-01",
+      "end_date": "2025-07-31",
+      "event": null,
+      "is_active": true,
+      "waiver_valid": false,
+      "waiver_signed_by": null,
+      "waiver_signed_at": null,
+      "season": 1
+    }
+  },
+  {
+    "model": "server.membership",
+    "pk": 5,
+    "fields": {
+      "player": 11,
+      "membership_number": "193916d3",
+      "is_annual": true,
+      "start_date": "2024-08-01",
+      "end_date": "2025-07-31",
+      "event": null,
+      "is_active": true,
+      "waiver_valid": false,
+      "waiver_signed_by": null,
+      "waiver_signed_at": null,
+      "season": 1
+    }
+  },
+  {
+    "model": "server.membership",
+    "pk": 6,
+    "fields": {
+      "player": 12,
+      "membership_number": "fef6eed0",
+      "is_annual": true,
+      "start_date": "2024-08-01",
+      "end_date": "2025-07-31",
+      "event": null,
+      "is_active": true,
+      "waiver_valid": false,
+      "waiver_signed_by": null,
+      "waiver_signed_at": null,
+      "season": 1
+    }
+  },
+  {
+    "model": "server.membership",
+    "pk": 7,
+    "fields": {
+      "player": 13,
+      "membership_number": "b953c22b",
+      "is_annual": true,
+      "start_date": "2024-08-01",
+      "end_date": "2025-07-31",
+      "event": null,
+      "is_active": true,
+      "waiver_valid": false,
+      "waiver_signed_by": null,
+      "waiver_signed_at": null,
+      "season": 1
+    }
+  },
+  {
+    "model": "server.membership",
+    "pk": 8,
+    "fields": {
+      "player": 16,
+      "membership_number": "c6041739",
+      "is_annual": true,
+      "start_date": "2024-08-01",
+      "end_date": "2025-07-31",
+      "event": null,
+      "is_active": true,
+      "waiver_valid": false,
+      "waiver_signed_by": null,
+      "waiver_signed_at": null,
+      "season": 1
+    }
+  },
+  {
+    "model": "server.membership",
+    "pk": 9,
+    "fields": {
+      "player": 17,
+      "membership_number": "2edf3d33",
+      "is_annual": true,
+      "start_date": "2024-08-01",
+      "end_date": "2025-07-31",
+      "event": null,
+      "is_active": true,
+      "waiver_valid": false,
+      "waiver_signed_by": null,
+      "waiver_signed_at": null,
+      "season": 1
+    }
+  },
+  {
+    "model": "server.membership",
+    "pk": 10,
+    "fields": {
+      "player": 26,
+      "membership_number": "baffb035",
+      "is_annual": true,
+      "start_date": "2024-08-01",
+      "end_date": "2025-07-31",
+      "event": null,
+      "is_active": true,
+      "waiver_valid": false,
+      "waiver_signed_by": null,
+      "waiver_signed_at": null,
+      "season": 1
     }
   }
 ]
