@@ -161,6 +161,125 @@ export const fetchAllSeries = async () => {
   });
   return await response.json();
 };
+
+export const fetchSeriesBySlug = async series_slug => {
+  const response = await fetch(`/api/series/?slug=${series_slug}`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin"
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.message || JSON.stringify(data));
+  }
+  return data;
+};
+
+export const fetchSeriesInvitations = async series_slug => {
+  const response = await fetch(
+    `/api/series/${series_slug}/invitations-received`,
+    {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin"
+    }
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.message || JSON.stringify(data));
+  }
+  return data;
+};
+
+export const fetchTeamSeriesInvitationsSent = async (
+  series_slug,
+  team_slug
+) => {
+  const response = await fetch(
+    `/api/series/${series_slug}/team/${team_slug}/invitations-sent`,
+    {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin"
+    }
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.message || JSON.stringify(data));
+  }
+  return data;
+};
+
+export const fetchSeriesTeamBySlug = async (series_slug, team_slug) => {
+  const response = await fetch(`/api/series/${series_slug}/team/${team_slug}`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin"
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.message || JSON.stringify(data));
+  }
+  return data;
+};
+
+// export const searchSeriesTeamPlayers = async (
+//   series_slug,
+//   team_slug,
+//   searchText,
+//   pagination
+// ) => {
+//   let baseUrl = `/api/series/${series_slug}/team/${team_slug}/players/search`;
+//   let params = new URLSearchParams();
+//   if (searchText) {
+//     params.set("text", searchText);
+//   }
+//   if (pagination.pageIndex) {
+//     params.set("page", pagination.pageIndex + 1);
+//   }
+//   if (params.toString().length > 0) {
+//     baseUrl = baseUrl + "?" + params.toString();
+//   }
+//   const response = await fetch(baseUrl, {
+//     method: "GET",
+//     headers: { "Content-Type": "application/json" },
+//     credentials: "same-origin"
+//   });
+
+//   const data = await response.json();
+
+//   if (!response.ok) {
+//     throw new Error(data?.message || JSON.stringify(data));
+//   }
+//   return data;
+// };
+
+export const fetchTeamSeriesRoster = async (series_slug, team_slug) => {
+  const response = await fetch(
+    `/api/series/${series_slug}/team/${team_slug}/roster`,
+    {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin"
+    }
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.message || JSON.stringify(data));
+  }
+  return data;
+};
+
 export const fetchTournaments = async () => {
   const response = await fetch("/api/tournaments", {
     method: "GET",
@@ -539,6 +658,44 @@ export const deleteTournament = async ({ id }) => {
     credentials: "same-origin"
   });
   return await response.json();
+};
+
+export const addTeamSeriesRegistration = async ({ series_slug, body }) => {
+  const response = await fetch(`/api/series/${series_slug}/register-team`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin",
+    body: JSON.stringify(body)
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.message || JSON.stringify(data));
+  }
+  return data;
+};
+
+export const removeTeamSeriesRegistration = async ({ series_slug, body }) => {
+  const response = await fetch(`/api/series/${series_slug}/deregister-team`, {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin",
+    body: JSON.stringify(body)
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.message || JSON.stringify(data));
+  }
+  return data;
 };
 
 export const invitePlayerToSeries = async ({

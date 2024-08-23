@@ -2,23 +2,43 @@ from datetime import date
 
 from ninja import ModelSchema, Schema
 
-from server.schema import PlayerMinSchema, PlayerTinySchema, TeamMinSchema, UserMinSchema
+from server.schema import (
+    PlayerMinSchema,
+    PlayerTinySchema,
+    RegistrationCount,
+    TeamMinSchema,
+    UserMinSchema,
+)
 
 from .models import Series, SeriesRegistration, SeriesRosterInvitation
 
 
 class SeriesSchema(ModelSchema):
     teams: list[TeamMinSchema]
+
     type: str
-    category: str
 
     @staticmethod
     def resolve_type(series: Series) -> str:
         return str(Series.Type._value2member_map_[series.type]._label_)  # type: ignore[attr-defined]
 
+    category: str
+
     @staticmethod
     def resolve_category(series: Series) -> str:
         return str(Series.Category._value2member_map_[series.category]._label_)  # type: ignore[attr-defined]
+
+    reg_count: list[RegistrationCount]
+
+    @staticmethod
+    def resolve_reg_count(series: Series) -> list[RegistrationCount]:
+        return [
+            RegistrationCount(
+                team_id=team.id,
+                count=SeriesRegistration.objects.filter(team=team, series=series).count(),
+            )
+            for team in series.teams.all()
+        ]
 
     class Config:
         model = Series
