@@ -17,6 +17,7 @@ from server.membership.models import (
     RazorpayTransaction,
 )
 from server.season.models import Season
+from server.series.models import Series
 from server.tournament.models import (
     Event,
     Match,
@@ -158,6 +159,7 @@ class MembershipAdmin(admin.ModelAdmin[Membership]):
         "end_date",
         "is_active",
     ]
+    list_filter = ["is_active"]
     actions = [export_as_csv]
 
     @admin.display(description="Player Name", ordering="player__user__first_name")
@@ -202,3 +204,11 @@ class ManualTransactionAdmin(admin.ModelAdmin[ManualTransaction]):
 class SeasonAdmin(admin.ModelAdmin[Season]):
     search_fields = ["name"]
     list_display = ["name"]
+
+
+@admin.register(Series)
+class SeriesAdmin(admin.ModelAdmin[Series]):
+    search_fields = ["name"]
+    list_display = ["name"]
+
+    filter_horizontal = ("teams",)
