@@ -3,7 +3,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/solid-query";
 import { lazy } from "solid-js";
 
 import { useStore } from "../store";
-import AnnouncementBanner from "./AnnouncementBanner";
 import Footer from "./Footer";
 import Header from "./Header";
 import HelpButton from "./HelpButton";
@@ -45,6 +44,9 @@ const Error404 = lazy(() => import("./Error404"));
 const PhonePeTransaction = lazy(() => import("./PhonePeTransaction"));
 const CheckMemberships = lazy(() => import("./CheckMemberships"));
 const CollegeID = lazy(() => import("./CollegeID"));
+const AllSeries = lazy(() => import("./series/index"));
+const Series = lazy(() => import("./series/Series"));
+const SeriesRoster = lazy(() => import("./series/SeriesRoster"));
 const EditStats = lazy(() => import("./match/stats/EditStats"));
 const ViewStats = lazy(() => import("./match/stats/ViewStats"));
 
@@ -61,10 +63,10 @@ export default function App() {
       <div class={store.theme === "dark" ? "dark" : ""}>
         <div class="flex min-h-screen flex-col bg-white dark:bg-gray-900">
           <Header />
-          <AnnouncementBanner
+          {/* <AnnouncementBanner
             text="New One-Tap Login Launched!"
             cta={{ text: "more", href: "/help" }}
-          />
+          /> */}
           <section class="grow">
             <div class="mx-auto max-w-screen-xl px-4 py-4 lg:px-6 lg:py-16">
               <div class="text-gray-500 dark:text-gray-400 sm:text-lg">
@@ -75,6 +77,13 @@ export default function App() {
                   <UserRoute path="/dashboard" component={Dashboard} />
                   {/* Login related routes */}
                   <Route path="/login" component={Login} />
+                  {/* Series routes */}
+                  <Route path="/series" component={AllSeries} />
+                  <Route path="/series/:slug" component={Series} />
+                  <Route
+                    path="/series/:series_slug/team/:team_slug"
+                    component={SeriesRoster}
+                  />
                   {/* Tournament Public Routes */}
                   <Route path={"/tournaments"} component={Tournaments} />
                   <Route path={"/tournament/:slug"} component={Tournament} />
