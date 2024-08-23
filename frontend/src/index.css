@@ -6,6 +6,41 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Changing default marker to an arrow, marker animation on open/close */
+summary.custom {
+  position: relative;
+}
+
+summary.custom::marker {
+  content: none;
+}
+
+details > summary.custom::before,
+details > summary.custom::after {
+  content: "";
+  display: inline-block;
+
+  --size: 15px;
+  --marker-rotate-timing: 150ms;
+
+  background-image: url("../assets/down-arrow-small.svg");
+  background-size: var(--size) var(--size);
+  background-repeat: no-repeat;
+  width: var(--size);
+  height: var(--size);
+
+  position: absolute;
+  right: var(--size);
+  top: 50%;
+  transform: translateY(-50%);
+  transition: all var(--marker-rotate-timing);
+}
+
+details[open] > summary.custom::before,
+details[open] > summary.custom::after {
+  transform: rotate(180deg) translateY(50%);
+}
+
 .solid-select-container[data-disabled="true"] {
   pointer-events: none;
 }

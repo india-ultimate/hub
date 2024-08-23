@@ -72,7 +72,7 @@ const AllSeries = () => {
           {season => (
             <Show when={season?.series?.length !== 0}>
               <details open class="group mb-4 open:mb-8">
-                <summary class="mt-2 rounded-lg border border-gray-400/50 bg-gray-50 px-4 py-3 transition-all group-open:bg-gray-200">
+                <summary class="custom mt-2 rounded-lg border border-gray-400/50 bg-gray-50 px-4 py-3 transition-all group-open:bg-gray-200">
                   <h3 class="text-lg font-bold text-gray-700">
                     {season?.name}
                   </h3>
