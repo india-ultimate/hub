@@ -1,13 +1,12 @@
 from typing import Any
 
 from django.db import models
-from django.template.defaultfilters import slugify
 from django.utils.translation import gettext_lazy as _
 from django_prometheus.models import ExportModelOperationsMixin
 
 from server.core.models import Player, Team, User
 from server.season.models import Season
-from server.utils import default_invitation_expiry_date
+from server.utils import default_invitation_expiry_date, slugify_max
 
 
 class Series(ExportModelOperationsMixin("series"), models.Model):  # type: ignore[misc]
@@ -45,9 +44,20 @@ class Series(ExportModelOperationsMixin("series"), models.Model):  # type: ignor
 
     def save(self, *args: Any, **kwargs: Any) -> None:
         if not self.slug:
-            self.slug = slugify(self.name)
+            self.slug = self.get_slug()
 
         return super().save(*args, **kwargs)
+
+    def get_slug(self) -> str:
+        slug = slugify_max(self.name, max_length=95)
+        unique_slug = slug
+
+        number = 1
+        while Series.objects.filter(slug=unique_slug).exists():
+            unique_slug = f"{unique_slug}-{number}"
+            number += 1
+
+        return unique_slug
 
 
 class SeriesRegistration(ExportModelOperationsMixin("series_registration"), models.Model):  # type: ignore[misc]
