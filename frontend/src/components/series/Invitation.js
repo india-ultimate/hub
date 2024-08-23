@@ -3,6 +3,8 @@ import clsx from "clsx";
 import { createEffect, createSignal, Show } from "solid-js";
 
 import { acceptSeriesInvitation, declineSeriesInvitation } from "../../queries";
+import ErrorPopover from "../popover/ErrorPopover";
+import SuccessPopover from "../popover/SuccessPopover";
 
 const InvitationCard = props => {
   let successPopoverRef, errorPopoverRef;
@@ -115,22 +117,13 @@ const InvitationCard = props => {
         </button>
       </div>
 
-      <div
-        popover
-        ref={successPopoverRef}
-        role="alert"
-        class="mb-4 w-fit rounded-lg bg-green-200 p-4 text-sm text-green-800 dark:bg-gray-800 dark:text-green-400"
-      >
+      <SuccessPopover ref={successPopoverRef}>
         <span class="font-medium">{editStatus()}</span>
-      </div>
-      <div
-        popover
-        ref={errorPopoverRef}
-        role="alert"
-        class="mb-4 w-fit rounded-lg bg-red-200 p-4 text-sm text-red-800 dark:bg-gray-800 dark:text-red-400"
-      >
+      </SuccessPopover>
+
+      <ErrorPopover ref={errorPopoverRef}>
         <span class="font-medium">{editStatus()}</span>
-      </div>
+      </ErrorPopover>
     </div>
   );
 };
