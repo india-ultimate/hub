@@ -19,7 +19,7 @@ export default function Header() {
   return (
     <div>
       <nav class="border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800">
-        <div class="mx-auto flex max-w-screen-xl flex-wrap items-center justify-between border-b border-gray-400 px-4 py-2 md:py-4">
+        <div class="mx-auto flex max-w-screen-xl flex-wrap items-center justify-between border-b border-gray-200 px-4 py-2 md:border-b-0 md:py-4">
           <A href="/" class="flex items-center">
             <img
               src={assetURL("logo-vertical.png")}
