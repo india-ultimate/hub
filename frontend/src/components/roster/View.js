@@ -281,6 +281,9 @@ const Roster = () => {
                   teamId={teamQuery.data.id}
                   tournamentSlug={params.tournament_slug}
                   teamSlug={params.team_slug}
+                  isPartOfSeries={
+                    tournamentQuery.data?.event?.series ? true : false
+                  }
                 />
               </Match>
             </Switch>

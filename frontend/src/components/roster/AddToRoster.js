@@ -140,7 +140,7 @@ const AddPlayerRegistrationForm = componentProps => {
       pagination()
     ],
     () =>
-      search().trim().length > 2
+      search().trim().length > (componentProps.isPartOfSeries ? -1 : 2)
         ? searchSeriesRosterPlayers(
             componentProps.tournamentSlug,
             componentProps.teamSlug,
@@ -283,7 +283,8 @@ const AddPlayerRegistrationForm = componentProps => {
               fallback={
                 <Info
                   text={
-                    search().trim().length > 2
+                    search().trim().length >
+                    (componentProps.isPartOfSeries ? -1 : 2)
                       ? "No players found."
                       : "Please enter min. 3 letters to search"
                   }
