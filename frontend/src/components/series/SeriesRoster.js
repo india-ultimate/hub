@@ -208,7 +208,7 @@ const SeriesRoster = () => {
           {/* Current roster and invites sent */}
           <div class="mx-auto max-w-screen-md">
             <div class="mt-4">
-              <h4 class="text-xl font-bold text-blue-500 underline underline-offset-2">
+              <h4 class="mb-2 text-xl font-bold text-blue-500 underline underline-offset-2">
                 Current Roster {`(${rosterQuery.data?.length || "-"})`}
               </h4>
 
@@ -252,9 +252,14 @@ const SeriesRoster = () => {
                   fallback={<Info text="No invitations sent yet" />}
                 >
                   <div class="mt-2 w-full divide-y">
+                    {/* Show pending, expired, declined invitations only */}
                     <For
                       each={latestInvitationsPerPlayer().filter(
-                        inv => inv.status !== "Accepted"
+                        inv =>
+                          !(
+                            inv.status === "Accepted" ||
+                            inv.status === "Revoked"
+                          )
                       )}
                     >
                       {invitation => (
