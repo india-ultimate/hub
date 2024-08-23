@@ -61,9 +61,20 @@ const Tournaments = () => {
                     </span>
                   </Match>
                 </Switch>
-                <h5 class="mb-2 mt-2 text-xl font-bold capitalize tracking-tight text-blue-600 dark:text-blue-400">
-                  {tournament.event.title}
-                </h5>
+                <div class="mb-2 mt-2">
+                  <h5 class="text-xl font-bold capitalize tracking-tight text-blue-600 dark:text-blue-400">
+                    {tournament.event.title}
+                  </h5>
+                  <Show when={tournament.event?.series}>
+                    <p class="text-sm italic">
+                      Part of{" "}
+                      <span class="text-blue-600">
+                        {tournament.event?.series?.name}
+                      </span>
+                    </p>
+                  </Show>
+                </div>
+
                 <div class="flex justify-between">
                   <span class="flex-grow text-sm capitalize">
                     {tournament.event.location}
