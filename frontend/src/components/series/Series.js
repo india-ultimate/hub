@@ -12,7 +12,6 @@ import {
   bolt,
   calendarDays,
   link,
-  minus,
   plus,
   trophy
 } from "solid-heroicons/solid";
@@ -88,34 +87,18 @@ const AdminTeamRow = props => {
       </div>
       <div class="justify-self-end">
         <Show when={props.registeredTeamIds.includes(props.team.id)}>
-          <button
-            type="button"
-            class={clsx(
-              "justify-self-end rounded-lg px-4 py-2 text-sm font-medium text-white focus:outline-none focus:ring-4",
-              "bg-red-500 hover:bg-red-600 focus:ring-red-300 dark:bg-red-600 dark:hover:bg-red-700 dark:focus:ring-red-800"
-            )}
-            onClick={() =>
-              props.deRegisterTeamMutation.mutate({
-                series_slug: props.seriesSlug,
-                body: {
-                  team_slug: props.team.slug
-                }
-              })
-            }
-          >
-            <span class="inline-flex items-center gap-2">
-              <Icon path={minus} class="inline h-3 w-3 text-white" />
-              <span>Remove</span>
-            </span>
-          </button>
+          <div class="select-none rounded-lg bg-gray-300/50 px-4 py-2 text-sm font-medium text-gray-600">
+            Registered
+          </div>
         </Show>
         <Show when={!props.registeredTeamIds.includes(props.team.id)}>
           <button
             type="button"
             class={clsx(
-              "justify-self-end rounded-lg px-4 py-2 text-sm font-medium text-white focus:outline-none focus:ring-4",
-              "bg-blue-600  hover:bg-blue-700 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+              "group justify-self-end rounded-lg px-4 py-2 text-sm font-medium text-white focus:outline-none focus:ring-4",
+              "dark:focus:ring-blue-800,  bg-blue-600 hover:bg-blue-700 focus:ring-blue-300 disabled:bg-gray-300 disabled:text-gray-600 dark:bg-blue-600 dark:hover:bg-blue-700"
             )}
+            disabled={props.registerTeamMutation.isLoading}
             onClick={() =>
               props.registerTeamMutation.mutate({
                 series_slug: props.seriesSlug,
@@ -126,7 +109,10 @@ const AdminTeamRow = props => {
             }
           >
             <span class="inline-flex items-center gap-2">
-              <Icon path={plus} class="inline h-3 w-3 text-white" />
+              <Icon
+                path={plus}
+                class="inline h-3 w-3 text-white group-disabled:text-gray-600"
+              />
               <span>Register</span>
             </span>
           </button>
@@ -296,7 +282,7 @@ const Series = () => {
             <Match when={seriesInvitationsQuery.isLoading}>
               {/* Invitations skeleton here */}
             </Match>
-            <Match when={seriesInvitationsQuery.isError}>
+            <Match when={!seriesInvitationsQuery.isSuccess}>
               <div class="m-2">
                 <Info text="You must be logged in to view invitations !" />
               </div>
@@ -307,7 +293,9 @@ const Series = () => {
                 pendingInvitations().length == 0
               }
             >
-              <Info text="You don't have pending invitations" />
+              <div class="m-2">
+                <Info text="You don't have pending invitations" />
+              </div>
             </Match>
             <Match
               when={
