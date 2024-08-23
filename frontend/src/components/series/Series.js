@@ -272,7 +272,7 @@ const Series = () => {
 
         {/* Invitations */}
         <details class="group mt-6 rounded-lg border border-gray-300">
-          <summary class="px-3 py-2 group-open:border-b group-open:border-gray-300">
+          <summary class="custom px-3 py-2 group-open:border-b group-open:border-gray-300">
             <div class="flex items-center gap-2 text-gray-600">
               <Icon path={envelope} class="inline h-6 w-6 text-gray-500" />
               <span class="text-lg font-semibold text-gray-700">
@@ -331,7 +331,7 @@ const Series = () => {
 
         {/* Teams registered */}
         <details class="group mt-6 rounded-lg border border-gray-300" open>
-          <summary class="px-3 py-2 group-open:border-b group-open:border-gray-300">
+          <summary class="custom px-3 py-2 group-open:border-b group-open:border-gray-300">
             <div class="flex items-center gap-2 text-gray-600">
               <span>
                 <Icon path={queueList} class="inline h-6 w-6 text-gray-500" />
@@ -382,6 +382,7 @@ const Series = () => {
         >
           <summary
             class={clsx(
+              "custom",
               "rounded-lg px-3 py-2 group-open:rounded-b-none group-open:border-b group-open:border-gray-300",
               flash() ? "bg-green-100 text-black" : ""
             )}
