@@ -1,4 +1,5 @@
 from server.core.models import Player, Team
+from server.membership.models import Membership
 from server.types import message_response
 
 from .models import Series, SeriesRegistration, SeriesRosterInvitation
@@ -91,10 +92,17 @@ def can_invite_player_to_series_roster(
 
 
 def register_player(series: Series, team: Team, player: Player) -> SeriesRegistration:
-    if not player.membership.is_active:
+    try:
+        membership = player.membership
+    except Membership.DoesNotExist:
+        raise RegistrationError(
+            "You need an active IU membership to register for the series"
+        ) from None
+
+    if not membership.is_active:
         raise RegistrationError("You need an active IU membership to register for the series")
 
-    if not player.membership.waiver_valid:
+    if not membership.waiver_valid:
         raise RegistrationError("You need to sign the waiver first, to register for the series")
 
     num_registrations = SeriesRegistration.objects.filter(series=series, team=team).count()
