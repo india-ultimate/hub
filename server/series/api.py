@@ -142,7 +142,7 @@ def remove_team_series_registration(
     return 200, series
 
 
-@router.get("/{series_slug}/team/{team_slug}", response={200: TeamSchema, 400: Response})
+@router.get("/{series_slug}/team/{team_slug}", auth=None, response={200: TeamSchema, 400: Response})
 def get_series_team(
     request: AuthenticatedHttpRequest, series_slug: str, team_slug: str
 ) -> tuple[int, Team | message_response]:
@@ -412,7 +412,8 @@ def series_team_roster_invitations_sent(
 
 @router.get(
     "/{series_slug}/team/{team_slug}/roster",
-    response={200: list[SeriesTeamRosterSchema], 400: Response, 401: Response},
+    auth=None,
+    response={200: list[SeriesTeamRosterSchema], 400: Response},
 )
 def get_team_series_roster(
     request: AuthenticatedHttpRequest, series_slug: str, team_slug: str
