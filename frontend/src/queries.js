@@ -231,7 +231,6 @@ export const fetchSeriesTeamBySlug = async (series_slug, team_slug) => {
   return data;
 };
 
-
 export const fetchTeamSeriesRoster = async (series_slug, team_slug) => {
   const response = await fetch(
     `/api/series/${series_slug}/team/${team_slug}/roster`,
@@ -466,7 +465,12 @@ export const fetchMatchesBySlug = async tournament_slug => {
   return await response.json();
 };
 
-export const searchSeriesRosterPlayers = async (tournament_slug, team_slug, searchText, pagination) => {
+export const searchSeriesRosterPlayers = async (
+  tournament_slug,
+  team_slug,
+  searchText,
+  pagination
+) => {
   let baseUrl = `/api/tournament/${tournament_slug}/team/${team_slug}/players/search`;
   let params = new URLSearchParams();
   if (searchText) {

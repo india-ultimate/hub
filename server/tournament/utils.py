@@ -7,7 +7,8 @@ from django.db.models import Q
 
 from server.core.models import Player, Team, UCPerson, User
 from server.schema import SpiritScoreUpdateSchema
-from server.types import validation_error_dict
+from server.tournament.models import Event
+from server.types import message_response, validation_error_dict
 from server.utils import ordinal_suffix
 
 from .models import (
@@ -938,3 +939,33 @@ def get_bracket_match_name(start: int, end: int, seed_1: int, seed_2: int) -> st
             return f"{start}-{end} Bracket"
 
     return ""
+
+
+def can_register_player_to_series_event(
+    event: Event, team: Team, player: Player
+) -> tuple[bool, message_response | None]:
+    if not event.series:
+        return True, None
+
+    match player.match_up:
+        case player.MatchupTypes.MALE:
+            num_male_matching_registered = Registration.objects.filter(
+                event=event, team=team, player__match_up=player.MatchupTypes.MALE
+            ).count()
+
+            if not (num_male_matching_registered + 1) <= event.series.event_max_players_male:
+                return False, {
+                    "message": f"You can only roster {event.series.event_max_players_male} male players"
+                }
+
+        case player.MatchupTypes.FEMALE:
+            num_female_matching_registered = Registration.objects.filter(
+                event=event, team=team, player__match_up=player.MatchupTypes.FEMALE
+            ).count()
+
+            if not (num_female_matching_registered + 1) <= event.series.event_max_players_female:
+                return False, {
+                    "message": f"You can only roster {event.series.event_max_players_female} female players"
+                }
+
+    return True, None

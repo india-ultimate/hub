@@ -152,6 +152,7 @@ from server.tournament.models import (
     UCRegistration,
 )
 from server.tournament.utils import (
+    can_register_player_to_series_event,
     create_bracket_matches,
     create_pool_matches,
     create_position_pool_matches,
@@ -1480,6 +1481,13 @@ def add_player_to_roster(
         and registration_details.role not in Registration.Role._value2member_map_
     ):
         return 400, {"message": "Invalid role"}
+
+    if event.series:
+        can_register, error = can_register_player_to_series_event(
+            event=event, team=team, player=player
+        )
+        if not can_register and error:
+            return 400, error
 
     registration = Registration(
         event=event,
