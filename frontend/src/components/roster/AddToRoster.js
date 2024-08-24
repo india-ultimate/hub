@@ -234,7 +234,12 @@ const AddPlayerRegistrationForm = componentProps => {
       </h2>
       <h3 class="w-full text-left text-sm italic">
         Search players by name or email{" "}
-        <Show when={!componentProps.isPartOfSeries}>(min. 3 letters)</Show>
+        <Show
+          when={!componentProps.isPartOfSeries}
+          fallback="(Players part of your series roster)"
+        >
+          (min. 3 letters)
+        </Show>
       </h3>
       <div class="relative my-4 w-full">
         <div class="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-3">

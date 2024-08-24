@@ -1,7 +1,13 @@
 import { A, useParams } from "@solidjs/router";
-import { createQuery } from "@tanstack/solid-query";
+import {
+  createMutation,
+  createQuery,
+  useQueryClient
+} from "@tanstack/solid-query";
 import clsx from "clsx";
+import { Icon } from "solid-heroicons";
 import { trophy } from "solid-heroicons/solid";
+import { trash } from "solid-heroicons/solid";
 import { createEffect, createSignal, For, Match, Show, Switch } from "solid-js";
 
 import {
@@ -9,7 +15,8 @@ import {
   fetchSeriesTeamBySlug,
   fetchTeamSeriesInvitationsSent,
   fetchTeamSeriesRoster,
-  fetchUser
+  fetchUser,
+  revokeInvitation
 } from "../../queries";
 import { useStore } from "../../store";
 import Info from "../alerts/Info";
@@ -92,6 +99,20 @@ const SeriesRoster = () => {
 
   const currentUserIsTeamAdmin = () =>
     teamQuery.data?.admins.map(user => user.id).includes(userQuery.data?.id);
+
+  const queryClient = useQueryClient();
+
+  const revokeInvitationMutation = createMutation({
+    mutationFn: revokeInvitation,
+    onSuccess: () =>
+      queryClient.invalidateQueries({
+        queryKey: [
+          "series-invitations-sent",
+          params.series_slug,
+          params.team_slug
+        ]
+      })
+  });
 
   return (
     <Switch>
@@ -269,11 +290,26 @@ const SeriesRoster = () => {
                           )}
                         >
                           <div class="flex w-full items-center justify-between gap-x-4">
-                            <div class="font-medium">
-                              {invitation.to_player?.full_name}
+                            <div class="flex items-center  font-medium">
+                              <span>{invitation.to_player?.full_name}</span>
                               <Show
                                 when={invitation.to_player?.match_up}
                               >{` (${invitation.to_player?.match_up})`}</Show>
+                              <Show when={invitation.status === "Pending"}>
+                                <button
+                                  class="ml-2 inline-flex w-fit justify-center rounded-full text-center text-sm font-medium text-red-700"
+                                  onClick={() =>
+                                    revokeInvitationMutation.mutate({
+                                      invitation_id: invitation.id
+                                    })
+                                  }
+                                >
+                                  <Icon
+                                    path={trash}
+                                    style={{ width: "20px", display: "inline" }}
+                                  />
+                                </button>
+                              </Show>
                             </div>
                             <div>
                               <Switch>
