@@ -718,6 +718,22 @@ export const invitePlayerToSeries = async ({
   return data;
 };
 
+export const revokeInvitation = async ({ invitation_id }) => {
+  const response = await fetch(`/api/series/invitation/${invitation_id}`, {
+    method: "DELETE",
+    headers: {
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin"
+  });
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.message || JSON.stringify(data));
+  }
+  return data;
+};
+
 export const acceptSeriesInvitation = async ({ invitation_id }) => {
   const response = await fetch(
     `/api/series/invitation/${invitation_id}/accept`,
