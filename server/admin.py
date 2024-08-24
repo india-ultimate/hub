@@ -17,7 +17,7 @@ from server.membership.models import (
     RazorpayTransaction,
 )
 from server.season.models import Season
-from server.series.models import Series
+from server.series.models import Series, SeriesRegistration, SeriesRosterInvitation
 from server.tournament.models import (
     Event,
     Match,
@@ -212,3 +212,43 @@ class SeriesAdmin(admin.ModelAdmin[Series]):
     list_display = ["name"]
 
     filter_horizontal = ("teams",)
+
+
+@admin.register(SeriesRosterInvitation)
+class SeriesRosterInvitationAdmin(admin.ModelAdmin[SeriesRosterInvitation]):
+    search_fields = [
+        "from_user__username",
+        "to_player__user__first_name",
+        "to_player__user__last_name",
+    ]
+    list_display = ["get_name", "get_email", "get_team"]
+
+    @admin.display(description="From", ordering="from_user__username")
+    def get_name(self, obj: SeriesRosterInvitation) -> str:
+        return obj.from_user.username
+
+    @admin.display(description="To", ordering="to_player__user__first_name")
+    def get_email(self, obj: SeriesRosterInvitation) -> str:
+        return obj.to_player.user.get_full_name()
+
+    @admin.display(description="Team", ordering="team__name")
+    def get_team(self, obj: SeriesRosterInvitation) -> str:
+        return obj.team.name
+
+
+@admin.register(SeriesRegistration)
+class SeriesRegistrationAdmin(admin.ModelAdmin[SeriesRegistration]):
+    search_fields = ["team__name", "player__user__first_name", "player__user__last_name"]
+    list_display = ["get_name", "get_email", "get_team"]
+
+    @admin.display(description="Series", ordering="series__name")
+    def get_name(self, obj: SeriesRegistration) -> str:
+        return obj.series.name
+
+    @admin.display(description="Team", ordering="team__name")
+    def get_email(self, obj: SeriesRegistration) -> str:
+        return obj.team.name
+
+    @admin.display(description="Player", ordering="player__user__first_name")
+    def get_team(self, obj: SeriesRegistration) -> str:
+        return obj.player.user.get_full_name()
