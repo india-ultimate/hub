@@ -131,11 +131,34 @@ def send_invitation_email(from_user: User, to_player: Player, team: Team, series
     subject = f"Hub | Invitation to join {team.name}'s roster"
     html_message = render_to_string(
         "series_roster_invitation_email.html",
-        {"team_name": team.name, "from_name": from_user.username, "series_name": series.name},
+        {
+            "team_name": team.name,
+            "from_name": f"{from_user.get_full_name()} ({from_user.username})",
+            "series_name": series.name,
+        },
     )
     plain_message = strip_tags(html_message)
     from_email = settings.EMAIL_HOST_USER
     to = to_player.user.email.strip().lower()
+
+    mail.send_mail(subject, plain_message, from_email, [to], html_message=html_message)
+
+
+def send_invitation_acceptation_email(
+    from_user: User, to_player: Player, team: Team, series: Series
+) -> None:
+    subject = f"Hub | Invitation Accepted to join {team.name}'s roster"
+    html_message = render_to_string(
+        "series_roster_accept_email.html",
+        {
+            "team_name": team.name,
+            "to_name": f"{to_player.user.get_full_name()} ({to_player.user.username})",
+            "series_name": series.name,
+        },
+    )
+    plain_message = strip_tags(html_message)
+    from_email = settings.EMAIL_HOST_USER
+    to = from_user.email.strip().lower()
 
     mail.send_mail(subject, plain_message, from_email, [to], html_message=html_message)
 
