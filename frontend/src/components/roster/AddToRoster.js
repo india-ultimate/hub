@@ -93,6 +93,7 @@ const AddToRoster = props => {
           teamId={props.teamId}
           tournamentSlug={props.tournamentSlug}
           teamSlug={props.teamSlug}
+          isPartOfSeries={props.isPartOfSeries}
         />
       </Modal>
       <SuccessPopover ref={successPopoverRef}>
@@ -128,6 +129,10 @@ const AddPlayerRegistrationForm = componentProps => {
     if (addToRosterMutation.isError) {
       setStatus("Adding to the roster failed");
     }
+  });
+
+  createEffect(() => {
+    console.log(componentProps.isPartOfSeries);
   });
 
   const dataQuery = createQuery(
@@ -177,7 +182,7 @@ const AddPlayerRegistrationForm = componentProps => {
       cell: props => (
         <Show
           when={
-            !componentProps.roster
+            !(componentProps.roster || [])
               .map(reg => reg.player.id)
               .includes(props.getValue())
           }
@@ -228,7 +233,8 @@ const AddPlayerRegistrationForm = componentProps => {
         Add Players to Roster
       </h2>
       <h3 class="w-full text-left text-sm italic">
-        Search players by name or email (min. 3 letters)
+        Search players by name or email{" "}
+        <Show when={!componentProps.isPartOfSeries}>(min. 3 letters)</Show>
       </h3>
       <div class="relative my-4 w-full">
         <div class="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-3">
