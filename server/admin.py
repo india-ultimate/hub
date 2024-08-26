@@ -6,6 +6,7 @@ from django.db.models import QuerySet
 from django.http import HttpRequest, HttpResponse
 
 from server.core.models import (
+    Guardianship,
     Player,
     Team,
     User,
@@ -251,4 +252,25 @@ class SeriesRegistrationAdmin(admin.ModelAdmin[SeriesRegistration]):
 
     @admin.display(description="Player", ordering="player__user__first_name")
     def get_team(self, obj: SeriesRegistration) -> str:
+        return obj.player.user.get_full_name()
+
+
+@admin.register(Guardianship)
+class GuardianshipAdmin(admin.ModelAdmin[Guardianship]):
+    search_fields = [
+        "user__first_name",
+        "user__last_name",
+        "user__username",
+        "player__user__first_name",
+        "player__user__last_name",
+        "player__user__username",
+    ]
+    list_display = ["get_name", "get_email"]
+
+    @admin.display(description="User", ordering="user__first_name")
+    def get_name(self, obj: Guardianship) -> str:
+        return obj.user.get_full_name()
+
+    @admin.display(description="Player", ordering="player__user__first_name")
+    def get_email(self, obj: Guardianship) -> str:
         return obj.player.user.get_full_name()
