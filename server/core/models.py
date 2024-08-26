@@ -137,7 +137,7 @@ class Player(ExportModelOperationsMixin("player"), models.Model):  # type: ignor
     city = models.CharField(max_length=100)
     state_ut = models.CharField(max_length=5, choices=StatesUTs.choices, null=True, blank=True)
     not_in_india = models.BooleanField(default=False)
-    teams = models.ManyToManyField(Team, related_name="players")
+    teams = models.ManyToManyField(Team, related_name="players", blank=True)
 
     class OccupationTypes(models.TextChoices):
         STUDENT = "Student", _("Student")
