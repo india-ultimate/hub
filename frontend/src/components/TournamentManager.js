@@ -85,7 +85,7 @@ const TournamentManager = () => {
       newTimesList.push(
         dt.toLocaleTimeString("en-US", { hour: "numeric", minute: "numeric" })
       );
-      dt.setMinutes(dt.getMinutes() + 15);
+      dt.setMinutes(dt.getMinutes() + 5);
     }
     setTimesList(newTimesList);
   });
