@@ -97,9 +97,10 @@ const TransactionList = props => {
                     day: "numeric"
                   });
                   let nPlayers = transaction.players?.length;
-                  const bgColor = transaction.validated
-                    ? "bg-green-200 dark:bg-green-800"
-                    : "bg-orange-100 dark:bg-orange-900";
+                  const bgColor =
+                    transaction.validated || transaction.status === "completed"
+                      ? "bg-green-200 dark:bg-green-800"
+                      : "bg-orange-100 dark:bg-orange-900";
 
                   return (
                     <tr
