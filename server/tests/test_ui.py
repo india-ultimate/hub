@@ -114,13 +114,13 @@ class TestIntegration(BaseCase):
 
             # Redirect to Razorpay modal
             self.switch_to_frame("iframe")
-            self.js_click('button[method="upi"]', timeout=45)
-            self.js_click('div[type="button"]')
-            self.type("input#vpa-upi", "success@razorpay\n")
-            self.click("button#redesign-v15-cta")
-            self.js_click_all(
-                "button#redesign-v15-cta"
-            )  # Somehow only having both clicks is working
+            self.js_click('div[data-value="upi"]', timeout=45)
+            # self.js_click('div[type="button"]')
+            self.type('input[name="vpa"]', "success@razorpay\n")
+            # self.click("button#redesign-v15-cta")
+            # self.js_click_all(
+            #     "button#redesign-v15-cta"
+            # )  # Somehow only having both clicks is working
             self.switch_to_parent_frame()
             self.wait_for_element("div#membership-exist", timeout=45)
             self.save_screenshot_to_logs("pay-clicked.png")
