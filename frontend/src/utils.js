@@ -212,7 +212,7 @@ export const getMatchCardColor = match => {
 };
 
 export const getTournamentBreadcrumbName = tournamentSlug => {
-  let category,
+  let category = "",
     level = "",
     area = "";
 
