@@ -275,7 +275,13 @@ export const getTournamentBreadcrumbName = tournamentSlug => {
     area += "E";
   }
 
-  let name = category + " " + level;
+  let name = "";
+  if (category.length > 0) {
+    name += category;
+  }
+  if (level.length > 0) {
+    name += level;
+  }
   if (area.length > 0) {
     name += ` (${area})`;
   }
