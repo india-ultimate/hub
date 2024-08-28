@@ -12,11 +12,11 @@ const Modal = props => {
       )}
     >
       <div class="flex w-full flex-col items-start gap-2 rounded-xl bg-gray-50 p-4 text-gray-600 dark:bg-gray-600 dark:text-gray-100">
-        <div class="flex w-full items-center justify-between text-base sm:text-lg">
+        <div class="flex w-full items-center justify-between gap-1 text-base sm:text-lg">
           <div class="flex">{props.title || ""}</div>
           <button
             type="button"
-            class="absolute right-2.5 top-3 ml-auto inline-flex h-8 w-8 items-center justify-center rounded-lg bg-transparent text-sm text-gray-400 hover:bg-gray-200 hover:text-gray-900 dark:hover:bg-gray-700 dark:hover:text-white"
+            class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-transparent text-sm text-gray-400 hover:bg-gray-300 hover:text-gray-900 dark:hover:bg-gray-700 dark:hover:text-white"
             onClick={() => props.close()}
           >
             <Icon path={xMark} class="w-6" />
