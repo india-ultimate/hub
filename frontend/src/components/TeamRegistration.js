@@ -7,7 +7,8 @@ import {
 import clsx from "clsx";
 import { Icon } from "solid-heroicons";
 import { trophy } from "solid-heroicons/solid";
-import { bolt, plus } from "solid-heroicons/solid";
+import { arrowRight, bolt, plus } from "solid-heroicons/solid";
+import { checkCircle, xCircle } from "solid-heroicons/solid";
 import { createEffect, createSignal, For, Match, Show, Switch } from "solid-js";
 
 import {
@@ -20,11 +21,20 @@ import { ifTodayInBetweenDates } from "../utils";
 import Info from "./alerts/Info";
 import Warning from "./alerts/Warning";
 import Breadcrumbs from "./Breadcrumbs";
+import Modal from "./Modal";
+import SuccessPopover from "./popover/SuccessPopover";
 
 const TeamRegistration = () => {
   const queryClient = useQueryClient();
 
   const params = useParams();
+
+  const [registeringTeamId, setRegisteringTeamId] = createSignal(undefined);
+  const [deRegisteringTeamId, setDeRegisteringTeamId] = createSignal(undefined);
+  const [registeredTeamIds, setRegisteredTeamIds] = createSignal([]);
+  const [status, setStatus] = createSignal("");
+
+  let successPopoverRef, modalRef, registerYourTeamRef;
 
   const tournamentQuery = createQuery(
     () => ["tournaments", params.slug],
@@ -35,16 +45,16 @@ const TeamRegistration = () => {
   const registerTeamMutation = createMutation({
     mutationFn: addTeamRegistration,
     onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["tournaments"] })
+      queryClient.invalidateQueries({ queryKey: ["tournaments"] }),
+    onSettled: () => setRegisteringTeamId(undefined)
   });
 
   const deRegisterTeamMutation = createMutation({
     mutationFn: removeTeamRegistration,
     onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["tournaments"] })
+      queryClient.invalidateQueries({ queryKey: ["tournaments"] }),
+    onSettled: () => setDeRegisteringTeamId(undefined)
   });
-
-  const [registeredTeamIds, setRegisteredTeamIds] = createSignal([]);
 
   createEffect(() => {
     if (tournamentQuery.status === "success" && !tournamentQuery.data.message) {
@@ -53,7 +63,16 @@ const TeamRegistration = () => {
     }
   });
 
-  let registerYourTeamRef;
+  createEffect(function onMutationComplete() {
+    if (registerTeamMutation.isSuccess) {
+      setStatus("Registered team");
+      successPopoverRef.showPopover();
+    }
+    if (registerTeamMutation.isError) {
+      setStatus(registerTeamMutation.error.message);
+      modalRef.showModal();
+    }
+  });
 
   const scrollToMyTeams = () => registerYourTeamRef.scrollIntoView();
 
@@ -322,18 +341,25 @@ const TeamRegistration = () => {
                             type="button"
                             class={clsx(
                               "justify-self-end rounded-lg px-4 py-2 text-sm font-medium text-white focus:outline-none focus:ring-4",
-                              "bg-red-500 hover:bg-red-600 focus:ring-red-300 dark:bg-red-600 dark:hover:bg-red-700 dark:focus:ring-red-800"
+                              "bg-red-500 hover:bg-red-600 focus:ring-red-300 disabled:bg-gray-400 dark:bg-red-600 dark:hover:bg-red-700 dark:focus:ring-red-800"
                             )}
-                            onClick={() =>
+                            disabled={deRegisteringTeamId() === team.id}
+                            onClick={() => {
                               deRegisterTeamMutation.mutate({
                                 tournament_id: tournamentQuery.data?.id,
                                 body: {
                                   team_id: team.id
                                 }
-                              })
-                            }
+                              });
+                              setDeRegisteringTeamId(team.id);
+                            }}
                           >
-                            De-register
+                            <Show
+                              when={deRegisteringTeamId() === team.id}
+                              fallback="Remove"
+                            >
+                              Removing...
+                            </Show>
                           </button>
                         </Show>
                         <Show when={!registeredTeamIds().includes(team.id)}>
@@ -341,18 +367,25 @@ const TeamRegistration = () => {
                             type="button"
                             class={clsx(
                               "justify-self-end rounded-lg px-4 py-2 text-sm font-medium text-white focus:outline-none focus:ring-4",
-                              "bg-blue-600  hover:bg-blue-700 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+                              "bg-blue-600 hover:bg-blue-700 focus:ring-blue-300 disabled:bg-gray-400 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
                             )}
-                            onClick={() =>
+                            disabled={registeringTeamId() === team.id}
+                            onClick={() => {
                               registerTeamMutation.mutate({
                                 tournament_id: tournamentQuery.data?.id,
                                 body: {
                                   team_id: team.id
                                 }
-                              })
-                            }
+                              });
+                              setRegisteringTeamId(team.id);
+                            }}
                           >
-                            Register
+                            <Show
+                              when={registeringTeamId() === team.id}
+                              fallback="Register"
+                            >
+                              Registering...
+                            </Show>
                           </button>
                         </Show>
                       </div>
@@ -364,6 +397,50 @@ const TeamRegistration = () => {
           </Show>
         </div>
       </div>
+      <SuccessPopover ref={successPopoverRef}>
+        <div class="flex flex-row items-center gap-2">
+          <Icon path={checkCircle} class="h-6 w-6 text-green-700" />
+          <div class="font-medium">{status()}</div>
+        </div>
+      </SuccessPopover>
+
+      <Modal
+        ref={modalRef}
+        close={() => modalRef.close()}
+        fullWidth={true}
+        title={
+          <div class="flex flex-row gap-2">
+            <div>
+              <Icon path={xCircle} class="inline h-6 w-6 text-red-700" />
+            </div>
+            <div class="font-medium text-red-700">{status()}</div>
+          </div>
+        }
+      >
+        <div class="flex w-full flex-col justify-between gap-4 pb-2">
+          <div class="text-gray-600">
+            Your team has to be registered for the{" "}
+            <span class="font-semibold">
+              {tournamentQuery.data?.event?.series?.name}
+            </span>{" "}
+            series, to participate in this tournament.
+          </div>
+          <div class="place-self-end">
+            <A href={`/series/${tournamentQuery.data?.event?.series?.slug}/`}>
+              <button
+                type="button"
+                class={clsx(
+                  "inline-flex w-fit items-center rounded-lg border px-2.5 py-1.5 text-center text-sm font-medium sm:text-base",
+                  "border-gray-500 bg-gray-200 text-gray-800 transition-colors hover:bg-gray-500 hover:text-white focus:outline-none focus:ring-4 focus:ring-gray-300"
+                )}
+              >
+                <span class="mr-2">Register</span>
+                <Icon path={arrowRight} class="h-3 w-3" />
+              </button>
+            </A>
+          </div>
+        </div>
+      </Modal>
     </Show>
   );
 };

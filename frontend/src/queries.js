@@ -809,7 +809,14 @@ export const addTeamRegistration = async ({ tournament_id, body }) => {
       body: JSON.stringify(body)
     }
   );
-  return await response.json();
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.message || JSON.stringify(data));
+  }
+
+  return data;
 };
 
 export const removeTeamRegistration = async ({ tournament_id, body }) => {

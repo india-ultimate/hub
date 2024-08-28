@@ -235,3 +235,46 @@ details[open] > summary.custom::after {
     opacity: 0;
   }
 }
+
+/* Dialog entry/exit animations */
+
+dialog {
+  --animation-timing: 0.2s;
+  animation: fade-out var(--animation-timing) ease-out;
+}
+
+dialog[open] {
+  animation: fade-in var(--animation-timing) ease-out;
+}
+
+dialog[open]::backdrop {
+  animation: backdrop-fade-in var(--animation-timing) ease-out forwards;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes backdrop-fade-in {
+  from {
+    background-color: rgb(55 65 81 / 0);
+  }
+
+  tp {
+    background-color: rgb(55 65 81 / 0.9);
+  }
+}

@@ -5,7 +5,7 @@ const ErrorPopover = props => (
     role="alert"
     class={
       props.class ??
-      "rounded-lg border border-red-400 bg-red-200 px-3 py-4 text-red-800 shadow-lg dark:bg-gray-800 dark:text-red-400"
+      "rounded-lg border border-red-400 bg-red-100 px-3 py-3 text-red-800 shadow-xl dark:bg-gray-800 dark:text-red-400"
     }
   >
     {props.children}
