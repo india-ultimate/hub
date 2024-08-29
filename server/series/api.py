@@ -21,7 +21,6 @@ from .schema import (
     SeriesTeamRosterSchema,
 )
 from .utils import (
-    RegistrationError,
     can_invite_player_to_series_roster,
     can_register_player_to_series_roster,
     register_player,
@@ -294,12 +293,14 @@ def accept_series_invitation(
             }
 
         case SeriesRosterInvitation.Status.PENDING:
-            try:
-                series_registration = register_player(
-                    series=invitation.series, team=invitation.team, player=invitation.to_player
-                )
-            except RegistrationError as error:
-                return 400, {"message": str(error)}
+            series_registration, error = register_player(
+                series=invitation.series, team=invitation.team, player=invitation.to_player
+            )
+            if error:
+                return 400, error
+
+            if series_registration is None:
+                return 400, {"message": "Couldn't register player"}
 
             invitation.status = SeriesRosterInvitation.Status.ACCEPTED
             invitation.rsvp_date = today()
@@ -462,11 +463,14 @@ def add_myself_to_team_series_roster(
     if not hasattr(request.user, "player_profile"):
         return 400, {"message": "Player not found, please complete your registration first."}
 
-    try:
-        series_registration = register_player(
-            series=series, team=team, player=request.user.player_profile
-        )
-    except RegistrationError as error:
-        return 400, {"message": str(error)}
+    series_registration, error = register_player(
+        series=series, team=team, player=request.user.player_profile
+    )
 
-    return 200, series_registration
+    if error:
+        return 400, error
+
+    if series_registration is not None:
+        return 200, series_registration
+
+    return 400, {"message": "Couldn't register player"}
