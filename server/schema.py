@@ -44,6 +44,9 @@ class OTPLoginCredentials(Schema):
 
 class Response(Schema):
     message: str
+    description: str | None
+    action_name: str | None
+    action_href: str | None
 
 
 class ValidationStatsSchema(Schema):

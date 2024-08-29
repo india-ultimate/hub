@@ -1927,7 +1927,12 @@ def add_team_registration(
         return 400, {"message": "Team registration has closed, you can't register a team now !"}
 
     if tournament.event.series and team not in tournament.event.series.teams.all():
-        return 400, {"message": "Team is not part of the series"}
+        return 400, {
+            "message": "Team is not part of the series",
+            "description": f"Your team has to be registered for the {tournament.event.series.name} series, to participate in this tournament.",
+            "action_name": "Register",
+            "action_href": f"/series/{tournament.event.series.slug}/",
+        }
 
     tournament.teams.add(team)
 
