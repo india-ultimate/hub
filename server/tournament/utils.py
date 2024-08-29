@@ -951,7 +951,12 @@ def can_register_player_to_series_event(
     if not SeriesRegistration.objects.filter(
         series=event.series, team=team, player=player
     ).exists():
-        return False, {"message": "Player is not part of series roster"}
+        return False, {
+            "message": "Player is not part of series roster",
+            "description": "Players need to be added to the series roster first, to be added to the tournament roster.",
+            "action_name": "Series roster",
+            "action_href": f"/series/{event.series.slug}/team/{team.slug}",
+        }
 
     match player.match_up:
         case player.MatchupTypes.MALE:

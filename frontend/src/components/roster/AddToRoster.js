@@ -1,3 +1,4 @@
+import { A } from "@solidjs/router";
 import {
   createMutation,
   createQuery,
@@ -8,9 +9,16 @@ import {
   flexRender,
   getCoreRowModel
 } from "@tanstack/solid-table";
+import clsx from "clsx";
 import { Icon } from "solid-heroicons";
 import { handRaised } from "solid-heroicons/outline";
-import { plus, xMark } from "solid-heroicons/solid";
+import {
+  arrowRight,
+  checkCircle,
+  plus,
+  xCircle,
+  xMark
+} from "solid-heroicons/solid";
 import { createEffect, createSignal, For, Show } from "solid-js";
 
 import { ChevronLeft, ChevronRight, Spinner } from "../../icons";
@@ -26,8 +34,9 @@ import SuccessPopover from "../popover/SuccessPopover";
 
 const AddToRoster = props => {
   let modalRef;
-  let successPopoverRef, errorPopoverRef;
+  let successPopoverRef, errorPopoverRef, errorModalRef;
   const [status, setStatus] = createSignal("");
+  const [error, setError] = createSignal({});
 
   const queryClient = useQueryClient();
   const userQuery = createQuery(() => ["me"], fetchUser);
@@ -39,12 +48,23 @@ const AddToRoster = props => {
 
   createEffect(function onMutationComplete() {
     if (addToRosterMutation.isSuccess) {
-      setStatus("Successfully added player to the roster");
+      setStatus("Player added to the roster");
       successPopoverRef.showPopover();
     }
     if (addToRosterMutation.isError) {
-      setStatus("Adding to the roster failed");
-      errorPopoverRef.showPopover();
+      try {
+        const mutationError = JSON.parse(addToRosterMutation.error.message);
+        setError(mutationError);
+        setStatus(mutationError.message);
+        // Show error modal for long errors with a description, possibly an action button also
+        if (mutationError.description) {
+          errorModalRef.showModal();
+        } else {
+          errorPopoverRef.showPopover();
+        }
+      } catch (err) {
+        throw new Error(`Couldn't parse error object: ${err}`);
+      }
     }
   });
 
@@ -71,7 +91,7 @@ const AddToRoster = props => {
           class="mb-2 me-2 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-blue-700 px-2 py-2.5 text-center text-sm font-medium text-blue-700 hover:bg-blue-800 hover:text-white focus:outline-none dark:border-blue-500  dark:text-blue-500 dark:hover:bg-blue-500 dark:hover:text-white dark:focus:ring-blue-800 md:px-5"
         >
           <Icon path={handRaised} style={{ width: "24px" }} />
-          <span class="w-3/4">Add myself to the roster</span>
+          <span class="w-3/4">Add myself</span>
         </button>
       </Show>
       <button
@@ -80,7 +100,7 @@ const AddToRoster = props => {
         class="mb-2 me-2 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-700 px-2 py-2.5 text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 md:px-5"
       >
         <Icon path={plus} style={{ width: "24px" }} />
-        <span class="w-3/4">Add a player to the roster</span>
+        <span class="w-3/4">Add a player </span>
       </button>
       <Modal
         ref={modalRef}
@@ -96,13 +116,52 @@ const AddToRoster = props => {
           isPartOfSeries={props.isPartOfSeries}
         />
       </Modal>
+
       <SuccessPopover ref={successPopoverRef}>
-        <span class="font-medium">{status()}</span>
+        <div class="flex flex-row items-center gap-2">
+          <Icon path={checkCircle} class="h-6 w-6 text-green-700" />
+          <div class="font-medium">{status()}</div>
+        </div>
       </SuccessPopover>
 
       <ErrorPopover ref={errorPopoverRef}>
-        <span class="font-medium">{status()}</span>
+        <div class="flex flex-row items-center gap-2">
+          <Icon path={xCircle} class="h-6 w-6 text-red-700" />
+          <div class="font-medium">{status()}</div>
+        </div>
       </ErrorPopover>
+
+      <Modal
+        ref={errorModalRef}
+        close={() => errorModalRef.close()}
+        fullWidth={true}
+        title={
+          <div class="flex flex-row gap-2">
+            <div>
+              <Icon path={xCircle} class="inline h-6 w-6 text-red-700" />
+            </div>
+            <div class="font-medium text-red-700">{status()}</div>
+          </div>
+        }
+      >
+        <div class="flex w-full flex-col justify-between gap-4 pb-2">
+          <div class="text-gray-600">{error().description}</div>
+          <div class="place-self-end">
+            <A href={`${error().action_href}`}>
+              <button
+                type="button"
+                class={clsx(
+                  "inline-flex w-fit items-center rounded-lg border px-2.5 py-1.5 text-center text-sm font-medium sm:text-base",
+                  "border-gray-500 bg-gray-200 text-gray-800 transition-colors hover:bg-gray-500 hover:text-white focus:outline-none focus:ring-4 focus:ring-gray-300"
+                )}
+              >
+                <span class="mr-2">{error().action_name}</span>
+                <Icon path={arrowRight} class="h-3 w-3" />
+              </button>
+            </A>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };
