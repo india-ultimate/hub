@@ -128,4 +128,4 @@ export const minAgeWarning = `Players need to be atleast ${minAge} years old to 
 
 export const upiID = "indiaultimate@ibl";
 
-export const WALink = "https://chat.whatsapp.com/L1LkrLGuqFdIiRh5kuuAnz";
+export const WALink = "https://chat.whatsapp.com/EaQFaaRb4wzLk33kojAY8t";
