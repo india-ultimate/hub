@@ -7,8 +7,13 @@ import {
 import clsx from "clsx";
 import { Icon } from "solid-heroicons";
 import { trophy } from "solid-heroicons/solid";
-import { arrowRight, bolt, plus } from "solid-heroicons/solid";
-import { checkCircle, xCircle } from "solid-heroicons/solid";
+import {
+  arrowRight,
+  bolt,
+  checkCircle,
+  plus,
+  xCircle
+} from "solid-heroicons/solid";
 import { createEffect, createSignal, For, Match, Show, Switch } from "solid-js";
 
 import {
@@ -22,6 +27,7 @@ import Info from "./alerts/Info";
 import Warning from "./alerts/Warning";
 import Breadcrumbs from "./Breadcrumbs";
 import Modal from "./Modal";
+import ErrorPopover from "./popover/ErrorPopover";
 import SuccessPopover from "./popover/SuccessPopover";
 
 const TeamRegistration = () => {
@@ -33,8 +39,9 @@ const TeamRegistration = () => {
   const [deRegisteringTeamId, setDeRegisteringTeamId] = createSignal(undefined);
   const [registeredTeamIds, setRegisteredTeamIds] = createSignal([]);
   const [status, setStatus] = createSignal("");
+  const [error, setError] = createSignal({});
 
-  let successPopoverRef, modalRef, registerYourTeamRef;
+  let successPopoverRef, errorPopoverRef, errorModalRef, registerYourTeamRef;
 
   const tournamentQuery = createQuery(
     () => ["tournaments", params.slug],
@@ -69,8 +76,19 @@ const TeamRegistration = () => {
       successPopoverRef.showPopover();
     }
     if (registerTeamMutation.isError) {
-      setStatus(registerTeamMutation.error.message);
-      modalRef.showModal();
+      try {
+        const mutationError = JSON.parse(registerTeamMutation.error.message);
+        setError(mutationError);
+        setStatus(mutationError.message);
+        // Show error modal for long errors with a description, possibly an action button also
+        if (mutationError.description) {
+          errorModalRef.showModal();
+        } else {
+          errorPopoverRef.showPopover();
+        }
+      } catch (err) {
+        throw new Error(`Couldn't parse error object: ${err}`);
+      }
     }
   });
 
@@ -404,9 +422,16 @@ const TeamRegistration = () => {
         </div>
       </SuccessPopover>
 
+      <ErrorPopover ref={errorPopoverRef}>
+        <div class="flex flex-row items-center gap-2">
+          <Icon path={xCircle} class="h-6 w-6 text-red-700" />
+          <div class="font-medium">{status()}</div>
+        </div>
+      </ErrorPopover>
+
       <Modal
-        ref={modalRef}
-        close={() => modalRef.close()}
+        ref={errorModalRef}
+        close={() => errorModalRef.close()}
         fullWidth={true}
         title={
           <div class="flex flex-row gap-2">
@@ -418,15 +443,9 @@ const TeamRegistration = () => {
         }
       >
         <div class="flex w-full flex-col justify-between gap-4 pb-2">
-          <div class="text-gray-600">
-            Your team has to be registered for the{" "}
-            <span class="font-semibold">
-              {tournamentQuery.data?.event?.series?.name}
-            </span>{" "}
-            series, to participate in this tournament.
-          </div>
+          <div class="text-gray-600">{error().description}</div>
           <div class="place-self-end">
-            <A href={`/series/${tournamentQuery.data?.event?.series?.slug}/`}>
+            <A href={`${error().action_href}`}>
               <button
                 type="button"
                 class={clsx(
@@ -434,7 +453,7 @@ const TeamRegistration = () => {
                   "border-gray-500 bg-gray-200 text-gray-800 transition-colors hover:bg-gray-500 hover:text-white focus:outline-none focus:ring-4 focus:ring-gray-300"
                 )}
               >
-                <span class="mr-2">Register</span>
+                <span class="mr-2">{error().action_name}</span>
                 <Icon path={arrowRight} class="h-3 w-3" />
               </button>
             </A>
