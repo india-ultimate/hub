@@ -791,7 +791,7 @@ export const registerYourselfToSeries = async ({ series_slug, team_slug }) => {
   const data = await response.json();
 
   if (!response.ok) {
-    throw new Error(data?.message || JSON.stringify(data));
+    throw new Error(JSON.stringify(data));
   }
   return data;
 };
@@ -813,7 +813,7 @@ export const addTeamRegistration = async ({ tournament_id, body }) => {
   const data = await response.json();
 
   if (!response.ok) {
-    throw new Error(data?.message || JSON.stringify(data));
+    throw new Error(JSON.stringify(data));
   }
 
   return data;
@@ -859,7 +859,7 @@ export const addToRoster = async ({ event_id, team_id, body }) => {
   const data = await response.json();
 
   if (!response.ok) {
-    throw new Error(data?.message || JSON.stringify(data));
+    throw new Error(JSON.stringify(data));
   }
 
   return data;
