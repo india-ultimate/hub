@@ -252,6 +252,8 @@ class PlayerSchema(ModelSchema):
 
     @staticmethod
     def resolve_guardian(player: Player) -> int | None:
+        if not player.is_minor:
+            return None
         try:
             guardianship = Guardianship.objects.get(player=player)
             return guardianship.user.id

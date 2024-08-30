@@ -33,6 +33,7 @@ from server.membership.models import (
 from server.tests.base import ApiBaseTestCase, create_pool, fake_id, fake_order, start_tournament
 from server.tests.test_membership import MembershipStatusTestCase
 from server.tournament.models import Event, Match, UCRegistration
+from server.utils import today
 
 
 class TestLogin(ApiBaseTestCase):
@@ -1152,15 +1153,16 @@ class TestWaiver(ApiBaseTestCase):
 
     def test_minor_cannot_sign_waiver(self) -> None:
         c = self.client
-        Guardianship.objects.create(
-            user=self.user, player=self.player, relation=Guardianship.Relation.MO
-        )
+        self.player.date_of_birth = today() - datetime.timedelta(days=15 * 30 * 12)  # 15 years
+        self.player.save()
         response = c.post(
             "/api/waiver", data={"player_id": self.player.id}, content_type="application/json"
         )
         response_data = response.json()
         self.assertEqual(400, response.status_code)
         self.assertEqual(response_data["message"], "Waiver can only signed by a guardian")
+        self.player.date_of_birth = today() - datetime.timedelta(days=30 * 30 * 12)  # 30 years
+        self.player.save()
 
 
 class TestUPAI(ApiBaseTestCase):

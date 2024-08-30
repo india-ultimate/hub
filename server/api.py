@@ -1316,13 +1316,19 @@ def waiver(
     except Membership.DoesNotExist:
         return 400, {"message": "Player does not have a membership"}
 
-    try:
-        is_minor = bool(player.guardianship)
-    except Guardianship.DoesNotExist:
-        is_minor = False
+    if player.is_minor:
+        if request.user == player.user:
+            return 400, {"message": "Waiver can only signed by a guardian"}
 
-    if is_minor and request.user == player.user:
-        return 400, {"message": "Waiver can only signed by a guardian"}
+        try:
+            guardianship = player.guardianship
+        except Guardianship.DoesNotExist:
+            return 400, {"message": "Guardian does not exist for player"}
+
+        if guardianship.user.id != request.user.id:
+            return 400, {
+                "message": f"Only Guardian - {guardianship.user.username} can sign this player's waiver"
+            }
 
     membership.waiver_signed_by = request.user
     membership.waiver_signed_at = now()
