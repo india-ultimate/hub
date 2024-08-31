@@ -23,6 +23,7 @@ from server.tournament.models import (
     Event,
     Match,
     Pool,
+    Registration,
     Tournament,
     TournamentField,
 )
@@ -253,6 +254,28 @@ class SeriesRegistrationAdmin(admin.ModelAdmin[SeriesRegistration]):
     @admin.display(description="Player", ordering="player__user__first_name")
     def get_team(self, obj: SeriesRegistration) -> str:
         return obj.player.user.get_full_name()
+
+
+@admin.register(Registration)
+class RegistrationAdmin(admin.ModelAdmin[Registration]):
+    search_fields = [
+        "player__user__first_name",
+        "player__user__last_name",
+        "player__user__username",
+    ]
+    list_display = ["get_name", "get_email", "get_team"]
+
+    @admin.display(description="Player", ordering="player__user__first_name")
+    def get_name(self, obj: Registration) -> str:
+        return obj.player.user.get_full_name()
+
+    @admin.display(description="Event", ordering="event__title")
+    def get_email(self, obj: Registration) -> str:
+        return obj.event.title
+
+    @admin.display(description="Team", ordering="team__name")
+    def get_team(self, obj: Registration) -> str:
+        return obj.team.name
 
 
 @admin.register(Guardianship)
