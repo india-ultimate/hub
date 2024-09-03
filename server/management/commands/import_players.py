@@ -50,10 +50,10 @@ class Command(BaseCommand):
                 # Process each row of the CSV file
                 email = row["email"].strip().lower()
                 user_data = {
-                    "first_name": row["first_name"],
-                    "last_name": row["last_name"],
+                    "first_name": row["first_name"].strip(),
+                    "last_name": row["last_name"].strip(),
                     "email": email,
-                    "phone": row["phone"],
+                    "phone": row["phone"].strip(),
                 }
                 user, created = User.objects.get_or_create(
                     username=email, email=email, defaults=user_data
@@ -70,13 +70,15 @@ class Command(BaseCommand):
                 player_data = {
                     "user": user,
                     "date_of_birth": dob.strftime("%Y-%m-%d"),
-                    "gender": GENDERS.get(row["gender"], Player.GenderTypes.OTHER),
-                    "other_gender": row["other_gender"] if row["other_gender"] != "-" else None,
-                    "city": row["city"],
-                    "state_ut": STATE_UT.get(row["state_ut"], None),
-                    "not_in_india": row["not_in_india"].upper() == "Y",
-                    "occupation": OCCUPATIONS.get(row["occupation"], None),
-                    "educational_institution": row["educational_institution"],
+                    "gender": GENDERS.get(row["gender"].strip(), Player.GenderTypes.OTHER),
+                    "other_gender": row["other_gender"].strip()
+                    if row["other_gender"].strip() != "-"
+                    else None,
+                    "city": row["city"].strip(),
+                    "state_ut": STATE_UT.get(row["state_ut"].strip(), None),
+                    "not_in_india": row["not_in_india"].strip().upper() == "Y",
+                    "occupation": OCCUPATIONS.get(row["occupation"].strip(), None),
+                    "educational_institution": row["educational_institution"].strip(),
                     "sponsored": row["sponsored"].upper() == "Y" if "sponsored" in row else False,
                 }
                 if player_data["gender"] != Player.GenderTypes.OTHER:
