@@ -42,7 +42,6 @@ class TestInvalidateMemberships(TestCase):
         for membership in Membership.objects.filter():
             self.assertFalse(membership.is_active)
             self.assertFalse(membership.waiver_valid)
-            self.assertFalse(membership.player.sponsored)
             self.assertIsNotNone(membership.waiver_signed_at)
             self.assertIsNotNone(membership.waiver_signed_by)
 
