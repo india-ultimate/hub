@@ -293,7 +293,7 @@ def accept_series_invitation_via_mail(
     valid, invitation_id = get_details_from_invitation_token(token)
 
     if not valid:
-        return 400, {"message": "Invalid invitation link"}
+        return 400, {"message": "Invitation link is invalid"}
 
     try:
         invitation = SeriesRosterInvitation.objects.get(id=invitation_id)
@@ -311,6 +311,9 @@ def accept_series_invitation_via_mail(
             return 400, {
                 "message": f"You already accepted this invitation on {invitation.rsvp_date}"
             }
+        
+        case SeriesRosterInvitation.Status.REVOKED:
+            return 400, {"message": "This invitation has been revoked"}
 
         case SeriesRosterInvitation.Status.PENDING:
             series_registration, error = register_player(
@@ -344,7 +347,7 @@ def decline_series_invitation_via_mail(
     valid, invitation_id = get_details_from_invitation_token(token)
 
     if not valid:
-        return 400, {"message": "Invalid invitation link"}
+        return 400, {"message": "Invitation link is invalid"}
 
     try:
         invitation = SeriesRosterInvitation.objects.get(id=invitation_id)
@@ -362,6 +365,9 @@ def decline_series_invitation_via_mail(
             return 400, {
                 "message": f"You already declined this invitation on {invitation.rsvp_date}"
             }
+        
+        case SeriesRosterInvitation.Status.REVOKED:
+            return 400, {"message": "This invitation has been revoked"}
 
         case SeriesRosterInvitation.Status.PENDING:
             invitation.status = SeriesRosterInvitation.Status.DECLINED
