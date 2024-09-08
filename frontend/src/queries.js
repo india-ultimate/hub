@@ -743,6 +743,46 @@ export const revokeInvitation = async ({ invitation_id }) => {
   return data;
 };
 
+export const acceptSeriesInvitationFromEmail = async ({ 
+  token, 
+}) => {
+  const response = await fetch(
+    `/api/series/accept-invitation?token=${token}`,
+    {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      }
+    }
+  );
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.message || JSON.stringify(data));
+  }
+  return data;
+};
+
+export const declineSeriesInvitationFromEmail = async ({ 
+  token,
+}) => {
+  const response = await fetch(
+    `/api/series/decline-invitation?token=${token}`,
+    {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      }
+    }
+  );
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.message || JSON.stringify(data));
+  }
+  return data;
+};
+
 export const acceptSeriesInvitation = async ({ invitation_id }) => {
   const response = await fetch(
     `/api/series/invitation/${invitation_id}/accept`,
