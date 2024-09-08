@@ -236,7 +236,7 @@ def send_series_invitation(
 
     invitation.save()
 
-    invitation_token = generate_invitation_token(to_player.id, invitation.id)
+    invitation_token = generate_invitation_token(invitation.id)
 
     accept_invitation_link = f"{settings.EMAIL_INVITATION_BASE_URL}/accept-invitation?token={invitation_token}"
     decline_invitation_link = f"{settings.EMAIL_INVITATION_BASE_URL}/decline-invitation?token={invitation_token}"
