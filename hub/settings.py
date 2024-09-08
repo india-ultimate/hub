@@ -185,6 +185,8 @@ EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "admin@indiaultimate.org")
 EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD")
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
+EMAIL_SECRET_KEY = os.environ.get("EMAIL_SECRET_KEY")
+EMAIL_INVITATION_BASE_URL = "http://localhost:3000/api/series"
 
 # OTP settings
 OTP_EMAIL_HASH_KEY = os.environ.get("OTP_EMAIL_HASH_KEY", "")

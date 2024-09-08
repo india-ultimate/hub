@@ -1,5 +1,6 @@
 from typing import Any
 
+from django.conf import settings
 from django.db.models import QuerySet
 from django.http import HttpRequest
 from ninja import Router
@@ -25,6 +26,8 @@ from .utils import (
     can_register_player_to_series_roster,
     register_player,
     send_invitation_email,
+    get_details_from_invitation_token,
+    generate_invitation_token,
 )
 
 router = Router()
@@ -233,7 +236,18 @@ def send_series_invitation(
 
     invitation.save()
 
-    send_invitation_email(from_user=request.user, to_player=to_player, team=team, series=series)
+    invitation_token = generate_invitation_token(to_player.id, invitation.id)
+
+    accept_invitation_link = f"{settings.EMAIL_INVITATION_BASE_URL}/accept-invitation?token={invitation_token}"
+    decline_invitation_link = f"{settings.EMAIL_INVITATION_BASE_URL}/decline-invitation?token={invitation_token}"
+
+    send_invitation_email(
+        from_user=request.user, 
+        to_player=to_player, 
+        team=team, 
+        series=series, 
+        accept_invitation_link=accept_invitation_link,
+        decline_invitation_link=decline_invitation_link)
 
     return 200, invitation
 
@@ -263,6 +277,99 @@ def revoke_series_invitation(
     invitation.status = SeriesRosterInvitation.Status.REVOKED
     invitation.save()
     return 200, invitation
+
+
+@router.get(
+    "/accept-invitation",
+    response={200: SeriesRegistrationSchema, 400: Response},
+    auth=None,
+)
+def accept_series_invitation_via_mail(
+    request,
+) -> tuple[int, SeriesRegistration | message_response]:
+
+    token = request.GET.get("token")
+
+    valid, invitation_id = get_details_from_invitation_token(token)
+
+    if not valid:
+        return 400, {"message": "Invalid invitation link"}
+
+    try:
+        invitation = SeriesRosterInvitation.objects.get(id=invitation_id)
+    except SeriesRosterInvitation.DoesNotExist:
+        return 400, {"messsage": "Invitation does not exist"}
+    
+    match invitation.status:
+        case SeriesRosterInvitation.Status.EXPIRED:
+            return 400, {"message": "This invitation has expired 😔"}
+
+        case SeriesRosterInvitation.Status.DECLINED:
+            return 400, {"message": "You cannot accept an invitation that was declined"}
+
+        case SeriesRosterInvitation.Status.ACCEPTED:
+            return 400, {
+                "message": f"You already accepted this invitation on {invitation.rsvp_date}"
+            }
+
+        case SeriesRosterInvitation.Status.PENDING:
+            series_registration, error = register_player(
+                series=invitation.series, team=invitation.team, player=invitation.to_player
+            )
+            if error:
+                return 400, error
+
+            if series_registration is None:
+                return 400, {"message": "Couldn't register player"}
+
+            invitation.status = SeriesRosterInvitation.Status.ACCEPTED
+            invitation.rsvp_date = today()
+            invitation.save()
+            return 200, series_registration
+
+    return 400, {"message": f"'{invitation.status}' is not a valid invitation status"}
+
+
+@router.get(
+    "/decline-invitation",
+    response={200: SeriesRosterInvitationSchema, 400: Response},
+    auth=None,
+)
+def decline_series_invitation_via_mail(
+    request,
+) -> tuple[int, SeriesRosterInvitation | message_response]:
+
+    token = request.GET.get("token")
+
+    valid, invitation_id = get_details_from_invitation_token(token)
+
+    if not valid:
+        return 400, {"message": "Invalid invitation link"}
+
+    try:
+        invitation = SeriesRosterInvitation.objects.get(id=invitation_id)
+    except SeriesRosterInvitation.DoesNotExist:
+        return 400, {"messsage": "Invitation does not exist"}
+    
+    match invitation.status:
+        case SeriesRosterInvitation.Status.EXPIRED:
+            return 400, {"message": "This invitation has expired 😔"}
+
+        case SeriesRosterInvitation.Status.ACCEPTED:
+            return 400, {"message": "You cannot decline an invitation that was accepted"}
+
+        case SeriesRosterInvitation.Status.DECLINED:
+            return 400, {
+                "message": f"You already declined this invitation on {invitation.rsvp_date}"
+            }
+
+        case SeriesRosterInvitation.Status.PENDING:
+            invitation.status = SeriesRosterInvitation.Status.DECLINED
+            invitation.rsvp_date = today()
+            invitation.save()
+            return 200, invitation
+
+    return 400, {"message": f"'{invitation.status}' is not a valid invitation status"}
 
 
 @router.put(

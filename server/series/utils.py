@@ -1,3 +1,5 @@
+import jwt
+
 from django.conf import settings
 from django.core import mail
 from django.template.loader import render_to_string
@@ -6,6 +8,8 @@ from django.utils.html import strip_tags
 from server.core.models import Player, Team, User
 from server.membership.models import Membership
 from server.types import message_response
+
+from typing import Optional
 
 from .models import Series, SeriesRegistration, SeriesRosterInvitation
 
@@ -141,15 +145,44 @@ def register_player(
 
     return SeriesRegistration.objects.create(series=series, team=team, player=player), None
 
+def generate_invitation_token(
+    invitation_id: int
+) -> str:
+    mail_secret_key = settings.EMAIL_SECRET_KEY
 
-def send_invitation_email(from_user: User, to_player: Player, team: Team, series: Series) -> None:
+    payload = {
+        "invitation_id": invitation_id,
+    }
+
+    token = jwt.encode(payload, mail_secret_key, algorithm="HS256")
+    return token
+
+def get_details_from_invitation_token(
+    token: str
+) -> tuple[bool, Optional[int]]:
+    try:
+        mail_secret_key = settings.EMAIL_SECRET_KEY
+        payload = jwt.decode(token, mail_secret_key, algorithms=["HS256"])
+
+        return True, (
+            payload["invitation_id"],
+        )
+    except jwt.InvalidTokenError:
+        return False, None
+
+
+def send_invitation_email(
+    from_user: User, to_player: Player, team: Team, series: Series, accept_invitation_link : str, decline_invitation_link) -> None:
     subject = f"Hub | Invitation to join {team.name}'s roster"
+
     html_message = render_to_string(
         "series_roster_invitation_email.html",
         {
             "team_name": team.name,
             "from_name": f"{from_user.get_full_name()} ({from_user.username})",
             "series_name": series.name,
+            "accept_invitation_link": accept_invitation_link,
+            "decline_invitation_link": decline_invitation_link,
         },
     )
     plain_message = strip_tags(html_message)
