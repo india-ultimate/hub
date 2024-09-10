@@ -83,12 +83,6 @@ class GroupMembershipSchema(Schema):
     season_id: int
 
 
-class PaymentFormSchema(Schema):
-    razorpay_order_id: str
-    razorpay_payment_id: str
-    razorpay_signature: str
-
-
 class UserFormSchema(ModelSchema):
     class Config:
         model = User

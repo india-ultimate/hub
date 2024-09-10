@@ -45,7 +45,7 @@ const ValidateTransactions = () => {
     formData.append("bank_statement", bank_statement);
     setStatus("");
     try {
-      const response = await fetch("/api/validate-transactions", {
+      const response = await fetch("/api/transactions/bulk-validate", {
         method: "POST",
         headers: {
           "X-CSRFToken": getCookie("csrftoken")

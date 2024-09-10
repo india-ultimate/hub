@@ -21,7 +21,7 @@ const PhonePePayment = props => {
     setLoading(true);
     props.setStatus("");
 
-    fetch("/api/initiate-payment", {
+    fetch("/api/transactions/phonepe", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

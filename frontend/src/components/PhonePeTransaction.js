@@ -31,7 +31,7 @@ const PhonePeTransaction = () => {
         : "Fetching transaction data..."
     );
     setQueryCounter(queryCounter() + 1);
-    fetch(`/api/phonepe-transaction/${transactionId}`, {
+    fetch(`/api/transactions/phonepe/${transactionId}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
