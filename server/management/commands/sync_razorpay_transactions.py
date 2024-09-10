@@ -3,9 +3,8 @@ from typing import Any
 
 from django.core.management.base import BaseCommand
 
-from server.api import mark_transaction_completed
-from server.membership.models import RazorpayTransaction
-from server.utils import get_razorpay_transactions
+from server.transaction.client.razorpay import get_transactions, mark_transaction_completed
+from server.transaction.models import RazorpayTransaction
 
 STATUSES = {s.value: s for s in RazorpayTransaction.TransactionStatusChoices}
 
@@ -14,7 +13,7 @@ class Command(BaseCommand):
     help = "Import Razorpay transactions from the last week"
 
     def handle(self, *args: Any, **options: Any) -> None:
-        transactions = get_razorpay_transactions()
+        transactions = get_transactions()
         transactions_by_status = itertools.groupby(transactions, key=lambda x: x["status"])
 
         for status_, ts in transactions_by_status:

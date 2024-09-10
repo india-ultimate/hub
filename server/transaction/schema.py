@@ -98,12 +98,12 @@ class ManualTransactionLiteSchema(ModelSchema):
         model_fields = ["transaction_id", "amount", "currency"]
 
 
-class PhonePePaymentSchema(Schema):
+class PhonePeOrderSchema(Schema):
     redirect_url: str
     amount: int
 
 
-class OrderSchema(Schema):
+class RazorpayOrderSchema(Schema):
     order_id: str
     amount: int
     currency: str
@@ -113,3 +113,9 @@ class OrderSchema(Schema):
     image: str
     description: str
     prefill: dict[str, Any]
+
+
+class RazorpayCallbackSchema(Schema):
+    razorpay_order_id: str
+    razorpay_payment_id: str
+    razorpay_signature: str

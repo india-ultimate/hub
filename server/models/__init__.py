@@ -12,10 +12,7 @@ from server.core.models import (  # noqa: F401
     Vaccination,
 )
 from server.membership.models import (  # noqa: F401
-    ManualTransaction,
     Membership,
-    PhonePeTransaction,
-    RazorpayTransaction,
 )
 from server.season.models import (  # noqa: F401
     Season,
@@ -41,4 +38,9 @@ from server.tournament.models import (  # noqa: F401
     Tournament,
     TournamentField,
     UCRegistration,
+)
+from server.transaction.models import (  # noqa: F401
+    ManualTransaction,
+    PhonePeTransaction,
+    RazorpayTransaction,
 )

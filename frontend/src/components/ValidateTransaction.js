@@ -23,7 +23,7 @@ const ValidateTransaction = props => {
       transaction_id: props.transaction.transaction_id
     };
     try {
-      const response = await fetch("/api/validate-transaction", {
+      const response = await fetch("/api/transactions/validate", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

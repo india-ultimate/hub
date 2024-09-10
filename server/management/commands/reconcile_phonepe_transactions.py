@@ -2,8 +2,8 @@ from typing import Any
 
 from django.core.management.base import BaseCommand
 
-from server.api import check_and_update_phonepe_transaction
-from server.membership.models import PhonePeTransaction
+from server.transaction.client.phonepe import check_and_update_transaction
+from server.transaction.models import PhonePeTransaction
 
 
 class Command(BaseCommand):
@@ -16,7 +16,7 @@ class Command(BaseCommand):
         n = pending_transactions.count()
         self.stdout.write(self.style.SUCCESS(f"Found {n} pending transactions in our DB..."))
         for transaction in pending_transactions:
-            check_and_update_phonepe_transaction(transaction)
+            check_and_update_transaction(transaction)
 
         m = PhonePeTransaction.objects.filter(
             status=PhonePeTransaction.TransactionStatusChoices.PENDING

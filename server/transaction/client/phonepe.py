@@ -10,6 +10,8 @@ from phonepe.sdk.pg.payments.v1.payment_client import PhonePePaymentClient
 
 from server.core.models import User
 
+from ..models import PhonePeTransaction
+
 env = Env.UAT if not settings.PHONEPE_PRODUCTION else Env.PROD
 phonepe_client = PhonePePaymentClient(
     settings.PHONEPE_MERCHANT_ID,
@@ -55,3 +57,20 @@ def verify_callback_checksum(body: str, signature: str) -> bool:
 def check_transaction_status(transaction_id: str) -> dict[str, Any]:
     response = phonepe_client.check_status(transaction_id)
     return response.to_dict()
+
+
+def check_and_update_transaction(transaction: PhonePeTransaction) -> PhonePeTransaction:
+    data = check_transaction_status(str(transaction.transaction_id))
+    code = data["code"]
+    prefix = "PAYMENT_"
+    if code.startswith(prefix):
+        code = code[len(prefix) :]
+        if transaction.status != code.lower():
+            return update_transaction(transaction, code)
+    return transaction
+
+
+def update_transaction(transaction: PhonePeTransaction, status_code: str) -> PhonePeTransaction:
+    transaction.status = getattr(PhonePeTransaction.TransactionStatusChoices, status_code)
+    transaction.save(update_fields=["status"])
+    return transaction

@@ -10,13 +10,9 @@ from server.core.models import (
     Player,
     User,
 )
-from server.membership.models import (
-    ManualTransaction,
-    Membership,
-    PhonePeTransaction,
-    RazorpayTransaction,
-)
+from server.membership.models import Membership
 from server.tournament.models import UCRegistration
+from server.transaction.models import ManualTransaction, PhonePeTransaction, RazorpayTransaction
 
 
 def calculate_completeness_score(username: str) -> tuple[float, dict[str, Any]]:

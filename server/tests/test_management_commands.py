@@ -12,10 +12,8 @@ from server.core.models import (
     Player,
     Vaccination,
 )
-from server.membership.models import (
-    ManualTransaction,
-    Membership,
-)
+from server.membership.models import Membership
+from server.transaction.models import ManualTransaction
 
 User = get_user_model()
 

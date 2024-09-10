@@ -34,7 +34,7 @@ const ManualPaymentModal = props => {
       : { player_id, event_id };
     const transactionID = values["transaction-id"];
 
-    fetch(`/api/manual-transaction/${transactionID}`, {
+    fetch(`/api/transactions/manual/${transactionID}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

@@ -11,12 +11,7 @@ from server.core.models import (
     Team,
     User,
 )
-from server.membership.models import (
-    ManualTransaction,
-    Membership,
-    PhonePeTransaction,
-    RazorpayTransaction,
-)
+from server.membership.models import Membership
 from server.season.models import Season
 from server.series.models import Series, SeriesRegistration, SeriesRosterInvitation
 from server.tournament.models import (
@@ -27,6 +22,7 @@ from server.tournament.models import (
     Tournament,
     TournamentField,
 )
+from server.transaction.models import ManualTransaction, PhonePeTransaction, RazorpayTransaction
 
 
 @admin.action(description="Export Selected")

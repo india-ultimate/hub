@@ -1,11 +1,8 @@
 import contextlib
 import datetime
-import enum
 import hashlib
 import io
-import json
-import time
-from base64 import b32encode, b64decode
+from base64 import b32encode
 from typing import Any, cast
 
 import pyotp
@@ -15,7 +12,7 @@ from django.contrib.auth.base_user import AbstractBaseUser
 from django.core import mail
 from django.core.exceptions import ValidationError
 from django.core.files.storage import default_storage
-from django.db.models import Model, Q, QuerySet, Value
+from django.db.models import Q, QuerySet, Value
 from django.db.models.functions import Concat
 from django.db.utils import IntegrityError
 from django.http import HttpRequest
@@ -28,7 +25,6 @@ from ninja import File, NinjaAPI, UploadedFile
 from ninja.pagination import PageNumberPagination, paginate
 from ninja.security import django_auth
 
-from server.constants import EVENT_MEMBERSHIP_AMOUNT
 from server.core.models import (
     Accreditation,
     CollegeId,
@@ -40,41 +36,18 @@ from server.core.models import (
     User,
     Vaccination,
 )
-from server.lib.manual_transactions import validate_manual_transactions
 from server.lib.membership import get_membership_status
-from server.membership.models import (
-    ManualTransaction,
-    Membership,
-    PhonePeTransaction,
-    RazorpayTransaction,
-)
-from server.membership.schema import (
-    ManualTransactionLiteSchema,
-    ManualTransactionSchema,
-    ManualTransactionValidationFormSchema,
-    OrderSchema,
-    PhonePePaymentSchema,
-    PhonePeTransactionSchema,
-    RazorpayTransactionSchema,
-)
+from server.membership.models import Membership
 from server.passkey_utils import PassKeyClient
-from server.phonepe_utils import (
-    check_transaction_status,
-    initiate_payment,
-    verify_callback_checksum,
-)
 from server.schema import (
     AccreditationFormSchema,
     AccreditationSchema,
-    AnnualMembershipSchema,
     CollegeIdFormSchema,
     CollegeIdSchema,
     CommentaryInfoFormSchema,
     CommentaryInfoSchema,
     ContactFormSchema,
     Credentials,
-    EventMembershipSchema,
-    GroupMembershipSchema,
     GuardianshipFormSchema,
     NotVaccinatedFormSchema,
     OTPLoginCredentials,
@@ -82,7 +55,6 @@ from server.schema import (
     OTPRequestResponse,
     PasskeyRequestSchema,
     PasskeyResponseSchema,
-    PaymentFormSchema,
     PlayerFormSchema,
     PlayerSchema,
     PlayerTinySchema,
@@ -101,11 +73,9 @@ from server.schema import (
     UserSchema,
     VaccinatedFormSchema,
     VaccinationSchema,
-    ValidationStatsSchema,
     WaiverFormSchema,
 )
 from server.season.api import router as season_router
-from server.season.models import Season
 from server.series.api import router as series_router
 from server.series.models import SeriesRegistration
 from server.top_score_utils import TopScoreClient
@@ -171,16 +141,12 @@ from server.tournament.utils import (
     validate_new_pool,
     validate_seeds_and_teams,
 )
+from server.transaction.api import router as transaction_router
 from server.types import message_response
 from server.utils import (
-    RAZORPAY_DESCRIPTION_MAX,
-    RAZORPAY_NOTES_MAX,
-    create_razorpay_order,
     if_dates_are_not_in_order,
     if_today,
     is_today_in_between_dates,
-    verify_razorpay_payment,
-    verify_razorpay_webhook_payload,
 )
 
 api = NinjaAPI(auth=django_auth, csrf=True)
@@ -193,6 +159,7 @@ class AuthenticatedHttpRequest(HttpRequest):
 # Routers
 api.add_router("/seasons", season_router)
 api.add_router("/series/", series_router)
+api.add_router("/transactions", transaction_router)
 
 
 # User #########
@@ -694,432 +661,6 @@ def check_membership_status(
         return 400, {"message": "Could not file an Email header in the CSV!"}
 
     return 200, list(data.values())
-
-
-# Payments ##########
-
-
-class PaymentGateway(enum.Enum):
-    RAZORPAY = "R"
-    PHONEPE = "P"
-    MANUAL = "M"
-
-
-@api.post(
-    "/manual-transaction/{transaction_id}",
-    response={200: ManualTransactionLiteSchema, 400: Response, 422: Response, 502: str},
-)
-def create_manual_transaction(
-    request: AuthenticatedHttpRequest,
-    transaction_id: str,
-    order: AnnualMembershipSchema | EventMembershipSchema | GroupMembershipSchema,
-) -> tuple[int, str | message_response | dict[str, Any]]:
-    return create_transaction(request, order, PaymentGateway.MANUAL, transaction_id)
-
-
-@api.post("/create-order", response={200: OrderSchema, 400: Response, 422: Response, 502: str})
-def create_razorpay_transaction(
-    request: AuthenticatedHttpRequest,
-    order: AnnualMembershipSchema | EventMembershipSchema | GroupMembershipSchema,
-) -> tuple[int, str | message_response | dict[str, Any]]:
-    return create_transaction(request, order, PaymentGateway.RAZORPAY)
-
-
-@api.post(
-    "/initiate-payment",
-    response={200: PhonePePaymentSchema, 400: Response, 422: Response, 502: str},
-)
-def initiate_phonepe_payment(
-    request: AuthenticatedHttpRequest,
-    order: AnnualMembershipSchema | EventMembershipSchema | GroupMembershipSchema,
-) -> tuple[int, str | message_response | dict[str, Any]]:
-    return create_transaction(request, order, PaymentGateway.PHONEPE)
-
-
-def create_transaction(
-    request: AuthenticatedHttpRequest,
-    order: AnnualMembershipSchema | EventMembershipSchema | GroupMembershipSchema,
-    gateway: PaymentGateway,
-    transaction_id: str | None = None,
-) -> tuple[int, str | message_response | dict[str, Any]]:
-    if isinstance(order, GroupMembershipSchema):
-        group_payment = True
-        players = Player.objects.filter(id__in=order.player_ids)
-        player_ids = {p.id for p in players}
-        if len(player_ids) != len(order.player_ids):
-            missing_players = set(order.player_ids) - player_ids
-            return 422, {
-                "message": f"Some players couldn't be found in the DB: {sorted(missing_players)}"
-            }
-
-    else:
-        group_payment = False
-        try:
-            player = Player.objects.get(id=order.player_id)
-        except Player.DoesNotExist:
-            return 422, {"message": "Player does not exist!"}
-
-    if isinstance(order, GroupMembershipSchema | AnnualMembershipSchema):
-        try:
-            season = Season.objects.get(id=order.season_id)
-        except Season.DoesNotExist:
-            return 422, {"message": "Season does not exist!"}
-        start_date = season.start_date
-        end_date = season.end_date
-        is_annual = True
-        event = None
-        amount = (
-            sum(
-                (
-                    season.sponsored_annual_membership_amount
-                    if player.sponsored
-                    else season.annual_membership_amount
-                )
-                for player in players
-            )
-            if isinstance(order, GroupMembershipSchema)
-            else (
-                season.sponsored_annual_membership_amount
-                if player.sponsored
-                else season.annual_membership_amount
-            )
-        )
-
-    elif isinstance(order, EventMembershipSchema):
-        try:
-            event = Event.objects.get(id=order.event_id)
-        except Event.DoesNotExist:
-            return 422, {"message": "Event does not exist!"}
-
-        start_date = event.start_date
-        end_date = event.end_date
-        is_annual = False
-        amount = EVENT_MEMBERSHIP_AMOUNT
-        season = None
-
-    else:
-        # NOTE: We should never be here, thanks to request validation!
-        pass
-
-    user = request.user
-    ts = round(time.time())
-    membership_defaults = {
-        "is_annual": is_annual,
-        "start_date": start_date,
-        "end_date": end_date,
-        "event": event,
-        "season": season,
-    }
-    if group_payment:
-        player_names = ", ".join(sorted([player.user.get_full_name() for player in players]))
-        if len(player_names) > RAZORPAY_NOTES_MAX:
-            player_names = player_names[:500] + "..."
-        notes = {
-            "user_id": user.id,
-            "player_ids": str(player_ids),
-            "players": player_names,
-        }
-        receipt = f"group:{start_date}:{ts}"
-        for player in players:
-            Membership.objects.get_or_create(player=player, defaults=membership_defaults)
-    else:
-        membership, _ = Membership.objects.get_or_create(
-            player=player,
-            defaults=membership_defaults,
-        )
-        notes = {
-            "user_id": user.id,
-            "player_id": player.id,
-            "membership_id": membership.id,
-        }
-        receipt = f"{membership.membership_number}:{start_date}:{ts}"
-
-    if gateway == PaymentGateway.RAZORPAY:
-        data = create_razorpay_order(amount, receipt=receipt, notes=notes)
-        if data is None:
-            return 502, "Failed to connect to Razorpay."
-    elif gateway == PaymentGateway.PHONEPE:
-        host = f"{request.scheme}://{request.get_host()}"
-        next_url = "/membership/group" if group_payment else f"/membership/{player.id}"
-        data = initiate_payment(amount, user, host, next_url)
-        if data is None:
-            return 502, "Failed to connect to PhonePe."
-    else:
-        data = {"amount": amount, "currency": "INR", "transaction_id": transaction_id}
-
-    data.update(
-        {
-            "start_date": start_date,
-            "end_date": end_date,
-            "user": user,
-            "players": [player] if not group_payment else players,
-            "event": event,
-            "season": season,
-        }
-    )
-    if gateway == PaymentGateway.RAZORPAY:
-        RazorpayTransaction.create_from_order_data(data)
-        transaction_user_name = user.get_full_name()
-        description = (
-            f"Membership for {player.user.get_full_name()}"
-            if not group_payment
-            else f"Membership group payment by {transaction_user_name} for {player_names}"
-        )
-        if len(description) > RAZORPAY_DESCRIPTION_MAX:
-            description = description[:250] + "..."
-        extra_data = {
-            "name": settings.APP_NAME,
-            "image": settings.LOGO_URL,
-            "description": description,
-            "prefill": {"name": user.get_full_name(), "email": user.email, "contact": user.phone},
-        }
-        data.update(extra_data)
-    elif gateway == PaymentGateway.PHONEPE:
-        PhonePeTransaction.create_from_order_data(data)
-    elif gateway == PaymentGateway.MANUAL:
-        ManualTransaction.create_from_order_data(data)
-        memberships = Membership.objects.filter(
-            player__in=player_ids if group_payment else [player.id]
-        )
-        memberships.update(is_active=True, start_date=start_date, end_date=end_date)
-    else:
-        # We shouldn't get here, because enum
-        pass
-
-    return 200, data
-
-
-@api.post(
-    "/payment-success", response={200: list[PlayerSchema], 502: str, 404: Response, 422: Response}
-)
-def payment_success(
-    request: AuthenticatedHttpRequest, payment: PaymentFormSchema
-) -> tuple[int, QuerySet[Player] | message_response | str]:
-    authentic = verify_razorpay_payment(payment.dict())
-    if not authentic:
-        return 422, {"message": "We were unable to ascertain the authenticity of the payment."}
-    transaction = update_razorpay_transaction(payment)
-    if not transaction:
-        return 404, {"message": "No order found."}
-    return 200, transaction.players.all()
-
-
-@api.get(
-    "/phonepe-transaction/{transaction_id}",
-    response={200: PhonePeTransactionSchema, 400: Response, 422: Response, 502: str},
-)
-def get_phonepe_transaction(
-    request: AuthenticatedHttpRequest,
-    transaction_id: str,
-) -> tuple[int, message_response | PhonePeTransaction]:
-    try:
-        transaction = PhonePeTransaction.objects.get(transaction_id=transaction_id)
-    except PhonePeTransaction.DoesNotExist:
-        return 422, {"message": "PhonePe Transaction does not exist!"}
-
-    # Check transaction status with PhonePe for pending transactions
-    if transaction.status == PhonePeTransaction.TransactionStatusChoices.PENDING:
-        check_and_update_phonepe_transaction(transaction)
-
-    return 200, transaction
-
-
-@api.post("/phonepe-callback", auth=None, response={200: Response})
-@csrf_exempt
-def phonepe_callback(request: HttpRequest) -> message_response:
-    body = request.body.decode("utf8")
-    signature = request.headers.get("X-Verify", "")
-    if not verify_callback_checksum(body, signature):
-        return {"message": "Signature could not be verified"}
-
-    encoded_data = json.loads(body)["response"]
-    data = json.loads(b64decode(encoded_data).decode("utf8"))
-    code = data["code"]
-    prefix = "PAYMENT_"
-    if not code.startswith(prefix):
-        return {"message": "Ignored webhook"}
-    code = code[len(prefix) :]
-    transaction_id = data["data"]["merchantTransactionId"]
-    try:
-        transaction = PhonePeTransaction.objects.get(transaction_id=transaction_id)
-    except PhonePeTransaction.DoesNotExist:
-        return {"message": "Transaction not found"}
-    update_phonepe_transaction(transaction, code)
-    return {"message": "Webhook processed"}
-
-
-def check_and_update_phonepe_transaction(transaction: PhonePeTransaction) -> None:
-    data = check_transaction_status(str(transaction.transaction_id))
-    code = data["code"]
-    prefix = "PAYMENT_"
-    if code.startswith(prefix):
-        code = code[len(prefix) :]
-        if transaction.status != code.lower():
-            update_phonepe_transaction(transaction, code)
-
-
-def update_phonepe_transaction(
-    transaction: PhonePeTransaction, status_code: str
-) -> PhonePeTransaction:
-    transaction.status = getattr(PhonePeTransaction.TransactionStatusChoices, status_code)
-    transaction.save(update_fields=["status"])
-    if transaction.status == PhonePeTransaction.TransactionStatusChoices.SUCCESS:
-        update_transaction_player_memberships(transaction)
-    return transaction
-
-
-def update_razorpay_transaction(payment: PaymentFormSchema) -> RazorpayTransaction | None:
-    try:
-        transaction = RazorpayTransaction.objects.get(order_id=payment.razorpay_order_id)
-    except RazorpayTransaction.DoesNotExist:
-        return None
-
-    n = len("razorpay_")
-    for key, value in payment.dict().items():
-        setattr(transaction, key[n:], value)
-    return mark_transaction_completed(transaction)
-
-
-def mark_transaction_completed(transaction: RazorpayTransaction) -> RazorpayTransaction:
-    transaction.status = RazorpayTransaction.TransactionStatusChoices.COMPLETED
-    transaction.save()
-    update_transaction_player_memberships(transaction)
-    return transaction
-
-
-def update_transaction_player_memberships(
-    transaction: RazorpayTransaction | PhonePeTransaction,
-) -> None:
-    membership_defaults = {
-        "start_date": transaction.start_date,
-        "end_date": transaction.end_date,
-        "event": transaction.event,
-        "season": transaction.season,
-        "is_active": True,
-    }
-    for player in transaction.players.all():
-        membership, created = Membership.objects.get_or_create(
-            player=player, defaults=membership_defaults
-        )
-        if not created:
-            for key, value in membership_defaults.items():
-                setattr(membership, key, value)
-            membership.save()
-
-
-@api.post("/payment-success-webhook", auth=None, response={200: Response})
-@csrf_exempt
-def payment_webhook(request: HttpRequest) -> message_response:
-    body = request.body.decode("utf8")
-    signature = request.headers.get("X-Razorpay-Signature", "")
-    if not verify_razorpay_webhook_payload(body, signature):
-        return {"message": "Signature could not be verified"}
-    data = json.loads(body)["payload"]["payment"]["entity"]
-    payment = PaymentFormSchema(
-        razorpay_payment_id=data["id"],
-        razorpay_order_id=data["order_id"],
-        razorpay_signature=f"webhook_{signature}",
-    )
-    update_razorpay_transaction(payment)
-    return {"message": "Webhook processed"}
-
-
-@api.get("/transactions", response={200: list[dict[str, Any]]})
-def list_transactions(
-    request: AuthenticatedHttpRequest,
-    user_only: bool = True,
-    only_invalid: bool = False,
-    only_manual: bool = False,
-) -> list[dict[str, Any]]:
-    user = request.user
-    payment_type_schema_map = {
-        PaymentGateway.MANUAL: ManualTransactionSchema,
-        PaymentGateway.RAZORPAY: RazorpayTransactionSchema,
-        PaymentGateway.PHONEPE: PhonePeTransactionSchema,
-    }
-    response_data = []
-    for payment_type, schema in payment_type_schema_map.items():
-        if only_manual and payment_type != PaymentGateway.MANUAL:
-            continue
-        transactions = list_transactions_by_type(user, payment_type, user_only, only_invalid)
-        transaction_dicts = [schema.from_orm(t).dict() for t in transactions]
-        for d in transaction_dicts:
-            d["type"] = payment_type.value
-            if "payment_date" not in d:
-                d["payment_date"] = d["transaction_date"]
-
-        response_data.extend(transaction_dicts)
-    return response_data
-
-
-def list_transactions_by_type(
-    user: User, payment_type: PaymentGateway, user_only: bool = True, only_invalid: bool = False
-) -> QuerySet[Model]:
-    transaction_classes = {
-        PaymentGateway.MANUAL: ManualTransaction,
-        PaymentGateway.RAZORPAY: RazorpayTransaction,
-        PaymentGateway.PHONEPE: PhonePeTransaction,
-    }
-    Cls = transaction_classes[payment_type]  # noqa: N806
-    order_by = (
-        "-payment_date"
-        if payment_type in {PaymentGateway.MANUAL, PaymentGateway.RAZORPAY}
-        else "-transaction_date"
-    )
-
-    if not user_only and user.is_staff:
-        transactions = Cls.objects.filter(validated=False) if only_invalid else Cls.objects.all()
-
-    else:
-        # Get ids of all associated players of a user (player + wards)
-        ward_ids = set(user.guardianship_set.values_list("player_id", flat=True))
-        player_id = set(Player.objects.filter(user=user).values_list("id", flat=True))
-        player_ids = ward_ids.union(player_id)
-
-        query = Q(user=user) | Q(players__in=player_ids)
-        transactions = Cls.objects.filter(query)
-        if only_invalid:
-            transactions = transactions.filter(validated=False)
-
-    return transactions.distinct().order_by(order_by)
-
-
-@api.post(
-    "/validate-transactions", response={200: ValidationStatsSchema, 400: Response, 401: Response}
-)
-def validate_transactions(
-    request: AuthenticatedHttpRequest,
-    bank_statement: UploadedFile = File(...),  # noqa: B008
-) -> tuple[int, message_response] | tuple[int, dict[str, int]]:
-    if not request.user.is_staff:
-        return 401, {"message": "Only Admins can validate transactions"}
-
-    if not bank_statement.name or not bank_statement.name.endswith(".csv"):
-        return 400, {"message": "Please upload a CSV file!"}
-
-    text = bank_statement.read().decode("utf-8")
-    stats = validate_manual_transactions(io.StringIO(text))
-    return 200, stats
-
-
-@api.post(
-    "/validate-transaction", response={200: ManualTransactionSchema, 400: Response, 401: Response}
-)
-def validate_transaction(
-    request: AuthenticatedHttpRequest, data: ManualTransactionValidationFormSchema
-) -> tuple[int, message_response] | tuple[int, ManualTransaction]:
-    if not request.user.is_staff:
-        return 401, {"message": "Only Admins can validate transactions"}
-
-    try:
-        transaction = ManualTransaction.objects.get(transaction_id=data.transaction_id)
-    except Player.DoesNotExist:
-        return 400, {"message": "Transaction does not exist"}
-
-    transaction.validation_comment = data.validation_comment
-    transaction.validated = True
-    transaction.save(update_fields=["validation_comment", "validated"])
-    return 200, transaction
 
 
 # Vaccination ##########

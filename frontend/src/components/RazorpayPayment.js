@@ -31,7 +31,7 @@ const RazorpayPayment = props => {
     setLoading(true);
     props.setStatus("");
 
-    fetch("/api/create-order", {
+    fetch("/api/transactions/razorpay", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -47,7 +47,7 @@ const RazorpayPayment = props => {
           const paymentObject = new window.Razorpay({
             ...data,
             handler: response => {
-              fetch("/api/payment-success", {
+              fetch("/api/transactions/razorpay/callback", {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",

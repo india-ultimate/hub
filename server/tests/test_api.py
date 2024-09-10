@@ -12,7 +12,6 @@ from django.test import Client
 from django.test.client import MULTIPART_CONTENT
 from django.utils.timezone import now
 
-from server.api import update_phonepe_transaction
 from server.constants import (
     ANNUAL_MEMBERSHIP_AMOUNT,
     EVENT_MEMBERSHIP_AMOUNT,
@@ -24,15 +23,12 @@ from server.core.models import (
     UCPerson,
     User,
 )
-from server.membership.models import (
-    ManualTransaction,
-    Membership,
-    PhonePeTransaction,
-    RazorpayTransaction,
-)
+from server.membership.models import Membership
 from server.tests.base import ApiBaseTestCase, create_pool, fake_id, fake_order, start_tournament
 from server.tests.test_membership import MembershipStatusTestCase
 from server.tournament.models import Event, Match, UCRegistration
+from server.transaction.client.phonepe import update_transaction
+from server.transaction.models import ManualTransaction, PhonePeTransaction, RazorpayTransaction
 from server.utils import today
 
 
@@ -351,11 +347,11 @@ class TestPayment(ApiBaseTestCase):
 
         # Player does not exist
         with mock.patch(
-            "server.api.create_razorpay_order",
+            "server.transaction.client.razorpay.create_order",
             return_value=mock.MagicMock(email=self.username),
         ):
             response = c.post(
-                "/api/create-order",
+                "/api/transactions/razorpay",
                 data={
                     "player_id": player_id,
                     "season_id": self.season.id,
@@ -371,7 +367,7 @@ class TestPayment(ApiBaseTestCase):
         amount = ANNUAL_MEMBERSHIP_AMOUNT
         transaction_id = "123123123"
         response = c.post(
-            f"/api/manual-transaction/{transaction_id}",
+            f"/api/transactions/manual/{transaction_id}",
             data={
                 "player_id": player.id,
                 "season_id": self.season.id,
@@ -400,7 +396,7 @@ class TestPayment(ApiBaseTestCase):
         amount = ANNUAL_MEMBERSHIP_AMOUNT
         transaction_id = "123123123"
         response = c.post(
-            f"/api/manual-transaction/{transaction_id}",
+            f"/api/transactions/manual/{transaction_id}",
             data={
                 "player_id": player.id,
                 "season_id": self.season.id,
@@ -426,11 +422,11 @@ class TestPayment(ApiBaseTestCase):
         player = self.player
         amount = ANNUAL_MEMBERSHIP_AMOUNT
         with mock.patch(
-            "server.api.create_razorpay_order",
+            "server.transaction.client.razorpay.create_order",
             return_value=fake_order(amount),
         ) as f:
             response = c.post(
-                "/api/create-order",
+                "/api/transactions/razorpay",
                 data={
                     "player_id": player.id,
                     "season_id": self.season.id,
@@ -464,11 +460,11 @@ class TestPayment(ApiBaseTestCase):
         player.save()
         amount = SPONSORED_ANNUAL_MEMBERSHIP_AMOUNT
         with mock.patch(
-            "server.api.create_razorpay_order",
+            "server.transaction.client.razorpay.create_order",
             return_value=fake_order(amount),
         ) as f:
             response = c.post(
-                "/api/create-order",
+                "/api/transactions/razorpay",
                 data={
                     "player_id": player.id,
                     "season_id": self.season.id,
@@ -503,11 +499,11 @@ class TestPayment(ApiBaseTestCase):
 
         # Player does not exist
         with mock.patch(
-            "server.api.create_razorpay_order",
+            "server.transaction.client.razorpay.create_order",
             return_value=mock.MagicMock(email=self.username),
         ):
             response = c.post(
-                "/api/create-order",
+                "/api/transactions/razorpay",
                 data={
                     "player_id": player_id,
                     "event_id": event_id,
@@ -522,11 +518,11 @@ class TestPayment(ApiBaseTestCase):
         event_id = 20
 
         with mock.patch(
-            "server.api.create_razorpay_order",
+            "server.transaction.client.razorpay.create_order",
             return_value=fake_order(0),
         ):
             response = c.post(
-                "/api/create-order",
+                "/api/transactions/razorpay",
                 data={
                     "player_id": self.player.id,
                     "event_id": event_id,
@@ -553,11 +549,11 @@ class TestPayment(ApiBaseTestCase):
         amount = EVENT_MEMBERSHIP_AMOUNT
 
         with mock.patch(
-            "server.api.create_razorpay_order",
+            "server.transaction.client.razorpay.create_order",
             return_value=fake_order(amount),
         ) as f:
             response = c.post(
-                "/api/create-order",
+                "/api/transactions/razorpay",
                 data={
                     "player_id": player.id,
                     "event_id": event.id,
@@ -602,7 +598,7 @@ class TestPayment(ApiBaseTestCase):
         transaction_id = "1231231234"
 
         response = c.post(
-            f"/api/manual-transaction/{transaction_id}",
+            f"/api/transactions/manual/{transaction_id}",
             data={
                 "player_id": player.id,
                 "event_id": event.id,
@@ -631,11 +627,11 @@ class TestPayment(ApiBaseTestCase):
 
         # Player does not exist
         with mock.patch(
-            "server.api.create_razorpay_order",
+            "server.transaction.client.razorpay.create_order",
             return_value=mock.MagicMock(email=self.username),
         ):
             response = c.post(
-                "/api/create-order",
+                "/api/transactions/razorpay",
                 data={
                     "player_ids": player_ids,
                     "season_id": self.season.id,
@@ -660,11 +656,11 @@ class TestPayment(ApiBaseTestCase):
 
         amount = ANNUAL_MEMBERSHIP_AMOUNT * len(player_ids)
         with mock.patch(
-            "server.api.create_razorpay_order",
+            "server.transaction.client.razorpay.create_order",
             return_value=fake_order(amount),
         ) as f:
             response = c.post(
-                "/api/create-order",
+                "/api/transactions/razorpay",
                 data={
                     "player_ids": player_ids,
                     "season_id": self.season.id,
@@ -705,7 +701,7 @@ class TestPayment(ApiBaseTestCase):
         ANNUAL_MEMBERSHIP_AMOUNT * len(player_ids)
         transaction_id = "432198765"
         response = c.post(
-            f"/api/manual-transaction/{transaction_id}",
+            f"/api/transactions/manual/{transaction_id}",
             data={
                 "player_ids": player_ids,
                 "season_id": self.season.id,
@@ -747,9 +743,9 @@ class TestPayment(ApiBaseTestCase):
 
         payment_id = f"pay_{fake_id(16)}"
         signature = f"{fake_id(64)}"
-        with mock.patch("server.api.verify_razorpay_payment", return_value=True):
+        with mock.patch("server.transaction.client.razorpay.verify_payment", return_value=True):
             response = c.post(
-                "/api/payment-success",
+                "/api/transactions/razorpay/callback",
                 data={
                     "razorpay_order_id": order_id,
                     "razorpay_payment_id": payment_id,
@@ -807,9 +803,9 @@ class TestPayment(ApiBaseTestCase):
 
         payment_id = f"pay_{fake_id(16)}"
         signature = f"{fake_id(64)}"
-        with mock.patch("server.api.verify_razorpay_payment", return_value=True):
+        with mock.patch("server.transaction.client.razorpay.verify_payment", return_value=True):
             response = c.post(
-                "/api/payment-success",
+                "/api/transactions/razorpay/callback",
                 data={
                     "razorpay_order_id": order_id,
                     "razorpay_payment_id": payment_id,
@@ -885,9 +881,9 @@ class TestPayment(ApiBaseTestCase):
 
         payment_id = f"pay_{fake_id(16)}"
         signature = f"{fake_id(64)}"
-        with mock.patch("server.api.verify_razorpay_payment", return_value=True):
+        with mock.patch("server.transaction.client.razorpay.verify_payment", return_value=True):
             response = c.post(
-                "/api/payment-success",
+                "/api/transactions/razorpay/callback",
                 data={
                     "razorpay_order_id": order_id,
                     "razorpay_payment_id": payment_id,
@@ -963,7 +959,7 @@ class TestPayment(ApiBaseTestCase):
         ManualTransaction.create_from_order_data(order)
 
         response = c.get(
-            "/api/transactions",
+            "/api/transactions/",
             content_type="application/json",
         )
         self.assertEqual(200, response.status_code)
@@ -975,9 +971,9 @@ class TestPayment(ApiBaseTestCase):
     def test_razorpay_failures(self) -> None:
         player = self.player
         c = self.client
-        with mock.patch("server.api.create_razorpay_order", return_value=None):
+        with mock.patch("server.transaction.client.razorpay.create_order", return_value=None):
             response = c.post(
-                "/api/create-order",
+                "/api/transactions/razorpay",
                 data={
                     "player_id": player.id,
                     "season_id": self.season.id,
@@ -993,7 +989,7 @@ class TestPayment(ApiBaseTestCase):
             user=self.user, transaction_id=uuid.uuid4(), amount=10000
         )
         transaction.players.add(self.player)
-        update_phonepe_transaction(transaction, "ERROR")
+        update_transaction(transaction, "ERROR")
         with self.assertRaises(Membership.DoesNotExist):
             self.assertFalse(self.player.membership.is_active)
 
@@ -1216,7 +1212,7 @@ class TestValidateTransactions(ApiBaseTestCase):
             self.fixture.name, content, content_type="application/csv"
         )
         response = c.post(
-            path="/api/validate-transactions",
+            path="/api/transactions/bulk-validate",
             data={"bank_statement": bank_statement},
             content_type=MULTIPART_CONTENT,
         )
