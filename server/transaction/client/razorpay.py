@@ -33,7 +33,7 @@ def create_order(
     }
     try:
         response = CLIENT.order.create(data=data)
-    except (RequestException, razorpay.errors.BadRequestError) as e:
+    except (RequestException, razorpay.errors.BadRequestError, razorpay.errors.ServerError) as e:
         print(f"ERROR: Failed to connect to Razorpay with {e}")
         return None
 
