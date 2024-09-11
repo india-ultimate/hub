@@ -43,6 +43,7 @@ from .utils import (
     create_transaction,
     list_transactions_by_type,
     update_transaction_player_memberships,
+    update_transaction_team_registration,
 )
 
 router = Router()
@@ -109,6 +110,8 @@ def handle_razorpay_callback(
 
     if transaction.type == RazorpayTransaction.TransactionTypeChoices.ANNUAL_MEMBERSHIP:
         update_transaction_player_memberships(transaction)
+    elif transaction.type == RazorpayTransaction.TransactionTypeChoices.TEAM_REGISTRATION:
+        update_transaction_team_registration(transaction)
 
     return 200, transaction.players.all()
 
@@ -182,6 +185,8 @@ def payment_webhook(request: HttpRequest) -> message_response:
 
     if transaction.type == RazorpayTransaction.TransactionTypeChoices.ANNUAL_MEMBERSHIP:
         update_transaction_player_memberships(transaction)
+    elif transaction.type == RazorpayTransaction.TransactionTypeChoices.TEAM_REGISTRATION:
+        update_transaction_team_registration(transaction)
 
     return {"message": "Webhook processed"}
 
