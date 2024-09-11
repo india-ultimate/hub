@@ -113,7 +113,7 @@ def create_transaction(
             "team_id": team.id,
             "event_id": event.id,
         }
-        receipt = f"team:{event.id}:{team.id}:{start_date}:{ts}"
+        receipt = f"team:{event.id}:{team.id}:{ts}"
 
     else:
         # NOTE: We should never be here, thanks to request validation!
