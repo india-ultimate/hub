@@ -8,7 +8,7 @@ from server.constants import EVENT_MEMBERSHIP_AMOUNT
 from server.core.models import Player, Team, User
 from server.membership.models import Membership
 from server.season.models import Season
-from server.tournament.models import Event
+from server.tournament.models import Event, Tournament
 from server.types import message_response
 
 from .client import phonepe, razorpay
@@ -236,6 +236,18 @@ def update_transaction_player_memberships(
             for key, value in membership_defaults.items():
                 setattr(membership, key, value)
             membership.save()
+
+
+def update_transaction_team_registration(
+    transaction: RazorpayTransaction,
+) -> None:
+    try:
+        tournament = Tournament.objects.get(event=transaction.event)
+    except Tournament.DoesNotExist:
+        return
+
+    if transaction.team is not None:
+        tournament.teams.add(transaction.team)
 
 
 def list_transactions_by_type(
