@@ -18,7 +18,13 @@ from server.schema import (
 from server.types import message_response
 
 from .client import phonepe, razorpay
-from .models import AuthenticatedHttpRequest, ManualTransaction, PaymentGateway, PhonePeTransaction
+from .models import (
+    AuthenticatedHttpRequest,
+    ManualTransaction,
+    PaymentGateway,
+    PhonePeTransaction,
+    RazorpayTransaction,
+)
 from .schema import (
     AnnualMembershipSchema,
     EventMembershipSchema,
@@ -31,6 +37,7 @@ from .schema import (
     RazorpayCallbackSchema,
     RazorpayOrderSchema,
     RazorpayTransactionSchema,
+    TeamRegistrationSchema,
 )
 from .utils import (
     create_transaction,
@@ -50,7 +57,10 @@ router = Router()
 )
 def create_razorpay_transaction(
     request: AuthenticatedHttpRequest,
-    order: AnnualMembershipSchema | EventMembershipSchema | GroupMembershipSchema,
+    order: AnnualMembershipSchema
+    | EventMembershipSchema
+    | GroupMembershipSchema
+    | TeamRegistrationSchema,
 ) -> tuple[int, str | message_response | dict[str, Any]]:
     return create_transaction(request, order, PaymentGateway.RAZORPAY)
 
@@ -97,7 +107,8 @@ def handle_razorpay_callback(
     if not transaction:
         return 404, {"message": "No order found."}
 
-    update_transaction_player_memberships(transaction)
+    if transaction.type == RazorpayTransaction.TransactionTypeChoices.ANNUAL_MEMBERSHIP:
+        update_transaction_player_memberships(transaction)
 
     return 200, transaction.players.all()
 
@@ -168,7 +179,10 @@ def payment_webhook(request: HttpRequest) -> message_response:
     transaction = razorpay.update_transaction(payment)
     if not transaction:
         return {"message": "No order found."}
-    update_transaction_player_memberships(transaction)
+
+    if transaction.type == RazorpayTransaction.TransactionTypeChoices.ANNUAL_MEMBERSHIP:
+        update_transaction_player_memberships(transaction)
+
     return {"message": "Webhook processed"}
 
 
