@@ -190,7 +190,9 @@ def create_transaction(
         RazorpayTransaction.create_from_order_data(data)
         transaction_user_name = user.get_full_name()
         description = (
-            f"Membership for {player.user.get_full_name()}"
+            f"Team registration payment by {transaction_user_name}"
+            if isinstance(order, TeamRegistrationSchema)
+            else f"Membership for {player.user.get_full_name()}"
             if not isinstance(order, GroupMembershipSchema)
             else f"Membership group payment by {transaction_user_name} for {player_names}"
         )
