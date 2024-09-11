@@ -6,7 +6,7 @@ from django.http import HttpRequest
 from django.utils.translation import gettext_lazy as _
 from django_prometheus.models import ExportModelOperationsMixin
 
-from server.core.models import Player, User
+from server.core.models import Player, Team, User
 from server.season.models import Season
 from server.tournament.models import Event
 
@@ -38,6 +38,11 @@ class RazorpayTransaction(ExportModelOperationsMixin("razorpay_transaction"), mo
         FAILED = "failed", _("Failed")
         REFUNDED = "refunded", _("Refunded")
 
+    class TransactionTypeChoices(models.TextChoices):
+        ANNUAL_MEMBERSHIP = "annual-membership", _("Annual Membership")
+        TEAM_REGISTRATION = "team-reg", _("Team Registration")
+        PLAYER_REGISTRATION = "player-reg", _("Player Registration")
+
     order_id = models.CharField(primary_key=True, max_length=255)
     payment_id = models.CharField(max_length=255)
     payment_signature = models.CharField(max_length=255)
@@ -59,6 +64,12 @@ class RazorpayTransaction(ExportModelOperationsMixin("razorpay_transaction"), mo
     players = models.ManyToManyField(Player)
     event = models.ForeignKey(Event, on_delete=models.SET_NULL, blank=True, null=True)
     season = models.ForeignKey(Season, on_delete=models.SET_NULL, blank=True, null=True)
+    team = models.ForeignKey(Team, on_delete=models.SET_NULL, blank=True, null=True)
+    type = models.CharField(
+        max_length=30,
+        choices=TransactionTypeChoices.choices,
+        default=TransactionTypeChoices.ANNUAL_MEMBERSHIP,
+    )
 
     def __str__(self) -> str:
         return self.order_id
