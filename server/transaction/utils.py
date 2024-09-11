@@ -5,7 +5,7 @@ from django.conf import settings
 from django.db.models import Model, Q, QuerySet
 
 from server.constants import EVENT_MEMBERSHIP_AMOUNT
-from server.core.models import Player, User
+from server.core.models import Player, Team, User
 from server.membership.models import Membership
 from server.season.models import Season
 from server.tournament.models import Event
@@ -19,17 +19,27 @@ from .models import (
     PhonePeTransaction,
     RazorpayTransaction,
 )
-from .schema import AnnualMembershipSchema, EventMembershipSchema, GroupMembershipSchema
+from .schema import (
+    AnnualMembershipSchema,
+    EventMembershipSchema,
+    GroupMembershipSchema,
+    TeamRegistrationSchema,
+)
 
 
 def create_transaction(
     request: AuthenticatedHttpRequest,
-    order: AnnualMembershipSchema | EventMembershipSchema | GroupMembershipSchema,
+    order: AnnualMembershipSchema
+    | EventMembershipSchema
+    | GroupMembershipSchema
+    | TeamRegistrationSchema,
     gateway: PaymentGateway,
     transaction_id: str | None = None,
 ) -> tuple[int, str | message_response | dict[str, Any]]:
+    user = request.user
+    ts = round(time.time())
+
     if isinstance(order, GroupMembershipSchema):
-        group_payment = True
         players = Player.objects.filter(id__in=order.player_ids)
         player_ids = {p.id for p in players}
         if len(player_ids) != len(order.player_ids):
@@ -38,8 +48,7 @@ def create_transaction(
                 "message": f"Some players couldn't be found in the DB: {sorted(missing_players)}"
             }
 
-    else:
-        group_payment = False
+    elif isinstance(order, AnnualMembershipSchema | EventMembershipSchema):
         try:
             player = Player.objects.get(id=order.player_id)
         except Player.DoesNotExist:
@@ -54,6 +63,7 @@ def create_transaction(
         end_date = season.end_date
         is_annual = True
         event = None
+        team = None
         amount = (
             sum(
                 (
@@ -82,43 +92,64 @@ def create_transaction(
         is_annual = False
         amount = EVENT_MEMBERSHIP_AMOUNT
         season = None
+        team = None
+
+    elif isinstance(order, TeamRegistrationSchema):
+        try:
+            event = Event.objects.get(id=order.event_id)
+            team = Team.objects.get(id=order.team_id)
+        except Event.DoesNotExist:
+            return 422, {"message": "Event does not exist!"}
+        except Team.DoesNotExist:
+            return 422, {"message": "Team does not exist!"}
+
+        start_date = event.start_date
+        end_date = event.end_date
+        amount = event.team_fee
+        season = None
+
+        notes: dict[str, int | str] = {
+            "user_id": user.id,
+            "team_id": team.id,
+            "event_id": event.id,
+        }
+        receipt = f"team:{event.id}:{team.id}:{start_date}:{ts}"
 
     else:
         # NOTE: We should never be here, thanks to request validation!
         pass
 
-    user = request.user
-    ts = round(time.time())
-    membership_defaults = {
-        "is_annual": is_annual,
-        "start_date": start_date,
-        "end_date": end_date,
-        "event": event,
-        "season": season,
-    }
-    if group_payment:
-        player_names = ", ".join(sorted([player.user.get_full_name() for player in players]))
-        if len(player_names) > razorpay.RAZORPAY_NOTES_MAX:
-            player_names = player_names[:500] + "..."
-        notes = {
-            "user_id": user.id,
-            "player_ids": str(player_ids),
-            "players": player_names,
+    if isinstance(order, GroupMembershipSchema | AnnualMembershipSchema | EventMembershipSchema):
+        membership_defaults = {
+            "is_annual": is_annual,
+            "start_date": start_date,
+            "end_date": end_date,
+            "event": event,
+            "season": season,
         }
-        receipt = f"group:{start_date}:{ts}"
-        for player in players:
-            Membership.objects.get_or_create(player=player, defaults=membership_defaults)
-    else:
-        membership, _ = Membership.objects.get_or_create(
-            player=player,
-            defaults=membership_defaults,
-        )
-        notes = {
-            "user_id": user.id,
-            "player_id": player.id,
-            "membership_id": membership.id,
-        }
-        receipt = f"{membership.membership_number}:{start_date}:{ts}"
+        if isinstance(order, GroupMembershipSchema):
+            player_names = ", ".join(sorted([player.user.get_full_name() for player in players]))
+            if len(player_names) > razorpay.RAZORPAY_NOTES_MAX:
+                player_names = player_names[:500] + "..."
+            notes = {
+                "user_id": user.id,
+                "player_ids": str(player_ids),
+                "players": player_names,
+            }
+            receipt = f"group:{start_date}:{ts}"
+            for player in players:
+                Membership.objects.get_or_create(player=player, defaults=membership_defaults)
+        else:
+            membership, _ = Membership.objects.get_or_create(
+                player=player,
+                defaults=membership_defaults,
+            )
+            notes = {
+                "user_id": user.id,
+                "player_id": player.id,
+                "membership_id": membership.id,
+            }
+            receipt = f"{membership.membership_number}:{start_date}:{ts}"
 
     if gateway == PaymentGateway.RAZORPAY:
         data = razorpay.create_order(amount, receipt=receipt, notes=notes)
@@ -126,7 +157,11 @@ def create_transaction(
             return 502, "Failed to connect to Razorpay."
     elif gateway == PaymentGateway.PHONEPE:
         host = f"{request.scheme}://{request.get_host()}"
-        next_url = "/membership/group" if group_payment else f"/membership/{player.id}"
+        next_url = (
+            "/membership/group"
+            if isinstance(order, GroupMembershipSchema)
+            else f"/membership/{player.id}"
+        )
         data = phonepe.initiate_payment(amount, user, host, next_url)
         if data is None:
             return 502, "Failed to connect to PhonePe."
@@ -138,9 +173,17 @@ def create_transaction(
             "start_date": start_date,
             "end_date": end_date,
             "user": user,
-            "players": [player] if not group_payment else players,
+            "players": None
+            if isinstance(order, TeamRegistrationSchema)
+            else [player]
+            if not isinstance(order, GroupMembershipSchema)
+            else players,
             "event": event,
             "season": season,
+            "team": team,
+            "type": RazorpayTransaction.TransactionTypeChoices.TEAM_REGISTRATION
+            if isinstance(order, TeamRegistrationSchema)
+            else RazorpayTransaction.TransactionTypeChoices.ANNUAL_MEMBERSHIP,
         }
     )
     if gateway == PaymentGateway.RAZORPAY:
@@ -148,7 +191,7 @@ def create_transaction(
         transaction_user_name = user.get_full_name()
         description = (
             f"Membership for {player.user.get_full_name()}"
-            if not group_payment
+            if not isinstance(order, GroupMembershipSchema)
             else f"Membership group payment by {transaction_user_name} for {player_names}"
         )
         if len(description) > razorpay.RAZORPAY_DESCRIPTION_MAX:
@@ -165,7 +208,7 @@ def create_transaction(
     elif gateway == PaymentGateway.MANUAL:
         ManualTransaction.create_from_order_data(data)
         memberships = Membership.objects.filter(
-            player__in=player_ids if group_payment else [player.id]
+            player__in=player_ids if isinstance(order, GroupMembershipSchema) else [player.id]
         )
         memberships.update(is_active=True, start_date=start_date, end_date=end_date)
     else:
