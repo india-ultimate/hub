@@ -68,21 +68,6 @@ class MembershipSchema(ModelSchema):
         model_fields = "__all__"
 
 
-class AnnualMembershipSchema(Schema):
-    player_id: int
-    season_id: int
-
-
-class EventMembershipSchema(Schema):
-    player_id: int
-    event_id: int
-
-
-class GroupMembershipSchema(Schema):
-    player_ids: list[int]
-    season_id: int
-
-
 class UserFormSchema(ModelSchema):
     class Config:
         model = User
