@@ -7,7 +7,6 @@ from django.db.models import Model, Q, QuerySet
 from server.constants import EVENT_MEMBERSHIP_AMOUNT
 from server.core.models import Player, User
 from server.membership.models import Membership
-from server.schema import AnnualMembershipSchema, EventMembershipSchema, GroupMembershipSchema
 from server.season.models import Season
 from server.tournament.models import Event
 from server.types import message_response
@@ -20,6 +19,7 @@ from .models import (
     PhonePeTransaction,
     RazorpayTransaction,
 )
+from .schema import AnnualMembershipSchema, EventMembershipSchema, GroupMembershipSchema
 
 
 def create_transaction(

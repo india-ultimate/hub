@@ -11,9 +11,6 @@ from ninja import File, Router, UploadedFile
 from server.core.models import Player
 from server.lib.manual_transactions import validate_manual_transactions
 from server.schema import (
-    AnnualMembershipSchema,
-    EventMembershipSchema,
-    GroupMembershipSchema,
     PlayerSchema,
     Response,
     ValidationStatsSchema,
@@ -23,6 +20,9 @@ from server.types import message_response
 from .client import phonepe, razorpay
 from .models import AuthenticatedHttpRequest, ManualTransaction, PaymentGateway, PhonePeTransaction
 from .schema import (
+    AnnualMembershipSchema,
+    EventMembershipSchema,
+    GroupMembershipSchema,
     ManualTransactionLiteSchema,
     ManualTransactionSchema,
     ManualTransactionValidationFormSchema,

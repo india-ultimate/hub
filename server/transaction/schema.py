@@ -119,3 +119,23 @@ class RazorpayCallbackSchema(Schema):
     razorpay_order_id: str
     razorpay_payment_id: str
     razorpay_signature: str
+
+
+class AnnualMembershipSchema(Schema):
+    player_id: int
+    season_id: int
+
+
+class EventMembershipSchema(Schema):
+    player_id: int
+    event_id: int
+
+
+class GroupMembershipSchema(Schema):
+    player_ids: list[int]
+    season_id: int
+
+
+class TeamRegistrationSchema(Schema):
+    team_id: int
+    event_id: int
