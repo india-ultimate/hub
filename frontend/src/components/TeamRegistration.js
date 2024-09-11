@@ -29,6 +29,7 @@ import Breadcrumbs from "./Breadcrumbs";
 import Modal from "./Modal";
 import ErrorPopover from "./popover/ErrorPopover";
 import SuccessPopover from "./popover/SuccessPopover";
+import RazorpayPayment from "./RazorpayPayment";
 
 const TeamRegistration = () => {
   const queryClient = useQueryClient();
@@ -52,14 +53,14 @@ const TeamRegistration = () => {
   const registerTeamMutation = createMutation({
     mutationFn: addTeamRegistration,
     onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["tournaments"] }),
+      queryClient.invalidateQueries({ queryKey: ["tournaments", params.slug] }),
     onSettled: () => setRegisteringTeamId(undefined)
   });
 
   const deRegisterTeamMutation = createMutation({
     mutationFn: removeTeamRegistration,
     onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["tournaments"] }),
+      queryClient.invalidateQueries({ queryKey: ["tournaments", params.slug] }),
     onSettled: () => setDeRegisteringTeamId(undefined)
   });
 
@@ -104,6 +105,26 @@ const TeamRegistration = () => {
         Date.parse(tournamentQuery.data?.event?.player_registration_end_date)
       )
     );
+  };
+
+  const isTeamFeeExists = () => {
+    return tournamentQuery.data?.event?.team_fee > 0;
+  };
+
+  const getPlayerFee = event => {
+    if (event?.player_fee > 0) {
+      return "Rs. " + event?.player_fee / 100 + " per player";
+    } else {
+      return "Free";
+    }
+  };
+
+  const getTeamFee = event => {
+    if (event?.team_fee > 0) {
+      return "Rs. " + event?.team_fee / 100 + " per team";
+    } else {
+      return "Free";
+    }
   };
 
   return (
@@ -180,8 +201,16 @@ const TeamRegistration = () => {
 
       <div class="mx-auto mb-4 mt-6 w-fit">
         <Warning>
-          <span class="mb-2 block font-bold">Registration Timelines!</span>
+          <span class="mb-2 block font-bold">Registration Details!</span>
           <ul class="max-w-md list-inside list-disc space-y-1">
+            <li>
+              <strong>Team Registration Fee:</strong>{" "}
+              {getTeamFee(tournamentQuery.data?.event)}
+            </li>
+            <li>
+              <strong>Player Registration Fee:</strong>{" "}
+              {getPlayerFee(tournamentQuery.data?.event)}
+            </li>
             <li>
               Team Registrations window open from{" "}
               <span class="inline-flex font-medium">
@@ -381,30 +410,50 @@ const TeamRegistration = () => {
                           </button>
                         </Show>
                         <Show when={!registeredTeamIds().includes(team.id)}>
-                          <button
-                            type="button"
-                            class={clsx(
-                              "justify-self-end rounded-lg px-4 py-2 text-sm font-medium text-white focus:outline-none focus:ring-4",
-                              "bg-blue-600 hover:bg-blue-700 focus:ring-blue-300 disabled:bg-gray-400 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
-                            )}
-                            disabled={registeringTeamId() === team.id}
-                            onClick={() => {
-                              registerTeamMutation.mutate({
-                                tournament_id: tournamentQuery.data?.id,
-                                body: {
-                                  team_id: team.id
-                                }
-                              });
-                              setRegisteringTeamId(team.id);
-                            }}
+                          <Show
+                            when={isTeamFeeExists()}
+                            fallback={
+                              <button
+                                type="button"
+                                class={clsx(
+                                  "justify-self-end rounded-lg px-4 py-2 text-sm font-medium text-white focus:outline-none focus:ring-4",
+                                  "bg-blue-600 hover:bg-blue-700 focus:ring-blue-300 disabled:bg-gray-400 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+                                )}
+                                disabled={registeringTeamId() === team.id}
+                                onClick={() => {
+                                  registerTeamMutation.mutate({
+                                    tournament_id: tournamentQuery.data?.id,
+                                    body: {
+                                      team_id: team.id
+                                    }
+                                  });
+                                  setRegisteringTeamId(team.id);
+                                }}
+                              >
+                                <Show
+                                  when={registeringTeamId() === team.id}
+                                  fallback="Register"
+                                >
+                                  Registering...
+                                </Show>
+                              </button>
+                            }
                           >
-                            <Show
-                              when={registeringTeamId() === team.id}
-                              fallback="Register"
-                            >
-                              Registering...
-                            </Show>
-                          </button>
+                            <RazorpayPayment
+                              disabled={!isTeamFeeExists()}
+                              event={tournamentQuery.data?.event}
+                              team={team}
+                              amount={tournamentQuery.data?.event?.team_fee}
+                              setStatus={setStatus}
+                              successCallback={() =>
+                                queryClient.invalidateQueries({
+                                  queryKey: ["tournaments", params.slug]
+                                })
+                              }
+                              successPopoverRef={successPopoverRef}
+                              errorPopoverRef={errorPopoverRef}
+                            />
+                          </Show>
                         </Show>
                       </div>
                     )}
