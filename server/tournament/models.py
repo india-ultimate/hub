@@ -31,6 +31,8 @@ class Event(ExportModelOperationsMixin("event"), models.Model):  # type: ignore[
     slug = models.SlugField(null=True, blank=True, db_index=True)
     max_num_teams = models.PositiveSmallIntegerField(blank=True, null=True)
     series = models.ForeignKey(Series, on_delete=models.SET_NULL, blank=True, null=True)
+    team_fee = models.PositiveIntegerField(default=0)
+    player_fee = models.PositiveIntegerField(default=0)
 
     def save(self, *args: Any, **kwargs: Any) -> None:
         if not self.slug:
