@@ -173,7 +173,7 @@ def create_transaction(
             "start_date": start_date,
             "end_date": end_date,
             "user": user,
-            "players": None
+            "players": []
             if isinstance(order, TeamRegistrationSchema)
             else [player]
             if not isinstance(order, GroupMembershipSchema)

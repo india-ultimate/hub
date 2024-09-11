@@ -22,11 +22,14 @@ const RazorpayPayment = props => {
     const player_ids = props?.player_ids;
     const season_id = props.season?.id;
     const event_id = props.event?.id;
-    const data = props.annual
+    const team_id = props.team?.id;
+    const data = team_id
+      ? { team_id, event_id } // Team Registration
+      : props.annual
       ? player_ids
-        ? { player_ids, season_id }
-        : { player_id, season_id }
-      : { player_id, event_id };
+        ? { player_ids, season_id } // Group Membership
+        : { player_id, season_id } // Individual Membership
+      : { player_id, event_id }; // Event Membership
 
     setLoading(true);
     props.setStatus("");
@@ -62,10 +65,17 @@ const RazorpayPayment = props => {
                     props.successCallback();
                   }
                   props.setStatus(
-                    <span class="text-green-500 dark:text-green-400">
+                    <span
+                      class={
+                        props.successPopoverRef
+                          ? ""
+                          : "text-green-500 dark:text-green-400"
+                      }
+                    >
                       Payment successfully completed! 🎉
                     </span>
                   );
+                  props.successPopoverRef?.showPopover();
                 } else {
                   if (response.status === 422) {
                     const error = await response.json();
@@ -76,6 +86,7 @@ const RazorpayPayment = props => {
                       `Error: ${response.statusText} (${response.status}) — ${body}`
                     );
                   }
+                  props.errorPopoverRef?.showPopover();
                 }
               });
             }
@@ -84,6 +95,7 @@ const RazorpayPayment = props => {
             props.setStatus(
               `Error: ${response.error.code}: ${response.error.description}`
             );
+            props.errorPopoverRef?.showPopover();
           });
           paymentObject.open();
 
@@ -92,11 +104,13 @@ const RazorpayPayment = props => {
           if (response.status === 422) {
             const error = await response.json();
             props.setStatus(`Error: ${error.message}`);
+            props.errorPopoverRef?.showPopover();
           } else {
             const body = await response.text();
             props.setStatus(
               `Error: ${response.statusText} (${response.status}) — ${body}`
             );
+            props.errorPopoverRef?.showPopover();
           }
         }
         setLoading(false);
@@ -104,6 +118,7 @@ const RazorpayPayment = props => {
       .catch(error => {
         setLoading(false);
         props.setStatus(`Error: ${error}`);
+        props.errorPopoverRef?.showPopover();
       });
   };
 
