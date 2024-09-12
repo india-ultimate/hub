@@ -444,14 +444,20 @@ const TeamRegistration = () => {
                               event={tournamentQuery.data?.event}
                               team={team}
                               amount={tournamentQuery.data?.event?.team_fee}
-                              setStatus={setStatus}
-                              successCallback={() =>
+                              setStatus={msg => {
+                                return msg;
+                              }}
+                              successCallback={() => {
                                 queryClient.invalidateQueries({
                                   queryKey: ["tournaments", params.slug]
-                                })
-                              }
-                              successPopoverRef={successPopoverRef}
-                              errorPopoverRef={errorPopoverRef}
+                                });
+                                setStatus("Paid successfully!");
+                                successPopoverRef.showPopover();
+                              }}
+                              failureCallback={msg => {
+                                setStatus(msg);
+                                errorPopoverRef.showPopover();
+                              }}
                             />
                           </Show>
                         </Show>

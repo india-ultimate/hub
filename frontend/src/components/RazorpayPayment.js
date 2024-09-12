@@ -65,28 +65,28 @@ const RazorpayPayment = props => {
                     props.successCallback();
                   }
                   props.setStatus(
-                    <span
-                      class={
-                        props.successPopoverRef
-                          ? ""
-                          : "text-green-500 dark:text-green-400"
-                      }
-                    >
+                    <span class="text-green-500 dark:text-green-400">
                       Payment successfully completed! 🎉
                     </span>
                   );
-                  props.successPopoverRef?.showPopover();
                 } else {
                   if (response.status === 422) {
                     const error = await response.json();
                     props.setStatus(`Error: ${error.message}`);
+                    if (props.failureCallback) {
+                      props.failureCallback(`Error: ${error.message}`);
+                    }
                   } else {
                     const body = await response.text();
                     props.setStatus(
                       `Error: ${response.statusText} (${response.status}) — ${body}`
                     );
+                    if (props.failureCallback) {
+                      props.failureCallback(
+                        `Error: ${response.statusText} (${response.status}) — ${body}`
+                      );
+                    }
                   }
-                  props.errorPopoverRef?.showPopover();
                 }
               });
             }
@@ -95,7 +95,11 @@ const RazorpayPayment = props => {
             props.setStatus(
               `Error: ${response.error.code}: ${response.error.description}`
             );
-            props.errorPopoverRef?.showPopover();
+            if (props.failureCallback) {
+              props.failureCallback(
+                `Error: ${response.error.code}: ${response.error.description}`
+              );
+            }
           });
           paymentObject.open();
 
@@ -104,13 +108,19 @@ const RazorpayPayment = props => {
           if (response.status === 422) {
             const error = await response.json();
             props.setStatus(`Error: ${error.message}`);
-            props.errorPopoverRef?.showPopover();
+            if (props.failureCallback) {
+              props.failureCallback(`Error: ${error.message}`);
+            }
           } else {
             const body = await response.text();
             props.setStatus(
               `Error: ${response.statusText} (${response.status}) — ${body}`
             );
-            props.errorPopoverRef?.showPopover();
+            if (props.failureCallback) {
+              props.failureCallback(
+                `Error: ${response.statusText} (${response.status}) — ${body}`
+              );
+            }
           }
         }
         setLoading(false);
@@ -118,7 +128,9 @@ const RazorpayPayment = props => {
       .catch(error => {
         setLoading(false);
         props.setStatus(`Error: ${error}`);
-        props.errorPopoverRef?.showPopover();
+        if (props.failureCallback) {
+          props.failureCallback(`Error: ${error}`);
+        }
       });
   };
 
