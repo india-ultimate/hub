@@ -168,7 +168,15 @@ class MembershipAdmin(admin.ModelAdmin[Membership]):
 @admin.register(RazorpayTransaction)
 class RazorpayTransactionAdmin(admin.ModelAdmin[RazorpayTransaction]):
     search_fields = ["user__first_name"]
-    list_display = ["get_name", "order_id", "payment_id", "amount", "payment_date", "status"]
+    list_display = [
+        "get_name",
+        "type",
+        "order_id",
+        "payment_id",
+        "amount",
+        "payment_date",
+        "status",
+    ]
     actions = [export_as_csv]
 
     @admin.display(description="User Name", ordering="user__first_name")
