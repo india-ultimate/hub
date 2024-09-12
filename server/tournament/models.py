@@ -68,9 +68,9 @@ class Tournament(ExportModelOperationsMixin("tournament"), models.Model):  # typ
     logo_dark = models.FileField(upload_to="tournament_logos/", blank=True, max_length=256)
     rules = models.TextField(blank=True, null=True)
 
-    initial_seeding = models.JSONField(default=dict)
-    current_seeding = models.JSONField(default=dict)
-    spirit_ranking = models.JSONField(default=list)
+    initial_seeding = models.JSONField(default=dict, blank=True)
+    current_seeding = models.JSONField(default=dict, blank=True)
+    spirit_ranking = models.JSONField(default=list, blank=True)
 
     use_uc_registrations = models.BooleanField(default=False)
 
