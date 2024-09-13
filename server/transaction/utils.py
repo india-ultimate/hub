@@ -103,6 +103,11 @@ def create_transaction(
         except Team.DoesNotExist:
             return 422, {"message": "Team does not exist!"}
 
+        if event.series and team not in event.series.teams.all():
+            return 400, {
+                "message": "Team is not part of the series",
+            }
+
         start_date = event.start_date
         end_date = event.end_date
         amount = event.team_fee
