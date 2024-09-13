@@ -9,7 +9,9 @@ from server.core.models import Player, Team, User
 from server.membership.models import Membership
 from server.season.models import Season
 from server.tournament.models import Event, Tournament
+from server.tournament.utils import can_register_player_to_series_event
 from server.types import message_response
+from server.utils import is_today_in_between_dates
 
 from .client import phonepe, razorpay
 from .models import (
@@ -23,6 +25,7 @@ from .schema import (
     AnnualMembershipSchema,
     EventMembershipSchema,
     GroupMembershipSchema,
+    PlayerRegistrationSchema,
     TeamRegistrationSchema,
 )
 
@@ -32,14 +35,15 @@ def create_transaction(
     order: AnnualMembershipSchema
     | EventMembershipSchema
     | GroupMembershipSchema
-    | TeamRegistrationSchema,
+    | TeamRegistrationSchema
+    | PlayerRegistrationSchema,
     gateway: PaymentGateway,
     transaction_id: str | None = None,
 ) -> tuple[int, str | message_response | dict[str, Any]]:
     user = request.user
     ts = round(time.time())
 
-    if isinstance(order, GroupMembershipSchema):
+    if isinstance(order, GroupMembershipSchema | PlayerRegistrationSchema):
         players = Player.objects.filter(id__in=order.player_ids)
         player_ids = {p.id for p in players}
         if len(player_ids) != len(order.player_ids):
@@ -103,6 +107,17 @@ def create_transaction(
         except Team.DoesNotExist:
             return 422, {"message": "Team does not exist!"}
 
+        if request.user not in team.admins.all():
+            return 401, {"message": "Only team admins can register a team to a tournament !"}
+
+        try:
+            tournament = Tournament.objects.get(event=event)
+        except Tournament.DoesNotExist:
+            return 400, {"message": "Tournament does not exist"}
+
+        if tournament.status != Tournament.Status.REGISTERING:
+            return 400, {"message": "Team registration has closed, you can't register a team now !"}
+
         if event.series and team not in event.series.teams.all():
             return 400, {
                 "message": "Team is not part of the series",
@@ -119,6 +134,55 @@ def create_transaction(
             "event_id": event.id,
         }
         receipt = f"team:{event.id}:{team.id}:{ts}"
+
+    elif isinstance(order, PlayerRegistrationSchema):
+        try:
+            team = Team.objects.get(id=order.team_id)
+            event = Event.objects.get(id=order.event_id)
+            tournament = Tournament.objects.get(event=event)
+        except (Event.DoesNotExist, Team.DoesNotExist, Tournament.DoesNotExist):
+            return 400, {"message": "Team/Event/Tournament does not exist"}
+
+        if not is_today_in_between_dates(
+            from_date=tournament.event.player_registration_start_date,
+            to_date=tournament.event.player_registration_end_date,
+        ):
+            return 400, {"message": "Rostering has closed, you can't roster players now !"}
+
+        if team not in tournament.teams.all():
+            return 400, {"message": f"{team.name} is not registered for ${event.title} !"}
+
+        if request.user not in team.admins.all():
+            return 401, {"message": "Only team admins can roster players to the team"}
+
+        if len(players) == 0:
+            return 400, {"message": "No players selected !"}
+
+        if event.series:
+            for player in players:
+                can_register, error = can_register_player_to_series_event(
+                    event=event, team=team, player=player
+                )
+                if not can_register and error:
+                    return 400, error
+
+        start_date = event.start_date
+        end_date = event.end_date
+        amount = event.player_fee * len(players)
+        season = None
+
+        player_names = ", ".join(sorted([player.user.get_full_name() for player in players]))
+        if len(player_names) > razorpay.RAZORPAY_NOTES_MAX:
+            player_names = player_names[:500] + "..."
+
+        notes = {
+            "user_id": user.id,
+            "team_id": team.id,
+            "event_id": event.id,
+            "player_ids": str(player_ids),
+            "players": player_names,
+        }
+        receipt = f"player:{event.id}:{team.id}:{ts}"
 
     else:
         # NOTE: We should never be here, thanks to request validation!
@@ -181,13 +245,15 @@ def create_transaction(
             "players": []
             if isinstance(order, TeamRegistrationSchema)
             else [player]
-            if not isinstance(order, GroupMembershipSchema)
+            if not isinstance(order, GroupMembershipSchema | PlayerRegistrationSchema)
             else players,
             "event": event,
             "season": season,
             "team": team,
             "type": RazorpayTransaction.TransactionTypeChoices.TEAM_REGISTRATION
             if isinstance(order, TeamRegistrationSchema)
+            else RazorpayTransaction.TransactionTypeChoices.PLAYER_REGISTRATION
+            if isinstance(order, PlayerRegistrationSchema)
             else RazorpayTransaction.TransactionTypeChoices.ANNUAL_MEMBERSHIP,
         }
     )
@@ -195,8 +261,10 @@ def create_transaction(
         RazorpayTransaction.create_from_order_data(data)
         transaction_user_name = user.get_full_name()
         description = (
-            f"Team registration payment by {transaction_user_name}"
+            f"Team registration payment by {transaction_user_name} for {team.name if team is not None else ''}, event: {event.title if event is not None else ''}"
             if isinstance(order, TeamRegistrationSchema)
+            else f"Player registration payment by {transaction_user_name} for {player_names}, event: {event.title if event is not None else ''}"
+            if isinstance(order, PlayerRegistrationSchema)
             else f"Membership for {player.user.get_full_name()}"
             if not isinstance(order, GroupMembershipSchema)
             else f"Membership group payment by {transaction_user_name} for {player_names}"

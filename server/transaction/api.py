@@ -34,6 +34,7 @@ from .schema import (
     ManualTransactionValidationFormSchema,
     PhonePeOrderSchema,
     PhonePeTransactionSchema,
+    PlayerRegistrationSchema,
     RazorpayCallbackSchema,
     RazorpayOrderSchema,
     RazorpayTransactionSchema,
@@ -54,14 +55,16 @@ router = Router()
 
 # Razorpay Transaction
 @router.post(
-    "/razorpay", response={200: RazorpayOrderSchema, 400: Response, 422: Response, 502: str}
+    "/razorpay",
+    response={200: RazorpayOrderSchema, 400: Response, 401: Response, 422: Response, 502: str},
 )
 def create_razorpay_transaction(
     request: AuthenticatedHttpRequest,
     order: AnnualMembershipSchema
     | EventMembershipSchema
     | GroupMembershipSchema
-    | TeamRegistrationSchema,
+    | TeamRegistrationSchema
+    | PlayerRegistrationSchema,
 ) -> tuple[int, str | message_response | dict[str, Any]]:
     return create_transaction(request, order, PaymentGateway.RAZORPAY)
 

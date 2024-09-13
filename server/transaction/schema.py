@@ -139,3 +139,9 @@ class GroupMembershipSchema(Schema):
 class TeamRegistrationSchema(Schema):
     team_id: int
     event_id: int
+
+
+class PlayerRegistrationSchema(Schema):
+    team_id: int
+    event_id: int
+    player_ids: list[int]
