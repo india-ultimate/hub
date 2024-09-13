@@ -127,6 +127,16 @@ const TeamRegistration = () => {
     }
   };
 
+  const isTeamPartOfSeries = team => {
+    if (!tournamentQuery.data?.event?.series) {
+      return true;
+    }
+
+    return tournamentQuery.data?.event?.series?.teams?.find(
+      t => t.id === team.id
+    );
+  };
+
   return (
     <Show
       when={!tournamentQuery.data?.message}
@@ -409,7 +419,12 @@ const TeamRegistration = () => {
                             </Show>
                           </button>
                         </Show>
-                        <Show when={!registeredTeamIds().includes(team.id)}>
+                        <Show
+                          when={
+                            !registeredTeamIds().includes(team.id) &&
+                            isTeamPartOfSeries(team)
+                          }
+                        >
                           <Show
                             when={isTeamFeeExists()}
                             fallback={
@@ -460,6 +475,14 @@ const TeamRegistration = () => {
                               }}
                             />
                           </Show>
+                        </Show>
+                        <Show when={!isTeamPartOfSeries(team)}>
+                          <A
+                            href={`/series/${tournamentQuery.data?.event?.series?.slug}`}
+                            class="text-xs text-blue-500 underline"
+                          >
+                            Add the team to series
+                          </A>
                         </Show>
                       </div>
                     )}
