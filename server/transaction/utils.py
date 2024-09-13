@@ -166,6 +166,11 @@ def create_transaction(
                 if not can_register and error:
                     return 400, error
 
+                if Registration.objects.filter(event=event, player=player).exists():
+                    return 400, {
+                        "message": f"Player - {player.user.get_full_name()} already registered for this event in another team !"
+                    }
+
         start_date = event.start_date
         end_date = event.end_date
         amount = event.player_fee * len(players)
