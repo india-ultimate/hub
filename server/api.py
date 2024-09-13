@@ -1481,6 +1481,9 @@ def add_team_registration(
             "action_href": f"/series/{tournament.event.series.slug}/",
         }
 
+    if tournament.event.team_fee > 0:
+        return 400, {"message": "Team registration can be done only after payment of team fee !"}
+
     tournament.teams.add(team)
 
     return 200, tournament
