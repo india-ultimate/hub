@@ -8,7 +8,7 @@ from server.constants import EVENT_MEMBERSHIP_AMOUNT
 from server.core.models import Player, Team, User
 from server.membership.models import Membership
 from server.season.models import Season
-from server.tournament.models import Event, Tournament
+from server.tournament.models import Event, Registration, Tournament
 from server.tournament.utils import can_register_player_to_series_event
 from server.types import message_response
 from server.utils import is_today_in_between_dates
@@ -323,6 +323,18 @@ def update_transaction_team_registration(
 
     if transaction.team is not None:
         tournament.teams.add(transaction.team)
+
+
+def update_transaction_player_registrations(
+    transaction: RazorpayTransaction,
+) -> None:
+    registration = Registration(
+        event=transaction.event,
+        team=transaction.team,
+        player=transaction.player,
+    )
+
+    registration.save()
 
 
 def list_transactions_by_type(
