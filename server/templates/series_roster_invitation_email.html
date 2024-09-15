@@ -28,10 +28,16 @@
                       <p>From: <strong>{{ from_name }}</strong></p>
                       <p>Team: <strong>{{ team_name }}</strong></p>
                       <p style="padding-bottom: 16px">Series: <strong>{{ series_name }}</strong></p>
-                      <p style="padding-bottom: 16px">
-                        <a href="{{ accept_invitation_link }}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-align: center; text-decoration: none; display: inline-block; margin-right: 10px;">Accept Invitation</a>
-                        <a href="{{ decline_invitation_link }}" style="background-color: #f44336; color: white; padding: 10px 20px; text-align: center; text-decoration: none; display: inline-block;">Decline Invitation</a>
-                      </p>
+                      <table role="presentation" style="width: 60%; border-collapse: collapse; border: 0px; border-spacing: 0px;">
+                        <tr>
+                          <td style="padding: 5px; text-align: right;">
+                            <a href="{{ accept_invitation_link }}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-align: center; text-decoration: none; display: inline-block;">Accept Invitation</a>
+                          </td>
+                          <td style="padding: 5px; text-align: left;">
+                            <a href="{{ decline_invitation_link }}" style="background-color: #f44336; color: white; padding: 10px 20px; text-align: center; text-decoration: none; display: inline-block;">Decline Invitation</a>
+                          </td>
+                        </tr>
+                      </table>
                       <p style="padding-bottom: 16px">You can also accept this invite by, 
                         <ul><li>Log into Hub with your account.</li><br /><li>Visit the <a href="https://hub.indiaultimate.org/series" target="_blank">series page</a> and click on accept this invitation.</li></ul>
                     </p>
