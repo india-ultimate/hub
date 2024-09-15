@@ -24,7 +24,9 @@ const RazorpayPayment = props => {
     const event_id = props.event?.id;
     const team_id = props.team?.id;
     const data = team_id
-      ? { team_id, event_id } // Team Registration
+      ? player_ids
+        ? { team_id, event_id, player_ids } // Player Registration
+        : { team_id, event_id } // Team Registration
       : props.annual
       ? player_ids
         ? { player_ids, season_id } // Group Membership
