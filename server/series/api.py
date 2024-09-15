@@ -238,8 +238,8 @@ def send_series_invitation(
 
     invitation_token = generate_invitation_token(invitation.id)
 
-    accept_invitation_link = f"{settings.EMAIL_INVITATION_BASE_URL}/accept-invitation?token={invitation_token}"
-    decline_invitation_link = f"{settings.EMAIL_INVITATION_BASE_URL}/decline-invitation?token={invitation_token}"
+    accept_invitation_link = f"{settings.EMAIL_INVITATION_BASE_URL}/invitation/accept?token={invitation_token}"
+    decline_invitation_link = f"{settings.EMAIL_INVITATION_BASE_URL}/invitation/decline?token={invitation_token}"
 
     send_invitation_email(
         from_user=request.user, 
@@ -252,43 +252,14 @@ def send_series_invitation(
     return 200, invitation
 
 
-@router.delete(
-    "/invitation/{invitation_id}",
-    response={200: SeriesRosterInvitationSchema, 400: Response, 401: Response},
-)
-def revoke_series_invitation(
-    request: AuthenticatedHttpRequest, invitation_id: int
-) -> tuple[int, SeriesRosterInvitation | message_response]:
-    try:
-        invitation = SeriesRosterInvitation.objects.get(id=invitation_id)
-    except SeriesRosterInvitation.DoesNotExist:
-        return 400, {"messsage": "Series/Invitation does not exist"}
-
-    if request.user != invitation.from_user:
-        return 401, {
-            "message": "You cannot revoke this invitation since this invitation wasn't sent by you"
-        }
-
-    if invitation.status != SeriesRosterInvitation.Status.PENDING:
-        return 400, {
-            "message": f"You cannot revoke an invitation that has been {invitation.status}"
-        }
-
-    invitation.status = SeriesRosterInvitation.Status.REVOKED
-    invitation.save()
-    return 200, invitation
-
-
 @router.get(
-    "/accept-invitation",
+    "/invitation/accept",
     response={200: SeriesRegistrationSchema, 400: Response},
     auth=None,
 )
 def accept_series_invitation_via_mail(
-    request,
+    request, token: str,
 ) -> tuple[int, SeriesRegistration | message_response]:
-
-    token = request.GET.get("token")
 
     valid, invitation_id = get_details_from_invitation_token(token)
 
@@ -334,15 +305,13 @@ def accept_series_invitation_via_mail(
 
 
 @router.get(
-    "/decline-invitation",
+    "/invitation/decline",
     response={200: SeriesRosterInvitationSchema, 400: Response},
     auth=None,
 )
 def decline_series_invitation_via_mail(
-    request,
+    request, token: str,
 ) -> tuple[int, SeriesRosterInvitation | message_response]:
-
-    token = request.GET.get("token")
 
     valid, invitation_id = get_details_from_invitation_token(token)
 
@@ -376,6 +345,33 @@ def decline_series_invitation_via_mail(
             return 200, invitation
 
     return 400, {"message": f"'{invitation.status}' is not a valid invitation status"}
+
+
+@router.delete(
+    "/invitation/{invitation_id}",
+    response={200: SeriesRosterInvitationSchema, 400: Response, 401: Response},
+)
+def revoke_series_invitation(
+    request: AuthenticatedHttpRequest, invitation_id: int
+) -> tuple[int, SeriesRosterInvitation | message_response]:
+    try:
+        invitation = SeriesRosterInvitation.objects.get(id=invitation_id)
+    except SeriesRosterInvitation.DoesNotExist:
+        return 400, {"messsage": "Series/Invitation does not exist"}
+
+    if request.user != invitation.from_user:
+        return 401, {
+            "message": "You cannot revoke this invitation since this invitation wasn't sent by you"
+        }
+
+    if invitation.status != SeriesRosterInvitation.Status.PENDING:
+        return 400, {
+            "message": f"You cannot revoke an invitation that has been {invitation.status}"
+        }
+
+    invitation.status = SeriesRosterInvitation.Status.REVOKED
+    invitation.save()
+    return 200, invitation
 
 
 @router.put(
