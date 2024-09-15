@@ -254,7 +254,7 @@ def send_series_invitation(
 
 @router.get(
     "/invitation/accept",
-    response={200: SeriesRegistrationSchema, 400: Response},
+    response={200: SeriesRosterInvitationSchema, 400: Response},
     auth=None,
 )
 def accept_series_invitation_via_mail(
@@ -299,7 +299,7 @@ def accept_series_invitation_via_mail(
             invitation.status = SeriesRosterInvitation.Status.ACCEPTED
             invitation.rsvp_date = today()
             invitation.save()
-            return 200, series_registration
+            return 200, invitation
 
     return 400, {"message": f"'{invitation.status}' is not a valid invitation status"}
 
