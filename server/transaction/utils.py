@@ -158,18 +158,18 @@ def create_transaction(
         if len(players) == 0:
             return 400, {"message": "No players selected !"}
 
-        if event.series:
-            for player in players:
+        for player in players:
+            if event.series:
                 can_register, error = can_register_player_to_series_event(
                     event=event, team=team, player=player
                 )
                 if not can_register and error:
                     return 400, error
 
-                if Registration.objects.filter(event=event, player=player).exists():
-                    return 400, {
-                        "message": f"Player - {player.user.get_full_name()} already registered for this event in another team !"
-                    }
+            if Registration.objects.filter(event=event, player=player).exists():
+                return 400, {
+                    "message": f"Player - {player.user.get_full_name()} already registered for this event in another team !"
+                }
 
         start_date = event.start_date
         end_date = event.end_date
