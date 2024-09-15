@@ -167,3 +167,5 @@ cython_debug/
 /.envrc
 /secrets
 /cron/
+/.vscode
+/.DS_STORE

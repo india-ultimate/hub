@@ -11,7 +11,6 @@ import {
 } from "@tanstack/solid-table";
 import clsx from "clsx";
 import { Icon } from "solid-heroicons";
-import { handRaised } from "solid-heroicons/outline";
 import {
   arrowRight,
   checkCircle,
@@ -22,15 +21,12 @@ import {
 import { createEffect, createSignal, For, Show } from "solid-js";
 
 import { ChevronLeft, ChevronRight, Spinner } from "../../icons";
-import {
-  addToRoster,
-  fetchUser,
-  searchSeriesRosterPlayers
-} from "../../queries";
+import { addToRoster, searchSeriesRosterPlayers } from "../../queries";
 import Info from "../alerts/Info";
 import Modal from "../Modal";
 import ErrorPopover from "../popover/ErrorPopover";
 import SuccessPopover from "../popover/SuccessPopover";
+import RazorpayPayment from "../RazorpayPayment";
 
 const AddToRoster = props => {
   let modalRef;
@@ -39,7 +35,6 @@ const AddToRoster = props => {
   const [error, setError] = createSignal({});
 
   const queryClient = useQueryClient();
-  const userQuery = createQuery(() => ["me"], fetchUser);
   const addToRosterMutation = createMutation({
     mutationFn: addToRoster,
     onSuccess: () =>
@@ -70,30 +65,6 @@ const AddToRoster = props => {
 
   return (
     <div class="mt-4 flex justify-center gap-2">
-      <Show
-        when={
-          !props.roster
-            ?.map(reg => reg.player.id)
-            .includes(userQuery.data?.player?.id)
-        }
-      >
-        <button
-          onClick={() => {
-            addToRosterMutation.mutate({
-              event_id: props.eventId,
-              team_id: props.teamId,
-              body: {
-                player_id: userQuery.data?.player?.id
-              }
-            });
-          }}
-          type="button"
-          class="mb-2 me-2 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-blue-700 px-2 py-2.5 text-center text-sm font-medium text-blue-700 hover:bg-blue-800 hover:text-white focus:outline-none dark:border-blue-500  dark:text-blue-500 dark:hover:bg-blue-500 dark:hover:text-white dark:focus:ring-blue-800 md:px-5"
-        >
-          <Icon path={handRaised} style={{ width: "24px" }} />
-          <span class="w-3/4">Add myself</span>
-        </button>
-      </Show>
       <button
         onClick={() => modalRef.showModal()}
         type="button"
@@ -114,6 +85,7 @@ const AddToRoster = props => {
           tournamentSlug={props.tournamentSlug}
           teamSlug={props.teamSlug}
           isPartOfSeries={props.isPartOfSeries}
+          playerFee={props.playerFee}
         />
       </Modal>
 
@@ -173,6 +145,7 @@ const AddPlayerRegistrationForm = componentProps => {
     pageSize: 5
   });
   const [status, setStatus] = createSignal();
+  const [selectedPlayers, setSelectedPlayers] = createSignal([]);
 
   const queryClient = useQueryClient();
   const addToRosterMutation = createMutation({
@@ -190,9 +163,19 @@ const AddPlayerRegistrationForm = componentProps => {
     }
   });
 
-  createEffect(() => {
-    console.log(componentProps.isPartOfSeries);
-  });
+  const handleAddToRoster = player => {
+    if (componentProps.playerFee > 0) {
+      setSelectedPlayers([...selectedPlayers(), player]);
+    } else {
+      addToRosterMutation.mutate({
+        event_id: componentProps.eventId,
+        team_id: componentProps.teamId,
+        body: {
+          player_id: player.id
+        }
+      });
+    }
+  };
 
   const dataQuery = createQuery(
     () => [
@@ -248,15 +231,7 @@ const AddPlayerRegistrationForm = componentProps => {
           fallback={<span>Added</span>}
         >
           <button
-            onClick={() =>
-              addToRosterMutation.mutate({
-                event_id: componentProps.eventId,
-                team_id: componentProps.teamId,
-                body: {
-                  player_id: props.getValue()
-                }
-              })
-            }
+            onClick={() => handleAddToRoster(props.row.original)}
             class="mb-2 me-2 rounded-lg border border-blue-700 px-5 py-1.5 text-center text-sm font-medium text-blue-700 hover:bg-blue-800 hover:text-white focus:outline-none focus:ring-4 focus:ring-blue-300 dark:border-blue-500 dark:text-blue-500 dark:hover:bg-blue-500 dark:hover:text-white dark:focus:ring-blue-800"
           >
             Add
@@ -288,6 +263,57 @@ const AddPlayerRegistrationForm = componentProps => {
 
   return (
     <div class="h-screen w-full rounded-lg p-2">
+      <Show when={componentProps.playerFee > 0}>
+        <div class="mb-4 rounded-lg bg-blue-50 p-4 text-sm text-blue-800 dark:bg-gray-800 dark:text-blue-400">
+          <h1 class="text-lg font-bold">Player Registrations</h1>
+          <Show
+            when={selectedPlayers().length > 0}
+            fallback={
+              <h2 class="italic">
+                Please add players from the Add to roster section below
+              </h2>
+            }
+          >
+            <h2 class="">
+              Paying{" "}
+              <strong>
+                Rs.{" "}
+                {(componentProps.playerFee * selectedPlayers().length) / 100}
+              </strong>{" "}
+              for{" "}
+              {selectedPlayers()
+                .map(p => p.full_name)
+                .join() || "..."}
+            </h2>
+            <button
+              onClick={() => setSelectedPlayers([])}
+              class="rounded-lg text-sm text-red-500 underline"
+            >
+              Reset
+            </button>
+          </Show>
+
+          <RazorpayPayment
+            disabled={selectedPlayers().length === 0}
+            event={{ id: componentProps.eventId }}
+            team={{ id: componentProps.teamId }}
+            player_ids={selectedPlayers().map(p => p.id)}
+            amount={componentProps.playerFee * selectedPlayers().length}
+            setStatus={msg => {
+              return msg;
+            }}
+            successCallback={() => {
+              queryClient.invalidateQueries({
+                queryKey: ["tournament-roster"]
+              });
+              setStatus("Paid successfully!");
+            }}
+            failureCallback={msg => {
+              setStatus(msg);
+            }}
+          />
+        </div>
+      </Show>
       <h2 class="w-full text-left text-lg font-bold text-blue-600">
         Add Players to Roster
       </h2>
@@ -440,6 +466,7 @@ const AddPlayerRegistrationForm = componentProps => {
           </button>
         </div>
       </Show>
+
       <p class="my-2">{status()}</p>
     </div>
   );

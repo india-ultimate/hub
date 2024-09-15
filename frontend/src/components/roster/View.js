@@ -284,6 +284,7 @@ const Roster = () => {
                   isPartOfSeries={
                     tournamentQuery.data?.event?.series ? true : false
                   }
+                  playerFee={tournamentQuery.data?.event?.player_fee || 0}
                 />
               </Match>
             </Switch>
