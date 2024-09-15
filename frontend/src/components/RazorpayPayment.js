@@ -77,11 +77,11 @@ const RazorpayPayment = props => {
                     </span>
                   );
                 } else {
-                  if (response.status === 422) {
+                  if (response.status >= 400 && response.status < 500) {
                     const error = await response.json();
                     props.setStatus(`Error: ${error.message}`);
                     if (props.failureCallback) {
-                      props.failureCallback(`Error: ${error.message}`);
+                      props.failureCallback(error.message);
                     }
                   } else {
                     const body = await response.text();
@@ -90,7 +90,7 @@ const RazorpayPayment = props => {
                     );
                     if (props.failureCallback) {
                       props.failureCallback(
-                        `Error: ${response.statusText} (${response.status}) — ${body}`
+                        `${response.statusText} (${response.status}) — ${body}`
                       );
                     }
                   }
@@ -104,7 +104,7 @@ const RazorpayPayment = props => {
             );
             if (props.failureCallback) {
               props.failureCallback(
-                `Error: ${response.error.code}: ${response.error.description}`
+                `${response.error.code}: ${response.error.description}`
               );
             }
           });
@@ -112,11 +112,11 @@ const RazorpayPayment = props => {
 
           //   window.location = data.redirect_url;
         } else {
-          if (response.status === 422) {
+          if (response.status >= 400 && response.status < 500) {
             const error = await response.json();
             props.setStatus(`Error: ${error.message}`);
             if (props.failureCallback) {
-              props.failureCallback(`Error: ${error.message}`);
+              props.failureCallback(`${error.message}`);
             }
           } else {
             const body = await response.text();
@@ -125,7 +125,7 @@ const RazorpayPayment = props => {
             );
             if (props.failureCallback) {
               props.failureCallback(
-                `Error: ${response.statusText} (${response.status}) — ${body}`
+                `${response.statusText} (${response.status}) — ${body}`
               );
             }
           }
@@ -136,7 +136,7 @@ const RazorpayPayment = props => {
         setLoading(false);
         props.setStatus(`Error: ${error}`);
         if (props.failureCallback) {
-          props.failureCallback(`Error: ${error}`);
+          props.failureCallback(`${error}`);
         }
       });
   };
