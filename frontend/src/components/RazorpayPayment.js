@@ -14,6 +14,11 @@ const RazorpayPayment = props => {
       props.setStatus(
         "Razorpay SDK failed to load. please check are you online?"
       );
+      if (props.failureCallback) {
+        props.failureCallback(
+          "Razorpay SDK failed to load. please check are you online?"
+        );
+      }
     }
   });
 
