@@ -747,7 +747,7 @@ export const acceptSeriesInvitationFromEmail = async ({
   token, 
 }) => {
   const response = await fetch(
-    `/api/series/accept-invitation?token=${token}`,
+    `/api/series/invitation/accept?token=${token}`,
     {
       method: "GET",
       headers: {
@@ -767,7 +767,7 @@ export const declineSeriesInvitationFromEmail = async ({
   token,
 }) => {
   const response = await fetch(
-    `/api/series/decline-invitation?token=${token}`,
+    `/api/series/invitation/decline?token=${token}`,
     {
       method: "GET",
       headers: {

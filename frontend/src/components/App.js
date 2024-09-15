@@ -118,8 +118,8 @@ export default function App() {
                     path="/tournament/:tournamentSlug/match/:matchId/live"
                     component={ViewStats}
                   />
-                  <Route path="/accept-invitation" component={EmailInvitationHandler} />
-                  <Route path="/decline-invitation" component={EmailInvitationHandler} />
+                  <Route path="/invitation/accept" component={EmailInvitationHandler} />
+                  <Route path="/invitation/decline" component={EmailInvitationHandler} />
                   {/* Team Public Routes */}
                   <Route path={"/teams"} component={Teams} />
                   <Route path={"/team/:slug"} component={ViewTeam} />
