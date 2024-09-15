@@ -51,7 +51,9 @@ const SeriesRoster = lazy(() => import("./series/SeriesRoster"));
 // const EditStats = lazy(() => import("./match/stats/EditStats"));
 const EditStatsMin = lazy(() => import("./match/stats/EditMinStats"));
 const ViewStats = lazy(() => import("./match/stats/ViewStats"));
-const EmailInvitationHandler = lazy(() => import("./series/InvitationViaEmail"));
+const EmailInvitationHandler = lazy(() =>
+  import("./series/InvitationViaEmail")
+);
 
 const filters = {
   id: /^\d+$/ // only allow numbers
@@ -118,8 +120,14 @@ export default function App() {
                     path="/tournament/:tournamentSlug/match/:matchId/live"
                     component={ViewStats}
                   />
-                  <Route path="/invitation/accept" component={EmailInvitationHandler} />
-                  <Route path="/invitation/decline" component={EmailInvitationHandler} />
+                  <Route
+                    path="/invitation/accept"
+                    component={EmailInvitationHandler}
+                  />
+                  <Route
+                    path="/invitation/decline"
+                    component={EmailInvitationHandler}
+                  />
                   {/* Team Public Routes */}
                   <Route path={"/teams"} component={Teams} />
                   <Route path={"/team/:slug"} component={ViewTeam} />

@@ -24,10 +24,10 @@ from .schema import (
 from .utils import (
     can_invite_player_to_series_roster,
     can_register_player_to_series_roster,
+    generate_invitation_token,
+    get_details_from_invitation_token,
     register_player,
     send_invitation_email,
-    get_details_from_invitation_token,
-    generate_invitation_token,
 )
 
 router = Router()
@@ -238,16 +238,21 @@ def send_series_invitation(
 
     invitation_token = generate_invitation_token(invitation.id)
 
-    accept_invitation_link = f"{settings.EMAIL_INVITATION_BASE_URL}/invitation/accept?token={invitation_token}"
-    decline_invitation_link = f"{settings.EMAIL_INVITATION_BASE_URL}/invitation/decline?token={invitation_token}"
+    accept_invitation_link = (
+        f"{settings.EMAIL_INVITATION_BASE_URL}/invitation/accept?token={invitation_token}"
+    )
+    decline_invitation_link = (
+        f"{settings.EMAIL_INVITATION_BASE_URL}/invitation/decline?token={invitation_token}"
+    )
 
     send_invitation_email(
-        from_user=request.user, 
-        to_player=to_player, 
-        team=team, 
-        series=series, 
+        from_user=request.user,
+        to_player=to_player,
+        team=team,
+        series=series,
         accept_invitation_link=accept_invitation_link,
-        decline_invitation_link=decline_invitation_link)
+        decline_invitation_link=decline_invitation_link,
+    )
 
     return 200, invitation
 
@@ -258,9 +263,9 @@ def send_series_invitation(
     auth=None,
 )
 def accept_series_invitation_via_mail(
-    request, token: str,
+    request: HttpRequest,
+    token: str,
 ) -> tuple[int, SeriesRegistration | message_response]:
-
     valid, invitation_id = get_details_from_invitation_token(token)
 
     if not valid:
@@ -270,7 +275,7 @@ def accept_series_invitation_via_mail(
         invitation = SeriesRosterInvitation.objects.get(id=invitation_id)
     except SeriesRosterInvitation.DoesNotExist:
         return 400, {"messsage": "Invitation does not exist"}
-    
+
     match invitation.status:
         case SeriesRosterInvitation.Status.EXPIRED:
             return 400, {"message": "This invitation has expired 😔"}
@@ -282,7 +287,7 @@ def accept_series_invitation_via_mail(
             return 400, {
                 "message": f"You already accepted this invitation on {invitation.rsvp_date}"
             }
-        
+
         case SeriesRosterInvitation.Status.REVOKED:
             return 400, {"message": "This invitation has been revoked"}
 
@@ -310,9 +315,9 @@ def accept_series_invitation_via_mail(
     auth=None,
 )
 def decline_series_invitation_via_mail(
-    request, token: str,
+    request: HttpRequest,
+    token: str,
 ) -> tuple[int, SeriesRosterInvitation | message_response]:
-
     valid, invitation_id = get_details_from_invitation_token(token)
 
     if not valid:
@@ -322,7 +327,7 @@ def decline_series_invitation_via_mail(
         invitation = SeriesRosterInvitation.objects.get(id=invitation_id)
     except SeriesRosterInvitation.DoesNotExist:
         return 400, {"messsage": "Invitation does not exist"}
-    
+
     match invitation.status:
         case SeriesRosterInvitation.Status.EXPIRED:
             return 400, {"message": "This invitation has expired 😔"}
@@ -334,7 +339,7 @@ def decline_series_invitation_via_mail(
             return 400, {
                 "message": f"You already declined this invitation on {invitation.rsvp_date}"
             }
-        
+
         case SeriesRosterInvitation.Status.REVOKED:
             return 400, {"message": "This invitation has been revoked"}
 
