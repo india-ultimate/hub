@@ -333,13 +333,14 @@ def update_transaction_team_registration(
 def update_transaction_player_registrations(
     transaction: RazorpayTransaction,
 ) -> None:
-    registration = Registration(
-        event=transaction.event,
-        team=transaction.team,
-        player=transaction.player,
-    )
+    for player in transaction.players.all():
+        registration = Registration(
+            event=transaction.event,
+            team=transaction.team,
+            player=player,
+        )
 
-    registration.save()
+        registration.save()
 
 
 def list_transactions_by_type(
