@@ -226,6 +226,9 @@ const AddPlayerRegistrationForm = componentProps => {
           when={
             !(componentProps.roster || [])
               .map(reg => reg.player.id)
+              .includes(props.getValue()) &&
+            !selectedPlayers()
+              .map(p => p.id)
               .includes(props.getValue())
           }
           fallback={<span>Added</span>}
