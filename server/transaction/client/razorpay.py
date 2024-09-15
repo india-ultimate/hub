@@ -39,10 +39,6 @@ def create_order(
         logger.error("Failed to initiate Razorpay payment: %s", e)
         return None
 
-    if not response.success:
-        logger.error("Failed to initiate Razorpay payment: %s", response)
-        return None
-
     response["key"] = settings.RAZORPAY_KEY_ID
     response["order_id"] = response["id"]
     return response
