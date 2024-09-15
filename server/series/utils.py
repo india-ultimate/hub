@@ -164,7 +164,11 @@ def get_details_from_invitation_token(
         mail_secret_key = settings.EMAIL_SECRET_KEY
         payload = jwt.decode(token, mail_secret_key, algorithms=["HS256"])
 
-        return True, payload["invitation_id"]
+        if "invitation_id" in payload:
+            return True, payload["invitation_id"]
+        else:
+            return False, None
+        
     except jwt.InvalidTokenError:
         return False, None
 
