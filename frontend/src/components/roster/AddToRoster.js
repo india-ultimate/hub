@@ -11,13 +11,7 @@ import {
 } from "@tanstack/solid-table";
 import clsx from "clsx";
 import { Icon } from "solid-heroicons";
-import {
-  arrowRight,
-  checkCircle,
-  plus,
-  xCircle,
-  xMark
-} from "solid-heroicons/solid";
+import { arrowRight, checkCircle, xCircle, xMark } from "solid-heroicons/solid";
 import { createEffect, createSignal, For, Show } from "solid-js";
 
 import { ChevronLeft, ChevronRight, Spinner } from "../../icons";
@@ -28,123 +22,15 @@ import ErrorPopover from "../popover/ErrorPopover";
 import SuccessPopover from "../popover/SuccessPopover";
 import RazorpayPayment from "../RazorpayPayment";
 
-const AddToRoster = props => {
-  let modalRef;
+const AddToRoster = componentProps => {
   let successPopoverRef, errorPopoverRef, errorModalRef;
   const [status, setStatus] = createSignal("");
   const [error, setError] = createSignal({});
-
-  const queryClient = useQueryClient();
-  const addToRosterMutation = createMutation({
-    mutationFn: addToRoster,
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["tournament-roster"] })
-  });
-
-  createEffect(function onMutationComplete() {
-    if (addToRosterMutation.isSuccess) {
-      setStatus("Player added to the roster");
-      successPopoverRef.showPopover();
-    }
-    if (addToRosterMutation.isError) {
-      try {
-        const mutationError = JSON.parse(addToRosterMutation.error.message);
-        setError(mutationError);
-        setStatus(mutationError.message);
-        // Show error modal for long errors with a description, possibly an action button also
-        if (mutationError.description) {
-          errorModalRef.showModal();
-        } else {
-          errorPopoverRef.showPopover();
-        }
-      } catch (err) {
-        throw new Error(`Couldn't parse error object: ${err}`);
-      }
-    }
-  });
-
-  return (
-    <div class="mt-4 flex justify-center gap-2">
-      <button
-        onClick={() => modalRef.showModal()}
-        type="button"
-        class="mb-2 me-2 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-700 px-2 py-2.5 text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 md:px-5"
-      >
-        <Icon path={plus} style={{ width: "24px" }} />
-        <span class="w-3/4">Add a player </span>
-      </button>
-      <Modal
-        ref={modalRef}
-        title={<span class="font-bold">Adding a new player to the roster</span>}
-        close={() => modalRef.close()}
-      >
-        <AddPlayerRegistrationForm
-          roster={props.roster}
-          eventId={props.eventId}
-          teamId={props.teamId}
-          tournamentSlug={props.tournamentSlug}
-          teamSlug={props.teamSlug}
-          isPartOfSeries={props.isPartOfSeries}
-          playerFee={props.playerFee}
-        />
-      </Modal>
-
-      <SuccessPopover ref={successPopoverRef}>
-        <div class="flex flex-row items-center gap-2">
-          <Icon path={checkCircle} class="h-6 w-6 text-green-700" />
-          <div class="font-medium">{status()}</div>
-        </div>
-      </SuccessPopover>
-
-      <ErrorPopover ref={errorPopoverRef}>
-        <div class="flex flex-row items-center gap-2">
-          <Icon path={xCircle} class="h-6 w-6 text-red-700" />
-          <div class="font-medium">{status()}</div>
-        </div>
-      </ErrorPopover>
-
-      <Modal
-        ref={errorModalRef}
-        close={() => errorModalRef.close()}
-        fullWidth={true}
-        title={
-          <div class="flex flex-row gap-2">
-            <div>
-              <Icon path={xCircle} class="inline h-6 w-6 text-red-700" />
-            </div>
-            <div class="font-medium text-red-700">{status()}</div>
-          </div>
-        }
-      >
-        <div class="flex w-full flex-col justify-between gap-4 pb-2">
-          <div class="text-gray-600">{error().description}</div>
-          <div class="place-self-end">
-            <A href={`${error().action_href}`}>
-              <button
-                type="button"
-                class={clsx(
-                  "inline-flex w-fit items-center rounded-lg border px-2.5 py-1.5 text-center text-sm font-medium sm:text-base",
-                  "border-gray-500 bg-gray-200 text-gray-800 transition-colors hover:bg-gray-500 hover:text-white focus:outline-none focus:ring-4 focus:ring-gray-300"
-                )}
-              >
-                <span class="mr-2">{error().action_name}</span>
-                <Icon path={arrowRight} class="h-3 w-3" />
-              </button>
-            </A>
-          </div>
-        </div>
-      </Modal>
-    </div>
-  );
-};
-
-const AddPlayerRegistrationForm = componentProps => {
   const [search, setSearch] = createSignal("");
   const [pagination, setPagination] = createSignal({
     pageIndex: 0,
     pageSize: 5
   });
-  const [status, setStatus] = createSignal();
   const [selectedPlayers, setSelectedPlayers] = createSignal([]);
 
   const queryClient = useQueryClient();
@@ -157,9 +43,22 @@ const AddPlayerRegistrationForm = componentProps => {
   createEffect(function onMutationComplete() {
     if (addToRosterMutation.isSuccess) {
       setStatus("Successfully added player to the roster");
+      successPopoverRef?.showPopover();
     }
     if (addToRosterMutation.isError) {
-      setStatus("Adding to the roster failed");
+      try {
+        const mutationError = JSON.parse(addToRosterMutation.error.message);
+        setError(mutationError);
+        setStatus(mutationError.message);
+        // Show error modal for long errors with a description, possibly an action button also
+        if (mutationError.description) {
+          errorModalRef?.showModal();
+        } else {
+          errorPopoverRef?.showPopover();
+        }
+      } catch (err) {
+        throw new Error(`Couldn't parse error object: ${err}`);
+      }
     }
   });
 
@@ -265,7 +164,7 @@ const AddPlayerRegistrationForm = componentProps => {
   });
 
   return (
-    <div class="h-screen w-full rounded-lg p-2">
+    <div class="w-full rounded-lg p-2">
       <Show when={componentProps.playerFee > 0}>
         <div class="mb-4 rounded-lg bg-blue-50 p-4 text-sm text-blue-800 dark:bg-gray-800 dark:text-blue-400">
           <h1 class="text-lg font-bold">Player Registrations</h1>
@@ -310,16 +209,18 @@ const AddPlayerRegistrationForm = componentProps => {
                 queryKey: ["tournament-roster"]
               });
               setStatus("Paid successfully!");
+              successPopoverRef?.showPopover();
             }}
             failureCallback={msg => {
+              console.log(msg, componentProps.errorPopoverRef);
+
               setStatus(msg);
+              errorPopoverRef?.showPopover();
             }}
           />
         </div>
       </Show>
-      <h2 class="w-full text-left text-lg font-bold text-blue-600">
-        Add Players to Roster
-      </h2>
+      <h2 class="w-full text-left text-lg font-bold text-blue-600">Search</h2>
       <h3 class="w-full text-left text-sm italic">
         Search players by name or email{" "}
         <Show
@@ -470,7 +371,51 @@ const AddPlayerRegistrationForm = componentProps => {
         </div>
       </Show>
 
-      <p class="my-2">{status()}</p>
+      <SuccessPopover ref={successPopoverRef}>
+        <div class="flex flex-row items-center gap-2">
+          <Icon path={checkCircle} class="h-6 w-6 text-green-700" />
+          <div class="font-medium">{status()}</div>
+        </div>
+      </SuccessPopover>
+
+      <ErrorPopover ref={errorPopoverRef}>
+        <div class="flex flex-row items-center gap-2">
+          <Icon path={xCircle} class="h-6 w-6 text-red-700" />
+          <div class="font-medium">{status()}</div>
+        </div>
+      </ErrorPopover>
+
+      <Modal
+        ref={errorModalRef}
+        close={() => errorModalRef.close()}
+        fullWidth={true}
+        title={
+          <div class="flex flex-row gap-2">
+            <div>
+              <Icon path={xCircle} class="inline h-6 w-6 text-red-700" />
+            </div>
+            <div class="font-medium text-red-700">{status()}</div>
+          </div>
+        }
+      >
+        <div class="flex w-full flex-col justify-between gap-4 pb-2">
+          <div class="text-gray-600">{error().description}</div>
+          <div class="place-self-end">
+            <A href={`${error().action_href}`}>
+              <button
+                type="button"
+                class={clsx(
+                  "inline-flex w-fit items-center rounded-lg border px-2.5 py-1.5 text-center text-sm font-medium sm:text-base",
+                  "border-gray-500 bg-gray-200 text-gray-800 transition-colors hover:bg-gray-500 hover:text-white focus:outline-none focus:ring-4 focus:ring-gray-300"
+                )}
+              >
+                <span class="mr-2">{error().action_name}</span>
+                <Icon path={arrowRight} class="h-3 w-3" />
+              </button>
+            </A>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };
