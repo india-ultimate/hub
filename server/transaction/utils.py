@@ -35,8 +35,8 @@ def create_transaction(
     order: AnnualMembershipSchema
     | EventMembershipSchema
     | GroupMembershipSchema
-    | TeamRegistrationSchema
-    | PlayerRegistrationSchema,
+    | PlayerRegistrationSchema
+    | TeamRegistrationSchema,
     gateway: PaymentGateway,
     transaction_id: str | None = None,
 ) -> tuple[int, str | message_response | dict[str, Any]]:

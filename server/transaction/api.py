@@ -64,8 +64,8 @@ def create_razorpay_transaction(
     order: AnnualMembershipSchema
     | EventMembershipSchema
     | GroupMembershipSchema
-    | TeamRegistrationSchema
-    | PlayerRegistrationSchema,
+    | PlayerRegistrationSchema
+    | TeamRegistrationSchema,
 ) -> tuple[int, str | message_response | dict[str, Any]]:
     return create_transaction(request, order, PaymentGateway.RAZORPAY)
 
