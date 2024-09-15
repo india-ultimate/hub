@@ -1,11 +1,11 @@
 import datetime
+import logging
 import uuid
 from typing import Any
 
 import razorpay
 from django.conf import settings
 from django.utils.timezone import now
-from requests.exceptions import RequestException
 
 from ..models import RazorpayTransaction
 from ..schema import RazorpayCallbackSchema
@@ -14,6 +14,8 @@ CLIENT = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_S
 
 RAZORPAY_NOTES_MAX = 512
 RAZORPAY_DESCRIPTION_MAX = 255
+
+logger = logging.getLogger(__name__)
 
 
 def create_order(
@@ -33,8 +35,12 @@ def create_order(
     }
     try:
         response = CLIENT.order.create(data=data)
-    except (RequestException, razorpay.errors.BadRequestError, razorpay.errors.ServerError) as e:
-        print(f"ERROR: Failed to connect to Razorpay with {e}")
+    except Exception as e:
+        logger.error("Failed to initiate Razorpay payment: %s", e)
+        return None
+
+    if not response.success:
+        logger.error("Failed to initiate Razorpay payment: %s", response)
         return None
 
     response["key"] = settings.RAZORPAY_KEY_ID
