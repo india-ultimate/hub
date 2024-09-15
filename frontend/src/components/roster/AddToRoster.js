@@ -210,6 +210,7 @@ const AddToRoster = componentProps => {
               });
               setStatus("Paid successfully!");
               successPopoverRef?.showPopover();
+              setSelectedPlayers([]);
             }}
             failureCallback={msg => {
               console.log(msg, componentProps.errorPopoverRef);
