@@ -95,6 +95,7 @@ const RazorpayPayment = props => {
                     }
                   }
                 }
+                setLoading(false);
               });
             }
           });
@@ -107,6 +108,7 @@ const RazorpayPayment = props => {
                 `${response.error.code}: ${response.error.description}`
               );
             }
+            setLoading(false);
           });
           paymentObject.open();
 
@@ -129,8 +131,8 @@ const RazorpayPayment = props => {
               );
             }
           }
+          setLoading(false);
         }
-        setLoading(false);
       })
       .catch(error => {
         setLoading(false);
@@ -143,20 +145,22 @@ const RazorpayPayment = props => {
 
   return (
     <>
-      <Show when={loading()}>
-        <Spinner />
-      </Show>
       <button
         class={`my-5 block rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800  ${
-          props.disabled
+          props.disabled || loading()
             ? "cursor-not-allowed bg-gray-400 hover:bg-gray-500"
             : ""
         }`}
         type="button"
-        disabled={props.disabled}
+        disabled={props.disabled || loading()}
         onClick={initiatePayment}
       >
-        Pay
+        <Show when={loading()} fallback={"Pay"}>
+          <div class="text-sm">
+            <Spinner height={20} width={20} />
+            <span class="mr-2">Paying...</span>
+          </div>
+        </Show>
       </button>
       {/* <div
         class="mb-4 rounded-lg bg-yellow-50 p-4 text-sm text-yellow-800 dark:bg-gray-800 dark:text-yellow-300"
