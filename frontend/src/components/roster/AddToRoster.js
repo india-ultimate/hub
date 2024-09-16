@@ -182,14 +182,31 @@ const AddToRoster = componentProps => {
                 Rs.{" "}
                 {(componentProps.playerFee * selectedPlayers().length) / 100}
               </strong>{" "}
-              for{" "}
-              {selectedPlayers()
-                .map(p => p.full_name)
-                .join() || "..."}
+              for {selectedPlayers().length} players
             </h2>
+            <ol class="mt-2 max-w-md list-inside list-decimal space-y-1">
+              <For each={selectedPlayers()}>
+                {player => (
+                  <li>
+                    <div class="inline-flex w-fit items-center gap-2">
+                      <span>{player.full_name}</span>
+                      <button
+                        onClick={() =>
+                          setSelectedPlayers([
+                            ...selectedPlayers().filter(p => p.id !== player.id)
+                          ])
+                        }
+                      >
+                        <Icon class="h-4 w-4" path={xMark} />
+                      </button>
+                    </div>
+                  </li>
+                )}
+              </For>
+            </ol>
             <button
               onClick={() => setSelectedPlayers([])}
-              class="rounded-lg text-sm text-red-500 underline"
+              class="mt-1 rounded-lg text-sm text-red-500 underline"
             >
               Reset
             </button>
