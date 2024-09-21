@@ -2,6 +2,7 @@ import time
 from typing import Any
 
 from django.conf import settings
+from django.db import IntegrityError
 from django.db.models import Model, Q, QuerySet
 
 from server.constants import EVENT_MEMBERSHIP_AMOUNT
@@ -334,13 +335,16 @@ def update_transaction_player_registrations(
     transaction: RazorpayTransaction,
 ) -> None:
     for player in transaction.players.all():
-        registration = Registration(
-            event=transaction.event,
-            team=transaction.team,
-            player=player,
-        )
+        try:
+            registration = Registration(
+                event=transaction.event,
+                team=transaction.team,
+                player=player,
+            )
 
-        registration.save()
+            registration.save()
+        except IntegrityError:
+            pass
 
 
 def list_transactions_by_type(
