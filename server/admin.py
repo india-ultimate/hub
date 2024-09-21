@@ -6,6 +6,7 @@ from django.db.models import QuerySet
 from django.http import HttpRequest, HttpResponse
 
 from server.core.models import (
+    Accreditation,
     Guardianship,
     Player,
     Team,
@@ -297,6 +298,21 @@ class GuardianshipAdmin(admin.ModelAdmin[Guardianship]):
     @admin.display(description="User", ordering="user__first_name")
     def get_name(self, obj: Guardianship) -> str:
         return obj.user.get_full_name()
+
+    @admin.display(description="Player", ordering="player__user__first_name")
+    def get_email(self, obj: Guardianship) -> str:
+        return obj.player.user.get_full_name()
+
+
+@admin.register(Accreditation)
+class AccreditationAdmin(admin.ModelAdmin[Accreditation]):
+    search_fields = [
+        "player__user__first_name",
+        "player__user__last_name",
+        "player__user__username",
+    ]
+    list_display = ["get_email", "is_valid", "level"]
+    list_filter = ["is_valid", "level"]
 
     @admin.display(description="Player", ordering="player__user__first_name")
     def get_email(self, obj: Guardianship) -> str:
