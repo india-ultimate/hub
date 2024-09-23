@@ -1,4 +1,4 @@
-from datetime import date
+import datetime
 from pathlib import Path
 
 from django.contrib.auth import get_user_model
@@ -13,6 +13,7 @@ from server.core.models import (
     Vaccination,
 )
 from server.membership.models import Membership
+from server.season.models import Season
 from server.transaction.models import ManualTransaction
 
 User = get_user_model()
@@ -54,17 +55,17 @@ class MergeUsersCommandTestCase(TestCase):
             username="user2@example.com", email="user2@example.com", phone="9876543210"
         )
         self.player1 = Player.objects.create(
-            user=self.user1, date_of_birth=date(2000, 1, 1), ultimate_central_id=None
+            user=self.user1, date_of_birth=datetime.date(2000, 1, 1), ultimate_central_id=None
         )
         self.player2 = Player.objects.create(
-            user=self.user2, date_of_birth=date(1995, 5, 5), ultimate_central_id=100
+            user=self.user2, date_of_birth=datetime.date(1995, 5, 5), ultimate_central_id=100
         )
         self.membership1 = Membership.objects.create(
             player=self.player1,
             membership_number="M12345",
             is_annual=True,
-            start_date=date(2023, 1, 1),
-            end_date=date(2023, 12, 31),
+            start_date=datetime.date(2023, 1, 1),
+            end_date=datetime.date(2023, 12, 31),
             is_active=False,
             waiver_valid=False,
             waiver_signed_by=self.user1,
@@ -74,8 +75,8 @@ class MergeUsersCommandTestCase(TestCase):
             player=self.player2,
             membership_number="M67890",
             is_annual=True,
-            start_date=date(2023, 1, 1),
-            end_date=date(2023, 12, 31),
+            start_date=datetime.date(2023, 1, 1),
+            end_date=datetime.date(2023, 12, 31),
             is_active=True,
             waiver_valid=True,
             waiver_signed_by=self.user2,
@@ -173,6 +174,34 @@ class TestImportPlayers(TestCase):
             path = self.cert_dir / name
             path.unlink(missing_ok=True)
         self.cert_dir.rmdir()
+
+
+class TestActivateMemberships(TestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        self.fixtures_dir = Path(__file__).parent.joinpath("fixtures")
+        self.fixture = self.fixtures_dir / "import-players.csv"
+        ind_tz = datetime.timezone(datetime.timedelta(hours=5, minutes=30), name="IND")
+        Season.objects.create(
+            name="Season 24-25",
+            start_date=f"{datetime.datetime.now(ind_tz).year}-08-01",
+            end_date=f"{datetime.datetime.now(ind_tz).year+1}-07-30",
+            annual_membership_amount=70000,
+            sponsored_annual_membership_amount=20000,
+        )
+
+    def test_import_players(self) -> None:
+        call_command("import_players", self.fixture, "--date-format", "%d-%m-%Y")
+        call_command("activate_memberships", self.fixture)
+
+        n_players = 4
+        self.assertEqual(n_players, User.objects.count())
+        self.assertEqual(n_players, Player.objects.count())
+        self.assertEqual(n_players, Membership.objects.count())
+
+    def tearDown(self) -> None:
+        # Clean up test data
+        Season.objects.all().delete()
 
 
 class TestSampleData(TestCase):
