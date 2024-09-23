@@ -77,6 +77,7 @@ class Command(BaseCommand):
                     "not_in_india": row["not_in_india"].upper() == "Y",
                     "occupation": OCCUPATIONS.get(row["occupation"], None),
                     "educational_institution": row["educational_institution"],
+                    "sponsored": row["sponsored"].upper() == "Y" if "sponsored" in row else False,
                 }
                 if player_data["gender"] != Player.GenderTypes.OTHER:
                     player_data["match_up"] = player_data["gender"]
