@@ -22,6 +22,9 @@ swap_size_mb = 512
   PORT = "8000"
   DJANGO_SETTINGS_MODULE = "hub.production"
 
+[[vm]]
+  size = "shared-cpu-2x"
+
 [[services]]
   protocol = "tcp"
   internal_port = 80
