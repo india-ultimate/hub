@@ -265,14 +265,14 @@ class MatchSchema(ModelSchema):
     suggested_score_team_2: MatchScoreModelSchema | None
     field: TournamentFieldSchema | None
 
-    # stats: MatchStatsSchema | None
+    stats: MatchStatsSchema | None
 
-    # @staticmethod
-    # def resolve_stats(match: Match) -> MatchStatsSchema | None:
-    #     try:
-    #         return MatchStatsSchema.from_orm(match.stats)
-    #     except MatchStats.DoesNotExist:
-    #         return None
+    @staticmethod
+    def resolve_stats(match: Match) -> MatchStatsSchema | None:
+        try:
+            return MatchStatsSchema.from_orm(match.stats)
+        except MatchStats.DoesNotExist:
+            return None
 
     class Config:
         model = Match
