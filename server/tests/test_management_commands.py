@@ -10,10 +10,12 @@ from server.core.models import (
     Accreditation,
     Guardianship,
     Player,
+    Team,
     Vaccination,
 )
 from server.membership.models import Membership
 from server.season.models import Season
+from server.series.models import Series, SeriesRegistration
 from server.transaction.models import ManualTransaction
 
 User = get_user_model()
@@ -202,6 +204,59 @@ class TestActivateMemberships(TestCase):
     def tearDown(self) -> None:
         # Clean up test data
         Season.objects.all().delete()
+
+
+class TestAddToSeriesRoster(TestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        self.fixtures_dir = Path(__file__).parent.joinpath("fixtures")
+        self.fixture = self.fixtures_dir / "import-players.csv"
+        ind_tz = datetime.timezone(datetime.timedelta(hours=5, minutes=30), name="IND")
+        Season.objects.create(
+            name="Season 24-25",
+            start_date=f"{datetime.datetime.now(ind_tz).year}-08-01",
+            end_date=f"{datetime.datetime.now(ind_tz).year+1}-07-30",
+            annual_membership_amount=70000,
+            sponsored_annual_membership_amount=20000,
+        )
+        self.series = Series.objects.create(
+            name="NCS",
+            start_date=f"{datetime.datetime.now(ind_tz).year}-08-01",
+            end_date=f"{datetime.datetime.now(ind_tz).year}-12-30",
+            type=Series.Type.MIXED,
+            category=Series.Category.CLUB,
+            series_roster_max_players=20,
+            event_min_players_male=10,
+            event_min_players_female=10,
+            event_max_players_male=12,
+            event_max_players_female=12,
+        )
+        self.team = Team.objects.create(name="Team A")
+
+    def test_add_to_series_roster(self) -> None:
+        call_command("import_players", self.fixture, "--date-format", "%d-%m-%Y")
+        call_command("activate_memberships", self.fixture)
+        call_command(
+            "add_to_series_roster",
+            self.fixture,
+            "--series-id",
+            self.series.id,
+            "--team-id",
+            self.team.id,
+        )
+
+        n_players = 4
+        self.assertEqual(n_players, User.objects.count())
+        self.assertEqual(n_players, Player.objects.count())
+        self.assertEqual(n_players, Membership.objects.count())
+        self.assertEqual(n_players, SeriesRegistration.objects.count())
+
+    def tearDown(self) -> None:
+        # Clean up test data
+        Season.objects.all().delete()
+        Series.objects.all().delete()
+        Team.objects.all().delete()
+        SeriesRegistration.objects.all().delete()
 
 
 class TestSampleData(TestCase):
