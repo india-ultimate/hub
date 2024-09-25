@@ -16,6 +16,7 @@ import MatchSpiritScoreForm from "../tournament/MatchSpiritScoreForm";
 import SpiritScoreTable from "../tournament/SpiritScoreTable";
 import FinalSpiritScores from "./FinalSpiritScores";
 import MatchHeader from "./MatchHeader";
+import CreateStatsButton from "./stats/CreateStatsButton";
 import SubmitScore from "./SubmitScore";
 import SubmitSpiritScore from "./SubmitSpiritScore";
 /**
@@ -307,7 +308,7 @@ const TournamentMatch = props => {
           </button>
         </a>
       </Show>
-      <Show when={props.match.stats}>
+      {/* <Show when={props.match.stats}>
         <A
           class="mt-2 flex justify-center"
           href={`/tournament/${props.tournamentSlug}/match/${props.match.id}/live`}
@@ -323,7 +324,7 @@ const TournamentMatch = props => {
             <span class="ml-1">LIve Scores</span>
           </button>
         </A>
-      </Show>
+      </Show> */}
       {/* Score buttons */}
       <Show
         when={
@@ -826,7 +827,7 @@ const TournamentMatch = props => {
         </div>
       </Show>
 
-      {/* <Show
+      <Show
         when={
           (props.match.status === "COM" || props.match.status === "SCH") &&
           isStaff()
@@ -850,13 +851,13 @@ const TournamentMatch = props => {
           >
             <A
               class="rounded-lg bg-blue-500 px-2 py-1 text-white"
-              href={`/tournament/${props.tournamentSlug}/match/${props.match?.id}/edit-stats`}
+              href={`/tournament/${props.tournamentSlug}/match/${props.match?.id}/edit-stats-min`}
             >
               Edit Stats
             </A>
           </Show>
         </div>
-      </Show> */}
+      </Show>
     </>
   );
 };

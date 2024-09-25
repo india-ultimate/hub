@@ -1273,6 +1273,26 @@ export const createMatchStatsEvent = async ({ match_id, body }) => {
   return data;
 };
 
+export const matchStatsUndo = async ({ match_id }) => {
+  console.log("undoing last event for match: ", match_id);
+  const response = await fetch(`/api/match/${match_id}/stats/event/undo`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin"
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.message || JSON.stringify(data));
+  }
+
+  return data;
+};
+
 export const matchStatsHalfTime = async ({ match_id }) => {
   const response = await fetch(`/api/match/${match_id}/stats/half-time`, {
     method: "POST",
