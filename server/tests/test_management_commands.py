@@ -16,6 +16,7 @@ from server.core.models import (
 from server.membership.models import Membership
 from server.season.models import Season
 from server.series.models import Series, SeriesRegistration
+from server.tournament.models import Event, Registration, Tournament
 from server.transaction.models import ManualTransaction
 
 User = get_user_model()
@@ -257,6 +258,83 @@ class TestAddToSeriesRoster(TestCase):
         Series.objects.all().delete()
         Team.objects.all().delete()
         SeriesRegistration.objects.all().delete()
+
+
+class TestAddToEventRoster(TestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        self.fixtures_dir = Path(__file__).parent.joinpath("fixtures")
+        self.fixture = self.fixtures_dir / "import-players.csv"
+        ind_tz = datetime.timezone(datetime.timedelta(hours=5, minutes=30), name="IND")
+        Season.objects.create(
+            name="Season 24-25",
+            start_date=f"{datetime.datetime.now(ind_tz).year}-08-01",
+            end_date=f"{datetime.datetime.now(ind_tz).year+1}-07-30",
+            annual_membership_amount=70000,
+            sponsored_annual_membership_amount=20000,
+        )
+        self.series = Series.objects.create(
+            name="NCS",
+            start_date=f"{datetime.datetime.now(ind_tz).year}-08-01",
+            end_date=f"{datetime.datetime.now(ind_tz).year}-12-30",
+            type=Series.Type.MIXED,
+            category=Series.Category.CLUB,
+            series_roster_max_players=20,
+            event_min_players_male=10,
+            event_min_players_female=10,
+            event_max_players_male=12,
+            event_max_players_female=12,
+        )
+        self.team = Team.objects.create(name="Team A")
+        self.event = Event.objects.create(
+            title="Event",
+            start_date=f"{datetime.datetime.now(ind_tz).year}-08-01",
+            end_date=f"{datetime.datetime.now(ind_tz).year}-12-30",
+            team_registration_start_date=f"{datetime.datetime.now(ind_tz).year}-08-01",
+            team_registration_end_date=f"{datetime.datetime.now(ind_tz).year}-08-01",
+            player_registration_start_date=f"{datetime.datetime.now(ind_tz).year}-08-01",
+            player_registration_end_date=f"{datetime.datetime.now(ind_tz).year}-08-01",
+        )
+        self.tournament = Tournament.objects.create(event=self.event)
+        self.series.teams.add(self.team)
+        self.tournament.teams.add(self.team)
+
+    def test_add_to_event_roster(self) -> None:
+        call_command("import_players", self.fixture, "--date-format", "%d-%m-%Y")
+        call_command("activate_memberships", self.fixture)
+        call_command(
+            "add_to_series_roster",
+            self.fixture,
+            "--series-id",
+            self.series.id,
+            "--team-id",
+            self.team.id,
+        )
+        call_command(
+            "add_to_event_roster",
+            self.fixture,
+            "--event-id",
+            self.event.id,
+            "--team-id",
+            self.team.id,
+        )
+
+        n_players = 4
+        self.assertEqual(n_players, User.objects.count())
+        self.assertEqual(n_players, Player.objects.count())
+        self.assertEqual(n_players, Membership.objects.count())
+        self.assertEqual(n_players, SeriesRegistration.objects.count())
+        self.assertEqual(n_players, Registration.objects.count())
+
+    def tearDown(self) -> None:
+        # Clean up test data
+        Season.objects.all().delete()
+        Series.objects.all().delete()
+        Team.objects.all().delete()
+        SeriesRegistration.objects.all().delete()
+        Registration.objects.all().delete()
+        Event.objects.all().delete()
+        Tournament.objects.all().delete()
 
 
 class TestSampleData(TestCase):
