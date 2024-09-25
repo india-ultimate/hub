@@ -47,8 +47,9 @@ const CollegeID = lazy(() => import("./CollegeID"));
 const AllSeries = lazy(() => import("./series/index"));
 const Series = lazy(() => import("./series/Series"));
 const SeriesRoster = lazy(() => import("./series/SeriesRoster"));
-const EditStats = lazy(() => import("./match/stats/EditStats"));
-const ViewStats = lazy(() => import("./match/stats/ViewStats"));
+// const EditStats = lazy(() => import("./match/stats/EditStats"));
+const EditStatsMin = lazy(() => import("./match/stats/EditMinStats"));
+// const ViewStats = lazy(() => import("./match/stats/ViewStats"));
 
 const filters = {
   id: /^\d+$/ // only allow numbers
@@ -107,10 +108,10 @@ export default function App() {
                     path={"/tournament/:tournament_slug/team/:team_slug"}
                     component={TournamentTeam}
                   />
-                  <Route
+                  {/* <Route
                     path="/tournament/:tournamentSlug/match/:matchId/live"
                     component={ViewStats}
-                  />
+                  /> */}
                   {/* Team Public Routes */}
                   <Route path={"/teams"} component={Teams} />
                   <Route path={"/team/:slug"} component={ViewTeam} />
@@ -210,9 +211,13 @@ export default function App() {
                     component={TournamentManager}
                     admin={true}
                   />
-                  <UserRoute
+                  {/* <UserRoute
                     path="/tournament/:tournamentSlug/match/:matchId/edit-stats"
                     component={EditStats}
+                  /> */}
+                  <UserRoute
+                    path="/tournament/:tournamentSlug/match/:matchId/edit-stats-min"
+                    component={EditStatsMin}
                   />
                   <Route path="*" component={Error404} />
                 </Routes>
