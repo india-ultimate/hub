@@ -17,17 +17,12 @@ def handle_all_events(
 
 
 def handle_half_time(match: Match) -> tuple[int, MatchStats | dict[str, str]]:
-    if (
-        match.team_1 is not None
-        and match.team_2 is not None
-        and match.team_1.id == match.stats.initial_possession
-    ):
+    if match.team_1 is None or match.team_2 is None:
+        return 422, {"message": "Invalid teams"}
+
+    if match.stats.initial_possession.id == match.team_1.id:
         match.stats.current_possession = match.team_2
-    elif (
-        match.team_1 is not None
-        and match.team_2 is not None
-        and match.team_2.id == match.stats.initial_possession
-    ):
+    elif match.stats.initial_possession.id == match.team_2.id:
         match.stats.current_possession = match.team_1
 
     match.stats.status = MatchStats.Status.SECOND_HALF
@@ -167,7 +162,6 @@ def handle_undo(match: Match) -> tuple[int, MatchStats | message_response]:
         return 422, {"message": "No events to undo"}
 
     last_event = latest_events[0]
-    print(last_event)
 
     if last_event.type == MatchEvent.EventType.SCORE:
         return handle_score_undo(match=match, score_event=last_event)
