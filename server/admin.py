@@ -16,9 +16,11 @@ from server.membership.models import Membership
 from server.season.models import Season
 from server.series.models import Series, SeriesRegistration, SeriesRosterInvitation
 from server.tournament.models import (
+    Bracket,
     Event,
     Match,
     Pool,
+    PositionPool,
     Registration,
     Tournament,
     TournamentField,
@@ -129,6 +131,26 @@ class TournamentFieldAdmin(admin.ModelAdmin[TournamentField]):
 
 @admin.register(Pool)
 class PoolAdmin(admin.ModelAdmin[Pool]):
+    search_fields = ["tournament__event__title"]
+    list_display = ["get_name", "name"]
+
+    @admin.display(description="Tournament Name", ordering="tournament__event__title")
+    def get_name(self, obj: Pool) -> str:
+        return obj.tournament.event.title
+
+
+@admin.register(Bracket)
+class BracketAdmin(admin.ModelAdmin[Bracket]):
+    search_fields = ["tournament__event__title"]
+    list_display = ["get_name", "name"]
+
+    @admin.display(description="Tournament Name", ordering="tournament__event__title")
+    def get_name(self, obj: Pool) -> str:
+        return obj.tournament.event.title
+
+
+@admin.register(PositionPool)
+class PositionPoolAdmin(admin.ModelAdmin[PositionPool]):
     search_fields = ["tournament__event__title"]
     list_display = ["get_name", "name"]
 
