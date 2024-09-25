@@ -100,11 +100,13 @@ const EditStats = () => {
           </div>
           <div class="col-span-4">
             <div class="flex items-center justify-center rounded-xl bg-red-100 py-1">
-              <span class="relative flex h-2.5 w-2.5">
-                <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
-                <span class="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500" />
+              <span class="text-sm font-bold text-rose-500">
+                {matchQuery.data?.stats?.status === "FH"
+                  ? "First Half"
+                  : matchQuery.data?.stats?.status === "SH"
+                  ? "Second Half"
+                  : "Completed"}
               </span>
-              <span class="ml-2 text-sm font-bold text-rose-500">Live</span>
             </div>
           </div>
           <div class="col-span-4 flex justify-center">
@@ -165,49 +167,40 @@ const EditStats = () => {
         </div>
       </div>
 
-      <div class="my-2 mt-6 rounded-lg bg-gray-50 p-4 text-sm" role="alert">
-        <details>
-          <summary class="text-gray-600">Match Info</summary>
-          <div class="mt-4 space-y-2">
-            <div>
-              <span class="font-bold">Status:</span>{" "}
-              {matchQuery.data?.stats?.status === "FH"
-                ? "First Half"
-                : matchQuery.data?.stats?.status === "SH"
-                ? "Second Half"
-                : "Completed"}
-            </div>
-            <div>
-              <span class="font-bold">
-                Team which started the game on Offense:
-              </span>{" "}
-              {matchQuery.data?.stats?.initial_possession?.name}
-            </div>
-          </div>
+      <div class="mb-2 mt-6 flex flex-col flex-wrap space-y-2 rounded-lg bg-gray-100 px-4 py-3 text-sm">
+        <div class="italic">
+          <span class="font-bold">
+            {matchQuery.data?.stats?.initial_possession?.name}
+          </span>{" "}
+          <span>started on offense.</span>
+        </div>
+        {/* <div class="flex justify-end space-x-2">
           <button
-            class="mt-2 rounded-lg bg-blue-500 px-2 py-1 text-white"
+            class="rounded-lg bg-blue-500 px-3 py-2 text-sm text-white disabled:bg-gray-300"
             onClick={() =>
               matchStatsHalfTimeMutation.mutate({
                 match_id: params.matchId
               })
             }
+            disabled={matchStatsHalfTimeMutation.isLoading}
           >
             Half Time
           </button>
           <button
-            class="mx-2 rounded-lg bg-blue-500 px-2 py-1 text-white"
+            class="rounded-lg bg-blue-500 px-3 py-2 text-sm text-white disabled:bg-gray-300"
             onClick={() =>
               matchStatsFullTimeMutation.mutate({
                 match_id: params.matchId
               })
             }
+            disabled={matchStatsFullTimeMutation.isLoading}
           >
             Full Time
           </button>
-        </details>
+        </div> */}
       </div>
 
-      <div class="my-2 flex flex-row items-center justify-between gap-x-4 rounded-lg bg-blue-50 px-6 py-2 text-sm">
+      <div class="mb-2 mt-2 flex flex-row items-center justify-between gap-x-4 rounded-lg bg-blue-100 px-4 py-2 text-sm">
         <div class="text-md font-semibold text-blue-600">
           {matchQuery.data?.team_1?.name}
         </div>
@@ -258,7 +251,7 @@ const EditStats = () => {
         </div>
       </div>
 
-      <div class="my-2 flex flex-row items-center justify-between gap-x-4 rounded-lg bg-green-50 px-4 py-2 text-sm">
+      <div class="my-2 flex flex-row items-center justify-between gap-x-4 rounded-lg bg-green-100 px-4 py-2 text-sm">
         <div class="text-md font-semibold text-green-600">
           {matchQuery.data?.team_2?.name}
         </div>
@@ -309,16 +302,40 @@ const EditStats = () => {
         </div>
       </div>
 
-      <button
-        type="button"
-        class="my-2 rounded-lg bg-yellow-400 px-5 py-2.5 text-sm font-medium text-white hover:bg-yellow-500 focus:outline-none focus:ring-4 focus:ring-yellow-300 disabled:bg-gray-300"
-        onClick={() =>
-          matchStatsUndoMutation.mutate({ match_id: matchQuery.data?.id })
-        }
-        disabled={matchStatsUndoMutation.isLoading}
-      >
-        Undo last event
-      </button>
+      <div class="my-6 flex w-full flex-wrap justify-end gap-2">
+        <button
+          class="rounded-lg bg-blue-500 px-4 py-3 text-sm text-white disabled:bg-gray-300"
+          onClick={() =>
+            matchStatsHalfTimeMutation.mutate({
+              match_id: params.matchId
+            })
+          }
+          disabled={matchStatsHalfTimeMutation.isLoading}
+        >
+          Half Time
+        </button>
+        <button
+          class="rounded-lg bg-blue-500 px-4 py-3 text-sm text-white disabled:bg-gray-300"
+          onClick={() =>
+            matchStatsFullTimeMutation.mutate({
+              match_id: params.matchId
+            })
+          }
+          disabled={matchStatsFullTimeMutation.isLoading}
+        >
+          Full Time
+        </button>
+        <button
+          type="button"
+          class="rounded-lg bg-yellow-300 px-4 py-3 text-sm font-medium text-gray-800 focus:outline-none focus:ring-4 focus:ring-yellow-300 disabled:bg-gray-300"
+          onClick={() =>
+            matchStatsUndoMutation.mutate({ match_id: matchQuery.data?.id })
+          }
+          disabled={matchStatsUndoMutation.isLoading}
+        >
+          Undo last event
+        </button>
+      </div>
 
       <div class="inline-flex w-full items-center justify-center">
         <hr class="my-8 h-px w-64 border-0 bg-gray-200 dark:bg-gray-700" />
