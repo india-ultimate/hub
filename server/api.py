@@ -79,7 +79,12 @@ from server.season.api import router as season_router
 from server.series.api import router as series_router
 from server.series.models import SeriesRegistration
 from server.top_score_utils import TopScoreClient
-from server.tournament.match_stats import handle_all_events, handle_full_time, handle_half_time
+from server.tournament.match_stats_min import (
+    handle_all_events,
+    handle_full_time,
+    handle_half_time,
+    handle_undo,
+)
 from server.tournament.models import (
     Bracket,
     CrossPool,
@@ -2172,6 +2177,11 @@ def create_match_stats(
         match=match, tournament=match.tournament, initial_possession=team, current_possession=team
     )
 
+    # NOTE: ignoring line selection for regionals stats
+    match_stats.status_team_1 = MatchStats.TeamStatus.COMPLETED_LINE_SELECTION
+    match_stats.status_team_2 = MatchStats.TeamStatus.COMPLETED_LINE_SELECTION
+    match_stats.save()
+
     return 200, match_stats
 
 
@@ -2193,6 +2203,25 @@ def create_match_stats_event(
         return 401, {"message": "Only Tournament volunteers can create match stats"}
 
     return handle_all_events(match_event=body, match=match, team=team)
+
+
+@api.post(
+    "/match/{match_id}/stats/event/undo",
+    response={200: MatchStatsSchema, 400: Response, 401: Response, 422: Response},
+)
+def match_stats_undo(
+    request: AuthenticatedHttpRequest, match_id: int
+) -> tuple[int, MatchStats | message_response]:
+    try:
+        match = Match.objects.get(id=match_id)
+        MatchStats.objects.get(match=match)
+    except (Match.DoesNotExist, MatchStats.DoesNotExist):
+        return 400, {"message": "Match or Team does not exist"}
+
+    if request.user not in match.tournament.volunteers.all():
+        return 401, {"message": "Only Tournament volunteers can update match stats"}
+
+    return handle_undo(match)
 
 
 @api.post(
