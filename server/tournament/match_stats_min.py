@@ -44,7 +44,7 @@ def handle_switch_offense(match: Match) -> tuple[int, MatchStats | message_respo
 
     if match.stats.current_possession.id == match.team_1.id:
         match.stats.current_possession = match.team_2
-    elif match.stats.initial_possession.id == match.team_2.id:
+    elif match.stats.current_possession.id == match.team_2.id:
         match.stats.current_possession = match.team_1
 
     match.stats.save()
