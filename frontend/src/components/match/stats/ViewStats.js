@@ -58,12 +58,15 @@ const ViewStats = () => {
         icon={trophy}
         pageList={[
           {
-            url: `/tournament/${params.slug}`,
+            url: `/tournament/${tournamentQuery.data?.event?.slug}`,
             name: getTournamentBreadcrumbName(
               tournamentQuery.data?.event?.slug || ""
             )
           },
-          { url: `/tournaments/${params.slug}/schedule`, name: "Schedule" },
+          {
+            url: `/tournament/${tournamentQuery.data?.event?.slug}/schedule`,
+            name: "Schedule"
+          },
           { name: matchQuery.data?.name }
         ]}
       />
