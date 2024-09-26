@@ -16,6 +16,7 @@ import {
   fetchTournamentBySlug,
   matchStatsFullTime,
   matchStatsHalfTime,
+  matchStatsSwitchOffense,
   matchStatsUndo
 } from "../../../queries";
 import ButtonWithModal from "../../modal/ButtonWithModal";
@@ -57,6 +58,13 @@ const EditStats = () => {
 
   const matchStatsUndoMutation = createMutation({
     mutationFn: matchStatsUndo,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["match", params.matchId] });
+    }
+  });
+
+  const matchStatsSwitchOffenseMutation = createMutation({
+    mutationFn: matchStatsSwitchOffense,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["match", params.matchId] });
     }
@@ -231,6 +239,22 @@ const EditStats = () => {
             }
           >
             <div class="flex justify-center">
+              <button
+                type="button"
+                class={clsx(
+                  "relative mb-2 mr-2 inline-flex items-center justify-center overflow-hidden rounded-lg p-0.5 font-medium",
+                  "bg-blue-600 text-xs text-gray-900 focus:outline-none focus:ring-4 dark:text-white"
+                )}
+                onClick={() =>
+                  matchStatsSwitchOffenseMutation.mutate({
+                    match_id: matchQuery.data?.id
+                  })
+                }
+              >
+                <span class="relative inline-flex items-center rounded-md bg-white px-3 py-2.5 transition-all duration-75 ease-in group-hover:bg-opacity-0 dark:bg-gray-800">
+                  Throwaway
+                </span>
+              </button>
               <ButtonWithModal
                 button={{ text: "Score" }}
                 buttonColor={matchCardColorToButtonStyles["blue"]}
@@ -282,6 +306,22 @@ const EditStats = () => {
             }
           >
             <div class="flex justify-center">
+              <button
+                type="button"
+                class={clsx(
+                  "relative mb-2 mr-2 inline-flex items-center justify-center overflow-hidden rounded-lg p-0.5 font-medium",
+                  "bg-green-600 text-xs text-gray-900 focus:outline-none focus:ring-4 dark:text-white"
+                )}
+                onClick={() =>
+                  matchStatsSwitchOffenseMutation.mutate({
+                    match_id: matchQuery.data?.id
+                  })
+                }
+              >
+                <span class="relative inline-flex items-center rounded-md bg-white px-3 py-2.5 transition-all duration-75 ease-in group-hover:bg-opacity-0 dark:bg-gray-800">
+                  Throwaway
+                </span>
+              </button>
               <ButtonWithModal
                 button={{ text: "Score" }}
                 buttonColor={matchCardColorToButtonStyles["green"]}
