@@ -12,7 +12,7 @@ from django.contrib.auth.base_user import AbstractBaseUser
 from django.core import mail
 from django.core.exceptions import ValidationError
 from django.core.files.storage import default_storage
-from django.db.models import Q, QuerySet, Value
+from django.db.models import Count, F, Q, QuerySet, Value
 from django.db.models.functions import Concat
 from django.db.utils import IntegrityError
 from django.http import HttpRequest
@@ -91,6 +91,7 @@ from server.tournament.models import (
     CrossPool,
     Event,
     Match,
+    MatchEvent,
     MatchScore,
     MatchStats,
     Pool,
@@ -2246,7 +2247,7 @@ def match_stats_undo(
 
 @api.post(
     "/match/{match_id}/stats/half-time",
-    response={200: MatchStatsSchema, 400: Response, 401: Response},
+    response={200: MatchStatsSchema, 400: Response, 401: Response, 422: Response},
 )
 def match_stats_half_time(
     request: AuthenticatedHttpRequest, match_id: int
@@ -2265,7 +2266,7 @@ def match_stats_half_time(
 
 @api.post(
     "/match/{match_id}/stats/full-time",
-    response={200: MatchStatsSchema, 400: Response, 401: Response},
+    response={200: MatchStatsSchema, 400: Response, 401: Response, 422: Response},
 )
 def match_stats_full_time(
     request: AuthenticatedHttpRequest, match_id: int
@@ -2280,6 +2281,72 @@ def match_stats_full_time(
         return 401, {"message": "Only Tournament volunteers can update match stats"}
 
     return handle_full_time(match)
+
+
+@api.get(
+    "/tournament/{tournament_slug}/player-scores",
+    auth=None,
+    response={200: list[dict[str, Any]], 400: Response},
+)
+def get_player_scores(
+    request: AuthenticatedHttpRequest, tournament_slug: str
+) -> tuple[int, Any | message_response]:
+    try:
+        event = Event.objects.get(slug=tournament_slug)
+        tournament = Tournament.objects.get(event=event)
+    except Tournament.DoesNotExist:
+        return 400, {"message": "Tournament does not exist"}
+    except Event.DoesNotExist:
+        return 400, {"message": "Event does not exist"}
+
+    match_stats = MatchStats.objects.filter(tournament=tournament).values_list("id", flat=True)
+
+    scores = (
+        MatchEvent.objects.filter(stats_id__in=match_stats, type=MatchEvent.EventType.SCORE)
+        .annotate(
+            first_name=F("scored_by__user__first_name"),
+            last_name=F("scored_by__user__last_name"),
+            team_name=F("team__name"),
+        )
+        .values("scored_by_id", "first_name", "last_name", "team_name")
+        .annotate(num_scores=Count("scored_by_id"))
+        .order_by("-num_scores")
+    )
+
+    return 200, scores
+
+
+@api.get(
+    "/tournament/{tournament_slug}/player-assists",
+    auth=None,
+    response={200: list[dict[str, Any]], 400: Response},
+)
+def get_player_assists(
+    request: AuthenticatedHttpRequest, tournament_slug: str
+) -> tuple[int, Any | message_response]:
+    try:
+        event = Event.objects.get(slug=tournament_slug)
+        tournament = Tournament.objects.get(event=event)
+    except Tournament.DoesNotExist:
+        return 400, {"message": "Tournament does not exist"}
+    except Event.DoesNotExist:
+        return 400, {"message": "Event does not exist"}
+
+    match_stats = MatchStats.objects.filter(tournament=tournament).values_list("id", flat=True)
+
+    assists = (
+        MatchEvent.objects.filter(stats_id__in=match_stats, type=MatchEvent.EventType.SCORE)
+        .annotate(
+            first_name=F("assisted_by__user__first_name"),
+            last_name=F("assisted_by__user__last_name"),
+            team_name=F("team__name"),
+        )
+        .values("assisted_by_id", "first_name", "last_name", "team_name")
+        .annotate(num_assists=Count("assisted_by_id"))
+        .order_by("-num_assists")
+    )
+
+    return 200, assists
 
 
 # Contact Form ##########
