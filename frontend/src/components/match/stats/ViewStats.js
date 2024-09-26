@@ -18,8 +18,8 @@ const ViewStats = () => {
     () => ["match", params.matchId],
     () => fetchMatch(params.matchId),
     {
-      refetchInterval: shouldRefetch ? 2000 : 2000000,
-      staleTime: shouldRefetch ? 5000 : 5000000,
+      refetchInterval: shouldRefetch ? 60000 : 2000000,
+      staleTime: shouldRefetch ? 300000 : 5000000,
       refetchOnWindowFocus: true
     }
   );

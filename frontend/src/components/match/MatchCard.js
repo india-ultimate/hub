@@ -308,7 +308,7 @@ const TournamentMatch = props => {
           </button>
         </a>
       </Show>
-      {/* <Show when={props.match.stats}>
+      <Show when={props.match.stats}>
         <A
           class="mt-2 flex justify-center"
           href={`/tournament/${props.tournamentSlug}/match/${props.match.id}/live`}
@@ -324,7 +324,7 @@ const TournamentMatch = props => {
             <span class="ml-1">LIve Scores</span>
           </button>
         </A>
-      </Show> */}
+      </Show>
       {/* Score buttons */}
       <Show
         when={
