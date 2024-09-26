@@ -182,30 +182,6 @@ const EditStats = () => {
           </span>{" "}
           <span>started on offense.</span>
         </div>
-        {/* <div class="flex justify-end space-x-2">
-          <button
-            class="rounded-lg bg-blue-500 px-3 py-2 text-sm text-white disabled:bg-gray-300"
-            onClick={() =>
-              matchStatsHalfTimeMutation.mutate({
-                match_id: params.matchId
-              })
-            }
-            disabled={matchStatsHalfTimeMutation.isLoading}
-          >
-            Half Time
-          </button>
-          <button
-            class="rounded-lg bg-blue-500 px-3 py-2 text-sm text-white disabled:bg-gray-300"
-            onClick={() =>
-              matchStatsFullTimeMutation.mutate({
-                match_id: params.matchId
-              })
-            }
-            disabled={matchStatsFullTimeMutation.isLoading}
-          >
-            Full Time
-          </button>
-        </div> */}
       </div>
 
       <div class="mb-2 mt-2 flex flex-row items-center justify-between gap-x-4 rounded-lg bg-blue-100 px-4 py-2 text-sm">
@@ -223,6 +199,7 @@ const EditStats = () => {
                 <ButtonWithModal
                   button={{ text: "Block" }}
                   buttonColor={matchCardColorToButtonStyles["blue"]}
+                  disabled={matchStatsSwitchOffenseMutation.isLoading}
                   onClose={() => {
                     queryClient.invalidateQueries({
                       queryKey: ["match", params.matchId]
@@ -242,22 +219,29 @@ const EditStats = () => {
               <button
                 type="button"
                 class={clsx(
-                  "relative mb-2 mr-2 inline-flex items-center justify-center overflow-hidden rounded-lg p-0.5 font-medium",
-                  "bg-blue-600 text-xs text-gray-900 focus:outline-none focus:ring-4 dark:text-white"
+                  "group relative mb-2 mr-2 inline-flex items-center justify-center overflow-hidden rounded-lg p-0.5 font-medium",
+                  "bg-blue-600 text-xs text-gray-900 focus:outline-none focus:ring-4 disabled:bg-gray-400 dark:text-white"
                 )}
+                disabled={matchStatsSwitchOffenseMutation.isLoading}
                 onClick={() =>
                   matchStatsSwitchOffenseMutation.mutate({
                     match_id: matchQuery.data?.id
                   })
                 }
               >
-                <span class="relative inline-flex items-center rounded-md bg-white px-3 py-2.5 transition-all duration-75 ease-in group-hover:bg-opacity-0 dark:bg-gray-800">
+                <span
+                  class={clsx(
+                    "relative inline-flex items-center rounded-md px-3 py-2.5 transition-all duration-75 ease-in ",
+                    "bg-white group-hover:bg-opacity-0 group-disabled:bg-gray-300 dark:bg-gray-800"
+                  )}
+                >
                   Throwaway
                 </span>
               </button>
               <ButtonWithModal
                 button={{ text: "Score" }}
                 buttonColor={matchCardColorToButtonStyles["blue"]}
+                disabled={matchStatsSwitchOffenseMutation.isLoading}
                 onClose={() => {
                   queryClient.invalidateQueries({
                     queryKey: ["match", params.matchId]
@@ -290,6 +274,7 @@ const EditStats = () => {
                 <ButtonWithModal
                   button={{ text: "Block" }}
                   buttonColor={matchCardColorToButtonStyles["green"]}
+                  disabled={matchStatsSwitchOffenseMutation.isLoading}
                   onClose={() => {
                     queryClient.invalidateQueries({
                       queryKey: ["match", params.matchId]
@@ -309,22 +294,29 @@ const EditStats = () => {
               <button
                 type="button"
                 class={clsx(
-                  "relative mb-2 mr-2 inline-flex items-center justify-center overflow-hidden rounded-lg p-0.5 font-medium",
-                  "bg-green-600 text-xs text-gray-900 focus:outline-none focus:ring-4 dark:text-white"
+                  "group relative mb-2 mr-2 inline-flex items-center justify-center overflow-hidden rounded-lg p-0.5 font-medium",
+                  "bg-green-600 text-xs text-gray-900 focus:outline-none focus:ring-4 disabled:bg-gray-400 dark:text-white"
                 )}
+                disabled={matchStatsSwitchOffenseMutation.isLoading}
                 onClick={() =>
                   matchStatsSwitchOffenseMutation.mutate({
                     match_id: matchQuery.data?.id
                   })
                 }
               >
-                <span class="relative inline-flex items-center rounded-md bg-white px-3 py-2.5 transition-all duration-75 ease-in group-hover:bg-opacity-0 dark:bg-gray-800">
+                <span
+                  class={clsx(
+                    "relative inline-flex items-center rounded-md px-3 py-2.5 transition-all duration-75 ease-in",
+                    "bg-white group-hover:bg-opacity-0 group-disabled:bg-gray-300 dark:bg-gray-800"
+                  )}
+                >
                   Throwaway
                 </span>
               </button>
               <ButtonWithModal
                 button={{ text: "Score" }}
                 buttonColor={matchCardColorToButtonStyles["green"]}
+                disabled={matchStatsSwitchOffenseMutation.isLoading}
                 onClose={() => {
                   queryClient.invalidateQueries({
                     queryKey: ["match", params.matchId]
