@@ -38,6 +38,19 @@ def handle_full_time(match: Match) -> tuple[int, MatchStats | dict[str, str]]:
     return 200, match.stats
 
 
+def handle_switch_offense(match: Match) -> tuple[int, MatchStats | message_response]:
+    if match.team_1 is None or match.team_2 is None:
+        return 422, {"message": "Invalid teams"}
+
+    if match.stats.current_possession.id == match.team_1.id:
+        match.stats.current_possession = match.team_2
+    elif match.stats.initial_possession.id == match.team_2.id:
+        match.stats.current_possession = match.team_1
+
+    match.stats.save()
+    return 200, match.stats
+
+
 def handle_score(
     match_event: MatchEventCreateSchema, match: Match, team: Team
 ) -> tuple[int, MatchStats | dict[str, str]]:
@@ -106,7 +119,7 @@ def handle_score_undo(
 
 def handle_block(
     match_event: MatchEventCreateSchema, match: Match, team: Team
-) -> tuple[int, MatchStats | dict[str, str]]:
+) -> tuple[int, MatchStats | message_response]:
     if match_event.block_by_id is None:
         return 422, {"message": "Block by is needed"}
 
@@ -127,11 +140,7 @@ def handle_block(
     )
     new_match_event.save()
 
-    if match.team_1 is not None and match.team_1.id == team.id:
-        match.stats.current_possession = team
-    if match.team_2 is not None and match.team_2.id == team.id:
-        match.stats.current_possession = team
-
+    match.stats.current_possession = team
     match.stats.save()
 
     return 200, match.stats

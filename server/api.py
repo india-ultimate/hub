@@ -83,6 +83,7 @@ from server.tournament.match_stats_min import (
     handle_all_events,
     handle_full_time,
     handle_half_time,
+    handle_switch_offense,
     handle_undo,
 )
 from server.tournament.models import (
@@ -2203,6 +2204,25 @@ def create_match_stats_event(
         return 401, {"message": "Only Tournament volunteers can create match stats"}
 
     return handle_all_events(match_event=body, match=match, team=team)
+
+
+@api.post(
+    "/match/{match_id}/stats/switch-offense",
+    response={200: MatchStatsSchema, 400: Response, 401: Response, 422: Response},
+)
+def switch_offense(
+    request: AuthenticatedHttpRequest, match_id: int
+) -> tuple[int, MatchStats | message_response]:
+    try:
+        match = Match.objects.get(id=match_id)
+        MatchStats.objects.get(match=match)
+    except (Match.DoesNotExist, MatchStats.DoesNotExist):
+        return 400, {"message": "Match or Stats does not exist"}
+
+    if request.user not in match.tournament.volunteers.all():
+        return 401, {"message": "Only Tournament volunteers can update match stats"}
+
+    return handle_switch_offense(match=match)
 
 
 @api.post(
