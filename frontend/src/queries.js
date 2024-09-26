@@ -1,4 +1,4 @@
-import { getCookie } from "./utils";
+import { delay, getCookie } from "./utils";
 
 export const fetchContributors = async () => {
   const repoResp = await fetch(
@@ -1233,6 +1233,50 @@ export const updateTeam = async formData => {
   return data;
 };
 
+export const fetchPlayerScores = async tournament_slug => {
+  const response = await fetch(
+    `/api/tournament/${tournament_slug}/player-scores`,
+    {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        XrCSRFToken: getCookie("csrftoken")
+      },
+      credentials: "same-origin"
+    }
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.message || JSON.stringify(data));
+  }
+
+  return data;
+};
+
+export const fetchPlayerAssists = async tournament_slug => {
+  const response = await fetch(
+    `/api/tournament/${tournament_slug}/player-assists`,
+    {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        XrCSRFToken: getCookie("csrftoken")
+      },
+      credentials: "same-origin"
+    }
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.message || JSON.stringify(data));
+  }
+
+  return data;
+};
+
 export const createMatchStats = async ({ match_id, body }) => {
   const response = await fetch(`/api/match/${match_id}/stats`, {
     method: "POST",
@@ -1266,6 +1310,8 @@ export const createMatchStatsEvent = async ({ match_id, body }) => {
 
   const data = await response.json();
 
+  await delay(800);
+
   if (!response.ok) {
     throw new Error(data?.message || JSON.stringify(data));
   }
@@ -1284,6 +1330,8 @@ export const matchStatsSwitchOffense = async ({ match_id }) => {
   });
 
   const data = await response.json();
+
+  await delay(500);
 
   if (!response.ok) {
     throw new Error(data?.message || JSON.stringify(data));
