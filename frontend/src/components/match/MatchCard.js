@@ -321,7 +321,7 @@ const TournamentMatch = props => {
               <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
               <span class="relative inline-flex h-2.5 w-2.5 rounded-full bg-white" />
             </span>
-            <span class="ml-1">LIve Scores</span>
+            <span class="ml-1">Live Scores</span>
           </button>
         </A>
       </Show>
