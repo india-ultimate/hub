@@ -23,7 +23,7 @@ swap_size_mb = 512
   DJANGO_SETTINGS_MODULE = "hub.production"
 
 [[vm]]
-  size = "performance-1x"
+  size = "shared-cpu-8x"
 
 [[services]]
   protocol = "tcp"
