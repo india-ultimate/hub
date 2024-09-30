@@ -267,6 +267,7 @@ class MatchSchema(ModelSchema):
     field: TournamentFieldSchema | None
 
     stats: MatchStatsSchema | None
+    stats_exist: bool
 
     @staticmethod
     def resolve_stats(match: Match) -> MatchStatsSchema | None:
@@ -274,6 +275,14 @@ class MatchSchema(ModelSchema):
             return MatchStatsSchema.from_orm(match.stats)
         except MatchStats.DoesNotExist:
             return None
+
+    @staticmethod
+    def resolve_stats_exist(match: Match) -> bool:
+        try:
+            stats = MatchStatsSchema.from_orm(match.stats)
+            return stats is not None
+        except MatchStats.DoesNotExist:
+            return False
 
     class Config:
         model = Match
