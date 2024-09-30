@@ -451,7 +451,7 @@ const EditStats = () => {
         </span>
       </div>
 
-      <EventsDisplay match={matchQuery.data} />
+      <EventsDisplay match={matchQuery.data} stats={matchStatsQuery.data} />
     </Show>
   );
 };
