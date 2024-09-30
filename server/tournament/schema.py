@@ -235,6 +235,15 @@ class MatchStatsSchema(ModelSchema):
         model_exclude = ["match", "tournament"]
 
 
+class MatchStatsMinSchema(ModelSchema):
+    initial_possession: TeamSchema
+    current_possession: TeamSchema
+
+    class Config:
+        model = MatchStats
+        model_exclude = ["match", "tournament"]
+
+
 class MatchStatsCreateSchema(Schema):
     initial_possession_team_id: int
 
@@ -264,15 +273,14 @@ class MatchSchema(ModelSchema):
     suggested_score_team_1: MatchScoreModelSchema | None
     suggested_score_team_2: MatchScoreModelSchema | None
     field: TournamentFieldSchema | None
-    stats_exist: bool
+    stats: MatchStatsMinSchema | None
 
     @staticmethod
-    def resolve_stats_exist(match: Match) -> bool:
+    def resolve_stats(match: Match) -> MatchStatsMinSchema | None:
         try:
-            stats = MatchStatsSchema.from_orm(match.stats)
-            return stats is not None
+            return MatchStatsMinSchema.from_orm(match.stats)
         except MatchStats.DoesNotExist:
-            return False
+            return None
 
     class Config:
         model = Match
