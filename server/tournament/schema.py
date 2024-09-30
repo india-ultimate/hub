@@ -227,9 +227,8 @@ class MatchStatsSchema(ModelSchema):
     events: list[MatchEventSchema]
 
     @staticmethod
-    def resolve_events(match_stats: MatchStats) -> list[MatchEvent]:
-        latest_event = match_stats.events.order_by("-time").first()
-        return [latest_event] if latest_event is not None else []
+    def resolve_events(match_stats: MatchStats) -> QuerySet[MatchEvent]:
+        return MatchEvent.objects.filter(stats=match_stats).order_by("-time")
 
     class Config:
         model = MatchStats
