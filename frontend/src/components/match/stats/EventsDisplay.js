@@ -43,7 +43,7 @@ const EventDescription = props => {
 const EventsDisplay = props => {
   return (
     <div class="grid w-full grid-cols-12 gap-x-0 gap-y-4">
-      <For each={props.match?.stats?.events}>
+      <For each={props.stats?.events}>
         {event => (
           <Switch>
             <Match when={event.team.id === props.match?.team_1?.id}>
