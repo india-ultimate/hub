@@ -2187,6 +2187,23 @@ def create_match_stats(
     return 200, match_stats
 
 
+@api.get("/match/{match_id}/stats", auth=None, response={200: MatchStatsSchema, 400: Response})
+def get_match_stats(
+    request: HttpRequest, match_id: int
+) -> tuple[int, MatchStats | message_response]:
+    try:
+        match = Match.objects.get(id=match_id)
+    except Match.DoesNotExist:
+        return 400, {"message": "Match does not exist"}
+
+    try:
+        stats = MatchStats.objects.get(match=match)
+    except MatchStats.DoesNotExist:
+        return 400, {"message": "Stats does not exist"}
+
+    return 200, stats
+
+
 @api.post(
     "/match/{match_id}/stats/event",
     response={200: MatchStatsSchema, 400: Response, 401: Response, 422: Response},
