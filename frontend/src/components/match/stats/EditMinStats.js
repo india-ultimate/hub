@@ -5,7 +5,7 @@ import {
   useQueryClient
 } from "@tanstack/solid-query";
 import { clsx } from "clsx";
-import { Show } from "solid-js";
+import { createEffect, createSignal, Show } from "solid-js";
 
 import {
   matchCardColorToButtonStyles,
@@ -13,6 +13,7 @@ import {
 } from "../../../colors";
 import {
   fetchMatch,
+  fetchMatchStats,
   fetchTournamentBySlug,
   matchStatsFullTime,
   matchStatsHalfTime,
@@ -27,11 +28,30 @@ import ScoreForm from "./ScoreForm";
 const EditStats = () => {
   const queryClient = useQueryClient();
   const params = useParams();
+  const [shouldRefetch, setShouldRefetch] = createSignal(false);
 
   const matchQuery = createQuery(
     () => ["match", params.matchId],
     () => fetchMatch(params.matchId)
   );
+
+  const matchStatsQuery = createQuery(
+    () => ["match-stats", params.matchId],
+    () => fetchMatchStats(params.matchId),
+    {
+      refetchInterval: shouldRefetch ? 60000 : 2000000,
+      staleTime: shouldRefetch ? 300000 : 5000000,
+      refetchOnWindowFocus: true
+    }
+  );
+
+  createEffect(() => {
+    if (matchStatsQuery.isSuccess && matchStatsQuery.data) {
+      if (matchStatsQuery.data.status !== "COM") {
+        setShouldRefetch(true);
+      }
+    }
+  });
 
   const tournamentQuery = createQuery(
     () => ["tournaments", params.tournamentSlug],
@@ -85,7 +105,7 @@ const EditStats = () => {
     >
       <div class="grid w-full grid-cols-12 gap-4">
         <Show
-          when={matchQuery.data?.stats?.status !== "COM"}
+          when={matchStatsQuery.data?.status !== "COM"}
           fallback={
             <div class="col-span-12 flex justify-center">
               <div class="flex items-center justify-center rounded-xl bg-green-100 px-2 py-1">
@@ -97,7 +117,7 @@ const EditStats = () => {
           <div class="col-span-4 flex justify-center">
             <Show
               when={
-                matchQuery.data?.stats?.current_possession?.id ===
+                matchStatsQuery.data?.current_possession?.id ===
                 matchQuery.data?.team_1?.id
               }
             >
@@ -109,9 +129,9 @@ const EditStats = () => {
           <div class="col-span-4">
             <div class="flex items-center justify-center rounded-xl bg-red-100 py-1">
               <span class="text-sm font-bold text-rose-500">
-                {matchQuery.data?.stats?.status === "FH"
+                {matchStatsQuery.data?.status === "FH"
                   ? "First Half"
-                  : matchQuery.data?.stats?.status === "SH"
+                  : matchStatsQuery.data?.status === "SH"
                   ? "Second Half"
                   : "Completed"}
               </span>
@@ -120,7 +140,7 @@ const EditStats = () => {
           <div class="col-span-4 flex justify-center">
             <Show
               when={
-                matchQuery.data?.stats?.current_possession?.id ===
+                matchStatsQuery.data?.current_possession?.id ===
                 matchQuery.data?.team_2?.id
               }
             >
@@ -144,11 +164,11 @@ const EditStats = () => {
         <div class="col-span-4 flex items-center justify-center">
           <div class="grid grid-cols-2 gap-x-6 gap-y-1">
             <span class="text-4xl font-bold text-blue-600">
-              {matchQuery.data?.stats?.score_team_1}
+              {matchStatsQuery.data?.score_team_1}
             </span>
             <span class="text-4xl font-bold text-green-600">
               {" "}
-              {matchQuery.data?.stats?.score_team_2}
+              {matchStatsQuery.data?.score_team_2}
             </span>
           </div>
         </div>
@@ -178,7 +198,7 @@ const EditStats = () => {
       <div class="mb-2 mt-6 flex flex-col flex-wrap space-y-2 rounded-lg bg-gray-100 px-4 py-3 text-sm">
         <div class="italic">
           <span class="font-bold">
-            {matchQuery.data?.stats?.initial_possession?.name}
+            {matchStatsQuery.data?.initial_possession?.name}
           </span>{" "}
           <span>started on offense.</span>
         </div>
@@ -191,7 +211,7 @@ const EditStats = () => {
         <div class="mt-2">
           <Show
             when={
-              matchQuery.data?.stats?.current_possession?.id ===
+              matchStatsQuery.data?.current_possession?.id ===
               matchQuery.data?.team_1?.id
             }
             fallback={
@@ -266,7 +286,7 @@ const EditStats = () => {
         <div class="mt-2">
           <Show
             when={
-              matchQuery.data?.stats?.current_possession?.id ===
+              matchStatsQuery.data?.current_possession?.id ===
               matchQuery.data?.team_2?.id
             }
             fallback={
