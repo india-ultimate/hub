@@ -308,7 +308,7 @@ const TournamentMatch = props => {
           </button>
         </a>
       </Show>
-      <Show when={props.match.stats}>
+      <Show when={props.match.stats_exist}>
         <A
           class="mt-2 flex justify-center"
           href={`/tournament/${props.tournamentSlug}/match/${props.match.id}/live`}
