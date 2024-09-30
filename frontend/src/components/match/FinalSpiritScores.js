@@ -10,7 +10,7 @@ const FinalSpiritScores = props => {
     <>
       <button
         class={clsx(
-          "group relative mb-2 mr-2 inline-flex items-center justify-center overflow-hidden rounded-full p-0.5 text-xs font-medium",
+          "group relative inline-flex items-center justify-center overflow-hidden rounded-full p-0.5 text-xs font-medium",
           "text-gray-900 focus:outline-none dark:text-white",
           "transition-all duration-75 ease-in hover:scale-105"
         )}

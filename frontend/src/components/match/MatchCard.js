@@ -17,6 +17,7 @@ import SpiritScoreTable from "../tournament/SpiritScoreTable";
 import FinalSpiritScores from "./FinalSpiritScores";
 import MatchHeader from "./MatchHeader";
 import CreateStatsButton from "./stats/CreateStatsButton";
+import ViewStatsButton from "./stats/ViewStatsButton";
 import SubmitScore from "./SubmitScore";
 import SubmitSpiritScore from "./SubmitSpiritScore";
 /**
@@ -308,31 +309,33 @@ const TournamentMatch = props => {
           </button>
         </a>
       </Show>
-      <Show when={props.match.stats}>
-        <A
-          class="mt-2 flex justify-center"
-          href={`/tournament/${props.tournamentSlug}/match/${props.match.id}/live`}
-        >
-          <button
-            type="button"
-            class="mt-2 inline-flex items-center rounded-lg bg-red-600 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-red-800 focus:outline-none focus:ring-4 focus:ring-red-300 dark:bg-blue-500 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+      <div class="mt-2 flex flex-wrap items-center justify-center gap-2">
+        {/* Live score buttons */}
+        <Show when={props.match.stats}>
+          <A
+            href={`/tournament/${props.tournamentSlug}/match/${props.match.id}/live`}
           >
-            <span class="relative flex h-2.5 w-2.5">
-              <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
-              <span class="relative inline-flex h-2.5 w-2.5 rounded-full bg-white" />
-            </span>
-            <span class="ml-1">Live Scores</span>
-          </button>
-        </A>
-      </Show>
-      {/* Score buttons */}
-      <Show
-        when={
-          props.match[`spirit_score_team_${currTeamNo()}`] &&
-          props.match[`spirit_score_team_${oppTeamNo()}`]
-        }
-      >
-        <div class="mt-2 flex justify-center">
+            <ViewStatsButton
+              bgColor={`bg-${
+                props.buttonColor || getMatchCardColor(props.match)
+              }-100`}
+              badgeColor={
+                props.buttonColor
+                  ? matchCardColorToButtonStyles[props.buttonColor]
+                  : matchCardColorToButtonStyles[getMatchCardColor(props.match)]
+              }
+              textColor={props.buttonColor || getMatchCardColor(props.match)}
+              match={props.match}
+            />
+          </A>
+        </Show>
+        {/* Score buttons */}
+        <Show
+          when={
+            props.match[`spirit_score_team_${currTeamNo()}`] &&
+            props.match[`spirit_score_team_${oppTeamNo()}`]
+          }
+        >
           <FinalSpiritScores
             bgColor={`bg-${
               props.buttonColor || getMatchCardColor(props.match)
@@ -638,8 +641,9 @@ const TournamentMatch = props => {
               </Show>
             </div>
           </FinalSpiritScores>
-        </div>
-      </Show>
+        </Show>
+      </div>
+
       {/*Team Admin Actions*/}
 
       <Show
