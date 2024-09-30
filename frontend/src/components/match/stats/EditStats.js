@@ -15,6 +15,7 @@ import {
 import { matchStatsTeamStatus } from "../../../constants";
 import {
   fetchMatch,
+  fetchMatchStats,
   fetchTournamentBySlug,
   matchStatsFullTime,
   matchStatsHalfTime
@@ -34,17 +35,22 @@ const EditStats = () => {
 
   const matchQuery = createQuery(
     () => ["match", params.matchId],
-    () => fetchMatch(params.matchId),
+    () => fetchMatch(params.matchId)
+  );
+
+  const matchStatsQuery = createQuery(
+    () => ["match-stats", params.matchId],
+    () => fetchMatchStats(params.matchId),
     {
-      refetchInterval: shouldRefetch ? 2000 : 2000000,
-      staleTime: shouldRefetch ? 5000 : 5000000,
+      refetchInterval: shouldRefetch ? 60000 : 2000000,
+      staleTime: shouldRefetch ? 300000 : 5000000,
       refetchOnWindowFocus: true
     }
   );
 
   createEffect(() => {
-    if (matchQuery.isSuccess && matchQuery.data) {
-      if (matchQuery.data.stats && matchQuery.data.stats.status !== "COM") {
+    if (matchStatsQuery.isSuccess && matchStatsQuery.data) {
+      if (matchStatsQuery.data.status !== "COM") {
         setShouldRefetch(true);
       }
     }
@@ -88,7 +94,7 @@ const EditStats = () => {
     >
       <div class="grid w-full grid-cols-12 gap-4">
         <Show
-          when={matchQuery.data?.stats?.status !== "COM"}
+          when={matchStatsQuery.data?.status !== "COM"}
           fallback={
             <div class="col-span-12 flex justify-center">
               <div class="flex items-center justify-center rounded-xl bg-green-100 px-2 py-1">
@@ -100,7 +106,7 @@ const EditStats = () => {
           <div class="col-span-4 flex justify-center">
             <Show
               when={
-                matchQuery.data?.stats?.current_possession?.id ===
+                matchStatsQuery.data?.current_possession?.id ===
                 matchQuery.data?.team_1?.id
               }
             >
@@ -121,7 +127,7 @@ const EditStats = () => {
           <div class="col-span-4 flex justify-center">
             <Show
               when={
-                matchQuery.data?.stats?.current_possession?.id ===
+                matchStatsQuery.data?.current_possession?.id ===
                 matchQuery.data?.team_2?.id
               }
             >
@@ -145,11 +151,11 @@ const EditStats = () => {
         <div class="col-span-4 flex items-center justify-center">
           <div class="grid grid-cols-2 gap-x-6 gap-y-1">
             <span class="text-4xl font-bold text-blue-600">
-              {matchQuery.data?.stats?.score_team_1}
+              {matchStatsQuery.data?.score_team_1}
             </span>
             <span class="text-4xl font-bold text-green-600">
               {" "}
-              {matchQuery.data?.stats?.score_team_2}
+              {matchStatsQuery.data?.score_team_2}
             </span>
           </div>
         </div>
@@ -182,9 +188,9 @@ const EditStats = () => {
           <div class="mt-4 space-y-2">
             <div>
               <span class="font-bold">Status:</span>{" "}
-              {matchQuery.data?.stats?.status === "FH"
+              {matchStatsQuery.data?.status === "FH"
                 ? "First Half"
-                : matchQuery.data?.stats?.status === "SH"
+                : matchStatsQuery.data?.status === "SH"
                 ? "Second Half"
                 : "Completed"}
             </div>
@@ -192,7 +198,7 @@ const EditStats = () => {
               <span class="font-bold">
                 Team which started the game on Offense:
               </span>{" "}
-              {matchQuery.data?.stats?.initial_possession?.name}
+              {matchStatsQuery.data?.initial_possession?.name}
             </div>
           </div>
           <button
@@ -222,11 +228,11 @@ const EditStats = () => {
         <details>
           <summary class="text-blue-600">
             {matchQuery.data?.team_1?.name} -{" "}
-            {matchStatsTeamStatus[matchQuery.data?.stats?.status_team_1]}
+            {matchStatsTeamStatus[matchStatsQuery.data?.status_team_1]}
           </summary>
           <div class="mt-4 flex flex-wrap justify-center space-y-2">
             <Switch>
-              <Match when={matchQuery.data?.stats?.status_team_1 === "PLS"}>
+              <Match when={matchStatsQuery.data?.status_team_1 === "PLS"}>
                 <ButtonWithModal
                   button={{ text: "Select Line", icon: userGroup }}
                   buttonColor={matchCardColorToButtonStyles["blue"]}
@@ -245,13 +251,13 @@ const EditStats = () => {
               </Match>
               <Match
                 when={
-                  matchQuery.data?.stats?.status_team_1 === "CLS" &&
-                  matchQuery.data?.stats?.status_team_2 === "CLS"
+                  matchStatsQuery.data?.status_team_1 === "CLS" &&
+                  matchStatsQuery.data?.status_team_2 === "CLS"
                 }
               >
                 <Show
                   when={
-                    matchQuery.data?.stats?.current_possession?.id ===
+                    matchStatsQuery.data?.current_possession?.id ===
                     matchQuery.data?.team_1?.id
                   }
                   fallback={
@@ -332,11 +338,11 @@ const EditStats = () => {
         <details>
           <summary class="text-green-600">
             {matchQuery.data?.team_2?.name} -{" "}
-            {matchStatsTeamStatus[matchQuery.data?.stats?.status_team_2]}
+            {matchStatsTeamStatus[matchStatsQuery.data?.status_team_2]}
           </summary>
           <div class="mt-4 flex flex-wrap justify-center space-y-2">
             <Switch>
-              <Match when={matchQuery.data?.stats?.status_team_2 === "PLS"}>
+              <Match when={matchStatsQuery.data?.status_team_2 === "PLS"}>
                 <ButtonWithModal
                   button={{ text: "Select Line", icon: userGroup }}
                   buttonColor={matchCardColorToButtonStyles["green"]}
@@ -355,13 +361,13 @@ const EditStats = () => {
               </Match>
               <Match
                 when={
-                  matchQuery.data?.stats?.status_team_1 === "CLS" &&
-                  matchQuery.data?.stats?.status_team_2 === "CLS"
+                  matchStatsQuery.data?.status_team_1 === "CLS" &&
+                  matchStatsQuery.data?.status_team_2 === "CLS"
                 }
               >
                 <Show
                   when={
-                    matchQuery.data?.stats?.current_possession?.id ===
+                    matchStatsQuery.data?.current_possession?.id ===
                     matchQuery.data?.team_2?.id
                   }
                   fallback={
