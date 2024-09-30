@@ -453,6 +453,15 @@ export const fetchMatch = async match_id => {
   return await response.json();
 };
 
+export const fetchMatchStats = async match_id => {
+  const response = await fetch(`/api/match/${match_id}/stats`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin"
+  });
+  return await response.json();
+};
+
 export const fetchMatchesBySlug = async tournament_slug => {
   const response = await fetch(
     `/api/tournament/slug/${tournament_slug}/matches`,
