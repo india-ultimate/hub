@@ -19,6 +19,7 @@ from server.tournament.models import (
     Bracket,
     Event,
     Match,
+    MatchEvent,
     MatchStats,
     Pool,
     PositionPool,
@@ -182,6 +183,21 @@ class MatchStatsAdmin(admin.ModelAdmin[MatchStats]):
     @admin.display(description="Match Name", ordering="match__name")
     def get_match_name(self, obj: MatchStats) -> str:
         match_name = obj.match.name or ""
+        return match_name
+
+
+@admin.register(MatchEvent)
+class MatchEventAdmin(admin.ModelAdmin[MatchEvent]):
+    search_fields = ["team__name"]
+    list_display = ["get_tournament_name", "get_match_name"]
+
+    @admin.display(description="Tournament Name", ordering="stats__match__tournament__event__title")
+    def get_tournament_name(self, obj: MatchEvent) -> str:
+        return obj.stats.match.tournament.event.title
+
+    @admin.display(description="Match Name", ordering="stats__match__name")
+    def get_match_name(self, obj: MatchEvent) -> str:
+        match_name = obj.stats.match.name or ""
         return match_name
 
 
