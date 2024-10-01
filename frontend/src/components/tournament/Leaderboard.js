@@ -129,6 +129,19 @@ const TournamentStandings = () => {
               Assists
             </button>
           </li>
+          <li class="mr-2" role="presentation">
+            <button
+              class="inline-block rounded-t-lg border-b-2 p-4"
+              id={"tab-blocks"}
+              data-tabs-target={"#blocks"}
+              type="button"
+              role="tab"
+              aria-controls={"blocks"}
+              aria-selected="false"
+            >
+              Blocks
+            </button>
+          </li>
         </ul>
       </div>
       <div id="myTabContent">
@@ -228,6 +241,60 @@ const TournamentStandings = () => {
                       })`}</td>
                       <td class="px-4 py-3">{player?.team_name}</td>
                       <td class="px-4 py-3">{player?.num_assists}</td>
+                    </tr>
+                  )}
+                </For>
+              </tbody>
+            </table>
+            <Show when={tournamentLeaderboardQuery.data?.scores?.length === 0}>
+              <div class="w-full py-2 text-center text-sm italic">
+                No Players To Show
+              </div>
+            </Show>
+          </div>
+        </div>
+        <div
+          class="hidden rounded-lg"
+          id={"blocks"}
+          role="tabpanel"
+          aria-labelledby={"tab-blocks"}
+        >
+          <div class="relative overflow-x-auto rounded-lg shadow-lg">
+            <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
+              <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
+                <tr>
+                  <th scope="col" class="px-4 py-3">
+                    Player
+                  </th>
+                  <th scope="col" class="px-4 py-3">
+                    Team
+                  </th>
+                  <th scope="col" class="px-4 py-3">
+                    Blocks
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <For
+                  each={tournamentLeaderboardQuery.data?.blocks
+                    ?.filter(
+                      player =>
+                        player?.team_name === selectedTeam() ||
+                        selectedTeam() === "all"
+                    )
+                    .filter(
+                      player =>
+                        player?.gender === selectedGender() ||
+                        selectedGender() === "all"
+                    )}
+                >
+                  {player => (
+                    <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
+                      <td class="px-4 py-3 font-semibold">{`${player?.first_name.trim()} ${player?.last_name.trim()} (${
+                        player?.gender
+                      })`}</td>
+                      <td class="px-4 py-3">{player?.team_name}</td>
+                      <td class="px-4 py-3">{player?.num_blocks}</td>
                     </tr>
                   )}
                 </For>
