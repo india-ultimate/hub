@@ -2306,7 +2306,7 @@ def match_stats_full_time(
     response={200: dict[str, list[dict[str, Any]]], 400: Response},
 )
 def get_tournament_leaderboard(
-    request: AuthenticatedHttpRequest, tournament_slug: str
+    request: HttpRequest, tournament_slug: str
 ) -> tuple[int, Any | message_response]:
     try:
         event = Event.objects.get(slug=tournament_slug)
@@ -2321,43 +2321,73 @@ def get_tournament_leaderboard(
     scores = (
         MatchEvent.objects.filter(stats_id__in=match_stats, type=MatchEvent.EventType.SCORE)
         .annotate(
+            player_id=F("scored_by_id"),
             first_name=F("scored_by__user__first_name"),
             last_name=F("scored_by__user__last_name"),
             team_name=F("team__name"),
             gender=F("scored_by__gender"),
         )
-        .values("scored_by_id", "first_name", "last_name", "team_name", "gender")
-        .annotate(num_scores=Count("scored_by_id"))
+        .values("player_id", "first_name", "last_name", "team_name", "gender")
+        .annotate(num_scores=Count("player_id"))
         .order_by("-num_scores")
     )
 
     assists = (
         MatchEvent.objects.filter(stats_id__in=match_stats, type=MatchEvent.EventType.SCORE)
         .annotate(
+            player_id=F("assisted_by_id"),
             first_name=F("assisted_by__user__first_name"),
             last_name=F("assisted_by__user__last_name"),
             team_name=F("team__name"),
             gender=F("assisted_by__gender"),
         )
-        .values("assisted_by_id", "first_name", "last_name", "team_name", "gender")
-        .annotate(num_assists=Count("assisted_by_id"))
+        .values("player_id", "first_name", "last_name", "team_name", "gender")
+        .annotate(num_assists=Count("player_id"))
         .order_by("-num_assists")
     )
 
     blocks = (
         MatchEvent.objects.filter(stats_id__in=match_stats, type=MatchEvent.EventType.BLOCK)
         .annotate(
+            player_id=F("block_by_id"),
             first_name=F("block_by__user__first_name"),
             last_name=F("block_by__user__last_name"),
             team_name=F("team__name"),
             gender=F("block_by__gender"),
         )
-        .values("block_by_id", "first_name", "last_name", "team_name", "gender")
-        .annotate(num_blocks=Count("block_by_id"))
+        .values("player_id", "first_name", "last_name", "team_name", "gender")
+        .annotate(num_blocks=Count("player_id"))
         .order_by("-num_blocks")
     )
 
-    return 200, {"scores": list(scores), "assists": list(assists), "blocks": list(blocks)}
+    players_map = {}
+
+    for score in scores:
+        players_map[score["player_id"]] = score
+
+    for assist in assists:
+        player = players_map.setdefault(assist["player_id"], assist)
+        player["num_assists"] = assist["num_assists"]
+
+    for block in blocks:
+        player = players_map.setdefault(block["player_id"], block)
+        player["num_blocks"] = block["num_blocks"]
+
+    players = list(players_map.values())
+
+    for player in players:
+        player["num_total"] = (
+            player.get("num_scores", 0) + player.get("num_assists", 0) + player.get("num_blocks", 0)
+        )
+
+    players = sorted(players, key=lambda p: p["num_total"], reverse=True)
+
+    return 200, {
+        "scores": list(scores),
+        "assists": list(assists),
+        "blocks": list(blocks),
+        "total": players,
+    }
 
 
 # Contact Form ##########

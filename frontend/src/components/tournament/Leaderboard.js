@@ -106,12 +106,25 @@ const TournamentStandings = () => {
           <li class="mr-2" role="presentation">
             <button
               class="inline-block rounded-t-lg border-b-2 p-4"
+              id={"tab-total"}
+              data-tabs-target={"#total"}
+              type="button"
+              role="tab"
+              aria-controls={"total"}
+              aria-selected="true"
+            >
+              Total
+            </button>
+          </li>
+          <li class="mr-2" role="presentation">
+            <button
+              class="inline-block rounded-t-lg border-b-2 p-4"
               id={"tab-scores"}
               data-tabs-target={"#scores"}
               type="button"
               role="tab"
               aria-controls={"scores"}
-              aria-selected="true"
+              aria-selected="false"
             >
               Scores
             </button>
@@ -145,6 +158,60 @@ const TournamentStandings = () => {
         </ul>
       </div>
       <div id="myTabContent">
+        <div
+          class="hidden rounded-lg"
+          id={"total"}
+          role="tabpanel"
+          aria-labelledby={"tab-total"}
+        >
+          <div class="relative overflow-x-auto rounded-lg shadow-lg">
+            <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
+              <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
+                <tr>
+                  <th scope="col" class="px-4 py-3">
+                    Player
+                  </th>
+                  <th scope="col" class="px-4 py-3">
+                    Team
+                  </th>
+                  <th scope="col" class="px-4 py-3">
+                    Total
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <For
+                  each={tournamentLeaderboardQuery.data?.total
+                    ?.filter(
+                      player =>
+                        player?.team_name === selectedTeam() ||
+                        selectedTeam() === "all"
+                    )
+                    .filter(
+                      player =>
+                        player?.gender === selectedGender() ||
+                        selectedGender() === "all"
+                    )}
+                >
+                  {player => (
+                    <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
+                      <td class="px-4 py-3 font-semibold">{`${player?.first_name.trim()} ${player?.last_name.trim()} (${
+                        player?.gender
+                      })`}</td>
+                      <td class="px-4 py-3">{player?.team_name}</td>
+                      <td class="px-4 py-3">{player?.num_total}</td>
+                    </tr>
+                  )}
+                </For>
+              </tbody>
+            </table>
+            <Show when={tournamentLeaderboardQuery.data?.total?.length === 0}>
+              <div class="w-full py-2 text-center text-sm italic">
+                No Players To Show
+              </div>
+            </Show>
+          </div>
+        </div>
         <div
           class="hidden rounded-lg"
           id={"scores"}
@@ -246,7 +313,7 @@ const TournamentStandings = () => {
                 </For>
               </tbody>
             </table>
-            <Show when={tournamentLeaderboardQuery.data?.scores?.length === 0}>
+            <Show when={tournamentLeaderboardQuery.data?.assists?.length === 0}>
               <div class="w-full py-2 text-center text-sm italic">
                 No Players To Show
               </div>
@@ -300,7 +367,7 @@ const TournamentStandings = () => {
                 </For>
               </tbody>
             </table>
-            <Show when={tournamentLeaderboardQuery.data?.scores?.length === 0}>
+            <Show when={tournamentLeaderboardQuery.data?.blocks?.length === 0}>
               <div class="w-full py-2 text-center text-sm italic">
                 No Players To Show
               </div>
