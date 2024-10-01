@@ -5,12 +5,11 @@ import { trophy } from "solid-heroicons/solid";
 import { For, onMount, Show } from "solid-js";
 
 import {
-  fetchPlayerAssists,
-  fetchPlayerScores,
-  fetchTournamentBySlug
-} from "../../../queries";
-import { getTournamentBreadcrumbName } from "../../../utils";
-import Breadcrumbs from "../../Breadcrumbs";
+  fetchTournamentBySlug,
+  fetchTournamentLeaderboard
+} from "../../queries";
+import { getTournamentBreadcrumbName } from "../../utils";
+import Breadcrumbs from "../Breadcrumbs";
 
 const TournamentStandings = () => {
   const params = useParams();
@@ -20,14 +19,9 @@ const TournamentStandings = () => {
     () => fetchTournamentBySlug(params.slug)
   );
 
-  const playerScoresQuery = createQuery(
-    () => ["tournaments", params.slug, "scores"],
-    () => fetchPlayerScores(params.slug)
-  );
-
-  const playerAssistsQuery = createQuery(
-    () => ["tournaments", params.slug, "assists"],
-    () => fetchPlayerAssists(params.slug)
+  const tournamentLeaderboardQuery = createQuery(
+    () => ["tournaments", params.slug, "leaderboard"],
+    () => fetchTournamentLeaderboard(params.slug)
   );
 
   onMount(() => {
@@ -67,7 +61,7 @@ const TournamentStandings = () => {
       />
       <h1 class="mb-5 text-center">
         <span class="w-fit bg-gradient-to-r from-blue-500 to-green-500 bg-clip-text text-2xl font-extrabold text-transparent">
-          Scoreboard
+          Leaderboard
         </span>
       </h1>
       <div class="mb-4 border-b border-gray-200 dark:border-gray-700">
@@ -107,12 +101,12 @@ const TournamentStandings = () => {
       </div>
       <div id="myTabContent">
         <div
-          class="hidden rounded-lg p-4"
+          class="hidden rounded-lg"
           id={"scores"}
           role="tabpanel"
           aria-labelledby={"tab-scores"}
         >
-          <div class="relative my-5 overflow-x-auto rounded-lg shadow-lg">
+          <div class="relative overflow-x-auto rounded-lg shadow-lg">
             <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
               <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
                 <tr>
@@ -123,12 +117,12 @@ const TournamentStandings = () => {
                     Team
                   </th>
                   <th scope="col" class="px-4 py-3">
-                    GLS
+                    Goals
                   </th>
                 </tr>
               </thead>
               <tbody>
-                <For each={playerScoresQuery.data}>
+                <For each={tournamentLeaderboardQuery.data?.scores}>
                   {player => (
                     <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
                       <td class="px-4 py-3 font-semibold">{`${player?.first_name.trim()} ${player?.last_name.trim()}`}</td>
@@ -139,15 +133,20 @@ const TournamentStandings = () => {
                 </For>
               </tbody>
             </table>
+            <Show when={tournamentLeaderboardQuery.data?.scores?.length === 0}>
+              <div class="w-full py-2 text-center text-sm italic">
+                No Players To Show
+              </div>
+            </Show>
           </div>
         </div>
         <div
-          class="hidden rounded-lg p-4"
+          class="hidden rounded-lg"
           id={"assists"}
           role="tabpanel"
           aria-labelledby={"tab-assists"}
         >
-          <div class="relative my-5 overflow-x-auto rounded-lg shadow-lg">
+          <div class="relative overflow-x-auto rounded-lg shadow-lg">
             <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
               <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
                 <tr>
@@ -158,12 +157,12 @@ const TournamentStandings = () => {
                     Team
                   </th>
                   <th scope="col" class="px-4 py-3">
-                    AST
+                    Assists
                   </th>
                 </tr>
               </thead>
               <tbody>
-                <For each={playerAssistsQuery.data}>
+                <For each={tournamentLeaderboardQuery.data?.assists}>
                   {player => (
                     <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
                       <td class="px-4 py-3 font-semibold">{`${player?.first_name.trim()} ${player?.last_name.trim()}`}</td>
@@ -174,6 +173,11 @@ const TournamentStandings = () => {
                 </For>
               </tbody>
             </table>
+            <Show when={tournamentLeaderboardQuery.data?.scores?.length === 0}>
+              <div class="w-full py-2 text-center text-sm italic">
+                No Players To Show
+              </div>
+            </Show>
           </div>
         </div>
       </div>
