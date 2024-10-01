@@ -2324,8 +2324,9 @@ def get_tournament_leaderboard(
             first_name=F("scored_by__user__first_name"),
             last_name=F("scored_by__user__last_name"),
             team_name=F("team__name"),
+            gender=F("scored_by__gender"),
         )
-        .values("scored_by_id", "first_name", "last_name", "team_name")
+        .values("scored_by_id", "first_name", "last_name", "team_name", "gender")
         .annotate(num_scores=Count("scored_by_id"))
         .order_by("-num_scores")
     )
@@ -2336,8 +2337,9 @@ def get_tournament_leaderboard(
             first_name=F("assisted_by__user__first_name"),
             last_name=F("assisted_by__user__last_name"),
             team_name=F("team__name"),
+            gender=F("scored_by__gender"),
         )
-        .values("assisted_by_id", "first_name", "last_name", "team_name")
+        .values("assisted_by_id", "first_name", "last_name", "team_name", "gender")
         .annotate(num_assists=Count("assisted_by_id"))
         .order_by("-num_assists")
     )
