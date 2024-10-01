@@ -2,7 +2,7 @@ import { A, useParams } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
 import { initFlowbite } from "flowbite";
 import { trophy } from "solid-heroicons/solid";
-import { For, onMount, Show } from "solid-js";
+import { createSignal, For, onMount, Show } from "solid-js";
 
 import {
   fetchTournamentBySlug,
@@ -13,6 +13,8 @@ import Breadcrumbs from "../Breadcrumbs";
 
 const TournamentStandings = () => {
   const params = useParams();
+  const [selectedTeam, setSelectedTeam] = createSignal("all");
+  const [selectedGender, setSelectedGender] = createSignal("all");
 
   const tournamentQuery = createQuery(
     () => ["tournaments", params.slug],
@@ -64,6 +66,36 @@ const TournamentStandings = () => {
           Leaderboard
         </span>
       </h1>
+      <div class="grid w-full grid-cols-12 gap-2">
+        <div class="col-span-8">
+          <select
+            id="teams"
+            onChange={e => setSelectedTeam(e.target.value)}
+            class=" block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
+          >
+            <option selected value="all">
+              All Teams
+            </option>
+            <For each={tournamentQuery.data?.teams}>
+              {team => <option value={team.name}>{team.name}</option>}
+            </For>
+          </select>
+        </div>
+        <div class="col-span-4">
+          <select
+            id="gender"
+            onChange={e => setSelectedGender(e.target.value)}
+            class=" col-span-2 block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
+          >
+            <option selected value="all">
+              M/F
+            </option>
+            <option value="M">M</option>
+            <option value="F">F</option>
+          </select>
+        </div>
+      </div>
+
       <div class="mb-4 border-b border-gray-200 dark:border-gray-700">
         <ul
           class="-mb-px flex flex-wrap justify-center text-center text-sm font-medium"
@@ -122,10 +154,24 @@ const TournamentStandings = () => {
                 </tr>
               </thead>
               <tbody>
-                <For each={tournamentLeaderboardQuery.data?.scores}>
+                <For
+                  each={tournamentLeaderboardQuery.data?.scores
+                    ?.filter(
+                      player =>
+                        player?.team_name === selectedTeam() ||
+                        selectedTeam() === "all"
+                    )
+                    .filter(
+                      player =>
+                        player?.gender === selectedGender() ||
+                        selectedGender() === "all"
+                    )}
+                >
                   {player => (
                     <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
-                      <td class="px-4 py-3 font-semibold">{`${player?.first_name.trim()} ${player?.last_name.trim()}`}</td>
+                      <td class="px-4 py-3 font-semibold">{`${player?.first_name.trim()} ${player?.last_name.trim()} (${
+                        player?.gender
+                      })`}</td>
                       <td class="px-4 py-3">{player?.team_name}</td>
                       <td class="px-4 py-3">{player?.num_scores}</td>
                     </tr>
@@ -162,10 +208,24 @@ const TournamentStandings = () => {
                 </tr>
               </thead>
               <tbody>
-                <For each={tournamentLeaderboardQuery.data?.assists}>
+                <For
+                  each={tournamentLeaderboardQuery.data?.assists
+                    ?.filter(
+                      player =>
+                        player?.team_name === selectedTeam() ||
+                        selectedTeam() === "all"
+                    )
+                    .filter(
+                      player =>
+                        player?.gender === selectedGender() ||
+                        selectedGender() === "all"
+                    )}
+                >
                   {player => (
                     <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
-                      <td class="px-4 py-3 font-semibold">{`${player?.first_name.trim()} ${player?.last_name.trim()}`}</td>
+                      <td class="px-4 py-3 font-semibold">{`${player?.first_name.trim()} ${player?.last_name.trim()} (${
+                        player?.gender
+                      })`}</td>
                       <td class="px-4 py-3">{player?.team_name}</td>
                       <td class="px-4 py-3">{player?.num_assists}</td>
                     </tr>
