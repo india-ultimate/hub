@@ -250,14 +250,14 @@ const Tournament = () => {
         </p>
       </A>
       <A
-        href={`/tournament/${params.slug}/scoreboard`}
+        href={`/tournament/${params.slug}/leaderboard`}
         class="mt-5 block w-full rounded-lg border border-blue-600 bg-white p-4 shadow-md dark:border-blue-400 dark:bg-gray-800"
       >
         <h5 class="mb-2 text-center text-xl font-bold capitalize tracking-tight text-blue-600 dark:text-blue-400">
-          Scoreboard
+          Leaderboard
         </h5>
         <p class="text-center text-sm capitalize">
-          View the players with the top scores and assists
+          View the players with the top scores, assists and blocks
         </p>
       </A>
       <Show when={tournamentQuery.data?.rules}>

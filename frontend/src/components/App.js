@@ -39,7 +39,7 @@ const Roster = lazy(() => import("./roster/View"));
 const TournamentRules = lazy(() => import("./TournamentRules"));
 const TournamentSchedule = lazy(() => import("./TournamentSchedule"));
 const TournamentStandings = lazy(() => import("./TournamentStandings"));
-const TournamentScoreboard = lazy(() => import("./match/stats/Scoreboard"));
+const TournamentLeaderboard = lazy(() => import("./tournament/Leaderboard"));
 const TournamentTeam = lazy(() => import("./TournamentTeam"));
 const Error404 = lazy(() => import("./Error404"));
 const PhonePeTransaction = lazy(() => import("./PhonePeTransaction"));
@@ -102,8 +102,8 @@ export default function App() {
                     component={TournamentStandings}
                   />
                   <Route
-                    path={"/tournament/:slug/scoreboard"}
-                    component={TournamentScoreboard}
+                    path={"/tournament/:slug/leaderboard"}
+                    component={TournamentLeaderboard}
                   />
                   <Route
                     path={"/tournament/:slug/rules"}

@@ -2301,11 +2301,11 @@ def match_stats_full_time(
 
 
 @api.get(
-    "/tournament/{tournament_slug}/player-scores",
+    "/tournament/{tournament_slug}/leaderboard",
     auth=None,
-    response={200: list[dict[str, Any]], 400: Response},
+    response={200: dict[str, list[dict[str, Any]]], 400: Response},
 )
-def get_player_scores(
+def get_tournament_leaderboard(
     request: AuthenticatedHttpRequest, tournament_slug: str
 ) -> tuple[int, Any | message_response]:
     try:
@@ -2330,27 +2330,6 @@ def get_player_scores(
         .order_by("-num_scores")
     )
 
-    return 200, scores
-
-
-@api.get(
-    "/tournament/{tournament_slug}/player-assists",
-    auth=None,
-    response={200: list[dict[str, Any]], 400: Response},
-)
-def get_player_assists(
-    request: AuthenticatedHttpRequest, tournament_slug: str
-) -> tuple[int, Any | message_response]:
-    try:
-        event = Event.objects.get(slug=tournament_slug)
-        tournament = Tournament.objects.get(event=event)
-    except Tournament.DoesNotExist:
-        return 400, {"message": "Tournament does not exist"}
-    except Event.DoesNotExist:
-        return 400, {"message": "Event does not exist"}
-
-    match_stats = MatchStats.objects.filter(tournament=tournament).values_list("id", flat=True)
-
     assists = (
         MatchEvent.objects.filter(stats_id__in=match_stats, type=MatchEvent.EventType.SCORE)
         .annotate(
@@ -2363,7 +2342,7 @@ def get_player_assists(
         .order_by("-num_assists")
     )
 
-    return 200, assists
+    return 200, {"scores": list(scores), "assists": list(assists)}
 
 
 # Contact Form ##########

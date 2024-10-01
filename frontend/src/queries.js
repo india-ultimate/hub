@@ -1242,31 +1242,9 @@ export const updateTeam = async formData => {
   return data;
 };
 
-export const fetchPlayerScores = async tournament_slug => {
+export const fetchTournamentLeaderboard = async tournament_slug => {
   const response = await fetch(
-    `/api/tournament/${tournament_slug}/player-scores`,
-    {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        XrCSRFToken: getCookie("csrftoken")
-      },
-      credentials: "same-origin"
-    }
-  );
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data?.message || JSON.stringify(data));
-  }
-
-  return data;
-};
-
-export const fetchPlayerAssists = async tournament_slug => {
-  const response = await fetch(
-    `/api/tournament/${tournament_slug}/player-assists`,
+    `/api/tournament/${tournament_slug}/leaderboard`,
     {
       method: "GET",
       headers: {
