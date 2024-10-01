@@ -2337,14 +2337,27 @@ def get_tournament_leaderboard(
             first_name=F("assisted_by__user__first_name"),
             last_name=F("assisted_by__user__last_name"),
             team_name=F("team__name"),
-            gender=F("scored_by__gender"),
+            gender=F("assisted_by__gender"),
         )
         .values("assisted_by_id", "first_name", "last_name", "team_name", "gender")
         .annotate(num_assists=Count("assisted_by_id"))
         .order_by("-num_assists")
     )
 
-    return 200, {"scores": list(scores), "assists": list(assists)}
+    blocks = (
+        MatchEvent.objects.filter(stats_id__in=match_stats, type=MatchEvent.EventType.BLOCK)
+        .annotate(
+            first_name=F("block_by__user__first_name"),
+            last_name=F("block_by__user__last_name"),
+            team_name=F("team__name"),
+            gender=F("block_by__gender"),
+        )
+        .values("block_by_id", "first_name", "last_name", "team_name", "gender")
+        .annotate(num_blocks=Count("block_by_id"))
+        .order_by("-num_blocks")
+    )
+
+    return 200, {"scores": list(scores), "assists": list(assists), "blocks": list(blocks)}
 
 
 # Contact Form ##########
