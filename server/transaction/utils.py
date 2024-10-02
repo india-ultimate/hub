@@ -166,6 +166,21 @@ def create_transaction(
                 )
                 if not can_register and error:
                     return 400, error
+            elif event.is_membership_needed:
+                try:
+                    membership = player.membership
+                except Membership.DoesNotExist:
+                    return 400, {
+                        "message": f"Player - {player.user.get_full_name()} membership does not exist !"
+                    }
+                if not membership.is_active:
+                    return 400, {
+                        "message": f"Player - {player.user.get_full_name()} membership is not active !"
+                    }
+                if not membership.waiver_valid:
+                    return 400, {
+                        "message": f"Player - {player.user.get_full_name()} waiver is not signed!"
+                    }
 
             if Registration.objects.filter(event=event, player=player).exists():
                 return 400, {

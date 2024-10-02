@@ -1046,6 +1046,15 @@ def add_player_to_roster(
         )
         if not can_register and error:
             return 400, error
+    elif event.is_membership_needed:
+        try:
+            membership = player.membership
+        except Membership.DoesNotExist:
+            return 400, {"message": "Player's membership does not exist !"}
+        if not membership.is_active:
+            return 400, {"message": "Player's membership is not active !"}
+        if not membership.waiver_valid:
+            return 400, {"message": "Player's waiver is not signed!"}
 
     registration = Registration(
         event=event,
