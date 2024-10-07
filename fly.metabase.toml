@@ -1,0 +1,37 @@
+app = "upai-hub-metabase"
+primary_region = "ams"
+kill_signal = "SIGTERM"
+kill_timeout = 5
+swap_size_mb = 512
+
+[build]
+  image = "metabase/metabase:latest"
+
+[mounts]
+  source="upai_hub_metabase_data"
+  destination="/data"
+
+[env]
+# Tells Metabse to store the H2 database on
+# the mounted volume.
+MB_DB_FILE = "/data/metabase.db"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "1gb"
+
+[http_service]
+internal_port = 3000
+force_https = true
+
+[http_service.concurrency]
+type = "requests"
+hard_limit = 150
+soft_limit = 100
+
+[[http_service.checks]]
+grace_period = "60s"
+interval = "30s"
+method = "GET"
+timeout = "5s"
+path = "/api/health"
