@@ -124,6 +124,9 @@ def create_transaction(
                 "message": "Team is not part of the series",
             }
 
+        if event.max_num_teams and len(tournament.teams.all()) >= event.max_num_teams:
+            return 400, {"message": "Tournament already has maximum registered teams!"}
+
         start_date = event.start_date
         end_date = event.end_date
         amount = event.team_fee
