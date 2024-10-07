@@ -1500,6 +1500,12 @@ def add_team_registration(
     if tournament.event.team_fee > 0:
         return 400, {"message": "Team registration can be done only after payment of team fee !"}
 
+    if (
+        tournament.event.max_num_teams
+        and len(tournament.teams.all()) >= tournament.event.max_num_teams
+    ):
+        return 400, {"message": "Tournament already has maximum registered teams!"}
+
     tournament.teams.add(team)
 
     return 200, tournament
