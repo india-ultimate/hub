@@ -49,10 +49,15 @@ class EventSchema(ModelSchema):
 class TournamentSchema(ModelSchema):
     event: EventSchema
     teams: list[TeamSchema]
+    partial_teams: list[TeamSchema]
 
     @staticmethod
     def resolve_teams(tournament: Tournament) -> QuerySet[Team]:
         return tournament.teams.all().order_by("name")
+
+    @staticmethod
+    def resolve_partial_teams(tournament: Tournament) -> QuerySet[Team]:
+        return tournament.partial_teams.all().order_by("name")
 
     reg_count: list[RegistrationCount]
 
