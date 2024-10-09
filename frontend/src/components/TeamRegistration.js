@@ -66,7 +66,10 @@ const TeamRegistration = () => {
 
   createEffect(() => {
     if (tournamentQuery.status === "success" && !tournamentQuery.data.message) {
-      let teamIds = tournamentQuery.data?.teams.map(team => team.id);
+      let teamIds = [
+        ...(tournamentQuery.data?.teams?.map(team => team.id) || []),
+        ...(tournamentQuery.data?.partial_teams?.map(team => team.id) || [])
+      ];
       setRegisteredTeamIds(teamIds);
     }
   });
@@ -306,7 +309,11 @@ const TeamRegistration = () => {
         <div class="mt-4">
           <div class="mb-2 flex items-center justify-between ">
             <h4 class="text-lg font-bold text-blue-500">
-              Registered Teams {`(${tournamentQuery.data?.teams.length})`}
+              Registered Teams{" "}
+              {`(${
+                (tournamentQuery.data?.teams?.length || 0) +
+                (tournamentQuery.data?.partial_teams?.length || 0)
+              })`}
             </h4>
             <button
               onClick={scrollToMyTeams}
@@ -321,7 +328,10 @@ const TeamRegistration = () => {
           </p>
 
           <Show
-            when={tournamentQuery.data?.teams.length > 0}
+            when={
+              tournamentQuery.data?.teams.length > 0 ||
+              tournamentQuery.data?.partial_teams.length > 0
+            }
             fallback={<Info text="No team has registered yet!" />}
           >
             <div class="my-6">
@@ -365,6 +375,69 @@ const TeamRegistration = () => {
                             : "View Roster"}
                         </span>
                       </A>
+                    </div>
+                  </div>
+                )}
+              </For>
+
+              <For each={tournamentQuery.data?.partial_teams}>
+                {team => (
+                  <div class="mb-4 flex items-center justify-between gap-x-4 border-b pb-4">
+                    <div class="flex items-center gap-x-4">
+                      <img
+                        src={team.image ?? team.image_url}
+                        class="h-8 w-8 rounded-full"
+                      />
+                      <span class="font-medium">
+                        {team.name}{" "}
+                        <span class="me-2 rounded bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800 dark:bg-red-900 dark:text-red-300">
+                          Partial
+                        </span>
+                      </span>
+
+                      <Show
+                        when={userQuery.data?.admin_teams
+                          .map(team => team.id)
+                          .includes(team.id)}
+                      >
+                        <Icon class="h-4 w-4 text-blue-600" path={bolt} />
+                      </Show>
+                    </div>
+                    <div class="shrink grow-0">
+                      <Show
+                        when={userQuery.data?.admin_teams
+                          .map(team => team.id)
+                          .includes(team.id)}
+                      >
+                        <RazorpayPayment
+                          disabled={!isTeamFeeExists()}
+                          event={tournamentQuery.data?.event}
+                          team={team}
+                          amount={
+                            tournamentQuery.data?.event?.team_fee -
+                            tournamentQuery.data?.event?.partial_team_fee
+                          }
+                          setStatus={msg => {
+                            return msg;
+                          }}
+                          successCallback={() => {
+                            queryClient.invalidateQueries({
+                              queryKey: ["tournaments", params.slug]
+                            });
+                            setStatus("Paid successfully!");
+                            successPopoverRef.showPopover();
+                          }}
+                          failureCallback={msg => {
+                            setStatus(msg);
+                            errorPopoverRef.showPopover();
+                          }}
+                          buttonText={`Pay Pending (₹${(
+                            (tournamentQuery.data?.event?.team_fee -
+                              tournamentQuery.data?.event?.partial_team_fee) /
+                            100
+                          ).toLocaleString()})`}
+                        />
+                      </Show>
                     </div>
                   </div>
                 )}
