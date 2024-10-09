@@ -354,13 +354,20 @@ def update_transaction_team_registration(
         return
 
     if transaction.team is not None:
-        if transaction.type == RazorpayTransaction.TransactionTypeChoices.TEAM_REGISTRATION:
-            tournament.partial_teams.remove(transaction.team)
-            tournament.teams.add(transaction.team)
-        elif (
-            transaction.type == RazorpayTransaction.TransactionTypeChoices.PARTIAL_TEAM_REGISTRATION
-        ):
-            tournament.partial_teams.add(transaction.team)
+        tournament.partial_teams.remove(transaction.team)
+        tournament.teams.add(transaction.team)
+
+
+def update_transaction_partial_team_registration(
+    transaction: RazorpayTransaction,
+) -> None:
+    try:
+        tournament = Tournament.objects.get(event=transaction.event)
+    except Tournament.DoesNotExist:
+        return
+
+    if transaction.team is not None:
+        tournament.partial_teams.add(transaction.team)
 
 
 def update_transaction_player_registrations(
