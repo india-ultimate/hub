@@ -28,10 +28,11 @@ const RazorpayPayment = props => {
     const season_id = props.season?.id;
     const event_id = props.event?.id;
     const team_id = props.team?.id;
+    const partial = props.partialPayment || false;
     const data = team_id
       ? player_ids
         ? { team_id, event_id, player_ids } // Player Registration
-        : { team_id, event_id } // Team Registration
+        : { team_id, event_id, partial } // Team Registration
       : props.annual
       ? player_ids
         ? { player_ids, season_id } // Group Membership
@@ -146,7 +147,11 @@ const RazorpayPayment = props => {
   return (
     <>
       <button
-        class={`my-5 block rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800  ${
+        class={`my-5 block rounded-lg bg-${
+          props.buttonColor || "blue"
+        }-600 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-${
+          props.buttonColor || "blue"
+        }-700  ${
           props.disabled || loading()
             ? "cursor-not-allowed bg-gray-400 hover:bg-gray-500"
             : ""
@@ -155,7 +160,7 @@ const RazorpayPayment = props => {
         disabled={props.disabled || loading()}
         onClick={initiatePayment}
       >
-        <Show when={loading()} fallback={"Pay"}>
+        <Show when={loading()} fallback={props.buttonText || "Pay"}>
           <div class="text-sm">
             <Spinner height={20} width={20} />
             <span class="mr-2">Paying...</span>

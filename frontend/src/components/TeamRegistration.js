@@ -111,9 +111,15 @@ const TeamRegistration = () => {
     return tournamentQuery.data?.event?.team_fee > 0;
   };
 
+  const isPartialTeamFeeExists = () => {
+    return tournamentQuery.data?.event?.partial_team_fee > 0;
+  };
+
   const getPlayerFee = event => {
     if (event?.player_fee > 0) {
-      return "Rs. " + event?.player_fee / 100 + " per player";
+      return (
+        "Rs. " + (event?.player_fee / 100).toLocaleString() + " per player"
+      );
     } else {
       return "Free";
     }
@@ -121,7 +127,7 @@ const TeamRegistration = () => {
 
   const getTeamFee = event => {
     if (event?.team_fee > 0) {
-      return "Rs. " + event?.team_fee / 100 + " per team";
+      return "Rs. " + (event?.team_fee / 100).toLocaleString() + " per team";
     } else {
       return "Free";
     }
@@ -129,7 +135,9 @@ const TeamRegistration = () => {
 
   const getPartialTeamFee = event => {
     if (event?.partial_team_fee > 0) {
-      return "Rs. " + event?.partial_team_fee / 100 + " per team";
+      return (
+        "Rs. " + (event?.partial_team_fee / 100).toLocaleString() + " per team"
+      );
     } else {
       return "Not Available";
     }
@@ -405,102 +413,138 @@ const TeamRegistration = () => {
                           />
                           <span class="font-medium">{team.name}</span>
                         </div>
-                        <Show
-                          when={
-                            registeredTeamIds().includes(team.id) &&
-                            tournamentQuery.data?.event?.team_fee === 0
-                          }
-                        >
-                          <button
-                            type="button"
-                            class={clsx(
-                              "justify-self-end rounded-lg px-4 py-2 text-sm font-medium text-white focus:outline-none focus:ring-4",
-                              "bg-red-500 hover:bg-red-600 focus:ring-red-300 disabled:bg-gray-400 dark:bg-red-600 dark:hover:bg-red-700 dark:focus:ring-red-800"
-                            )}
-                            disabled={deRegisteringTeamId() === team.id}
-                            onClick={() => {
-                              deRegisterTeamMutation.mutate({
-                                tournament_id: tournamentQuery.data?.id,
-                                body: {
-                                  team_id: team.id
-                                }
-                              });
-                              setDeRegisteringTeamId(team.id);
-                            }}
-                          >
-                            <Show
-                              when={deRegisteringTeamId() === team.id}
-                              fallback="Remove"
-                            >
-                              Removing...
-                            </Show>
-                          </button>
-                        </Show>
-                        <Show
-                          when={
-                            !registeredTeamIds().includes(team.id) &&
-                            isTeamPartOfSeries(team)
-                          }
-                        >
+                        <div>
                           <Show
-                            when={isTeamFeeExists()}
-                            fallback={
-                              <button
-                                type="button"
-                                class={clsx(
-                                  "justify-self-end rounded-lg px-4 py-2 text-sm font-medium text-white focus:outline-none focus:ring-4",
-                                  "bg-blue-600 hover:bg-blue-700 focus:ring-blue-300 disabled:bg-gray-400 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
-                                )}
-                                disabled={registeringTeamId() === team.id}
-                                onClick={() => {
-                                  registerTeamMutation.mutate({
-                                    tournament_id: tournamentQuery.data?.id,
-                                    body: {
-                                      team_id: team.id
-                                    }
-                                  });
-                                  setRegisteringTeamId(team.id);
-                                }}
-                              >
-                                <Show
-                                  when={registeringTeamId() === team.id}
-                                  fallback="Register"
-                                >
-                                  Registering...
-                                </Show>
-                              </button>
+                            when={
+                              registeredTeamIds().includes(team.id) &&
+                              tournamentQuery.data?.event?.team_fee === 0
                             }
                           >
-                            <RazorpayPayment
-                              disabled={!isTeamFeeExists()}
-                              event={tournamentQuery.data?.event}
-                              team={team}
-                              amount={tournamentQuery.data?.event?.team_fee}
-                              setStatus={msg => {
-                                return msg;
-                              }}
-                              successCallback={() => {
-                                queryClient.invalidateQueries({
-                                  queryKey: ["tournaments", params.slug]
+                            <button
+                              type="button"
+                              class={clsx(
+                                "justify-self-end rounded-lg px-4 py-2 text-sm font-medium text-white focus:outline-none focus:ring-4",
+                                "bg-red-500 hover:bg-red-600 focus:ring-red-300 disabled:bg-gray-400 dark:bg-red-600 dark:hover:bg-red-700 dark:focus:ring-red-800"
+                              )}
+                              disabled={deRegisteringTeamId() === team.id}
+                              onClick={() => {
+                                deRegisterTeamMutation.mutate({
+                                  tournament_id: tournamentQuery.data?.id,
+                                  body: {
+                                    team_id: team.id
+                                  }
                                 });
-                                setStatus("Paid successfully!");
-                                successPopoverRef.showPopover();
+                                setDeRegisteringTeamId(team.id);
                               }}
-                              failureCallback={msg => {
-                                setStatus(msg);
-                                errorPopoverRef.showPopover();
-                              }}
-                            />
+                            >
+                              <Show
+                                when={deRegisteringTeamId() === team.id}
+                                fallback="Remove"
+                              >
+                                Removing...
+                              </Show>
+                            </button>
                           </Show>
-                        </Show>
-                        <Show when={!isTeamPartOfSeries(team)}>
-                          <A
-                            href={`/series/${tournamentQuery.data?.event?.series?.slug}`}
-                            class="text-xs text-blue-500 underline"
+                          <Show
+                            when={
+                              !registeredTeamIds().includes(team.id) &&
+                              isTeamPartOfSeries(team)
+                            }
                           >
-                            Add the team to series
-                          </A>
-                        </Show>
+                            <Show
+                              when={isTeamFeeExists()}
+                              fallback={
+                                <button
+                                  type="button"
+                                  class={clsx(
+                                    "justify-self-end rounded-lg px-4 py-2 text-sm font-medium text-white focus:outline-none focus:ring-4",
+                                    "bg-blue-600 hover:bg-blue-700 focus:ring-blue-300 disabled:bg-gray-400 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+                                  )}
+                                  disabled={registeringTeamId() === team.id}
+                                  onClick={() => {
+                                    registerTeamMutation.mutate({
+                                      tournament_id: tournamentQuery.data?.id,
+                                      body: {
+                                        team_id: team.id
+                                      }
+                                    });
+                                    setRegisteringTeamId(team.id);
+                                  }}
+                                >
+                                  <Show
+                                    when={registeringTeamId() === team.id}
+                                    fallback="Register"
+                                  >
+                                    Registering...
+                                  </Show>
+                                </button>
+                              }
+                            >
+                              <RazorpayPayment
+                                disabled={!isTeamFeeExists()}
+                                event={tournamentQuery.data?.event}
+                                team={team}
+                                amount={tournamentQuery.data?.event?.team_fee}
+                                setStatus={msg => {
+                                  return msg;
+                                }}
+                                successCallback={() => {
+                                  queryClient.invalidateQueries({
+                                    queryKey: ["tournaments", params.slug]
+                                  });
+                                  setStatus("Paid successfully!");
+                                  successPopoverRef.showPopover();
+                                }}
+                                failureCallback={msg => {
+                                  setStatus(msg);
+                                  errorPopoverRef.showPopover();
+                                }}
+                                buttonText={`Pay Full (₹${(
+                                  tournamentQuery.data?.event?.team_fee / 100
+                                ).toLocaleString()})`}
+                              />
+                            </Show>
+
+                            <Show when={isPartialTeamFeeExists()}>
+                              <RazorpayPayment
+                                disabled={!isPartialTeamFeeExists()}
+                                event={tournamentQuery.data?.event}
+                                team={team}
+                                amount={
+                                  tournamentQuery.data?.event?.partial_team_fee
+                                }
+                                setStatus={msg => {
+                                  return msg;
+                                }}
+                                successCallback={() => {
+                                  queryClient.invalidateQueries({
+                                    queryKey: ["tournaments", params.slug]
+                                  });
+                                  setStatus("Paid successfully!");
+                                  successPopoverRef.showPopover();
+                                }}
+                                failureCallback={msg => {
+                                  setStatus(msg);
+                                  errorPopoverRef.showPopover();
+                                }}
+                                buttonText={`Pay Partial (₹${(
+                                  tournamentQuery.data?.event
+                                    ?.partial_team_fee / 100
+                                ).toLocaleString()})`}
+                                buttonColor="green"
+                                partialPayment={true}
+                              />
+                            </Show>
+                          </Show>
+                          <Show when={!isTeamPartOfSeries(team)}>
+                            <A
+                              href={`/series/${tournamentQuery.data?.event?.series?.slug}`}
+                              class="text-xs text-blue-500 underline"
+                            >
+                              Add the team to series
+                            </A>
+                          </Show>
+                        </div>
                       </div>
                     )}
                   </For>
