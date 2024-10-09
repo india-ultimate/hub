@@ -129,8 +129,14 @@ def create_transaction(
 
         start_date = event.start_date
         end_date = event.end_date
-        amount = event.team_fee
         season = None
+
+        if order.partial:
+            amount = event.partial_team_fee
+        elif team in tournament.partial_teams.all():
+            amount = event.team_fee - event.partial_team_fee
+        else:
+            amount = event.team_fee
 
         notes: dict[str, int | str] = {
             "user_id": user.id,
@@ -274,7 +280,9 @@ def create_transaction(
             "event": event,
             "season": season,
             "team": team,
-            "type": RazorpayTransaction.TransactionTypeChoices.TEAM_REGISTRATION
+            "type": RazorpayTransaction.TransactionTypeChoices.PARTIAL_TEAM_REGISTRATION
+            if isinstance(order, TeamRegistrationSchema) and order.partial
+            else RazorpayTransaction.TransactionTypeChoices.TEAM_REGISTRATION
             if isinstance(order, TeamRegistrationSchema)
             else RazorpayTransaction.TransactionTypeChoices.PLAYER_REGISTRATION
             if isinstance(order, PlayerRegistrationSchema)
