@@ -43,6 +43,7 @@ from .schema import (
 from .utils import (
     create_transaction,
     list_transactions_by_type,
+    update_transaction_partial_team_registration,
     update_transaction_player_memberships,
     update_transaction_player_registrations,
     update_transaction_team_registration,
@@ -118,6 +119,8 @@ def handle_razorpay_callback(
         update_transaction_team_registration(transaction)
     elif transaction.type == RazorpayTransaction.TransactionTypeChoices.PLAYER_REGISTRATION:
         update_transaction_player_registrations(transaction)
+    elif transaction.type == RazorpayTransaction.TransactionTypeChoices.PARTIAL_TEAM_REGISTRATION:
+        update_transaction_partial_team_registration(transaction)
 
     return 200, transaction.players.all()
 
@@ -195,6 +198,8 @@ def payment_webhook(request: HttpRequest) -> message_response:
         update_transaction_team_registration(transaction)
     elif transaction.type == RazorpayTransaction.TransactionTypeChoices.PLAYER_REGISTRATION:
         update_transaction_player_registrations(transaction)
+    elif transaction.type == RazorpayTransaction.TransactionTypeChoices.PARTIAL_TEAM_REGISTRATION:
+        update_transaction_partial_team_registration(transaction)
 
     return {"message": "Webhook processed"}
 
