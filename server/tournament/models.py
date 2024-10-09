@@ -64,6 +64,7 @@ class Tournament(ExportModelOperationsMixin("tournament"), models.Model):  # typ
 
     event = models.OneToOneField(Event, on_delete=models.CASCADE, unique=True)
     teams = models.ManyToManyField(Team, related_name="tournaments", blank=True)
+    partial_teams = models.ManyToManyField(Team, related_name="partial_reg_tournaments", blank=True)
     status = models.CharField(max_length=3, choices=Status.choices, default=Status.DRAFT)
     logo_light = models.FileField(upload_to="tournament_logos/", blank=True, max_length=256)
     logo_dark = models.FileField(upload_to="tournament_logos/", blank=True, max_length=256)
