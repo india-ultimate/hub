@@ -127,6 +127,14 @@ const TeamRegistration = () => {
     }
   };
 
+  const getPartialTeamFee = event => {
+    if (event?.partial_team_fee > 0) {
+      return "Rs. " + event?.partial_team_fee / 100 + " per team";
+    } else {
+      return "Not Available";
+    }
+  };
+
   const isTeamPartOfSeries = team => {
     if (!tournamentQuery.data?.event?.series) {
       return true;
@@ -216,6 +224,10 @@ const TeamRegistration = () => {
             <li>
               <strong>Team Registration Fee:</strong>{" "}
               {getTeamFee(tournamentQuery.data?.event)}
+            </li>
+            <li>
+              <strong>Partial Team Registration Fee:</strong>{" "}
+              {getPartialTeamFee(tournamentQuery.data?.event)}
             </li>
             <li>
               <strong>Player Registration Fee:</strong>{" "}
@@ -393,7 +405,12 @@ const TeamRegistration = () => {
                           />
                           <span class="font-medium">{team.name}</span>
                         </div>
-                        <Show when={registeredTeamIds().includes(team.id)}>
+                        <Show
+                          when={
+                            registeredTeamIds().includes(team.id) &&
+                            tournamentQuery.data?.event?.team_fee === 0
+                          }
+                        >
                           <button
                             type="button"
                             class={clsx(
