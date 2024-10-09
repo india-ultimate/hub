@@ -41,6 +41,7 @@ class RazorpayTransaction(ExportModelOperationsMixin("razorpay_transaction"), mo
     class TransactionTypeChoices(models.TextChoices):
         ANNUAL_MEMBERSHIP = "annual-membership", _("Annual Membership")
         TEAM_REGISTRATION = "team-reg", _("Team Registration")
+        PARTIAL_TEAM_REGISTRATION = "partial-team-reg", _("Partial Team Registration")
         PLAYER_REGISTRATION = "player-reg", _("Player Registration")
 
     order_id = models.CharField(primary_key=True, max_length=255)
