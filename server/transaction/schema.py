@@ -139,6 +139,7 @@ class GroupMembershipSchema(Schema):
 class TeamRegistrationSchema(Schema):
     team_id: int
     event_id: int
+    partial: bool = False
 
 
 class PlayerRegistrationSchema(Schema):
