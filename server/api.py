@@ -125,6 +125,7 @@ from server.tournament.schema import (
     TournamentFieldCreateSchema,
     TournamentFieldSchema,
     TournamentFieldUpdateSchema,
+    TournamentMinSchema,
     TournamentPlayerRegistrationSchema,
     TournamentPlayerRegistrationUpdateSchema,
     TournamentRulesSchema,
@@ -930,7 +931,7 @@ def upai_person(
 # Tournaments ##########
 
 
-@api.get("/tournaments", auth=None, response={200: list[TournamentSchema]})
+@api.get("/tournaments", auth=None, response={200: list[TournamentMinSchema]})
 def get_all_tournaments(request: AuthenticatedHttpRequest) -> tuple[int, QuerySet[Tournament]]:
     """Get tournaments, most recently started tournament first"""
     return 200, Tournament.objects.all().order_by("-event__start_date")

@@ -46,6 +46,14 @@ class EventSchema(ModelSchema):
         model_exclude = ["ultimate_central_id"]
 
 
+class TournamentMinSchema(ModelSchema):
+    event: EventSchema
+
+    class Config:
+        model = Tournament
+        model_exclude = ["volunteers"]
+
+
 class TournamentSchema(ModelSchema):
     event: EventSchema
     teams: list[TeamSchema]
