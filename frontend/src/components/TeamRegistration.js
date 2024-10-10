@@ -24,7 +24,6 @@ import {
 } from "../queries";
 import { ifTodayInBetweenDates } from "../utils";
 import Info from "./alerts/Info";
-import Warning from "./alerts/Warning";
 import Breadcrumbs from "./Breadcrumbs";
 import Modal from "./Modal";
 import ErrorPopover from "./popover/ErrorPopover";
@@ -146,6 +145,17 @@ const TeamRegistration = () => {
     }
   };
 
+  const getPartialRemainingTeamFee = event => {
+    if (event?.partial_team_fee > 0) {
+      return (
+        "Rs. " +
+        ((event?.team_fee - event?.partial_team_fee) / 100).toLocaleString()
+      );
+    } else {
+      return "-";
+    }
+  };
+
   const isTeamPartOfSeries = team => {
     if (!tournamentQuery.data?.event?.series) {
       return true;
@@ -228,81 +238,88 @@ const TeamRegistration = () => {
         </p>
       </div>
 
-      <div class="mx-auto mb-4 mt-6 w-fit">
-        <Warning>
-          <span class="mb-2 block font-bold">Registration Details!</span>
-          <ul class="max-w-md list-inside list-disc space-y-1">
-            <li>
-              <strong>Team Registration Fee:</strong>{" "}
-              {getTeamFee(tournamentQuery.data?.event)}
-            </li>
-            <li>
-              <strong>Partial Team Registration Fee:</strong>{" "}
-              {getPartialTeamFee(tournamentQuery.data?.event)}
-            </li>
-            <li>
-              <strong>Player Registration Fee:</strong>{" "}
-              {getPlayerFee(tournamentQuery.data?.event)}
-            </li>
-            <li>
-              Team Registrations window open from{" "}
-              <span class="inline-flex font-medium">
-                {new Date(
-                  Date.parse(
-                    tournamentQuery.data?.event?.team_registration_start_date
-                  )
-                ).toLocaleDateString("en-US", {
-                  year: "numeric",
-                  month: "short",
-                  day: "numeric",
-                  timeZone: "UTC"
-                })}
-              </span>{" "}
-              to{" "}
-              <span class="inline-flex font-medium">
-                {new Date(
-                  Date.parse(
-                    tournamentQuery.data?.event?.team_registration_end_date
-                  )
-                ).toLocaleDateString("en-US", {
-                  year: "numeric",
-                  month: "short",
-                  day: "numeric",
-                  timeZone: "UTC"
-                })}
-              </span>
-            </li>
-            <li>
-              Player Registrations window open from{" "}
-              <span class="inline-flex font-medium">
-                {new Date(
-                  Date.parse(
-                    tournamentQuery.data?.event?.player_registration_start_date
-                  )
-                ).toLocaleDateString("en-US", {
-                  year: "numeric",
-                  month: "short",
-                  day: "numeric",
-                  timeZone: "UTC"
-                })}
-              </span>{" "}
-              to{" "}
-              <span class="inline-flex font-medium">
-                {new Date(
-                  Date.parse(
-                    tournamentQuery.data?.event?.player_registration_end_date
-                  )
-                ).toLocaleDateString("en-US", {
-                  year: "numeric",
-                  month: "short",
-                  day: "numeric",
-                  timeZone: "UTC"
-                })}
-              </span>
-            </li>
-          </ul>
-          {/* <hr class="my-2 h-px border-0 bg-yellow-600 dark:bg-gray-700" /> */}
-        </Warning>
+      <div
+        class="my-4 rounded-lg bg-yellow-50 p-4 text-sm text-yellow-800 dark:bg-gray-800 dark:text-yellow-300"
+        role="alert"
+      >
+        <details open>
+          <summary class="text-base font-bold">Registration Details!</summary>
+          <div class="mt-2">
+            <ul class="max-w-md list-inside list-disc space-y-1">
+              <li>
+                <strong>Team Registration Fee:</strong>{" "}
+                {getTeamFee(tournamentQuery.data?.event)}
+              </li>
+              <li>
+                <strong>Partial Team Registration Fee:</strong>{" "}
+                {getPartialTeamFee(tournamentQuery.data?.event)} (Pay the
+                balance of{" "}
+                {getPartialRemainingTeamFee(tournamentQuery.data?.event)} later)
+              </li>
+              <li>
+                <strong>Player Registration Fee:</strong>{" "}
+                {getPlayerFee(tournamentQuery.data?.event)}
+              </li>
+              <li>
+                Team Registrations window open from{" "}
+                <span class="inline-flex font-medium">
+                  {new Date(
+                    Date.parse(
+                      tournamentQuery.data?.event?.team_registration_start_date
+                    )
+                  ).toLocaleDateString("en-US", {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                    timeZone: "UTC"
+                  })}
+                </span>{" "}
+                to{" "}
+                <span class="inline-flex font-medium">
+                  {new Date(
+                    Date.parse(
+                      tournamentQuery.data?.event?.team_registration_end_date
+                    )
+                  ).toLocaleDateString("en-US", {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                    timeZone: "UTC"
+                  })}
+                </span>
+              </li>
+              <li>
+                Player Registrations window open from{" "}
+                <span class="inline-flex font-medium">
+                  {new Date(
+                    Date.parse(
+                      tournamentQuery.data?.event
+                        ?.player_registration_start_date
+                    )
+                  ).toLocaleDateString("en-US", {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                    timeZone: "UTC"
+                  })}
+                </span>{" "}
+                to{" "}
+                <span class="inline-flex font-medium">
+                  {new Date(
+                    Date.parse(
+                      tournamentQuery.data?.event?.player_registration_end_date
+                    )
+                  ).toLocaleDateString("en-US", {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                    timeZone: "UTC"
+                  })}
+                </span>
+              </li>
+            </ul>
+          </div>
+        </details>
       </div>
 
       <div class="mx-auto max-w-screen-md">
