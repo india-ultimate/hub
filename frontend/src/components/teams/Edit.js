@@ -20,7 +20,7 @@ import InputLabel from "../InputLabel";
 import DefaultSelect from "../Select";
 import TextInput from "../TextInput";
 
-const Edit = props => {
+const Edit = () => {
   const params = useParams();
 
   const [teamData, setTeamData] = createSignal();

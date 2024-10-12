@@ -5,6 +5,30 @@ import { Show } from "solid-js";
 
 import { fetchTeamBySlug, fetchUser } from "../../queries";
 import Breadcrumbs from "../Breadcrumbs";
+import Modal from "../Modal";
+import EditTeamNameForm from "./EditTeamNameForm";
+
+const EditNameModal = props => {
+  let modalRef;
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => modalRef.showModal()}
+        class="inline-flex items-center gap-x-2 rounded-lg border-2 border-yellow-300 bg-yellow-50 px-3 py-2 text-center text-sm font-medium text-yellow-700 shadow-sm hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-yellow-300"
+      >
+        Edit name
+      </button>
+      <Modal
+        ref={modalRef}
+        title={<span class="text-md font-semibold">Edit name</span>}
+        close={() => modalRef.close()}
+      >
+        {props.children}
+      </Modal>
+    </>
+  );
+};
 
 const View = () => {
   const params = useParams();
@@ -45,12 +69,9 @@ const View = () => {
               }
             >
               <div class="flex flex-row gap-x-2">
-                <button
-                  type="button"
-                  class="inline-flex items-center gap-x-2 rounded-lg border-2 border-yellow-300 bg-yellow-50 px-3 py-2 text-center text-sm font-medium text-yellow-700 shadow-sm hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-yellow-300"
-                >
-                  Edit name
-                </button>
+                <EditNameModal>
+                  <EditTeamNameForm teamName={teamQuery.data?.name} />
+                </EditNameModal>
                 <A href={`/team/${params.slug}/edit`}>
                   <button
                     type="button"
