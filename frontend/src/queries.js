@@ -1,4 +1,4 @@
-import { delay, getCookie } from "./utils";
+import { getCookie } from "./utils";
 
 export const fetchContributors = async () => {
   const repoResp = await fetch(
@@ -1349,8 +1349,6 @@ export const createMatchStatsEvent = async ({ match_id, body }) => {
 
   const data = await response.json();
 
-  await delay(800);
-
   if (!response.ok) {
     throw new Error(data?.message || JSON.stringify(data));
   }
@@ -1369,8 +1367,6 @@ export const matchStatsSwitchOffense = async ({ match_id }) => {
   });
 
   const data = await response.json();
-
-  await delay(500);
 
   if (!response.ok) {
     throw new Error(data?.message || JSON.stringify(data));
