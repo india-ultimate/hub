@@ -70,7 +70,10 @@ const View = () => {
             >
               <div class="flex flex-row gap-x-2">
                 <EditNameModal>
-                  <EditTeamNameForm teamName={teamQuery.data?.name} />
+                  <EditTeamNameForm
+                    teamId={teamQuery.data?.id}
+                    teamName={teamQuery.data?.name}
+                  />
                 </EditNameModal>
                 <A href={`/team/${params.slug}/edit`}>
                   <button

@@ -1,17 +1,20 @@
-import { createSignal } from "solid-js";
-import Error from "../alerts/Error";
-import Info from "../alerts/Info";
-import Warning from "../alerts/Warning";
-import TextInput from "../TextInput";
 import {
   createForm,
   getValue,
   required,
   toTrimmed
 } from "@modular-forms/solid";
+import { useNavigate } from "@solidjs/router";
+import { createMutation } from "@tanstack/solid-query";
+import { createSignal, Match, Show, Switch } from "solid-js";
+
+import { updateTeamName } from "../../queries";
+import Error from "../alerts/Error";
+import Warning from "../alerts/Warning";
+import TextInput from "../TextInput";
 
 const EditTeamNameForm = props => {
-  const [status, setStatus] = createSignal("");
+  const navigate = useNavigate();
   const [error, setError] = createSignal("");
 
   const [editNameForm, { Form, Field }] = createForm({
@@ -22,8 +25,14 @@ const EditTeamNameForm = props => {
     revalidateOn: "touched"
   });
 
+  const updateTeamNameMutation = createMutation({
+    mutationFn: updateTeamName,
+    onSuccess: data => navigate(`/team/${data.slug}`, { replace: true }),
+    onError: error => setError(error.message)
+  });
+
   function handleSubmit(values) {
-    console.log(values);
+    updateTeamNameMutation.mutate({ ...values, id: props.teamId });
   }
 
   function editedTeamName() {
@@ -61,18 +70,27 @@ const EditTeamNameForm = props => {
           </Field>
           <button
             type="submit"
-            disabled={editedTeamName() === undefined}
+            disabled={
+              editedTeamName() === undefined || updateTeamNameMutation.isLoading
+            }
             class="mb-2 w-full rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white transition-all hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 disabled:bg-gray-400 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 sm:w-auto"
           >
-            <Show when={editedTeamName()} fallback={"Submit"}>
-              Change name to {editedTeamName()}
-            </Show>
+            <Switch>
+              <Match when={!editedTeamName()}>Submit</Match>
+              <Match
+                when={editedTeamName() && !updateTeamNameMutation.isLoading}
+              >
+                Change name to {editedTeamName()}
+              </Match>
+              <Match
+                when={editedTeamName() && updateTeamNameMutation.isLoading}
+              >
+                Updating...
+              </Match>
+            </Switch>
           </button>
           <Show when={error()}>
             <Error text={`Oops ! ${error()}`} />
-          </Show>
-          <Show when={status()}>
-            <Info text={status()} />
           </Show>
         </div>
       </Form>
