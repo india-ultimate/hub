@@ -64,6 +64,7 @@ from server.schema import (
     RegistrationWardSchema,
     Response,
     TeamCreateSchema,
+    TeamNameUpdateSchema,
     TeamSchema,
     TeamUpdateSchema,
     TopScoreCredentials,
@@ -151,11 +152,7 @@ from server.tournament.utils import (
 )
 from server.transaction.api import router as transaction_router
 from server.types import message_response
-from server.utils import (
-    if_dates_are_not_in_order,
-    if_today,
-    is_today_in_between_dates,
-)
+from server.utils import if_dates_are_not_in_order, if_today, is_today_in_between_dates, slugify_max
 
 api = NinjaAPI(auth=django_auth, csrf=True)
 
@@ -263,6 +260,36 @@ def get_team(
         team = Team.objects.get(slug=team_slug)
     except Team.DoesNotExist:
         return 400, {"message": "Team does not exist"}
+
+    return 200, team
+
+
+@api.put("/teams/edit-name", response={200: TeamSchema, 400: Response, 401: Response})
+def update_team_name(
+    request: AuthenticatedHttpRequest,
+    team_details: TeamNameUpdateSchema,
+) -> tuple[int, Team | message_response]:
+    try:
+        team = Team.objects.get(id=team_details.id)
+    except Team.DoesNotExist:
+        return 400, {"message": "Team does not exist"}
+
+    if request.user not in team.admins.all():
+        return 401, {"message": "Only team admins can edit the team's name"}
+
+    team.name = team_details.name.strip()
+
+    # update team slug
+    slug = slugify_max(team_details.name, 45)
+    unique_slug = slug
+
+    number = 1
+    while Team.objects.filter(slug=unique_slug).exists():
+        unique_slug = f"{unique_slug}-{number}"
+        number += 1
+
+    team.slug = unique_slug
+    team.save()
 
     return 200, team
 

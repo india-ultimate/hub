@@ -137,6 +137,11 @@ class TeamCreateSchema(Schema):
     city: str
 
 
+class TeamNameUpdateSchema(Schema):
+    id: str
+    name: str
+
+
 class TeamUpdateSchema(Schema):
     id: str
     category: str | None

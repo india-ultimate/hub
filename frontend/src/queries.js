@@ -1256,6 +1256,25 @@ export const createTeam = async formData => {
   return data;
 };
 
+export const updateTeamName = async body => {
+  const response = await fetch("/api/teams/edit-name", {
+    method: "PUT",
+    headers: {
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin",
+    body: JSON.stringify(body)
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.message || JSON.stringify(data));
+  }
+
+  return data;
+};
+
 export const updateTeam = async formData => {
   const response = await fetch("/api/teams/edit", {
     method: "POST",
