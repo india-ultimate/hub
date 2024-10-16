@@ -76,7 +76,7 @@ const TournamentManager = () => {
   const [updateMatchFields, setUpdateMatchFields] = createStore();
   const [isStandingsEdited, setIsStandingsEdited] = createSignal(false);
   const [addMatchStatus, setAddMatchStatus] = createSignal();
-  const durationList = [60, 75, 90, 100];
+  const durationList = [45, 60, 75, 90, 100];
 
   onMount(() => {
     const dt = new Date(1970, 0, 1, 6, 0);
