@@ -62,32 +62,31 @@ const EditStats = () => {
     return team?.image ?? team?.image_url;
   };
 
+  const invalidateQueries = () => {
+    queryClient.invalidateQueries({ queryKey: ["match", params.matchId] });
+    queryClient.invalidateQueries({
+      queryKey: ["match-stats", params.matchId]
+    });
+  };
+
   const matchStatsHalfTimeMutation = createMutation({
     mutationFn: matchStatsHalfTime,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["match", params.matchId] });
-    }
+    onSuccess: invalidateQueries
   });
 
   const matchStatsFullTimeMutation = createMutation({
     mutationFn: matchStatsFullTime,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["match", params.matchId] });
-    }
+    onSuccess: invalidateQueries
   });
 
   const matchStatsUndoMutation = createMutation({
     mutationFn: matchStatsUndo,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["match", params.matchId] });
-    }
+    onSuccess: invalidateQueries
   });
 
   const matchStatsSwitchOffenseMutation = createMutation({
     mutationFn: matchStatsSwitchOffense,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["match", params.matchId] });
-    }
+    onSuccess: invalidateQueries
   });
 
   return (
@@ -220,11 +219,7 @@ const EditStats = () => {
                   button={{ text: "Block" }}
                   buttonColor={matchCardColorToButtonStyles["blue"]}
                   disabled={matchStatsSwitchOffenseMutation.isLoading}
-                  onClose={() => {
-                    queryClient.invalidateQueries({
-                      queryKey: ["match", params.matchId]
-                    });
-                  }}
+                  onClose={invalidateQueries}
                 >
                   <BlockForm
                     match={matchQuery.data}
@@ -262,11 +257,7 @@ const EditStats = () => {
                 button={{ text: "Score" }}
                 buttonColor={matchCardColorToButtonStyles["blue"]}
                 disabled={matchStatsSwitchOffenseMutation.isLoading}
-                onClose={() => {
-                  queryClient.invalidateQueries({
-                    queryKey: ["match", params.matchId]
-                  });
-                }}
+                onClose={invalidateQueries}
               >
                 <ScoreForm
                   match={matchQuery.data}
@@ -295,11 +286,7 @@ const EditStats = () => {
                   button={{ text: "Block" }}
                   buttonColor={matchCardColorToButtonStyles["green"]}
                   disabled={matchStatsSwitchOffenseMutation.isLoading}
-                  onClose={() => {
-                    queryClient.invalidateQueries({
-                      queryKey: ["match", params.matchId]
-                    });
-                  }}
+                  onClose={invalidateQueries}
                 >
                   <BlockForm
                     match={matchQuery.data}
@@ -337,11 +324,7 @@ const EditStats = () => {
                 button={{ text: "Score" }}
                 buttonColor={matchCardColorToButtonStyles["green"]}
                 disabled={matchStatsSwitchOffenseMutation.isLoading}
-                onClose={() => {
-                  queryClient.invalidateQueries({
-                    queryKey: ["match", params.matchId]
-                  });
-                }}
+                onClose={invalidateQueries}
               >
                 <ScoreForm
                   match={matchQuery.data}
