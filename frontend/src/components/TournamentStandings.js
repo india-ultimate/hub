@@ -9,7 +9,6 @@ import {
   fetchCrossPoolBySlug,
   fetchPoolsBySlug,
   fetchPositionPoolsBySlug,
-  fetchTeams,
   fetchTournamentBySlug
 } from "../queries";
 import { getTournamentBreadcrumbName } from "../utils";
@@ -25,7 +24,6 @@ const TournamentStandings = () => {
     () => ["tournaments", params.slug],
     () => fetchTournamentBySlug(params.slug)
   );
-  const teamsQuery = createQuery(() => ["teams"], fetchTeams);
   const poolsQuery = createQuery(
     () => ["pools", params.slug],
     () => fetchPoolsBySlug(params.slug)
@@ -44,9 +42,9 @@ const TournamentStandings = () => {
   );
 
   createEffect(() => {
-    if (teamsQuery.status === "success") {
+    if (tournamentQuery.status === "success" && !tournamentQuery.data.message) {
       let newTeamsMap = {};
-      teamsQuery.data.map(team => {
+      tournamentQuery.data?.teams.map(team => {
         newTeamsMap[team.id] = team;
       });
       setTeamsMap(newTeamsMap);
