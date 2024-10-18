@@ -48,6 +48,13 @@ const EditStats = () => {
     }
   );
 
+  const invalidateQueries = () => {
+    queryClient.invalidateQueries({ queryKey: ["match", params.matchId] });
+    queryClient.invalidateQueries({
+      queryKey: ["match-stats", params.matchId]
+    });
+  };
+
   createEffect(() => {
     if (matchStatsQuery.isSuccess && matchStatsQuery.data) {
       if (matchStatsQuery.data.status !== "COM") {
@@ -67,16 +74,12 @@ const EditStats = () => {
 
   const matchStatsHalfTimeMutation = createMutation({
     mutationFn: matchStatsHalfTime,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["match", params.matchId] });
-    }
+    onSuccess: invalidateQueries
   });
 
   const matchStatsFullTimeMutation = createMutation({
     mutationFn: matchStatsFullTime,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["match", params.matchId] });
-    }
+    onSuccess: invalidateQueries
   });
 
   return (
@@ -236,11 +239,7 @@ const EditStats = () => {
                 <ButtonWithModal
                   button={{ text: "Select Line", icon: userGroup }}
                   buttonColor={matchCardColorToButtonStyles["blue"]}
-                  onClose={() => {
-                    queryClient.invalidateQueries({
-                      queryKey: ["match", params.matchId]
-                    });
-                  }}
+                  onClose={invalidateQueries}
                 >
                   <SelectLineForm
                     match={matchQuery.data}
@@ -265,11 +264,7 @@ const EditStats = () => {
                       <ButtonWithModal
                         button={{ text: "Block" }}
                         buttonColor={matchCardColorToButtonStyles["blue"]}
-                        onClose={() => {
-                          queryClient.invalidateQueries({
-                            queryKey: ["match", params.matchId]
-                          });
-                        }}
+                        onClose={invalidateQueries}
                       >
                         <BlockForm
                           match={matchQuery.data}
@@ -284,11 +279,7 @@ const EditStats = () => {
                     <ButtonWithModal
                       button={{ text: "Score" }}
                       buttonColor={matchCardColorToButtonStyles["blue"]}
-                      onClose={() => {
-                        queryClient.invalidateQueries({
-                          queryKey: ["match", params.matchId]
-                        });
-                      }}
+                      onClose={invalidateQueries}
                     >
                       <ScoreForm
                         match={matchQuery.data}
@@ -299,11 +290,7 @@ const EditStats = () => {
                     <ButtonWithModal
                       button={{ text: "Drop" }}
                       buttonColor={matchCardColorToButtonStyles["blue"]}
-                      onClose={() => {
-                        queryClient.invalidateQueries({
-                          queryKey: ["match", params.matchId]
-                        });
-                      }}
+                      onClose={invalidateQueries}
                     >
                       <DropForm
                         match={matchQuery.data}
@@ -314,11 +301,7 @@ const EditStats = () => {
                     <ButtonWithModal
                       button={{ text: "Throwaway" }}
                       buttonColor={matchCardColorToButtonStyles["blue"]}
-                      onClose={() => {
-                        queryClient.invalidateQueries({
-                          queryKey: ["match", params.matchId]
-                        });
-                      }}
+                      onClose={invalidateQueries}
                     >
                       <ThrowawayForm
                         match={matchQuery.data}
@@ -346,11 +329,7 @@ const EditStats = () => {
                 <ButtonWithModal
                   button={{ text: "Select Line", icon: userGroup }}
                   buttonColor={matchCardColorToButtonStyles["green"]}
-                  onClose={() => {
-                    queryClient.invalidateQueries({
-                      queryKey: ["match", params.matchId]
-                    });
-                  }}
+                  onClose={invalidateQueries}
                 >
                   <SelectLineForm
                     match={matchQuery.data}
@@ -375,11 +354,7 @@ const EditStats = () => {
                       <ButtonWithModal
                         button={{ text: "Block" }}
                         buttonColor={matchCardColorToButtonStyles["green"]}
-                        onClose={() => {
-                          queryClient.invalidateQueries({
-                            queryKey: ["match", params.matchId]
-                          });
-                        }}
+                        onClose={invalidateQueries}
                       >
                         <BlockForm
                           match={matchQuery.data}
@@ -394,11 +369,7 @@ const EditStats = () => {
                     <ButtonWithModal
                       button={{ text: "Score" }}
                       buttonColor={matchCardColorToButtonStyles["green"]}
-                      onClose={() => {
-                        queryClient.invalidateQueries({
-                          queryKey: ["match", params.matchId]
-                        });
-                      }}
+                      onClose={invalidateQueries}
                     >
                       <ScoreForm
                         match={matchQuery.data}
@@ -409,11 +380,7 @@ const EditStats = () => {
                     <ButtonWithModal
                       button={{ text: "Drop" }}
                       buttonColor={matchCardColorToButtonStyles["green"]}
-                      onClose={() => {
-                        queryClient.invalidateQueries({
-                          queryKey: ["match", params.matchId]
-                        });
-                      }}
+                      onClose={invalidateQueries}
                     >
                       <DropForm
                         match={matchQuery.data}
@@ -424,11 +391,7 @@ const EditStats = () => {
                     <ButtonWithModal
                       button={{ text: "Throwaway" }}
                       buttonColor={matchCardColorToButtonStyles["green"]}
-                      onClose={() => {
-                        queryClient.invalidateQueries({
-                          queryKey: ["match", params.matchId]
-                        });
-                      }}
+                      onClose={invalidateQueries}
                     >
                       <ThrowawayForm
                         match={matchQuery.data}
