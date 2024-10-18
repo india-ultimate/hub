@@ -15,7 +15,6 @@ import {
 } from "solid-js";
 
 import {
-  fetchTeams,
   fetchTournamentBySlug,
   fetchUserAccessByTournamentSlug
 } from "../queries";
@@ -64,7 +63,6 @@ const Tournament = () => {
     () => ["tournaments", params.slug],
     () => fetchTournamentBySlug(params.slug)
   );
-  const teamsQuery = createQuery(() => ["teams"], fetchTeams);
   const userAccessQuery = createQuery(
     () => ["user-access", params.slug],
     () => fetchUserAccessByTournamentSlug(params.slug)
@@ -77,16 +75,6 @@ const Tournament = () => {
     setTimeout(() => initFlowbite(), 3000);
     setTimeout(() => initFlowbite(), 5000);
     setTimeout(() => initFlowbite(), 8000);
-  });
-
-  createEffect(() => {
-    if (teamsQuery.status === "success") {
-      let newTeamsMap = {};
-      teamsQuery.data.map(team => {
-        newTeamsMap[team.id] = team;
-      });
-      setTeamsMap(newTeamsMap);
-    }
   });
 
   createEffect(() => {
@@ -108,6 +96,12 @@ const Tournament = () => {
       );
 
       setTeamsInitialSeeding(teamsInitialSeedingMap);
+
+      let newTeamsMap = {};
+      tournamentQuery.data?.teams.map(team => {
+        newTeamsMap[team.id] = team;
+      });
+      setTeamsMap(newTeamsMap);
     }
   });
 
