@@ -9,7 +9,7 @@ import {
   matchCardColorToButtonStyles,
   matchCardColorToRingColorMap
 } from "../../colors";
-import { fetchTeams, fetchUserAccessByTournamentSlug } from "../../queries";
+import { fetchUserAccessByTournamentSlug } from "../../queries";
 import { getMatchCardColor } from "../../utils";
 import MatchScoreForm from "../tournament/MatchScoreForm";
 import MatchSpiritScoreForm from "../tournament/MatchSpiritScoreForm";
@@ -35,13 +35,11 @@ import SubmitSpiritScore from "./SubmitSpiritScore";
 const TournamentMatch = props => {
   const queryClient = useQueryClient();
 
-  const [teamsMap, setTeamsMap] = createSignal({});
   const [currTeamNo, setCurrTeamNo] = createSignal(1);
   const [oppTeamNo, setOppTeamNo] = createSignal(2);
   const [startTime, setStartTime] = createSignal("");
   const [endTime, setEndTime] = createSignal("");
 
-  const teamsQuery = createQuery(() => ["teams"], fetchTeams);
   const userAccessQuery = createQuery(
     () => ["user-access", props.tournamentSlug],
     () => fetchUserAccessByTournamentSlug(props.tournamentSlug)
@@ -72,16 +70,6 @@ const TournamentMatch = props => {
         timeZone: "UTC"
       })
     );
-  });
-
-  createEffect(() => {
-    if (teamsQuery.status === "success") {
-      let newTeamsMap = {};
-      teamsQuery.data.map(team => {
-        newTeamsMap[team.id] = team;
-      });
-      setTeamsMap(newTeamsMap);
-    }
   });
 
   const checkIfSuggestedScoresClash = (
@@ -173,9 +161,7 @@ const TournamentMatch = props => {
                 ? matchCardColorToRingColorMap[props.imgRingColor]
                 : matchCardColorToRingColorMap[getMatchCardColor(props.match)]
             )}
-            src={getTeamImage(
-              teamsMap()[props.match[`team_${currTeamNo()}`].id]
-            )}
+            src={getTeamImage(props.match[`team_${currTeamNo()}`])}
             alt="Bordered avatar"
           />
           <span class="w-1/3 text-center font-bold text-gray-600 dark:text-gray-300">
@@ -226,9 +212,7 @@ const TournamentMatch = props => {
                 ? matchCardColorToRingColorMap[props.imgRingColor]
                 : matchCardColorToRingColorMap[getMatchCardColor(props.match)]
             )}
-            src={getTeamImage(
-              teamsMap()[props.match[`team_${oppTeamNo()}`].id]
-            )}
+            src={getTeamImage(props.match[`team_${oppTeamNo()}`])}
             alt="Bordered avatar"
           />
         </Show>
