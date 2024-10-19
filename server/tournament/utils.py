@@ -458,7 +458,10 @@ def populate_fixtures(tournament_id: int) -> None:
                 if cross_pool_matches_not_completed.count() > 0:
                     is_this_position_pool_seeds_cross_pool_matches_complete = False
 
-            if is_this_position_pool_seeds_cross_pool_matches_complete:
+            if (
+                is_this_position_pool_seeds_cross_pool_matches_complete
+                and is_all_pool_matches_complete
+            ):
                 if (
                     position_pool.initial_seeding[next(iter(position_pool.initial_seeding.keys()))]
                     == 0
