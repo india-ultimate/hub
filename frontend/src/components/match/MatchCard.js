@@ -2,7 +2,7 @@ import { A } from "@solidjs/router";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { clsx } from "clsx";
 import { Icon } from "solid-heroicons";
-import { arrowRight, pencil, play } from "solid-heroicons/solid";
+import { arrowRight, chevronRight, pencil, play } from "solid-heroicons/solid";
 import { createEffect, createSignal, Match, Show, Switch } from "solid-js";
 
 import {
@@ -278,22 +278,48 @@ const TournamentMatch = props => {
           props.match.duration_mins +
           " mins"}
       </p>
-      <Show when={props.match.video_url}>
-        <a
-          class="flex justify-center"
-          href={props.match.video_url}
-          target="_blank"
-        >
-          <button
-            type="button"
-            class="mt-2 inline-flex items-center rounded-lg bg-blue-600 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-500 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
-          >
-            <Icon class="mr-2 w-4" path={play} />
-            Watch
-          </button>
-        </a>
-      </Show>
       <div class="mt-2 flex flex-wrap items-center justify-center gap-2">
+        {/* Watch button */}
+        <Show when={props.match.video_url}>
+          <a
+            class="flex justify-center"
+            href={props.match.video_url}
+            target="_blank"
+          >
+            <button
+              type="button"
+              class={clsx(
+                "group relative inline-flex items-center justify-center overflow-hidden rounded-full p-0.5 text-xs font-medium",
+                "text-gray-900 focus:outline-none dark:text-white",
+                "transition-all duration-75 ease-in hover:scale-105"
+              )}
+            >
+              <span
+                class={clsx(
+                  "relative inline-flex items-center rounded-full px-2 py-1.5 transition-all duration-75 ease-in group-hover:shadow-lg dark:bg-gray-700",
+                  `bg-${
+                    props.buttonColor || getMatchCardColor(props.match)
+                  }-100`
+                )}
+              >
+                <span
+                  class={clsx(
+                    "me-2 rounded-full px-2.5 py-0.5 text-white",
+                    props.buttonColor
+                      ? matchCardColorToButtonStyles[props.buttonColor]
+                      : matchCardColorToButtonStyles[
+                          getMatchCardColor(props.match)
+                        ]
+                  )}
+                >
+                  <Icon path={play} class="w-4" />
+                </span>
+                Watch
+                <Icon path={chevronRight} class="ml-1.5 w-4" />
+              </span>
+            </button>
+          </a>
+        </Show>
         {/* Live score buttons */}
         <Show when={props.match.stats}>
           <A
