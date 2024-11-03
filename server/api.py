@@ -154,7 +154,7 @@ from server.transaction.api import router as transaction_router
 from server.types import message_response
 from server.utils import if_dates_are_not_in_order, if_today, is_today_in_between_dates, slugify_max
 
-api = NinjaAPI(auth=django_auth, csrf=True)
+api = NinjaAPI(auth=django_auth, csrf=True, docs_url="/docs" if settings.DEBUG else None)
 
 
 class AuthenticatedHttpRequest(HttpRequest):
