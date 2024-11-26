@@ -259,6 +259,7 @@ class MatchStatsMinSchema(ModelSchema):
 
 class MatchStatsCreateSchema(Schema):
     initial_possession_team_id: int
+    initial_ratio: str
 
 
 class MatchEventCreateSchema(Schema):
