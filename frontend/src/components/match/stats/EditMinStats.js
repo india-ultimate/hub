@@ -5,12 +5,13 @@ import {
   useQueryClient
 } from "@tanstack/solid-query";
 import { clsx } from "clsx";
-import { createEffect, createSignal, Show } from "solid-js";
+import { createEffect, createSignal, Match, Show, Switch } from "solid-js";
 
 import {
   matchCardColorToButtonStyles,
   matchCardColorToRingColorMap
 } from "../../../colors";
+import { genderRatio } from "../../../constants";
 import {
   fetchMatch,
   fetchMatchStats,
@@ -160,15 +161,31 @@ const EditStats = () => {
             alt="Bordered avatar"
           />
         </div>
-        <div class="col-span-4 flex items-center justify-center">
-          <div class="grid grid-cols-2 gap-x-6 gap-y-1">
-            <span class="text-4xl font-bold text-blue-600">
+        <div class="col-span-4 flex flex-wrap items-center justify-center">
+          <div class="grid w-full grid-cols-2 gap-x-6 gap-y-1">
+            <span class="text-center text-4xl font-bold text-blue-600">
               {matchStatsQuery.data?.score_team_1}
             </span>
-            <span class="text-4xl font-bold text-green-600">
+            <span class="text-center text-4xl font-bold text-green-600">
               {" "}
               {matchStatsQuery.data?.score_team_2}
             </span>
+          </div>
+          <div class="whitespace-nowrap text-center text-sm italic">
+            <Switch>
+              <Match
+                when={matchStatsQuery.data?.current_ratio === genderRatio.MALE}
+              >
+                4 Male / 3 Female
+              </Match>
+              <Match
+                when={
+                  matchStatsQuery.data?.current_ratio === genderRatio.FEMALE
+                }
+              >
+                4 Female / 3 Male
+              </Match>
+            </Switch>
           </div>
         </div>
         <div class="col-span-4 flex justify-center">
@@ -199,7 +216,25 @@ const EditStats = () => {
           <span class="font-bold">
             {matchStatsQuery.data?.initial_possession?.name}
           </span>{" "}
-          <span>started on offense.</span>
+          <span>started on offense with</span>
+          <span class="font-bold">
+            {" "}
+            <Switch fallback={"NA"}>
+              <Match
+                when={matchStatsQuery.data?.initial_ratio === genderRatio.MALE}
+              >
+                4 Male / 3 Female
+              </Match>
+              <Match
+                when={
+                  matchStatsQuery.data?.initial_ratio === genderRatio.FEMALE
+                }
+              >
+                4 Female / 3 Male
+              </Match>
+            </Switch>{" "}
+          </span>
+          <span>ratio.</span>
         </div>
       </div>
 
