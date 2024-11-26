@@ -2218,8 +2218,19 @@ def create_match_stats(
     if match.status in {Match.Status.YET_TO_FIX} or match.team_1 is None or match.team_2 is None:
         return 400, {"message": "Match stats cant be created in current status"}
 
+    ratio = MatchStats.GenderRatio.NA
+    if body.initial_ratio.upper() == MatchStats.GenderRatio.MALE.value.upper():
+        ratio = MatchStats.GenderRatio.MALE
+    elif body.initial_ratio.upper() == MatchStats.GenderRatio.FEMALE.value.upper():
+        ratio = MatchStats.GenderRatio.FEMALE
+
     match_stats = MatchStats.objects.create(
-        match=match, tournament=match.tournament, initial_possession=team, current_possession=team
+        match=match,
+        tournament=match.tournament,
+        initial_possession=team,
+        current_possession=team,
+        initial_ratio=ratio,
+        current_ratio=ratio,
     )
 
     # NOTE: ignoring line selection for regionals stats
