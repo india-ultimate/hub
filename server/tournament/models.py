@@ -322,6 +322,11 @@ class MatchStats(models.Model):
         PENDING_LINE_SELECTION = "PLS", _("Pending Line Selection")
         COMPLETED_LINE_SELECTION = "CLS", _("Completed Line Selection")
 
+    class GenderRatio(models.TextChoices):
+        FEMALE = "FEMALE", _("Female")
+        MALE = "MALE", _("Male")
+        NA = "NA", _("NA")
+
     match = models.OneToOneField(Match, on_delete=models.CASCADE, related_name="stats")
     tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE, related_name="match_stats")
     status = models.CharField(max_length=3, choices=Status.choices, default=Status.FIRST_HALF)
@@ -338,6 +343,12 @@ class MatchStats(models.Model):
     )
     status_team_2 = models.CharField(
         max_length=3, choices=TeamStatus.choices, default=TeamStatus.PENDING_LINE_SELECTION
+    )
+    initial_ratio = models.CharField(
+        max_length=10, choices=GenderRatio.choices, default=GenderRatio.NA
+    )
+    current_ratio = models.CharField(
+        max_length=10, choices=GenderRatio.choices, default=GenderRatio.NA
     )
 
 
