@@ -115,6 +115,11 @@ export const matchStatsTeamStatus = {
   CLS: "Completed Line Selection"
 };
 
+export const genderRatio = {
+  MALE: "MAP",
+  FEMALE: "FEMALE"
+};
+
 // NOTE: Memberships go from 1st June to 31st May
 export const membershipStartDate = [1, 6];
 export const membershipEndDate = [31, 5];

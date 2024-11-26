@@ -4,6 +4,7 @@ import { bookOpen } from "solid-heroicons/solid";
 import { createSignal, Show } from "solid-js";
 
 import { matchCardColorToButtonStyles } from "../../../colors";
+import { genderRatio } from "../../../constants";
 import { createMatchStats } from "../../../queries";
 import { getMatchCardColor } from "../../../utils";
 import ButtonWithModal from "../../modal/ButtonWithModal";
@@ -70,6 +71,34 @@ const CreateForm = componentProps => {
                 type="text"
                 label="Team starting on Offense"
                 placeholder="Choose a team"
+                required
+              />
+            )}
+          </Field>
+          <Field
+            name="initial_ratio"
+            validate={required(
+              "Please select the gender ratio of the first point."
+            )}
+          >
+            {(field, fieldProps) => (
+              <Select
+                {...fieldProps}
+                value={field.value}
+                error={field.error}
+                options={[
+                  {
+                    label: "4 Female / 3 Male",
+                    value: genderRatio.FEMALE
+                  },
+                  {
+                    label: "4 Male / 3 Female",
+                    value: genderRatio.MALE
+                  }
+                ]}
+                type="text"
+                label="Gender Ratio"
+                placeholder="Choose a gender ratio"
                 required
               />
             )}
