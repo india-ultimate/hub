@@ -116,7 +116,7 @@ export const matchStatsTeamStatus = {
 };
 
 export const genderRatio = {
-  MALE: "MAP",
+  MALE: "MALE",
   FEMALE: "FEMALE"
 };
 
