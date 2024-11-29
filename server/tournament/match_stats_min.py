@@ -66,15 +66,6 @@ def handle_score(
     if team.id != match.stats.current_possession.id:
         return 422, {"message": "Team does not match the team in current possession"}
 
-    # previous_score_events = MatchEvent.objects.filter(stats=match.stats, team=team, type=MatchEvent.EventType.SCORE).order_by("-time")
-
-    # if not previous_score_events:
-    #     team_that_started_on_offense = match.stats.initial_possession.id
-    #     started_on = MatchEvent.Mode.OFFENSE if team.id == team_that_started_on_offense else MatchEvent.Mode.DEFENSE
-    # else:
-    #     latest_score_event = previous_score_events[0]
-    #     started_on =
-
     new_match_event = MatchEvent(
         stats=match.stats,
         team=team,
@@ -91,6 +82,15 @@ def handle_score(
     if match.team_1 is not None and match.team_2 is not None and team.id == match.team_2.id:
         match.stats.score_team_2 += 1
         match.stats.current_possession = match.team_1
+
+    score_sum = match.stats.score_team_1 + match.stats.score_team_2
+
+    # Change ratio when sum of score is odd
+    if score_sum % 2 == 1:
+        if match.stats.current_ratio == MatchStats.GenderRatio.MALE:
+            match.stats.current_ratio = MatchStats.GenderRatio.FEMALE
+        elif match.stats.current_ratio == MatchStats.GenderRatio.FEMALE:
+            match.stats.current_ratio = MatchStats.GenderRatio.MALE
 
     match.stats.save()
 
