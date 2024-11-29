@@ -1,7 +1,7 @@
 from typing import Any
 
 from django.db import models
-from django.db.models.signals import m2m_changed, pre_save
+from django.db.models.signals import m2m_changed
 from django.dispatch import receiver
 from django.utils.translation import gettext_lazy as _
 from django_prometheus.models import ExportModelOperationsMixin
@@ -350,20 +350,6 @@ class MatchStats(models.Model):
     current_ratio = models.CharField(
         max_length=10, choices=GenderRatio.choices, default=GenderRatio.NA
     )
-
-
-@receiver(pre_save, sender=MatchStats)
-def match_stats_ratio_callback(
-    sender: Any, instance: MatchStats, *args: Any, **kwargs: Any
-) -> None:
-    score_sum = instance.score_team_1 + instance.score_team_2
-
-    # Change ratio when sum of score is odd
-    if score_sum % 2 == 1:
-        if instance.current_ratio == MatchStats.GenderRatio.MALE:
-            instance.current_ratio = MatchStats.GenderRatio.FEMALE
-        elif instance.current_ratio == MatchStats.GenderRatio.FEMALE:
-            instance.current_ratio = MatchStats.GenderRatio.MALE
 
 
 class MatchEvent(models.Model):
