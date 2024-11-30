@@ -131,6 +131,41 @@ const MatchCard = props => {
             </Show>
           </div>
         </Match>
+        <Match
+          when={
+            !(
+              props.match?.pool ||
+              props.match?.position_pool ||
+              props.match?.cross_pool ||
+              props.match?.bracket
+            )
+          }
+        >
+          <div class="flex w-full flex-wrap justify-center rounded bg-orange-100 px-2.5 py-0.5 text-xs font-medium text-orange-800 dark:bg-orange-900 dark:text-orange-300">
+            <Show
+              when={
+                props.showSeed && showSeedForBracketMatch(props.match?.name)
+              }
+              fallback={
+                <MatchName
+                  name={props.match?.name}
+                  dontMinimiseMatchName={props.dontMinimiseMatchName}
+                  extraVerticalPadding
+                />
+              }
+            >
+              <MatchName
+                name={props.match?.name}
+                dontMinimiseMatchName={props.dontMinimiseMatchName}
+              />
+              <h6 class="text-center">
+                {props.match?.placeholder_seed_1 +
+                  " v " +
+                  props.match?.placeholder_seed_2}
+              </h6>
+            </Show>
+          </div>
+        </Match>
       </Switch>
     );
   };
