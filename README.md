@@ -49,3 +49,30 @@ yarn run dev
 Go to `http://localhost:8000` to start development. The Django server sets the
 CSRF token cookie, and then redirects to the Webpack dev server for a better
 developer experience (Hot module reloading) while working on the frontend.
+
+### Linting
+
+To lint the files, run:
+
+```bash
+python scripts/lint --fix
+```
+
+#### Linting in a pre-commit hook
+
+Optionally, a pre-commit hook ([Git hooks](https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks)) could be used to run this lint script before each commit.
+
+The CI workflow tests whether all files are linted correctly (refer `.github/workflows/test.yml`). Say you forget to lint files before pushing a commit to a PR, you'd have to lint the files again and amend the commit. This round-trip could be avoided by linting files in a pre-commit (if you'd prefer that)
+
+Create a file named pre-commit in the `.git/hooks` directory. Copy the following lines into that file
+
+```bash
+#!/bin/bash
+python scripts/lint --fix
+```
+
+give executable permissions to the hook file
+
+```bash
+chmod +x .git/hooks/pre-commit
+```
