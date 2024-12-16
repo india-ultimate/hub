@@ -65,10 +65,6 @@ class SeriesRegistration(ExportModelOperationsMixin("series_registration"), mode
     team = models.ForeignKey(Team, on_delete=models.CASCADE)
     player = models.ForeignKey(Player, on_delete=models.CASCADE)
 
-    class Meta:
-        # a player can be part of club team's series roster plus a college/school team's series roster
-        unique_together = ["team", "player"]
-
 
 class SeriesRosterInvitation(ExportModelOperationsMixin("series_roster_invitation"), models.Model):  # type: ignore[misc]
     class Status(models.TextChoices):
