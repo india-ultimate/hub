@@ -10,6 +10,7 @@ SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 SECURE_SSL_REDIRECT = bool(int(os.environ.get("SECURE_SSL_REDIRECT", "1")))
 SECRET_KEY = os.environ.get("SECRET_KEY", SECRET_KEY)  # noqa: F405
+EMAIL_INVITATION_BASE_URL = "https://hub.indiaultimate.org"
 
 DATA_DIR = Path("/data")
 if os.environ.get("DATABASE_URL"):
