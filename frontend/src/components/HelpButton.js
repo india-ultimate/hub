@@ -2,8 +2,8 @@ import { Icon } from "solid-heroicons";
 import { questionMarkCircle } from "solid-heroicons/solid";
 import { createSignal, Show } from "solid-js";
 
+import { WALink } from "../constants";
 import { useStore } from "../store";
-import ContactForm from "./ContactForm";
 
 const HelpButton = () => {
   const [isOpen, setIsOpen] = createSignal(false);
@@ -30,7 +30,16 @@ const HelpButton = () => {
       </button>
       {isOpen() && (
         <div class="fixed bottom-20 right-4 w-80 rounded-lg border border-blue-400 bg-white p-4 shadow dark:bg-gray-900 md:right-8 md:w-96">
-          <ContactForm close={() => setIsOpen(false)} />
+          {/* <ContactForm close={() => setIsOpen(false)} /> */}
+
+          <p>
+            {
+              "Please join the India Ultimate Tech Queries Whatsapp Group. We'll be trying our best to answer all your queries there! :)"
+            }
+          </p>
+          <a href={WALink} class="mt-3 block text-blue-500 underline">
+            Join WhatsApp Group
+          </a>
         </div>
       )}
     </Show>
