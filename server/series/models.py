@@ -32,6 +32,8 @@ class Series(ExportModelOperationsMixin("series"), models.Model):  # type: ignor
     event_min_players_female = models.PositiveSmallIntegerField()
     event_max_players_male = models.PositiveSmallIntegerField()
     event_max_players_female = models.PositiveSmallIntegerField()
+    event_min_players_total = models.PositiveSmallIntegerField(default=0)
+    event_max_players_total = models.PositiveSmallIntegerField(default=0)
     player_transfer_window_start_date = models.DateField(blank=True, null=True)
     player_transfer_window_end_date = models.DateField(blank=True, null=True)
     season = models.ForeignKey(
