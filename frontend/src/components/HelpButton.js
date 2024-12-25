@@ -30,8 +30,6 @@ const HelpButton = () => {
       </button>
       {isOpen() && (
         <div class="fixed bottom-20 right-4 w-80 rounded-lg border border-blue-400 bg-white p-4 shadow dark:bg-gray-900 md:right-8 md:w-96">
-          {/* <ContactForm close={() => setIsOpen(false)} /> */}
-
           <p>
             {
               "Please join the India Ultimate Tech Queries Whatsapp Group. We'll be trying our best to answer all your queries there! :)"
