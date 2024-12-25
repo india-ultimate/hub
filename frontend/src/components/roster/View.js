@@ -163,7 +163,9 @@ const Roster = () => {
           fallback={<Warning>Player Rostering window is now closed!</Warning>}
         >
           <details class="w-full select-none bg-yellow-50 p-4 text-yellow-800 hover:cursor-pointer">
-            <summary class="text-md font-semibold">Rostering rules</summary>
+            <summary class="text-md font-semibold">
+              Rostering Guidelines
+            </summary>
             <div class="mt-2 space-y-2 text-sm">
               <ul class="list-inside list-disc space-y-1">
                 <li>
@@ -197,57 +199,44 @@ const Roster = () => {
                   </span>
                 </li>
                 <li>
-                  <span class="font-semibold">Min male matching</span> players:{" "}
-                  <span>
-                    {
+                  <span class="font-semibold">Male matching</span> players:{" "}
+                  <DisplayRosterLimit
+                    min={
                       tournamentQuery.data?.event?.series
                         ?.event_min_players_male
                     }
-                  </span>
+                    max={
+                      tournamentQuery.data?.event?.series
+                        ?.event_max_players_male
+                    }
+                  />
                 </li>
                 <li>
-                  <span class="font-semibold">Min female matching</span>{" "}
-                  players:{" "}
-                  <span>
-                    {
+                  <span class="font-semibold">Female matching</span> players:{" "}
+                  <DisplayRosterLimit
+                    min={
                       tournamentQuery.data?.event?.series
                         ?.event_min_players_female
                     }
-                  </span>
+                    max={
+                      tournamentQuery.data?.event?.series
+                        ?.event_max_players_female
+                    }
+                  />
                 </li>
-
-                <Show
-                  when={["Mixed", "Opens"].includes(
-                    tournamentQuery.data?.event?.series?.type
-                  )}
-                >
-                  <li>
-                    <span class="font-semibold">Max male matching</span>{" "}
-                    players:{" "}
-                    <span>
-                      {
-                        tournamentQuery.data?.event?.series
-                          ?.event_max_players_male
-                      }
-                    </span>
-                  </li>
-                </Show>
-                <Show
-                  when={["Mixed", "Womens"].includes(
-                    tournamentQuery.data?.event?.series?.type
-                  )}
-                >
-                  <li>
-                    <span class="font-semibold">Max female matching</span>{" "}
-                    players:{" "}
-                    <span>
-                      {
-                        tournamentQuery.data?.event?.series
-                          ?.event_max_players_female
-                      }
-                    </span>
-                  </li>
-                </Show>
+                <li>
+                  <span class="font-semibold">Total</span> players:{" "}
+                  <DisplayRosterLimit
+                    min={
+                      tournamentQuery.data?.event?.series
+                        ?.event_min_players_total
+                    }
+                    max={
+                      tournamentQuery.data?.event?.series
+                        ?.event_max_players_total
+                    }
+                  />
+                </li>
               </ul>
             </div>
           </details>
@@ -458,5 +447,26 @@ const Roster = () => {
     </Show>
   );
 };
+
+const DisplayRosterLimit = props => (
+  <Show
+    when={props.min === 0 && props.max === 0}
+    fallback={
+      <>
+        <span>
+          {props.min}
+          (min)
+        </span>
+        <span> - </span>
+        <span>
+          {props.max}
+          (max)
+        </span>
+      </>
+    }
+  >
+    <span>0 (Not eligible)</span>
+  </Show>
+);
 
 export default Roster;
