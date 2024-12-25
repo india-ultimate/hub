@@ -961,6 +961,13 @@ def can_register_player_to_series_event(
             "action_href": f"/series/{event.series.slug}/team/{team.slug}",
         }
 
+    num_total_registered = Registration.objects.filter(event=event, team=team).count()
+
+    if not (num_total_registered + 1) <= event.series.event_max_players_total:
+        return False, {
+            "message": f"You can only roster {event.series.event_max_players_total} total players"
+        }
+
     match player.match_up:
         case player.MatchupTypes.MALE:
             num_male_matching_registered = Registration.objects.filter(
