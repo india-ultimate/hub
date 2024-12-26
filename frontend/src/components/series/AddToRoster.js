@@ -220,6 +220,15 @@ const AddPlayerRegistrationForm = componentProps => {
       .includes("Pending");
   };
 
+  createEffect(() => {
+    if (search()) {
+      setPagination({
+        pageIndex: 0,
+        pageSize: 5
+      });
+    }
+  });
+
   const defaultColumns = [
     {
       accessorKey: "full_name",
