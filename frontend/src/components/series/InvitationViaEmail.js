@@ -56,7 +56,7 @@ const EmailInvitationHandler = () => {
       setIsSuccess(true);
       setResponseMessage("Invitation accepted successfully");
       setTeamName(data.team.name);
-      setTeamLogo(data.team.image_url);
+      setTeamLogo(data.team.image ?? data.team.image_url);
       setFromUser(data.from_user);
       setToPlayer(data.to_player);
     },
