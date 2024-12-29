@@ -30,6 +30,22 @@ const Tournaments = () => {
                 }
                 class="block w-full rounded-lg border border-blue-600 bg-white p-4 shadow dark:border-blue-400 dark:bg-gray-800"
               >
+                <Show when={tournament.event?.type}>
+                  <span class="mr-2 h-fit rounded bg-blue-200 px-2.5 py-0.5 text-sm font-medium text-blue-800 dark:bg-green-900 dark:text-green-300">
+                    <Switch>
+                      <Match when={tournament.event?.type === "MXD"}>
+                        Mixed
+                      </Match>
+                      <Match when={tournament.event?.type === "OPN"}>
+                        Opens
+                      </Match>
+                      <Match when={tournament.event?.type === "WMN"}>
+                        Womens
+                      </Match>
+                    </Switch>
+                  </span>
+                </Show>
+
                 <Switch>
                   <Match when={tournament.status === "REG"}>
                     <span class="h-fit rounded bg-green-200 px-2.5 py-0.5 text-sm font-medium text-green-800 dark:bg-green-900 dark:text-green-300">
