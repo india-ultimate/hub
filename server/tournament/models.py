@@ -131,6 +131,7 @@ class Registration(ExportModelOperationsMixin("registration"), models.Model):  #
     player = models.ForeignKey(Player, on_delete=models.CASCADE)
     is_playing = models.BooleanField(default=True)
     role = models.CharField(max_length=6, choices=Role.choices, default=Role.DEFAULT)
+    points = models.PositiveIntegerField(null=True, blank=True)
 
     class Meta:
         unique_together = ("event", "player")
