@@ -1,11 +1,13 @@
 import { supported } from "@github/webauthn-json/browser-ponyfill";
 import { A } from "@solidjs/router";
+import { createQuery } from "@tanstack/solid-query";
 import { initFlowbite } from "flowbite";
 import { Icon } from "solid-heroicons";
-import { inboxStack } from "solid-heroicons/solid";
+import { inboxStack, star } from "solid-heroicons/solid";
 import { createEffect, createSignal, For, Show } from "solid-js";
 
 import { AccordionDownIcon } from "../icons";
+import { fetchUserRegistrations } from "../queries";
 import { useStore } from "../store";
 import { registerPasskey, showPlayerStatus } from "../utils";
 import { getCookie } from "../utils";
@@ -126,6 +128,24 @@ const Dashboard = () => {
   const [store, { userFetchFailure }] = useStore();
   const [success, setSuccess] = createSignal();
   const [error, setError] = createSignal();
+  const [performancePoints, setPerformancePoints] = createSignal(0);
+
+  const userRegistrationsQuery = createQuery(
+    () => ["me-registrations"],
+    fetchUserRegistrations
+  );
+
+  createEffect(() => {
+    const validRegs = userRegistrationsQuery.data?.filter(reg => reg.points);
+    if (!validRegs) return;
+
+    const length = validRegs.length;
+    if (length === 0) return;
+
+    const sum = validRegs.reduce((sum, reg) => sum + reg.points, 0);
+    const avg = sum / length;
+    setPerformancePoints(parseFloat(avg.toFixed(1)));
+  });
 
   createEffect(() => {
     console.log(success(), error());
@@ -157,7 +177,7 @@ const Dashboard = () => {
         </h2>
       </div>
 
-      <h1 class="mb-4 text-2xl font-bold text-blue-500 md:text-4xl">
+      <h1 class="mb-4 text-2xl font-bold text-blue-600 md:text-4xl">
         Welcome <span>{store?.data?.full_name || store?.data?.username}</span>!
       </h1>
       <div
@@ -225,6 +245,83 @@ const Dashboard = () => {
             )}
           </For>
         </Show>
+        <h2 id="accordion-heading-registrations">
+          <button
+            type="button"
+            class="flex w-full items-center justify-between border-b border-gray-200 py-5 text-left font-medium text-gray-500 dark:border-gray-700 dark:text-gray-400"
+            data-accordion-target="#accordion-body-registrations"
+            aria-expanded={
+              store?.data?.player || store?.data?.wards?.length > 0
+                ? "false"
+                : "true"
+            }
+            aria-controls="accordion-body-registrations"
+          >
+            <span>Performance Points</span>
+            <span class="flex">
+              <p class="mr-2 inline-flex items-center rounded bg-blue-600 p-1.5 text-sm font-semibold text-white dark:bg-blue-200 dark:text-blue-800">
+                <Icon path={star} class="mr-1 h-4" />
+                {performancePoints() || 0}
+              </p>
+              <AccordionDownIcon />
+            </span>
+          </button>
+        </h2>
+        <div
+          id="accordion-body-registrations"
+          class="hidden"
+          aria-labelledby="accordion-heading-registrations"
+        >
+          <div class="border-b border-gray-200 py-5 dark:border-gray-700">
+            <p class="mb-4 text-sm italic">
+              The list of tournaments you've participated in and the points you
+              earned based on your team's final rankings
+            </p>
+
+            <ul class="max-w-md divide-y divide-gray-200 dark:divide-gray-700">
+              <For
+                each={userRegistrationsQuery.data?.filter(reg => reg.points)}
+                fallback={
+                  <li class="py-3 sm:py-4">
+                    <div class="w-full text-sm font-semibold">
+                      No tournaments to show!
+                    </div>
+                  </li>
+                }
+              >
+                {reg => (
+                  <li class="py-3 sm:py-4">
+                    <div class="flex items-center space-x-4 rtl:space-x-reverse">
+                      <div class="flex-shrink-0">
+                        <img
+                          class="h-10 w-10 rounded-full"
+                          src={reg.team.image ?? reg.team.image_url}
+                          alt="logo"
+                        />
+                      </div>
+                      <div class="min-w-0 flex-1">
+                        <p class="truncate text-sm font-medium text-gray-900 dark:text-white">
+                          {reg.team.name}
+                        </p>
+                        <p class="truncate text-sm text-gray-500 dark:text-gray-400">
+                          {reg.event_name}
+                        </p>
+                        <Show when={reg.series_name}>
+                          <p class="truncate text-xs text-gray-500 dark:text-gray-400">
+                            {reg.series_name}
+                          </p>
+                        </Show>
+                      </div>
+                      <div class="inline-flex items-center rounded bg-blue-100 p-1.5 text-sm font-semibold text-blue-800">
+                        <Icon path={star} class="mr-1 h-4" /> {reg.points}
+                      </div>
+                    </div>
+                  </li>
+                )}
+              </For>
+            </ul>
+          </div>
+        </div>
         <h2 id="accordion-heading-actions">
           <button
             type="button"
