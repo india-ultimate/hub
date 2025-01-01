@@ -126,6 +126,22 @@ class TournamentPlayerRegistrationSchema(Schema):
     player: PlayerSchema
     is_playing: bool
     role: str
+    points: float | None
+    event_name: str
+    series_name: str | None
+
+    @staticmethod
+    def resolve_event_name(registration: Registration) -> str:
+        return registration.event.title
+
+    @staticmethod
+    def resolve_series_name(registration: Registration) -> str | None:
+        series = registration.event.series
+
+        if series is None:
+            return None
+
+        return series.name
 
     # @staticmethod
     # def resolve_role_full(registration: Registration) -> str:
