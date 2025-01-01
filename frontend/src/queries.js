@@ -595,6 +595,21 @@ export const fetchUser = async () => {
   return data;
 };
 
+export const fetchUserRegistrations = async () => {
+  const response = await fetch("/api/me/registrations", {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin"
+  });
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.message || JSON.stringify(data));
+  }
+
+  return data;
+};
+
 // Mutations ----------------
 
 export const createTournament = async formData => {
