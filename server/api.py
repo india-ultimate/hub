@@ -201,6 +201,16 @@ def me_access(
     }
 
 
+@api.get("/me/registrations", response={200: list[TournamentPlayerRegistrationSchema]})
+def me_registrations(request: AuthenticatedHttpRequest) -> list[Registration]:
+    try:
+        player = request.user.player_profile
+    except Player.DoesNotExist:
+        return []
+
+    return list(Registration.objects.filter(player=player).order_by("-event__start_date"))
+
+
 # Users ##########
 
 
