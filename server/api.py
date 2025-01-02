@@ -120,6 +120,7 @@ from server.tournament.schema import (
     PoolSchema,
     PositionPoolCreateSchema,
     PositionPoolSchema,
+    RosterPointsSchema,
     SpiritScoreSubmitSchema,
     TournamentCreateFromEventSchema,
     TournamentCreateSchema,
@@ -1231,6 +1232,45 @@ def get_tournament_team_roster_new(
     )
 
     return 200, registrations
+
+
+@api.get(
+    "/v2/tournament/{tournament_slug}/team/{team_slug}/roster-points",
+    auth=None,
+    response={200: RosterPointsSchema, 400: Response},
+)
+def get_tournament_team_roster_points(
+    request: AuthenticatedHttpRequest, tournament_slug: str, team_slug: str
+) -> tuple[int, dict[str, float]] | tuple[int, message_response]:
+    try:
+        event = Event.objects.get(slug=tournament_slug)
+        team = Team.objects.get(slug=team_slug)
+    except (Event.DoesNotExist, Team.DoesNotExist):
+        return 400, {"message": "Tournament/Team does not exist"}
+
+    roster_regs = Registration.objects.filter(event=event, team=team)
+
+    total_points = 0.0
+
+    for roster_reg in roster_regs:
+        player_regs = Registration.objects.filter(
+            player=roster_reg.player, event__end_date__lt=event.start_date
+        )
+
+        player_points = 0.0
+
+        for player_reg in player_regs:
+            if player_reg.points is not None:
+                player_points += player_reg.points
+
+        total_points += player_points
+
+    avg_points = 0.0
+
+    if len(roster_regs) > 0:
+        avg_points = round(total_points / len(roster_regs), 1)
+
+    return 200, {"points": avg_points}
 
 
 ######## Fields
