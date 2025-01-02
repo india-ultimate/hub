@@ -151,6 +151,10 @@ class TournamentPlayerRegistrationSchema(Schema):
         model = Registration
 
 
+class RosterPointsSchema(Schema):
+    points: float
+
+
 class PoolSchema(ModelSchema):
     class Config:
         model = Pool
