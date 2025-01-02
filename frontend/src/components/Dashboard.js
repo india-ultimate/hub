@@ -245,16 +245,41 @@ const Dashboard = () => {
             )}
           </For>
         </Show>
-        <h2 id="accordion-heading-registrations">
+        <h2 id="accordion-heading-actions">
           <button
             type="button"
             class="flex w-full items-center justify-between border-b border-gray-200 py-5 text-left font-medium text-gray-500 dark:border-gray-700 dark:text-gray-400"
-            data-accordion-target="#accordion-body-registrations"
+            data-accordion-target="#accordion-body-actions"
             aria-expanded={
               store?.data?.player || store?.data?.wards?.length > 0
                 ? "false"
                 : "true"
             }
+            aria-controls="accordion-body-actions"
+          >
+            <span>User Actions</span>
+            <AccordionDownIcon />
+          </button>
+        </h2>
+        <div
+          id="accordion-body-actions"
+          class="hidden"
+          aria-labelledby="accordion-heading-actions"
+        >
+          <div class="border-b border-gray-200 py-5 dark:border-gray-700">
+            <Actions
+              player={store.data.player}
+              setSuccess={setSuccess}
+              setError={setError}
+            />
+          </div>
+        </div>
+        <h2 id="accordion-heading-registrations">
+          <button
+            type="button"
+            class="flex w-full items-center justify-between border-b border-gray-200 py-5 text-left font-medium text-gray-500 dark:border-gray-700 dark:text-gray-400"
+            data-accordion-target="#accordion-body-registrations"
+            aria-expanded="false"
             aria-controls="accordion-body-registrations"
           >
             <span>Performance Points</span>
@@ -348,35 +373,6 @@ const Dashboard = () => {
                 </div>
               </details>
             </div>
-          </div>
-        </div>
-        <h2 id="accordion-heading-actions">
-          <button
-            type="button"
-            class="flex w-full items-center justify-between border-b border-gray-200 py-5 text-left font-medium text-gray-500 dark:border-gray-700 dark:text-gray-400"
-            data-accordion-target="#accordion-body-actions"
-            aria-expanded={
-              store?.data?.player || store?.data?.wards?.length > 0
-                ? "false"
-                : "true"
-            }
-            aria-controls="accordion-body-actions"
-          >
-            <span>User Actions</span>
-            <AccordionDownIcon />
-          </button>
-        </h2>
-        <div
-          id="accordion-body-actions"
-          class="hidden"
-          aria-labelledby="accordion-heading-actions"
-        >
-          <div class="border-b border-gray-200 py-5 dark:border-gray-700">
-            <Actions
-              player={store.data.player}
-              setSuccess={setSuccess}
-              setError={setError}
-            />
           </div>
         </div>
         <Show when={store.data.is_staff}>
