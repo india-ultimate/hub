@@ -1258,10 +1258,15 @@ def get_tournament_team_roster_points(
         )
 
         player_points = 0.0
+        player_points_count = 0
 
         for player_reg in player_regs:
             if player_reg.points is not None:
                 player_points += player_reg.points
+                player_points_count += 1
+
+        if player_points_count > 0:
+            player_points = player_points / player_points_count
 
         total_points += player_points
 
