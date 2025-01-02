@@ -320,6 +320,34 @@ const Dashboard = () => {
                 )}
               </For>
             </ul>
+
+            <div
+              class="my-2 rounded-lg bg-blue-50 p-4 text-sm text-blue-600"
+              role="alert"
+            >
+              <details>
+                <summary>How are the points calculated?</summary>
+                <div class="mt-4 space-y-2">
+                  <ol class="mt-2 list-decimal space-y-1 pl-5 text-sm">
+                    <li>Points are calculated based on the team's finish.</li>
+                    <li>
+                      Base Points is 20. Which means the last finishing team
+                      will get 20 points.
+                    </li>
+                    <li>
+                      Every other team from the bottom will get the additional
+                      points(upto 80 for max points of 100) in a linear format
+                      based on the number of teams.
+                    </li>
+                    <li>
+                      Example: With a tournament of 5 teams, the points for last
+                      to first team would be 20, 40, 60, 80 and 100
+                      respectively.
+                    </li>
+                  </ol>
+                </div>
+              </details>
+            </div>
           </div>
         </div>
         <h2 id="accordion-heading-actions">
