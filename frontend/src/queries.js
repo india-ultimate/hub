@@ -568,6 +568,27 @@ export const fetchTournamentTeamBySlugV2 = async (
   return data;
 };
 
+export const fetchTournamentTeamPointsBySlugV2 = async (
+  tournament_slug,
+  team_slug
+) => {
+  const response = await fetch(
+    `/api/v2/tournament/${tournament_slug}/team/${team_slug}/roster-points`,
+    {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin"
+    }
+  );
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.message || JSON.stringify(data));
+  }
+
+  return data;
+};
+
 export const fetchUserAccessByTournamentSlug = async tournament_slug => {
   const response = await fetch(
     `/api/me/access?tournament_slug=${tournament_slug}`,

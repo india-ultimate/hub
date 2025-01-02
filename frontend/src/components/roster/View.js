@@ -5,13 +5,15 @@ import {
   useQueryClient
 } from "@tanstack/solid-query";
 import clsx from "clsx";
-import { trophy } from "solid-heroicons/solid";
+import { Icon } from "solid-heroicons";
+import { star, trophy } from "solid-heroicons/solid";
 import { createEffect, createSignal, For, Match, Show, Switch } from "solid-js";
 
 import {
   fetchTeamBySlug,
   fetchTournamentBySlug,
   fetchTournamentTeamBySlugV2,
+  fetchTournamentTeamPointsBySlugV2,
   removeFromRoster,
   updatePlayerRegistration
 } from "../../queries";
@@ -53,6 +55,19 @@ const Roster = () => {
   const rosterQuery = createQuery(
     () => ["tournament-roster", params.tournament_slug, params.team_slug],
     () => fetchTournamentTeamBySlugV2(params.tournament_slug, params.team_slug)
+  );
+
+  const rosterPointsQuery = createQuery(
+    () => [
+      "tournament-roster-points",
+      params.tournament_slug,
+      params.team_slug
+    ],
+    () =>
+      fetchTournamentTeamPointsBySlugV2(
+        params.tournament_slug,
+        params.team_slug
+      )
   );
 
   const removeFromRosterMutation = createMutation({
@@ -151,8 +166,14 @@ const Roster = () => {
               ", " +
               (teamQuery.data?.state_ut || "")}
           </div>
-          <div class="mt-1 rounded-md border border-blue-300 bg-blue-100 px-2 py-0.5 text-sm font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-300">
-            {teamQuery.data?.category}
+          <div class="mt-1 flex w-full gap-2">
+            <span class="rounded-md border border-blue-300 bg-blue-100 px-2 py-0.5 text-sm font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-300">
+              {teamQuery.data?.category}
+            </span>
+            <span class="inline-flex items-center rounded-md border border-blue-300 bg-blue-100 px-2 py-0.5 text-sm font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-300">
+              <Icon path={star} class="mr-1 h-4" />
+              {rosterPointsQuery.data?.points || 0}
+            </span>
           </div>
         </div>
       </div>
