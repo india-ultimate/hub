@@ -2,7 +2,8 @@ import { useParams } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
 import clsx from "clsx";
 import { initFlowbite } from "flowbite";
-import { trophy } from "solid-heroicons/solid";
+import { Icon } from "solid-heroicons";
+import { star, trophy } from "solid-heroicons/solid";
 import {
   createEffect,
   createSignal,
@@ -17,7 +18,8 @@ import {
   fetchTeamBySlug,
   fetchTournamentBySlug,
   fetchTournamentTeamBySlug,
-  fetchTournamentTeamMatches
+  fetchTournamentTeamMatches,
+  fetchTournamentTeamPointsBySlugV2
 } from "../queries";
 import RosterSkeleton from "../skeletons/Roster";
 import { TournamentTeamMatches as TournamentTeamMatchesSkeleton } from "../skeletons/TournamentMatch";
@@ -53,6 +55,23 @@ const TournamentTeam = () => {
     {
       get enabled() {
         return tournamentQuery.data?.use_uc_registrations !== undefined;
+      }
+    }
+  );
+  const rosterPointsQuery = createQuery(
+    () => [
+      "tournament-roster-points",
+      params.tournament_slug,
+      params.team_slug
+    ],
+    () =>
+      fetchTournamentTeamPointsBySlugV2(
+        params.tournament_slug,
+        params.team_slug
+      ),
+    {
+      get enabled() {
+        return tournamentQuery.data?.use_uc_registrations === false;
       }
     }
   );
@@ -178,7 +197,7 @@ const TournamentTeam = () => {
           alt="Bordered avatar"
         />
       </div>
-      <h1 class="my-5 text-center">
+      <h1 class="mt-2 text-center">
         <span class="w-fit bg-gradient-to-r from-blue-500 to-green-500 bg-clip-text text-2xl font-extrabold text-transparent">
           <Suspense
             fallback={
@@ -189,6 +208,13 @@ const TournamentTeam = () => {
           </Suspense>
         </span>
       </h1>
+      <div class="my-2 flex w-full justify-center">
+        <p class="mr-2 inline-flex items-center rounded bg-blue-100 p-1.5 text-sm font-semibold text-blue-600 dark:bg-blue-200 dark:text-blue-800">
+          <Icon path={star} class="mr-1 h-4" />
+          {rosterPointsQuery.data?.points || 0}
+        </p>
+      </div>
+
       <div class="mb-4 border-b border-gray-200 dark:border-gray-700">
         <ul
           class="-mb-px flex flex-wrap justify-center text-center text-sm font-medium"
