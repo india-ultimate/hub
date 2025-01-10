@@ -41,7 +41,7 @@ swap_size_mb = 512
   [services.concurrency]
     type = "connections"
     hard_limit = 100
-    soft_limit = 75
+    hard_limit = 75
 
   [[services.tcp_checks]]
     interval = "15s"
