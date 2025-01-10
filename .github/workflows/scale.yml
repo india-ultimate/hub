@@ -60,7 +60,10 @@ jobs:
         with:
           files: "fly.toml"
           search-text: "soft_limit = 75"
-          replacement-text: "hard_limit = ${{github.event.inputs.softLimit}}"
+          replacement-text: "soft_limit = ${{github.event.inputs.softLimit}}"
+      - name: Get current unix timestamp
+        id: timestamp
+        uses: release-kit/unix-timestamp@v1
       - uses: EndBug/add-and-commit@v9
         with:
-          new_branch: fly-scale
+          new_branch: fly-scale-${{steps.timestamp.outputs.timestamp}}
