@@ -1,0 +1,64 @@
+---
+name: Fly Scale
+on:
+  workflow_dispatch:
+    inputs:
+      cpu:
+        type: choice
+        description: CPU Size
+        options: 
+        - 2
+        - 4
+        - 8
+      gunicorn:
+        type: choice
+        description: Gunicorn servers
+        options: 
+        - 4
+        - 8
+        - 12
+      hardLimit:
+        type: choice
+        description: Hard limit on connections
+        options: 
+        - 100
+        - 200
+        - 400 
+      softLimit:
+        type: choice
+        description: Soft limit on connections
+        options: 
+        - 75
+        - 150
+        - 300
+jobs:
+  scale:
+    name: Scale up or down hub
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3  
+      - name: Replace cpu size
+        uses: richardrigutins/replace-in-files@v2
+        with:
+            files: 'fly.toml'
+            search-text: 'shared-cpu-2x'
+            replacement-text: "shared-cpu-${{github.event.inputs.cpu}}x"
+      - name: Replace gunicorn servers
+        uses: richardrigutins/replace-in-files@v2
+        with:
+            files: 'deploy/start.sh'
+            search-text: '-w 4'
+            replacement-text: "-w ${{github.event.inputs.gunicorn}}"
+      - name: Replace hard limit
+        uses: richardrigutins/replace-in-files@v2
+        with:
+            files: 'fly.toml'
+            search-text: 'hard_limit = 100'
+            replacement-text: "hard_limit = ${{github.event.inputs.hardLimit}}"
+      - name: Replace soft limit
+        uses: richardrigutins/replace-in-files@v2
+        with:
+            files: 'fly.toml'
+            search-text: 'soft_limit = 75'
+            replacement-text: "hard_limit = ${{github.event.inputs.softLimit}}"
+      - uses: EndBug/add-and-commit@v9
