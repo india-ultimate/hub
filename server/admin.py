@@ -55,7 +55,8 @@ def export_as_csv(
 @admin.register(Player)
 class PlayerAdmin(admin.ModelAdmin[Player]):
     search_fields = ["user__first_name", "user__last_name", "user__username"]
-    list_display = ["get_name", "get_email"]
+    list_display = ["get_name", "get_email", "gender", "sponsored"]
+    list_filter = ["gender", "sponsored"]
 
     @admin.display(description="Name", ordering="user__first_name")
     def get_name(self, obj: Player) -> str:
@@ -211,13 +212,18 @@ class MembershipAdmin(admin.ModelAdmin[Membership]):
         "start_date",
         "end_date",
         "is_active",
+        "get_sponsored",
     ]
-    list_filter = ["is_active"]
+    list_filter = ["is_active", "get_sponsored"]
     actions = [export_as_csv]
 
     @admin.display(description="Player Name", ordering="player__user__first_name")
     def get_name(self, obj: Membership) -> str:
         return obj.player.user.first_name
+
+    @admin.display(description="Sponsored", ordering="player__sponsored")
+    def get_sponsored(self, obj: Membership) -> bool:
+        return obj.player.sponsored
 
 
 @admin.register(RazorpayTransaction)
