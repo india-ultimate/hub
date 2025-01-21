@@ -214,7 +214,7 @@ class MembershipAdmin(admin.ModelAdmin[Membership]):
         "is_active",
         "get_sponsored",
     ]
-    list_filter = ["is_active", "get_sponsored"]
+    list_filter = ["is_active", "player__sponsored"]
     actions = [export_as_csv]
 
     @admin.display(description="Player Name", ordering="player__user__first_name")
