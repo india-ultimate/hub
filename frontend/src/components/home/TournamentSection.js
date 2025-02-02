@@ -9,10 +9,12 @@ const TournamentSection = () => {
   const tournamentsQuery = createQuery(() => ["tournaments"], fetchTournaments);
   const [upcoming, setUpcoming] = createSignal([]);
   const [past, setPast] = createSignal([]);
+  const [live, setLive] = createSignal([]);
 
   createEffect(() => {
     let pastTournaments = [];
     let upcomingTournaments = [];
+    let liveTournaments = [];
     const today = new Date();
 
     tournamentsQuery.data?.forEach(tournament => {
@@ -23,6 +25,8 @@ const TournamentSection = () => {
         pastTournaments.push(tournament);
       } else if (startDate > today) {
         upcomingTournaments.push(tournament);
+      } else if (startDate <= today && endDate >= today) {
+        liveTournaments.push(tournament);
       }
     });
 
@@ -46,6 +50,12 @@ const TournamentSection = () => {
     );
 
     setUpcoming(upcomingTournaments);
+
+    liveTournaments.sort(
+      (a, b) => new Date(a.event.end_date) - new Date(b.event.end_date)
+    );
+
+    setLive(liveTournaments);
   });
 
   return (
@@ -58,6 +68,12 @@ const TournamentSection = () => {
           </span>
         </A>
       </div>
+      <Show when={live().length > 0}>
+        <h2 class="mt-2 text-sm">Live Tournaments</h2>
+        <For each={live()}>
+          {tournament => <TournamentCard tournament={tournament} />}
+        </For>
+      </Show>
       <Show when={upcoming().length > 0}>
         <h2 class="mt-2 text-sm">Upcoming Tournaments</h2>
         <For each={upcoming()}>
