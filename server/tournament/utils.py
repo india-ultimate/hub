@@ -148,22 +148,38 @@ def get_new_pool_results(
         old_results[match.team_1.id]["draws"] += 1
         old_results[match.team_2.id]["draws"] += 1
 
+    # Create results list with team IDs
     results_list = []
     for team_id, result in old_results.items():
         result["id"] = team_id
         results_list.append(result)
 
-    ranked_results = sorted(
-        results_list,
-        key=cmp_to_key(partial(compare_pool_results, tournament_id=match.tournament.id)),
-    )
+    # Group teams by number of wins to identify ties
+    wins_groups: dict[int, list[dict[str, int]]] = {}
+    for result in results_list:
+        wins = result["wins"]
+        if wins not in wins_groups:
+            wins_groups[wins] = []
+        wins_groups[wins].append(result)
+
+    # Sort each tied group separately
+    ranked_results = []
+    for wins in sorted(wins_groups.keys(), reverse=True):
+        tied_teams = wins_groups[wins]
+        if len(tied_teams) == 1:
+            ranked_results.extend(tied_teams)
+        else:
+            # Sort tied teams using all tiebreaker criteria
+            sorted_tied_teams = sorted(
+                tied_teams,
+                key=cmp_to_key(partial(compare_pool_results, tournament_id=match.tournament.id)),
+            )
+            ranked_results.extend(sorted_tied_teams)
 
     new_results = {}
-
     for i, result in enumerate(ranked_results):
         new_results[result["id"]] = result
         new_results[result["id"]]["rank"] = i + 1
-
         tournament_seeding[pool_seeding_list[i]] = int(result["id"])
 
     return new_results, tournament_seeding
