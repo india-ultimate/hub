@@ -34,6 +34,11 @@ class TestGetNewPoolResults(ApiBaseTestCase):
             results=pool_results,
         )
 
+    def tearDown(self) -> None:
+        # Delete all matches from the tournament
+        Match.objects.filter(tournament=self.tournament).delete()
+        super().tearDown()
+
     def test_clear_winner(self) -> None:
         """Test scenario where one team wins all matches"""
         # Initial empty results
@@ -232,54 +237,76 @@ class TestGetNewPoolResults(ApiBaseTestCase):
         self.assertEqual(new_results[self.team_d.id]["rank"], 3)  # Second best GD (+0)
         self.assertEqual(new_results[self.team_c.id]["rank"], 4)  # Worst GD (-5)
 
-    def test_draw_result(self) -> None:
-        """Test handling of drawn matches"""
+    def test_circular_tie_2(self) -> None:
+        """Test scenario where three teams have same number of wins"""
         # Initial empty results
         old_results = {
             self.team_a.id: {"wins": 0, "losses": 0, "draws": 0, "GF": 0, "GA": 0},
             self.team_b.id: {"wins": 0, "losses": 0, "draws": 0, "GF": 0, "GA": 0},
+            self.team_c.id: {"wins": 0, "losses": 0, "draws": 0, "GF": 0, "GA": 0},
         }
 
-        # First match: A beats B
+        # A vs C - A wins 10-5
         match1 = Match.objects.create(
             tournament=self.tournament,
             pool=self.pool,
             team_1=self.team_a,
-            team_2=self.team_b,
+            team_2=self.team_c,
             score_team_1=10,
             score_team_2=5,
             sequence_number=1,
             placeholder_seed_1=1,
-            placeholder_seed_2=2,
+            placeholder_seed_2=3,
         )
 
         old_results, tournament_seeding = get_new_pool_results(
-            old_results, match1, [1, 2], {1: 0, 2: 0}
+            old_results, match1, [1, 2, 3], {1: 0, 2: 0, 3: 0}
         )
 
-        # Second match: Draw between A and B
+        # B vs A - B wins 15-5
         match2 = Match.objects.create(
             tournament=self.tournament,
             pool=self.pool,
-            team_1=self.team_a,
-            team_2=self.team_b,
-            score_team_1=5,
+            team_1=self.team_b,
+            team_2=self.team_a,
+            score_team_1=15,
             score_team_2=5,
             sequence_number=1,
-            placeholder_seed_1=1,
+            placeholder_seed_1=2,
+            placeholder_seed_2=1,
+        )
+
+        old_results, tournament_seeding = get_new_pool_results(
+            old_results, match2, [1, 2, 3], tournament_seeding
+        )
+
+        # C vs B - C wins 10-5
+        match3 = Match.objects.create(
+            tournament=self.tournament,
+            pool=self.pool,
+            team_1=self.team_c,
+            team_2=self.team_b,
+            score_team_1=10,
+            score_team_2=5,
+            sequence_number=1,
+            placeholder_seed_1=3,
             placeholder_seed_2=2,
         )
 
         new_results, new_seeding = get_new_pool_results(
-            old_results, match2, [1, 2], tournament_seeding
+            old_results, match3, [1, 2, 3], tournament_seeding
         )
 
-        # Team A should have 1 win, 0 losses, 1 draw
+        # All teams have 1 win, but B has most goal difference
         self.assertEqual(new_results[self.team_a.id]["wins"], 1)
-        self.assertEqual(new_results[self.team_a.id]["losses"], 0)
-        self.assertEqual(new_results[self.team_a.id]["draws"], 1)
+        self.assertEqual(new_results[self.team_b.id]["wins"], 1)
+        self.assertEqual(new_results[self.team_c.id]["wins"], 1)
 
-        # Team B should have 0 wins, 1 loss, 1 draw
-        self.assertEqual(new_results[self.team_b.id]["wins"], 0)
-        self.assertEqual(new_results[self.team_b.id]["losses"], 1)
-        self.assertEqual(new_results[self.team_b.id]["draws"], 1)
+        # Team B should be first (most Goals Difference - 5)
+        self.assertEqual(new_results[self.team_b.id]["rank"], 1)
+
+        # Team C second (second most Goals Difference - 0)
+        self.assertEqual(new_results[self.team_c.id]["rank"], 2)
+
+        # Team A third (third most Goals Difference - -5)
+        self.assertEqual(new_results[self.team_a.id]["rank"], 3)

@@ -1,7 +1,6 @@
 import contextlib
 import os
 from collections import Counter
-from functools import cmp_to_key, partial
 
 from django.db.models import Q
 
@@ -79,9 +78,7 @@ def create_position_pool_matches(tournament: Tournament, position_pool: Position
             match.save()
 
 
-def compare_pool_results(
-    result1: dict[str, int], result2: dict[str, int], tournament_id: int
-) -> int:
+def sort_tied_teams(tied_teams: list[dict[str, int]], tournament_id: int) -> list[dict[str, int]]:
     """
     This is the comparator function for comparing pool results
     The order of precedence is as follows:
@@ -93,34 +90,45 @@ def compare_pool_results(
     6. Goals Scored counting all pool games
     """
 
-    # Rule 1
-    if result1["wins"] != result2["wins"]:
-        return result2["wins"] - result1["wins"]
+    team_stats: dict[int, dict[str, int]] = {
+        team["id"]: {"wins": 0, "gd": 0, "gf": 0} for team in tied_teams
+    }
 
-    # Calculate Head-to-Head Data
-    wins, goal_diff, goal_for = calculate_head_to_head_stats(result1, result2, tournament_id)
+    # Get all matches between tied teams
+    team_ids = [team["id"] for team in tied_teams]
+    matches = Match.objects.filter(
+        tournament_id=tournament_id, status=Match.Status.COMPLETED
+    ).filter(Q(team_1__id__in=team_ids, team_2__id__in=team_ids))
 
-    # Rule 2
-    if wins[result1["id"]] != wins[result2["id"]]:
-        return wins[result2["id"]] - wins[result1["id"]]
+    # Calculate head-to-head stats
+    for match in matches:
+        if match.team_1 is None or match.team_2 is None:
+            continue
 
-    # Rule 3
-    if goal_diff[result1["id"]] != goal_diff[result2["id"]]:
-        return goal_diff[result2["id"]] - goal_diff[result1["id"]]
+        # Update wins
+        if match.score_team_1 > match.score_team_2:
+            team_stats[match.team_1.id]["wins"] += 1
+        elif match.score_team_2 > match.score_team_1:
+            team_stats[match.team_2.id]["wins"] += 1
 
-    overall_gd_1 = result1["GF"] - result1["GA"]
-    overall_gd_2 = result2["GF"] - result2["GA"]
+        # Update goal difference and goals for
+        team_stats[match.team_1.id]["gd"] += match.score_team_1 - match.score_team_2
+        team_stats[match.team_2.id]["gd"] += match.score_team_2 - match.score_team_1
+        team_stats[match.team_1.id]["gf"] += match.score_team_1
+        team_stats[match.team_2.id]["gf"] += match.score_team_2
 
-    # Rule 4
-    if overall_gd_1 != overall_gd_2:
-        return overall_gd_2 - overall_gd_1
-
-    # Rule 5
-    if goal_for[result1["id"]] != goal_for[result2["id"]]:
-        return goal_for[result2["id"]] - goal_for[result1["id"]]
-
-    # Rule 6
-    return result2["GF"] - result1["GF"]
+    # Sort teams based on criteria
+    return sorted(
+        tied_teams,
+        key=lambda team: (
+            team_stats[team["id"]]["wins"],  # 1. Head-to-head wins
+            team_stats[team["id"]]["gd"],  # 2. Head-to-head goal difference
+            team["GF"] - team["GA"],  # 3. Overall goal difference
+            team_stats[team["id"]]["gf"],  # 4. Head-to-head goals scored
+            team["GF"],  # 5. Overall goals scored
+        ),
+        reverse=True,
+    )
 
 
 def get_new_pool_results(
@@ -169,11 +177,8 @@ def get_new_pool_results(
         if len(tied_teams) == 1:
             ranked_results.extend(tied_teams)
         else:
-            # Sort tied teams using all tiebreaker criteria
-            sorted_tied_teams = sorted(
-                tied_teams,
-                key=cmp_to_key(partial(compare_pool_results, tournament_id=match.tournament.id)),
-            )
+            # Sort tied teams using head-to-head criteria
+            sorted_tied_teams = sort_tied_teams(tied_teams, match.tournament.id)
             ranked_results.extend(sorted_tied_teams)
 
     new_results = {}
