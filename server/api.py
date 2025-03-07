@@ -1161,15 +1161,9 @@ def update_registration(
     try:
         event = Event.objects.get(id=event_id)
         team = Team.objects.get(id=team_id)
-        tournament = Tournament.objects.get(event=event)
+        Tournament.objects.get(event=event)
     except (Event.DoesNotExist, Team.DoesNotExist, Tournament.DoesNotExist):
         return 400, {"message": "Team/Event/Tournament does not exist"}
-
-    if not is_today_in_between_dates(
-        from_date=tournament.event.player_registration_start_date,
-        to_date=tournament.event.player_registration_end_date,
-    ):
-        return 400, {"message": "Rostering has closed, you can't edit registrations now !"}
 
     if request.user not in team.admins.all():
         return 401, {"message": "Only team admins can remove players from the roster"}
