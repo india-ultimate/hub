@@ -9,7 +9,7 @@ const RemoveFromRoster = props => {
   return (
     <div>
       <button
-        class="rounded-md text-red-400 outline outline-2 outline-red-300"
+        class="rounded-md text-red-400 outline outline-2 outline-red-400"
         onClick={() => modalRef.showModal()}
       >
         <Icon path={xMark} class="inline h-6 w-6" />
