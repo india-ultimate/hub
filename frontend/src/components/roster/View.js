@@ -4,7 +4,6 @@ import {
   createQuery,
   useQueryClient
 } from "@tanstack/solid-query";
-import clsx from "clsx";
 import { Icon } from "solid-heroicons";
 import { star, trophy } from "solid-heroicons/solid";
 import { createEffect, createSignal, For, Match, Show, Switch } from "solid-js";
@@ -26,12 +25,7 @@ import Breadcrumbs from "../Breadcrumbs";
 import ErrorPopover from "../popover/ErrorPopover";
 import SuccessPopover from "../popover/SuccessPopover";
 import AddToRoster from "./AddToRoster";
-import EditRosteredPlayer from "./EditRosteredPlayer";
-import RemoveFromRoster from "./RemoveFromRoster";
-import CaptainBadge from "./role-badges/Captain";
-import CoachBadge from "./role-badges/Coach";
-import ManagerBadge from "./role-badges/Manager";
-import SpiritCaptainBadge from "./role-badges/SpiritCaptain";
+import Registration from "./Registration";
 
 const Roster = () => {
   let successPopoverRef, errorPopoverRef;
@@ -98,15 +92,6 @@ const Roster = () => {
     1;
 
   const isPlayer = registration => registration?.is_playing;
-
-  const isCaptain = registration => registration?.role === "CAP";
-
-  const isSpiritCaptain = registration => registration?.role === "SCAP";
-
-  const isCoach = registration =>
-    registration?.role === "COACH" || registration?.role === "ACOACH";
-
-  const isManager = registration => registration?.role === "MNGR";
 
   const players = () => rosterQuery.data?.filter(reg => isPlayer(reg));
   const nonPlayers = () => rosterQuery.data?.filter(reg => !isPlayer(reg));
@@ -312,69 +297,18 @@ const Roster = () => {
             <div class="w-full divide-y">
               <For each={players()}>
                 {registration => (
-                  <div
-                    class={clsx(
-                      "mr-6 flex w-full items-center justify-between space-x-4 pr-2",
-                      currentUserIsTeamAdmin() ? "py-4" : "py-2"
-                    )}
-                  >
-                    <div class="flex items-center gap-x-4">
-                      <div class="font-medium">
-                        <div>
-                          {registration.player.full_name}
-                          <Show
-                            when={registration.player?.gender}
-                          >{` (${registration.player?.gender})`}</Show>
-                        </div>
-                      </div>
-                      <Show when={isCaptain(registration)}>
-                        <CaptainBadge />
-                      </Show>
-                      <Show when={isSpiritCaptain(registration)}>
-                        <SpiritCaptainBadge />
-                      </Show>
-                      <Show when={isManager(registration)}>
-                        <ManagerBadge />
-                      </Show>
-                      <Show when={isCoach(registration)}>
-                        <CoachBadge />
-                      </Show>
-                    </div>
-                    <div class="flex gap-x-3 justify-self-end">
-                      <Show
-                        when={
-                          store.loggedIn &&
-                          currentUserIsTeamAdmin() &&
-                          isPlayerRegInProgress()
-                        }
-                      >
-                        <RemoveFromRoster
-                          regId={registration.id}
-                          eventId={tournamentQuery.data.event.id}
-                          teamId={registration.team.id}
-                          playerName={registration?.player?.full_name}
-                          removeMutation={removeFromRosterMutation}
-                        />
-                      </Show>
-                      <Show
-                        when={
-                          store.loggedIn &&
-                          currentUserIsTeamAdmin() &&
-                          isPlayerRegInProgress()
-                        }
-                      >
-                        <EditRosteredPlayer
-                          registration={registration}
-                          eventId={tournamentQuery.data.event.id}
-                          teamId={registration.team.id}
-                          playerName={registration?.player?.full_name}
-                          updateRegistrationMutation={
-                            updateRegistrationMutation
-                          }
-                        />
-                      </Show>
-                    </div>
-                  </div>
+                  <Registration
+                    registration={registration}
+                    isTeamAdmin={currentUserIsTeamAdmin()}
+                    canRemovePlayer={
+                      store.loggedIn &&
+                      currentUserIsTeamAdmin() &&
+                      isPlayerRegInProgress()
+                    }
+                    canEditPlayer={store.loggedIn && currentUserIsTeamAdmin()}
+                    removeMutation={removeFromRosterMutation}
+                    updateMutation={updateRegistrationMutation}
+                  />
                 )}
               </For>
             </div>
@@ -389,69 +323,18 @@ const Roster = () => {
             <div class="w-full divide-y">
               <For each={nonPlayers()}>
                 {registration => (
-                  <div
-                    class={clsx(
-                      "mr-6 flex w-full items-center justify-between space-x-4",
-                      currentUserIsTeamAdmin() ? "py-4" : "py-2"
-                    )}
-                  >
-                    <div class="flex items-center gap-x-4">
-                      <div class="font-medium">
-                        <div>
-                          {registration.player.full_name}
-                          <Show
-                            when={registration.player?.gender}
-                          >{` (${registration.player?.gender})`}</Show>
-                        </div>
-                      </div>
-                      <Show when={isCaptain(registration)}>
-                        <CaptainBadge />
-                      </Show>
-                      <Show when={isSpiritCaptain(registration)}>
-                        <SpiritCaptainBadge />
-                      </Show>
-                      <Show when={isManager(registration)}>
-                        <ManagerBadge />
-                      </Show>
-                      <Show when={isCoach(registration)}>
-                        <CoachBadge />
-                      </Show>
-                    </div>
-                    <div class="flex gap-x-3 justify-self-end">
-                      <Show
-                        when={
-                          store.loggedIn &&
-                          currentUserIsTeamAdmin() &&
-                          isPlayerRegInProgress()
-                        }
-                      >
-                        <RemoveFromRoster
-                          regId={registration.id}
-                          eventId={tournamentQuery.data.event.id}
-                          teamId={registration.team.id}
-                          playerName={registration.player?.full_name}
-                          removeMutation={removeFromRosterMutation}
-                        />
-                      </Show>
-                      <Show
-                        when={
-                          store.loggedIn &&
-                          currentUserIsTeamAdmin() &&
-                          isPlayerRegInProgress()
-                        }
-                      >
-                        <EditRosteredPlayer
-                          registration={registration}
-                          eventId={tournamentQuery.data.event.id}
-                          teamId={registration.team.id}
-                          playerName={registration.player?.full_name}
-                          updateRegistrationMutation={
-                            updateRegistrationMutation
-                          }
-                        />
-                      </Show>
-                    </div>
-                  </div>
+                  <Registration
+                    registration={registration}
+                    isTeamAdmin={currentUserIsTeamAdmin()}
+                    canRemovePlayer={
+                      store.loggedIn &&
+                      currentUserIsTeamAdmin() &&
+                      isPlayerRegInProgress()
+                    }
+                    canEditPlayer={store.loggedIn && currentUserIsTeamAdmin()}
+                    removeMutation={removeFromRosterMutation}
+                    updateMutation={updateRegistrationMutation}
+                  />
                 )}
               </For>
             </div>
