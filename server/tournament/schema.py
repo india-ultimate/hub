@@ -122,13 +122,14 @@ class TournamentPlayerRegistrationUpdateSchema(Schema):
 
 class TournamentPlayerRegistrationSchema(Schema):
     id: int
-    team: TeamSchema
+    team_id: int
     player: PlayerSchema
     is_playing: bool
     role: str
     points: float | None
     event_name: str
     series_name: str | None
+    event_id: int
 
     @staticmethod
     def resolve_event_name(registration: Registration) -> str:
