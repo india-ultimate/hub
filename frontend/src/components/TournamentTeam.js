@@ -1,5 +1,9 @@
 import { useParams } from "@solidjs/router";
-import { createQuery } from "@tanstack/solid-query";
+import {
+  createMutation,
+  createQuery,
+  useQueryClient
+} from "@tanstack/solid-query";
 import clsx from "clsx";
 import { initFlowbite } from "flowbite";
 import { Icon } from "solid-heroicons";
@@ -19,11 +23,14 @@ import {
   fetchTournamentBySlug,
   fetchTournamentTeamBySlug,
   fetchTournamentTeamMatches,
-  fetchTournamentTeamPointsBySlugV2
+  fetchTournamentTeamPointsBySlugV2,
+  removeFromRoster,
+  updatePlayerRegistration
 } from "../queries";
 import RosterSkeleton from "../skeletons/Roster";
 import { TournamentTeamMatches as TournamentTeamMatchesSkeleton } from "../skeletons/TournamentMatch";
-import { getTournamentBreadcrumbName } from "../utils";
+import { useStore } from "../store";
+import { getTournamentBreadcrumbName, ifTodayInBetweenDates } from "../utils";
 import Info from "./alerts/Info";
 import Breadcrumbs from "./Breadcrumbs";
 import MatchCard from "./match/MatchCard";
@@ -32,6 +39,10 @@ import UCRegistration from "./roster/UCRegistration";
 
 const TournamentTeam = () => {
   const params = useParams();
+  const queryClient = useQueryClient();
+
+  const [store] = useStore();
+
   const [tournamentDates, setTournamentDates] = createSignal([]);
   const [matchesGroupedByDate, setMatchesGroupedByDate] = createSignal({});
   const [doneFetching, setDoneFetching] = createSignal(false);
@@ -80,6 +91,18 @@ const TournamentTeam = () => {
     () => fetchTournamentTeamMatches(params.tournament_slug, params.team_slug)
   );
 
+  const removeFromRosterMutation = createMutation({
+    mutationFn: removeFromRoster,
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["tournament-roster"] })
+  });
+
+  const updateRegistrationMutation = createMutation({
+    mutationFn: updatePlayerRegistration,
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["tournament-roster"] })
+  });
+
   const currTeamNo = match => {
     if (match.team_1) {
       return params.team_slug === match.team_1.slug ? 1 : 2;
@@ -88,6 +111,17 @@ const TournamentTeam = () => {
   };
 
   const oppTeamNo = match => (currTeamNo(match) === 1 ? 2 : 1);
+
+  const currentUserIsTeamAdmin = () =>
+    teamQuery.data?.admins.filter(user => user.id === store.data.id).length ==
+    1;
+
+  const isPlayerRegInProgress = () => {
+    return ifTodayInBetweenDates(
+      Date.parse(tournamentQuery.data?.event?.player_registration_start_date),
+      Date.parse(tournamentQuery.data?.event?.player_registration_end_date)
+    );
+  };
 
   const matchOutcomeColor = match => {
     if (match.status === "SCH" || match.status === "YTF") {
@@ -323,7 +357,22 @@ const TournamentTeam = () => {
                   {registration => (
                     <Show
                       when={tournamentQuery.data?.use_uc_registrations}
-                      fallback={<Registration registration={registration} />}
+                      fallback={
+                        <Registration
+                          registration={registration}
+                          isTeamAdmin={currentUserIsTeamAdmin()}
+                          canRemovePlayer={
+                            store.loggedIn &&
+                            currentUserIsTeamAdmin() &&
+                            isPlayerRegInProgress()
+                          }
+                          canEditPlayer={
+                            store.loggedIn && currentUserIsTeamAdmin()
+                          }
+                          removeMutation={removeFromRosterMutation}
+                          updateMutation={updateRegistrationMutation}
+                        />
+                      }
                     >
                       <UCRegistration registration={registration} />
                     </Show>
@@ -354,7 +403,22 @@ const TournamentTeam = () => {
                   {registration => (
                     <Show
                       when={tournamentQuery.data?.use_uc_registrations}
-                      fallback={<Registration registration={registration} />}
+                      fallback={
+                        <Registration
+                          registration={registration}
+                          isTeamAdmin={currentUserIsTeamAdmin()}
+                          canRemovePlayer={
+                            store.loggedIn &&
+                            currentUserIsTeamAdmin() &&
+                            isPlayerRegInProgress()
+                          }
+                          canEditPlayer={
+                            store.loggedIn && currentUserIsTeamAdmin()
+                          }
+                          removeMutation={removeFromRosterMutation}
+                          updateMutation={updateRegistrationMutation}
+                        />
+                      }
                     >
                       <UCRegistration registration={registration} />
                     </Show>
