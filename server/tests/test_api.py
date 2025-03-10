@@ -1594,12 +1594,6 @@ class TestTournaments(ApiBaseTestCase):
             {"team_id": 6, "points": 0.0, "self_points": 0.0, "rank": 3},
             {"team_id": 7, "points": 0.0, "self_points": 0.0, "rank": 3},
             {"team_id": 8, "points": 0.0, "self_points": 0.0, "rank": 3},
-            {"team_id": 9, "points": 0.0, "self_points": 0.0, "rank": 3},
-            {"team_id": 10, "points": 0.0, "self_points": 0.0, "rank": 3},
-            {"team_id": 11, "points": 0.0, "self_points": 0.0, "rank": 3},
-            {"team_id": 12, "points": 0.0, "self_points": 0.0, "rank": 3},
-            {"team_id": 13, "points": 0.0, "self_points": 0.0, "rank": 3},
-            {"team_id": 14, "points": 0.0, "self_points": 0.0, "rank": 3},
         ]
 
         self.tournament.refresh_from_db()

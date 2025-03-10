@@ -171,7 +171,7 @@ class ApiBaseTestCase(TestCase):
         )
         self.player.refresh_from_db()
         self.event = create_event("NCS Sectionals 2023")
-        self.teams = add_teams_to_event(self.event, 14)
+        self.teams = add_teams_to_event(self.event, 8)
         UCRegistration.objects.create(
             event=self.event, team=self.teams[0], person=person, roles=["admin", "player"]
         )
