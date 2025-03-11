@@ -123,9 +123,9 @@ jobs:
 
       - name: Upload selenium base logs as artifacts
         if: failure() # Upload the artifact even if a previous step fails
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: sbase-logs
+          name: sbase-logs-${{ matrix.runs-on }}
           path: latest_logs/
           retention-days: 1
 
