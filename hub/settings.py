@@ -180,7 +180,7 @@ WEBPACK_SERVER_PORT = os.environ.get("WEBPACK_SERVER_PORT", 3000)
 
 # Email settings
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = "smtp.zeptomail.in"
+EMAIL_HOST = "smtp.gmail.com"
 EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "admin@indiaultimate.org")
 EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD")
 EMAIL_PORT = 587
