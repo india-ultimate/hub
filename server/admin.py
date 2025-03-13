@@ -2,7 +2,8 @@ import csv
 
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
-from django.db.models import QuerySet
+from django.db.models import CharField, Q, QuerySet, Value
+from django.db.models.functions import Concat
 from django.http import HttpRequest, HttpResponse
 
 from server.core.models import (
@@ -54,7 +55,7 @@ def export_as_csv(
 
 @admin.register(Player)
 class PlayerAdmin(admin.ModelAdmin[Player]):
-    search_fields = ["user__first_name", "user__last_name", "user__username"]
+    search_fields = ["user__first_name", "user__last_name", "user__username", "user__email"]
     list_display = ["get_name", "get_email", "gender", "sponsored"]
     list_filter = ["gender", "sponsored"]
 
@@ -65,6 +66,41 @@ class PlayerAdmin(admin.ModelAdmin[Player]):
     @admin.display(description="Email", ordering="user__username")
     def get_email(self, obj: Player) -> str:
         return obj.user.username
+
+    def get_search_results(
+        self,
+        request: HttpRequest,
+        queryset: QuerySet[Player],
+        search_term: str,
+    ) -> tuple[QuerySet[Player], bool]:
+        # Add annotation for full name search
+        queryset = queryset.annotate(
+            full_name=Concat(
+                "user__first_name", Value(" "), "user__last_name", output_field=CharField()
+            )
+        )
+        # Add full name to search
+        if search_term:
+            queryset = queryset.filter(
+                Q(full_name__icontains=search_term) | Q(user__email__icontains=search_term)
+            )
+        return (
+            queryset.annotate(
+                display_label=Concat(
+                    "user__first_name",
+                    Value(" "),
+                    "user__last_name",
+                    Value(" ("),
+                    "user__email",
+                    Value(")"),
+                    output_field=CharField(),
+                )
+            ),
+            False,
+        )
+
+    def get_admin_display_value(self, obj: Player) -> str:
+        return f"{obj.user.get_full_name()} ({obj.user.email})"
 
 
 @admin.register(User)
@@ -101,8 +137,30 @@ class UserAdmin(DjangoUserAdmin):
 
 @admin.register(Team)
 class TeamAdmin(admin.ModelAdmin[Team]):
-    search_fields = ["name"]
-    list_display = ["name"]
+    search_fields = ["name", "slug"]
+    list_display = ["name", "slug"]
+
+    def get_search_results(
+        self,
+        request: HttpRequest,
+        queryset: QuerySet[Team],
+        search_term: str,
+    ) -> tuple[QuerySet[Team], bool]:
+        if search_term:
+            queryset = queryset.filter(
+                Q(name__icontains=search_term) | Q(slug__icontains=search_term)
+            )
+        return (
+            queryset.annotate(
+                display_label=Concat(
+                    "name", Value(" ("), "slug", Value(")"), output_field=CharField()
+                )
+            ),
+            False,
+        )
+
+    def get_admin_display_value(self, obj: Team) -> str:
+        return str(obj)
 
 
 @admin.register(Event)
@@ -305,8 +363,14 @@ class SeriesRosterInvitationAdmin(admin.ModelAdmin[SeriesRosterInvitation]):
 
 @admin.register(SeriesRegistration)
 class SeriesRegistrationAdmin(admin.ModelAdmin[SeriesRegistration]):
-    search_fields = ["team__name", "player__user__first_name", "player__user__last_name"]
+    search_fields = [
+        "team__name",
+        "player__user__first_name",
+        "player__user__last_name",
+        "player__user__email",
+    ]
     list_display = ["get_name", "get_email", "get_team"]
+    autocomplete_fields = ["player", "team"]
 
     @admin.display(description="Series", ordering="series__name")
     def get_name(self, obj: SeriesRegistration) -> str:
