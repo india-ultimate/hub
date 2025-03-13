@@ -96,7 +96,7 @@ class Team(ExportModelOperationsMixin("team"), models.Model):  # type: ignore[mi
     )
 
     def __str__(self) -> str:
-        return self.name
+        return f"{self.name} ({self.slug})"
 
     def save(self, *args: Any, **kwargs: Any) -> None:
         if not self.slug:
@@ -159,7 +159,7 @@ class Player(ExportModelOperationsMixin("player"), models.Model):  # type: ignor
     imported_data = models.BooleanField(default=False)
 
     def __str__(self) -> str:
-        return self.user.get_full_name()
+        return f"{self.user.get_full_name()} ({self.user.email})"
 
     @property
     def membership_amount(self) -> int:
