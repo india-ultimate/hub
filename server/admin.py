@@ -299,7 +299,8 @@ class RazorpayTransactionAdmin(admin.ModelAdmin[RazorpayTransaction]):
         "payment_date",
         "status",
     ]
-    list_filter = ["status", "type"]
+    list_filter = ["status", "type", "payment_date"]
+    date_hierarchy = "payment_date"
     actions = [export_as_csv]
 
     def changelist_view(
