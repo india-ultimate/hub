@@ -1,0 +1,13 @@
+{% extends "admin/change_list.html" %} {% load humanize %} {% block content %}
+<div
+  style="padding: 10px; margin: 10px 0; border-radius: 4px"
+  class="{% if not is_popup and cl.opts.app_label in app_list %} bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 {% else %} bg-gray-100 text-gray-900 {% endif %}"
+>
+  <div style="margin-bottom: 5px">
+    <strong>Total Amount (Completed transactions): </strong>
+    <span class="text-blue-600 dark:text-blue-400"
+      >₹{{total_completed_amount|floatformat:2|intcomma}}</span
+    >
+  </div>
+</div>
+{{ block.super }} {% endblock %}

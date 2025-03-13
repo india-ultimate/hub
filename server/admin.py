@@ -1,10 +1,12 @@
 import csv
+from typing import Any
 
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
-from django.db.models import CharField, Q, QuerySet, Value
+from django.db.models import CharField, Q, QuerySet, Sum, Value
 from django.db.models.functions import Concat
 from django.http import HttpRequest, HttpResponse
+from django.template.response import TemplateResponse
 
 from server.core.models import (
     Accreditation,
@@ -286,6 +288,7 @@ class MembershipAdmin(admin.ModelAdmin[Membership]):
 
 @admin.register(RazorpayTransaction)
 class RazorpayTransactionAdmin(admin.ModelAdmin[RazorpayTransaction]):
+    change_list_template = "admin/razorpay_transaction.html"
     search_fields = ["user__first_name"]
     list_display = [
         "get_name",
@@ -296,7 +299,36 @@ class RazorpayTransactionAdmin(admin.ModelAdmin[RazorpayTransaction]):
         "payment_date",
         "status",
     ]
+    list_filter = ["status", "type"]
     actions = [export_as_csv]
+
+    def changelist_view(
+        self, request: HttpRequest, extra_context: dict[str, Any] | None = None
+    ) -> TemplateResponse:
+        response = super().changelist_view(request, extra_context or {})
+
+        if isinstance(response, TemplateResponse):
+            try:
+                context_data = response.context_data
+                if context_data is not None:
+                    qs = context_data["cl"].queryset
+                    # Calculate total amount for filtered queryset
+                    metrics = qs.aggregate(
+                        total_completed=Sum("amount", filter=Q(status="completed"), default=0),
+                    )
+
+                    context_data.update(
+                        {
+                            "total_completed_amount": metrics["total_completed"] / 100,
+                        }
+                    )
+            except (AttributeError, KeyError):
+                pass
+
+            return response
+
+        # If response is not TemplateResponse, create one
+        return TemplateResponse(request, self.change_list_template, {})
 
     @admin.display(description="User Name", ordering="user__first_name")
     def get_name(self, obj: RazorpayTransaction) -> str:
