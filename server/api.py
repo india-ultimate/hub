@@ -251,6 +251,29 @@ def search_players(request: AuthenticatedHttpRequest, text: str = "") -> QuerySe
     )
 
 
+@api.get("/players/recommend", response={200: list[PlayerTinySchema], 400: Response})
+@paginate(PageNumberPagination, page_size=5)
+def recommend_players(
+    request: AuthenticatedHttpRequest, team_slug: str
+) -> QuerySet[Player] | tuple[int, message_response]:
+    try:
+        team = Team.objects.get(slug=team_slug)
+    except Team.DoesNotExist:
+        return 400, {"message": "Team does not exist"}
+
+    # Get players who have registered with this team before
+    # Count their registrations and order by most frequent players first
+    return (
+        Player.objects.filter(registration__team=team)
+        .annotate(
+            registration_count=Count("registration"),
+            full_name=Concat("user__first_name", Value(" "), "user__last_name"),
+        )
+        .order_by("-registration_count", "full_name")
+        .distinct()
+    )
+
+
 # Teams #########
 @api.get("/teams", auth=None, response={200: list[TeamSchema]})
 def list_teams(request: AuthenticatedHttpRequest) -> QuerySet[Team]:
