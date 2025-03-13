@@ -144,6 +144,26 @@ export const searchPlayers = async (searchText, pagination) => {
   return await response.json();
 };
 
+export const getRecommendedPlayers = async (teamSlug, pagination) => {
+  let baseUrl = "/api/players/recommend";
+  let params = new URLSearchParams();
+  if (teamSlug) {
+    params.set("team_slug", teamSlug);
+  }
+  if (pagination.pageIndex) {
+    params.set("page", pagination.pageIndex + 1);
+  }
+  if (params.toString().length > 0) {
+    baseUrl = baseUrl + "?" + params.toString();
+  }
+  const response = await fetch(baseUrl, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin"
+  });
+  return await response.json();
+};
+
 export const fetchTeamBySlug = async team_slug => {
   const response = await fetch(`/api/team/${team_slug}`, {
     method: "GET",

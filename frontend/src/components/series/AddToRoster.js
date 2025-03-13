@@ -32,6 +32,7 @@ import {
 import { ChevronLeft, ChevronRight, Spinner } from "../../icons";
 import {
   fetchUser,
+  getRecommendedPlayers,
   invitePlayerToSeries,
   registerYourselfToSeries,
   searchPlayers
@@ -123,7 +124,6 @@ const AddToRoster = props => {
           seriesSlug={props.seriesSlug}
           teamSlug={props.teamSlug}
         />
-        /
       </Modal>
       <SuccessPopover ref={successPopoverRef}>
         <div class="flex flex-row items-center gap-2">
@@ -180,14 +180,33 @@ const AddPlayerRegistrationForm = componentProps => {
     pageIndex: 0,
     pageSize: 5
   });
+  const [recommendedPagination, setRecommendedPagination] = createSignal({
+    pageIndex: 0,
+    pageSize: 5
+  });
   const [status, setStatus] = createSignal("");
 
   const queryClient = useQueryClient();
 
+  // Shared helper functions for checking roster status
+  const isPlayerInRoster = playerId => {
+    return componentProps.roster?.map(reg => reg.player.id).includes(playerId);
+  };
+
+  const isPlayerInvited = playerId => {
+    return componentProps.invitees
+      .filter(invite => invite.to_player.id === playerId)
+      .map(invite => invite.status)
+      .includes("Pending");
+  };
+
   const invitePlayerMutation = createMutation({
     mutationFn: invitePlayerToSeries,
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["series-invitations-sent"] })
+    onSuccess: () => {
+      queryClient.invalidateQueries(["series-invitations-sent"]);
+      queryClient.invalidateQueries(["recommended-players"]);
+      queryClient.invalidateQueries(["players", "search"]);
+    }
   });
 
   createEffect(function onMutationComplete() {
@@ -209,16 +228,15 @@ const AddPlayerRegistrationForm = componentProps => {
       search().trim().length > 2 ? searchPlayers(search(), pagination()) : []
   );
 
-  const isPlayerInRoster = playerId => {
-    return componentProps.roster?.map(reg => reg.player.id).includes(playerId);
-  };
-
-  const isPlayerInvited = playerId => {
-    return componentProps.invitees
-      .filter(invite => invite.to_player.id === playerId)
-      .map(invite => invite.status)
-      .includes("Pending");
-  };
+  const recommendedPlayersQuery = createQuery(
+    () => [
+      "recommended-players",
+      componentProps.teamSlug,
+      recommendedPagination()
+    ],
+    () =>
+      getRecommendedPlayers(componentProps.teamSlug, recommendedPagination())
+  );
 
   createEffect(() => {
     if (search()) {
@@ -256,9 +274,15 @@ const AddPlayerRegistrationForm = componentProps => {
       cell: props => (
         <Switch>
           <Match when={isPlayerInRoster(props.getValue())}>
-            Added to roster
+            <span class="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-sm font-medium text-green-700 ring-1 ring-inset ring-green-600/20 dark:bg-green-900/30 dark:text-green-400">
+              Added to roster
+            </span>
           </Match>
-          <Match when={isPlayerInvited(props.getValue())}>Invited</Match>
+          <Match when={isPlayerInvited(props.getValue())}>
+            <span class="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-sm font-medium text-yellow-700 ring-1 ring-inset ring-yellow-600/20 dark:bg-yellow-900/30 dark:text-yellow-400">
+              Invited
+            </span>
+          </Match>
           <Match
             when={
               !isPlayerInRoster(props.getValue()) &&
@@ -307,6 +331,26 @@ const AddPlayerRegistrationForm = componentProps => {
       };
     },
     onPaginationChange: setPagination,
+    getCoreRowModel: getCoreRowModel(),
+    manualPagination: true
+  });
+
+  const recommendedPlayersTable = createSolidTable({
+    get data() {
+      return recommendedPlayersQuery.data?.items ?? [];
+    },
+    columns: defaultColumns,
+    get rowCount() {
+      return recommendedPlayersQuery.data?.count;
+    },
+    get state() {
+      return {
+        get pagination() {
+          return recommendedPagination();
+        }
+      };
+    },
+    onPaginationChange: setRecommendedPagination,
     getCoreRowModel: getCoreRowModel(),
     manualPagination: true
   });
@@ -458,6 +502,99 @@ const AddPlayerRegistrationForm = componentProps => {
           </button>
         </div>
       </Show>
+
+      <div class="mt-8">
+        <h2 class="w-full text-left text-lg font-bold text-blue-600">
+          Recommended Players
+        </h2>
+        <h3 class="w-full text-left text-sm italic">
+          Players who have previously played with this team
+        </h3>
+
+        <Show
+          when={recommendedPlayersTable.getRowModel().rows.length > 0}
+          fallback={
+            <div>
+              <Show
+                when={recommendedPlayersQuery.isLoading}
+                fallback={<Info text="No recommended players found." />}
+              >
+                <Spinner />
+              </Show>
+            </div>
+          }
+        >
+          <div class="mt-4 overflow-x-auto">
+            <table class="w-full text-left text-sm text-gray-500 rtl:text-right dark:text-gray-400">
+              <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
+                <For each={recommendedPlayersTable.getHeaderGroups()}>
+                  {headerGroup => (
+                    <tr>
+                      <For each={headerGroup.headers}>
+                        {header => (
+                          <th colSpan={header.colSpan} class="px-6 py-3">
+                            {header.isPlaceholder ? null : (
+                              <div>
+                                {flexRender(
+                                  header.column.columnDef.header,
+                                  header.getContext()
+                                )}
+                              </div>
+                            )}
+                          </th>
+                        )}
+                      </For>
+                    </tr>
+                  )}
+                </For>
+              </thead>
+              <tbody>
+                <For each={recommendedPlayersTable.getRowModel().rows}>
+                  {row => (
+                    <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
+                      <For each={row.getVisibleCells()}>
+                        {cell => (
+                          <td class="px-6 py-4">
+                            {flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext()
+                            )}
+                          </td>
+                        )}
+                      </For>
+                    </tr>
+                  )}
+                </For>
+              </tbody>
+            </table>
+            <div class="mt-4 flex items-center justify-center gap-2">
+              <button
+                onClick={() => recommendedPlayersTable.previousPage()}
+                disabled={!recommendedPlayersTable.getCanPreviousPage()}
+                class="flex h-8 w-24 items-center justify-center rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-700 disabled:text-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
+              >
+                <ChevronLeft width={20} />
+                Previous
+              </button>
+              <span class="flex items-center gap-1">
+                <div>Page</div>
+                <strong>
+                  {recommendedPlayersTable.getState().pagination.pageIndex + 1}{" "}
+                  of {recommendedPlayersTable.getPageCount().toLocaleString()}
+                </strong>
+              </span>
+              <button
+                onClick={() => recommendedPlayersTable.nextPage()}
+                disabled={!recommendedPlayersTable.getCanNextPage()}
+                class="flex h-8 w-24 items-center justify-center rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-700 disabled:text-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
+              >
+                Next
+                <ChevronRight width={20} />
+              </button>
+            </div>
+          </div>
+        </Show>
+      </div>
       <p class="my-2">{status()}</p>
     </div>
   );
