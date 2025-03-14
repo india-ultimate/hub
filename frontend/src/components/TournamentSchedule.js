@@ -297,6 +297,7 @@ const TournamentSchedule = () => {
                         <MatchCard
                           match={match}
                           tournamentSlug={params.slug}
+                          tournamentType={tournamentQuery.data?.event?.type}
                           useUCRegistrations={
                             tournamentQuery.data?.use_uc_registrations
                           }

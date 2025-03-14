@@ -860,6 +860,7 @@ const TournamentMatch = props => {
               <CreateStatsButton
                 match={props.match}
                 tournamentSlug={props.tournamentSlug}
+                tournamentType={props.tournamentType}
               />
             }
           >
