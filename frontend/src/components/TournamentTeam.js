@@ -322,6 +322,7 @@ const TournamentTeam = () => {
                           currentTeamNo={currTeamNo(match)}
                           opponentTeamNo={oppTeamNo(match)}
                           tournamentSlug={params.tournament_slug}
+                          tournamentType={tournamentQuery.data?.event?.type}
                           useUCRegistrations={
                             tournamentQuery.data?.use_uc_registrations
                           }

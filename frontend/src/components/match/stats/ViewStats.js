@@ -202,25 +202,27 @@ const ViewStats = () => {
               <span class="font-bold">Team which started on Offense:</span>{" "}
               {matchStatsQuery.data?.initial_possession?.name}
             </div>
-            <div>
-              <span class="font-bold">Starting Gender Ratio:</span>{" "}
-              <Switch fallback={"NA"}>
-                <Match
-                  when={
-                    matchStatsQuery.data?.initial_ratio === genderRatio.MALE
-                  }
-                >
-                  4 Male / 3 Female
-                </Match>
-                <Match
-                  when={
-                    matchStatsQuery.data?.initial_ratio === genderRatio.FEMALE
-                  }
-                >
-                  4 Female / 3 Male
-                </Match>
-              </Switch>
-            </div>
+            <Show when={tournamentQuery.data?.event.type === "MXD"}>
+              <div>
+                <span class="font-bold">Starting Gender Ratio:</span>{" "}
+                <Switch fallback={"NA"}>
+                  <Match
+                    when={
+                      matchStatsQuery.data?.initial_ratio === genderRatio.MALE
+                    }
+                  >
+                    4 Male / 3 Female
+                  </Match>
+                  <Match
+                    when={
+                      matchStatsQuery.data?.initial_ratio === genderRatio.FEMALE
+                    }
+                  >
+                    4 Female / 3 Male
+                  </Match>
+                </Switch>
+              </div>
+            </Show>
           </div>
         </details>
       </div>
