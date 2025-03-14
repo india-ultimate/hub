@@ -2312,10 +2312,15 @@ def create_match_stats(
         return 400, {"message": "Match stats cant be created in current status"}
 
     ratio = MatchStats.GenderRatio.NA
-    if body.initial_ratio.upper() == MatchStats.GenderRatio.MALE.value.upper():
-        ratio = MatchStats.GenderRatio.MALE
-    elif body.initial_ratio.upper() == MatchStats.GenderRatio.FEMALE.value.upper():
-        ratio = MatchStats.GenderRatio.FEMALE
+
+    if match.tournament.event.type == Event.Type.MIXED and body.initial_ratio is None:
+        return 400, {"message": "Initial ratio is required for mixed tournament match stats"}
+
+    if match.tournament.event.type == Event.Type.MIXED and body.initial_ratio is not None:
+        if body.initial_ratio.upper() == MatchStats.GenderRatio.MALE.value.upper():
+            ratio = MatchStats.GenderRatio.MALE
+        elif body.initial_ratio.upper() == MatchStats.GenderRatio.FEMALE.value.upper():
+            ratio = MatchStats.GenderRatio.FEMALE
 
     match_stats = MatchStats.objects.create(
         match=match,
