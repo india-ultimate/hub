@@ -216,25 +216,29 @@ const EditStats = () => {
           <span class="font-bold">
             {matchStatsQuery.data?.initial_possession?.name}
           </span>{" "}
-          <span>started on offense with</span>
-          <span class="font-bold">
-            {" "}
-            <Switch fallback={"NA"}>
-              <Match
-                when={matchStatsQuery.data?.initial_ratio === genderRatio.MALE}
-              >
-                4 Male / 3 Female
-              </Match>
-              <Match
-                when={
-                  matchStatsQuery.data?.initial_ratio === genderRatio.FEMALE
-                }
-              >
-                4 Female / 3 Male
-              </Match>
-            </Switch>{" "}
-          </span>
-          <span>ratio.</span>
+          <span>started on offense</span>
+          <Show when={tournamentQuery.data?.event.type === "MXD"}>
+            <span class="font-bold">
+              {" "}
+              <Switch fallback={"NA"}>
+                <Match
+                  when={
+                    matchStatsQuery.data?.initial_ratio === genderRatio.MALE
+                  }
+                >
+                  with 4 Male / 3 Female
+                </Match>
+                <Match
+                  when={
+                    matchStatsQuery.data?.initial_ratio === genderRatio.FEMALE
+                  }
+                >
+                  with 4 Female / 3 Male
+                </Match>
+              </Switch>{" "}
+            </span>
+            <span>ratio.</span>
+          </Show>
         </div>
       </div>
 
