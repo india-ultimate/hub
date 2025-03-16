@@ -43,6 +43,7 @@ import {
 } from "../queries";
 import ScheduleSkeleton from "../skeletons/Schedule";
 import { useStore } from "../store";
+import { getCookie } from "../utils";
 import MatchHeader from "./match/MatchHeader";
 import CreateTournamentForm from "./tournament/CreateTournamentForm";
 import ReorderTeams from "./tournament/ReorderTeams";
@@ -77,6 +78,8 @@ const TournamentManager = () => {
   const [isStandingsEdited, setIsStandingsEdited] = createSignal(false);
   const [addMatchStatus, setAddMatchStatus] = createSignal();
   const durationList = [45, 60, 75, 90, 100];
+  const [scheduleFile, setScheduleFile] = createSignal(null);
+  const [uploadError, setUploadError] = createSignal("");
 
   onMount(() => {
     const dt = new Date(1970, 0, 1, 6, 0);
@@ -366,6 +369,39 @@ const TournamentManager = () => {
       queryClient.invalidateQueries({
         queryKey: ["matches", selectedTournamentID()]
       })
+  });
+
+  const uploadScheduleMutation = createMutation({
+    mutationFn: async ({ tournament_id, file }) => {
+      const formData = new FormData();
+      formData.append("schedule_file", file);
+
+      const response = await fetch(
+        `/api/tournament/${tournament_id}/update-schedule`,
+        {
+          method: "POST",
+          headers: {
+            "X-CSRFToken": getCookie("csrftoken")
+          },
+          body: formData
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message);
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      setFlash({ message: "Schedule updated successfully", type: "success" });
+      setScheduleFile(null);
+      queryClient.invalidateQueries(["matches", selectedTournamentID()]);
+    },
+    onError: error => {
+      setUploadError(error.message);
+      setFlash({ message: error.message, type: "error" });
+    }
   });
 
   Date.prototype.yyyymmdd = function () {
@@ -1489,6 +1525,121 @@ const TournamentManager = () => {
               </tbody>
             </table>
           </div>
+
+          <div class="my-5">
+            <h2 class="mb-4 text-xl font-bold text-blue-500">
+              Update Schedule from CSV
+            </h2>
+            <div class="flex flex-col gap-4">
+              <div class="rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
+                <h3 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
+                  CSV Format Instructions
+                </h3>
+
+                <div class="mb-4">
+                  <h4 class="mb-2 font-medium text-gray-900 dark:text-white">
+                    Required Columns:
+                  </h4>
+                  <ul class="list-inside list-disc space-y-1 text-gray-600 dark:text-gray-400">
+                    <li>Date (Format: DD/MM/YYYY)</li>
+                    <li>Start Time (Format: HH:MM:SS, 24-hour)</li>
+                    <li>End Time (Format: HH:MM:SS, 24-hour)</li>
+                    <li>
+                      Field 1, Field 2, etc. (Must match field names in
+                      tournament settings)
+                    </li>
+                  </ul>
+                </div>
+
+                <div class="mb-4">
+                  <h4 class="mb-2 font-medium text-gray-900 dark:text-white">
+                    Match Name Formats:
+                  </h4>
+                  <ul class="list-inside list-disc space-y-1 text-gray-600 dark:text-gray-400">
+                    <li>
+                      Pool Matches: "A1 vs A2" (same letter for same pool)
+                    </li>
+                    <li>
+                      Cross Pool Matches: "CP 1 vs 2" (CP followed by seed
+                      numbers)
+                    </li>
+                    <li>Bracket Matches: "1 vs 2" (just seed numbers)</li>
+                  </ul>
+                </div>
+
+                <div class="mb-4">
+                  <h4 class="mb-2 font-medium text-gray-900 dark:text-white">
+                    Example CSV:
+                  </h4>
+                  <div class="rounded bg-gray-100 p-3 font-mono text-sm dark:bg-gray-700">
+                    <pre>
+                      Date,Start Time,End Time,Field 1,Field 2 {"\n"}
+                      24/03/2025,06:30:00,07:45:00,A1 vs A2,B1 vs B2 {"\n"}
+                      24/03/2025,08:00:00,09:15:00,CP 1 vs 2,1 vs 2
+                    </pre>
+                  </div>
+                </div>
+
+                <div class="mb-4">
+                  <h4 class="mb-2 font-medium text-gray-900 dark:text-white">
+                    Important Notes:
+                  </h4>
+                  <ul class="list-inside list-disc space-y-1 text-gray-600 dark:text-gray-400">
+                    <li>
+                      All fields mentioned in CSV must exist in tournament
+                      settings
+                    </li>
+                    <li>Match names must exactly match the format specified</li>
+                    <li>Times should be in 24-hour format</li>
+                    <li>All matches must exist in the tournament already</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div class="rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
+                <label
+                  class="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
+                  for="schedule-file"
+                >
+                  Upload Schedule CSV
+                </label>
+                <input
+                  type="file"
+                  id="schedule-file"
+                  accept=".csv"
+                  onChange={e => {
+                    setScheduleFile(e.target.files[0]);
+                    setUploadError("");
+                  }}
+                  class="block w-full cursor-pointer rounded-lg border border-gray-300 bg-gray-50 text-sm text-gray-900 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-gray-400 dark:placeholder-gray-400"
+                />
+                <Show when={uploadError()}>
+                  <p class="mt-2 text-sm text-red-600 dark:text-red-500">
+                    {uploadError()}
+                  </p>
+                </Show>
+
+                <button
+                  type="button"
+                  disabled={!scheduleFile() || uploadScheduleMutation.isLoading}
+                  onClick={() => {
+                    uploadScheduleMutation.mutate({
+                      tournament_id: selectedTournamentID(),
+                      file: scheduleFile()
+                    });
+                  }}
+                  class="mt-4 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 dark:bg-blue-600 dark:hover:bg-blue-700"
+                >
+                  {uploadScheduleMutation.isLoading ? (
+                    <span>Uploading...</span>
+                  ) : (
+                    <span>Upload Schedule</span>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+
           <div>
             <For each={Object.keys(matchDayTimeFieldMap).sort()}>
               {day => (
