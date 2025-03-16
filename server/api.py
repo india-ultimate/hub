@@ -2607,10 +2607,14 @@ def update_tournament_schedule(
             return 400, {"message": "CSV file has no headers"}
 
         # Get field columns dynamically
-        field_columns = [col for col in reader.fieldnames if col.startswith("Field ")]
+        # Get all field names from tournament
+        tournament_field_names = {
+            field.name for field in TournamentField.objects.filter(tournament=tournament)
+        }
+        field_columns = [col for col in reader.fieldnames if col in tournament_field_names]
         if not field_columns:
             return 400, {
-                "message": "No field columns found in CSV. Column names should be 'Field 1', 'Field 2', etc."
+                "message": "No valid field columns found in CSV. Column names should match field names in tournament settings."
             }
 
         # Validate all fields exist in tournament
