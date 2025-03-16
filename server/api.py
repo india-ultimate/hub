@@ -1,8 +1,11 @@
 import contextlib
+import csv
 import datetime
 import hashlib
 import io
+import re
 from base64 import b32encode
+from io import StringIO
 from typing import Any, cast
 
 import pyotp
@@ -12,6 +15,7 @@ from django.contrib.auth.base_user import AbstractBaseUser
 from django.core import mail
 from django.core.exceptions import ValidationError
 from django.core.files.storage import default_storage
+from django.db import transaction
 from django.db.models import Count, F, Q, QuerySet, Value
 from django.db.models.functions import Concat
 from django.db.utils import IntegrityError
@@ -2543,3 +2547,183 @@ def contact(
         return 200, {"message": "Email sent successfully."}
     except Exception as e:
         return 422, {"message": str(e)}
+
+
+def parse_match_name(name: str) -> tuple[str | None, list[int] | None]:
+    """
+    Parse match name to determine type and seeds
+    Returns: (match_type, [seed1, seed2]) where match_type is 'pool', 'cross_pool', or 'bracket'
+    """
+    name = name.strip().upper()
+
+    # Pool match pattern: "A1 vs A2" or "PP1 vs PP2"
+    pool_pattern = r"^([A-Z]+)(\d+)\s+(?:vs|VS)\s+([A-Z]+)(\d+)$"
+    pool_match = re.match(pool_pattern, name)
+    if pool_match:
+        pool1, seed1, pool2, seed2 = pool_match.groups()
+        if pool1 == pool2:  # Same pool/position pool
+            return "pool", [int(seed1), int(seed2)]
+        return None, None
+
+    # Cross pool pattern: "CP 1 vs 2"
+    cp_pattern = r"^CP\s+(\d+)\s+(?:vs|VS)\s+(\d+)$"
+    cp_match = re.match(cp_pattern, name)
+    if cp_match:
+        seed1, seed2 = cp_match.groups()
+        return "cross_pool", [int(seed1), int(seed2)]
+
+    # Bracket pattern: "1 vs 2"
+    bracket_pattern = r"^(\d+)\s+(?:vs|VS)\s+(\d+)$"
+    bracket_match = re.match(bracket_pattern, name)
+    if bracket_match:
+        seed1, seed2 = bracket_match.groups()
+        return "bracket", [int(seed1), int(seed2)]
+
+    return None, None
+
+
+@api.post("/tournament/{tournament_id}/update-schedule", response={200: Response, 400: Response})
+def update_tournament_schedule(
+    request: AuthenticatedHttpRequest,
+    tournament_id: int,
+    schedule_file: UploadedFile = File(...),  # noqa: B008
+) -> tuple[int, message_response]:
+    if not request.user.is_staff:
+        return 400, {"message": "Only staff users can update tournament schedule"}
+
+    try:
+        tournament = Tournament.objects.get(id=tournament_id)
+    except Tournament.DoesNotExist:
+        return 400, {"message": "Tournament not found"}
+
+    # Read CSV file
+    try:
+        file_content = schedule_file.read().decode("utf-8")
+        csv_file = StringIO(file_content)
+        reader = csv.DictReader(csv_file)
+
+        # Check if fieldnames exists
+        if not reader.fieldnames:
+            return 400, {"message": "CSV file has no headers"}
+
+        # Get field columns dynamically
+        field_columns = [col for col in reader.fieldnames if col.startswith("Field ")]
+        if not field_columns:
+            return 400, {
+                "message": "No field columns found in CSV. Column names should be 'Field 1', 'Field 2', etc."
+            }
+
+        # Validate all fields exist in tournament
+        tournament_fields = {
+            field.name: field for field in TournamentField.objects.filter(tournament=tournament)
+        }
+
+        missing_fields = [col for col in field_columns if col not in tournament_fields]
+        if missing_fields:
+            return 400, {
+                "message": f"Following fields do not exist in tournament: {', '.join(missing_fields)}. "
+                "Please create them in tournament settings first."
+            }
+
+        updates: list[dict[str, Any]] = []
+        for row in reader:
+            try:
+                # Skip empty rows
+                if not any(row.values()):
+                    continue
+
+                # Parse date and times
+                date_str = row.get("Date", "").strip()
+                if not date_str:
+                    continue
+
+                start_time = row.get("Start Time", "").strip()
+                end_time = row.get("End Time", "").strip()
+
+                # Convert date and times to datetime objects
+                if start_time:
+                    ind_tz = datetime.timezone(datetime.timedelta(hours=5, minutes=30), name="IND")
+                    start_datetime = datetime.datetime.strptime(
+                        f"{date_str} {start_time}", "%d/%m/%Y %H:%M:%S"
+                    ).astimezone(ind_tz)
+
+                    # Calculate duration in minutes
+                    if end_time:
+                        end_datetime = datetime.datetime.strptime(
+                            f"{date_str} {end_time}", "%d/%m/%Y %H:%M:%S"
+                        ).astimezone(ind_tz)
+                        duration = int((end_datetime - start_datetime).total_seconds() / 60)
+                    else:
+                        duration = 75  # Default duration
+
+                    # Process each field column
+                    for field_col in field_columns:
+                        match_name = row.get(field_col, "").strip()
+                        if not match_name:
+                            continue
+
+                        # Get the existing tournament field
+                        field_obj = tournament_fields[field_col]
+
+                        # Parse match name to determine type and seeds
+                        match_type, seeds = parse_match_name(match_name)
+                        if not match_type or not seeds:
+                            return 400, {"message": f"Invalid match name format: {match_name}"}
+
+                        # Find match based on type
+                        if match_type == "pool":
+                            # Look in pools and position pools
+                            match = Match.objects.filter(
+                                Q(pool__isnull=False) | Q(position_pool__isnull=False),
+                                tournament=tournament,
+                                name__iexact=match_name,
+                            ).first()
+                        elif match_type == "cross_pool":
+                            match = Match.objects.filter(
+                                cross_pool__isnull=False,
+                                tournament=tournament,
+                                placeholder_seed_1=seeds[0],
+                                placeholder_seed_2=seeds[1],
+                            ).first()
+                        elif match_type == "bracket":
+                            match = Match.objects.filter(
+                                bracket__isnull=False,
+                                tournament=tournament,
+                                placeholder_seed_1=seeds[0],
+                                placeholder_seed_2=seeds[1],
+                            ).first()
+                        else:
+                            match = None
+
+                        if match is not None:
+                            updates.append(
+                                {
+                                    "match": match,
+                                    "time": start_datetime,
+                                    "duration_mins": duration,
+                                    "field": field_obj,
+                                }
+                            )
+                        else:
+                            return 400, {
+                                "message": f"Match not found: {match_name}. "
+                                f"Make sure the match exists in the tournament."
+                            }
+
+            except (ValueError, KeyError) as e:
+                return 400, {"message": f"Error processing row: {e!s}"}
+
+        # Perform all updates in a transaction
+        with transaction.atomic():
+            for update in updates:
+                match = cast(Match, update["match"])
+                match.time = update["time"]
+                match.duration_mins = update["duration_mins"]
+                match.field = update["field"]
+                match.status = Match.Status.SCHEDULED
+                match.save()
+
+        return 200, {"message": f"Successfully updated {len(updates)} matches"}
+
+    except Exception as e:
+        return 400, {"message": f"Error processing file: {e!s}"}
