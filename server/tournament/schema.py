@@ -7,6 +7,7 @@ from server.schema import (
     PlayerSchema,
     PlayerTinySchema,
     RegistrationCount,
+    TeamMinSchema,
     TeamSchema,
 )
 from server.series.schema import SeriesSchema
@@ -122,7 +123,7 @@ class TournamentPlayerRegistrationUpdateSchema(Schema):
 
 class TournamentPlayerRegistrationSchema(Schema):
     id: int
-    team_id: int
+    team: TeamMinSchema
     player: PlayerSchema
     is_playing: bool
     role: str
