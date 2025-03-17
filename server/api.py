@@ -1272,6 +1272,7 @@ def get_tournament_team_roster_points(
     roster_regs = Registration.objects.filter(event=event, team=team)
 
     total_points = 0.0
+    total_points_count = 0
 
     for roster_reg in roster_regs:
         player_regs = Registration.objects.filter(
@@ -1289,12 +1290,14 @@ def get_tournament_team_roster_points(
         if player_points_count > 0:
             player_points = player_points / player_points_count
 
-        total_points += player_points
+        if player_points > 0:
+            total_points += player_points
+            total_points_count += 1
 
     avg_points = 0.0
 
-    if len(roster_regs) > 0:
-        avg_points = round(total_points / len(roster_regs), 1)
+    if total_points_count > 0:
+        avg_points = round(total_points / total_points_count, 1)
 
     return 200, {"points": avg_points}
 
