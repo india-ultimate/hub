@@ -54,7 +54,7 @@ const Registration = props => (
         <RemoveFromRoster
           regId={props.registration.id}
           eventId={props.registration.event_id}
-          teamId={props.registration.team_id}
+          teamId={props.registration.team?.id}
           playerName={props.registration.player?.full_name}
           removeMutation={props.removeMutation}
         />
@@ -63,7 +63,7 @@ const Registration = props => (
         <EditRosteredPlayer
           registration={props.registration}
           eventId={props.registration.event_id}
-          teamId={props.registration.team_id}
+          teamId={props.registration.team?.id}
           playerName={props.registration.player?.full_name}
           updateRegistrationMutation={props.updateMutation}
         />
