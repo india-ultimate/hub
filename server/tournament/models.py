@@ -35,6 +35,7 @@ class Event(ExportModelOperationsMixin("event"), models.Model):  # type: ignore[
     player_fee = models.PositiveIntegerField(default=0)
     partial_team_fee = models.PositiveIntegerField(default=0)
     is_membership_needed = models.BooleanField(default=False)
+    tier = models.IntegerField(default=4)
 
     def save(self, *args: Any, **kwargs: Any) -> None:
         if not self.slug:
