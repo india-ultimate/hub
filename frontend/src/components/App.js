@@ -60,7 +60,17 @@ const filters = {
   id: /^\d+$/ // only allow numbers
 };
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60000, // 1 minute default stale time
+      refetchOnWindowFocus: false,
+      retry: true,
+      failureCount: 3,
+      retryDelay: 1000
+    }
+  }
+});
 
 export default function App() {
   const [store] = useStore();
