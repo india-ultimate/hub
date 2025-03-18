@@ -1271,7 +1271,8 @@ def get_tournament_team_roster_points(
 
     roster_regs = Registration.objects.filter(event=event, team=team)
 
-    points_list = []
+    total_points = 0.0
+    total_points_count = 0
 
     for roster_reg in roster_regs:
         player_regs = Registration.objects.filter(
@@ -1290,28 +1291,13 @@ def get_tournament_team_roster_points(
             player_points = player_points / player_points_count
 
         if player_points > 0:
-            points_list.append(player_points)
+            total_points += player_points
+            total_points_count += 1
 
     avg_points = 0.0
 
-    if len(points_list) > 0:
-        # Sort points in descending order
-        points_list.sort(reverse=True)
-
-        weighted_sum = 0.0
-        weighted_count = 0.0
-
-        # Top 7 players get 1.5x weight
-        for i in range(min(7, len(points_list))):
-            weighted_sum += points_list[i] * 1.5
-            weighted_count += 1.5
-
-        # Next 7 players get 1x weight
-        for i in range(7, min(14, len(points_list))):
-            weighted_sum += points_list[i]
-            weighted_count += 1
-
-        avg_points = round(weighted_sum / weighted_count, 1)
+    if total_points_count > 0:
+        avg_points = round(total_points / total_points_count, 1)
 
     return 200, {"points": avg_points}
 
@@ -2746,7 +2732,6 @@ def update_tournament_schedule(
                 match.time = update["time"]
                 match.duration_mins = update["duration_mins"]
                 match.field = update["field"]
-                match.status = Match.Status.SCHEDULED
                 match.save()
 
         return 200, {"message": f"Successfully updated {len(updates)} matches"}
