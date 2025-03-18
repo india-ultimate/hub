@@ -18,4 +18,4 @@ python manage.py check --deploy
 
 # Start the server using gunicorn
 export PATH="$HOME/.local/bin:$PATH"
-gunicorn -w 12 hub.wsgi
+gunicorn -w 8 hub.wsgi
