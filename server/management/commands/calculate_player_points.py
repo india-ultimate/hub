@@ -28,6 +28,9 @@ class Command(BaseCommand):
         events = Event.objects.all()
 
         for event in events:
+            if event.tier == 0:
+                continue
+
             regs = Registration.objects.filter(event=event)
 
             # Get tournament if exists
