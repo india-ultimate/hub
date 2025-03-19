@@ -28,9 +28,6 @@ class Command(BaseCommand):
         events = Event.objects.all()
 
         for event in events:
-            if event.tier == 0:
-                continue
-
             regs = Registration.objects.filter(event=event)
 
             # Get tournament if exists
@@ -55,7 +52,12 @@ class Command(BaseCommand):
             for rank, team_id in current_seeding.items():
                 points_per_position = float((100 - base_points) / (total_teams - 1))
 
-                points = round(base_points + ((total_teams - int(rank)) * points_per_position), 1)
+                points: float | None = round(
+                    base_points + ((total_teams - int(rank)) * points_per_position), 1
+                )
+
+                if event.tier == 0:
+                    points = None
 
                 team = Team.objects.get(id=team_id)
                 team_regs = regs.filter(team=team)
