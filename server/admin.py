@@ -168,7 +168,7 @@ class TeamAdmin(admin.ModelAdmin[Team]):
 @admin.register(Event)
 class EventAdmin(admin.ModelAdmin[Event]):
     search_fields = ["title"]
-    list_display = ["title"]
+    list_display = ["title", "tier"]
 
 
 @admin.register(Tournament)
