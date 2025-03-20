@@ -2,14 +2,11 @@
 
 ## Format
 
-| **Stage**         | **Description**                                                                                   |
-| ----------------- | ------------------------------------------------------------------------------------------------- |
-| **Pool Games**    | 1-18 ( 3 Pools of 4, 1 pool of 5). Re-seed within pools only.                                     |
-| **Cross-Pool 1**  | 1-8 and 10-17 - Bye for seed 9                                                                    |
-| **Cross-Pool 2**  | 1-4, 5-12, 13-16 - Bye for seed 17                                                                |
-| **Cross-Pool 3**  | 9-17 Bye for seed 14                                                                              |
-| **Position Pool** | Round Robbin 9-17 (3 pools of 3 : Pool E- 9, 12, 15 / Pool F - 10, 13, 16 / Proof G - 11, 14, 17) |
-| **Bracket**       | 1-8 -> 100 min (All games). Winner takes higher seed.                                             |
+| Stage            | Description                                                      |
+| :--------------- | :--------------------------------------------------------------- |
+| **Pool Games**   | 1-16 (4 Pools of 4). Re-seed within pools only. 75 minute games. |
+| **Cross-Pool 1** | 1-4, 5-12, 13-16. 75 minute games.                               |
+| **Bracket**      | 1-8, 9-16. Winner takes the higher seed. 100 minute games.       |
 
 ## Rules
 
@@ -17,18 +14,34 @@
 
 ### Game Time, Time Outs, Scores
 
+- For **60 minutes**
+
+  - Game to 13
+  - 2 minute half at 7 goals or 30 mins (at 30 min, finish point, if no team has reached 7, add \+1 to higher score, take half when either team reaches this score)
+  - 1 time-out, 75 seconds, per team per game (cannot be taken after time caps)
+  - When 60 mins is up, finish the point then reduce points target to current highest score \+1 (but never exceed 13\)
+
 - For **75 minutes**
 
   - Game to 15
-  - 2 min half at 8 goals or 40 mins (at 40 min, finish point, if no team has reached 8, add +1 to higher score, take half when either team reaches this score)
-  - 1 time out, 2min, per team per half (can be taken after time caps too)
-  - When 75 mins is up, finish the point then reduce points target to current highest score +1 (but never exceed 15)
+  - 3 minute half at 8 goals or 40 mins (at 40 min, finish point, if no team has reached 8, add \+1 to higher score, take half when either team reaches this score)
+  - 1 time-out, 75 seconds, per team per half (cannot be taken after time caps)
+  - When 75 mins is up, finish the point then reduce points target to current highest score \+1 (but never exceed 15\)
 
-- Top 8 (All Games) **100 minutes**
+- For **90 minutes**
+
   - Game to 15
-  - 7 minutes half at 8 goals or 55 minutes( at 55 min, finish point, if no team has reached 8, add +1 to higher score, take half when either team reaches this score)
-  - 2 time-out per team per half. 75 secs for each timeout. (can be taken after time caps too)
-  - When 100 mins is up, finish the point then reduce points target to current highest score +1 (but never exceed 15)
+  - 5 minute half at 8 goals or 50 minutes (at 50 min, finish point, if no team has reached 8, add \+1 to higher score, take half when either team reaches this score)
+  - 2 time-outs (75 seconds each) per team per half (can be taken after time caps too).
+  - When 90 mins is up, finish the point then reduce points target to current highest score \+1 (but never exceed 15\)
+
+- For **100 minutes**
+  - Game to 15
+  - 7 minute half at 8 goals or 55 minutes (at 55 min, finish point, if no team has reached 8, add \+1 to higher score, take half when either team reaches this score)
+  - 2 time-outs (75 seconds each) per team per half (can be taken after time caps too).
+  - When 100 mins is up, finish the point then reduce points target to current highest score \+1 (but never exceed 15\)
+
+###
 
 ### Ratio Rules
 
@@ -57,15 +70,15 @@ If either the Offence of defence does not adhere to the pre pull time limits, a 
 
 For this event, WFDF Championship Timings will be in effect. You can read about the timings on the one page summary, and about the consequences for violating timings in Appendix A5.
 
-Championship Timings one-page summary >> https://rules.wfdf.org/documents/wfdf-rules-of-ultimate-2021-2024-championship-timings-v1/download
+Championship Timings one-page summary \>\> [https://rules.wfdf.org/documents/wfdf-rules-of-ultimate-2021-2024-championship-timings-v1/download](https://rules.wfdf.org/documents/wfdf-rules-of-ultimate-2021-2024-championship-timings-v1/download)
 
-For any further clarification concerning time limits, please refer to Appendix A: WFDF Additional Championship Game Rules, Clause A.5. “Time Limits” WFDF Rules, 2021.
+For any further clarification concerning time limits, please refer to Appendix A: WFDF Additional Championship Game Rules, Clause A.5. “Time Limits” WFDF Rules, 2021\.
 
 ### Re-seeding
 
 Re-seeding within a pool means that, if a pool initially contains seeds 1, 3, 6, 8 and 9 then after the re-seed the winner of the pool automatically takes the 1st seed, 2nd place in the pool takes 3rd overall, 3rd takes 6th, 4th takes 8th and 5th takes 9th regardless of number of the results or goal difference of teams in other pools. This is the conventional WFDF format.
 
-### Tie-breaking within a pool (in order) [from WFDF championship appendix]
+### Tie-breaking within a pool (in order) \[from WFDF championship appendix\]
 
 - Games won in pool (not a tie)
 - Games won counting only games between tied teams
