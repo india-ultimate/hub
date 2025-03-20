@@ -466,7 +466,10 @@ const Tournament = () => {
         >
           <Suspense fallback={<SpiritStandingsSkeleton />}>
             <Show
-              when={tournamentQuery.data?.spirit_ranking.length > 0}
+              when={
+                tournamentQuery.data?.spirit_ranking.length > 0 &&
+                tournamentQuery.data?.status == "COM"
+              }
               fallback={
                 <div
                   class="my-4 rounded-lg bg-blue-50 p-2 text-sm dark:bg-gray-800"
