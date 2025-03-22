@@ -20,6 +20,7 @@ from server.season.models import Season
 from server.series.models import Series, SeriesRegistration, SeriesRosterInvitation
 from server.tournament.models import (
     Bracket,
+    CrossPool,
     Event,
     Match,
     MatchEvent,
@@ -206,6 +207,16 @@ class PoolAdmin(admin.ModelAdmin[Pool]):
 class BracketAdmin(admin.ModelAdmin[Bracket]):
     search_fields = ["tournament__event__title"]
     list_display = ["get_name", "name"]
+
+    @admin.display(description="Tournament Name", ordering="tournament__event__title")
+    def get_name(self, obj: Pool) -> str:
+        return obj.tournament.event.title
+
+
+@admin.register(CrossPool)
+class CrossPoolAdmin(admin.ModelAdmin[CrossPool]):
+    search_fields = ["tournament__event__title"]
+    list_display = ["get_name"]
 
     @admin.display(description="Tournament Name", ordering="tournament__event__title")
     def get_name(self, obj: Pool) -> str:
