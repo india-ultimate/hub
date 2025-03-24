@@ -114,11 +114,9 @@ const TournamentMatch = props => {
   const canUserSubmitSpiritScores = () => {
     return (
       (isTeamAdminOf(props.match["team_1"].id) &&
-        !props.match["spirit_score_team_2"] &&
         (props.match["suggested_score_team_1"] ||
           props.match.status === "COM")) ||
       (isTeamAdminOf(props.match["team_2"].id) &&
-        !props.match["spirit_score_team_1"] &&
         (props.match["suggested_score_team_2"] || props.match.status === "COM"))
     );
   };
