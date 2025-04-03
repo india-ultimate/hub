@@ -41,25 +41,25 @@ jobs:
         uses: richardrigutins/replace-in-files@v2
         with:
           files: "fly.toml"
-          search-text: "shared-cpu-2x"
+          search-text: "shared-cpu-[0-9]+x"
           replacement-text: "shared-cpu-${{github.event.inputs.cpu}}x"
       - name: Replace gunicorn servers
         uses: richardrigutins/replace-in-files@v2
         with:
           files: "deploy/start.sh"
-          search-text: "-w 4"
+          search-text: "-w [0-9]+"
           replacement-text: "-w ${{github.event.inputs.gunicorn}}"
       - name: Replace hard limit
         uses: richardrigutins/replace-in-files@v2
         with:
           files: "fly.toml"
-          search-text: "hard_limit = 100"
+          search-text: "hard_limit = [0-9]+"
           replacement-text: "hard_limit = ${{github.event.inputs.hardLimit}}"
       - name: Replace soft limit
         uses: richardrigutins/replace-in-files@v2
         with:
           files: "fly.toml"
-          search-text: "soft_limit = 75"
+          search-text: "soft_limit = [0-9]+"
           replacement-text: "soft_limit = ${{github.event.inputs.softLimit}}"
       - name: Get current unix timestamp
         id: timestamp
