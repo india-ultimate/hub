@@ -432,11 +432,13 @@ class SeriesRegistrationAdmin(admin.ModelAdmin[SeriesRegistration]):
 @admin.register(Registration)
 class RegistrationAdmin(admin.ModelAdmin[Registration]):
     search_fields = [
+        "team__name",
         "player__user__first_name",
         "player__user__last_name",
         "player__user__username",
     ]
     list_display = ["get_name", "get_email", "get_team"]
+    autocomplete_fields = ["player", "team"]
 
     @admin.display(description="Player", ordering="player__user__first_name")
     def get_name(self, obj: Registration) -> str:
