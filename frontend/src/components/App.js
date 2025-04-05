@@ -55,6 +55,10 @@ const ViewStats = lazy(() => import("./match/stats/ViewStats"));
 const EmailInvitationHandler = lazy(() =>
   import("./series/InvitationViaEmail")
 );
+// Ticket Pages
+const Tickets = lazy(() => import("./ticket/Tickets"));
+const CreateTicket = lazy(() => import("./ticket/CreateTicket"));
+const TicketDetail = lazy(() => import("./ticket/TicketDetail"));
 
 const filters = {
   id: /^\d+$/ // only allow numbers
@@ -65,9 +69,7 @@ const queryClient = new QueryClient({
     queries: {
       staleTime: 60000, // 1 minute default stale time
       refetchOnWindowFocus: false,
-      retry: true,
-      failureCount: 3,
-      retryDelay: 1000
+      retry: false
     }
   }
 });
@@ -246,6 +248,15 @@ export default function App() {
                   <UserRoute
                     path="/tournament/:tournamentSlug/match/:matchId/edit-stats-min"
                     component={EditStatsMin}
+                  />
+                  {/* Ticket public routes */}
+                  <Route path="/tickets" component={Tickets} />
+                  {/* Ticket private routes */}
+                  <UserRoute path="/tickets/new" component={CreateTicket} />
+                  <UserRoute
+                    path="/tickets/:id"
+                    component={TicketDetail}
+                    matchFilters={filters}
                   />
                   <Route path="*" component={Error404} />
                 </Routes>
