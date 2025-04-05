@@ -1,8 +1,11 @@
 from typing import Any
 
+from django.conf import settings
+from django.core.mail import send_mail
 from django.db.models import Count, QuerySet
 from django.http import HttpRequest
 from django.shortcuts import get_object_or_404
+from django.template.loader import render_to_string
 from ninja import Router
 
 from server.core.models import User
@@ -119,5 +122,46 @@ def add_message(
     ):
         ticket.status = Ticket.Status.IN_PROGRESS
         ticket.save()
+
+    # Determine who should receive the email
+    # If staff member sent a message, notify the user
+    # If user sent a message, notify the assigned staff
+    recipient = None
+    if request.user.is_staff and ticket.created_by.email:
+        recipient = ticket.created_by.email
+    elif ticket.assigned_to and ticket.assigned_to.email:
+        recipient = ticket.assigned_to.email
+
+    # Send the email if we have a recipient
+    if recipient:
+        try:
+            # Plain text version
+            plain_message = f"A new message has been added to ticket #{ticket.id}:\n\n"
+            plain_message += f"From: {request.user.first_name} {request.user.last_name}\n"
+            plain_message += f"Message: {data.message}\n\n"
+            plain_message += "You can view and respond to this ticket on the website."
+
+            # HTML version with template
+            context = {
+                "ticket": ticket,
+                "sender": request.user,
+                "message": data.message,
+                "site_url": settings.EMAIL_INVITATION_BASE_URL,
+            }
+            html_message = render_to_string("emails/ticket_message.html", context)
+
+            subject = f"New message on Ticket #{ticket.id}: {ticket.title}"
+
+            send_mail(
+                subject=subject,
+                message=plain_message,
+                from_email=settings.EMAIL_HOST_USER,
+                recipient_list=[recipient],
+                fail_silently=True,
+                html_message=html_message,
+            )
+        except Exception as e:
+            # Log the error but don't fail the message creation
+            print(f"Error sending email notification: {e}")
 
     return 201, ticket

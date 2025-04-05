@@ -34,6 +34,21 @@ class Ticket(models.Model):
     def __str__(self) -> str:
         return f"{self.id} - {self.title}"
 
+    # For type checking with mypy
+    def get_priority_display(self) -> str:
+        """Get the human-readable priority value."""
+        for code, value in self.Priority.choices:
+            if code == self.priority:
+                return value
+        return ""
+
+    def get_status_display(self) -> str:
+        """Get the human-readable status value."""
+        for code, value in self.Status.choices:
+            if code == self.status:
+                return value
+        return ""
+
 
 class TicketMessage(models.Model):
     # Explicitly define id for type checking
