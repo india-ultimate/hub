@@ -21,7 +21,6 @@ const TicketDetail = () => {
   const navigate = useNavigate();
   const [store] = useStore();
   const [message, setMessage] = createSignal("");
-  const [authError, setAuthError] = createSignal(false);
   const [isSubmitting, setIsSubmitting] = createSignal(false);
   const [isAdmin, setIsAdmin] = createSignal(false);
   const [isCreator, setIsCreator] = createSignal(false);
@@ -198,7 +197,7 @@ const TicketDetail = () => {
             </div>
           </Show>
 
-          <Show when={ticketQuery.isError && !authError()}>
+          <Show when={ticketQuery.isError}>
             <div class="md:p-8">
               <div class="text-center text-red-600 dark:text-red-400">
                 <p class="text-xl font-bold">Error loading ticket</p>
