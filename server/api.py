@@ -83,6 +83,7 @@ from server.schema import (
 from server.season.api import router as season_router
 from server.series.api import router as series_router
 from server.series.models import SeriesRegistration
+from server.ticket.api import ticket_api
 from server.top_score_utils import TopScoreClient
 from server.tournament.match_stats_min import (
     handle_all_events,
@@ -170,6 +171,7 @@ class AuthenticatedHttpRequest(HttpRequest):
 api.add_router("/seasons", season_router)
 api.add_router("/series/", series_router)
 api.add_router("/transactions", transaction_router)
+api.add_router("/ticket", ticket_api)
 
 
 # User #########
