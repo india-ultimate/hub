@@ -1487,3 +1487,93 @@ export const matchStatsFullTime = async ({ match_id }) => {
 
   return data;
 };
+
+// Ticket API functions
+export const fetchTickets = async (filter = "") => {
+  let queryParams = "";
+
+  // Handle different filter types
+  if (filter === "ME") {
+    queryParams = "created_by_me=true";
+  } else if (filter) {
+    queryParams = `status=${filter}`;
+  }
+
+  const response = await fetch(`/api/ticket/?${queryParams}`, {
+    method: "GET",
+    credentials: "same-origin"
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data?.message || "Failed to fetch tickets");
+  }
+  return data;
+};
+
+export const fetchTicketDetail = async ticketId => {
+  const response = await fetch(`/api/ticket/${ticketId}`, {
+    method: "GET",
+    credentials: "same-origin"
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data?.message || "Failed to fetch ticket details");
+  }
+  return data;
+};
+
+export const createTicket = async data => {
+  const response = await fetch("/api/ticket/", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin",
+    body: JSON.stringify(data)
+  });
+
+  const responseData = await response.json();
+  if (!response.ok) {
+    throw new Error(responseData?.message || "Failed to create ticket");
+  }
+  return responseData;
+};
+
+export const addTicketMessage = async (ticketId, data) => {
+  const response = await fetch(`/api/ticket/${ticketId}/message`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin",
+    body: JSON.stringify(data)
+  });
+
+  const responseData = await response.json();
+  if (!response.ok) {
+    throw new Error(responseData?.message || "Failed to add message");
+  }
+  return responseData;
+};
+
+export const updateTicket = async (ticketId, data) => {
+  const response = await fetch(`/api/ticket/${ticketId}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin",
+    body: JSON.stringify(data)
+  });
+
+  const responseData = await response.json();
+  if (!response.ok) {
+    throw new Error(responseData?.message || "Failed to update ticket");
+  }
+  return responseData;
+};
