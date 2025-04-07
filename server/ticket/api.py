@@ -165,17 +165,34 @@ def add_message(
         ticket.status = Ticket.Status.IN_PROGRESS
         ticket.save()
 
-    # Determine who should receive the email
-    # If staff member sent a message, notify the user
-    # If user sent a message, notify the assigned staff
-    recipient = None
-    if request.user.is_staff and ticket.created_by.email:
-        recipient = ticket.created_by.email
-    elif ticket.assigned_to and ticket.assigned_to.email:
-        recipient = ticket.assigned_to.email
+    # Get all parties involved in the ticket conversation
+    recipients = set()
 
-    # Send the email if we have a recipient
-    if recipient:
+    # Add ticket creator if they have an email and are not the sender
+    if ticket.created_by.email and ticket.created_by != request.user:
+        recipients.add(ticket.created_by.email)
+
+    # Add assigned staff if they have an email and are not the sender
+    if ticket.assigned_to and ticket.assigned_to.email and ticket.assigned_to != request.user:
+        recipients.add(ticket.assigned_to.email)
+
+    # Add all users who have previously sent messages (except the current sender)
+    previous_senders = (
+        TicketMessage.objects.filter(ticket=ticket)
+        .exclude(sender=request.user)
+        .values_list("sender__email", flat=True)
+        .distinct()
+    )
+
+    for email in previous_senders:
+        if email:  # Make sure email is not None or empty
+            recipients.add(email)
+
+    # Convert set to list for send_mail
+    recipient_list = list(recipients)
+
+    # Send the email if we have recipients
+    if recipient_list:
         try:
             # Plain text version
             plain_message = f"A new message has been added to ticket #{ticket.id}:\n\n"
@@ -198,7 +215,7 @@ def add_message(
                 subject=subject,
                 message=plain_message,
                 from_email=settings.EMAIL_HOST_USER,
-                recipient_list=[recipient],
+                recipient_list=recipient_list,
                 fail_silently=True,
                 html_message=html_message,
             )
