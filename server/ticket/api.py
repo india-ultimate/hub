@@ -27,6 +27,11 @@ class AuthenticatedHttpRequest(HttpRequest):
 ticket_api = Router()
 
 
+def get_staff_emails() -> list[str]:
+    """Get a list of all staff email addresses"""
+    return list(User.objects.filter(is_staff=True).values_list("email", flat=True))
+
+
 @ticket_api.get("/", response=list[TicketListItemSchema])
 def list_tickets(
     request: AuthenticatedHttpRequest, status: str | None = None, created_by_me: bool = False
@@ -63,6 +68,43 @@ def create_ticket(
         category=data.category,
         created_by=request.user,
     )
+
+    # Get all staff emails to notify
+    staff_emails = get_staff_emails()
+
+    # Send notification email to all staff if we have staff emails
+    if staff_emails:
+        try:
+            # Plain text version
+            plain_message = "A new support ticket has been created:\n\n"
+            plain_message += f"Ticket #{ticket.id}: {ticket.title}\n"
+            plain_message += f"Priority: {ticket.get_priority_display()}\n"
+            plain_message += (
+                f"Created by: {ticket.created_by.first_name} {ticket.created_by.last_name}\n"
+            )
+            plain_message += f"Description: {ticket.description}\n\n"
+            plain_message += "Please respond to this ticket at your earliest convenience."
+
+            # HTML version with template
+            context = {
+                "ticket": ticket,
+                "site_url": settings.EMAIL_INVITATION_BASE_URL,
+            }
+            html_message = render_to_string("emails/new_ticket.html", context)
+
+            subject = f"New Support Ticket: #{ticket.id} - {ticket.title}"
+
+            send_mail(
+                subject=subject,
+                message=plain_message,
+                from_email=settings.EMAIL_HOST_USER,
+                recipient_list=staff_emails,
+                fail_silently=True,
+                html_message=html_message,
+            )
+        except Exception as e:
+            # Log the error but don't fail the ticket creation
+            print(f"Error sending email notification: {e}")
 
     return 201, ticket
 
