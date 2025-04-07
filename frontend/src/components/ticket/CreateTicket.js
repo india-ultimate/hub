@@ -176,11 +176,12 @@ const CreateTicket = () => {
                       class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                     >
                       <option value="">Select a category</option>
-                      <option value="account">Account</option>
-                      <option value="membership">Membership</option>
-                      <option value="tournament">Tournament</option>
-                      <option value="payment">Payment</option>
-                      <option value="other">Other</option>
+                      <option value="Account">Account</option>
+                      <option value="Membership">Membership</option>
+                      <option value="Tournament">Tournament</option>
+                      <option value="Payment">Payment</option>
+                      <option value="Tech">Tech</option>
+                      <option value="Other">Other</option>
                     </select>
                   </div>
                 )}
