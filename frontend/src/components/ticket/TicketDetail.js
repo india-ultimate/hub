@@ -240,6 +240,18 @@ const TicketDetail = () => {
                       {ticketQuery.data.created_by.first_name}{" "}
                       {ticketQuery.data.created_by.last_name}
                     </span>
+                    <Show when={isAdmin() && ticketQuery.data.created_by.email}>
+                      <span class="ml-1 text-sm text-gray-500 dark:text-gray-400">
+                        (
+                        <a
+                          href={`mailto:${ticketQuery.data.created_by.email}`}
+                          class="text-blue-600 hover:underline dark:text-blue-400"
+                        >
+                          {ticketQuery.data.created_by.email}
+                        </a>
+                        )
+                      </span>
+                    </Show>
                   </p>
                   <p class="text-sm text-gray-500 dark:text-gray-400">
                     Created on:{" "}
@@ -256,6 +268,20 @@ const TicketDetail = () => {
                         ? `${ticketQuery.data.assigned_to.first_name} ${ticketQuery.data.assigned_to.last_name}`
                         : "Unassigned"}
                     </span>
+                    <Show
+                      when={isAdmin() && ticketQuery.data.assigned_to?.email}
+                    >
+                      <span class="ml-1 text-sm text-gray-500 dark:text-gray-400">
+                        (
+                        <a
+                          href={`mailto:${ticketQuery.data.assigned_to.email}`}
+                          class="text-blue-600 hover:underline dark:text-blue-400"
+                        >
+                          {ticketQuery.data.assigned_to.email}
+                        </a>
+                        )
+                      </span>
+                    </Show>
                   </p>
                   <Show when={ticketQuery.data.category}>
                     <p class="text-sm text-gray-500 dark:text-gray-400">
@@ -362,6 +388,18 @@ const TicketDetail = () => {
                             {message.sender.first_name}{" "}
                             {message.sender.last_name}
                           </span>
+                          <Show when={isAdmin() && message.sender.email}>
+                            <span class="ml-1 text-xs text-gray-600 dark:text-gray-400">
+                              (
+                              <a
+                                href={`mailto:${message.sender.email}`}
+                                class="text-blue-600 hover:underline dark:text-blue-400"
+                              >
+                                {message.sender.email}
+                              </a>
+                              )
+                            </span>
+                          </Show>
                           <span class="ml-2 text-xs text-gray-500 dark:text-gray-400">
                             {new Date(message.created_at).toLocaleString()}
                           </span>
