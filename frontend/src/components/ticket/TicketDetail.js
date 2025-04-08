@@ -240,14 +240,16 @@ const TicketDetail = () => {
                       {ticketQuery.data.created_by.first_name}{" "}
                       {ticketQuery.data.created_by.last_name}
                     </span>
-                    <Show when={isAdmin() && ticketQuery.data.created_by.email}>
+                    <Show
+                      when={isAdmin() && ticketQuery.data.created_by.username}
+                    >
                       <span class="ml-1 text-sm text-gray-500 dark:text-gray-400">
                         (
                         <a
-                          href={`mailto:${ticketQuery.data.created_by.email}`}
+                          href={`mailto:${ticketQuery.data.created_by.username}`}
                           class="text-blue-600 hover:underline dark:text-blue-400"
                         >
-                          {ticketQuery.data.created_by.email}
+                          {ticketQuery.data.created_by.username}
                         </a>
                         )
                       </span>
@@ -388,14 +390,14 @@ const TicketDetail = () => {
                             {message.sender.first_name}{" "}
                             {message.sender.last_name}
                           </span>
-                          <Show when={isAdmin() && message.sender.email}>
+                          <Show when={isAdmin() && message.sender.username}>
                             <span class="ml-1 text-xs text-gray-600 dark:text-gray-400">
                               (
                               <a
-                                href={`mailto:${message.sender.email}`}
+                                href={`mailto:${message.sender.username}`}
                                 class="text-blue-600 hover:underline dark:text-blue-400"
                               >
-                                {message.sender.email}
+                                {message.sender.username}
                               </a>
                               )
                             </span>
