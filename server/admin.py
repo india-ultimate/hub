@@ -288,6 +288,14 @@ class MatchEventAdmin(admin.ModelAdmin[MatchEvent]):
         "time",
     ]
     list_filter = ["type", "team", TournamentFilter]
+    raw_id_fields = (
+        "players",
+        "scored_by",
+        "assisted_by",
+        "drop_by",
+        "throwaway_by",
+        "block_by",
+    )
 
     @admin.display(description="Tournament Name", ordering="stats__match__tournament__event__title")
     def get_tournament_name(self, obj: MatchEvent) -> str:
