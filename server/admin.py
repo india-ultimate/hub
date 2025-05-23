@@ -233,6 +233,24 @@ class PositionPoolAdmin(admin.ModelAdmin[PositionPool]):
         return obj.tournament.event.title
 
 
+class TournamentFilter(admin.SimpleListFilter):
+    title = "Tournament"
+    parameter_name = "tournament"
+
+    def lookups(
+        self, request: HttpRequest, model_admin: admin.ModelAdmin[MatchEvent]
+    ) -> list[tuple[int, str]]:
+        tournaments = Tournament.objects.all().order_by("event__title")
+        return [(t.id, t.event.title) for t in tournaments]
+
+    def queryset(
+        self, request: HttpRequest, queryset: QuerySet[MatchEvent]
+    ) -> QuerySet[MatchEvent]:
+        if self.value():
+            return queryset.filter(stats__match__tournament_id=self.value())
+        return queryset
+
+
 @admin.register(Match)
 class MatchAdmin(admin.ModelAdmin[Match]):
     search_fields = ["tournament__event__title"]
@@ -260,8 +278,16 @@ class MatchStatsAdmin(admin.ModelAdmin[MatchStats]):
 
 @admin.register(MatchEvent)
 class MatchEventAdmin(admin.ModelAdmin[MatchEvent]):
-    search_fields = ["team__name"]
-    list_display = ["get_tournament_name", "get_match_name"]
+    search_fields = ["team__name", "stats__match__name", "stats__match__tournament__event__title"]
+    list_display = [
+        "get_tournament_name",
+        "get_match_name",
+        "get_team_name",
+        "get_event_type",
+        "get_event_details",
+        "time",
+    ]
+    list_filter = ["type", "team", TournamentFilter]
 
     @admin.display(description="Tournament Name", ordering="stats__match__tournament__event__title")
     def get_tournament_name(self, obj: MatchEvent) -> str:
@@ -271,6 +297,37 @@ class MatchEventAdmin(admin.ModelAdmin[MatchEvent]):
     def get_match_name(self, obj: MatchEvent) -> str:
         match_name = obj.stats.match.name or ""
         return match_name
+
+    @admin.display(description="Team", ordering="team__name")
+    def get_team_name(self, obj: MatchEvent) -> str:
+        return obj.team.name
+
+    @admin.display(description="Event Type", ordering="type")
+    def get_event_type(self, obj: MatchEvent) -> str:
+        return obj.get_type_display()
+
+    @admin.display(description="Event Details")
+    def get_event_details(self, obj: MatchEvent) -> str:
+        details = []
+        if obj.type == MatchEvent.EventType.SCORE:
+            if obj.scored_by:
+                details.append(f"Scored by: {obj.scored_by.user.get_full_name()}")
+            if obj.assisted_by:
+                details.append(f"Assisted by: {obj.assisted_by.user.get_full_name()}")
+        elif obj.type == MatchEvent.EventType.DROP:
+            if obj.drop_by:
+                details.append(f"Dropped by: {obj.drop_by.user.get_full_name()}")
+        elif obj.type == MatchEvent.EventType.THROWAWAY:
+            if obj.throwaway_by:
+                details.append(f"Throwaway by: {obj.throwaway_by.user.get_full_name()}")
+        elif obj.type == MatchEvent.EventType.BLOCK:
+            if obj.block_by:
+                details.append(f"Blocked by: {obj.block_by.user.get_full_name()}")
+        elif obj.type == MatchEvent.EventType.LINE_SELECTED:
+            players = [player.user.get_full_name() for player in obj.players.all()]
+            if players:
+                details.append(f"Line: {', '.join(players)}")
+        return " | ".join(details) if details else ""
 
 
 @admin.register(Membership)
