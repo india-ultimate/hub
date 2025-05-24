@@ -368,7 +368,7 @@ class MatchEvent(models.Model):
 
     stats = models.ForeignKey(MatchStats, on_delete=models.CASCADE, related_name="events")
     team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name="match_events")
-    players = models.ManyToManyField(Player, related_name="match_events_played")
+    players = models.ManyToManyField(Player, related_name="match_events_played", blank=True)
     started_on = models.CharField(max_length=3, choices=Mode.choices)
     time = models.DateTimeField(auto_now_add=True)
     type = models.CharField(max_length=3, choices=EventType.choices)
