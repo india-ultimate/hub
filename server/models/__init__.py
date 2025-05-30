@@ -12,13 +12,13 @@ from server.core.models import (  # noqa: F401
     Vaccination,
 )
 from server.election.models import (  # noqa: F401
-    Election,
     Candidate,
+    Election,
+    ElectionResult,
+    EligibleVoter,
     RankedVote,
     RankedVoteChoice,
     VoterVerification,
-    EligibleVoter,
-    ElectionResult,
 )
 from server.membership.models import (  # noqa: F401
     Membership,

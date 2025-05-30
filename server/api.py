@@ -40,6 +40,7 @@ from server.core.models import (
     User,
     Vaccination,
 )
+from server.election.api import router as election_router
 from server.lib.membership import get_membership_status
 from server.membership.models import Membership
 from server.passkey_utils import PassKeyClient
@@ -172,6 +173,7 @@ api.add_router("/seasons", season_router)
 api.add_router("/series/", series_router)
 api.add_router("/transactions", transaction_router)
 api.add_router("/ticket", ticket_api)
+api.add_router("/election", election_router)
 
 
 # User #########

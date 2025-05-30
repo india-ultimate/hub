@@ -15,6 +15,15 @@ from server.core.models import (
     Team,
     User,
 )
+from server.election.models import (
+    Candidate,
+    Election,
+    ElectionResult,
+    EligibleVoter,
+    RankedVote,
+    RankedVoteChoice,
+    VoterVerification,
+)
 from server.membership.models import Membership
 from server.season.models import Season
 from server.series.models import Series, SeriesRegistration, SeriesRosterInvitation
@@ -552,3 +561,112 @@ class AccreditationAdmin(admin.ModelAdmin[Accreditation]):
     @admin.display(description="Player", ordering="player__user__first_name")
     def get_email(self, obj: Guardianship) -> str:
         return obj.player.user.get_full_name()
+
+
+@admin.register(Election)
+class ElectionAdmin(admin.ModelAdmin[Election]):
+    search_fields = ["title", "description"]
+    list_display = ["title", "voting_method", "num_winners", "is_active", "start_date", "end_date"]
+    list_filter = ["voting_method", "is_active", "start_date", "end_date"]
+    date_hierarchy = "start_date"
+
+
+@admin.register(Candidate)
+class CandidateAdmin(admin.ModelAdmin[Candidate]):
+    search_fields = ["user__first_name", "user__last_name", "user__email", "election__title"]
+    list_display = ["get_name", "get_election", "created_at"]
+    list_filter = ["election", "created_at"]
+
+    @admin.display(description="Name", ordering="user__first_name")
+    def get_name(self, obj: Candidate) -> str:
+        return obj.user.get_full_name()
+
+    @admin.display(description="Election", ordering="election__title")
+    def get_election(self, obj: Candidate) -> str:
+        return obj.election.title
+
+
+@admin.register(RankedVote)
+class RankedVoteAdmin(admin.ModelAdmin[RankedVote]):
+    search_fields = ["election__title", "voter_hash"]
+    list_display = ["get_election", "voter_hash", "timestamp"]
+    list_filter = ["election", "timestamp"]
+    date_hierarchy = "timestamp"
+
+    @admin.display(description="Election", ordering="election__title")
+    def get_election(self, obj: RankedVote) -> str:
+        return obj.election.title
+
+
+@admin.register(RankedVoteChoice)
+class RankedVoteChoiceAdmin(admin.ModelAdmin[RankedVoteChoice]):
+    search_fields = [
+        "vote__election__title",
+        "candidate__user__first_name",
+        "candidate__user__last_name",
+    ]
+    list_display = ["get_election", "get_candidate", "rank"]
+    list_filter = ["vote__election", "rank"]
+
+    @admin.display(description="Election", ordering="vote__election__title")
+    def get_election(self, obj: RankedVoteChoice) -> str:
+        return obj.vote.election.title
+
+    @admin.display(description="Candidate", ordering="candidate__user__first_name")
+    def get_candidate(self, obj: RankedVoteChoice) -> str:
+        return obj.candidate.user.get_full_name()
+
+
+@admin.register(VoterVerification)
+class VoterVerificationAdmin(admin.ModelAdmin[VoterVerification]):
+    search_fields = ["election__title", "user__email", "verification_token"]
+    list_display = ["get_election", "get_user", "is_used", "created_at"]
+    list_filter = ["election", "is_used", "created_at"]
+    date_hierarchy = "created_at"
+
+    @admin.display(description="Election", ordering="election__title")
+    def get_election(self, obj: VoterVerification) -> str:
+        return obj.election.title
+
+    @admin.display(description="User", ordering="user__email")
+    def get_user(self, obj: VoterVerification) -> str:
+        return obj.user.email
+
+
+@admin.register(EligibleVoter)
+class EligibleVoterAdmin(admin.ModelAdmin[EligibleVoter]):
+    search_fields = ["election__title", "user__email"]
+    list_display = ["get_election", "get_user", "created_at"]
+    list_filter = ["election", "created_at"]
+    date_hierarchy = "created_at"
+
+    @admin.display(description="Election", ordering="election__title")
+    def get_election(self, obj: EligibleVoter) -> str:
+        return obj.election.title
+
+    @admin.display(description="User", ordering="user__email")
+    def get_user(self, obj: EligibleVoter) -> str:
+        return obj.user.email
+
+
+@admin.register(ElectionResult)
+class ElectionResultAdmin(admin.ModelAdmin[ElectionResult]):
+    search_fields = ["election__title", "candidate__user__first_name", "candidate__user__last_name"]
+    list_display = [
+        "get_election",
+        "get_candidate",
+        "round_number",
+        "votes",
+        "status",
+        "created_at",
+    ]
+    list_filter = ["election", "round_number", "status", "created_at"]
+    date_hierarchy = "created_at"
+
+    @admin.display(description="Election", ordering="election__title")
+    def get_election(self, obj: ElectionResult) -> str:
+        return obj.election.title
+
+    @admin.display(description="Candidate", ordering="candidate__user__first_name")
+    def get_candidate(self, obj: ElectionResult) -> str:
+        return obj.candidate.user.get_full_name()
