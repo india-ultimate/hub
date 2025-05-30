@@ -63,6 +63,10 @@ const TicketDetail = lazy(() => import("./ticket/TicketDetail"));
 const filters = {
   id: /^\d+$/ // only allow numbers
 };
+// Election Pages
+const ElectionManager = lazy(() => import("./election/ElectionManager"));
+const ElectionsPage = lazy(() => import("./election/ElectionsPage"));
+const ElectionPage = lazy(() => import("./election/ElectionPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -257,6 +261,15 @@ export default function App() {
                     path="/tickets/:id"
                     component={TicketDetail}
                     matchFilters={filters}
+                  />
+                  {/* Election public routes */}
+                  <Route path="/elections" component={ElectionsPage} />
+                  <Route path="/election/:id" component={ElectionPage} />
+                  {/* Election private routes */}
+                  <UserRoute
+                    path="/election-manager"
+                    component={ElectionManager}
+                    admin={true}
                   />
                   <Route path="*" component={Error404} />
                 </Routes>
