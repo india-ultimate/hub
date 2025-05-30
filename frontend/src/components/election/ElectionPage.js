@@ -276,7 +276,7 @@ const ElectionPage = () => {
               </Show>
 
               {/* Candidates Section */}
-              <div class="rounded-lg bg-white p-6 shadow dark:bg-gray-800">
+              <div class=" bg-white dark:bg-gray-800">
                 <h2 class="mb-6 text-2xl font-semibold text-gray-900 dark:text-white">
                   Candidates
                 </h2>
@@ -297,7 +297,7 @@ const ElectionPage = () => {
                           <h3 class="mb-2 text-lg font-semibold text-gray-900 dark:text-white">
                             {candidate.user.full_name}
                           </h3>
-                          <p class="text-gray-600 dark:text-gray-300">
+                          <p class="whitespace-pre-wrap text-gray-600 dark:text-gray-300">
                             {candidate.bio}
                           </p>
                         </div>
@@ -311,7 +311,7 @@ const ElectionPage = () => {
               </div>
 
               {/* Winners Section (if election is completed) */}
-              <Show when={election().winners}>
+              {/* <Show when={election().winners}>
                 <div class="rounded-lg bg-white p-6 shadow dark:bg-gray-800">
                   <h2 class="mb-6 text-2xl font-semibold text-gray-900 dark:text-white">
                     Winners
@@ -331,7 +331,7 @@ const ElectionPage = () => {
                     </For>
                   </div>
                 </div>
-              </Show>
+              </Show> */}
             </div>
           );
         }}
