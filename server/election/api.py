@@ -4,8 +4,7 @@ from typing import Any
 
 from django.http import HttpRequest
 from django.shortcuts import get_object_or_404
-from ninja import Router
-from ninja.errors import ValidationError
+from ninja import File, Router
 from ninja.files import UploadedFile
 
 from server.core.models import User
@@ -172,14 +171,16 @@ def create_candidate(
 
 @router.post("/{election_id}/eligible-voters/", response=list[EligibleVoterSchema])
 def import_eligible_voters(
-    request: AuthenticatedHttpRequest, election_id: int, file: UploadedFile | None = None
+    request: AuthenticatedHttpRequest,
+    election_id: int,
+    file: UploadedFile = File(...),  # noqa: B008
 ) -> list[dict[str, Any]] | tuple[int, dict[str, str]]:
     """Import eligible voters from a CSV file"""
     if error := check_staff(request):
         return error
 
     if not file:
-        raise ValidationError([{"loc": ["file"], "msg": "No file provided"}])
+        return 400, {"message": "No file provided"}
 
     election = get_object_or_404(Election, id=election_id)
 
@@ -198,9 +199,8 @@ def import_eligible_voters(
             "created_at": voter.created_at,
             "user": {
                 "id": voter.user.id,
-                "email": voter.user.email,
-                "first_name": voter.user.first_name,
-                "last_name": voter.user.last_name,
+                "username": voter.user.username,
+                "full_name": voter.user.get_full_name(),
             },
         }
         for voter in election.eligible_voters.all()
