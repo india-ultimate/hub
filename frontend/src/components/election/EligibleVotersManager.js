@@ -83,7 +83,7 @@ const EligibleVotersManager = props => {
               id="voters-file"
               accept=".csv"
               onChange={handleFileChange}
-              class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:rounded-md file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-900/50 dark:file:text-blue-300"
+              class="block w-full cursor-pointer rounded-lg border border-gray-300 bg-gray-50 text-sm text-gray-900 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-gray-400 dark:placeholder-gray-400"
             />
             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
               CSV should contain a list of voter email addresses
