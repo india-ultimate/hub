@@ -43,7 +43,7 @@ class Election(models.Model):
 
             try:
                 # Find user by email
-                user = User.objects.get(email=email)
+                user = User.objects.get(username=email)
 
                 # Skip if user is already an eligible voter
                 if self.eligible_voters.filter(user=user).exists():
