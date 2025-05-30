@@ -1577,3 +1577,232 @@ export const updateTicket = async (ticketId, data) => {
   }
   return responseData;
 };
+
+// Election API functions
+export const createElection = async data => {
+  const response = await fetch("/api/election/", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin",
+    body: JSON.stringify(data)
+  });
+
+  const responseData = await response.json();
+  if (!response.ok) {
+    throw new Error(responseData?.message || "Failed to create election");
+  }
+  return responseData;
+};
+
+export const fetchElections = async () => {
+  const response = await fetch("/api/election/", {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    credentials: "same-origin"
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data?.message || "Failed to fetch elections");
+  }
+  return data;
+};
+
+export const fetchElection = async electionId => {
+  const response = await fetch(`/api/election/${electionId}/`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    credentials: "same-origin"
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data?.message || "Failed to fetch election details");
+  }
+  return data;
+};
+
+export const updateElection = async (electionId, data) => {
+  const response = await fetch(`/api/election/${electionId}/`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin",
+    body: JSON.stringify(data)
+  });
+
+  const responseData = await response.json();
+  if (!response.ok) {
+    throw new Error(responseData?.message || "Failed to update election");
+  }
+  return responseData;
+};
+
+export const deleteElection = async electionId => {
+  const response = await fetch(`/api/election/${electionId}/`, {
+    method: "DELETE",
+    headers: {
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin"
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data?.message || "Failed to delete election");
+  }
+  return data;
+};
+
+export const createCandidate = async (electionId, data) => {
+  const response = await fetch(`/api/election/${electionId}/candidates/`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin",
+    body: JSON.stringify(data)
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to create candidate");
+  }
+
+  return response.json();
+};
+
+export const fetchCandidates = async electionId => {
+  const response = await fetch(`/api/election/${electionId}/candidates/`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    credentials: "same-origin"
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data?.message || "Failed to fetch candidates");
+  }
+  return data;
+};
+
+export const getVoterVerification = async electionId => {
+  const response = await fetch(`/api/election/${electionId}/verify/`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin"
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to verify voter eligibility");
+  }
+
+  return response.json();
+};
+
+export const castRankedVote = async (electionId, data) => {
+  const response = await fetch(`/api/election/${electionId}/vote/`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin",
+    body: JSON.stringify(data)
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to cast vote");
+  }
+
+  return response.json();
+};
+
+export const fetchEligibleVoters = async electionId => {
+  const response = await fetch(`/api/election/${electionId}/eligible-voters/`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    credentials: "same-origin"
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data?.message || "Failed to fetch eligible voters");
+  }
+  return data;
+};
+
+export const importEligibleVoters = async (electionId, formData) => {
+  const response = await fetch(`/api/election/${electionId}/eligible-voters/`, {
+    method: "POST",
+    headers: {
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin",
+    body: formData
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data?.message || "Failed to import eligible voters");
+  }
+  return data;
+};
+
+export const generateElectionResults = async electionId => {
+  const response = await fetch(
+    `/api/election/${electionId}/generate-results/`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCookie("csrftoken")
+      },
+      credentials: "same-origin"
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to generate election results");
+  }
+
+  return response.json();
+};
+
+export const getElectionResults = async electionId => {
+  const response = await fetch(`/api/election/${electionId}/results/`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin"
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to fetch election results");
+  }
+
+  return response.json();
+};
