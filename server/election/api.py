@@ -264,8 +264,6 @@ def get_voter_verification(
     verification = VoterVerification.objects.filter(election=election, user=request.user).first()
 
     if verification:
-        if verification.is_used:
-            return 400, {"message": "You have already voted in this election"}
         return verification
 
     # Generate new verification token
