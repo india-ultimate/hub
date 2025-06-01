@@ -579,10 +579,13 @@ class TestElectionManagement(TestCase):
     def setUp(self) -> None:
         # Create test users
         self.staff_user = User.objects.create_user(
-            username="staff", email="staff@example.com", password=TEST_PASSWORD, is_staff=True
+            username="staff@example.com",
+            email="staff@example.com",
+            password=TEST_PASSWORD,
+            is_staff=True,
         )
         self.non_staff_user = User.objects.create_user(
-            username="nonstaff",
+            username="nonstaff@example.com",
             email="nonstaff@example.com",
             password=TEST_PASSWORD,
             is_staff=False,
