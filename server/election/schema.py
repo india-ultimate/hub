@@ -64,6 +64,7 @@ class RankedVoteChoiceSchema(Schema):
 class VoterVerificationSchema(Schema):
     verification_token: str
     created_at: datetime
+    is_used: bool
 
 
 class RankedVoteCreateSchema(Schema):

@@ -16,6 +16,7 @@ import { useStore } from "../../store";
 import { displayDateShort } from "../../utils";
 import Error from "../alerts/Error";
 import Info from "../alerts/Info";
+import Success from "../alerts/Success";
 
 const ElectionPage = () => {
   const params = useParams();
@@ -66,8 +67,10 @@ const ElectionPage = () => {
     onSuccess: () => {
       setStatus("Vote cast successfully!");
       setError("");
+      // refetch verification token alone
       queryClient.invalidateQueries({
-        queryKey: ["election", electionId]
+        queryKey: ["election", electionId, "verification"],
+        exact: true
       });
     },
     onError: error => {
@@ -206,70 +209,73 @@ const ElectionPage = () => {
                     </Show>
 
                     <Show when={verificationQuery.error}>
-                      <div class="rounded-lg bg-red-50 p-4 dark:bg-red-900/50">
-                        <p class="text-red-800 dark:text-red-200">
-                          {verificationQuery.error.message}
-                        </p>
-                      </div>
+                      <Error text={verificationQuery.error.message} />
                     </Show>
 
                     <Show when={verificationQuery.isSuccess}>
-                      <form onSubmit={handleSubmitVote} class="space-y-6">
-                        <div class="space-y-4">
-                          <For each={candidatesQuery.data}>
-                            {candidate => (
-                              <div class="flex items-center space-x-4 rounded-lg border border-gray-200 p-4 dark:border-gray-700">
-                                <div class="flex-1">
-                                  <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-                                    {candidate.user.full_name}
-                                  </h3>
+                      <Show
+                        when={!verificationQuery.data.is_used}
+                        fallback={
+                          <Success text="Your vote has been registered ✅" />
+                        }
+                      >
+                        <form onSubmit={handleSubmitVote} class="space-y-6">
+                          <div class="space-y-4">
+                            <For each={candidatesQuery.data}>
+                              {candidate => (
+                                <div class="flex items-center space-x-4 rounded-lg border border-gray-200 p-4 dark:border-gray-700">
+                                  <div class="flex-1">
+                                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                                      {candidate.user.full_name}
+                                    </h3>
+                                  </div>
+                                  <select
+                                    value={
+                                      rankedChoices().indexOf(candidate.id) +
+                                        1 || ""
+                                    }
+                                    onChange={e =>
+                                      handleRankChange(
+                                        candidate.id,
+                                        parseInt(e.target.value)
+                                      )
+                                    }
+                                    class="rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400 dark:focus:ring-blue-400"
+                                  >
+                                    <option value="">Select rank</option>
+                                    {Array.from(
+                                      { length: candidatesQuery.data.length },
+                                      (_, i) => (
+                                        <option value={i + 1}>
+                                          Rank {i + 1}
+                                        </option>
+                                      )
+                                    )}
+                                  </select>
                                 </div>
-                                <select
-                                  value={
-                                    rankedChoices().indexOf(candidate.id) + 1 ||
-                                    ""
-                                  }
-                                  onChange={e =>
-                                    handleRankChange(
-                                      candidate.id,
-                                      parseInt(e.target.value)
-                                    )
-                                  }
-                                  class="rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400 dark:focus:ring-blue-400"
-                                >
-                                  <option value="">Select rank</option>
-                                  {Array.from(
-                                    { length: candidatesQuery.data.length },
-                                    (_, i) => (
-                                      <option value={i + 1}>
-                                        Rank {i + 1}
-                                      </option>
-                                    )
-                                  )}
-                                </select>
-                              </div>
-                            )}
-                          </For>
-                        </div>
+                              )}
+                            </For>
+                          </div>
 
-                        <Show when={error()}>
-                          <Error text={error()} />
-                        </Show>
+                          <Show when={error()}>
+                            <Error text={error()} />
+                          </Show>
 
-                        <Show when={status()}>
-                          <Info text={status()} />
-                        </Show>
+                          <Show when={status()}>
+                            <Info text={status()} />
+                          </Show>
 
-                        <button
-                          type="submit"
-                          disabled={castVoteMutation.isPending}
-                          class="w-full rounded-md bg-blue-500 px-4 py-2 text-white hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
-                        >
-                          {castVoteMutation.isPending
-                            ? "Casting Vote..."
-                            : "Cast Vote"}
-                        </button>
-                      </form>
+                          <button
+                            type="submit"
+                            disabled={castVoteMutation.isPending}
+                            class="w-full rounded-md bg-blue-500 px-4 py-2 text-white hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
+                          >
+                            {castVoteMutation.isPending
+                              ? "Casting Vote..."
+                              : "Cast Vote"}
+                          </button>
+                        </form>
+                      </Show>
                     </Show>
                   </Show>
                 </div>
