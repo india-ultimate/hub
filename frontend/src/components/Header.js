@@ -129,7 +129,7 @@ export default function Header() {
                   Tournaments
                 </A>
               </li>
-              <li class="flex items-center">
+              {/* <li class="flex items-center">
                 <A
                   href="/chat"
                   activeClass="w-full block py-2 rounded bg-transparent text-blue-700 md:p-0 dark:text-blue-500 underline underline-offset-8 font-bold decoration-2"
@@ -138,7 +138,7 @@ export default function Header() {
                 >
                   AI Chat
                 </A>
-              </li>
+              </li> */}
               <li class="flex items-center">
                 <A
                   href="/tickets"
