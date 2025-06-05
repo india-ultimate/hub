@@ -1,5 +1,9 @@
 # https://docs.djangoproject.com/en/5.0/topics/db/models/#organizing-models-in-a-package
 
+from server.chat.models import (  # noqa: F401
+    ChatMessage,
+    ChatSession,
+)
 from server.core.models import (  # noqa: F401
     Accreditation,
     CollegeId,
