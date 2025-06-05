@@ -10,7 +10,9 @@ export const Spinner = props => (
     width={props.width || "24"}
     height={props.height || "24"}
     aria-hidden="true"
-    class="mr-2 inline animate-spin fill-blue-600"
+    class={
+      "inline animate-spin fill-blue-600" + (props.noMargin ? " mr-0" : " mr-2")
+    }
     role="status"
     viewBox="0 0 100 101"
     fill="none"
