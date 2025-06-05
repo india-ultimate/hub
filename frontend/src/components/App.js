@@ -68,6 +68,9 @@ const ElectionManager = lazy(() => import("./election/ElectionManager"));
 const ElectionsPage = lazy(() => import("./election/ElectionsPage"));
 const ElectionPage = lazy(() => import("./election/ElectionPage"));
 
+// Chat Pages
+const ChatPage = lazy(() => import("./chat/ChatPage"));
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -271,6 +274,8 @@ export default function App() {
                     component={ElectionManager}
                     admin={true}
                   />
+                  {/* Chat */}
+                  <UserRoute path="/chat" component={ChatPage} />
                   <Route path="*" component={Error404} />
                 </Routes>
               </div>

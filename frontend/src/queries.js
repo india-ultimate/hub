@@ -1806,3 +1806,55 @@ export const getElectionResults = async electionId => {
 
   return response.json();
 };
+
+// Chat API functions
+export const fetchChatHistory = async () => {
+  const response = await fetch("/api/chat/history", {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    credentials: "same-origin"
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data?.message || "Failed to fetch chat history");
+  }
+  return data;
+};
+
+export const sendChatMessage = async message => {
+  const response = await fetch("/api/chat/send_message", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin",
+    body: JSON.stringify({ message })
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data?.message || "Failed to send message");
+  }
+  return data;
+};
+
+export const clearChatHistory = async () => {
+  const response = await fetch("/api/chat/clear_history", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin"
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data?.message || "Failed to clear chat history");
+  }
+  return data;
+};
