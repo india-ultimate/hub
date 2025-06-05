@@ -1,6 +1,6 @@
 import json
 from collections.abc import Iterable
-from typing import Any, NotRequired, TypedDict, TypeVar, cast
+from typing import Any, TypedDict, TypeVar, cast
 
 import groq
 from dateutil.relativedelta import relativedelta
@@ -15,6 +15,7 @@ from groq.types.chat import (
     ChatCompletionToolParam,
     ChatCompletionUserMessageParam,
 )
+from typing_extensions import NotRequired
 
 from server.core.models import Accreditation, CommentaryInfo, Player, Team, User
 from server.membership.models import Membership
