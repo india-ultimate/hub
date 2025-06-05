@@ -85,15 +85,13 @@ Response Format:
 Key Data Structures and Concepts:
 
 1. Players:
-   - Basic info: name, gender, city, state
+   - Basic info: name, gender
    - Membership: annual status, membership number, waiver info
    - Accreditation: WFDF accreditation level and validity
    - Analytics: player participation trends, gender ratios
 
 2. Teams:
    - Basic info: name, category, state, city
-   - Player counts and admin counts
-   - Social media and image URLs
    - Analytics: team performance metrics, regional distribution, category trends
 
 3. Seasons:
@@ -1009,13 +1007,7 @@ Available Tools:
             return {
                 "name": player.user.get_full_name(),
                 "gender": player.get_gender_display(),
-                "city": player.city,
-                "state": player.get_state_ut_display() if player.state_ut else None,
                 "teams": [team.name for team in player.teams.all()],
-                "occupation": player.get_occupation_display() if player.occupation else None,
-                "educational_institution": player.educational_institution,
-                "is_minor": player.is_minor,
-                "is_sponsored": player.sponsored,
             }
         except Player.DoesNotExist:
             return None
@@ -1049,9 +1041,6 @@ Available Tools:
                 "state": team.get_state_ut_display() if team.state_ut else None,
                 "city": team.city,
                 "player_count": team.players.count(),
-                "admin_count": team.admins.count(),
-                "facebook_url": team.facebook_url,
-                "image_url": team.image_url,
             }
         except Team.DoesNotExist:
             return None
