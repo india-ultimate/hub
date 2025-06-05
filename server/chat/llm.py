@@ -529,7 +529,7 @@ Available Tools:
                 "type": "function",
                 "function": {
                     "name": "get_tournament_registrations",
-                    "description": "Get tournament registrations filtered by event, team, or player",
+                    "description": "Get tournament registrations filtered by event, team, player, or tournament",
                     "parameters": {
                         "type": "object",
                         "properties": {
@@ -544,6 +544,10 @@ Available Tools:
                             "player_id": {
                                 "type": "integer",
                                 "description": "The ID of the player to get registrations for",
+                            },
+                            "tournament_id": {
+                                "type": "integer",
+                                "description": "The ID of the tournament to get registrations for",
                             },
                         },
                         "required": [],
@@ -794,7 +798,7 @@ Available Tools:
                 max_tokens=self.max_tokens,
                 top_p=self.top_p,
                 tools=cast(Iterable[ChatCompletionToolParam], self.tools),
-                tool_choice="auto",
+                tool_choice="required",
                 stream=False,
             )
 
@@ -1318,7 +1322,11 @@ Available Tools:
         ]
 
     def get_tournament_registrations(
-        self, event_id: int | None = None, team_id: int | None = None, player_id: int | None = None
+        self,
+        event_id: int | None = None,
+        team_id: int | None = None,
+        player_id: int | None = None,
+        tournament_id: int | None = None,
     ) -> list[dict[str, Any]]:
         """Get tournament registrations filtered by event, team, or player."""
         registrations = Registration.objects.select_related("event", "team", "player").all()
@@ -1329,6 +1337,8 @@ Available Tools:
             registrations = registrations.filter(team_id=team_id)
         if player_id:
             registrations = registrations.filter(player_id=player_id)
+        if tournament_id:
+            registrations = registrations.filter(event__tournament_id=tournament_id)
 
         return [
             {
