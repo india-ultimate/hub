@@ -341,7 +341,7 @@ def update_team_name(
 def update_team(
     request: AuthenticatedHttpRequest,
     team_details: TeamUpdateSchema,
-    image: UploadedFile | None = File(...),  # noqa: B008
+    image: UploadedFile | None = File(None),  # noqa: B008
 ) -> tuple[int, Team | message_response]:
     try:
         team = Team.objects.get(id=team_details.id)
@@ -748,7 +748,7 @@ def check_membership_status(
 def vaccination(
     request: AuthenticatedHttpRequest,
     vaccination: VaccinatedFormSchema | NotVaccinatedFormSchema,
-    certificate: UploadedFile | None = File(...),  # noqa: B008
+    certificate: UploadedFile | None = File(None),  # noqa: B008
 ) -> tuple[int, Vaccination | message_response]:
     if vaccination.is_vaccinated and not certificate:
         return 400, {"message": "Certificate needs to be uploaded!"}
@@ -1466,8 +1466,8 @@ def get_tournament_team_matches(
 def create_tournament(
     request: AuthenticatedHttpRequest,
     tournament_details: TournamentCreateSchema,
-    logo_light: UploadedFile | None = File(...),  # noqa: B008
-    logo_dark: UploadedFile | None = File(...),  # noqa: B008
+    logo_light: UploadedFile | None = File(None),  # noqa: B008
+    logo_dark: UploadedFile | None = File(None),  # noqa: B008
 ) -> tuple[int, Tournament] | tuple[int, message_response]:
     if not request.user.is_staff:
         return 401, {"message": "Only Admins can create tournament"}
@@ -1543,8 +1543,8 @@ def create_tournament(
 def create_tournament_from_event(
     request: AuthenticatedHttpRequest,
     tournament_details: TournamentCreateFromEventSchema,
-    logo_light: UploadedFile | None = File(...),  # noqa: B008
-    logo_dark: UploadedFile | None = File(...),  # noqa: B008
+    logo_light: UploadedFile | None = File(None),  # noqa: B008
+    logo_dark: UploadedFile | None = File(None),  # noqa: B008
 ) -> tuple[int, Tournament] | tuple[int, message_response]:
     if not request.user.is_staff:
         return 401, {"message": "Only Admins can create tournament"}
@@ -2538,7 +2538,7 @@ def get_tournament_leaderboard(
 def contact(
     request: AuthenticatedHttpRequest,
     contact_form: ContactFormSchema,
-    attachment: UploadedFile | None = File(...),  # noqa: B008
+    attachment: UploadedFile | None = File(None),  # noqa: B008
 ) -> tuple[int, message_response]:
     name = request.user.get_full_name()
     message = f"Name: {name}\nEmail: {request.user.email}\n\n{contact_form.description}"
