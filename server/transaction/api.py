@@ -241,7 +241,7 @@ def list_transactions(
 @router.post("/bulk-validate", response={200: ValidationStatsSchema, 400: Response, 401: Response})
 def validate_transactions(
     request: AuthenticatedHttpRequest,
-    bank_statement: File[UploadedFile],
+    bank_statement: UploadedFile = File(...),  # noqa: B008
 ) -> tuple[int, message_response] | tuple[int, dict[str, int]]:
     if not request.user.is_staff:
         return 401, {"message": "Only Admins can validate transactions"}

@@ -341,7 +341,7 @@ def update_team_name(
 def update_team(
     request: AuthenticatedHttpRequest,
     team_details: TeamUpdateSchema,
-    image: File[UploadedFile] | None = None,
+    image: UploadedFile | None = File(...),  # noqa: B008
 ) -> tuple[int, Team | message_response]:
     try:
         team = Team.objects.get(id=team_details.id)
@@ -376,7 +376,7 @@ def update_team(
 def create_team(
     request: AuthenticatedHttpRequest,
     team_details: TeamCreateSchema,
-    image: File[UploadedFile],
+    image: UploadedFile = File(...),  # noqa: B008
 ) -> tuple[int, Team | message_response]:
     if not image:
         return 400, {"message": "Team logo needs to be uploaded!"}
@@ -725,7 +725,7 @@ def list_registrations(
 @api.post("/check-memberships", response={200: list[dict[str, Any]], 400: Response, 401: Response})
 def check_membership_status(
     request: AuthenticatedHttpRequest,
-    info_csv: File[UploadedFile],
+    info_csv: UploadedFile = File(...),  # noqa: B008
 ) -> tuple[int, message_response] | tuple[int, list[dict[str, Any]]]:
     if not request.user.is_staff:
         return 401, {"message": "Only Admins can check membership status"}
@@ -748,7 +748,7 @@ def check_membership_status(
 def vaccination(
     request: AuthenticatedHttpRequest,
     vaccination: VaccinatedFormSchema | NotVaccinatedFormSchema,
-    certificate: File[UploadedFile] | None = None,
+    certificate: UploadedFile | None = File(...),  # noqa: B008
 ) -> tuple[int, Vaccination | message_response]:
     if vaccination.is_vaccinated and not certificate:
         return 400, {"message": "Certificate needs to be uploaded!"}
@@ -787,7 +787,7 @@ def vaccination(
 def accreditation(
     request: AuthenticatedHttpRequest,
     accreditation: AccreditationFormSchema,
-    certificate: File[UploadedFile],
+    certificate: UploadedFile = File(...),  # noqa: B008
 ) -> tuple[int, Accreditation | message_response]:
     if not certificate:
         return 400, {"message": "Certificate needs to be uploaded!"}
@@ -831,8 +831,8 @@ def accreditation(
 def college_id(
     request: AuthenticatedHttpRequest,
     college_id: CollegeIdFormSchema,
-    card_front: File[UploadedFile],
-    card_back: File[UploadedFile],
+    card_front: UploadedFile = File(...),  # noqa: B008
+    card_back: UploadedFile = File(...),  # noqa: B008
 ) -> tuple[int, CollegeId | message_response]:
     if not card_front:
         return 400, {"message": "ID Card front side needs to be uploaded!"}
@@ -1466,8 +1466,8 @@ def get_tournament_team_matches(
 def create_tournament(
     request: AuthenticatedHttpRequest,
     tournament_details: TournamentCreateSchema,
-    logo_light: UploadedFile | None = File[UploadedFile](None),  # noqa: B008
-    logo_dark: UploadedFile | None = File[UploadedFile](None),  # noqa: B008
+    logo_light: UploadedFile | None = File(...),  # noqa: B008
+    logo_dark: UploadedFile | None = File(...),  # noqa: B008
 ) -> tuple[int, Tournament] | tuple[int, message_response]:
     if not request.user.is_staff:
         return 401, {"message": "Only Admins can create tournament"}
@@ -1543,8 +1543,8 @@ def create_tournament(
 def create_tournament_from_event(
     request: AuthenticatedHttpRequest,
     tournament_details: TournamentCreateFromEventSchema,
-    logo_light: UploadedFile | None = File[UploadedFile](None),  # noqa: B008
-    logo_dark: UploadedFile | None = File[UploadedFile](None),  # noqa: B008
+    logo_light: UploadedFile | None = File(...),  # noqa: B008
+    logo_dark: UploadedFile | None = File(...),  # noqa: B008
 ) -> tuple[int, Tournament] | tuple[int, message_response]:
     if not request.user.is_staff:
         return 401, {"message": "Only Admins can create tournament"}
@@ -2538,7 +2538,7 @@ def get_tournament_leaderboard(
 def contact(
     request: AuthenticatedHttpRequest,
     contact_form: ContactFormSchema,
-    attachment: File[UploadedFile] | None = None,
+    attachment: UploadedFile | None = File(...),  # noqa: B008
 ) -> tuple[int, message_response]:
     name = request.user.get_full_name()
     message = f"Name: {name}\nEmail: {request.user.email}\n\n{contact_form.description}"
@@ -2599,7 +2599,7 @@ def parse_match_name(name: str) -> tuple[str | None, list[int] | None]:
 def update_tournament_schedule(
     request: AuthenticatedHttpRequest,
     tournament_id: int,
-    schedule_file: File[UploadedFile],
+    schedule_file: UploadedFile = File(...),  # noqa: B008
 ) -> tuple[int, message_response]:
     if not request.user.is_staff:
         return 400, {"message": "Only staff users can update tournament schedule"}
