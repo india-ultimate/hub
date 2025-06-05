@@ -207,6 +207,12 @@ PROMETHEUS_METRIC_NAMESPACE = "hub"
 # OCR API Keys
 OCR_API_KEY = os.environ.get("OCR_API_KEY", "")
 
+# Groq Settings
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+GROQ_MODEL = os.environ.get("GROQ_MODEL", "llama3-8b-instant-128k")
+GROQ_TEMPERATURE = float(os.environ.get("GROQ_TEMPERATURE", "0.3"))
+GROQ_MAX_TOKENS = int(os.environ.get("GROQ_MAX_TOKENS", "500"))
+GROQ_TOP_P = float(os.environ.get("GROQ_TOP_P", "0.9"))
 
 ########################################################################
 import django_stubs_ext
