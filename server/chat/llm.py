@@ -49,20 +49,37 @@ class ChatResponse(TypedDict):
 
 
 class ChatService:
-    def __init__(self, api_key: str | None = None) -> None:
+    def __init__(self, groq_client: groq.Client, user: User) -> None:
         """Initialize the chat service with Groq client.
 
         Args:
             api_key: Optional API key. If not provided, uses GROQ_API_KEY from settings.
         """
-        self.groq_client = groq.Client(api_key=api_key or settings.GROQ_API_KEY)
+        self.groq_client = groq_client
         self.model = settings.GROQ_MODEL
         self.temperature = settings.GROQ_TEMPERATURE
         self.max_tokens = settings.GROQ_MAX_TOKENS
         self.top_p = settings.GROQ_TOP_P
-
+        self.user = user
         # System prompt to help Groq understand its role and capabilities
         self.system_prompt = """You are an AI assistant for India Ultimate, a sports organization. Your role is to help users get information about players, teams, tournaments, and other aspects of the organization. You should also provide analytical insights and statistics when requested.
+
+User Context:
+- Use the get_current_user tool to understand the logged-in user's context
+- Consider their role, permissions, and associated data when providing responses
+- Personalize responses based on their access level and relationships
+
+Response Format:
+- Always format responses in markdown when possible
+- Use appropriate markdown elements:
+  * Headers (#, ##, ###) for section titles
+  * Lists (-, *) for enumerations
+  * Bold (**) for emphasis
+  * Tables for structured data
+  * Code blocks (```) for JSON or code examples
+  * Blockquotes (>) for important notes
+- Keep responses clear, organized, and visually appealing
+- Use markdown to highlight key information and improve readability
 
 Key Data Structures and Concepts:
 
@@ -280,9 +297,18 @@ Available Tools:
 - Tournament structure tools (pools, brackets, cross pools, position pools) with ID-based filtering
 - Match information tools (details, search by tournament/team/pool/bracket)
 - Match statistics tools (details, search by tournament/match)
-- Match events tools (details, search by team/type/players/actions)"""
+- Match events tools (details, search by team/type/players/actions)
+- User information tool (get_current_user)"""
 
         self.tools = [
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_current_user",
+                    "description": "Get details of the currently logged in user including their role, permissions, and associated data",
+                    "parameters": {"type": "object", "properties": {}, "required": []},
+                },
+            },
             {
                 "type": "function",
                 "function": {
@@ -889,6 +915,8 @@ Available Tools:
                         function_response = {"stats": self.get_match_stats(**function_args)}
                     elif function_name == "get_match_events":
                         function_response = {"events": self.get_match_events(**function_args)}
+                    elif function_name == "get_current_user":
+                        function_response = {"user": self.get_current_user()}
 
                     # Add tool response to conversation
                     conversation_history.append(
@@ -1795,3 +1823,43 @@ Available Tools:
             }
             for event in events
         ]
+
+    def get_current_user(self) -> dict[str, Any]:
+        """Get details of the currently logged in user."""
+        try:
+            user = self.user
+            player = Player.objects.filter(user=user).first()
+            team_admin = Team.objects.filter(admins=user).first()
+
+            return {
+                "id": user.id,
+                "name": user.get_full_name(),
+                "email": user.email,
+                "is_staff": user.is_staff,
+                "is_superuser": user.is_superuser,
+                "roles": {
+                    "is_player": bool(player),
+                    "is_team_admin": bool(team_admin),
+                },
+                "player": {
+                    "id": player.id,
+                    "teams": [{"id": team.id, "name": team.name} for team in player.teams.all()],
+                    "membership": {
+                        "is_active": bool(
+                            Membership.objects.filter(player=player, is_active=True).first()
+                        )
+                        if Membership.objects.filter(player=player).first()
+                        else None,
+                    },
+                }
+                if player is not None
+                else None,
+                "team_admin": {
+                    "id": team_admin.id,
+                    "name": team_admin.name,
+                }
+                if team_admin
+                else None,
+            }
+        except Exception as e:
+            return {"error": str(e)}
