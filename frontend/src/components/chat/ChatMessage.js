@@ -13,7 +13,7 @@ const ChatMessage = props => {
 
   return (
     <div class="mb-4 flex items-start justify-end">
-      <div class="inline-flex flex-col rounded-full bg-blue-600 px-4 py-2 text-base text-white">
+      <div class="inline-flex flex-col rounded-full bg-blue-600 p-4 text-base text-white">
         {props.message}
       </div>
     </div>
