@@ -17,7 +17,7 @@ from groq.types.chat import (
 )
 from typing_extensions import NotRequired
 
-from server.core.models import Accreditation, CommentaryInfo, Player, Team, User
+from server.core.models import Accreditation, Player, Team, User
 from server.membership.models import Membership
 from server.season.models import Season
 from server.series.models import Series, SeriesRegistration
@@ -85,11 +85,10 @@ Response Format:
 Key Data Structures and Concepts:
 
 1. Players:
-   - Basic info: name, age, gender, city, state
+   - Basic info: name, gender, city, state
    - Membership: annual status, membership number, waiver info
    - Accreditation: WFDF accreditation level and validity
-   - Commentary: player autobiographies and fun facts
-   - Analytics: player participation trends, age distribution, gender ratios
+   - Analytics: player participation trends, gender ratios
 
 2. Teams:
    - Basic info: name, category, state, city
@@ -290,7 +289,7 @@ Guidelines:
 9. Utilize filtering capabilities to provide focused information
 
 Available Tools:
-- Player information tools (stats, details, search, accreditation, commentary, membership)
+- Player information tools (stats, details, search, accreditation, membership)
 - Team information tools (stats, details)
 - Season information tools (all seasons, details)
 - Series information tools (all series, details, registrations)
@@ -388,23 +387,6 @@ Available Tools:
                             "player_id": {
                                 "type": "integer",
                                 "description": "The ID of the player to get accreditation for",
-                            }
-                        },
-                        "required": ["player_id"],
-                    },
-                },
-            },
-            {
-                "type": "function",
-                "function": {
-                    "name": "get_player_commentary",
-                    "description": "Get the autobiography of a specific player",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "player_id": {
-                                "type": "integer",
-                                "description": "The ID of the player to get their autobiography for",
                             }
                         },
                         "required": ["player_id"],
@@ -865,9 +847,6 @@ Available Tools:
                     elif function_name == "get_player_accreditation":
                         result = self.get_player_accreditation(**function_args)
                         function_response = result if result is not None else {}
-                    elif function_name == "get_player_commentary":
-                        result = self.get_player_commentary(**function_args)
-                        function_response = result if result is not None else {}
                     elif function_name == "get_player_membership":
                         result = self.get_player_membership(**function_args)
                         function_response = result if result is not None else {}
@@ -1029,7 +1008,6 @@ Available Tools:
             player = Player.objects.get(id=player_id)
             return {
                 "name": player.user.get_full_name(),
-                "age": (timezone.now().date() - player.date_of_birth).days // 365,
                 "gender": player.get_gender_display(),
                 "city": player.city,
                 "state": player.get_state_ut_display() if player.state_ut else None,
@@ -1095,31 +1073,6 @@ Available Tools:
                 "is_valid": accreditation.is_valid,
                 "level": accreditation.get_level_display(),
                 "date": accreditation.date.isoformat(),
-            }
-        except Player.DoesNotExist:
-            return None
-
-    def get_player_commentary(self, player_id: int) -> dict[str, Any] | None:
-        """Get the autobiography of a specific player."""
-        try:
-            player = Player.objects.get(id=player_id)
-            commentary = CommentaryInfo.objects.filter(player=player).first()
-
-            if not commentary:
-                return {
-                    "has_commentary": False,
-                    "message": "No autobiography found for this player",
-                }
-
-            return {
-                "has_commentary": True,
-                "jersey_number": commentary.jersey_number,
-                "ultimate_origin": commentary.ultimate_origin,
-                "ultimate_attraction": commentary.ultimate_attraction,
-                "ultimate_fav_role": commentary.ultimate_fav_role,
-                "ultimate_fav_exp": commentary.ultimate_fav_exp,
-                "interests": commentary.interests,
-                "fun_fact": commentary.fun_fact,
             }
         except Player.DoesNotExist:
             return None
@@ -1835,7 +1788,6 @@ Available Tools:
             return {
                 "id": user.id,
                 "name": user.get_full_name(),
-                "email": user.email,
                 "is_staff": user.is_staff,
                 "is_superuser": user.is_superuser,
                 "roles": {
