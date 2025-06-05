@@ -103,7 +103,7 @@ const ChatPage = () => {
           <Show
             when={historyQuery.data?.messages?.length}
             fallback={
-              <div class="flex h-full items-center justify-center py-8">
+              <div class="flex h-full flex-col items-center justify-center gap-4 py-8">
                 <p class="text-sm text-gray-500 dark:text-gray-400">
                   No messages available. Start a conversation!
                 </p>
@@ -128,6 +128,12 @@ const ChatPage = () => {
           onSendMessage={handleSendMessage}
           loading={sendMessageMutation.isLoading}
         />
+        <p class="mt-3 text-center text-xs text-gray-400 dark:text-gray-500">
+          Note: Only publicly available data is sent to Groq - our 3rd Party AI
+          hosting provider which is using Open Source Llama-3.1 model
+          internally. Personal information like email, phone number, or date of
+          birth is never shared.
+        </p>
       </div>
     </div>
   );
