@@ -221,6 +221,28 @@ def me_registrations(request: AuthenticatedHttpRequest) -> list[Registration]:
     return list(Registration.objects.filter(player=player).order_by("-event__start_date"))
 
 
+@api.get("/me/membership", response={200: dict[str, Any], 404: Response})
+def me_membership(
+    request: AuthenticatedHttpRequest,
+) -> tuple[int, dict[str, Any] | message_response]:
+    try:
+        player = request.user.player_profile
+    except Player.DoesNotExist:
+        return 404, {"message": "Player profile not found"}
+
+    membership = Membership.objects.filter(player=player).first()
+    if not membership:
+        return 200, {
+            "has_membership": False,
+            "is_active": False,
+        }
+
+    return 200, {
+        "has_membership": True,
+        "is_active": membership.is_active,
+    }
+
+
 # Users ##########
 
 

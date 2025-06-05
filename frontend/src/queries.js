@@ -1858,3 +1858,17 @@ export const clearChatHistory = async () => {
   }
   return data;
 };
+
+export const fetchMembershipStatus = async () => {
+  const response = await fetch("/api/me/membership", {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin"
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data?.message || "Failed to fetch membership status");
+  }
+  return data;
+};
