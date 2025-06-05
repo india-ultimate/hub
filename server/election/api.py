@@ -173,7 +173,7 @@ def create_candidate(
 def import_eligible_voters(
     request: AuthenticatedHttpRequest,
     election_id: int,
-    file: UploadedFile = File(...),  # noqa: B008
+    file: File[UploadedFile],
 ) -> list[dict[str, Any]] | tuple[int, dict[str, str]]:
     """Import eligible voters from a CSV file"""
     if error := check_staff(request):
