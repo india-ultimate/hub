@@ -58,7 +58,7 @@ class TicketMessage(models.Model):
     sender = models.ForeignKey(User, on_delete=models.CASCADE)
     message = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
-    attachment = models.FileField(upload_to="ticket_attachments/", null=True, blank=True)
+    attachment = models.URLField(max_length=512, null=True, blank=True)
 
     def __str__(self) -> str:
         return f"Message on ticket {self.ticket.id} by {self.sender.username}"
