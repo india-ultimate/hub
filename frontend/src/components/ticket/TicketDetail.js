@@ -15,6 +15,8 @@ import {
 } from "../../queries";
 import { useStore } from "../../store";
 import Breadcrumbs from "../Breadcrumbs";
+import FileInput from "../FileInput";
+import TextAreaInput from "../TextAreaInput";
 
 const TicketDetail = () => {
   const params = useParams();
@@ -25,6 +27,7 @@ const TicketDetail = () => {
   const [isAdmin, setIsAdmin] = createSignal(false);
   const [isCreator, setIsCreator] = createSignal(false);
   const queryClient = useQueryClient();
+  const [attachment, setAttachment] = createSignal(null);
 
   const userQuery = createQuery(() => ["me"], fetchUser);
   const ticketQuery = createQuery(
@@ -69,7 +72,7 @@ const TicketDetail = () => {
     if (!message().trim()) return;
 
     setIsSubmitting(true);
-    addMessageMutation.mutate({ message: message() });
+    addMessageMutation.mutate({ message: message(), attachment: attachment() });
   };
 
   const handleStatusChange = status => {
@@ -145,6 +148,41 @@ const TicketDetail = () => {
         return "Low";
       default:
         return priority;
+    }
+  };
+
+  const downloadAttachment = async (url, filename) => {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("Failed to fetch file");
+
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      link.download = filename || "attachment";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // Clean up the object URL
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (error) {
+      console.error("Download failed:", error);
+      // Fallback: open in new tab
+      window.open(url, "_blank");
+    }
+  };
+
+  const getFilenameFromUrl = url => {
+    try {
+      const urlObj = new URL(url);
+      const pathname = urlObj.pathname;
+      const filename = pathname.split("/").pop();
+      return filename || "attachment";
+    } catch {
+      return "attachment";
     }
   };
 
@@ -362,7 +400,7 @@ const TicketDetail = () => {
                 Conversation
               </h3>
 
-              <div class="mb-6 max-h-[500px] space-y-4 overflow-y-auto p-2">
+              <div class="mb-6 max-h-[500px] space-y-4 overflow-y-auto border-b border-gray-200 p-2">
                 <Show when={ticketQuery.data.messages.length === 0}>
                   <div class="py-8 text-center text-gray-500 dark:text-gray-400">
                     No messages yet. Start the conversation!
@@ -385,39 +423,92 @@ const TicketDetail = () => {
                             : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
                         }`}
                       >
-                        <div class="mb-1 flex items-center">
-                          <span class="text-sm font-medium">
-                            {message.sender.first_name}{" "}
-                            {message.sender.last_name}
-                          </span>
-                          <Show when={isAdmin() && message.sender.username}>
-                            <span class="ml-1 text-xs text-gray-600 dark:text-gray-400">
-                              (
-                              <a
-                                href={`mailto:${message.sender.username}`}
-                                class="text-blue-600 hover:underline dark:text-blue-400"
-                              >
-                                {message.sender.username}
-                              </a>
-                              )
+                        <div class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+                          <div class="flex items-center gap-1">
+                            <span class="font-medium">
+                              {message.sender.first_name}{" "}
+                              {message.sender.last_name}
                             </span>
-                          </Show>
-                          <span class="ml-2 text-xs text-gray-500 dark:text-gray-400">
-                            {new Date(message.created_at).toLocaleString()}
+                            <Show when={isAdmin() && message.sender.username}>
+                              <span class="text-gray-600 dark:text-gray-400">
+                                (
+                                <a
+                                  href={`mailto:${message.sender.username}`}
+                                  class="text-blue-600 hover:underline dark:text-blue-400"
+                                >
+                                  {message.sender.username}
+                                </a>
+                                )
+                              </span>
+                            </Show>
+                          </div>
+                          <span>
+                            {(() => {
+                              const date = new Date(message.created_at);
+                              const now = new Date();
+                              const diffInHours =
+                                (now - date) / (1000 * 60 * 60);
+
+                              if (diffInHours < 24) {
+                                return date.toLocaleTimeString([], {
+                                  hour: "numeric",
+                                  minute: "2-digit"
+                                });
+                              } else if (diffInHours < 48) {
+                                return `Yesterday ${date.toLocaleTimeString(
+                                  [],
+                                  { hour: "numeric", minute: "2-digit" }
+                                )}`;
+                              } else {
+                                return (
+                                  date.toLocaleDateString([], {
+                                    month: "short",
+                                    day: "numeric"
+                                  }) +
+                                  " " +
+                                  date.toLocaleTimeString([], {
+                                    hour: "numeric",
+                                    minute: "2-digit"
+                                  })
+                                );
+                              }
+                            })()}
                           </span>
                         </div>
-                        <p class="whitespace-pre-wrap">{message.message}</p>
+                        <p class="mt-2 whitespace-pre-wrap">
+                          {message.message}
+                        </p>
                         <Show when={message.attachment}>
-                          <div class="mt-2">
-                            <a
-                              href={message.attachment}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              class="flex items-center text-sm text-blue-600 dark:text-blue-400"
+                          <div class="mt-2 flex flex-col gap-2">
+                            {/* Preview if image */}
+                            <Show
+                              when={/\.(jpe?g|png|gif|webp|bmp|tiff)$/i.test(
+                                message.attachment
+                              )}
+                            >
+                              <img
+                                src={message.attachment}
+                                alt="Attachment preview"
+                                class="max-h-48 rounded border border-gray-300 dark:border-gray-700"
+                                style={{
+                                  "object-fit": "contain",
+                                  "max-width": "100%"
+                                }}
+                              />
+                            </Show>
+                            {/* Download button */}
+                            <button
+                              onClick={() =>
+                                downloadAttachment(
+                                  message.attachment,
+                                  getFilenameFromUrl(message.attachment)
+                                )
+                              }
+                              class="inline-flex cursor-pointer items-center gap-1 border-none bg-transparent p-0 text-sm text-blue-600 hover:underline dark:text-blue-400"
                             >
                               <svg
                                 xmlns="http://www.w3.org/2000/svg"
-                                class="mr-1 h-4 w-4"
+                                class="h-4 w-4"
                                 fill="none"
                                 viewBox="0 0 24 24"
                                 stroke="currentColor"
@@ -426,11 +517,11 @@ const TicketDetail = () => {
                                   stroke-linecap="round"
                                   stroke-linejoin="round"
                                   stroke-width="2"
-                                  d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
+                                  d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4"
                                 />
                               </svg>
-                              Attachment
-                            </a>
+                              Download Attachment
+                            </button>
                           </div>
                         </Show>
                       </div>
@@ -440,21 +531,35 @@ const TicketDetail = () => {
               </div>
 
               <form onSubmit={handleSubmitMessage} class="mt-4">
+                <TextAreaInput
+                  name="message"
+                  label="Your message"
+                  value={message()}
+                  onInput={e => setMessage(e.target.value)}
+                  placeholder="Type your message here..."
+                  padding={false}
+                />
                 <div class="mb-4">
-                  <label
-                    for="message"
-                    class="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
-                  >
-                    Your message
-                  </label>
-                  <textarea
-                    id="message"
-                    rows="3"
-                    value={message()}
-                    onInput={e => setMessage(e.target.value)}
-                    class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
-                    placeholder="Type your message here..."
+                  <FileInput
+                    name="attachment"
+                    label="Attachment (optional)"
+                    accept="image/*,application/pdf"
+                    value={attachment()}
+                    onInput={e => setAttachment(e.target.files[0])}
+                    subLabel="Allowed: images or PDF, max 20MB"
                   />
+                  <Show when={attachment()}>
+                    <div class="mt-2 flex items-center gap-2 text-sm">
+                      <span>Selected: {attachment().name}</span>
+                      <button
+                        type="button"
+                        class="text-red-600 underline"
+                        onClick={() => setAttachment(null)}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </Show>
                 </div>
                 <button
                   type="submit"

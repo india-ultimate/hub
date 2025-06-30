@@ -14,7 +14,6 @@ import Breadcrumbs from "../Breadcrumbs";
 const CreateTicket = () => {
   const [isSubmitting, setIsSubmitting] = createSignal(false);
   const [error, setError] = createSignal(null);
-  const [success, setSuccess] = createSignal(false);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
@@ -43,11 +42,12 @@ const CreateTicket = () => {
 
   const createTicketMutation = createMutation({
     mutationFn: createTicket,
-    onSuccess: () => {
-      setSuccess(true);
+    onSuccess: data => {
       setIsSubmitting(false);
       queryClient.invalidateQueries(["tickets"]);
       reset(_form);
+      // Redirect to the created ticket's detail page
+      navigate(`/tickets/${data.id}`);
     },
     onError: error => {
       setError(error.message || "An error occurred while creating the ticket");
@@ -58,7 +58,6 @@ const CreateTicket = () => {
   const handleSubmit = async values => {
     setIsSubmitting(true);
     setError(null);
-    setSuccess(false);
     createTicketMutation.mutate(values);
   };
 
@@ -117,15 +116,6 @@ const CreateTicket = () => {
           </Show>
 
           <Show when={!isSubmitting()}>
-            {success() && (
-              <div
-                class="mb-4 rounded-lg bg-green-100 p-4 text-sm text-green-700"
-                role="alert"
-              >
-                Ticket created successfully!
-              </div>
-            )}
-
             {error() && (
               <div
                 class="mb-4 rounded-lg bg-red-100 p-4 text-sm text-red-700"
