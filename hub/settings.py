@@ -214,6 +214,11 @@ GROQ_TEMPERATURE = float(os.environ.get("GROQ_TEMPERATURE", "0.2"))
 GROQ_MAX_TOKENS = int(os.environ.get("GROQ_MAX_TOKENS", "4096"))
 GROQ_TOP_P = float(os.environ.get("GROQ_TOP_P", "0.8"))
 
+# Cloudinary settings
+CLOUDINARY_CLOUD_NAME = os.environ.get("CLOUDINARY_CLOUD_NAME", "india-ultimate")
+CLOUDINARY_API_KEY = os.environ.get("CLOUDINARY_API_KEY", "711243792862544")
+CLOUDINARY_API_SECRET = os.environ.get("CLOUDINARY_API_SECRET", "")
+
 ########################################################################
 import django_stubs_ext
 
