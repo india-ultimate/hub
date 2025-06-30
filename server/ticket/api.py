@@ -1,12 +1,16 @@
 from typing import Any
 
+import cloudinary
+import cloudinary.uploader
 from django.conf import settings
+from django.conf import settings as django_settings
 from django.core.mail import send_mail
 from django.db.models import Count, QuerySet
 from django.http import HttpRequest
 from django.shortcuts import get_object_or_404
 from django.template.loader import render_to_string
-from ninja import Router
+from ninja import File, Router
+from ninja.files import UploadedFile
 
 from server.core.models import User
 from server.ticket.models import Ticket, TicketMessage
@@ -18,6 +22,13 @@ from server.ticket.schema import (
     TicketUpdateSchema,
 )
 from server.types import message_response
+
+# Initialize Cloudinary
+cloudinary.config(
+    cloud_name=django_settings.CLOUDINARY_CLOUD_NAME,
+    api_key=django_settings.CLOUDINARY_API_KEY,
+    api_secret=django_settings.CLOUDINARY_API_SECRET,
+)
 
 
 class AuthenticatedHttpRequest(HttpRequest):
@@ -149,13 +160,49 @@ def update_ticket(
 def add_message(
     request: AuthenticatedHttpRequest,
     ticket_id: int,
-    data: TicketMessageCreateSchema,
-) -> tuple[int, Ticket]:
-    """Add message to ticket"""
+    message_details: TicketMessageCreateSchema,
+    attachment: UploadedFile | None = File(None),  # noqa: B008
+) -> tuple[int, Ticket | dict[str, str]]:
+    """Add message to ticket (with optional attachment: image or PDF, max 20MB, uploaded to Cloudinary)"""
     ticket = get_object_or_404(Ticket, id=ticket_id)
+    message = message_details.message
 
-    # Create message
-    TicketMessage.objects.create(ticket=ticket, sender=request.user, message=data.message)
+    # Validate and upload attachment if present
+    allowed_types = [
+        "image/jpeg",
+        "image/png",
+        "image/gif",
+        "image/webp",
+        "image/bmp",
+        "image/tiff",
+        "application/pdf",
+    ]
+    max_size = 20 * 1024 * 1024  # 20MB
+    attachment_url = None
+    if attachment:
+        if attachment.content_type not in allowed_types:
+            return 400, {"message": "Only image files and PDF are allowed as attachments."}
+        if attachment.size is not None and attachment.size > max_size:
+            return 400, {"message": "Attachment size must not exceed 20MB."}
+        # Upload to Cloudinary
+        try:
+            result = cloudinary.uploader.upload(
+                attachment.file,
+                resource_type="auto",
+                folder="ticket_attachments/",
+                use_filename=True,
+                unique_filename=True,
+            )
+            attachment_url = result.get("secure_url")
+        except Exception as e:
+            return 400, {"message": f"Failed to upload attachment: {e}"}
+
+    TicketMessage.objects.create(
+        ticket=ticket,
+        sender=request.user,
+        message=message,
+        attachment=attachment_url,
+    )
 
     # If ticket is closed or resolved, set it back to in progress when user adds message
     if (
@@ -197,14 +244,14 @@ def add_message(
             # Plain text version
             plain_message = f"A new message has been added to ticket #{ticket.id}:\n\n"
             plain_message += f"From: {request.user.first_name} {request.user.last_name}\n"
-            plain_message += f"Message: {data.message}\n\n"
+            plain_message += f"Message: {message}\n\n"
             plain_message += "You can view and respond to this ticket on the website."
 
             # HTML version with template
             context = {
                 "ticket": ticket,
                 "sender": request.user,
-                "message": data.message,
+                "message": message,
                 "site_url": settings.EMAIL_INVITATION_BASE_URL,
             }
             html_message = render_to_string("emails/ticket_message.html", context)

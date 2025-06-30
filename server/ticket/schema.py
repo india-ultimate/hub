@@ -19,10 +19,6 @@ class TicketUpdateSchema(Schema):
     assigned_to_id: int | None = None
 
 
-class TicketMessageCreateSchema(Schema):
-    message: str
-
-
 class UserSchema(Schema):
     id: int
     username: str
@@ -30,12 +26,16 @@ class UserSchema(Schema):
     last_name: str
 
 
+class TicketMessageCreateSchema(Schema):
+    message: str
+
+
 class TicketMessageSchema(Schema):
     id: int
     message: str
     sender: UserSchema
     created_at: datetime
-    attachment: str | None = None
+    attachment: str | None = None  # URL to the attachment (Cloudinary)
 
 
 class TicketDetailSchema(Schema):
