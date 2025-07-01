@@ -1543,45 +1543,26 @@ export const createTicket = async data => {
 };
 
 export const addTicketMessage = async (ticketId, data) => {
-  // If there is an attachment, use FormData
+  const formData = new FormData();
+  formData.append("message_details", JSON.stringify({ message: data.message }));
   if (data.attachment) {
-    const formData = new FormData();
-    formData.append(
-      "message_details",
-      JSON.stringify({ message: data.message })
-    );
     formData.append("attachment", data.attachment);
-    const response = await fetch(`/api/ticket/${ticketId}/message`, {
-      method: "POST",
-      headers: {
-        "X-CSRFToken": getCookie("csrftoken")
-        // Do not set Content-Type; browser will set it for FormData
-      },
-      credentials: "same-origin",
-      body: formData
-    });
-    const responseData = await response.json();
-    if (!response.ok) {
-      throw new Error(responseData?.message || "Failed to add message");
-    }
-    return responseData;
-  } else {
-    // Fallback to JSON if no attachment
-    const response = await fetch(`/api/ticket/${ticketId}/message`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-CSRFToken": getCookie("csrftoken")
-      },
-      credentials: "same-origin",
-      body: JSON.stringify(data)
-    });
-    const responseData = await response.json();
-    if (!response.ok) {
-      throw new Error(responseData?.message || "Failed to add message");
-    }
-    return responseData;
   }
+
+  const response = await fetch(`/api/ticket/${ticketId}/message`, {
+    method: "POST",
+    headers: {
+      "X-CSRFToken": getCookie("csrftoken")
+      // Do not set Content-Type; browser will set it for FormData
+    },
+    credentials: "same-origin",
+    body: formData
+  });
+  const responseData = await response.json();
+  if (!response.ok) {
+    throw new Error(responseData?.message || "Failed to add message");
+  }
+  return responseData;
 };
 
 export const updateTicket = async (ticketId, data) => {
