@@ -14,6 +14,7 @@ import {
   updateTicket
 } from "../../queries";
 import { useStore } from "../../store";
+import Error from "../alerts/Error";
 import Breadcrumbs from "../Breadcrumbs";
 import FileInput from "../FileInput";
 import TextAreaInput from "../TextAreaInput";
@@ -26,6 +27,7 @@ const TicketDetail = () => {
   const [isSubmitting, setIsSubmitting] = createSignal(false);
   const [isAdmin, setIsAdmin] = createSignal(false);
   const [isCreator, setIsCreator] = createSignal(false);
+  const [messageError, setMessageError] = createSignal("");
   const queryClient = useQueryClient();
   const [attachment, setAttachment] = createSignal(null);
 
@@ -46,11 +48,15 @@ const TicketDetail = () => {
     mutationFn: data => addTicketMessage(params.id, data),
     onSuccess: () => {
       setMessage("");
+      setMessageError("");
       setIsSubmitting(false);
       queryClient.invalidateQueries(["ticket", params.id]);
     },
     onError: error => {
       console.error("Error adding message:", error);
+      setMessageError(
+        error.message || "Failed to send message. Please try again."
+      );
       setIsSubmitting(false);
     }
   });
@@ -531,6 +537,11 @@ const TicketDetail = () => {
               </div>
 
               <form onSubmit={handleSubmitMessage} class="mt-4">
+                <Show when={messageError()}>
+                  <div class="mb-4">
+                    <Error text={messageError()} />
+                  </div>
+                </Show>
                 <TextAreaInput
                   name="message"
                   label="Your message"
