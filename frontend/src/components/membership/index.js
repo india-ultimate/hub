@@ -9,8 +9,6 @@ import { useStore } from "../../store";
 import { displayDate, findPlayerById, getAge } from "../../utils";
 import Info from "../alerts/Info";
 import Breadcrumbs from "../Breadcrumbs";
-import RazorpayPayment from "../RazorpayPayment";
-import GroupMembership from "./GroupMembership";
 
 const Membership = () => {
   const [store] = useStore();
@@ -24,7 +22,7 @@ const Membership = () => {
 
   const [event, _setEvent] = createSignal();
 
-  const [status, setStatus] = createSignal();
+  const [status, _setStatus] = createSignal();
 
   const params = useParams();
   createEffect(() => {
@@ -49,7 +47,7 @@ const Membership = () => {
     );
   };
 
-  const [payDisabled, setPayDisabled] = createSignal(false);
+  const [_payDisabled, setPayDisabled] = createSignal(false);
 
   createEffect(() => {
     const dob = player()?.date_of_birth;
@@ -251,7 +249,16 @@ const Membership = () => {
                 {minAgeWarning}
               </div>
             </Show>
-            <RazorpayPayment
+            <div
+              class="mt-4 rounded-lg bg-red-50 p-4 text-sm text-red-800 dark:bg-gray-800 dark:text-red-400"
+              role="alert"
+            >
+              <p>
+                Individual membership is not available at the moment due to EB
+                Elections. Please contact the admin to renew your membership.
+              </p>
+            </div>
+            {/* <RazorpayPayment
               disabled={payDisabled()}
               annual={annual()}
               season={season()}
@@ -259,7 +266,7 @@ const Membership = () => {
               player_id={player().id}
               amount={getAmount()}
               setStatus={setStatus}
-            />
+            /> */}
             <p>{status()}</p>
           </Show>
         </div>
@@ -272,7 +279,17 @@ const Membership = () => {
             <h3 class="text-sm italic">Renew membership for a group</h3>
           </div>
 
-          <GroupMembership season={season()} />
+          <div
+            class="mt-4 rounded-lg bg-red-50 p-4 text-sm text-red-800 dark:bg-gray-800 dark:text-red-400"
+            role="alert"
+          >
+            <p>
+              Group membership is not available at the moment due to EB
+              Elections.
+            </p>
+          </div>
+
+          {/* <GroupMembership season={season()} /> */}
         </div>
       </Show>
     </div>
