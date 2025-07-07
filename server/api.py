@@ -8,6 +8,8 @@ from base64 import b32encode
 from io import StringIO
 from typing import Any, cast
 
+import cloudinary
+import cloudinary.uploader
 import pyotp
 from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
@@ -161,6 +163,13 @@ from server.tournament.utils import (
 from server.transaction.api import router as transaction_router
 from server.types import message_response
 from server.utils import if_dates_are_not_in_order, if_today, is_today_in_between_dates, slugify_max
+
+# Initialize Cloudinary
+cloudinary.config(
+    cloud_name=settings.CLOUDINARY_CLOUD_NAME,
+    api_key=settings.CLOUDINARY_API_KEY,
+    api_secret=settings.CLOUDINARY_API_SECRET,
+)
 
 api = NinjaAPI(auth=django_auth, csrf=True)
 
@@ -977,6 +986,64 @@ def waiver(
     membership.save(update_fields=["waiver_signed_by", "waiver_signed_at", "waiver_valid"])
 
     return 200, player
+
+
+@api.post("/profile-pic", response={200: PlayerSchema, 400: Response, 401: Response})
+def upload_profile_pic(
+    request: AuthenticatedHttpRequest,
+    profile_pic: UploadedFile = File(...),  # noqa: B008
+) -> tuple[int, Player] | tuple[int, message_response]:
+    """Upload profile picture to Cloudinary and update player profile"""
+
+    # Validate file type
+    allowed_types = [
+        "image/jpeg",
+        "image/png",
+        "image/gif",
+        "image/webp",
+        "image/bmp",
+        "image/tiff",
+    ]
+
+    if profile_pic.content_type not in allowed_types:
+        return 400, {"message": "Only image files are allowed for profile pictures."}
+
+    # Validate file size (max 10MB)
+    max_size = 10 * 1024 * 1024  # 10MB
+    if profile_pic.size is not None and profile_pic.size > max_size:
+        return 400, {"message": "Profile picture size must not exceed 10MB."}
+
+    try:
+        player = request.user.player_profile
+    except Player.DoesNotExist:
+        return 400, {"message": "Player profile does not exist"}
+
+    # Upload to Cloudinary
+    try:
+        result = cloudinary.uploader.upload(
+            profile_pic.file,
+            resource_type="image",
+            folder="profile_pictures/",
+            use_filename=True,
+            unique_filename=True,
+            transformation=[
+                {"width": 400, "height": 400, "crop": "fill", "gravity": "face"},
+                {"quality": "auto", "fetch_format": "auto"},
+            ],
+        )
+        profile_pic_url = result.get("secure_url")
+
+        if not profile_pic_url:
+            return 400, {"message": "Failed to upload profile picture"}
+
+        # Update player profile
+        player.profile_pic_url = profile_pic_url
+        player.save(update_fields=["profile_pic_url"])
+
+        return 200, player
+
+    except Exception as e:
+        return 400, {"message": f"Failed to upload profile picture: {e}"}
 
 
 # UPAI ID ##########
