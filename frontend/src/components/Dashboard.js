@@ -3,16 +3,128 @@ import { A } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
 import { initFlowbite } from "flowbite";
 import { Icon } from "solid-heroicons";
-import { inboxStack, star } from "solid-heroicons/solid";
+import { camera, star } from "solid-heroicons/solid";
 import { createEffect, createSignal, For, Show } from "solid-js";
 
 import { AccordionDownIcon } from "../icons";
-import { fetchUserRegistrations } from "../queries";
+import { fetchUserRegistrations, uploadProfilePicture } from "../queries";
 import { useStore } from "../store";
 import { registerPasskey, showPlayerStatus } from "../utils";
 import { getCookie } from "../utils";
 import Player from "./Player";
 import TransactionList from "./TransactionList";
+
+// Profile Picture Component
+const ProfilePicture = props => {
+  const [isUploading, setIsUploading] = createSignal(false);
+  const [uploadError, setUploadError] = createSignal("");
+  const [uploadSuccess, setUploadSuccess] = createSignal("");
+
+  const handleFileChange = async event => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    const allowedTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/gif",
+      "image/webp",
+      "image/bmp",
+      "image/tiff"
+    ];
+    if (!allowedTypes.includes(file.type)) {
+      setUploadError(
+        "Only image files are allowed (JPEG, PNG, GIF, WebP, BMP, TIFF)"
+      );
+      return;
+    }
+
+    // Validate file size (10MB max)
+    if (file.size > 10 * 1024 * 1024) {
+      setUploadError("File size must be less than 10MB");
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadError("");
+    setUploadSuccess("");
+
+    try {
+      const data = await uploadProfilePicture(file);
+      setUploadSuccess("Profile picture updated successfully!");
+      // Update the store with new player data
+      if (props.onUpdate) {
+        props.onUpdate(data);
+      }
+      // Clear success message after 3 seconds
+      setTimeout(() => setUploadSuccess(""), 3000);
+    } catch (error) {
+      setUploadError(error.message || "Failed to upload profile picture");
+      // Clear error message after 5 seconds
+      setTimeout(() => setUploadError(""), 5000);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  return (
+    <div class="mb-6 flex items-center space-x-4">
+      <div class="relative">
+        <Show
+          when={props.player?.profile_pic_url}
+          fallback={
+            <div class="flex h-20 w-20 items-center justify-center rounded-full bg-gray-200">
+              <span class="text-2xl text-gray-500">
+                {props.player?.full_name?.charAt(0)?.toUpperCase() || "?"}
+              </span>
+            </div>
+          }
+        >
+          <img
+            src={props.player.profile_pic_url}
+            alt="Profile"
+            class="h-20 w-20 rounded-full border-2 border-gray-200 object-cover"
+          />
+        </Show>
+
+        <label class="absolute -bottom-1 -right-1 cursor-pointer rounded-full bg-blue-600 p-2 text-white hover:bg-blue-700">
+          <Icon path={camera} class="h-4 w-4" />
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleFileChange}
+            class="hidden"
+            disabled={isUploading()}
+          />
+        </label>
+      </div>
+
+      <div class="flex-1">
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+          {props.player?.full_name}
+        </h3>
+        <p class="text-sm text-gray-500 dark:text-gray-400">
+          {props.player?.user?.email}
+        </p>
+
+        <Show when={isUploading()}>
+          <p class="text-sm text-blue-600 dark:text-blue-400">Uploading...</p>
+        </Show>
+
+        <Show when={uploadError()}>
+          <p class="text-sm text-red-600 dark:text-red-400">{uploadError()}</p>
+        </Show>
+
+        <Show when={uploadSuccess()}>
+          <p class="text-sm text-green-600 dark:text-green-400">
+            {uploadSuccess()}
+          </p>
+        </Show>
+      </div>
+    </div>
+  );
+};
 
 const Actions = props => {
   const onCreatePasskeyClick = async () => {
@@ -137,7 +249,7 @@ const StaffActions = () => {
 };
 
 const Dashboard = () => {
-  const [store, { userFetchFailure }] = useStore();
+  const [store, { userFetchFailure, setPlayerById }] = useStore();
   const [success, setSuccess] = createSignal();
   const [error, setError] = createSignal();
   const [performancePoints, setPerformancePoints] = createSignal(0);
@@ -182,13 +294,6 @@ const Dashboard = () => {
 
   return (
     <div>
-      <div class="w-full">
-        <h2 class="mx-auto mb-5 flex w-fit items-center text-center text-lg font-bold text-gray-900 dark:text-white">
-          <Icon class="mr-2.5 h-6 w-6" path={inboxStack} />
-          Dashboard
-        </h2>
-      </div>
-
       <h1 class="mb-4 text-2xl font-bold text-blue-600 md:text-4xl">
         Welcome <span>{store?.data?.full_name || store?.data?.username}</span>!
       </h1>
@@ -221,6 +326,12 @@ const Dashboard = () => {
             aria-labelledby="accordion-heading-player"
           >
             <div class="border-b border-gray-200 py-5 dark:border-gray-700">
+              <ProfilePicture
+                player={store.data.player}
+                onUpdate={updatedPlayer => {
+                  setPlayerById(updatedPlayer);
+                }}
+              />
               <Player player={store.data.player} />
             </div>
           </div>

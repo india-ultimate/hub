@@ -1877,3 +1877,24 @@ export const fetchMembershipStatus = async () => {
   }
   return data;
 };
+
+// Profile Picture API functions
+export const uploadProfilePicture = async file => {
+  const formData = new FormData();
+  formData.append("profile_pic", file);
+
+  const response = await fetch("/api/profile-pic", {
+    method: "POST",
+    headers: {
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin",
+    body: formData
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data?.message || "Failed to upload profile picture");
+  }
+  return data;
+};
