@@ -155,6 +155,7 @@ class Player(ExportModelOperationsMixin("player"), models.Model):  # type: ignor
     ultimate_central_id = models.PositiveIntegerField(
         unique=True, null=True, blank=True, db_index=True
     )
+    profile_pic_url = models.URLField(max_length=255, null=True, blank=True)
     sponsored = models.BooleanField(default=False)
     imported_data = models.BooleanField(default=False)
 
