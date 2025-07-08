@@ -81,7 +81,7 @@ const EditRosteredPlayer = props => {
   return (
     <div>
       <button
-        class="rounded-md p-1 text-yellow-400 outline outline-2 outline-yellow-400"
+        class="rounded-md px-2 py-1 text-yellow-400 outline outline-2 outline-yellow-400"
         onClick={() => modalRef.showModal()}
       >
         <Icon path={pencil} class="inline h-4 w-4" />
