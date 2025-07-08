@@ -66,7 +66,7 @@ export default function Header() {
                 <img
                   class="rounded-full"
                   src={
-                    store?.data?.player?.uc_person?.image_url ||
+                    store?.data?.player?.profile_pic_url ||
                     "https://secure.gravatar.com/avatar/04d7b508acc28c747e55a9d1d81cdd4a?s=200&d=mm&r=r"
                   }
                   alt="Rounded avatar"
@@ -181,7 +181,7 @@ export default function Header() {
                       class="rounded-full"
                       style={{ width: "36px" }}
                       src={
-                        store?.data?.player?.uc_person?.image_url ||
+                        store?.data?.player?.profile_pic_url ||
                         "https://secure.gravatar.com/avatar/04d7b508acc28c747e55a9d1d81cdd4a?s=200&d=mm&r=r"
                       }
                       alt="Rounded avatar"
