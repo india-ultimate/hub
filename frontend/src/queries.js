@@ -1850,6 +1850,22 @@ export const castRankedVoteForWard = async (electionId, wardId, data) => {
   return response.json();
 };
 
+export const getElectionVoteCount = async electionId => {
+  const response = await fetch(`/api/election/${electionId}/vote-count/`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    credentials: "same-origin"
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data?.message || "Failed to fetch vote count");
+  }
+  return data;
+};
+
 // Chat API functions
 export const fetchChatHistory = async () => {
   const response = await fetch("/api/chat/history", {
