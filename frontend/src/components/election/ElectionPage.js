@@ -303,9 +303,32 @@ const ElectionPage = () => {
                           <h3 class="mb-2 text-lg font-semibold text-gray-900 dark:text-white">
                             {candidate.user.full_name}
                           </h3>
-                          <p class="whitespace-pre-wrap text-gray-600 dark:text-gray-300">
+                          <p class="mb-3 whitespace-pre-wrap text-gray-600 dark:text-gray-300">
                             {candidate.bio}
                           </p>
+                          <Show when={candidate.manifesto_link}>
+                            <a
+                              href={candidate.manifesto_link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              class="inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                            >
+                              View Manifesto
+                              <svg
+                                class="ml-2 h-4 w-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  stroke-width="2"
+                                  d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                                />
+                              </svg>
+                            </a>
+                          </Show>
                         </div>
                       )}
                     </For>
