@@ -60,6 +60,9 @@ class Candidate(models.Model):
     election = models.ForeignKey(Election, on_delete=models.CASCADE, related_name="candidates")
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     bio = models.TextField()
+    manifesto_link = models.URLField(
+        blank=True, null=True, help_text="External link to candidate's manifesto"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self) -> str:

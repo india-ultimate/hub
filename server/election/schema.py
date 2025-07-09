@@ -49,6 +49,7 @@ class CandidateSchema(Schema):
     bio: str
     created_at: datetime
     user: UserSchema
+    manifesto_link: str | None = None
 
 
 class CandidateCreateSchema(Schema):
