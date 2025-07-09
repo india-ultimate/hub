@@ -50,6 +50,7 @@ class CandidateSchema(Schema):
     created_at: datetime
     user: UserSchema
     manifesto_link: str | None = None
+    profile_pic_url: str | None = None
 
 
 class CandidateCreateSchema(Schema):
