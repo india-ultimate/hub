@@ -308,7 +308,18 @@ const ElectionPage = () => {
                           <div class="space-y-4">
                             <For each={candidatesQuery.data}>
                               {candidate => (
-                                <div class="flex flex-col items-center space-y-2 rounded-lg border border-gray-200 p-4 dark:border-gray-700 md:flex-row md:space-x-4">
+                                <div class="flex flex-col items-center space-y-2 rounded-lg border border-gray-200 p-4 dark:border-gray-700 md:flex-row md:space-x-4 md:space-y-0">
+                                  <div class="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-xl text-blue-600 dark:bg-blue-900 dark:text-blue-300">
+                                    {candidate.profile_pic_url ? (
+                                      <img
+                                        src={candidate.profile_pic_url}
+                                        alt={candidate.user.full_name}
+                                        class="h-full w-full rounded-full object-cover"
+                                      />
+                                    ) : (
+                                      candidate.user.full_name.charAt(0)
+                                    )}
+                                  </div>
                                   <div class="flex-1">
                                     <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
                                       {candidate.user.full_name}
@@ -439,7 +450,18 @@ const ElectionPage = () => {
                           <div class="space-y-4">
                             <For each={candidatesQuery.data}>
                               {candidate => (
-                                <div class="flex flex-col  items-center space-y-2 rounded-lg border border-gray-200 p-4 dark:border-gray-700 md:flex-row md:space-x-4">
+                                <div class="flex flex-col  items-center space-y-2 rounded-lg border border-gray-200 p-4 dark:border-gray-700 md:flex-row md:space-x-4 md:space-y-0">
+                                  <div class="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-xl text-blue-600 dark:bg-blue-900 dark:text-blue-300">
+                                    {candidate.profile_pic_url ? (
+                                      <img
+                                        src={candidate.profile_pic_url}
+                                        alt={candidate.user.full_name}
+                                        class="h-full w-full rounded-full object-cover"
+                                      />
+                                    ) : (
+                                      candidate.user.full_name.charAt(0)
+                                    )}
+                                  </div>
                                   <div class="flex-1">
                                     <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
                                       {candidate.user.full_name}
@@ -531,10 +553,23 @@ const ElectionPage = () => {
                     <For each={candidatesQuery.data}>
                       {candidate => (
                         <div class="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
-                          <h3 class="mb-2 text-lg font-semibold text-gray-900 dark:text-white">
+                          <div class="mb-2 flex items-center justify-center">
+                            <div class="flex h-40 w-40 items-center justify-center rounded-full bg-blue-100 text-3xl text-blue-600 dark:bg-blue-900 dark:text-blue-300">
+                              {candidate.user.profile_pic_url ? (
+                                <img
+                                  src={candidate.user.profile_pic_url}
+                                  alt={candidate.user.full_name}
+                                  class="h-full w-full rounded-full object-cover"
+                                />
+                              ) : (
+                                candidate.user.full_name.charAt(0)
+                              )}
+                            </div>
+                          </div>
+                          <h3 class="text-center text-lg font-semibold text-gray-900 dark:text-white">
                             {candidate.user.full_name}
                           </h3>
-                          <p class="mb-3 whitespace-pre-wrap text-gray-600 dark:text-gray-300">
+                          <p class="my-3 whitespace-pre-wrap text-gray-600 dark:text-gray-300">
                             {candidate.bio}
                           </p>
                           <Show when={candidate.manifesto_link}>
