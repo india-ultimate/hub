@@ -555,9 +555,9 @@ const ElectionPage = () => {
                         <div class="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
                           <div class="mb-2 flex items-center justify-center">
                             <div class="flex h-40 w-40 items-center justify-center rounded-full bg-blue-100 text-3xl text-blue-600 dark:bg-blue-900 dark:text-blue-300">
-                              {candidate.user.profile_pic_url ? (
+                              {candidate.profile_pic_url ? (
                                 <img
-                                  src={candidate.user.profile_pic_url}
+                                  src={candidate.profile_pic_url}
                                   alt={candidate.user.full_name}
                                   class="h-full w-full rounded-full object-cover"
                                 />
