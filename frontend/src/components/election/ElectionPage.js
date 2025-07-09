@@ -8,8 +8,10 @@ import { createSignal, For, Show } from "solid-js";
 
 import {
   castRankedVote,
+  castRankedVoteForWard,
   fetchCandidates,
   fetchElection,
+  getMyWards,
   getVoterVerification
 } from "../../queries";
 import { useStore } from "../../store";
@@ -27,6 +29,12 @@ const ElectionPage = () => {
   const [error, setError] = createSignal("");
   const [status, setStatus] = createSignal("");
 
+  // Guardian voting state
+  const [selectedWard, setSelectedWard] = createSignal(null);
+  const [wardRankedChoices, setWardRankedChoices] = createSignal([]);
+  const [guardianError, setGuardianError] = createSignal("");
+  const [guardianStatus, setGuardianStatus] = createSignal("");
+
   // Fetch election details
   const electionQuery = createQuery({
     queryKey: () => ["election", electionId],
@@ -43,6 +51,21 @@ const ElectionPage = () => {
   const verificationQuery = createQuery({
     queryKey: () => ["election", electionId, "verification"],
     queryFn: () => getVoterVerification(electionId),
+    get enabled() {
+      if (!store?.data || !electionQuery.data) return false;
+
+      const now = new Date();
+      const startDate = new Date(electionQuery.data.start_date);
+      const endDate = new Date(electionQuery.data.end_date);
+
+      return now >= startDate && now <= endDate;
+    }
+  });
+
+  // Get guardian's wards
+  const wardsQuery = createQuery({
+    queryKey: () => ["election", electionId, "wards"],
+    queryFn: () => getMyWards(electionId),
     get enabled() {
       if (!store?.data || !electionQuery.data) return false;
 
@@ -76,6 +99,37 @@ const ElectionPage = () => {
     onError: error => {
       setError(error.message);
       setStatus("");
+    }
+  });
+
+  // Cast vote for ward mutation
+  const castWardVoteMutation = createMutation({
+    mutationFn: () => {
+      const ward = selectedWard();
+      if (!ward) throw new Error("No ward selected");
+
+      return castRankedVoteForWard(electionId, ward.id, {
+        verification_token: ward.verification_token,
+        choices: wardRankedChoices().map((candidateId, index) => ({
+          candidate_id: candidateId,
+          rank: index + 1
+        }))
+      });
+    },
+    onSuccess: () => {
+      setGuardianStatus("Vote cast successfully for ward!");
+      setGuardianError("");
+      setSelectedWard(null);
+      setWardRankedChoices([]);
+      // refetch wards to update voting status
+      queryClient.invalidateQueries({
+        queryKey: ["election", electionId, "wards"],
+        exact: true
+      });
+    },
+    onError: error => {
+      setGuardianError(error.message);
+      setGuardianStatus("");
     }
   });
 
@@ -127,6 +181,37 @@ const ElectionPage = () => {
       return;
     }
     castVoteMutation.mutate();
+  };
+
+  const handleWardRankChange = (candidateId, newRank) => {
+    const currentChoices = wardRankedChoices();
+    const currentIndex = currentChoices.indexOf(candidateId);
+
+    // Remove the candidate from their current position
+    if (currentIndex !== -1) {
+      currentChoices.splice(currentIndex, 1);
+    }
+
+    // Insert the candidate at their new position
+    currentChoices.splice(newRank - 1, 0, candidateId);
+
+    setWardRankedChoices([...currentChoices]);
+  };
+
+  const handleSubmitWardVote = e => {
+    e.preventDefault();
+    if (wardRankedChoices().length !== candidatesQuery.data.length) {
+      setGuardianError("Please rank all candidates");
+      return;
+    }
+    castWardVoteMutation.mutate();
+  };
+
+  const handleSelectWard = ward => {
+    setSelectedWard(ward);
+    setWardRankedChoices([]);
+    setGuardianError("");
+    setGuardianStatus("");
   };
 
   return (
@@ -223,7 +308,7 @@ const ElectionPage = () => {
                           <div class="space-y-4">
                             <For each={candidatesQuery.data}>
                               {candidate => (
-                                <div class="flex items-center space-x-4 rounded-lg border border-gray-200 p-4 dark:border-gray-700">
+                                <div class="flex flex-col items-center space-y-2 rounded-lg border border-gray-200 p-4 dark:border-gray-700 md:flex-row md:space-x-4">
                                   <div class="flex-1">
                                     <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
                                       {candidate.user.full_name}
@@ -279,6 +364,152 @@ const ElectionPage = () => {
                     </Show>
                   </Show>
                 </div>
+              </Show>
+
+              {/* Guardian Voting Section */}
+              <Show when={electionStatus.status === "Active" && store?.data}>
+                <Show when={wardsQuery.isLoading}>
+                  <div class="rounded-lg bg-white p-6 shadow dark:bg-gray-800">
+                    <p class="text-center">Checking for eligible wards...</p>
+                  </div>
+                </Show>
+
+                <Show when={wardsQuery.error}>
+                  <div class="rounded-lg bg-white p-6 shadow dark:bg-gray-800">
+                    <Error text={wardsQuery.error.message} />
+                  </div>
+                </Show>
+
+                <Show when={wardsQuery.isSuccess && wardsQuery.data.length > 0}>
+                  <div class="rounded-lg bg-white p-6 shadow dark:bg-gray-800">
+                    <h2 class="mb-6 text-2xl font-semibold text-gray-900 dark:text-white">
+                      Vote on Behalf of Your Wards
+                    </h2>
+
+                    <div class="mb-6">
+                      <h3 class="mb-4 text-lg font-medium text-gray-900 dark:text-white">
+                        Select a Ward to Vote For:
+                      </h3>
+                      <div class="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                        <For each={wardsQuery.data}>
+                          {ward => (
+                            <button
+                              onClick={() => handleSelectWard(ward)}
+                              disabled={ward.is_used}
+                              class={`rounded-lg border p-4 text-left transition-colors ${
+                                selectedWard()?.id === ward.id
+                                  ? "border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-900/50"
+                                  : "border-gray-200 hover:border-gray-300 dark:border-gray-700 dark:hover:border-gray-600"
+                              } ${
+                                ward.is_used
+                                  ? "cursor-not-allowed opacity-50"
+                                  : "cursor-pointer"
+                              }`}
+                            >
+                              <div class="font-medium text-gray-900 dark:text-white">
+                                {ward.name}
+                              </div>
+                              <div class="text-sm text-gray-500 dark:text-gray-400">
+                                {ward.email}
+                              </div>
+                              <div class="mt-2">
+                                {ward.is_used ? (
+                                  <span class="inline-flex items-center rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-800 dark:bg-green-900/50 dark:text-green-300">
+                                    ✓ Voted
+                                  </span>
+                                ) : (
+                                  <span class="inline-flex items-center rounded-full bg-yellow-100 px-2 py-1 text-xs font-medium text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300">
+                                    ⏳ Pending
+                                  </span>
+                                )}
+                              </div>
+                            </button>
+                          )}
+                        </For>
+                      </div>
+                    </div>
+
+                    <Show when={selectedWard() && !selectedWard().is_used}>
+                      <div class="rounded-lg border border-gray-200 p-2 dark:border-gray-700">
+                        <h3 class="mb-4 text-lg font-medium text-gray-900 dark:text-white">
+                          Cast Vote for {selectedWard().name}
+                        </h3>
+
+                        <form onSubmit={handleSubmitWardVote} class="space-y-6">
+                          <div class="space-y-4">
+                            <For each={candidatesQuery.data}>
+                              {candidate => (
+                                <div class="flex flex-col  items-center space-y-2 rounded-lg border border-gray-200 p-4 dark:border-gray-700 md:flex-row md:space-x-4">
+                                  <div class="flex-1">
+                                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                                      {candidate.user.full_name}
+                                    </h3>
+                                  </div>
+                                  <select
+                                    value={
+                                      wardRankedChoices().indexOf(
+                                        candidate.id
+                                      ) + 1 || ""
+                                    }
+                                    onChange={e =>
+                                      handleWardRankChange(
+                                        candidate.id,
+                                        parseInt(e.target.value)
+                                      )
+                                    }
+                                    class="rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400 dark:focus:ring-blue-400"
+                                  >
+                                    <option value="">Select rank</option>
+                                    {Array.from(
+                                      { length: candidatesQuery.data.length },
+                                      (_, i) => (
+                                        <option value={i + 1}>
+                                          Rank {i + 1}
+                                        </option>
+                                      )
+                                    )}
+                                  </select>
+                                </div>
+                              )}
+                            </For>
+                          </div>
+
+                          <Show when={guardianError()}>
+                            <Error text={guardianError()} />
+                          </Show>
+
+                          <Show when={guardianStatus()}>
+                            <Info text={guardianStatus()} />
+                          </Show>
+
+                          <div class="flex space-x-4">
+                            <button
+                              type="submit"
+                              disabled={castWardVoteMutation.isPending}
+                              class="flex-1 rounded-md bg-green-500 px-4 py-2 text-white hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50"
+                            >
+                              {castWardVoteMutation.isPending
+                                ? "Casting Vote..."
+                                : "Cast Vote for Ward"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedWard(null);
+                                setWardRankedChoices([]);
+                                setGuardianError("");
+                                setGuardianStatus("");
+                              }}
+                              class="rounded-md border border-gray-300 bg-white px-4 py-2 text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </form>
+                      </div>
+                    </Show>
+                  </div>
+                </Show>
               </Show>
 
               {/* Candidates Section */}

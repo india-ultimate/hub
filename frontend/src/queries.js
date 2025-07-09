@@ -1812,6 +1812,44 @@ export const getElectionResults = async electionId => {
   return response.json();
 };
 
+export const getMyWards = async electionId => {
+  const response = await fetch(`/api/election/${electionId}/my-wards/`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    credentials: "same-origin"
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data?.message || "Failed to fetch wards");
+  }
+  return data;
+};
+
+export const castRankedVoteForWard = async (electionId, wardId, data) => {
+  const response = await fetch(
+    `/api/election/${electionId}/vote-for-ward/?ward_id=${wardId}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCookie("csrftoken")
+      },
+      credentials: "same-origin",
+      body: JSON.stringify(data)
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to cast vote for ward");
+  }
+
+  return response.json();
+};
+
 // Chat API functions
 export const fetchChatHistory = async () => {
   const response = await fetch("/api/chat/history", {
