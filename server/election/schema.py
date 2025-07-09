@@ -68,6 +68,14 @@ class VoterVerificationSchema(Schema):
     is_used: bool
 
 
+class WardVoterVerificationSchema(Schema):
+    id: int
+    name: str
+    email: str
+    is_used: bool
+    verification_token: str
+
+
 class RankedVoteCreateSchema(Schema):
     verification_token: str
     choices: list[RankedVoteChoiceSchema]

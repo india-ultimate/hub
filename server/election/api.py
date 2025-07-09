@@ -7,7 +7,7 @@ from django.shortcuts import get_object_or_404
 from ninja import File, Router
 from ninja.files import UploadedFile
 
-from server.core.models import User
+from server.core.models import Guardianship, Player, User
 
 from .models import (
     Candidate,
@@ -29,6 +29,7 @@ from .schema import (
     RankedVoteCreateSchema,
     RankedVoteSchema,
     VoterVerificationSchema,
+    WardVoterVerificationSchema,
 )
 from .voting import instant_runoff_voting, single_transferable_vote
 
@@ -262,6 +263,19 @@ def get_voter_verification(
     if not EligibleVoter.objects.filter(election=election, user=request.user).exists():
         return 400, {"message": "You are not eligible to vote in this election"}
 
+    player = request.user.player_profile
+    if player.was_minor_on_date(election.end_date.date()):
+        try:
+            guardian = Guardianship.objects.get(player=player).user
+        except Guardianship.DoesNotExist:
+            return 400, {
+                "message": "Minors cannot vote directly. Only guardians can vote on their behalf. Please ask your guardian to vote on your behalf."
+            }
+
+        return 400, {
+            "message": f"Minors cannot vote directly. Only guardians can vote on their behalf. Please ask your guardian({guardian.username}) to vote on your behalf."
+        }
+
     # Check if user already has a verification token
     verification = VoterVerification.objects.filter(election=election, user=request.user).first()
 
@@ -288,8 +302,84 @@ def cast_ranked_vote(
         is_used=False,
     )
 
+    # Check if user was a minor on the last day of voting and prevent direct voting
+    player = request.user.player_profile
+    if player.was_minor_on_date(election.end_date.date()):
+        return 400, {
+            "message": "Minors cannot vote directly. Only guardians can vote on their behalf."
+        }
+
     # Generate a unique voter hash
     voter_identifier = f"{request.user.id}:{election_id}:{secrets.token_hex(16)}"
+    voter_hash = hashlib.sha256(voter_identifier.encode()).hexdigest()
+
+    try:
+        # Create the vote record with hashed identifier
+        vote = RankedVote.objects.create(election=election, voter_hash=voter_hash)
+
+        # Create the ranked choices
+        for choice in payload.choices:
+            RankedVoteChoice.objects.create(
+                vote=vote, candidate_id=choice.candidate_id, rank=choice.rank
+            )
+
+        # Mark verification token as used
+        verification.mark_as_used()
+
+        return vote
+    except Exception as e:
+        # If anything fails, ensure the verification token isn't marked as used
+        verification.refresh_from_db()
+        if not verification.is_used:
+            verification.delete()
+        return 400, {"message": str(e)}
+
+
+@router.post("/{election_id}/vote-for-ward/", response={200: RankedVoteSchema, 400: ErrorSchema})
+def cast_ranked_vote_for_ward(
+    request: AuthenticatedHttpRequest,
+    election_id: int,
+    payload: RankedVoteCreateSchema,
+    ward_id: int,
+) -> RankedVote | tuple[int, dict[str, str]]:
+    """Allow guardians to vote on behalf of their minor wards"""
+    election = get_object_or_404(Election, id=election_id)
+
+    # Get the ward (minor player)
+    try:
+        ward = Player.objects.get(id=ward_id)
+    except Player.DoesNotExist:
+        return 400, {"message": "Ward not found"}
+
+    # Check if the ward was a minor on the last day of voting
+    if not ward.was_minor_on_date(election.end_date.date()):
+        return 400, {"message": "Only minors can have guardians vote on their behalf"}
+
+    # Check if the current user is the guardian of this ward
+    try:
+        Guardianship.objects.get(player=ward, user=request.user)
+    except Guardianship.DoesNotExist:
+        return 400, {"message": "You are not the guardian of this ward"}
+
+    # Check if the ward is eligible to vote in this election
+    if not EligibleVoter.objects.filter(election=election, user=ward.user).exists():
+        return 400, {"message": "The ward is not eligible to vote in this election"}
+
+    # Verify the ward's verification token
+    verification = VoterVerification.objects.filter(
+        election=election,
+        user=ward.user,
+        verification_token=payload.verification_token,
+    ).first()
+    if not verification:
+        return 400, {"message": "Invalid verification token"}
+
+    # Check if the ward has already voted (verification token is already used)
+    if verification.is_used:
+        return 400, {"message": "The ward has already voted in this election"}
+
+    # Generate a unique voter hash for the ward
+    voter_identifier = f"{ward.user.id}:{election_id}:{secrets.token_hex(16)}"
     voter_hash = hashlib.sha256(voter_identifier.encode()).hexdigest()
 
     try:
@@ -396,3 +486,44 @@ def get_election_results(
         round_results.append({"candidates": current_candidates})
 
     return {"rounds": round_results}
+
+
+@router.get(
+    "/{election_id}/my-wards/", response={200: list[WardVoterVerificationSchema], 400: ErrorSchema}
+)
+def get_my_wards_for_election(
+    request: AuthenticatedHttpRequest, election_id: int
+) -> list[dict[str, Any]] | tuple[int, dict[str, str]]:
+    """Get the current user's wards who are eligible to vote in this election"""
+    election = get_object_or_404(Election, id=election_id)
+
+    # Get all wards of the current user who were minors on the last day of voting
+    wards = Player.objects.filter(guardianship__user=request.user).select_related("user")
+
+    # Filter wards who were minors on the last day of voting
+    eligible_wards = []
+    for ward in wards:
+        if (
+            ward.was_minor_on_date(election.end_date.date())
+            and EligibleVoter.objects.filter(election=election, user=ward.user).exists()
+        ):
+            # Check if the ward is eligible to vote in this election and if the ward has already voted
+            verification = VoterVerification.objects.filter(
+                election=election, user=ward.user
+            ).first()
+
+            if not verification:
+                token = VoterVerification.generate_token(election.id, ward.user.id)
+                verification = VoterVerification.objects.get(verification_token=token)
+
+            eligible_wards.append(
+                {
+                    "id": ward.id,
+                    "name": ward.user.get_full_name(),
+                    "email": ward.user.username,
+                    "is_used": verification.is_used,
+                    "verification_token": verification.verification_token,
+                }
+            )
+
+    return eligible_wards
