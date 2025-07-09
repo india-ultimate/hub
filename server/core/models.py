@@ -1,3 +1,4 @@
+import datetime
 from pathlib import Path
 from typing import Any
 
@@ -171,6 +172,12 @@ class Player(ExportModelOperationsMixin("player"), models.Model):  # type: ignor
         today = now().date()
         dob = self.date_of_birth
         age = (today.year - dob.year) + (today.month - dob.month) / 12 + (today.day - dob.day) / 365
+        return age < MAJOR_AGE
+
+    def was_minor_on_date(self, date: datetime.date) -> bool:
+        """Check if the player was a minor on a specific date"""
+        dob = self.date_of_birth
+        age = (date.year - dob.year) + (date.month - dob.month) / 12 + (date.day - dob.day) / 365
         return age < MAJOR_AGE
 
 
