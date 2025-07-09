@@ -529,3 +529,23 @@ def get_my_wards_for_election(
             )
 
     return eligible_wards
+
+
+@router.get("/{election_id}/vote-count/", response={200: dict[str, Any]})
+def get_election_vote_count(request: AuthenticatedHttpRequest, election_id: int) -> dict[str, Any]:
+    """Get the number of people who have voted in this election"""
+    election = get_object_or_404(Election, id=election_id)
+
+    # Count total eligible voters
+    total_eligible = EligibleVoter.objects.filter(election=election).count()
+
+    # Count voters who have used their verification token (i.e., have voted)
+    total_voted = VoterVerification.objects.filter(election=election, is_used=True).count()
+
+    return {
+        "total_eligible": total_eligible,
+        "total_voted": total_voted,
+        "turnout_percentage": round((total_voted / total_eligible * 100), 1)
+        if total_eligible > 0
+        else 0,
+    }

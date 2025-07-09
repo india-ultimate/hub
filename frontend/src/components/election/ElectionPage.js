@@ -11,6 +11,7 @@ import {
   castRankedVoteForWard,
   fetchCandidates,
   fetchElection,
+  getElectionVoteCount,
   getMyWards,
   getVoterVerification
 } from "../../queries";
@@ -74,6 +75,16 @@ const ElectionPage = () => {
       const endDate = new Date(electionQuery.data.end_date);
 
       return now >= startDate && now <= endDate;
+    }
+  });
+
+  // Get vote count
+  const voteCountQuery = createQuery({
+    queryKey: () => ["election", electionId, "vote-count"],
+    queryFn: () => getElectionVoteCount(electionId),
+    get enabled() {
+      if (!electionQuery.data) return false;
+      return true;
     }
   });
 
@@ -272,6 +283,38 @@ const ElectionPage = () => {
                   </div>
                 </div>
               </div>
+
+              {/* Vote Count Display */}
+              {voteCountQuery.data && (
+                <div class="mb-6 rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+                  <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+                    <div class="text-sm text-gray-600 dark:text-gray-300">
+                      <span class="font-medium text-gray-900 dark:text-white">
+                        {voteCountQuery.data.total_voted}
+                      </span>{" "}
+                      out of{" "}
+                      <span class="font-medium text-gray-900 dark:text-white">
+                        {voteCountQuery.data.total_eligible}
+                      </span>{" "}
+                      eligible voters have voted 🎉
+                    </div>
+                    {/* On md+ screens, show turnout inline; on mobile, hide here */}
+                    <div class="hidden text-sm text-gray-600 dark:text-gray-300 md:block">
+                      {voteCountQuery.data.turnout_percentage}% turnout
+                    </div>
+                  </div>
+                  <div class="mt-2 h-2 w-full rounded-full bg-gray-200 dark:bg-gray-700">
+                    <div
+                      class="h-2 rounded-full bg-blue-600 transition-all duration-300"
+                      style={`width: ${voteCountQuery.data.turnout_percentage}%`}
+                    />
+                  </div>
+                  {/* On mobile, show turnout below the bar */}
+                  <div class="mt-2 block text-center text-sm text-gray-600 dark:text-gray-300 md:hidden">
+                    {voteCountQuery.data.turnout_percentage}% turnout
+                  </div>
+                </div>
+              )}
 
               {/* Voting Section */}
               <Show when={electionStatus.status === "Active"}>
