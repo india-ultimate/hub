@@ -134,6 +134,7 @@ def list_candidates(request: AuthenticatedHttpRequest, election_id: int) -> list
             "election_id": candidate.election_id,
             "user_id": candidate.user_id,
             "bio": candidate.bio,
+            "manifesto_link": candidate.manifesto_link,
             "created_at": candidate.created_at,
             "user": {
                 "id": candidate.user.id,
@@ -160,6 +161,7 @@ def create_candidate(
         "election_id": candidate.election_id,
         "user_id": candidate.user_id,
         "bio": candidate.bio,
+        "manifesto_link": candidate.manifesto_link,
         "created_at": candidate.created_at,
         "user": {
             "id": candidate.user.id,
