@@ -27,7 +27,7 @@ swap_size_mb = 512
 
 [[services]]
   protocol = "tcp"
-  internal_port = 80
+  internal_port = 8000
   processes = ["app"]
 
   [[services.ports]]
@@ -38,6 +38,12 @@ swap_size_mb = 512
   [[services.ports]]
     port = 443
     handlers = ["tls", "http"]
+
+  # Prometheus metrics endpoint
+  [[services.ports]]
+    port = 9090
+    handlers = ["http"]
+
   [services.concurrency]
     type = "connections"
     hard_limit = 100

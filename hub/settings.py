@@ -58,6 +58,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "server.middleware.APIMetricsMiddleware",
     "django_prometheus.middleware.PrometheusAfterMiddleware",
 ]
 
@@ -203,6 +204,8 @@ PASSKEY_SECRET_API_KEY = os.environ.get("PASSKEY_SECRET_API_KEY", "")
 
 # Prometheus Settings
 PROMETHEUS_METRIC_NAMESPACE = "hub"
+PROMETHEUS_EXPORT_MIGRATIONS = True
+PROMETHEUS_EXPORT_ADMIN = True
 
 # OCR API Keys
 OCR_API_KEY = os.environ.get("OCR_API_KEY", "")
