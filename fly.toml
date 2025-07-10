@@ -39,11 +39,6 @@ swap_size_mb = 512
     port = 443
     handlers = ["tls", "http"]
 
-  # Prometheus metrics endpoint
-  [[services.ports]]
-    port = 9090
-    handlers = ["http"]
-
   [services.concurrency]
     type = "connections"
     hard_limit = 100
@@ -54,6 +49,10 @@ swap_size_mb = 512
     timeout = "2s"
     grace_period = "1s"
     restart_limit = 0
+
+[metrics]
+  port = 8000
+  path = "/metrics/"
 
 [mounts]
   source="upai_hub_data"

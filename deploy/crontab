@@ -1,2 +1,4 @@
 10 * * * * BASH_ENV=$HOME/app/cron/env bash $HOME/app/cron/hourly.sh >> $HOME/cron.log 2>&1
 20 0 * * * BASH_ENV=$HOME/app/cron/env bash $HOME/app/cron/daily.sh >> $HOME/cron.log 2>&1
+# Update metrics every 5 minutes for Fly.io monitoring
+*/5 * * * * cd $HOME/app && python manage.py update_metrics >> $HOME/cron.log 2>&1
