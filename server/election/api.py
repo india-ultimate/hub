@@ -47,8 +47,8 @@ def check_staff(request: AuthenticatedHttpRequest) -> tuple[int, dict[str, str]]
     return None
 
 
-@router.get("/", response=list[ElectionSchema])
-def list_elections(request: AuthenticatedHttpRequest) -> list[dict[str, Any]]:
+@router.get("/", response=list[ElectionSchema], auth=None)
+def list_elections(request: HttpRequest) -> list[dict[str, Any]]:
     """List all elections"""
     elections = Election.objects.filter(is_active=True)
     return [
@@ -78,8 +78,8 @@ def create_election(
     return Election.objects.create(**data.dict())
 
 
-@router.get("/{election_id}/", response=ElectionSchema)
-def get_election(request: AuthenticatedHttpRequest, election_id: int) -> dict[str, Any]:
+@router.get("/{election_id}/", response=ElectionSchema, auth=None)
+def get_election(request: HttpRequest, election_id: int) -> dict[str, Any]:
     election = get_object_or_404(Election, id=election_id)
 
     # Get winners if election is over
@@ -126,8 +126,8 @@ def get_election(request: AuthenticatedHttpRequest, election_id: int) -> dict[st
     return election_dict
 
 
-@router.get("/{election_id}/candidates/", response=list[CandidateSchema])
-def list_candidates(request: AuthenticatedHttpRequest, election_id: int) -> list[dict[str, Any]]:
+@router.get("/{election_id}/candidates/", response=list[CandidateSchema], auth=None)
+def list_candidates(request: HttpRequest, election_id: int) -> list[dict[str, Any]]:
     candidates = Candidate.objects.filter(election_id=election_id).select_related("user")
     return [
         {
@@ -531,8 +531,8 @@ def get_my_wards_for_election(
     return eligible_wards
 
 
-@router.get("/{election_id}/vote-count/", response={200: dict[str, Any]})
-def get_election_vote_count(request: AuthenticatedHttpRequest, election_id: int) -> dict[str, Any]:
+@router.get("/{election_id}/vote-count/", response={200: dict[str, Any]}, auth=None)
+def get_election_vote_count(request: HttpRequest, election_id: int) -> dict[str, Any]:
     """Get the number of people who have voted in this election"""
     election = get_object_or_404(Election, id=election_id)
 
