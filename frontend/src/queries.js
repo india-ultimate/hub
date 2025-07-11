@@ -1866,6 +1866,23 @@ export const getElectionVoteCount = async electionId => {
   return data;
 };
 
+export const sendElectionNotificationEmails = async electionId => {
+  const response = await fetch(`/api/election/${electionId}/send-notification-emails/`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin"
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data?.message || "Failed to send notification emails");
+  }
+  return data;
+};
+
 // Chat API functions
 export const fetchChatHistory = async () => {
   const response = await fetch("/api/chat/history", {

@@ -4,6 +4,9 @@ from typing import Any
 
 from django.http import HttpRequest
 from django.shortcuts import get_object_or_404
+from django.core.mail import send_mail
+from django.template.loader import render_to_string
+from django.conf import settings
 from ninja import File, Router
 from ninja.files import UploadedFile
 
@@ -548,4 +551,94 @@ def get_election_vote_count(request: AuthenticatedHttpRequest, election_id: int)
         "turnout_percentage": round((total_voted / total_eligible * 100), 1)
         if total_eligible > 0
         else 0,
+    }
+
+
+@router.post(
+    "/{election_id}/send-notification-emails/", response={200: dict[str, Any], 403: ErrorSchema}
+)
+def send_notification_emails(
+    request: AuthenticatedHttpRequest, election_id: int
+) -> dict[str, Any] | tuple[int, dict[str, str]]:
+    """Send notification emails to all eligible voters for an election. Only staff can access this endpoint."""
+    if error := check_staff(request):
+        return error
+    
+    election = get_object_or_404(Election, id=election_id)
+    
+    # Get all eligible voters for this election
+    eligible_voters = EligibleVoter.objects.filter(election=election).select_related("user")
+    
+    if not eligible_voters.exists():
+        return 400, {"message": "No eligible voters found for this election"}
+    
+    # Prepare email context
+    election_url = f"{settings.EMAIL_INVITATION_BASE_URL}/election/{election_id}"
+    
+    # Send emails to each eligible voter
+    emails_sent = 0
+    failed_emails = []
+    
+    for eligible_voter in eligible_voters:
+        try:
+            # Prepare email context
+            context = {
+                "voter_name": eligible_voter.user.get_full_name() or eligible_voter.user.username,
+                "election_title": election.title,
+                "election_description": election.description,
+                "voting_method": election.get_voting_method_display(),
+                "num_winners": election.num_winners,
+                "start_date": election.start_date.strftime("%B %d, %Y at %I:%M %p"),
+                "end_date": election.end_date.strftime("%B %d, %Y at %I:%M %p"),
+                "election_url": election_url,
+            }
+            
+            # Render email template
+            html_message = render_to_string("election_notification_email.html", context)
+            plain_message = f"""
+Voting is now open for {election.title}!
+
+Hello {context['voter_name']},
+
+Voting is now in progress for the {election.title} election.
+
+{election.description}
+
+Important Details:
+- Voting Method: {context['voting_method']}
+- Number of Winners: {election.num_winners}
+- Voting Period: {context['start_date']} to {context['end_date']}
+
+As an eligible voter, you can now cast your vote. Please visit the following link to access the election page:
+
+{election_url}
+
+If you have any questions or need assistance, please contact the election administrators.
+
+Thanks,
+Your India Ultimate Hub Team
+            """.strip()
+            
+            # Send email
+            send_mail(
+                subject=f"Voting is now open - {election.title}",
+                message=plain_message,
+                from_email=settings.EMAIL_HOST_USER,
+                recipient_list=[eligible_voter.user.username],  # username is email
+                html_message=html_message,
+            )
+            
+            emails_sent += 1
+            
+        except Exception as e:
+            failed_emails.append({
+                "email": eligible_voter.user.username,
+                "error": str(e)
+            })
+    
+    return {
+        "message": f"Email notification sent to {emails_sent} eligible voters",
+        "emails_sent": emails_sent,
+        "total_eligible": eligible_voters.count(),
+        "failed_emails": failed_emails
     }

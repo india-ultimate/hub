@@ -1,0 +1,57 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Voting is now open - {{ election_title }}</title>
+  <!--[if mso]><style type="text/css">body, table, td, a { font-family: Arial, Helvetica, sans-serif !important; }</style><![endif]-->
+</head>
+
+<body style="font-family: Helvetica, Arial, sans-serif; margin: 0px; padding: 0px; background-color: #ffffff;">
+  <table role="presentation"
+    style="width: 100%; border-collapse: collapse; border: 0px; border-spacing: 0px; font-family: Arial, Helvetica, sans-serif; background-color: rgb(239, 239, 239);">
+    <tbody>
+      <tr>
+        <td align="center" style="padding: 1rem 2rem; vertical-align: top; width: 100%;">
+          <table role="presentation" style="max-width: 600px; border-collapse: collapse; border: 0px; border-spacing: 0px; text-align: left;">
+            <tbody>
+              <tr>
+                <td style="padding: 40px 0px 0px;">
+                  <div style="padding: 20px; background-color: rgb(255, 255, 255);">
+                      <div style="text-align: center;">
+                            <div style="padding-bottom: 20px;"><img src="https://hub.indiaultimate.org/static/assets/logo-vertical.png" alt="Hub" style="width: 56px;"></div>
+                      </div>
+                    <div style="color: rgb(0, 0, 0); text-align: left;">
+                      <h1 style="margin: 1rem 0">Voting is now open!</h1>
+                      <p style="padding-bottom: 16px">Hello {{ voter_name }},</p>
+                      <p style="padding-bottom: 16px">Voting is now in progress for the <strong>{{ election_title }}</strong> election.</p>
+                      <p style="padding-bottom: 16px">{{ election_description }}</p>
+                      <p style="padding-bottom: 16px"><strong>Important Details:</strong></p>
+                      <ul style="padding-bottom: 16px; padding-left: 20px;">
+                        <li>Voting Method: {{ voting_method }}</li>
+                        <li>Number of Winners: {{ num_winners }}</li>
+                        <li>Voting Period: {{ start_date }} to {{ end_date }}</li>
+                      </ul>
+                      <p style="padding-bottom: 16px">As an eligible voter, you can now cast your vote. Please click the button below to access the election page.</p>
+                      <div style="text-align: center; padding: 20px 0;">
+                        <a href="{{ election_url }}" style="background-color: #3B82F6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">Vote Now</a>
+                      </div>
+                      <p style="padding-bottom: 16px">If you have any questions or need assistance, please contact the election administrators.</p>
+                      <p style="padding-bottom: 16px">Thanks,<br>Your India Ultimate Hub Team</p>
+                    </div>
+                  </div>
+                  <div style="padding-top: 20px; color: rgb(153, 153, 153); text-align: center;">
+                    <p style="padding-bottom: 16px">Made with ♥ in India</p>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</body>
+
+</html>
