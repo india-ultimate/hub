@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Election Email Preview - Mobile Responsive</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 10px;
+            background-color: #f5f5f5;
+        }
+        .preview-container {
+            max-width: 100%;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .preview-header {
+            background: #3B82F6;
+            color: white;
+            padding: 15px;
+            text-align: center;
+        }
+        .preview-header h2 {
+            margin: 0 0 5px 0;
+            font-size: 18px;
+        }
+        .preview-header p {
+            margin: 0;
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        .email-content {
+            padding: 0;
+        }
+        .device-preview {
+            margin: 20px 0;
+            text-align: center;
+        }
+        .device-label {
+            background: #333;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            margin-bottom: 10px;
+            display: inline-block;
+        }
+        .mobile-frame {
+            max-width: 375px;
+            margin: 0 auto;
+            border: 2px solid #ddd;
+            border-radius: 20px;
+            overflow: hidden;
+            background: #f0f0f0;
+        }
+        .mobile-frame .email-content {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        .desktop-frame {
+            max-width: 600px;
+            margin: 0 auto;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #f0f0f0;
+        }
+        @media (max-width: 768px) {
+            .preview-header {
+                padding: 10px;
+            }
+            .preview-header h2 {
+                font-size: 16px;
+            }
+            .preview-header p {
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="preview-container">
+        <div class="preview-header">
+            <h2>Email Template Preview</h2>
+            <p>Election Notification Email - Mobile & Desktop Views</p>
+        </div>
+        
+        <div class="device-preview">
+            <div class="device-label">📱 Mobile View (375px width)</div>
+            <div class="mobile-frame">
+                <div class="email-content">
+                    <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+                    <html xmlns="http://www.w3.org/1999/xhtml">
+
+                    <head>
+                      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+                      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                      <title>Voting is now open - Board of Directors Election 2024</title>
+                      <!--[if mso]><style type="text/css">body, table, td, a { font-family: Arial, Helvetica, sans-serif !important; }</style><![endif]-->
+                    </head>
+
+                    <body style="font-family: Helvetica, Arial, sans-serif; margin: 0px; padding: 0px; background-color: #ffffff;">
+                      <table role="presentation"
+                        style="width: 100%; border-collapse: collapse; border: 0px; border-spacing: 0px; font-family: Arial, Helvetica, sans-serif; background-color: rgb(239, 239, 239);">
+                        <tbody>
+                          <tr>
+                            <td align="center" style="padding: 0.5rem 1rem; vertical-align: top; width: 100%;">
+                              <table role="presentation" style="max-width: 100%; border-collapse: collapse; border: 0px; border-spacing: 0px; text-align: left;">
+                                <tbody>
+                                  <tr>
+                                    <td style="padding: 20px 0px 0px;">
+                                      <div style="padding: 15px; background-color: rgb(255, 255, 255);">
+                                          <div style="text-align: center;">
+                                                <div style="padding-bottom: 15px;"><img src="https://hub.indiaultimate.org/static/assets/logo-vertical.png" alt="Hub" style="width: 48px;"></div>
+                                          </div>
+                                        <div style="color: rgb(0, 0, 0); text-align: left;">
+                                          <h1 style="margin: 0.5rem 0; font-size: 20px;">Voting is now open!</h1>
+                                          <p style="padding-bottom: 12px; margin: 0;">Hello John Doe,</p>
+                                          <p style="padding-bottom: 12px; margin: 0;">Voting is now in progress for the <strong>Board of Directors Election 2024</strong> election.</p>
+                                          <p style="padding-bottom: 12px; margin: 0;">This election will determine the new Board of Directors for India Ultimate. All eligible members are encouraged to participate in this important democratic process.</p>
+                                          <p style="padding-bottom: 12px; margin: 0;"><strong>Important Details:</strong></p>
+                                          <ul style="padding-bottom: 12px; padding-left: 15px; margin: 0;">
+                                            <li>Voting Method: Instant Runoff Voting</li>
+                                            <li>Number of Winners: 5</li>
+                                            <li>Voting Period: Dec 15 - Dec 22, 2024</li>
+                                          </ul>
+                                          <p style="padding-bottom: 12px; margin: 0;">As an eligible voter, you can now cast your vote. Please click the button below to access the election page.</p>
+                                          <div style="text-align: center; padding: 15px 0;">
+                                            <a href="http://localhost:3000/election/1" style="background-color: #3B82F6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold; font-size: 14px;">Vote Now</a>
+                                          </div>
+                                          <p style="padding-bottom: 12px; margin: 0;">If you have any questions or need assistance, please contact the election administrators.</p>
+                                          <p style="padding-bottom: 12px; margin: 0;">Thanks,<br>Your India Ultimate Hub Team</p>
+                                        </div>
+                                      </div>
+                                      <div style="padding-top: 15px; color: rgb(153, 153, 153); text-align: center;">
+                                        <p style="padding-bottom: 12px; margin: 0; font-size: 12px;">Made with ♥ in India</p>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                </tbody>
+                              </table>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </body>
+
+                    </html>
+                </div>
+            </div>
+        </div>
+
+        <div class="device-preview">
+            <div class="device-label">🖥️ Desktop View (600px width)</div>
+            <div class="desktop-frame">
+                <div class="email-content">
+                    <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+                    <html xmlns="http://www.w3.org/1999/xhtml">
+
+                    <head>
+                      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+                      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                      <title>Voting is now open - Board of Directors Election 2024</title>
+                      <!--[if mso]><style type="text/css">body, table, td, a { font-family: Arial, Helvetica, sans-serif !important; }</style><![endif]-->
+                    </head>
+
+                    <body style="font-family: Helvetica, Arial, sans-serif; margin: 0px; padding: 0px; background-color: #ffffff;">
+                      <table role="presentation"
+                        style="width: 100%; border-collapse: collapse; border: 0px; border-spacing: 0px; font-family: Arial, Helvetica, sans-serif; background-color: rgb(239, 239, 239);">
+                        <tbody>
+                          <tr>
+                            <td align="center" style="padding: 1rem 2rem; vertical-align: top; width: 100%;">
+                              <table role="presentation" style="max-width: 600px; border-collapse: collapse; border: 0px; border-spacing: 0px; text-align: left;">
+                                <tbody>
+                                  <tr>
+                                    <td style="padding: 40px 0px 0px;">
+                                      <div style="padding: 20px; background-color: rgb(255, 255, 255);">
+                                          <div style="text-align: center;">
+                                                <div style="padding-bottom: 20px;"><img src="https://hub.indiaultimate.org/static/assets/logo-vertical.png" alt="Hub" style="width: 56px;"></div>
+                                          </div>
+                                        <div style="color: rgb(0, 0, 0); text-align: left;">
+                                          <h1 style="margin: 1rem 0">Voting is now open!</h1>
+                                          <p style="padding-bottom: 16px">Hello John Doe,</p>
+                                          <p style="padding-bottom: 16px">Voting is now in progress for the <strong>Board of Directors Election 2024</strong> election.</p>
+                                          <p style="padding-bottom: 16px">This election will determine the new Board of Directors for India Ultimate. All eligible members are encouraged to participate in this important democratic process to shape the future of our organization.</p>
+                                          <p style="padding-bottom: 16px"><strong>Important Details:</strong></p>
+                                          <ul style="padding-bottom: 16px; padding-left: 20px;">
+                                            <li>Voting Method: Instant Runoff Voting</li>
+                                            <li>Number of Winners: 5</li>
+                                            <li>Voting Period: December 15, 2024 at 9:00 AM to December 22, 2024 at 5:00 PM</li>
+                                          </ul>
+                                          <p style="padding-bottom: 16px">As an eligible voter, you can now cast your vote. Please click the button below to access the election page.</p>
+                                          <div style="text-align: center; padding: 20px 0;">
+                                            <a href="http://localhost:3000/election/1" style="background-color: #3B82F6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">Vote Now</a>
+                                          </div>
+                                          <p style="padding-bottom: 16px">If you have any questions or need assistance, please contact the election administrators.</p>
+                                          <p style="padding-bottom: 16px">Thanks,<br>Your India Ultimate Hub Team</p>
+                                        </div>
+                                      </div>
+                                      <div style="padding-top: 20px; color: rgb(153, 153, 153); text-align: center;">
+                                        <p style="padding-bottom: 16px">Made with ♥ in India</p>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                </tbody>
+                              </table>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </body>
+
+                    </html>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
