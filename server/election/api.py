@@ -213,12 +213,14 @@ def import_eligible_voters(
 
 
 @router.get(
-    "/{election_id}/eligible-voters/", response={200: list[EligibleVoterSchema], 403: ErrorSchema}, auth=None
+    "/{election_id}/eligible-voters/", response={200: list[EligibleVoterSchema], 403: ErrorSchema}
 )
 def list_eligible_voters(
-    request: HttpRequest, election_id: int
+    request: AuthenticatedHttpRequest, election_id: int
 ) -> list[dict[str, Any]] | tuple[int, dict[str, str]]:
     """List all eligible voters for an election"""
+    if error := check_staff(request):
+        return error
     election = get_object_or_404(Election, id=election_id)
     eligible_voters = election.eligible_voters.all().select_related("user")
     return [
@@ -442,11 +444,13 @@ def generate_election_results(
     return {"rounds": round_results}
 
 
-@router.get("/{election_id}/results/", response={200: ElectionResultSchema, 403: ErrorSchema}, auth=None)
+@router.get("/{election_id}/results/", response={200: ElectionResultSchema, 403: ErrorSchema})
 def get_election_results(
-    request: HttpRequest, election_id: int
+    request: AuthenticatedHttpRequest, election_id: int
 ) -> dict[str, list[dict[str, Any]]] | tuple[int, dict[str, str]]:
-    """Get election results from database."""
+    """Get election results from database. Only staff can access this endpoint."""
+    if error := check_staff(request):
+        return error
     election = get_object_or_404(Election, id=election_id)
 
     # Get all rounds for this election
