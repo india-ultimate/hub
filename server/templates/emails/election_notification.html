@@ -178,13 +178,13 @@
         <div class="detail-row">
           <span class="detail-label">Start Date:</span>
           <span class="detail-value"
-            >{{ election.start_date|date:"F d, Y \a\t g:i A" }}</span
+            >{{ election.start_date|date:"F d, Y" }}</span
           >
         </div>
         <div class="detail-row">
           <span class="detail-label">End Date:</span>
           <span class="detail-value"
-            >{{ election.end_date|date:"F d, Y \a\t g:i A" }}</span
+            >{{ election.end_date|date:"F d, Y" }}</span
           >
         </div>
       </div>
@@ -214,7 +214,9 @@
       {% endif %}
 
       <div style="text-align: center">
-        <a href="{{ election_url }}" class="btn" target="_blank"> 🗳️ Cast Your Vote Now </a>
+        <a href="{{ election_url }}" class="btn" target="_blank">
+          🗳️ Cast Your Vote Now
+        </a>
       </div>
 
       <div class="footer">
