@@ -5,7 +5,8 @@ import {
   fetchElection,
   fetchElections,
   generateElectionResults,
-  getElectionResults
+  getElectionResults,
+  sendElectionNotification
 } from "../../queries";
 import { useStore } from "../../store";
 import Error from "../alerts/Error";
@@ -47,9 +48,33 @@ const ElectionManager = () => {
     }
   });
 
+  // Send notification mutation
+  const sendNotificationMutation = createMutation({
+    mutationFn: electionId => sendElectionNotification(electionId),
+    onSuccess: () => {
+      // Show success message
+      alert("Email notifications sent successfully!");
+    },
+    onError: error => {
+      alert(`Failed to send notifications: ${error.message}`);
+    }
+  });
+
   const handleGenerateResults = () => {
     if (selectedElectionId()) {
       generateResultsMutation.mutate(selectedElectionId());
+    }
+  };
+
+  const handleSendNotification = () => {
+    if (selectedElectionId()) {
+      if (
+        confirm(
+          "Are you sure you want to send email notifications to all eligible voters?"
+        )
+      ) {
+        sendNotificationMutation.mutate(selectedElectionId());
+      }
     }
   };
 
@@ -171,15 +196,26 @@ const ElectionManager = () => {
                 <div class="mt-8">
                   <div class="flex items-center justify-between">
                     <h4 class="text-lg font-semibold">Election Results</h4>
-                    <button
-                      onClick={handleGenerateResults}
-                      disabled={generateResultsMutation.isPending}
-                      class="rounded-md bg-blue-500 px-4 py-2 text-white hover:bg-blue-600 disabled:bg-blue-300"
-                    >
-                      {generateResultsMutation.isPending
-                        ? "Generating..."
-                        : "Generate Results"}
-                    </button>
+                    <div class="flex space-x-2">
+                      <button
+                        onClick={handleSendNotification}
+                        disabled={sendNotificationMutation.isPending}
+                        class="rounded-md bg-green-500 px-4 py-2 text-white hover:bg-green-600 disabled:bg-green-300"
+                      >
+                        {sendNotificationMutation.isPending
+                          ? "Sending..."
+                          : "📧 Send Notifications"}
+                      </button>
+                      <button
+                        onClick={handleGenerateResults}
+                        disabled={generateResultsMutation.isPending}
+                        class="rounded-md bg-blue-500 px-4 py-2 text-white hover:bg-blue-600 disabled:bg-blue-300"
+                      >
+                        {generateResultsMutation.isPending
+                          ? "Generating..."
+                          : "Generate Results"}
+                      </button>
+                    </div>
                   </div>
 
                   <Show when={generateResultsMutation.error}>

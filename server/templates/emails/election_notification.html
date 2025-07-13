@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Election Notification</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      .header {
+        background-color: #3b82f6;
+        color: white;
+        padding: 20px;
+        text-align: center;
+        border-radius: 8px 8px 0 0;
+      }
+      .content {
+        background-color: #f9fafb;
+        padding: 30px;
+        border-radius: 0 0 8px 8px;
+      }
+      .election-title {
+        font-size: 24px;
+        font-weight: bold;
+        margin-bottom: 15px;
+        color: #1f2937;
+      }
+      .election-description {
+        margin-bottom: 25px;
+        color: #4b5563;
+      }
+      .election-details {
+        background-color: white;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 25px;
+        border-left: 4px solid #3b82f6;
+      }
+      .detail-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 10px;
+        padding: 8px 0;
+        border-bottom: 1px solid #e5e7eb;
+      }
+      .detail-row:last-child {
+        border-bottom: none;
+      }
+      .detail-label {
+        font-weight: bold;
+        color: #374151;
+      }
+      .detail-value {
+        color: #6b7280;
+      }
+      .candidates-section {
+        background-color: white;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 25px;
+        border-left: 4px solid #3b82f6;
+      }
+      .candidates-title {
+        font-size: 18px;
+        font-weight: bold;
+        margin-bottom: 15px;
+        color: #1f2937;
+      }
+      .candidates-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 20px;
+        max-width: 100%;
+      }
+      .candidate-card {
+        text-align: center;
+        padding: 20px 15px;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        background-color: #f9fafb;
+        min-height: 120px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+      }
+      .candidate-photo {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        margin: 0 auto 12px;
+        object-fit: cover;
+        background-color: #3b82f6;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        font-weight: bold;
+        flex-shrink: 0;
+      }
+      .candidate-name {
+        font-weight: bold;
+        color: #1f2937;
+        margin: 0;
+        font-size: 14px;
+        line-height: 1.3;
+        word-wrap: break-word;
+        max-width: 100%;
+      }
+      .btn {
+        display: inline-block;
+        background-color: #3b82f6;
+        color: white;
+        padding: 12px 30px;
+        text-decoration: none;
+        border-radius: 6px;
+        font-weight: bold;
+        text-align: center;
+        margin: 20px 0;
+      }
+      .btn:hover {
+        background-color: #2563eb;
+      }
+      .footer {
+        margin-top: 30px;
+        padding-top: 20px;
+        border-top: 1px solid #e5e7eb;
+        font-size: 14px;
+        color: #6b7280;
+      }
+      .logo {
+        width: 60px;
+        height: 60px;
+        margin-bottom: 15px;
+      }
+      @media (max-width: 480px) {
+        .candidates-grid {
+          grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+          gap: 15px;
+        }
+        .candidate-card {
+          padding: 15px 10px;
+          min-height: 100px;
+        }
+        .candidate-photo {
+          width: 40px;
+          height: 40px;
+          font-size: 16px;
+          margin-bottom: 8px;
+        }
+        .candidate-name {
+          font-size: 12px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <img
+        src="{{ site_url }}/static/assets/logo-vertical.png"
+        alt="India Ultimate Hub"
+        class="logo"
+      />
+      <h1>Vote for {{ election.title }}!</h1>
+    </div>
+
+    <div class="content">
+      <div class="election-description">{{ election.description }}</div>
+
+      <div class="election-details">
+        <div class="detail-row">
+          <span class="detail-label">Start Date:</span>
+          <span class="detail-value"
+            >{{ election.start_date|date:"F d, Y \a\t g:i A" }}</span
+          >
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">End Date:</span>
+          <span class="detail-value"
+            >{{ election.end_date|date:"F d, Y \a\t g:i A" }}</span
+          >
+        </div>
+      </div>
+
+      {% if candidates %}
+      <div class="candidates-section">
+        <div class="candidates-title">Candidates</div>
+        <div class="candidates-grid">
+          {% for candidate in candidates %}
+          <div class="candidate-card">
+            {% if candidate.profile_pic_url %}
+            <img
+              src="{{ candidate.profile_pic_url }}"
+              alt="{{ candidate.user.full_name }}"
+              class="candidate-photo"
+            />
+            {% else %}
+            <div class="candidate-photo">
+              {{ candidate.user.full_name|first|upper }}
+            </div>
+            {% endif %}
+            <div class="candidate-name">{{ candidate.user.full_name }}</div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <div style="text-align: center">
+        <a href="{{ election_url }}" class="btn" target="_blank"> 🗳️ Cast Your Vote Now </a>
+      </div>
+
+      <div class="footer">
+        <p>
+          <strong>Important:</strong> Please make sure to cast your vote before
+          the election ends.
+        </p>
+        <p>
+          This is an automated message from the India Ultimate Hub. Please do
+          not reply directly to this email.
+        </p>
+        <p>
+          If you have any questions, please contact the election administrators.
+        </p>
+      </div>
+    </div>
+  </body>
+</html>
