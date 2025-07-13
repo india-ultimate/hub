@@ -2,8 +2,11 @@ import hashlib
 import secrets
 from typing import Any
 
+from django.conf import settings
+from django.core.mail import send_mail
 from django.http import HttpRequest
 from django.shortcuts import get_object_or_404
+from django.template.loader import render_to_string
 from ninja import File, Router
 from ninja.files import UploadedFile
 
@@ -47,8 +50,8 @@ def check_staff(request: AuthenticatedHttpRequest) -> tuple[int, dict[str, str]]
     return None
 
 
-@router.get("/", response=list[ElectionSchema])
-def list_elections(request: AuthenticatedHttpRequest) -> list[dict[str, Any]]:
+@router.get("/", response=list[ElectionSchema], auth=None)
+def list_elections(request: HttpRequest) -> list[dict[str, Any]]:
     """List all elections"""
     elections = Election.objects.filter(is_active=True)
     return [
@@ -78,8 +81,8 @@ def create_election(
     return Election.objects.create(**data.dict())
 
 
-@router.get("/{election_id}/", response=ElectionSchema)
-def get_election(request: AuthenticatedHttpRequest, election_id: int) -> dict[str, Any]:
+@router.get("/{election_id}/", response=ElectionSchema, auth=None)
+def get_election(request: HttpRequest, election_id: int) -> dict[str, Any]:
     election = get_object_or_404(Election, id=election_id)
 
     # Get winners if election is over
@@ -126,8 +129,8 @@ def get_election(request: AuthenticatedHttpRequest, election_id: int) -> dict[st
     return election_dict
 
 
-@router.get("/{election_id}/candidates/", response=list[CandidateSchema])
-def list_candidates(request: AuthenticatedHttpRequest, election_id: int) -> list[dict[str, Any]]:
+@router.get("/{election_id}/candidates/", response=list[CandidateSchema], auth=None)
+def list_candidates(request: HttpRequest, election_id: int) -> list[dict[str, Any]]:
     candidates = Candidate.objects.filter(election_id=election_id).select_related("user")
     return [
         {
@@ -531,8 +534,83 @@ def get_my_wards_for_election(
     return eligible_wards
 
 
-@router.get("/{election_id}/vote-count/", response={200: dict[str, Any]})
-def get_election_vote_count(request: AuthenticatedHttpRequest, election_id: int) -> dict[str, Any]:
+@router.post("/{election_id}/send-notification/", response={200: dict[str, str], 403: ErrorSchema})
+def send_election_notification(
+    request: AuthenticatedHttpRequest, election_id: int
+) -> dict[str, str] | tuple[int, dict[str, str]]:
+    """Send email notification to all eligible voters for an election. Only staff can access this endpoint."""
+    if error := check_staff(request):
+        return error
+
+    election = get_object_or_404(Election, id=election_id)
+
+    # Get all eligible voters
+    eligible_voters = EligibleVoter.objects.filter(election=election).select_related("user")
+
+    if not eligible_voters.exists():
+        return 400, {"message": "No eligible voters found for this election"}
+
+    # Prepare email content
+    subject = f"Vote for {election.title}!"
+
+    # Create the election URL
+    election_url = f"{settings.EMAIL_INVITATION_BASE_URL}/election/{election.id}"
+
+    # Get candidates for the election
+    candidates = Candidate.objects.filter(election=election).select_related("user")
+
+    # HTML version
+    html_message = render_to_string(
+        "emails/election_notification.html",
+        {
+            "election": election,
+            "election_url": election_url,
+            "site_url": settings.EMAIL_INVITATION_BASE_URL,
+            "candidates": candidates,
+        },
+    )
+
+    # Plain text version
+    plain_message = f"""
+Election Notification: {election.title}
+
+{election.description}
+
+Election Details:
+- Start Date: {election.start_date.strftime('%B %d, %Y at %I:%M %p')}
+- End Date: {election.end_date.strftime('%B %d, %Y at %I:%M %p')}
+- Voting Method: {election.get_voting_method_display()}
+
+Please cast your vote by visiting: {election_url}
+
+This is an automated message from the India Ultimate Hub.
+Please do not reply directly to this email.
+"""
+
+    # Send emails to all eligible voters
+    emails_sent = 0
+    for eligible_voter in eligible_voters:
+        try:
+            send_mail(
+                subject=subject,
+                message=plain_message,
+                from_email=settings.EMAIL_HOST_USER,
+                recipient_list=[eligible_voter.user.email],
+                fail_silently=True,
+                html_message=html_message,
+            )
+            emails_sent += 1
+        except Exception as e:
+            print(f"Error sending email to {eligible_voter.user.email}: {e}")
+            continue
+
+    return {
+        "message": f"Email notification sent to {emails_sent} out of {eligible_voters.count()} eligible voters"
+    }
+
+
+@router.get("/{election_id}/vote-count/", response={200: dict[str, Any]}, auth=None)
+def get_election_vote_count(request: HttpRequest, election_id: int) -> dict[str, Any]:
     """Get the number of people who have voted in this election"""
     election = get_object_or_404(Election, id=election_id)
 
