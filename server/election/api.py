@@ -559,6 +559,15 @@ def send_election_notification(
     # Get candidates for the election
     candidates = Candidate.objects.filter(election=election).select_related("user")
 
+    # Calculate days remaining for voting
+    from django.utils import timezone
+
+    now = timezone.now()
+    days_remaining = None
+    if election.end_date > now:
+        delta = election.end_date - now
+        days_remaining = delta.days
+
     # HTML version
     html_message = render_to_string(
         "emails/election_notification.html",
@@ -567,6 +576,7 @@ def send_election_notification(
             "election_url": election_url,
             "site_url": settings.EMAIL_INVITATION_BASE_URL,
             "candidates": candidates,
+            "days_remaining": days_remaining,
         },
     )
 
