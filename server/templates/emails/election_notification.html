@@ -174,6 +174,40 @@
     <div class="content">
       <div class="election-description">{{ election.description }}</div>
 
+      {% if days_remaining is not None %}
+      <div
+        class="voting-deadline"
+        style="
+          margin-bottom: 25px;
+          padding: 15px;
+          background-color: #fef3c7;
+          border-left: 4px solid #f59e0b;
+          border-radius: 4px;
+        "
+      >
+        <p style="margin: 0; color: #92400e; font-weight: bold">
+          {% if days_remaining > 1 %} {{ days_remaining }} more days to vote! {%
+          elif days_remaining == 1 %} 1 more day to vote! {% else %} Voting ends
+          today! {% endif %}
+        </p>
+      </div>
+      {% elif election.end_date %}
+      <div
+        class="voting-deadline"
+        style="
+          margin-bottom: 25px;
+          padding: 15px;
+          background-color: #fee2e2;
+          border-left: 4px solid #ef4444;
+          border-radius: 4px;
+        "
+      >
+        <p style="margin: 0; color: #991b1b; font-weight: bold">
+          Voting has ended
+        </p>
+      </div>
+      {% endif %}
+
       <div class="election-details">
         <div class="detail-row">
           <span class="detail-label">Start Date:</span>
