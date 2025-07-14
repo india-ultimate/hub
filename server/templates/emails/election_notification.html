@@ -9,21 +9,34 @@
         font-family: Arial, sans-serif;
         line-height: 1.6;
         color: #333;
+        margin: 0;
+        padding: 0;
+        background-color: #f4f4f4;
+      }
+      .container {
         max-width: 600px;
         margin: 0 auto;
-        padding: 20px;
+        background-color: #ffffff;
       }
       .header {
         background-color: #3b82f6;
         color: white;
         padding: 20px;
         text-align: center;
-        border-radius: 8px 8px 0 0;
+      }
+      .header h1 {
+        margin: 0;
+        font-size: 24px;
+        font-weight: bold;
+      }
+      .logo {
+        width: 100px;
+        height: 150px;
+        margin-bottom: 15px;
       }
       .content {
-        background-color: #f9fafb;
         padding: 30px;
-        border-radius: 0 0 8px 8px;
+        background-color: #ffffff;
       }
       .election-title {
         font-size: 24px;
@@ -36,15 +49,12 @@
         color: #4b5563;
       }
       .election-details {
-        background-color: white;
+        background-color: #f8f9fa;
         padding: 20px;
-        border-radius: 8px;
         margin-bottom: 25px;
         border-left: 4px solid #3b82f6;
       }
       .detail-row {
-        display: flex;
-        justify-content: space-between;
         margin-bottom: 10px;
         padding: 8px 0;
         border-bottom: 1px solid #e5e7eb;
@@ -60,9 +70,8 @@
         color: #6b7280;
       }
       .candidates-section {
-        background-color: white;
+        background-color: #f8f9fa;
         padding: 20px;
-        border-radius: 8px;
         margin-bottom: 25px;
         border-left: 4px solid #3b82f6;
       }
@@ -72,47 +81,31 @@
         margin-bottom: 15px;
         color: #1f2937;
       }
-      .candidates-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-        gap: 20px;
-        max-width: 100%;
-      }
       .candidate-card {
         text-align: center;
-        padding: 20px 15px;
+        padding: 15px;
         border: 1px solid #e5e7eb;
+        background-color: #ffffff;
+        margin-bottom: 15px;
         border-radius: 8px;
-        background-color: #f9fafb;
-        min-height: 120px;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
       }
       .candidate-photo {
         width: 50px;
         height: 50px;
         border-radius: 50%;
         margin: 0 auto 12px;
-        object-fit: cover;
         background-color: #3b82f6;
         color: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
         font-size: 20px;
         font-weight: bold;
-        flex-shrink: 0;
+        line-height: 50px;
+        text-align: center;
       }
       .candidate-name {
         font-weight: bold;
         color: #1f2937;
-        margin: 0;
         font-size: 14px;
         line-height: 1.3;
-        word-wrap: break-word;
-        max-width: 100%;
       }
       .btn {
         display: inline-block;
@@ -135,136 +128,195 @@
         font-size: 14px;
         color: #6b7280;
       }
-      .logo {
-        width: 100px;
-        height: 150px;
+      .voting-deadline {
+        margin-bottom: 25px;
+        padding: 15px;
+        border-radius: 4px;
       }
-      @media (max-width: 480px) {
-        .candidates-grid {
-          grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-          gap: 15px;
+      .voting-deadline.active {
+        background-color: #fef3c7;
+        border-left: 4px solid #f59e0b;
+      }
+      .voting-deadline.ended {
+        background-color: #fee2e2;
+        border-left: 4px solid #ef4444;
+      }
+      .voting-deadline p {
+        margin: 0;
+        font-weight: bold;
+      }
+      .voting-deadline.active p {
+        color: #92400e;
+      }
+      .voting-deadline.ended p {
+        color: #991b1b;
+      }
+      .center {
+        text-align: center;
+      }
+      @media only screen and (max-width: 600px) {
+        .container {
+          width: 100% !important;
         }
-        .candidate-card {
-          padding: 15px 10px;
-          min-height: 100px;
+        .content {
+          padding: 20px !important;
         }
         .candidate-photo {
-          width: 40px;
-          height: 40px;
-          font-size: 16px;
-          margin-bottom: 8px;
+          width: 40px !important;
+          height: 40px !important;
+          font-size: 16px !important;
+          line-height: 40px !important;
         }
         .candidate-name {
-          font-size: 12px;
+          font-size: 12px !important;
         }
       }
     </style>
   </head>
   <body>
-    <div class="header">
-      <img
-        src="{{ site_url }}/static/assets/logo-vertical.png"
-        alt="India Ultimate Hub"
-        class="logo"
-      />
-      <h1>Vote for {{ election.title }}!</h1>
-    </div>
-
-    <div class="content">
-      <div class="election-description">{{ election.description }}</div>
-
-      {% if days_remaining is not None %}
-      <div
-        class="voting-deadline"
-        style="
-          margin-bottom: 25px;
-          padding: 15px;
-          background-color: #fef3c7;
-          border-left: 4px solid #f59e0b;
-          border-radius: 4px;
-        "
-      >
-        <!-- prettier-ignore -->
-        <p style="margin: 0; color: #92400e; font-weight: bold">
-          {% if days_remaining > 1 %} {{ days_remaining }} more days to vote! 
-          {% elif days_remaining == 1 %} 1 more day to vote! 
-          {% else %} Voting ends today!
-          {% endif %}
-        </p>
-      </div>
-      {% elif election.end_date %}
-      <div
-        class="voting-deadline"
-        style="
-          margin-bottom: 25px;
-          padding: 15px;
-          background-color: #fee2e2;
-          border-left: 4px solid #ef4444;
-          border-radius: 4px;
-        "
-      >
-        <p style="margin: 0; color: #991b1b; font-weight: bold">
-          Voting has ended
-        </p>
-      </div>
-      {% endif %}
-
-      <div class="election-details">
-        <div class="detail-row">
-          <span class="detail-label">Start Date: </span>
-          <span class="detail-value"
-            >{{ election.start_date|date:"F d, Y" }}</span
+    <table
+      width="100%"
+      cellpadding="0"
+      cellspacing="0"
+      style="background-color: #f4f4f4"
+    >
+      <tr>
+        <td align="center" style="padding: 20px">
+          <table
+            width="600"
+            cellpadding="0"
+            cellspacing="0"
+            style="
+              background-color: #ffffff;
+              border-radius: 8px;
+              overflow: hidden;
+            "
           >
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">End Date: </span>
-          <span class="detail-value"
-            >{{ election.end_date|date:"F d, Y" }}</span
-          >
-        </div>
-      </div>
+            <!-- Header -->
+            <tr>
+              <td class="header">
+                <img
+                  src="{{ site_url }}/static/assets/logo-vertical.png"
+                  alt="India Ultimate Hub"
+                  class="logo"
+                />
+                <h1>Vote for {{ election.title }}!</h1>
+              </td>
+            </tr>
 
-      {% if candidates %}
-      <div class="candidates-section">
-        <div class="candidates-title">Candidates</div>
-        <div class="candidates-grid">
-          {% for candidate in candidates %}
-          <div class="candidate-card">
-            {% if candidate.profile_pic_url %}
-            <img
-              src="{{ candidate.profile_pic_url }}"
-              alt="{{ candidate.name }}"
-              class="candidate-photo"
-            />
-            {% else %}
-            <div class="candidate-photo">{{ candidate.name|first|upper }}</div>
-            {% endif %}
-            <div class="candidate-name">{{ candidate.name }}</div>
-          </div>
-          {% endfor %}
-        </div>
-      </div>
-      {% endif %}
+            <!-- Content -->
+            <tr>
+              <td class="content">
+                <div class="election-description">
+                  {{ election.description }}
+                </div>
 
-      <div style="text-align: center">
-        <a href="{{ election_url }}" class="btn" target="_blank">
-          🗳️ Cast Your Vote Now
-        </a>
-      </div>
+                {% if days_remaining is not None %}
+                <div class="voting-deadline active">
+                  <p>
+                    {% if days_remaining > 1 %} {{ days_remaining }} more days
+                    to vote! {% elif days_remaining == 1 %} 1 more day to vote!
+                    {% else %} Voting ends today! {% endif %}
+                  </p>
+                </div>
+                {% elif election.end_date %}
+                <div class="voting-deadline ended">
+                  <p>Voting has ended</p>
+                </div>
+                {% endif %}
 
-      <div class="footer">
-        <p>
-          <strong>Important:</strong> Please make sure to cast your vote before
-          the election ends.
-        </p>
-        <p>
-          This is an automated message from the India Ultimate Hub. Please do
-          not reply directly to this email.
-        </p>
-        <p>
-          If you have any questions, please contact the election administrators.
-        </p>
-      </div>
-    </div>
+                <table
+                  width="100%"
+                  cellpadding="0"
+                  cellspacing="0"
+                  class="election-details"
+                >
+                  <tr>
+                    <td class="detail-row">
+                      <span class="detail-label">Start Date:</span>
+                      <span class="detail-value"
+                        >{{ election.start_date|date:"F d, Y" }}</span
+                      >
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="detail-row">
+                      <span class="detail-label">End Date:</span>
+                      <span class="detail-value"
+                        >{{ election.end_date|date:"F d, Y" }}</span
+                      >
+                    </td>
+                  </tr>
+                </table>
+
+                {% if candidates %}
+                <table
+                  width="100%"
+                  cellpadding="0"
+                  cellspacing="0"
+                  class="candidates-section"
+                >
+                  <tr>
+                    <td>
+                      <div class="candidates-title">Candidates</div>
+                      {% for candidate in candidates %}
+                      <table
+                        width="100%"
+                        cellpadding="0"
+                        cellspacing="0"
+                        class="candidate-card"
+                      >
+                        <tr>
+                          <td align="center">
+                            {% if candidate.profile_pic_url %}
+                            <img
+                              src="{{ candidate.profile_pic_url }}"
+                              alt="{{ candidate.name }}"
+                              class="candidate-photo"
+                              style="object-fit: cover"
+                            />
+                            {% else %}
+                            <div class="candidate-photo">
+                              {{ candidate.name|first|upper }}
+                            </div>
+                            {% endif %}
+                            <div class="candidate-name">
+                              {{ candidate.name }}
+                            </div>
+                          </td>
+                        </tr>
+                      </table>
+                      {% endfor %}
+                    </td>
+                  </tr>
+                </table>
+                {% endif %}
+
+                <div class="center">
+                  <a href="{{ election_url }}" class="btn" target="_blank">
+                    🗳️ Cast Your Vote Now
+                  </a>
+                </div>
+
+                <div class="footer">
+                  <p>
+                    <strong>Important:</strong> Please make sure to cast your
+                    vote before the election ends.
+                  </p>
+                  <p>
+                    This is an automated message from the India Ultimate Hub.
+                    Please do not reply directly to this email.
+                  </p>
+                  <p>
+                    If you have any questions, please contact the election
+                    administrators.
+                  </p>
+                </div>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
   </body>
 </html>
