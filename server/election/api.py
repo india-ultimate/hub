@@ -3,7 +3,8 @@ import secrets
 from typing import Any
 
 from django.conf import settings
-from django.core.mail import send_mail
+from django.core import mail
+from django.core.mail import EmailMultiAlternatives
 from django.http import HttpRequest
 from django.shortcuts import get_object_or_404
 from django.template.loader import render_to_string
@@ -546,8 +547,9 @@ def send_election_notification(
 
     # Get all eligible voters
     eligible_voters = EligibleVoter.objects.filter(election=election).select_related("user")
+    total_voters = eligible_voters.count()
 
-    if not eligible_voters.exists():
+    if not total_voters:
         return 400, {"message": "No eligible voters found for this election"}
 
     # Prepare email content
@@ -595,9 +597,8 @@ Election Notification: {election.title}
 {election.description}
 
 Election Details:
-- Start Date: {election.start_date.strftime('%B %d, %Y at %I:%M %p')}
-- End Date: {election.end_date.strftime('%B %d, %Y at %I:%M %p')}
-- Voting Method: {election.get_voting_method_display()}
+- Start Date: {election.start_date.strftime('%B %d, %Y')}
+- End Date: {election.end_date.strftime('%B %d, %Y')}
 
 Please cast your vote by visiting: {election_url}
 
@@ -605,26 +606,50 @@ This is an automated message from the India Ultimate Hub.
 Please do not reply directly to this email.
 """
 
-    # Send emails to all eligible voters
-    emails_sent = 0
+    # Send emails using send_messages with EmailMultiAlternatives for HTML support
+
+    # Prepare email messages with HTML support
+    email_messages = []
+    emails_failed = 0
+    failed_emails = []
+
     for eligible_voter in eligible_voters:
         try:
-            send_mail(
+            email = EmailMultiAlternatives(
                 subject=subject,
-                message=plain_message,
+                body=plain_message,
                 from_email=settings.EMAIL_HOST_USER,
-                recipient_list=[eligible_voter.user.email],
-                fail_silently=True,
-                html_message=html_message,
+                to=[eligible_voter.user.email],
             )
-            emails_sent += 1
+            email.attach_alternative(html_message, "text/html")
+            email_messages.append(email)
         except Exception as e:
-            print(f"Error sending email to {eligible_voter.user.email}: {e}")
+            emails_failed += 1
+            failed_emails.append(f"{eligible_voter.user.email}: {e!s}")
             continue
 
-    return {
-        "message": f"Email notification sent to {emails_sent} out of {eligible_voters.count()} eligible voters"
-    }
+    # Send all emails in one go
+    try:
+        connection = mail.get_connection()
+        emails_sent = connection.send_messages(email_messages)
+    except Exception as e:
+        # If mass mail fails, return error instead of trying individually
+        return 500, {"message": f"Failed to send mass emails: {e!s}. Please try again later."}
+
+    # Prepare response message
+    response_message = (
+        f"Email notification sent to {emails_sent} out of {total_voters} eligible voters"
+    )
+
+    if emails_failed > 0:
+        response_message += f" ({emails_failed} failed)"
+
+        # Log failed emails for debugging (but don't return them in response)
+        print(
+            f"Failed emails for election {election_id}: {failed_emails[:10]}..."
+        )  # Log first 10 failures
+
+    return {"message": response_message}
 
 
 @router.get("/{election_id}/vote-count/", response={200: dict[str, Any]}, auth=None)
