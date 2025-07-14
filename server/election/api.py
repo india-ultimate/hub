@@ -558,6 +558,14 @@ def send_election_notification(
 
     # Get candidates for the election
     candidates = Candidate.objects.filter(election=election).select_related("user")
+    users = []
+    for candidate in candidates:
+        users.append(
+            {
+                "name": candidate.user.get_full_name(),
+                "profile_pic_url": candidate.user.player_profile.profile_pic_url,
+            }
+        )
 
     # Calculate days remaining for voting
     from django.utils import timezone
@@ -575,7 +583,7 @@ def send_election_notification(
             "election": election,
             "election_url": election_url,
             "site_url": settings.EMAIL_INVITATION_BASE_URL,
-            "candidates": candidates,
+            "candidates": users,
             "days_remaining": days_remaining,
         },
     )
