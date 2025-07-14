@@ -136,9 +136,8 @@
         color: #6b7280;
       }
       .logo {
-        width: 60px;
-        height: 60px;
-        margin-bottom: 15px;
+        width: 100px;
+        height: 150px;
       }
       @media (max-width: 480px) {
         .candidates-grid {
@@ -185,10 +184,12 @@
           border-radius: 4px;
         "
       >
+        <!-- prettier-ignore -->
         <p style="margin: 0; color: #92400e; font-weight: bold">
-          {% if days_remaining > 1 %} {{ days_remaining }} more days to vote! {%
-          elif days_remaining == 1 %} 1 more day to vote! {% else %} Voting ends
-          today! {% endif %}
+          {% if days_remaining > 1 %} {{ days_remaining }} more days to vote! 
+          {% elif days_remaining == 1 %} 1 more day to vote! 
+          {% else %} Voting ends today!
+          {% endif %}
         </p>
       </div>
       {% elif election.end_date %}
@@ -210,13 +211,13 @@
 
       <div class="election-details">
         <div class="detail-row">
-          <span class="detail-label">Start Date:</span>
+          <span class="detail-label">Start Date: </span>
           <span class="detail-value"
             >{{ election.start_date|date:"F d, Y" }}</span
           >
         </div>
         <div class="detail-row">
-          <span class="detail-label">End Date:</span>
+          <span class="detail-label">End Date: </span>
           <span class="detail-value"
             >{{ election.end_date|date:"F d, Y" }}</span
           >
@@ -232,15 +233,13 @@
             {% if candidate.profile_pic_url %}
             <img
               src="{{ candidate.profile_pic_url }}"
-              alt="{{ candidate.user.full_name }}"
+              alt="{{ candidate.name }}"
               class="candidate-photo"
             />
             {% else %}
-            <div class="candidate-photo">
-              {{ candidate.user.full_name|first|upper }}
-            </div>
+            <div class="candidate-photo">{{ candidate.name|first|upper }}</div>
             {% endif %}
-            <div class="candidate-name">{{ candidate.user.full_name }}</div>
+            <div class="candidate-name">{{ candidate.name }}</div>
           </div>
           {% endfor %}
         </div>
