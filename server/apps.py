@@ -51,3 +51,7 @@ def check_phonepe_env_vars(app_configs: Any, **kwargs: Any) -> Sequence[Error | 
 class ServerConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
     name = "server"
+
+    def ready(self) -> None:
+        """Import signals when the app is ready"""
+        import server.signals  # noqa: F401

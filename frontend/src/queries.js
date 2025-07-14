@@ -1886,6 +1886,23 @@ export const sendElectionNotification = async electionId => {
   return data;
 };
 
+export const getEmailWorkerStatus = async () => {
+  const response = await fetch("/api/election/email-worker-status/", {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin"
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data?.message || "Failed to get email worker status");
+  }
+  return data;
+};
+
 // Chat API functions
 export const fetchChatHistory = async () => {
   const response = await fetch("/api/chat/history", {

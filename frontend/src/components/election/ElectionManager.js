@@ -6,6 +6,7 @@ import {
   fetchElections,
   generateElectionResults,
   getElectionResults,
+  getEmailWorkerStatus,
   sendElectionNotification
 } from "../../queries";
 import { useStore } from "../../store";
@@ -53,11 +54,19 @@ const ElectionManager = () => {
     mutationFn: electionId => sendElectionNotification(electionId),
     onSuccess: () => {
       // Show success message
-      alert("Email notifications sent successfully!");
+      alert("Email notifications queued for background sending!");
     },
     onError: error => {
-      alert(`Failed to send notifications: ${error.message}`);
+      alert(`Failed to queue notifications: ${error.message}`);
     }
+  });
+
+  // Email worker status query
+  const emailWorkerStatusQuery = createQuery({
+    queryKey: () => ["email-worker-status"],
+    queryFn: getEmailWorkerStatus,
+    refetchInterval: 5000, // Refresh every 5 seconds
+    enabled: store.user?.is_staff
   });
 
   const handleGenerateResults = () => {
@@ -74,6 +83,7 @@ const ElectionManager = () => {
         )
       ) {
         sendNotificationMutation.mutate(selectedElectionId());
+        emailWorkerStatusQuery.refetch();
       }
     }
   };
@@ -203,7 +213,7 @@ const ElectionManager = () => {
                         class="rounded-md bg-green-500 px-4 py-2 text-white hover:bg-green-600 disabled:bg-green-300"
                       >
                         {sendNotificationMutation.isPending
-                          ? "Sending..."
+                          ? "Queuing..."
                           : "📧 Send Notifications"}
                       </button>
                       <button
@@ -217,6 +227,40 @@ const ElectionManager = () => {
                       </button>
                     </div>
                   </div>
+
+                  {/* Email Worker Status */}
+                  <Show when={emailWorkerStatusQuery.data}>
+                    <div class="mt-4 rounded-md bg-gray-50 p-3">
+                      <h5 class="mb-2 text-sm font-medium text-gray-700">
+                        Email Worker Status
+                      </h5>
+                      <div class="flex items-center space-x-4 text-sm">
+                        <div class="flex items-center space-x-2">
+                          <div
+                            class={`h-2 w-2 rounded-full ${
+                              emailWorkerStatusQuery.data.worker_running
+                                ? "bg-green-500"
+                                : "bg-red-500"
+                            }`}
+                          />
+                          <span
+                            class={
+                              emailWorkerStatusQuery.data.worker_running
+                                ? "text-green-700"
+                                : "text-red-700"
+                            }
+                          >
+                            {emailWorkerStatusQuery.data.worker_running
+                              ? "Running"
+                              : "Stopped"}
+                          </span>
+                        </div>
+                        <div class="text-gray-600">
+                          Queue: {emailWorkerStatusQuery.data.queue_size} emails
+                        </div>
+                      </div>
+                    </div>
+                  </Show>
 
                   <Show when={generateResultsMutation.error}>
                     <Error text={generateResultsMutation.error.message} />

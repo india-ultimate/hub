@@ -1,9 +1,9 @@
 import hashlib
 import secrets
+import time
 from typing import Any
 
 from django.conf import settings
-from django.core import mail
 from django.core.mail import EmailMultiAlternatives
 from django.http import HttpRequest
 from django.shortcuts import get_object_or_404
@@ -12,6 +12,7 @@ from ninja import File, Router
 from ninja.files import UploadedFile
 
 from server.core.models import Guardianship, Player, User
+from server.lib.email_worker import get_email_worker_status, queue_emails
 
 from .models import (
     Candidate,
@@ -42,6 +43,17 @@ router = Router()
 
 class AuthenticatedHttpRequest(HttpRequest):
     user: User
+
+
+@router.get("/email-worker-status/", response={200: dict[str, Any], 403: ErrorSchema})
+def get_email_worker_status_endpoint(
+    request: AuthenticatedHttpRequest,
+) -> dict[str, Any] | tuple[int, dict[str, str]]:
+    """Get the status of the email worker thread and queue"""
+    if error := check_staff(request):
+        return error
+
+    return get_email_worker_status()
 
 
 def check_staff(request: AuthenticatedHttpRequest) -> tuple[int, dict[str, str]] | None:
@@ -606,8 +618,6 @@ This is an automated message from the India Ultimate Hub.
 Please do not reply directly to this email.
 """
 
-    # Send emails using send_messages with EmailMultiAlternatives for HTML support
-
     # Prepare email messages with HTML support
     email_messages = []
     emails_failed = 0
@@ -628,26 +638,25 @@ Please do not reply directly to this email.
             failed_emails.append(f"{eligible_voter.user.email}: {e!s}")
             continue
 
-    # Send all emails in one go
+    # Queue the email sending task for background processing
+    task_id = f"election_{election_id}_{int(time.time())}"
     try:
-        connection = mail.get_connection()
-        emails_sent = connection.send_messages(email_messages)
+        success = queue_emails(email_messages, task_id)
+        if not success:
+            return 500, {"message": "Failed to queue emails for sending"}
+        print(
+            f"Queued {len(email_messages)} emails for election {election_id} for background sending"
+        )
     except Exception as e:
-        # If mass mail fails, return error instead of trying individually
-        return 500, {"message": f"Failed to send mass emails: {e!s}. Please try again later."}
+        return 500, {"message": f"Failed to queue emails for sending: {e!s}"}
 
-    # Prepare response message
+    # Return immediate response
     response_message = (
-        f"Email notification sent to {emails_sent} out of {total_voters} eligible voters"
+        f"Email notifications queued for sending to {len(email_messages)} eligible voters"
     )
 
     if emails_failed > 0:
-        response_message += f" ({emails_failed} failed)"
-
-        # Log failed emails for debugging (but don't return them in response)
-        print(
-            f"Failed emails for election {election_id}: {failed_emails[:10]}..."
-        )  # Log first 10 failures
+        response_message += f" ({emails_failed} failed to prepare)"
 
     return {"message": response_message}
 
