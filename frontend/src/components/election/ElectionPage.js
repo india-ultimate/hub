@@ -11,11 +11,11 @@ import {
   castRankedVoteForWard,
   fetchCandidates,
   fetchElection,
+  fetchUser,
   getElectionVoteCount,
   getMyWards,
   getVoterVerification
 } from "../../queries";
-import { useStore } from "../../store";
 import { displayDateShort } from "../../utils";
 import Error from "../alerts/Error";
 import Info from "../alerts/Info";
@@ -24,7 +24,6 @@ import Success from "../alerts/Success";
 const ElectionPage = () => {
   const params = useParams();
   const electionId = params.id;
-  const [store] = useStore();
   const queryClient = useQueryClient();
   const [rankedChoices, setRankedChoices] = createSignal([]);
   const [error, setError] = createSignal("");
@@ -35,6 +34,14 @@ const ElectionPage = () => {
   const [wardRankedChoices, setWardRankedChoices] = createSignal([]);
   const [guardianError, setGuardianError] = createSignal("");
   const [guardianStatus, setGuardianStatus] = createSignal("");
+
+  // Fetch user data
+  const userQuery = createQuery({
+    queryKey: () => ["user"],
+    queryFn: fetchUser,
+    retry: false,
+    refetchOnWindowFocus: false
+  });
 
   // Fetch election details
   const electionQuery = createQuery({
@@ -53,7 +60,7 @@ const ElectionPage = () => {
     queryKey: () => ["election", electionId, "verification"],
     queryFn: () => getVoterVerification(electionId),
     get enabled() {
-      if (!store?.data || !electionQuery.data) return false;
+      if (!userQuery.data || !electionQuery.data) return false;
 
       const now = new Date();
       const startDate = new Date(electionQuery.data.start_date);
@@ -68,7 +75,7 @@ const ElectionPage = () => {
     queryKey: () => ["election", electionId, "wards"],
     queryFn: () => getMyWards(electionId),
     get enabled() {
-      if (!store?.data || !electionQuery.data) return false;
+      if (!userQuery.data || !electionQuery.data) return false;
 
       const now = new Date();
       const startDate = new Date(electionQuery.data.start_date);
@@ -323,15 +330,55 @@ const ElectionPage = () => {
                     Cast Your Vote
                   </h2>
 
-                  <Show when={!store?.data}>
-                    <div class="rounded-lg bg-yellow-50 p-4 dark:bg-yellow-900/50">
-                      <p class="text-yellow-800 dark:text-yellow-200">
-                        Please log in to cast your vote.
-                      </p>
+                  <Show when={!userQuery.data}>
+                    <div class="rounded-lg border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 p-6 dark:border-blue-700 dark:from-blue-900/50 dark:to-indigo-900/50">
+                      <div class="text-center">
+                        <div class="mb-4">
+                          <svg
+                            class="mx-auto h-12 w-12 text-blue-500"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="2"
+                              d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                            />
+                          </svg>
+                        </div>
+                        <h3 class="mb-2 text-lg font-semibold text-gray-900 dark:text-white">
+                          Login Required to Vote
+                        </h3>
+                        <p class="mb-4 text-gray-600 dark:text-gray-300">
+                          You need to be logged in to participate in this
+                          election. Please sign in to cast your vote.
+                        </p>
+                        <a
+                          href="/login"
+                          class="inline-flex items-center rounded-md border border-transparent bg-blue-600 px-6 py-3 text-base font-medium text-white transition-colors duration-200 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                        >
+                          <svg
+                            class="mr-2 h-5 w-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="2"
+                              d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"
+                            />
+                          </svg>
+                          Sign In to Vote
+                        </a>
+                      </div>
                     </div>
                   </Show>
 
-                  <Show when={store?.data}>
+                  <Show when={userQuery.data}>
                     <Show when={verificationQuery.isLoading}>
                       <p class="text-center">Checking voting eligibility...</p>
                     </Show>
@@ -417,11 +464,19 @@ const ElectionPage = () => {
                       </Show>
                     </Show>
                   </Show>
+
+                  <Show when={userQuery.isLoading}>
+                    <div class="rounded-lg bg-gray-50 p-6 dark:bg-gray-700">
+                      <p class="text-center text-gray-600 dark:text-gray-300">
+                        Checking login status...
+                      </p>
+                    </div>
+                  </Show>
                 </div>
               </Show>
 
               {/* Guardian Voting Section */}
-              <Show when={electionStatus.status === "Active" && store?.data}>
+              <Show when={electionStatus.status === "Active" && userQuery.data}>
                 <Show when={wardsQuery.isLoading}>
                   <div class="rounded-lg bg-white p-6 shadow dark:bg-gray-800">
                     <p class="text-center">Checking for eligible wards...</p>
