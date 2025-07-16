@@ -564,6 +564,26 @@ def send_election_notification(
     if not total_voters:
         return 400, {"message": "No eligible voters found for this election"}
 
+    # Normalize emails to prevent duplicates (remove + and everything after it in local part)
+    def normalize_email(email: str) -> str:
+        """Normalize email by removing + and everything after it in the local part"""
+        if "@" not in email:
+            return email.lower()
+        local_part, domain = email.split("@", 1)
+        # Remove + and everything after it in the local part
+        normalized_local = local_part.split("+")[0]
+        return f"{normalized_local}@{domain}".lower()
+
+    # Deduplicate voters based on normalized email
+    seen_emails = set()
+    unique_voters = []
+
+    for voter in eligible_voters:
+        normalized_email = normalize_email(voter.user.email)
+        if normalized_email not in seen_emails:
+            seen_emails.add(normalized_email)
+            unique_voters.append(voter)
+
     # Prepare email content
     subject = f"Vote for {election.title}!"
 
@@ -659,7 +679,7 @@ Please do not reply directly to this email.
     emails_failed = 0
     failed_emails = []
 
-    for eligible_voter in eligible_voters:
+    for eligible_voter in unique_voters:
         try:
             email = EmailMultiAlternatives(
                 subject=subject,
@@ -687,9 +707,16 @@ Please do not reply directly to this email.
         return 500, {"message": f"Failed to queue emails for sending: {e!s}"}
 
     # Return immediate response
+    original_count = len(eligible_voters)
+    unique_count = len(unique_voters)
+    deduplicated_count = original_count - unique_count
+
     response_message = (
         f"Email notifications queued for sending to {len(email_messages)} eligible voters"
     )
+
+    if deduplicated_count > 0:
+        response_message += f" ({deduplicated_count} duplicate emails removed)"
 
     if emails_failed > 0:
         response_message += f" ({emails_failed} failed to prepare)"
