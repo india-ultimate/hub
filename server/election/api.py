@@ -582,13 +582,40 @@ def send_election_notification(
         )
 
     # Calculate days remaining for voting
+    import pytz
     from django.utils import timezone
 
     now = timezone.now()
+    ist_tz = pytz.timezone("Asia/Kolkata")
+
+    # Convert times to IST for display
+    now_ist = now.astimezone(ist_tz)
+    start_date_ist = election.start_date.astimezone(ist_tz)
+    end_date_ist = election.end_date.astimezone(ist_tz)
+
     days_remaining = None
+    time_remaining = None
+
     if election.end_date > now:
         delta = election.end_date - now
         days_remaining = delta.days
+
+        # Calculate detailed time remaining
+        total_seconds = int(delta.total_seconds())
+        hours = total_seconds // 3600
+        minutes = (total_seconds % 3600) // 60
+
+        if days_remaining > 0:
+            time_remaining = f"{days_remaining} days, {hours % 24} hours, {minutes} minutes"
+        elif hours > 0:
+            time_remaining = f"{hours} hours, {minutes} minutes"
+        else:
+            time_remaining = f"{minutes} minutes"
+
+    # Format times as strings to avoid template timezone issues
+    start_date_ist_str = start_date_ist.strftime("%B %d, %Y at %I:%M %p")
+    end_date_ist_str = end_date_ist.strftime("%B %d, %Y at %I:%M %p")
+    current_time_ist_str = now_ist.strftime("%B %d, %Y at %I:%M %p")
 
     # HTML version
     html_message = render_to_string(
@@ -599,6 +626,13 @@ def send_election_notification(
             "site_url": settings.EMAIL_INVITATION_BASE_URL,
             "candidates": users,
             "days_remaining": days_remaining,
+            "current_time": now_ist,
+            "start_date_ist": start_date_ist,
+            "end_date_ist": end_date_ist,
+            "start_date_ist_str": start_date_ist_str,
+            "end_date_ist_str": end_date_ist_str,
+            "current_time_ist_str": current_time_ist_str,
+            "time_remaining": time_remaining,
         },
     )
 
@@ -609,8 +643,10 @@ Election Notification: {election.title}
 {election.description}
 
 Election Details:
-- Start Date: {election.start_date.strftime('%B %d, %Y')}
-- End Date: {election.end_date.strftime('%B %d, %Y')}
+- Start Date: {start_date_ist.strftime('%B %d, %Y at %I:%M %p')} IST
+- End Date: {end_date_ist.strftime('%B %d, %Y at %I:%M %p')} IST
+- Current Time: {now_ist.strftime('%B %d, %Y at %I:%M %p')} IST
+{f"- Time Remaining: {time_remaining}" if time_remaining else ""}
 
 Please cast your vote by visiting: {election_url}
 

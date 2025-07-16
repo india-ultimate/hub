@@ -235,7 +235,7 @@
                     <td class="detail-row">
                       <span class="detail-label">Start Date:</span>
                       <span class="detail-value"
-                        >{{ election.start_date|date:"F d, Y" }}</span
+                        >{{ start_date_ist_str }} IST</span
                       >
                     </td>
                   </tr>
@@ -243,10 +243,26 @@
                     <td class="detail-row">
                       <span class="detail-label">End Date:</span>
                       <span class="detail-value"
-                        >{{ election.end_date|date:"F d, Y" }}</span
+                        >{{ end_date_ist_str }} IST</span
                       >
                     </td>
                   </tr>
+                  <tr>
+                    <td class="detail-row">
+                      <span class="detail-label">Current Time:</span>
+                      <span class="detail-value"
+                        >{{ current_time_ist_str }} IST</span
+                      >
+                    </td>
+                  </tr>
+                  {% if time_remaining %}
+                  <tr>
+                    <td class="detail-row">
+                      <span class="detail-label">Time Remaining:</span>
+                      <span class="detail-value">{{ time_remaining }}</span>
+                    </td>
+                  </tr>
+                  {% endif %}
                 </table>
 
                 {% if candidates %}

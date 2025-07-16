@@ -35,6 +35,23 @@ const ElectionPage = () => {
   const [guardianError, setGuardianError] = createSignal("");
   const [guardianStatus, setGuardianStatus] = createSignal("");
 
+  // Current time signal for real-time updates
+  const [currentTime, setCurrentTime] = createSignal(new Date());
+
+  // Helper function to show readable time
+  const showReadableTime = time => {
+    return new Date(time).toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "numeric",
+      timeZone: "Asia/Kolkata"
+    });
+  };
+
+  // Update current time every minute for real-time countdown
+  setInterval(() => {
+    setCurrentTime(new Date());
+  }, 60000); // Update every minute
+
   // Fetch user data
   const userQuery = createQuery({
     queryKey: () => ["user"],
@@ -62,7 +79,7 @@ const ElectionPage = () => {
     get enabled() {
       if (!userQuery.data || !electionQuery.data) return false;
 
-      const now = new Date();
+      const now = currentTime();
       const startDate = new Date(electionQuery.data.start_date);
       const endDate = new Date(electionQuery.data.end_date);
 
@@ -77,7 +94,7 @@ const ElectionPage = () => {
     get enabled() {
       if (!userQuery.data || !electionQuery.data) return false;
 
-      const now = new Date();
+      const now = currentTime();
       const startDate = new Date(electionQuery.data.start_date);
       const endDate = new Date(electionQuery.data.end_date);
 
@@ -152,27 +169,42 @@ const ElectionPage = () => {
   });
 
   const getElectionStatus = election => {
-    const now = new Date();
+    const now = currentTime();
     const startDate = new Date(election.start_date);
     const endDate = new Date(election.end_date);
 
     if (now < startDate) {
+      const timeUntilStart = startDate - now;
+      const hoursUntilStart = Math.floor(timeUntilStart / (1000 * 60 * 60));
+      const minutesUntilStart = Math.floor(
+        (timeUntilStart % (1000 * 60 * 60)) / (1000 * 60)
+      );
+
       return {
         status: "Upcoming",
         color:
-          "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300"
+          "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300",
+        timeInfo: `Starts in ${hoursUntilStart}h ${minutesUntilStart}m`
       };
     } else if (now >= startDate && now <= endDate) {
+      const timeUntilEnd = endDate - now;
+      const hoursUntilEnd = Math.floor(timeUntilEnd / (1000 * 60 * 60));
+      const minutesUntilEnd = Math.floor(
+        (timeUntilEnd % (1000 * 60 * 60)) / (1000 * 60)
+      );
+
       return {
         status: "Active",
         color:
-          "bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300"
+          "bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300",
+        timeInfo: `Ends in ${hoursUntilEnd}h ${minutesUntilEnd}m`
       };
     } else {
       return {
         status: "Completed",
         color:
-          "bg-gray-100 text-gray-800 dark:bg-gray-700/50 dark:text-gray-300"
+          "bg-gray-100 text-gray-800 dark:bg-gray-700/50 dark:text-gray-300",
+        timeInfo: "Voting period has ended"
       };
     }
   };
@@ -253,23 +285,47 @@ const ElectionPage = () => {
                   <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
                     {election().title}
                   </h1>
-                  <span
-                    class={`inline-flex rounded-full px-3 py-1 text-sm font-medium ${electionStatus.color}`}
-                  >
-                    {electionStatus.status}
-                  </span>
+                  <div class="text-right">
+                    <span
+                      class={`inline-flex rounded-full px-3 py-1 text-sm font-medium ${electionStatus.color}`}
+                    >
+                      {electionStatus.status}
+                    </span>
+                    <Show when={electionStatus.timeInfo}>
+                      <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        {electionStatus.timeInfo}
+                      </p>
+                    </Show>
+                  </div>
                 </div>
                 <p class="mb-6 text-lg text-gray-600 dark:text-gray-300">
                   {election().description}
                 </p>
+                <div class="mb-4 text-sm text-gray-500 dark:text-gray-400">
+                  Current time:{" "}
+                  {currentTime().toLocaleString("en-US", {
+                    timeZone: "Asia/Kolkata",
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                    hour: "numeric",
+                    minute: "numeric"
+                  })}{" "}
+                  IST
+                </div>
                 <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                   <div>
                     <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">
                       Voting Period
                     </h3>
                     <p class="mt-1 text-gray-900 dark:text-white">
-                      {displayDateShort(election().start_date)} to{" "}
-                      {displayDateShort(election().end_date)}
+                      {displayDateShort(election().start_date)} at{" "}
+                      {showReadableTime(election().start_date)} to{" "}
+                      {displayDateShort(election().end_date)} at{" "}
+                      {showReadableTime(election().end_date)}
+                    </p>
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      All times in IST
                     </p>
                   </div>
                   <div>
