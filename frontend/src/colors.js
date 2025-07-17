@@ -16,6 +16,9 @@ export const matchCardColors = {
     ["cyan", "indigo", "sky"],
     ["cyan", "indigo", "sky"],
     ["cyan", "indigo", "sky"],
+    ["cyan", "indigo", "sky"],
+    ["cyan", "indigo", "sky"],
+    ["cyan", "indigo", "sky"],
     ["cyan", "indigo", "sky"]
   ],
   position_pool: ["lime", "pink", "emerald"]
