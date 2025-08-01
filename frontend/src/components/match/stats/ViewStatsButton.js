@@ -43,9 +43,9 @@ const ViewStatsButton = props => {
           >
             Live
           </span>
-          {props.match?.stats?.score_team_1 +
+          {props.match?.stats[`score_team_${props.currTeamNo}`] +
             " - " +
-            props.match?.stats?.score_team_2}
+            props.match?.stats[`score_team_${props.oppTeamNo}`]}
           <Icon path={chevronRight} class="ml-1.5 w-4" />
         </Show>
       </span>

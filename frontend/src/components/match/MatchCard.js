@@ -334,6 +334,8 @@ const TournamentMatch = props => {
               }
               textColor={props.buttonColor || getMatchCardColor(props.match)}
               match={props.match}
+              currTeamNo={currTeamNo()}
+              oppTeamNo={oppTeamNo()}
             />
           </A>
         </Show>
