@@ -37,6 +37,7 @@ from server.tournament.models import (
     Pool,
     PositionPool,
     Registration,
+    SpiritScore,
     Tournament,
     TournamentField,
 )
@@ -670,3 +671,8 @@ class ElectionResultAdmin(admin.ModelAdmin[ElectionResult]):
     @admin.display(description="Candidate", ordering="candidate__user__first_name")
     def get_candidate(self, obj: ElectionResult) -> str:
         return obj.candidate.user.get_full_name()
+
+
+@admin.register(SpiritScore)
+class SpiritScoreAdmin(admin.ModelAdmin[SpiritScore]):
+    pass
