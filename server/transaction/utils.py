@@ -74,6 +74,8 @@ def create_transaction(
                 (
                     season.sponsored_annual_membership_amount
                     if player.sponsored
+                    else season.supporter_annual_membership_amount
+                    if order.is_supporter
                     else season.annual_membership_amount
                 )
                 for player in players
@@ -82,6 +84,8 @@ def create_transaction(
             else (
                 season.sponsored_annual_membership_amount
                 if player.sponsored
+                else season.supporter_annual_membership_amount
+                if order.is_supporter
                 else season.annual_membership_amount
             )
         )

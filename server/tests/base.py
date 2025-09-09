@@ -182,4 +182,5 @@ class ApiBaseTestCase(TestCase):
             end_date="2025-07-30",
             annual_membership_amount=70000,
             sponsored_annual_membership_amount=20000,
+            supporter_annual_membership_amount=50000,
         )
