@@ -8,3 +8,4 @@ class Season(ExportModelOperationsMixin("season"), models.Model):  # type: ignor
     name = models.CharField(max_length=255)
     annual_membership_amount = models.PositiveIntegerField(default=0)
     sponsored_annual_membership_amount = models.PositiveIntegerField(default=0)
+    supporter_annual_membership_amount = models.PositiveIntegerField(default=0)
