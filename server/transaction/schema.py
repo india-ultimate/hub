@@ -124,6 +124,7 @@ class RazorpayCallbackSchema(Schema):
 class AnnualMembershipSchema(Schema):
     player_id: int
     season_id: int
+    is_supporter: bool = False
 
 
 class EventMembershipSchema(Schema):
@@ -134,6 +135,7 @@ class EventMembershipSchema(Schema):
 class GroupMembershipSchema(Schema):
     player_ids: list[int]
     season_id: int
+    is_supporter: bool = False
 
 
 class TeamRegistrationSchema(Schema):
