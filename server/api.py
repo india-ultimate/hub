@@ -293,6 +293,18 @@ def search_players(request: AuthenticatedHttpRequest, text: str = "") -> QuerySe
     )
 
 
+@api.get("/players/{player_id}", response={200: PlayerSchema, 400: Response, 404: Response})
+def get_player(
+    request: AuthenticatedHttpRequest, player_id: int
+) -> tuple[int, Player | message_response]:
+    """Get a single player by ID"""
+    try:
+        player = Player.objects.get(id=player_id)
+        return 200, player
+    except Player.DoesNotExist:
+        return 404, {"message": "Player not found"}
+
+
 @api.get("/players/recommend", response={200: list[PlayerTinySchema], 400: Response})
 @paginate(PageNumberPagination, page_size=5)
 def recommend_players(
