@@ -1,5 +1,5 @@
 import { useParams } from "@solidjs/router";
-import { createQuery } from "@tanstack/solid-query";
+import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { inboxStack } from "solid-heroicons/solid";
 import { createEffect, createSignal, For, Show } from "solid-js";
 
@@ -26,6 +26,8 @@ const Membership = () => {
   const [status, setStatus] = createSignal();
 
   const params = useParams();
+
+  const queryClient = useQueryClient();
 
   const playerQuery = createQuery(
     () => ["player", params.playerId],
@@ -342,6 +344,11 @@ const Membership = () => {
               amount={getAmount()}
               setStatus={setStatus}
               membershipType={membershipType()}
+              successCallback={() => {
+                queryClient.invalidateQueries({
+                  queryKey: ["player", player().id]
+                });
+              }}
             />
             <p>{status()}</p>
           </Show>
@@ -362,6 +369,11 @@ const Membership = () => {
           <GroupMembership
             season={season()}
             membershipType={membershipType()}
+            successCallback={() => {
+              queryClient.invalidateQueries({
+                queryKey: ["player", player().id]
+              });
+            }}
           />
         </div>
       </Show>

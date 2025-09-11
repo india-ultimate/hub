@@ -279,6 +279,7 @@ const GroupMembership = props => {
 
   const paymentSuccessCallback = () => {
     setPaymentSuccess(true);
+    props.successCallback();
   };
 
   const handlePlayerPayingStatus = (player, isPaying) => {
