@@ -68,6 +68,22 @@ export const fetchPlayers = async () => {
   return await response.json();
 };
 
+export const fetchPlayerById = async playerId => {
+  const response = await fetch(`/api/players/${playerId}`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin"
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.message || "Failed to fetch player");
+  }
+
+  return data;
+};
+
 export const fetchTeams = async () => {
   const response = await fetch("/api/teams", {
     method: "GET",

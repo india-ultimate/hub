@@ -4,9 +4,8 @@ import { inboxStack } from "solid-heroicons/solid";
 import { createEffect, createSignal, For, Show } from "solid-js";
 
 import { eventMembershipFee, minAge, minAgeWarning } from "../../constants";
-import { fetchSeasons } from "../../queries";
-import { useStore } from "../../store";
-import { displayDate, findPlayerById, getAge } from "../../utils";
+import { fetchPlayerById, fetchSeasons } from "../../queries";
+import { displayDate, getAge } from "../../utils";
 import Info from "../alerts/Info";
 import Breadcrumbs from "../Breadcrumbs";
 import RazorpayPayment from "../RazorpayPayment";
@@ -14,8 +13,6 @@ import GroupMembership from "./GroupMembership";
 import ServiceRequestModal from "./ServiceRequestModal";
 
 const Membership = () => {
-  const [store] = useStore();
-
   const [player, setPlayer] = createSignal();
   const [membership, setMembership] = createSignal();
 
@@ -29,10 +26,21 @@ const Membership = () => {
   const [status, setStatus] = createSignal();
 
   const params = useParams();
+
+  const playerQuery = createQuery(
+    () => ["player", params.playerId],
+    () => fetchPlayerById(Number(params.playerId))
+  );
+
   createEffect(() => {
-    const player = findPlayerById(store.data, Number(params.playerId));
-    setPlayer(player);
-    setMembership(player?.membership);
+    if (playerQuery.data) {
+      setPlayer(playerQuery.data);
+      setMembership(playerQuery.data?.membership);
+    }
+  });
+
+  createEffect(() => {
+    console.log(player()?.sponsored);
   });
 
   const seasonsQuery = createQuery(() => ["seasons"], fetchSeasons);
@@ -69,13 +77,12 @@ const Membership = () => {
       return eventMembershipFee / 100;
     }
 
-    // For annual membership, check membership type
-    if (membershipType() === "patron") {
-      return season()?.supporter_annual_membership_amount / 100;
+    // For annual membership, check membership type and sponsored status
+    if (player()?.sponsored) {
+      return season()?.sponsored_annual_membership_amount / 100;
     } else {
-      // Standard membership
-      return player()?.sponsored
-        ? season()?.sponsored_annual_membership_amount / 100
+      return membershipType() === "patron"
+        ? season()?.supporter_annual_membership_amount / 100
         : season()?.annual_membership_amount / 100;
     }
   };
@@ -278,7 +285,7 @@ const Membership = () => {
                   Membership Type
                 </label>
                 <Show
-                  when={!membership()?.is_sponsored}
+                  when={!player()?.sponsored}
                   fallback={
                     <div class="block w-full rounded-lg border border-gray-300 bg-gray-100 p-2.5 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
                       Supported Membership – ₹{" "}
