@@ -32,6 +32,9 @@ class ServiceRequestSignalTest(TestCase):
             status=ServiceRequestStatus.PENDING,
         )
 
+        # Add the player to the service request
+        service_request.service_players.add(self.player)
+
         # Verify player is not sponsored initially
         self.player.refresh_from_db()
         self.assertFalse(self.player.sponsored)
@@ -55,6 +58,9 @@ class ServiceRequestSignalTest(TestCase):
             status=ServiceRequestStatus.PENDING,
         )
 
+        # Add the player to the service request
+        service_request.service_players.add(self.player)
+
         # Verify player is not sponsored initially
         self.player.refresh_from_db()
         self.assertFalse(self.player.sponsored)
@@ -76,6 +82,9 @@ class ServiceRequestSignalTest(TestCase):
             message="Please approve my sponsored membership",
             status=ServiceRequestStatus.APPROVED,  # Create directly as approved
         )
+
+        # Add the player to the service request
+        service_request.service_players.add(self.player)
 
         # Verify player is still not sponsored (signal only triggers on status change)
         self.player.refresh_from_db()
