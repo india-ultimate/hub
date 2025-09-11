@@ -71,6 +71,7 @@ class TestIntegration(BaseCase):
             end_date="2025-07-30",
             annual_membership_amount=70000,
             sponsored_annual_membership_amount=20000,
+            supporter_annual_membership_amount=150000,
         )
 
         with running_test_server() as base_url:
