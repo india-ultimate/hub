@@ -4,7 +4,7 @@ from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
-from server.core.models import User
+from server.core.models import Player, User
 
 
 class ServiceRequestType(models.TextChoices):
@@ -26,6 +26,7 @@ class ServiceRequest(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    service_players = models.ManyToManyField(Player, blank=True, related_name="service_requests")
 
 
 @receiver(post_save, sender=ServiceRequest)
@@ -42,11 +43,7 @@ def handle_sponsored_membership_approval(
         and instance.status == ServiceRequestStatus.APPROVED
         and instance.type == ServiceRequestType.REQUEST_SPONSORED_MEMBERSHIP
     ):
-        # Update the user's player profile sponsored field
-        try:
-            player = instance.user.player_profile
+        # Update all service players' sponsored field
+        for player in instance.service_players.all():
             player.sponsored = True
             player.save(update_fields=["sponsored"])
-        except User.player_profile.RelatedObjectDoesNotExist:
-            # User doesn't have a player profile, skip silently
-            pass

@@ -3,7 +3,7 @@ from django.db.models import QuerySet
 from django.http import HttpRequest
 from ninja import Router
 
-from server.core.models import User
+from server.core.models import Player, User
 from server.types import message_response
 
 from .models import ServiceRequest, ServiceRequestType
@@ -31,6 +31,18 @@ def create_service_request(
     if service_request_data.type not in [choice[0] for choice in ServiceRequestType.choices]:
         return 400, {"message": "Invalid service request type"}
 
+    # Validate service player IDs if provided
+    service_players = []
+    if service_request_data.service_player_ids:
+        try:
+            service_players = list(
+                Player.objects.filter(id__in=service_request_data.service_player_ids)
+            )
+            if len(service_players) != len(service_request_data.service_player_ids):
+                return 400, {"message": "One or more player IDs are invalid"}
+        except Exception:
+            return 400, {"message": "Invalid player IDs provided"}
+
     # Create the service request
     service_request = ServiceRequest(
         user=request.user, type=service_request_data.type, message=service_request_data.message
@@ -39,6 +51,11 @@ def create_service_request(
     try:
         service_request.full_clean()
         service_request.save()
+
+        # Add service players if provided
+        if service_players:
+            service_request.service_players.set(service_players)
+
         return 200, service_request
     except ValidationError as e:
         return 400, {"message": " ".join(e.messages)}
