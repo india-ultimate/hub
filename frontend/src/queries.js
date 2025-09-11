@@ -1989,3 +1989,40 @@ export const uploadProfilePicture = async file => {
   }
   return data;
 };
+
+// Service Request API functions
+export const fetchServiceRequests = async () => {
+  const response = await fetch("/api/service-requests/", {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    credentials: "same-origin"
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data?.message || "Failed to fetch service requests");
+  }
+  return data;
+};
+
+export const createServiceRequest = async data => {
+  const response = await fetch("/api/service-requests/", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin",
+    body: JSON.stringify(data)
+  });
+
+  const responseData = await response.json();
+  if (!response.ok) {
+    throw new Error(
+      responseData?.message || "Failed to create service request"
+    );
+  }
+  return responseData;
+};
