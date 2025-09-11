@@ -9,6 +9,8 @@ import { useStore } from "../../store";
 import { displayDate, findPlayerById, getAge } from "../../utils";
 import Info from "../alerts/Info";
 import Breadcrumbs from "../Breadcrumbs";
+import RazorpayPayment from "../RazorpayPayment";
+import GroupMembership from "./GroupMembership";
 
 const Membership = () => {
   const [store] = useStore();
@@ -19,10 +21,11 @@ const Membership = () => {
   const [season, setSeason] = createSignal();
   const [annual, _setAnnual] = createSignal(true);
   const [ageRestricted, setAgeRestricted] = createSignal(false);
+  const [membershipType, setMembershipType] = createSignal("patron"); // "patron" or "standard"
 
   const [event, _setEvent] = createSignal();
 
-  const [status, _setStatus] = createSignal();
+  const [status, setStatus] = createSignal();
 
   const params = useParams();
   createEffect(() => {
@@ -47,7 +50,7 @@ const Membership = () => {
     );
   };
 
-  const [_payDisabled, setPayDisabled] = createSignal(false);
+  const [payDisabled, setPayDisabled] = createSignal(false);
 
   createEffect(() => {
     const dob = player()?.date_of_birth;
@@ -60,12 +63,21 @@ const Membership = () => {
     setPayDisabled(noSelection || age < minAge);
   });
 
-  const getAmount = () =>
-    (annual()
-      ? player()?.sponsored
-        ? season()?.sponsored_annual_membership_amount
-        : season()?.annual_membership_amount
-      : eventMembershipFee) / 100;
+  const getAmount = () => {
+    if (!annual()) {
+      return eventMembershipFee / 100;
+    }
+
+    // For annual membership, check membership type
+    if (membershipType() === "patron") {
+      return season()?.supporter_annual_membership_amount / 100;
+    } else {
+      // Standard membership
+      return player()?.sponsored
+        ? season()?.sponsored_annual_membership_amount / 100
+        : season()?.annual_membership_amount / 100;
+    }
+  };
 
   return (
     <div>
@@ -85,42 +97,85 @@ const Membership = () => {
           </summary>
           <div class="my-2 space-y-2 text-sm">
             <p>
-              The membership fees are designed to cover the bare-bone needs of
-              the organisation. Which is paying WFDF, Auditor, Accounting and
-              legal fees along with the expense of 1 Ops executive.
+              Membership fees help cover India Ultimate’s essential costs: WFDF
+              dues, audit, accountant, legal fees etc., along with the salary of
+              at least one full-time staff member. Currently, IU has a team of a
+              CEO, two senior operations executives, and one part-time staff.
             </p>
             <h2 class="text-base font-semibold text-gray-600 dark:text-white">
               Apart from helping sustain India Ultimate, what does your
               membership get you?
             </h2>
             <ul class="list-inside list-disc space-y-1">
-              <li>Opportunity to participate in all state/national tryouts</li>
-              <li>Access to all IU tournaments, 7+ annually</li>
+              <li>
+                Opportunity to participate in all state/national team tryouts
+              </li>
+              <li>
+                Tournament Access - Eligible to play all IU-sanctioned
+                tournaments (7+ annually)
+              </li>
               <li>
                 Opportunity for you to participate in WFDF recognised events
                 through your club
               </li>
-              <li>Access to all coaching certification programs</li>
-              <li>
-                Opportunity to voice your opinion with issues and decisions in
-                IU going ahead
-              </li>
+              <li>Coaching & Workshops</li>
+              <li>Governance & Voice</li>
               <li>
                 Credibility of your participation -- Certificates & recognition
               </li>
               <li>
-                All access to the present future features of the Hub such as
-                rostering statistics, schedules, live scores etc.
+                Updates & Content - IU newsletter + access to Hub (rostering,
+                stats, schedules, scores)
               </li>
+              <li>Contribute to growth of Flying Disc in India</li>
             </ul>
             <hr />
-            <p>
-              Regular full membership = Rs. 700 a year. This comes to Rs. 58 per
-              month.
-            </p>
+            <h2 class="text-base font-semibold text-gray-600 dark:text-white">
+              Membership Fees
+            </h2>
+            <div>
+              <details>
+                <summary class="text-base font-bold">
+                  Patron membership – Rs. 1500
+                </summary>
+                <p class="mt-2">
+                  The <strong>Patron Membership</strong> is for those who wish
+                  to actively support the growth of flying disc sports and
+                  FDSF(I). As the number of members grows, so do the
+                  responsibilities of the federation. To meet these needs, the
+                  organisation continues to rely on the goodwill of the
+                  community while working towards diversifying revenue streams,
+                  including private sponsors and, in the long run, government
+                  support. Recognising the different economic backgrounds within
+                  our community, the Patron Membership at Rs. 1500 per year
+                  helps subsidise the standard membership, ensuring equitable
+                  sharing of responsibility. The usage of the membership fee is
+                  explained in the pie chart below.
+                </p>
+              </details>
+              <details>
+                <summary class="mt-2 text-base font-bold">
+                  Standard membership – Rs. 750
+                </summary>
+              </details>
+              <details>
+                <summary class="mt-2 text-base font-bold">
+                  Supported Membership – Rs. 250 (on a need basis)
+                </summary>
+                <p class="mt-2">
+                  <strong>Supported Membership</strong> is designed to increase
+                  access to FDSF(I) membership for community members from
+                  underserved social groups. By reducing entry-level barriers to
+                  playing the sport, IU operations will grant a case-by-case
+                  partial waiver to those who require subsidisation. Please
+                  avail this option if needed.
+                </p>
+              </details>
+            </div>
+
             <p class="my-2">
               If you, or players on your college/NGO team need assistance in
-              paying this, then you can apply for discounted membership{" "}
+              paying this, then you can apply for supported membership{" "}
               <A
                 class="cursor-pointer text-blue-500 underline"
                 href="https://forms.gle/G2e18rjDjdDkmUKh7"
@@ -129,11 +184,6 @@ const Membership = () => {
                 {" "}
                 here.
               </A>
-            </p>
-            <p>
-              If you're comfortable paying the annual membership to support the
-              growth of Ultimate in the country then you DON'T need to fill this
-              form.
             </p>
           </div>
         </details>
@@ -225,6 +275,25 @@ const Membership = () => {
             </span>
           </label> */}
             <Show when={annual()}>
+              <div class="mt-4">
+                <label class="mb-2 block text-sm font-medium text-gray-900 dark:text-white">
+                  Membership Type
+                </label>
+                <select
+                  class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
+                  value={membershipType()}
+                  onChange={e => setMembershipType(e.target.value)}
+                >
+                  <option value="patron">
+                    Patron Membership - ₹{" "}
+                    {season()?.supporter_annual_membership_amount / 100}
+                  </option>
+                  <option value="standard">
+                    Standard Membership - ₹{" "}
+                    {season()?.annual_membership_amount / 100}
+                  </option>
+                </select>
+              </div>
               <p class="mt-4 font-bold">
                 Paying India Ultimate membership fee:
               </p>
@@ -249,16 +318,7 @@ const Membership = () => {
                 {minAgeWarning}
               </div>
             </Show>
-            <div
-              class="mt-4 rounded-lg bg-red-50 p-4 text-sm text-red-800 dark:bg-gray-800 dark:text-red-400"
-              role="alert"
-            >
-              <p>
-                Individual membership is not available at the moment due to EB
-                Elections. Please contact the admin to renew your membership.
-              </p>
-            </div>
-            {/* <RazorpayPayment
+            <RazorpayPayment
               disabled={payDisabled()}
               annual={annual()}
               season={season()}
@@ -266,7 +326,8 @@ const Membership = () => {
               player_id={player().id}
               amount={getAmount()}
               setStatus={setStatus}
-            /> */}
+              membershipType={membershipType()}
+            />
             <p>{status()}</p>
           </Show>
         </div>
@@ -279,17 +340,10 @@ const Membership = () => {
             <h3 class="text-sm italic">Renew membership for a group</h3>
           </div>
 
-          <div
-            class="mt-4 rounded-lg bg-red-50 p-4 text-sm text-red-800 dark:bg-gray-800 dark:text-red-400"
-            role="alert"
-          >
-            <p>
-              Group membership is not available at the moment due to EB
-              Elections.
-            </p>
-          </div>
-
-          {/* <GroupMembership season={season()} /> */}
+          <GroupMembership
+            season={season()}
+            membershipType={membershipType()}
+          />
         </div>
       </Show>
     </div>
