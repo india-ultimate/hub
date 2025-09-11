@@ -72,6 +72,7 @@ class PlayerAdmin(admin.ModelAdmin[Player]):
     search_fields = ["user__first_name", "user__last_name", "user__username", "user__email"]
     list_display = ["get_name", "get_email", "gender", "sponsored"]
     list_filter = ["gender", "sponsored"]
+    actions = [export_as_csv]
 
     @admin.display(description="Name", ordering="user__first_name")
     def get_name(self, obj: Player) -> str:
