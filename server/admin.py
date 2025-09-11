@@ -27,6 +27,7 @@ from server.election.models import (
 from server.membership.models import Membership
 from server.season.models import Season
 from server.series.models import Series, SeriesRegistration, SeriesRosterInvitation
+from server.servicerequests.models import ServiceRequest
 from server.tournament.models import (
     Bracket,
     CrossPool,
@@ -676,3 +677,16 @@ class ElectionResultAdmin(admin.ModelAdmin[ElectionResult]):
 @admin.register(SpiritScore)
 class SpiritScoreAdmin(admin.ModelAdmin[SpiritScore]):
     pass
+
+
+@admin.register(ServiceRequest)
+class ServiceRequestAdmin(admin.ModelAdmin[ServiceRequest]):
+    search_fields = ["user__first_name", "user__last_name", "user__email"]
+    list_display = ["get_user", "type", "status", "created_at"]
+    list_filter = ["type", "status", "created_at"]
+    date_hierarchy = "created_at"
+    filter_horizontal = ("service_players",)
+
+    @admin.display(description="User", ordering="user__first_name")
+    def get_user(self, obj: ServiceRequest) -> str:
+        return obj.user.get_full_name()
