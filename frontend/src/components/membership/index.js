@@ -1,4 +1,4 @@
-import { A, useParams } from "@solidjs/router";
+import { useParams } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
 import { inboxStack } from "solid-heroicons/solid";
 import { createEffect, createSignal, For, Show } from "solid-js";
@@ -11,6 +11,7 @@ import Info from "../alerts/Info";
 import Breadcrumbs from "../Breadcrumbs";
 import RazorpayPayment from "../RazorpayPayment";
 import GroupMembership from "./GroupMembership";
+import ServiceRequestModal from "./ServiceRequestModal";
 
 const Membership = () => {
   const [store] = useStore();
@@ -175,16 +176,13 @@ const Membership = () => {
 
             <p class="my-2">
               If you, or players on your college/NGO team need assistance in
-              paying this, then you can apply for supported membership{" "}
-              <A
-                class="cursor-pointer text-blue-500 underline"
-                href="https://forms.gle/G2e18rjDjdDkmUKh7"
-                target="_blank"
-              >
-                {" "}
-                here.
-              </A>
+              paying this, then you can apply for supported membership by
+              clicking the button below.
             </p>
+
+            <div class="my-4">
+              <ServiceRequestModal currentPlayer={player()} />
+            </div>
           </div>
         </details>
       </div>
@@ -279,20 +277,30 @@ const Membership = () => {
                 <label class="mb-2 block text-sm font-medium text-gray-900 dark:text-white">
                   Membership Type
                 </label>
-                <select
-                  class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
-                  value={membershipType()}
-                  onChange={e => setMembershipType(e.target.value)}
+                <Show
+                  when={!membership()?.is_sponsored}
+                  fallback={
+                    <div class="block w-full rounded-lg border border-gray-300 bg-gray-100 p-2.5 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+                      Supported Membership – ₹{" "}
+                      {season()?.sponsored_annual_membership_amount / 100}
+                    </div>
+                  }
                 >
-                  <option value="patron">
-                    Patron Membership - ₹{" "}
-                    {season()?.supporter_annual_membership_amount / 100}
-                  </option>
-                  <option value="standard">
-                    Standard Membership - ₹{" "}
-                    {season()?.annual_membership_amount / 100}
-                  </option>
-                </select>
+                  <select
+                    class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
+                    value={membershipType()}
+                    onChange={e => setMembershipType(e.target.value)}
+                  >
+                    <option value="patron">
+                      Patron Membership - ₹{" "}
+                      {season()?.supporter_annual_membership_amount / 100}
+                    </option>
+                    <option value="standard">
+                      Standard Membership - ₹{" "}
+                      {season()?.annual_membership_amount / 100}
+                    </option>
+                  </select>
+                </Show>
               </div>
               <p class="mt-4 font-bold">
                 Paying India Ultimate membership fee:
@@ -338,6 +346,10 @@ const Membership = () => {
               Group Membership
             </h1>
             <h3 class="text-sm italic">Renew membership for a group</h3>
+          </div>
+
+          <div class="mb-4">
+            <ServiceRequestModal currentPlayer={player()} />
           </div>
 
           <GroupMembership
