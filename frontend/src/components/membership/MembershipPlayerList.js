@@ -47,6 +47,8 @@ const MembershipPlayerList = props => {
                     ₹
                     {player?.sponsored
                       ? props.season?.sponsored_annual_membership_amount / 100
+                      : props.membershipType === "patron"
+                      ? props.season?.supporter_annual_membership_amount / 100
                       : props.season?.annual_membership_amount / 100}
                   </td>
                   <td>

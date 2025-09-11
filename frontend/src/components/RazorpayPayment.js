@@ -29,14 +29,16 @@ const RazorpayPayment = props => {
     const event_id = props.event?.id;
     const team_id = props.team?.id;
     const partial = props.partialPayment || false;
+    const is_supporter = props.is_supporter || false;
+    const membership_type = props.membershipType || "standard";
     const data = team_id
       ? player_ids
         ? { team_id, event_id, player_ids } // Player Registration
         : { team_id, event_id, partial } // Team Registration
       : props.annual
       ? player_ids
-        ? { player_ids, season_id } // Group Membership
-        : { player_id, season_id } // Individual Membership
+        ? { player_ids, season_id, is_supporter, membership_type } // Group Membership
+        : { player_id, season_id, is_supporter, membership_type } // Individual Membership
       : { player_id, event_id }; // Event Membership
 
     setLoading(true);

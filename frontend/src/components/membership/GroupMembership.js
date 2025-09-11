@@ -263,9 +263,19 @@ const PlayerSearchDropdown = componentProps => {
 
 const GroupMembership = props => {
   const [status, setStatus] = createSignal();
+  const [membershipType, setMembershipType] = createSignal(
+    props.membershipType || "patron"
+  );
 
   const [payingPlayers, setPayingPlayers] = createSignal([]);
   const [paymentSuccess, setPaymentSuccess] = createSignal(false);
+
+  // Sync membership type from props
+  createEffect(() => {
+    if (props.membershipType) {
+      setMembershipType(props.membershipType);
+    }
+  });
 
   const paymentSuccessCallback = () => {
     setPaymentSuccess(true);
@@ -299,6 +309,8 @@ const GroupMembership = props => {
         acc +
         (player?.sponsored
           ? props.season?.sponsored_annual_membership_amount
+          : membershipType() === "patron"
+          ? props.season?.supporter_annual_membership_amount
           : props.season?.annual_membership_amount),
       0
     ) / 100;
@@ -306,6 +318,26 @@ const GroupMembership = props => {
   return (
     <div>
       <Show when={!paymentSuccess()}>
+        <div class="mb-4">
+          <label class="mb-2 block text-sm font-medium text-gray-900 dark:text-white">
+            Membership Type
+          </label>
+          <select
+            class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
+            value={membershipType()}
+            onChange={e => setMembershipType(e.target.value)}
+          >
+            <option value="patron">
+              Patron Membership - ₹{" "}
+              {props.season?.supporter_annual_membership_amount / 100} per
+              player
+            </option>
+            <option value="standard">
+              Standard Membership - ₹{" "}
+              {props.season?.annual_membership_amount / 100} per player
+            </option>
+          </select>
+        </div>
         <PlayerSearchDropdown
           payingPlayers={payingPlayers()}
           onPlayerPayingStatusChange={handlePlayerPayingStatus}
@@ -318,6 +350,7 @@ const GroupMembership = props => {
         endDate={displayDate(props.season?.end_date)}
         onPlayerPayingStatusChange={handlePlayerPayingStatus}
         season={props.season}
+        membershipType={membershipType()}
       />
       <Show when={payingPlayers()?.find(p => p.is_minor)}>
         <div
@@ -339,6 +372,7 @@ const GroupMembership = props => {
               amount={getAmount()}
               setStatus={setStatus}
               successCallback={paymentSuccessCallback}
+              membershipType={membershipType()}
             />
           </Match>
           <Match when={paymentSuccess()}>
