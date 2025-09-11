@@ -67,12 +67,26 @@ def export_as_csv(
     return response
 
 
+@admin.action(description="Set sponsored to False")
+def set_sponsored_false(
+    self: admin.ModelAdmin[Player],
+    request: HttpRequest,
+    queryset: QuerySet[Player],
+) -> None:
+    """Set sponsored status to False for all selected players"""
+    updated_count = queryset.update(sponsored=False)
+    self.message_user(
+        request,
+        f"Successfully updated {updated_count} player(s) to set sponsored=False.",
+    )
+
+
 @admin.register(Player)
 class PlayerAdmin(admin.ModelAdmin[Player]):
     search_fields = ["user__first_name", "user__last_name", "user__username", "user__email"]
     list_display = ["get_name", "get_email", "gender", "sponsored"]
     list_filter = ["gender", "sponsored"]
-    actions = [export_as_csv]
+    actions = [export_as_csv, set_sponsored_false]
 
     @admin.display(description="Name", ordering="user__first_name")
     def get_name(self, obj: Player) -> str:
