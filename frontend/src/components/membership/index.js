@@ -1,5 +1,5 @@
 import { useParams } from "@solidjs/router";
-import { createQuery, useQueryClient } from "@tanstack/solid-query";
+import { createQuery } from "@tanstack/solid-query";
 import { inboxStack } from "solid-heroicons/solid";
 import { createEffect, createSignal, For, Show } from "solid-js";
 
@@ -27,22 +27,16 @@ const Membership = () => {
 
   const params = useParams();
 
-  const queryClient = useQueryClient();
-
   const playerQuery = createQuery(
     () => ["player", params.playerId],
     () => fetchPlayerById(Number(params.playerId))
   );
 
   createEffect(() => {
-    if (playerQuery.data) {
+    if (playerQuery.isSuccess && playerQuery.data) {
       setPlayer(playerQuery.data);
       setMembership(playerQuery.data?.membership);
     }
-  });
-
-  createEffect(() => {
-    console.log(player()?.sponsored);
   });
 
   const seasonsQuery = createQuery(() => ["seasons"], fetchSeasons);
@@ -345,9 +339,7 @@ const Membership = () => {
               setStatus={setStatus}
               membershipType={membershipType()}
               successCallback={() => {
-                queryClient.invalidateQueries({
-                  queryKey: ["player", player().id]
-                });
+                playerQuery.refetch();
               }}
             />
             <p>{status()}</p>
@@ -370,9 +362,7 @@ const Membership = () => {
             season={season()}
             membershipType={membershipType()}
             successCallback={() => {
-              queryClient.invalidateQueries({
-                queryKey: ["player", player().id]
-              });
+              playerQuery.refetch();
             }}
           />
         </div>
