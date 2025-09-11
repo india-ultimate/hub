@@ -22,13 +22,9 @@ COPY --chown=user:users README.md .
 RUN mkdir $APP/frontend
 WORKDIR $APP/frontend
 
-# Install JS/node dependencies
-COPY --chown=user:users frontend/yarn.lock yarn.lock
-COPY --chown=user:users frontend/package.json package.json
-RUN yarnpkg
-
 # Build frontend code
 COPY --chown=user:users frontend .
+RUN yarnpkg
 RUN yarnpkg run build
 RUN rm -rf node_modules/
 
