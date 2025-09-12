@@ -337,7 +337,7 @@ const Membership = () => {
               player_id={player().id}
               amount={getAmount()}
               setStatus={setStatus}
-              membershipType={membershipType()}
+              is_supporter={membershipType() === "patron"}
               successCallback={() => {
                 playerQuery.refetch();
               }}
