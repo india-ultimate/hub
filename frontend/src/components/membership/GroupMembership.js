@@ -373,7 +373,7 @@ const GroupMembership = props => {
               amount={getAmount()}
               setStatus={setStatus}
               successCallback={paymentSuccessCallback}
-              membershipType={membershipType()}
+              is_supporter={membershipType() === "patron"}
             />
           </Match>
           <Match when={paymentSuccess()}>
