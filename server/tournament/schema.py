@@ -10,7 +10,7 @@ from server.schema import (
     TeamMinSchema,
     TeamSchema,
 )
-from server.series.schema import SeriesMinSchema
+from server.series.schema import SeriesSchema
 
 from .models import (
     Bracket,
@@ -40,7 +40,7 @@ class UCRegistrationSchema(ModelSchema):
 
 
 class EventSchema(ModelSchema):
-    series: SeriesMinSchema | None
+    series: SeriesSchema | None
 
     class Config:
         model = Event
@@ -76,7 +76,9 @@ class TournamentSchema(ModelSchema):
         return [
             RegistrationCount(
                 team_id=team.id,
-                count=Registration.objects.filter(team=team, event=tournament.event).count(),
+                count=Registration.objects.filter(
+                    team=team, event=tournament.event
+                ).count(),
             )
             for team in teams
         ]
