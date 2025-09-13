@@ -10,7 +10,7 @@ from server.schema import (
     TeamMinSchema,
     TeamSchema,
 )
-from server.series.schema import SeriesMinSchema
+from server.series.schema import SeriesSchema
 
 from .models import (
     Bracket,
@@ -40,7 +40,7 @@ class UCRegistrationSchema(ModelSchema):
 
 
 class EventSchema(ModelSchema):
-    series: SeriesMinSchema | None
+    series: SeriesSchema | None
 
     class Config:
         model = Event
