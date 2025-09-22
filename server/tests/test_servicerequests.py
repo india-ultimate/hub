@@ -1,3 +1,4 @@
+from django.core import mail
 from django.test import TestCase
 
 from server.core.models import Player, User
@@ -104,3 +105,102 @@ class ServiceRequestSignalTest(TestCase):
         # Verify player is now sponsored
         self.player.refresh_from_db()
         self.assertTrue(self.player.sponsored)
+
+    def test_email_sent_on_approval(self) -> None:
+        """Test that an email is sent when a service request is approved"""
+        # Clear the outbox
+        mail.outbox = []
+
+        # Create a service request
+        service_request = ServiceRequest.objects.create(
+            user=self.user,
+            type=ServiceRequestType.REQUEST_SPONSORED_MEMBERSHIP,
+            message="Please approve my sponsored membership",
+            status=ServiceRequestStatus.PENDING,
+        )
+
+        # Add the player to the service request
+        service_request.service_players.add(self.player)
+
+        # Approve the service request
+        service_request.status = ServiceRequestStatus.APPROVED
+        service_request.save()
+
+        # Check that an email was sent
+        self.assertEqual(len(mail.outbox), 1)
+
+        # Check email details
+        email = mail.outbox[0]
+        self.assertEqual(email.to, [self.user.email])
+        self.assertIn("Service Request Approved", email.subject)
+        self.assertIn("🎉 Great news! Your service request has been approved", email.body)
+        self.assertIn("text/html", email.alternatives[0][1])  # type: ignore[attr-defined]
+
+    def test_email_sent_on_rejection(self) -> None:
+        """Test that an email is sent when a service request is rejected"""
+        # Clear the outbox
+        mail.outbox = []
+
+        # Create a service request
+        service_request = ServiceRequest.objects.create(
+            user=self.user,
+            type=ServiceRequestType.REQUEST_SPONSORED_MEMBERSHIP,
+            message="Please approve my sponsored membership",
+            status=ServiceRequestStatus.PENDING,
+        )
+
+        # Add the player to the service request
+        service_request.service_players.add(self.player)
+
+        # Reject the service request
+        service_request.status = ServiceRequestStatus.REJECTED
+        service_request.save()
+
+        # Check that an email was sent
+        self.assertEqual(len(mail.outbox), 1)
+
+        # Check email details
+        email = mail.outbox[0]
+        self.assertEqual(email.to, [self.user.email])
+        self.assertIn("Service Request Update", email.subject)
+        self.assertIn(
+            "📋 We have reviewed your service request and unfortunately, it has not been approved at this time",
+            email.body,
+        )
+        self.assertIn("text/html", email.alternatives[0][1])  # type: ignore[attr-defined]
+
+    def test_no_email_sent_on_creation(self) -> None:
+        """Test that no email is sent when a service request is created"""
+        # Clear the outbox
+        mail.outbox = []
+
+        # Create a service request (this should not send an email)
+        ServiceRequest.objects.create(
+            user=self.user,
+            type=ServiceRequestType.REQUEST_SPONSORED_MEMBERSHIP,
+            message="Please approve my sponsored membership",
+            status=ServiceRequestStatus.PENDING,
+        )
+
+        # Check that no email was sent
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_no_email_sent_on_pending_status(self) -> None:
+        """Test that no email is sent when status changes to PENDING"""
+        # Clear the outbox
+        mail.outbox = []
+
+        # Create a service request
+        service_request = ServiceRequest.objects.create(
+            user=self.user,
+            type=ServiceRequestType.REQUEST_SPONSORED_MEMBERSHIP,
+            message="Please approve my sponsored membership",
+            status=ServiceRequestStatus.APPROVED,
+        )
+
+        # Change status to PENDING (this should not send an email)
+        service_request.status = ServiceRequestStatus.PENDING
+        service_request.save()
+
+        # Check that no email was sent
+        self.assertEqual(len(mail.outbox), 0)
