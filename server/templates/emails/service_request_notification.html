@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Service Request Notification</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        margin: 0;
+        padding: 0;
+        background-color: #f4f4f4;
+      }
+      .container {
+        max-width: 600px;
+        margin: 0 auto;
+        background-color: #ffffff;
+      }
+      .header {
+        background-color: #3b82f6;
+        color: white;
+        padding: 20px;
+        text-align: center;
+      }
+      .header h1 {
+        margin: 0;
+        font-size: 24px;
+        font-weight: bold;
+      }
+      .logo {
+        width: 100px;
+        height: 150px;
+        margin-bottom: 15px;
+      }
+      .content {
+        padding: 30px;
+        background-color: #ffffff;
+      }
+      .status-badge {
+        display: inline-block;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: bold;
+        margin-bottom: 20px;
+      }
+      .status-approved {
+        background-color: #d1fae5;
+        color: #065f46;
+      }
+      .status-rejected {
+        background-color: #fee2e2;
+        color: #b91c1c;
+      }
+      .request-details {
+        background-color: #f8f9fa;
+        padding: 20px;
+        margin-bottom: 25px;
+        border-left: 4px solid #3b82f6;
+      }
+      .detail-row {
+        margin-bottom: 10px;
+        padding: 8px 0;
+        border-bottom: 1px solid #e5e7eb;
+      }
+      .detail-row:last-child {
+        border-bottom: none;
+      }
+      .detail-label {
+        font-weight: bold;
+        color: #374151;
+      }
+      .detail-value {
+        color: #6b7280;
+      }
+      .message-section {
+        background-color: #f8f9fa;
+        padding: 20px;
+        margin-bottom: 25px;
+        border-left: 4px solid #3b82f6;
+      }
+      .message-content {
+        white-space: pre-wrap;
+        color: #4b5563;
+      }
+      .players-section {
+        background-color: #f8f9fa;
+        padding: 20px;
+        margin-bottom: 25px;
+        border-left: 4px solid #3b82f6;
+      }
+      .players-title {
+        font-size: 18px;
+        font-weight: bold;
+        margin-bottom: 15px;
+        color: #1f2937;
+      }
+      .player-item {
+        padding: 8px 0;
+        border-bottom: 1px solid #e5e7eb;
+      }
+      .player-item:last-child {
+        border-bottom: none;
+      }
+      .btn {
+        display: inline-block;
+        background-color: #3b82f6;
+        color: white;
+        padding: 12px 30px;
+        text-decoration: none;
+        border-radius: 6px;
+        font-weight: bold;
+        text-align: center;
+        margin: 20px 0;
+      }
+      .btn:hover {
+        background-color: #2563eb;
+      }
+      .footer {
+        margin-top: 30px;
+        padding-top: 20px;
+        border-top: 1px solid #e5e7eb;
+        font-size: 14px;
+        color: #6b7280;
+      }
+      .center {
+        text-align: center;
+      }
+      .status-message {
+        margin-bottom: 25px;
+        padding: 15px;
+        border-radius: 4px;
+        border-left: 4px solid #3b82f6;
+        background-color: #f0f9ff;
+      }
+      .status-message.approved {
+        background-color: #f0fdf4;
+        border-left-color: #10b981;
+      }
+      .status-message.rejected {
+        background-color: #fef2f2;
+        border-left-color: #ef4444;
+      }
+      .status-message p {
+        margin: 0;
+        font-weight: bold;
+      }
+      .status-message.approved p {
+        color: #065f46;
+      }
+      .status-message.rejected p {
+        color: #b91c1c;
+      }
+      @media only screen and (max-width: 600px) {
+        .container {
+          width: 100% !important;
+        }
+        .content {
+          padding: 20px !important;
+        }
+        .logo {
+          width: 80px !important;
+          height: 120px !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <table
+      width="100%"
+      cellpadding="0"
+      cellspacing="0"
+      style="background-color: #f4f4f4"
+    >
+      <tr>
+        <td align="center" style="padding: 20px">
+          <table
+            width="600"
+            cellpadding="0"
+            cellspacing="0"
+            style="
+              background-color: #ffffff;
+              border-radius: 8px;
+              overflow: hidden;
+            "
+          >
+            <!-- Header -->
+            <tr>
+              <td class="header">
+                <img
+                  src="{{ site_url }}/static/assets/logo-vertical.png"
+                  alt="India Ultimate Hub"
+                  class="logo"
+                />
+                <h1>Service Request Update</h1>
+              </td>
+            </tr>
+
+            <!-- Content -->
+            <tr>
+              <td class="content">
+                <!-- Status Badge -->
+                <div class="center">
+                  <span
+                    class="status-badge status-{{ service_request.status|lower }}"
+                  >
+                    {{ service_request.get_status_display }}
+                  </span>
+                </div>
+
+                <!-- Status Message -->
+                <div class="status-message {{ service_request.status|lower }}">
+                  {% if service_request.status == 'APPROVED' %}
+                  <p>🎉 Great news! Your service request has been approved.</p>
+                  {% else %}
+                  <p>
+                    📋 We have reviewed your service request and unfortunately,
+                    it has not been approved at this time.
+                  </p>
+                  {% endif %}
+                </div>
+
+                <!-- Request Details -->
+                <table
+                  width="100%"
+                  cellpadding="0"
+                  cellspacing="0"
+                  class="request-details"
+                >
+                  <tr>
+                    <td class="detail-row">
+                      <span class="detail-label">Request Type:</span>
+                      <span class="detail-value"
+                        >{{ service_request.get_type_display }}</span
+                      >
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="detail-row">
+                      <span class="detail-label">Status:</span>
+                      <span class="detail-value"
+                        >{{ service_request.get_status_display }}</span
+                      >
+                    </td>
+                  </tr>
+                </table>
+
+                <!-- User Message -->
+                {% if service_request.message %}
+                <table
+                  width="100%"
+                  cellpadding="0"
+                  cellspacing="0"
+                  class="message-section"
+                >
+                  <tr>
+                    <td>
+                      <div class="detail-label">Your Message:</div>
+                      <div class="message-content">
+                        {{ service_request.message }}
+                      </div>
+                    </td>
+                  </tr>
+                </table>
+                {% endif %}
+
+                <!-- Affected Players -->
+                {% if service_request.service_players.exists %}
+                <table
+                  width="100%"
+                  cellpadding="0"
+                  cellspacing="0"
+                  class="players-section"
+                >
+                  <tr>
+                    <td>
+                      <div class="players-title">Players Affected</div>
+                      {% for player in service_request.service_players.all %}
+                      <div class="player-item">
+                        <span class="detail-label"
+                          >{{ player.user.get_full_name }}</span
+                        >
+                        <span class="detail-value"
+                          >({{ player.user.email }})</span
+                        >
+                      </div>
+                      {% endfor %}
+                    </td>
+                  </tr>
+                </table>
+                {% endif %}
+
+                <!-- Additional Message for Rejected Requests -->
+                {% if service_request.status == 'REJECTED' %}
+                <div class="status-message rejected">
+                  <p>
+                    If you have any questions about this decision, please don't hesitate to contact
+                    our team.
+                  </p>
+                </div>
+                {% endif %}
+
+                <!-- Action Button -->
+                <div class="center">
+                  <a href="{{ site_url }}/tickets" class="btn">
+                    View Help Center
+                  </a>
+                </div>
+
+                <!-- Footer -->
+                <div class="footer">
+                  <p>
+                    <strong
+                      >Thank you for using the India Ultimate Hub
+                      services.</strong
+                    >
+                  </p>
+                  <p>
+                    This is an automated message from the India Ultimate Hub.
+                    Please do not reply directly to this email.
+                  </p>
+                  {% if service_request.status == 'REJECTED' %}
+                  <p>
+                    If you have any questions, please contact our support team.
+                  </p>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
+
+
+
