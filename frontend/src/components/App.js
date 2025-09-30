@@ -10,6 +10,7 @@ import ScrollUpButton from "./ScrollUpButton";
 import UserRoute from "./UserRoute";
 
 const About = lazy(() => import("./About"));
+const Announcements = lazy(() => import("./announcement/Announcements"));
 const Dashboard = lazy(() => import("./Dashboard"));
 const Home = lazy(() => import("./Home"));
 const Login = lazy(() => import("./Login"));
@@ -99,6 +100,7 @@ export default function App() {
                   {/* Simple pages */}
                   <Route path="/" component={Home} />
                   <Route path="/about" component={About} />
+                  <Route path="/announcements" component={Announcements} />
                   <UserRoute path="/dashboard" component={Dashboard} />
                   {/* Login related routes */}
                   <Route path="/login" component={Login} />
