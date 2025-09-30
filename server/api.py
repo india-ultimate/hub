@@ -31,6 +31,7 @@ from ninja import File, NinjaAPI, UploadedFile
 from ninja.pagination import PageNumberPagination, paginate
 from ninja.security import django_auth
 
+from server.announcements.api import router as announcements_router
 from server.chat.api import router as chat_router
 from server.core.models import (
     Accreditation,
@@ -187,6 +188,7 @@ api.add_router("/ticket", ticket_api)
 api.add_router("/election", election_router)
 api.add_router("/chat", chat_router)
 api.add_router("/service-requests", servicerequests_router)
+api.add_router("/announcements", announcements_router)
 
 # User #########
 
