@@ -114,7 +114,7 @@ const Announcements = () => {
               </p>
               <div class="mt-6">
                 <a
-                  href="/login"
+                  href="/login?redirect=/announcements"
                   class="inline-flex items-center rounded-lg bg-blue-600 px-6 py-3 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:focus:ring-blue-800"
                 >
                   Login
