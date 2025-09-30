@@ -24,7 +24,12 @@ const PasswordLogin = props => {
   createEffect(() => {
     if (store.loggedIn) {
       const navigate = useNavigate();
-      navigate("/dashboard", { replace: true });
+      const redirect = new URL(window.location.href).searchParams.get(
+        "redirect"
+      );
+      const isSafe =
+        redirect && redirect.startsWith("/") && !redirect.startsWith("//");
+      navigate(isSafe ? redirect : "/dashboard", { replace: true });
     }
   });
 
@@ -145,7 +150,12 @@ const SendEmailOTP = props => {
   createEffect(() => {
     if (store.loggedIn) {
       const navigate = useNavigate();
-      navigate("/dashboard", { replace: true });
+      const redirect = new URL(window.location.href).searchParams.get(
+        "redirect"
+      );
+      const isSafe =
+        redirect && redirect.startsWith("/") && !redirect.startsWith("//");
+      navigate(isSafe ? redirect : "/dashboard", { replace: true });
     }
   });
 
@@ -328,7 +338,12 @@ const PasskeyLogin = props => {
   createEffect(() => {
     if (store.loggedIn) {
       const navigate = useNavigate();
-      navigate("/dashboard", { replace: true });
+      const redirect = new URL(window.location.href).searchParams.get(
+        "redirect"
+      );
+      const isSafe =
+        redirect && redirect.startsWith("/") && !redirect.startsWith("//");
+      navigate(isSafe ? redirect : "/dashboard", { replace: true });
     }
   });
 
