@@ -1,3 +1,4 @@
+import { useNavigate } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
 import { initFlowbite } from "flowbite";
 import { Icon } from "solid-heroicons";
@@ -31,11 +32,25 @@ const fetchAnnouncements = async () => {
 
 const Announcements = () => {
   const [store] = useStore();
+  const navigate = useNavigate();
 
   // Fetch announcements (backend handles filtering based on user permissions)
   const query = createQuery(() => ["announcements"], fetchAnnouncements, {
     refetchOnWindowFocus: false
   });
+
+  // Fetch user data to check membership status
+  const userQuery = createQuery(
+    () => ["user"],
+    async () => {
+      const response = await fetch("/api/me");
+      if (!response.ok) throw new Error("Failed to fetch user data");
+      return response.json();
+    },
+    {
+      enabled: store.loggedIn
+    }
+  );
 
   onMount(() => {
     initFlowbite();
@@ -139,66 +154,116 @@ const Announcements = () => {
           >
             <div class="space-y-6">
               <For each={query.data}>
-                {announcement => (
-                  <div class="rounded-lg border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                    {/* Header */}
-                    <div class="mb-2 flex items-start justify-between">
-                      <div class="flex-1">
-                        <div class="mb-2 flex items-center gap-2">
-                          <span
-                            class={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getTypeColor(
-                              announcement.type
-                            )}`}
-                          >
-                            <Icon path={tag} class="mr-1 h-3 w-3" />
-                            {getTypeLabel(announcement.type)}
-                          </span>
-                          <Show when={!announcement.is_published}>
-                            <span class="inline-flex items-center rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-medium text-orange-800 dark:bg-orange-900 dark:text-orange-300">
-                              <Icon path={eyeSlash} class="mr-1 h-3 w-3" />
-                              Draft
-                            </span>
-                          </Show>
-                          <Show when={announcement.is_members_only}>
-                            <span class="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800 dark:bg-red-900 dark:text-red-300">
-                              <Icon path={eye} class="mr-1 h-3 w-3" />
-                              Members Only
-                            </span>
-                          </Show>
-                        </div>
-                        <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
-                          {announcement.title}
-                        </h2>
-                      </div>
-                    </div>
+                {announcement => {
+                  const hasActiveMembership =
+                    userQuery.data?.player?.membership?.is_active ?? false;
+                  const isMembersOnly = announcement.is_members_only;
+                  const canAccess = !isMembersOnly || hasActiveMembership;
 
-                    {/* Content Preview */}
-                    <div class="mb-4">
-                      <p class="text-gray-600 dark:text-gray-400">
-                        {truncateContent(announcement.content)}
-                      </p>
-                    </div>
-
-                    {/* Call to Action */}
-                    <Show
-                      when={announcement.action_text && announcement.action_url}
+                  return (
+                    <div
+                      class={`rounded-lg border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800 ${
+                        canAccess ? "cursor-pointer" : ""
+                      }`}
+                      role={canAccess ? "link" : undefined}
+                      tabIndex={canAccess ? 0 : undefined}
+                      onClick={() =>
+                        canAccess &&
+                        navigate(`/announcement/${announcement.slug}`)
+                      }
+                      onKeyDown={e => {
+                        if (canAccess && e.key === "Enter")
+                          navigate(`/announcement/${announcement.slug}`);
+                      }}
                     >
-                      <div class="mb-4">
-                        <a
-                          href={announcement.action_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          class="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:focus:ring-blue-800"
-                        >
-                          {announcement.action_text}
-                          <Icon path={link} class="ml-2 h-4 w-4" />
-                        </a>
+                      {/* Header */}
+                      <div class="mb-2 flex items-start justify-between">
+                        <div class="flex-1">
+                          <div class="mb-2 flex items-center gap-2">
+                            <span
+                              class={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getTypeColor(
+                                announcement.type
+                              )}`}
+                            >
+                              <Icon path={tag} class="mr-1 h-3 w-3" />
+                              {getTypeLabel(announcement.type)}
+                            </span>
+                            <Show when={!announcement.is_published}>
+                              <span class="inline-flex items-center rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-medium text-orange-800 dark:bg-orange-900 dark:text-orange-300">
+                                <Icon path={eyeSlash} class="mr-1 h-3 w-3" />
+                                Draft
+                              </span>
+                            </Show>
+                            <Show when={announcement.is_members_only}>
+                              <span class="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800 dark:bg-red-900 dark:text-red-300">
+                                <Icon path={eye} class="mr-1 h-3 w-3" />
+                                Members Only
+                              </span>
+                            </Show>
+                          </div>
+                          <h2 class="text-xl font-semibold text-blue-700 dark:text-white">
+                            <a
+                              href={`/announcement/${announcement.slug}`}
+                              class="hover:underline"
+                            >
+                              {announcement.title}
+                            </a>
+                          </h2>
+                        </div>
                       </div>
-                    </Show>
 
-                    {/* Footer */}
-                    <div class="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
-                      <div class="flex items-center gap-4">
+                      {/* Content Preview or Members Only Message */}
+                      <Show
+                        when={canAccess}
+                        fallback={
+                          <div class="py-2 text-center">
+                            <Icon
+                              path={lockClosed}
+                              class="mx-auto h-8 w-8 text-gray-400"
+                            />
+                            <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                              This announcement is for members only.{" "}
+                              <a
+                                href="/dashboard"
+                                class="text-blue-600 underline hover:text-blue-700"
+                              >
+                                Become a member
+                              </a>
+                            </p>
+                          </div>
+                        }
+                      >
+                        <div>
+                          <p class="text-gray-600 dark:text-gray-400">
+                            {truncateContent(announcement.content)}
+                          </p>
+                        </div>
+
+                        {/* Call to Action */}
+                        <Show
+                          when={
+                            announcement.action_text && announcement.action_url
+                          }
+                        >
+                          <div class="mt-4">
+                            <a
+                              href={announcement.action_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              aria-label={announcement.action_text}
+                              title={announcement.action_text}
+                              class="inline-flex items-center text-blue-600 hover:text-blue-700"
+                              onClick={e => e.stopPropagation()}
+                            >
+                              <Icon path={link} class="mr-2 h-4 w-4" />
+                              <span>{announcement.action_text}</span>
+                            </a>
+                          </div>
+                        </Show>
+                      </Show>
+
+                      {/* Footer */}
+                      <div class="mt-4 flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
                         <div class="flex items-center gap-2">
                           <Show
                             when={announcement.author_profile_pic_url}
@@ -227,8 +292,8 @@ const Announcements = () => {
                         </div>
                       </div>
                     </div>
-                  </div>
-                )}
+                  );
+                }}
               </For>
             </div>
           </Show>

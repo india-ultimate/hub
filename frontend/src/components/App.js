@@ -11,6 +11,9 @@ import UserRoute from "./UserRoute";
 
 const About = lazy(() => import("./About"));
 const Announcements = lazy(() => import("./announcement/Announcements"));
+const AnnouncementDetail = lazy(() =>
+  import("./announcement/AnnouncementDetail")
+);
 const Dashboard = lazy(() => import("./Dashboard"));
 const Home = lazy(() => import("./Home"));
 const Login = lazy(() => import("./Login"));
@@ -101,6 +104,10 @@ export default function App() {
                   <Route path="/" component={Home} />
                   <Route path="/about" component={About} />
                   <Route path="/announcements" component={Announcements} />
+                  <Route
+                    path="/announcement/:slug"
+                    component={AnnouncementDetail}
+                  />
                   <UserRoute path="/dashboard" component={Dashboard} />
                   {/* Login related routes */}
                   <Route path="/login" component={Login} />

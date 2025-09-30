@@ -226,6 +226,21 @@ CKEDITOR_UPLOAD_PATH = "ckeditor_uploads/"
 CKEDITOR_RESTRICT_BY_USER = True
 CKEDITOR_BROWSE_SHOW_DIRS = True
 
+# CKEditor configuration
+CKEDITOR_CONFIGS = {
+    "default": {
+        "toolbar": "full",
+        "height": 400,
+        "width": "100%",
+        "linkShowAdvancedTab": False,
+        "linkShowTargetTab": True,
+        "linkDefaultProtocol": "https://",
+        "linkTarget": "_blank",  # This makes all links open in new tab
+        "allowedContent": True,
+        "extraAllowedContent": "a[target]",
+    }
+}
+
 ########################################################################
 import django_stubs_ext
 
