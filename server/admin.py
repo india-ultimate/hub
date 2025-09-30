@@ -7,7 +7,9 @@ from django.db.models import CharField, Q, QuerySet, Sum, Value
 from django.db.models.functions import Concat
 from django.http import HttpRequest, HttpResponse
 from django.template.response import TemplateResponse
+from django.utils.html import format_html
 
+from server.announcements.models import Announcement
 from server.core.models import (
     Accreditation,
     Guardianship,
@@ -705,3 +707,38 @@ class ServiceRequestAdmin(admin.ModelAdmin[ServiceRequest]):
     @admin.display(description="User", ordering="user__first_name")
     def get_user(self, obj: ServiceRequest) -> str:
         return obj.user.get_full_name()
+
+
+@admin.register(Announcement)
+class AnnouncementAdmin(admin.ModelAdmin[Announcement]):
+    list_display = ["title", "type", "slug", "author", "created_at", "has_action"]
+    list_filter = ["type", "created_at", "author"]
+    search_fields = ["title", "slug", "content", "author__first_name", "author__last_name"]
+    date_hierarchy = "created_at"
+    ordering = ["-created_at"]
+    readonly_fields = ["slug"]
+
+    fieldsets = (
+        (None, {"fields": ("title", "slug", "type", "content", "is_members_only", "is_published")}),
+        (
+            "Call to Action (Optional)",
+            {
+                "fields": ("action_text", "action_url"),
+            },
+        ),
+    )
+
+    def save_model(self, request: HttpRequest, obj: Announcement, form: Any, change: bool) -> None:
+        if not change:  # Only for new objects
+            obj.author = request.user  # type: ignore[assignment]
+        super().save_model(request, obj, form, change)
+
+    @admin.display(description="Call to Action")
+    def has_action(self, obj: Announcement) -> str:
+        """Display whether announcement has CTA"""
+        if obj.action_text and obj.action_url:
+            return format_html('<span style="color: green;">✓ {}</span>', obj.action_text)
+        return format_html('<span style="color: gray;">No CTA</span>')
+
+    def get_queryset(self, request: HttpRequest) -> QuerySet[Announcement]:
+        return super().get_queryset(request).select_related("author")

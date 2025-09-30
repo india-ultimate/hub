@@ -1,5 +1,8 @@
 # https://docs.djangoproject.com/en/5.0/topics/db/models/#organizing-models-in-a-package
 
+from server.announcements.models import (  # noqa: F401
+    Announcement,
+)
 from server.chat.models import (  # noqa: F401
     ChatMessage,
     ChatSession,

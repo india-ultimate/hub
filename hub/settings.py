@@ -46,6 +46,8 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django.contrib.humanize",
     "django_prometheus",
+    "ckeditor",
+    "ckeditor_uploader",
     "server",
 ]
 
@@ -218,6 +220,11 @@ GROQ_TOP_P = float(os.environ.get("GROQ_TOP_P", "0.8"))
 CLOUDINARY_CLOUD_NAME = os.environ.get("CLOUDINARY_CLOUD_NAME", "india-ultimate")
 CLOUDINARY_API_KEY = os.environ.get("CLOUDINARY_API_KEY", "711243792862544")
 CLOUDINARY_API_SECRET = os.environ.get("CLOUDINARY_API_SECRET", "")
+
+# CKEditor settings
+CKEDITOR_UPLOAD_PATH = "ckeditor_uploads/"
+CKEDITOR_RESTRICT_BY_USER = True
+CKEDITOR_BROWSE_SHOW_DIRS = True
 
 ########################################################################
 import django_stubs_ext
