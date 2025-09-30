@@ -4,7 +4,7 @@ module.exports = {
   theme: {
     extend: {}
   },
-  plugins: [require("flowbite/plugin")],
+  plugins: [require("flowbite/plugin"), require("@tailwindcss/typography")],
   safelist: [
     "text-green-600",
     "dark:text-green-500",
