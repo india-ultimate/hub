@@ -25,6 +25,7 @@ thefuzz = "^0.22.1"
 pillow = "^10.4.0"
 groq = "^0.26.0"
 cloudinary = "^1.44.1"
+django-ckeditor = "^6.7.3"
 
 [tool.poetry.group.dev.dependencies]
 ipython = "^8.13.2"
