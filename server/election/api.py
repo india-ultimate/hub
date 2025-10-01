@@ -1,6 +1,5 @@
 import hashlib
 import secrets
-import time
 from typing import Any
 
 from django.conf import settings
@@ -12,7 +11,7 @@ from ninja import File, Router
 from ninja.files import UploadedFile
 
 from server.core.models import Guardianship, Player, User
-from server.lib.email_worker import get_email_worker_status, queue_emails
+from server.task.helpers import queue_emails
 
 from .models import (
     Candidate,
@@ -43,17 +42,6 @@ router = Router()
 
 class AuthenticatedHttpRequest(HttpRequest):
     user: User
-
-
-@router.get("/email-worker-status/", response={200: dict[str, Any], 403: ErrorSchema})
-def get_email_worker_status_endpoint(
-    request: AuthenticatedHttpRequest,
-) -> dict[str, Any] | tuple[int, dict[str, str]]:
-    """Get the status of the email worker thread and queue"""
-    if error := check_staff(request):
-        return error
-
-    return get_email_worker_status()
 
 
 def check_staff(request: AuthenticatedHttpRequest) -> tuple[int, dict[str, str]] | None:
@@ -694,15 +682,10 @@ Please do not reply directly to this email.
             failed_emails.append(f"{eligible_voter.user.email}: {e!s}")
             continue
 
-    # Queue the email sending task for background processing
-    task_id = f"election_{election_id}_{int(time.time())}"
+    # Queue the email sending tasks for background processing (one task per email)
     try:
-        success = queue_emails(email_messages, task_id)
-        if not success:
-            return 500, {"message": "Failed to queue emails for sending"}
-        print(
-            f"Queued {len(email_messages)} emails for election {election_id} for background sending"
-        )
+        tasks = queue_emails(email_messages)
+        print(f"Queued {len(tasks)} email tasks for election {election_id}")
     except Exception as e:
         return 500, {"message": f"Failed to queue emails for sending: {e!s}"}
 

@@ -1,0 +1,148 @@
+{% extends "admin/change_list.html" %}
+
+{% block extrastyle %}
+    {{ block.super }}
+    <style>
+        .task-status-box {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #e8f4f8;
+            border: 1px solid #b8dce8;
+            border-radius: 4px;
+        }
+        
+        .task-status-title {
+            margin-top: 0;
+            color: #1a5a7a;
+        }
+        
+        .task-test-email-box {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+        }
+        
+        .task-test-email-input {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            width: 300px;
+            background-color: white;
+            color: #333;
+        }
+        
+        .task-test-email-button {
+            padding: 8px 16px;
+            background-color: #417690;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .task-test-email-button:hover {
+            background-color: #335d75;
+        }
+        
+        .task-help-text {
+            margin: 10px 0 0 0;
+            font-size: 12px;
+            color: #666;
+        }
+        
+        @media (prefers-color-scheme: dark) {
+            .task-status-box {
+                background-color: #1a3a4a;
+                border-color: #2d5a6a;
+            }
+            
+            .task-status-title {
+                color: #7ec8e3;
+            }
+            
+            .task-test-email-box {
+                background-color: #2a2a2a;
+                border-color: #444;
+            }
+            
+            .task-test-email-box h3 {
+                color: #e0e0e0;
+            }
+            
+            .task-test-email-input {
+                background-color: #1a1a1a;
+                border-color: #555;
+                color: #e0e0e0;
+            }
+            
+            .task-test-email-button {
+                background-color: #5a9ab8;
+            }
+            
+            .task-test-email-button:hover {
+                background-color: #4a8aa8;
+            }
+            
+            .task-help-text {
+                color: #999;
+            }
+        }
+    </style>
+{% endblock %}
+
+{% block content_title %}
+    {{ block.super }}
+    
+    <div class="task-status-box">
+        <h3 class="task-status-title">Task Queue Status</h3>
+        <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px;">
+            <div style="text-align: center;">
+                <div style="font-size: 28px; font-weight: bold; color: #0066cc;">{{ task_stats.pending }}</div>
+                <div style="font-size: 12px; color: #666; text-transform: uppercase;">Pending</div>
+            </div>
+            <div style="text-align: center;">
+                <div style="font-size: 28px; font-weight: bold; color: #ff9800;">{{ task_stats.running }}</div>
+                <div style="font-size: 12px; color: #666; text-transform: uppercase;">Running</div>
+            </div>
+            <div style="text-align: center;">
+                <div style="font-size: 28px; font-weight: bold; color: #28a745;">{{ task_stats.completed }}</div>
+                <div style="font-size: 12px; color: #666; text-transform: uppercase;">Completed</div>
+            </div>
+            <div style="text-align: center;">
+                <div style="font-size: 28px; font-weight: bold; color: #dc3545;">{{ task_stats.failed }}</div>
+                <div style="font-size: 12px; color: #666; text-transform: uppercase;">Failed</div>
+            </div>
+            <div style="text-align: center;">
+                <div style="font-size: 28px; font-weight: bold; color: #6c757d;">{{ task_stats.total }}</div>
+                <div style="font-size: 12px; color: #666; text-transform: uppercase;">Total</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="task-test-email-box">
+        <h3 style="margin-top: 0;">Send Test Email</h3>
+        <form method="post" style="display: flex; gap: 10px; align-items: center;">
+            {% csrf_token %}
+            <input 
+                type="email" 
+                name="test_email" 
+                placeholder="Enter email address" 
+                required
+                class="task-test-email-input"
+            />
+            <button 
+                type="submit" 
+                name="send_test_email" 
+                value="1"
+                class="task-test-email-button"
+            >
+                Queue Test Email
+            </button>
+        </form>
+        <p class="task-help-text">
+            This will create a task to send a test email. The worker must be running to process it.
+        </p>
+    </div>
+{% endblock %}

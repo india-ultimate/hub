@@ -38,6 +38,9 @@ from server.series.models import (  # noqa: F401
     SeriesRegistration,
     SeriesRosterInvitation,
 )
+from server.task.models import (  # noqa: F401
+    Task,
+)
 from server.tournament.models import (  # noqa: F401
     Bracket,
     CrossPool,
