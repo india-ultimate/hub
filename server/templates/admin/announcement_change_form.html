@@ -1,0 +1,170 @@
+{% extends "admin/change_form.html" %}
+
+{% block extrastyle %}
+    {{ block.super }}
+    <style>
+        .announcement-email-box {
+            margin: 20px 0;
+            padding: 20px;
+            background-color: #f0f9ff;
+            border: 1px solid #bae6fd;
+            border-radius: 4px;
+        }
+        
+        .announcement-email-title {
+            margin-top: 0;
+            color: #1e40af;
+        }
+        
+        .announcement-email-note {
+            margin: 15px 0 0 0;
+            font-size: 12px;
+            color: #6b7280;
+        }
+        
+        .email-option {
+            margin: 15px 0;
+            padding: 15px;
+            background-color: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 4px;
+        }
+        
+        .email-option h4 {
+            margin: 0 0 10px 0;
+            color: #1f2937;
+        }
+        
+        .email-option p {
+            margin: 5px 0;
+            font-size: 13px;
+            color: #6b7280;
+        }
+        
+        .email-button {
+            padding: 10px 20px;
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        
+        .email-button:hover {
+            background-color: #2563eb;
+        }
+        
+        .email-input {
+            padding: 8px;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            width: 300px;
+            margin-right: 10px;
+        }
+        
+        @media (prefers-color-scheme: dark) {
+            .announcement-email-box {
+                background-color: #1e3a5f;
+                border-color: #2d5a7a;
+            }
+            
+            .announcement-email-title {
+                color: #ffffff;
+            }
+            
+            .announcement-email-note {
+                color: #9ca3af;
+            }
+            
+            .email-option {
+                background-color: #2a2a2a;
+                border-color: #444;
+            }
+            
+            .email-option h4 {
+                color: #f3f4f6;
+            }
+            
+            .email-option p {
+                color: #9ca3af;
+            }
+            
+            .email-input {
+                background-color: #1a1a1a;
+                border-color: #555;
+                color: #e0e0e0;
+            }
+            
+            .email-input::placeholder {
+                color: #6b7280;
+            }
+            
+            .email-button {
+                background-color: #5a9ab8;
+            }
+            
+            .email-button:hover {
+                background-color: #4a8aa8;
+            }
+        }
+    </style>
+{% endblock %}
+
+{% block after_field_sets %}
+    {{ block.super }}
+    
+    {% if original %}
+    <div class="announcement-email-box">
+        <h3 class="announcement-email-title">📧 Send Email Notification</h3>
+        
+        <div class="email-option">
+            <h4>Send to All Hub Users</h4>
+            <p>Send this announcement to all registered users on the platform</p>
+            <form method="post" style="margin-top: 10px;">
+                {% csrf_token %}
+                <input type="hidden" name="announcement_id" value="{{ original.id }}" />
+                <button type="submit" name="send_to_all_users" value="1" class="email-button">
+                    Send to All Users
+                </button>
+            </form>
+        </div>
+        
+        <div class="email-option">
+            <h4>Send to All Members</h4>
+            <p>Send this announcement to users with active memberships only</p>
+            <form method="post" style="margin-top: 10px;">
+                {% csrf_token %}
+                <input type="hidden" name="announcement_id" value="{{ original.id }}" />
+                <button type="submit" name="send_to_members" value="1" class="email-button">
+                    Send to Members Only
+                </button>
+            </form>
+        </div>
+        
+        <div class="email-option">
+            <h4>Send to Specific Email</h4>
+            <p>Send this announcement to a single email address for testing</p>
+            <form method="post" style="margin-top: 10px;">
+                {% csrf_token %}
+                <input type="hidden" name="announcement_id" value="{{ original.id }}" />
+                <input 
+                    type="email" 
+                    name="test_email" 
+                    placeholder="Enter email address" 
+                    required
+                    class="email-input"
+                />
+                <button type="submit" name="send_to_email" value="1" class="email-button">
+                    Send Test Email
+                </button>
+            </form>
+        </div>
+        
+        <p class="announcement-email-note">
+            <strong>Note:</strong> Email tasks will be queued and processed by the background worker.
+            Make sure the worker is running to send emails.
+        </p>
+    </div>
+    {% endif %}
+{% endblock %}

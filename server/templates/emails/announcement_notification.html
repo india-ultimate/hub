@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{ announcement.title }}</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        margin: 0;
+        padding: 0;
+        background-color: #f4f4f4;
+      }
+      .container {
+        max-width: 600px;
+        margin: 0 auto;
+        background-color: #ffffff;
+      }
+      .header {
+        background-color: #3b82f6;
+        color: white;
+        padding: 20px;
+        text-align: center;
+      }
+      .header h1 {
+        margin: 0;
+        font-size: 24px;
+        font-weight: bold;
+      }
+      .logo {
+        width: 100px;
+        height: 150px;
+        margin-bottom: 15px;
+      }
+      .content {
+        padding: 30px;
+        background-color: #ffffff;
+      }
+      .announcement-title {
+        font-size: 24px;
+        font-weight: bold;
+        margin-bottom: 15px;
+        color: #1f2937;
+      }
+      .announcement-type {
+        display: inline-block;
+        padding: 6px 12px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: bold;
+        margin-bottom: 20px;
+        text-transform: uppercase;
+      }
+      .type-competitions {
+        background-color: #dbeafe;
+        color: #1e40af;
+      }
+      .type-executive_board {
+        background-color: #fce7f3;
+        color: #9f1239;
+      }
+      .type-project_gamechangers {
+        background-color: #dcfce7;
+        color: #166534;
+      }
+      .type-finance {
+        background-color: #fef3c7;
+        color: #92400e;
+      }
+      .announcement-content {
+        margin-bottom: 25px;
+        color: #4b5563;
+      }
+      .announcement-content p {
+        margin: 15px 0;
+      }
+      .announcement-content h1,
+      .announcement-content h2,
+      .announcement-content h3 {
+        color: #1f2937;
+        margin-top: 20px;
+        margin-bottom: 10px;
+      }
+      .announcement-content ul,
+      .announcement-content ol {
+        margin: 15px 0;
+        padding-left: 30px;
+      }
+      .announcement-content a {
+        color: #3b82f6;
+        text-decoration: underline;
+      }
+      .btn {
+        display: inline-block;
+        background-color: #3b82f6;
+        color: white;
+        padding: 12px 30px;
+        text-decoration: none;
+        border-radius: 6px;
+        font-weight: bold;
+        text-align: center;
+        margin: 20px 0;
+      }
+      .btn:hover {
+        background-color: #2563eb;
+      }
+      .footer {
+        margin-top: 30px;
+        padding-top: 20px;
+        border-top: 1px solid #e5e7eb;
+        font-size: 14px;
+        color: #6b7280;
+      }
+      .center {
+        text-align: center;
+      }
+      @media only screen and (max-width: 600px) {
+        .container {
+          width: 100% !important;
+        }
+        .content {
+          padding: 20px !important;
+        }
+        .logo {
+          width: 80px !important;
+          height: 120px !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <table
+      width="100%"
+      cellpadding="0"
+      cellspacing="0"
+      style="background-color: #f4f4f4"
+    >
+      <tr>
+        <td align="center" style="padding: 20px">
+          <table
+            width="600"
+            cellpadding="0"
+            cellspacing="0"
+            style="
+              background-color: #ffffff;
+              border-radius: 8px;
+              overflow: hidden;
+            "
+          >
+            <!-- Header -->
+            <tr>
+              <td class="header">
+                <img
+                  src="{{ site_url }}/static/assets/logo-vertical.png"
+                  alt="India Ultimate Hub"
+                  class="logo"
+                />
+                <h1>New Announcement</h1>
+              </td>
+            </tr>
+
+            <!-- Content -->
+            <tr>
+              <td class="content">
+                <div class="center">
+                  <span class="announcement-type type-{{ announcement.type }}">
+                    {{ announcement.get_type_display }}
+                  </span>
+                </div>
+
+                <div class="announcement-title">{{ announcement.title }}</div>
+
+                <div class="announcement-content">
+                  {{ content_preview|safe }}
+                </div>
+
+                <div class="center">
+                  <a href="{{ announcement_url }}" class="btn">
+                    📰 Read Full Announcement
+                  </a>
+                </div>
+
+                <div class="footer">
+                  <p>
+                    <strong>Posted by:</strong> {{ announcement.author.get_full_name }}
+                  </p>
+                  <p>
+                    This is an automated announcement from the India Ultimate Hub.
+                  </p>
+                  <p>
+                    Stay updated with the latest news and announcements by visiting
+                    <a href="{{ site_url }}/announcements">our announcements page</a>.
+                  </p>
+                </div>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
