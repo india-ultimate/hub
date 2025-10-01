@@ -10,17 +10,17 @@ sudo cron
 HERE=$(dirname "$0")
 "$HERE/make_cron_env.py"
 
+# Install and setup worker systemd service
+echo "Installing Hub worker systemd service..."
+sudo cp "$HERE/hub-worker.service" /etc/systemd/system/
+sudo mkdir -p /etc/hub
+
 # Setup env vars for worker service
 echo "Setting up worker environment..."
 "$HERE/make_worker_env.py"
 
 # Migrate DB
 python manage.py migrate
-
-# Install and setup worker systemd service
-echo "Installing Hub worker systemd service..."
-sudo cp "$HERE/hub-worker.service" /etc/systemd/system/
-sudo mkdir -p /etc/hub
 
 # Ensure no security check errors
 python manage.py check --deploy
