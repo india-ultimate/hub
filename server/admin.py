@@ -30,6 +30,8 @@ from server.membership.models import Membership
 from server.season.models import Season
 from server.series.models import Series, SeriesRegistration, SeriesRosterInvitation
 from server.servicerequests.models import ServiceRequest
+from server.task.manager import TaskManager
+from server.task.models import Task
 from server.tournament.models import (
     Bracket,
     CrossPool,
@@ -742,3 +744,87 @@ class AnnouncementAdmin(admin.ModelAdmin[Announcement]):
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[Announcement]:
         return super().get_queryset(request).select_related("author")
+
+
+@admin.register(Task)
+class TaskAdmin(admin.ModelAdmin[Task]):
+    list_display = [
+        "id",
+        "type",
+        "get_status",
+        "created_at",
+        "started_at",
+        "completed_at",
+    ]
+    list_filter = ["type", "created_at", "started_at", "completed_at", "failed_at"]
+    search_fields = ["id", "type"]
+    date_hierarchy = "created_at"
+    readonly_fields = [
+        "type",
+        "data",
+        "created_at",
+        "started_at",
+        "completed_at",
+        "failed_at",
+        "result",
+        "error",
+    ]
+    change_list_template = "admin/task_changelist.html"
+
+    @admin.display(description="Status")
+    def get_status(self, obj: Task) -> str:
+        """Display the current status of the task"""
+        if obj.failed_at:
+            return format_html('<span style="color: red;">Failed</span>')
+        elif obj.completed_at:
+            return format_html('<span style="color: green;">Completed</span>')
+        elif obj.started_at:
+            return format_html('<span style="color: orange;">Running</span>')
+        else:
+            return format_html('<span style="color: blue;">Pending</span>')
+
+    def has_add_permission(self, request: HttpRequest) -> bool:
+        # Prevent adding tasks through admin - they should be added programmatically
+        return False
+
+    def has_delete_permission(self, request: HttpRequest, obj: Task | None = None) -> bool:
+        # Allow deletion of completed or failed tasks
+        return obj is None or obj.completed_at is not None or obj.failed_at is not None
+
+    def changelist_view(
+        self, request: HttpRequest, extra_context: dict[str, Any] | None = None
+    ) -> TemplateResponse | HttpResponse:
+        extra_context = extra_context or {}
+
+        # Add task statistics to context
+        extra_context["task_stats"] = TaskManager.get_task_stats()
+
+        if request.method == "POST" and "send_test_email" in request.POST:
+            test_email = request.POST.get("test_email", "").strip()
+            if test_email:
+                from django.core.mail import EmailMultiAlternatives
+
+                from server.task.helpers import queue_emails
+
+                email = EmailMultiAlternatives(
+                    subject="Test Email from Hub Task Queue",
+                    body="This is a test email sent via the task queue system.",
+                    from_email=None,
+                    to=[test_email],
+                )
+                email.attach_alternative(
+                    "<h1>Test Email</h1><p>This is a test email sent via the task queue system.</p>",
+                    "text/html",
+                )
+
+                try:
+                    tasks = queue_emails([email])
+                    self.message_user(
+                        request,
+                        f"Test email task created (Task ID: {tasks[0].id}) for {test_email}",
+                        level="success",
+                    )
+                except Exception as e:
+                    self.message_user(request, f"Failed to queue test email: {e}", level="error")
+
+        return super().changelist_view(request, extra_context)

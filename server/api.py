@@ -89,6 +89,7 @@ from server.season.api import router as season_router
 from server.series.api import router as series_router
 from server.series.models import SeriesRegistration
 from server.servicerequests.api import router as servicerequests_router
+from server.task.api import router as task_router
 from server.ticket.api import ticket_api
 from server.top_score_utils import TopScoreClient
 from server.tournament.match_stats_min import (
@@ -189,6 +190,7 @@ api.add_router("/election", election_router)
 api.add_router("/chat", chat_router)
 api.add_router("/service-requests", servicerequests_router)
 api.add_router("/announcements", announcements_router)
+api.add_router("/task", task_router)
 
 # User #########
 
