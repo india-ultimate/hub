@@ -43,8 +43,12 @@ class Task(models.Model):
     def run_task(self) -> None:
         """Execute the task based on its type"""
         try:
-            self.started_at = timezone.now()
-            self.save()
+            # started_at is normally set by get_next_task() to prevent race conditions,
+            # but set it here if not already set (e.g., in tests or direct calls)
+            if not self.started_at:
+                self.started_at = timezone.now()
+                self.save(update_fields=["started_at"])
+
             sys.stdout.write(f"Started task {self.id} - {self.type}\n")
 
             function = self._get_task_function()
