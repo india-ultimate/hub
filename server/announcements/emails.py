@@ -98,8 +98,10 @@ def _queue_announcement_emails(announcement: Announcement, recipients: list[str]
     if len(plain_text_content) > CONTENT_PREVIEW_LENGTH:
         plain_text_preview += "..."
 
-    # For HTML preview, use plain text wrapped in a paragraph to avoid broken tags
-    content_preview = f"<p>{plain_text_preview}</p>"
+    # For HTML preview, escape HTML characters and wrap in paragraph tags
+    from django.utils.html import escape
+
+    content_preview = f"<p>{escape(plain_text_preview)}</p>"
 
     messages: list[EmailMultiAlternatives] = []
     for recipient_email in unique_recipients:
