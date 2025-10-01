@@ -28,7 +28,7 @@ class TestTaskQueue(TestCase):
             task_type=Task.TaskType.SEND_EMAIL,
             data={"email": "first"},
         )
-        TaskManager.add_task(
+        task2 = TaskManager.add_task(
             task_type=Task.TaskType.SEND_EMAIL,
             data={"email": "second"},
         )
@@ -37,6 +37,15 @@ class TestTaskQueue(TestCase):
         self.assertIsNotNone(next_task)
         if next_task:
             self.assertEqual(next_task.id, task1.id)
+            # Verify that started_at is set to prevent race conditions
+            self.assertIsNotNone(next_task.started_at)
+
+            # Verify that the same task is not returned again
+            second_next_task = TaskManager.get_next_task()
+            self.assertIsNotNone(second_next_task)
+            if second_next_task:
+                self.assertEqual(second_next_task.id, task2.id)
+                self.assertNotEqual(second_next_task.id, task1.id)
 
     def test_task_stats(self) -> None:
         """Test getting task statistics"""

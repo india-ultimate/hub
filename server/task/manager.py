@@ -5,6 +5,7 @@ Task Queue Manager
 from typing import Any
 
 from django.db import transaction
+from django.utils import timezone
 
 from server.task.models import Task
 
@@ -39,10 +40,17 @@ class TaskManager:
         """
         Atomically select and lock the next available task in the queue.
         Uses SELECT FOR UPDATE with SKIP LOCKED to handle concurrent workers.
+        Marks the task as started within the transaction to prevent race conditions.
         """
-        return (
+        task = (
             Task.objects.filter(started_at__isnull=True).select_for_update(skip_locked=True).first()
         )
+
+        if task:
+            task.started_at = timezone.now()
+            task.save(update_fields=["started_at"])
+
+        return task
 
     @staticmethod
     def get_task_stats() -> dict[str, int]:
