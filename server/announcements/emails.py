@@ -88,13 +88,8 @@ def _queue_announcement_emails(announcement: Announcement, recipients: list[str]
             seen_normalized[normalized] = email
             unique_recipients.append(email)
 
-    site_url = getattr(settings, "SITE_URL", "https://indiaultimate.org")
-    announcement_url = f"{site_url}/announcements/{announcement.slug}"
-
-    # Get content preview
-    content_preview = announcement.content[:CONTENT_PREVIEW_LENGTH]
-    if len(announcement.content) > CONTENT_PREVIEW_LENGTH:
-        content_preview += "..."
+    site_url = settings.EMAIL_INVITATION_BASE_URL
+    announcement_url = f"{site_url}/announcement/{announcement.slug}"
 
     # Strip HTML tags for plain text version
     plain_text_content = re.sub(r"<[^>]+>", "", announcement.content)
@@ -102,6 +97,9 @@ def _queue_announcement_emails(announcement: Announcement, recipients: list[str]
     plain_text_preview = plain_text_content[:CONTENT_PREVIEW_LENGTH]
     if len(plain_text_content) > CONTENT_PREVIEW_LENGTH:
         plain_text_preview += "..."
+
+    # For HTML preview, use plain text wrapped in a paragraph to avoid broken tags
+    content_preview = f"<p>{plain_text_preview}</p>"
 
     messages: list[EmailMultiAlternatives] = []
     for recipient_email in unique_recipients:
