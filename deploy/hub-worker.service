@@ -1,0 +1,40 @@
+[Unit]
+Description=Hub Task Queue Worker
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=user
+Group=users
+WorkingDirectory=/home/user/app
+Environment="DJANGO_SETTINGS_MODULE=hub.production"
+EnvironmentFile=/etc/hub/worker.env
+
+# Command to run the worker
+ExecStart=/usr/local/bin/python manage.py run_task_worker --sleep-seconds 30
+
+# Restart policy
+Restart=always
+RestartSec=10
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=hub-worker
+
+# Timeout settings
+TimeoutStartSec=60
+TimeoutStopSec=30
+
+# Signal handling
+KillMode=mixed
+KillSignal=SIGTERM
+
+[Install]
+WantedBy=multi-user.target
+

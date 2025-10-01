@@ -22,10 +22,6 @@ swap_size_mb = 512
   PORT = "8000"
   DJANGO_SETTINGS_MODULE = "hub.production"
 
-[processes]
-  app = ""
-  worker = "python manage.py run_task_worker"
-
 [[vm]]
   size = "shared-cpu-2x"
 
