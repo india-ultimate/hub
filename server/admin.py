@@ -719,6 +719,7 @@ class AnnouncementAdmin(admin.ModelAdmin[Announcement]):
     date_hierarchy = "created_at"
     ordering = ["-created_at"]
     readonly_fields = ["slug"]
+    change_form_template = "admin/announcement_change_form.html"
 
     fieldsets = (
         (None, {"fields": ("title", "slug", "type", "content", "is_members_only", "is_published")}),
@@ -731,7 +732,7 @@ class AnnouncementAdmin(admin.ModelAdmin[Announcement]):
     )
 
     def save_model(self, request: HttpRequest, obj: Announcement, form: Any, change: bool) -> None:
-        if not change:  # Only for new objects
+        if not change:
             obj.author = request.user  # type: ignore[assignment]
         super().save_model(request, obj, form, change)
 
@@ -744,6 +745,55 @@ class AnnouncementAdmin(admin.ModelAdmin[Announcement]):
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[Announcement]:
         return super().get_queryset(request).select_related("author")
+
+    def change_view(
+        self,
+        request: HttpRequest,
+        object_id: str,
+        form_url: str = "",
+        extra_context: dict[str, Any] | None = None,
+    ) -> HttpResponse:
+        if request.method == "POST" and any(
+            key in request.POST for key in ["send_to_all_users", "send_to_members", "send_to_email"]
+        ):
+            from django.http import HttpResponseRedirect
+
+            from server.announcements.emails import (
+                send_announcement_to_all_users,
+                send_announcement_to_email,
+                send_announcement_to_members,
+            )
+
+            announcement = Announcement.objects.get(pk=object_id)
+
+            try:
+                if "send_to_all_users" in request.POST:
+                    tasks = send_announcement_to_all_users(announcement)
+                    self.message_user(
+                        request,
+                        f"Queued {len(tasks)} announcement emails to all users",
+                        level="success",
+                    )
+                elif "send_to_members" in request.POST:
+                    tasks = send_announcement_to_members(announcement)
+                    self.message_user(
+                        request,
+                        f"Queued {len(tasks)} announcement emails to active members",
+                        level="success",
+                    )
+                elif "send_to_email" in request.POST:
+                    test_email = request.POST.get("test_email", "").strip()
+                    if test_email:
+                        tasks = send_announcement_to_email(announcement, test_email)
+                        self.message_user(
+                            request, f"Queued test email to {test_email}", level="success"
+                        )
+            except Exception as e:
+                self.message_user(request, f"Failed to queue emails: {e}", level="error")
+
+            return HttpResponseRedirect(request.path)
+
+        return super().change_view(request, object_id, form_url, extra_context)
 
 
 @admin.register(Task)
