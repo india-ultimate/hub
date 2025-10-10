@@ -10,18 +10,18 @@ export const matchCardColors = {
     "fuchsia",
     "cyan"
   ],
-  cross_pool: ["yellow", "red", "fuchsia"],
+  cross_pool: ["yellow", "red", "fuchsia", "amber"],
   bracket: [
-    ["cyan", "indigo", "sky"],
-    ["cyan", "indigo", "sky"],
-    ["cyan", "indigo", "sky"],
-    ["cyan", "indigo", "sky"],
-    ["cyan", "indigo", "sky"],
-    ["cyan", "indigo", "sky"],
-    ["cyan", "indigo", "sky"],
-    ["cyan", "indigo", "sky"]
+    ["cyan", "indigo", "sky", "rose"],
+    ["cyan", "indigo", "sky", "rose"],
+    ["cyan", "indigo", "sky", "rose"],
+    ["cyan", "indigo", "sky", "rose"],
+    ["cyan", "indigo", "sky", "rose"],
+    ["cyan", "indigo", "sky", "rose"],
+    ["cyan", "indigo", "sky", "rose"],
+    ["cyan", "indigo", "sky", "rose"]
   ],
-  position_pool: ["lime", "pink", "emerald"]
+  position_pool: ["lime", "pink", "emerald", "teal"]
 };
 
 export const matchOutcomeColors = Object.freeze({
@@ -43,7 +43,10 @@ export const matchCardColorToBorderColorMap = {
   cyan: "border-cyan-400 dark:border-cyan-400",
   indigo: "border-indigo-400 dark:border-indigo-400",
   sky: "border-sky-400 dark:border-sky-400",
-  gray: "border-gray-400 dark:border-gray-400"
+  gray: "border-gray-400 dark:border-gray-400",
+  teal: "border-teal-400 dark:border-teal-400",
+  amber: "border-amber-400 dark:border-amber-400",
+  rose: "border-rose-400 dark:border-rose-400"
 };
 
 export const matchCardColorToRingColorMap = {
@@ -59,7 +62,10 @@ export const matchCardColorToRingColorMap = {
   cyan: "ring-cyan-500 dark:ring-cyan-400",
   indigo: "ring-indigo-500 dark:ring-indigo-400",
   sky: "ring-sky-500 dark:ring-sky-400",
-  gray: "ring-gray-500 dark:ring-gray-400"
+  gray: "ring-gray-500 dark:ring-gray-400",
+  teal: "border-teal-500 dark:border-teal-500",
+  amber: "border-amber-500 dark:border-amber-500",
+  rose: "border-rose-500 dark:border-rose-500"
 };
 
 export const matchCardColorToButtonStyles = {
@@ -81,5 +87,8 @@ export const matchCardColorToButtonStyles = {
   indigo:
     "bg-indigo-600 hover:bg-indigo-800 dark:bg-indigo-500 dark:hover:bg-indigo-700 focus:ring-indigo-300 dark:focus:ring-indigo-800",
   sky: "bg-sky-600 hover:bg-sky-800 dark:bg-sky-500 dark:hover:bg-sky-700 focus:ring-sky-300 dark:focus:ring-sky-800",
-  gray: "bg-gray-600 hover:bg-gray-800 dark:bg-gray-500 dark:hover:bg-gray-700 focus:ring-gray-300 dark:focus:ring-gray-800"
+  teal: "bg-teal-600 hover:bg-teal-800 dark:bg-teal-500 dark:hover:bg-teal-700 focus:ring-teal-300 dark:focus:ring-teal-800",
+  rose: "bg-rose-600 hover:bg-rose-800 dark:bg-rose-500 dark:hover:bg-rose-700 focus:ring-rose-300 dark:focus:ring-rose-800",
+  amber:
+    "bg-amber-600 hover:bg-amber-800 dark:bg-amber-500 dark:hover:bg-amber-700 focus:ring-amber-300 dark:focus:ring-amber-800"
 };
