@@ -23,7 +23,7 @@ swap_size_mb = 512
   DJANGO_SETTINGS_MODULE = "hub.production"
 
 [[vm]]
-  size = "shared-cpu-8x"
+  size = "shared-cpu-x"
 
 [[services]]
   protocol = "tcp"
@@ -40,8 +40,8 @@ swap_size_mb = 512
     handlers = ["tls", "http"]
   [services.concurrency]
     type = "connections"
-    hard_limit = 400
-    soft_limit = 300
+    hard_limit = 
+    soft_limit = 
 
   [[services.tcp_checks]]
     interval = "15s"
