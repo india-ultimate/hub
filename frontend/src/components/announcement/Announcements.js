@@ -13,6 +13,10 @@ import {
 } from "solid-heroicons/solid";
 import { For, onMount, Show, Suspense } from "solid-js";
 
+import {
+  getAnnouncementTypeColor,
+  getAnnouncementTypeLabel
+} from "../../colors";
 import { fetchMembershipStatus } from "../../queries";
 import { useStore } from "../../store";
 import { getCookie } from "../../utils";
@@ -59,33 +63,6 @@ const Announcements = () => {
       month: "short",
       day: "numeric"
     });
-  };
-
-  const getTypeColor = type => {
-    const colors = {
-      competitions:
-        "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
-      executive_board:
-        "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300",
-      project_gamechangers:
-        "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
-      finance:
-        "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
-    };
-    return (
-      colors[type] ||
-      "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300"
-    );
-  };
-
-  const getTypeLabel = type => {
-    const labels = {
-      competitions: "Competitions",
-      executive_board: "Executive Board",
-      project_gamechangers: "Project GameChangers",
-      finance: "Finance"
-    };
-    return labels[type] || type;
   };
 
   const stripHtml = html => {
@@ -178,12 +155,12 @@ const Announcements = () => {
                         <div class="flex-1">
                           <div class="mb-2 flex items-center gap-2">
                             <span
-                              class={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getTypeColor(
+                              class={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getAnnouncementTypeColor(
                                 announcement.type
                               )}`}
                             >
                               <Icon path={tag} class="mr-1 h-3 w-3" />
-                              {getTypeLabel(announcement.type)}
+                              {getAnnouncementTypeLabel(announcement.type)}
                             </span>
                             <Show when={!announcement.is_published}>
                               <span class="inline-flex items-center rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-medium text-orange-800 dark:bg-orange-900 dark:text-orange-300">
