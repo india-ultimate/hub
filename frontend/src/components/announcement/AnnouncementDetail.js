@@ -14,6 +14,7 @@ import {
 } from "solid-heroicons/solid";
 import { createEffect, onMount, Show } from "solid-js";
 
+import { fetchMembershipStatus } from "../../queries";
 import { useStore } from "../../store";
 
 const fetchAnnouncement = async slug => {
@@ -32,16 +33,12 @@ export default function AnnouncementDetail() {
     () => fetchAnnouncement(params.slug)
   );
 
-  // Fetch user data to check membership status
-  const userQuery = createQuery(
-    () => ["user"],
-    async () => {
-      const response = await fetch("/api/me");
-      if (!response.ok) throw new Error("Failed to fetch user data");
-      return response.json();
-    },
+  // Fetch membership status
+  const membershipQuery = createQuery(
+    () => ["membership"],
+    fetchMembershipStatus,
     {
-      enabled: store.loggedIn
+      refetchOnWindowFocus: false
     }
   );
 
@@ -171,7 +168,7 @@ export default function AnnouncementDetail() {
             <Show
               when={
                 !query.data.is_members_only ||
-                (userQuery.data?.player?.membership?.is_active ?? false)
+                (membershipQuery.data?.is_active ?? false)
               }
               fallback={
                 <div class="py-12 text-center">
