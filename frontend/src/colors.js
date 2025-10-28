@@ -92,3 +92,62 @@ export const matchCardColorToButtonStyles = {
   amber:
     "bg-amber-600 hover:bg-amber-800 dark:bg-amber-500 dark:hover:bg-amber-700 focus:ring-amber-300 dark:focus:ring-amber-800"
 };
+
+/**
+ * Announcement type color mappings
+ */
+export const announcementTypeColors = {
+  competitions: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
+  executive_board:
+    "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300",
+  project_gamechangers:
+    "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
+  finance:
+    "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300",
+  ntc: "bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-300",
+  governance:
+    "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300",
+  safeguarding: "bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-300",
+  college: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-300",
+  development:
+    "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-300",
+  operations:
+    "bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-300"
+};
+
+/**
+ * Announcement type label mappings
+ */
+export const announcementTypeLabels = {
+  competitions: "Competitions",
+  executive_board: "Executive Board",
+  project_gamechangers: "Project GameChangers",
+  finance: "Finance",
+  ntc: "NTC",
+  governance: "Governance",
+  safeguarding: "Safeguarding",
+  college: "College",
+  development: "Development",
+  operations: "Operations"
+};
+
+/**
+ * Get the color classes for an announcement type badge
+ * @param {string} type - The announcement type
+ * @returns {string} - Tailwind CSS classes for the badge
+ */
+export const getAnnouncementTypeColor = type => {
+  return (
+    announcementTypeColors[type] ||
+    "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300"
+  );
+};
+
+/**
+ * Get the human-readable label for an announcement type
+ * @param {string} type - The announcement type
+ * @returns {string} - Human-readable label
+ */
+export const getAnnouncementTypeLabel = type => {
+  return announcementTypeLabels[type] || type;
+};

@@ -14,6 +14,10 @@ import {
 } from "solid-heroicons/solid";
 import { createEffect, onMount, Show } from "solid-js";
 
+import {
+  getAnnouncementTypeColor,
+  getAnnouncementTypeLabel
+} from "../../colors";
 import { fetchMembershipStatus } from "../../queries";
 import { useStore } from "../../store";
 
@@ -115,12 +119,12 @@ export default function AnnouncementDetail() {
             <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
               <div class="flex flex-wrap items-center gap-2">
                 <span
-                  class={
-                    "inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800 dark:bg-gray-900 dark:text-gray-300"
-                  }
+                  class={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getAnnouncementTypeColor(
+                    query.data.type
+                  )}`}
                 >
                   <Icon path={tag} class="mr-1 h-3 w-3" />
-                  {query.data.type}
+                  {getAnnouncementTypeLabel(query.data.type)}
                 </span>
                 <Show when={!query.data.is_published}>
                   <span class="inline-flex items-center rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-medium text-orange-800 dark:bg-orange-900 dark:text-orange-300">
