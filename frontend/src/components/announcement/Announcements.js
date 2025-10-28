@@ -13,6 +13,7 @@ import {
 } from "solid-heroicons/solid";
 import { For, onMount, Show, Suspense } from "solid-js";
 
+import { fetchMembershipStatus } from "../../queries";
 import { useStore } from "../../store";
 import { getCookie } from "../../utils";
 
@@ -39,16 +40,12 @@ const Announcements = () => {
     refetchOnWindowFocus: false
   });
 
-  // Fetch user data to check membership status
-  const userQuery = createQuery(
-    () => ["user"],
-    async () => {
-      const response = await fetch("/api/me");
-      if (!response.ok) throw new Error("Failed to fetch user data");
-      return response.json();
-    },
+  // Fetch membership status
+  const membershipQuery = createQuery(
+    () => ["membership"],
+    fetchMembershipStatus,
     {
-      enabled: store.loggedIn
+      refetchOnWindowFocus: false
     }
   );
 
@@ -156,7 +153,7 @@ const Announcements = () => {
               <For each={query.data}>
                 {announcement => {
                   const hasActiveMembership =
-                    userQuery.data?.player?.membership?.is_active ?? false;
+                    membershipQuery.data?.is_active ?? false;
                   const isMembersOnly = announcement.is_members_only;
                   const canAccess = !isMembersOnly || hasActiveMembership;
 
