@@ -95,7 +95,7 @@ export default function AnnouncementDetail() {
         <div class="mb-8">
           <button
             class="text-blue-600 hover:text-blue-700"
-            onClick={() => navigate(-1)}
+            onClick={() => navigate("/announcements")}
           >
             ← All Announcements
           </button>
