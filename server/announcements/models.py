@@ -13,6 +13,12 @@ class Announcement(models.Model):
         EXECUTIVE_BOARD = "executive_board", "Executive Board"
         PROJECT_GAMECHANGERS = "project_gamechangers", "Project GameChangers"
         FINANCE = "finance", "Finance"
+        NTC = "ntc", "NTC"
+        GOVERNANCE = "governance", "Governance"
+        SAFEGUARDING = "safeguarding", "Safeguarding"
+        COLLEGE = "college", "College"
+        DEVELOPMENT = "development", "Development"
+        OPERATIONS = "operations", "Operations"
 
     title = models.CharField(max_length=200)
     slug = models.SlugField(max_length=200, unique=True, blank=True)
