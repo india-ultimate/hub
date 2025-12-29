@@ -75,6 +75,9 @@ const ElectionPage = lazy(() => import("./election/ElectionPage"));
 // Chat Pages
 const ChatPage = lazy(() => import("./chat/ChatPage"));
 
+// Wrapped Pages
+const Wrapped = lazy(() => import("./wrapped/Wrapped"));
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -285,6 +288,8 @@ export default function App() {
                   />
                   {/* Chat */}
                   <UserRoute path="/chat" component={ChatPage} />
+                  {/* Wrapped */}
+                  <UserRoute path="/wrapped" component={Wrapped} />
                   <Route path="*" component={Error404} />
                 </Routes>
               </div>
