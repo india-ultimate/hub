@@ -118,10 +118,7 @@ const WrappedYearDisplay = props => {
           }}
         >
           <div>
-            <div
-              ref={cardRef}
-              class="relative aspect-[4/7] w-full rounded-lg border border-gray-200 bg-white px-5 py-5"
-            >
+            <div ref={cardRef} class="w-full bg-white px-2 py-2">
               <div class="flex items-center justify-between">
                 <h2 class="font-serif text-blue-700">
                   <span class="block text-6xl font-bold">
@@ -268,7 +265,7 @@ const WrappedYearDisplay = props => {
           </div>
         </Show> */}
 
-              <div class="absolute bottom-0 left-0 right-0">
+              <div class="mt-2">
                 <div class="flex items-center justify-between px-5 py-2">
                   <img
                     class="h-8"
