@@ -2023,6 +2023,39 @@ export const fetchServiceRequests = async () => {
   return data;
 };
 
+// Wrapped API functions
+export const fetchWrappedData = async () => {
+  const response = await fetch("/api/wrapped/", {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    credentials: "same-origin"
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data?.message || "Failed to fetch wrapped data");
+  }
+  return data;
+};
+
+export const fetchWrappedDataByYear = async year => {
+  const response = await fetch(`/api/wrapped/${year}`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    credentials: "same-origin"
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data?.message || "Failed to fetch wrapped data");
+  }
+  return data;
+};
+
 export const createServiceRequest = async data => {
   const response = await fetch("/api/service-requests/", {
     method: "POST",
