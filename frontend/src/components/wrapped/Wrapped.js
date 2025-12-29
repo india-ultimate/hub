@@ -42,9 +42,9 @@ const TournamentBestCard = props => {
             {" | "}
             <span class="text-sm font-medium text-blue-600 dark:text-blue-400">
               {props.data.count}
-              {props.title.includes("Offensive")
+              {props.title.includes("Scores")
                 ? " scores"
-                : props.title.includes("Playmaking")
+                : props.title.includes("Assists")
                 ? " assists"
                 : " blocks"}
             </span>
