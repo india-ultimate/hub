@@ -319,95 +319,111 @@ const Wrapped = () => {
   return (
     <div>
       <Show
-        when={!userQuery.data}
+        when={userQuery.isLoading}
         fallback={
           <Show
-            when={wrappedQuery.isLoading}
+            when={!userQuery.data}
             fallback={
               <Show
-                when={wrappedQuery.error}
+                when={wrappedQuery.isLoading}
                 fallback={
                   <Show
-                    when={wrappedQuery.data && wrappedQuery.data.length > 0}
+                    when={wrappedQuery.error}
                     fallback={
-                      <div class="rounded-lg border border-gray-200 bg-white p-8 text-center dark:border-gray-700 dark:bg-gray-800">
-                        <Icon
-                          path={trophy}
-                          class="mx-auto h-16 w-16 text-gray-400 dark:text-gray-500"
-                        />
-                        <h3 class="mt-4 text-lg font-semibold text-gray-900 dark:text-white">
-                          No Wrapped Data Available
-                        </h3>
-                        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                          Wrapped data will be available after the year ends.
-                          Check back soon!
-                        </p>
-                      </div>
-                    }
-                  >
-                    <Show
-                      when={displayData()}
-                      fallback={
-                        <div class="flex items-center justify-center p-8">
-                          <div class="text-center">
-                            <div class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent" />
-                            <p class="mt-4 text-gray-600 dark:text-gray-400">
-                              Loading wrapped data for {selectedYear()}...
+                      <Show
+                        when={wrappedQuery.data && wrappedQuery.data.length > 0}
+                        fallback={
+                          <div class="rounded-lg border border-gray-200 bg-white p-8 text-center dark:border-gray-700 dark:bg-gray-800">
+                            <Icon
+                              path={trophy}
+                              class="mx-auto h-16 w-16 text-gray-400 dark:text-gray-500"
+                            />
+                            <h3 class="mt-4 text-lg font-semibold text-gray-900 dark:text-white">
+                              No Wrapped Data Available
+                            </h3>
+                            <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                              Wrapped data will be available after the year
+                              ends. Check back soon!
                             </p>
                           </div>
-                        </div>
-                      }
-                    >
-                      <WrappedYearDisplay
-                        player={userQuery.data?.player}
-                        wrapped={displayData()}
-                      />
-                    </Show>
-                    <Show when={availableYears().length > 0}>
-                      <div class="mt-4 flex items-center gap-2">
-                        <p class="text-lg font-bold text-blue-600 dark:text-gray-400">
-                          Select Year
-                        </p>
-                        <select
-                          id="year-select"
-                          value={selectedYear()}
-                          onChange={e =>
-                            setSelectedYear(Number(e.target.value))
+                        }
+                      >
+                        <Show
+                          when={displayData()}
+                          fallback={
+                            <div class="flex items-center justify-center p-8">
+                              <div class="text-center">
+                                <div class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent" />
+                                <p class="mt-4 text-gray-600 dark:text-gray-400">
+                                  {selectedYear()
+                                    ? `Loading wrapped data for ${selectedYear()}...`
+                                    : "Loading wrapped data..."}
+                                </p>
+                              </div>
+                            </div>
                           }
-                          class="block rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500 "
                         >
-                          <For each={availableYears()}>
-                            {year => <option value={year}>{year}</option>}
-                          </For>
-                        </select>
-                      </div>
-                    </Show>
+                          <WrappedYearDisplay
+                            player={userQuery.data?.player}
+                            wrapped={displayData()}
+                          />
+                        </Show>
+                        <Show when={availableYears().length > 0}>
+                          <div class="mt-4 flex items-center gap-2">
+                            <p class="text-lg font-bold text-blue-600 dark:text-gray-400">
+                              Select Year
+                            </p>
+                            <select
+                              id="year-select"
+                              value={selectedYear()}
+                              onChange={e =>
+                                setSelectedYear(Number(e.target.value))
+                              }
+                              class="block rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500 "
+                            >
+                              <For each={availableYears()}>
+                                {year => <option value={year}>{year}</option>}
+                              </For>
+                            </select>
+                          </div>
+                        </Show>
+                      </Show>
+                    }
+                  >
+                    <div class="rounded-lg border border-red-200 bg-red-50 p-4 text-red-800 dark:border-red-800 dark:bg-red-900 dark:text-red-200">
+                      <p class="font-medium">Error loading wrapped data</p>
+                      <p class="text-sm">
+                        {wrappedQuery.error?.message || "Unknown error"}
+                      </p>
+                    </div>
                   </Show>
                 }
               >
-                <div class="rounded-lg border border-red-200 bg-red-50 p-4 text-red-800 dark:border-red-800 dark:bg-red-900 dark:text-red-200">
-                  <p class="font-medium">Error loading wrapped data</p>
-                  <p class="text-sm">
-                    {wrappedQuery.error?.message || "Unknown error"}
-                  </p>
+                <div class="flex items-center justify-center p-8">
+                  <div class="text-center">
+                    <div class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent" />
+                    <p class="mt-4 text-gray-600 dark:text-gray-400">
+                      Loading wrapped data...
+                    </p>
+                  </div>
                 </div>
               </Show>
             }
           >
-            <div class="flex items-center justify-center p-8">
-              <div class="text-center">
-                <div class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent" />
-                <p class="mt-4 text-gray-600 dark:text-gray-400">
-                  Loading wrapped data...
-                </p>
-              </div>
+            <div class="rounded-lg border border-yellow-200 bg-yellow-50 p-4 text-yellow-800 dark:border-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+              <p class="font-medium">Authentication Required</p>
+              <p class="text-sm">Please log in to view your wrapped data.</p>
             </div>
           </Show>
         }
       >
-        <div class="rounded-lg border border-yellow-200 bg-yellow-50 p-4 text-yellow-800 dark:border-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
-          <p class="font-medium">Authentication Required</p>
-          <p class="text-sm">Please log in to view your wrapped data.</p>
+        <div class="flex items-center justify-center p-8">
+          <div class="text-center">
+            <div class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent" />
+            <p class="mt-4 text-gray-600 dark:text-gray-400">
+              Loading user data...
+            </p>
+          </div>
         </div>
       </Show>
     </div>
