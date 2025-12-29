@@ -169,15 +169,15 @@ const WrappedYearDisplay = props => {
               {/* Tournament Bests */}
               <div class="mt-4 grid grid-cols-1 rounded-lg bg-blue-50 p-2 md:grid-cols-3">
                 <TournamentBestCard
-                  title="⚡ Peak Offensive Performance"
+                  title="⚡ Most Scores"
                   data={wrapped()?.most_scores_in_tournament}
                 />
                 <TournamentBestCard
-                  title="🎨 Playmaking Masterclass"
+                  title="🎨 Most Assists"
                   data={wrapped()?.most_assists_in_tournament}
                 />
                 <TournamentBestCard
-                  title="🚫 Disc Denial Expert"
+                  title="🚫 Most Blocks"
                   data={wrapped()?.most_blocks_in_tournament}
                 />
               </div>
