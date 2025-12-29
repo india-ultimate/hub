@@ -1,5 +1,5 @@
 import { createQuery } from "@tanstack/solid-query";
-import { toPng } from "html-to-image";
+import { domToPng } from "modern-screenshot";
 import { Icon } from "solid-heroicons";
 import { arrowDownTray, sparkles, trophy } from "solid-heroicons/solid";
 import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
@@ -58,10 +58,9 @@ const WrappedYearDisplay = props => {
 
     setIsDownloading(true);
     try {
-      const dataUrl = await toPng(cardRef, {
+      const dataUrl = await domToPng(cardRef, {
         quality: 1.0,
-        canvasWidth: 1080,
-        canvasHeight: 1890,
+        scale: 8,
         backgroundColor: "#ffffff"
       });
 
@@ -141,7 +140,7 @@ const WrappedYearDisplay = props => {
                 </span>
               </div>
 
-              <div class="mt-4 w-full rounded-lg bg-blue-50 p-2">
+              <div class="mt-2 w-full rounded-lg bg-blue-50 p-2">
                 <div class="grid grid-cols-4">
                   <StatCard label="Games" value={wrapped()?.total_games} />
                   <StatCard label="Scores" value={wrapped()?.total_scores} />
@@ -162,7 +161,7 @@ const WrappedYearDisplay = props => {
               </div>
 
               {/* Tournament Bests */}
-              <div class="mt-4 grid grid-cols-1 rounded-lg bg-blue-50 p-2 md:grid-cols-3">
+              <div class="mt-2 grid grid-cols-1 rounded-lg bg-blue-50 p-2 md:grid-cols-3">
                 <TournamentBestCard
                   title="⚡ Peak Offensive Performance"
                   data={wrapped()?.most_scores_in_tournament}
@@ -178,7 +177,7 @@ const WrappedYearDisplay = props => {
               </div>
 
               {/* Top Teammates */}
-              <div class="mt-4 grid grid-cols-2 gap-2 rounded-lg bg-blue-50 p-2">
+              <div class="mt-2 grid grid-cols-2 rounded-lg bg-blue-50 p-2">
                 <Show
                   when={
                     wrapped()?.top_teammates_i_assisted &&
