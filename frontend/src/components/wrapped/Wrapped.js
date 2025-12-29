@@ -7,6 +7,15 @@ import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
 import { fetchUser, fetchWrappedData } from "../../queries";
 import { assetURL } from "../../utils";
 
+const formatPlayerName = name => {
+  if (!name) return "";
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0];
+  const firstName = parts[0];
+  const lastInitial = parts[parts.length - 1].charAt(0).toUpperCase();
+  return `${firstName} ${lastInitial}.`;
+};
+
 const StatCard = props => {
   return (
     <div class={props.double ? "col-span-2 rounded-lg" : "rounded-lg"}>
@@ -140,7 +149,7 @@ const WrappedYearDisplay = props => {
                 </span>
               </div>
 
-              <div class="mt-2 w-full rounded-lg bg-blue-50 p-2">
+              <div class="mt-4 w-full rounded-lg bg-blue-50 p-2">
                 <div class="grid grid-cols-4">
                   <StatCard label="Games" value={wrapped()?.total_games} />
                   <StatCard label="Scores" value={wrapped()?.total_scores} />
@@ -161,7 +170,7 @@ const WrappedYearDisplay = props => {
               </div>
 
               {/* Tournament Bests */}
-              <div class="mt-2 grid grid-cols-1 rounded-lg bg-blue-50 p-2 md:grid-cols-3">
+              <div class="mt-4 grid grid-cols-1 rounded-lg bg-blue-50 p-2 md:grid-cols-3">
                 <TournamentBestCard
                   title="⚡ Peak Offensive Performance"
                   data={wrapped()?.most_scores_in_tournament}
@@ -177,7 +186,7 @@ const WrappedYearDisplay = props => {
               </div>
 
               {/* Top Teammates */}
-              <div class="mt-2 grid grid-cols-2 rounded-lg bg-blue-50 p-2">
+              <div class="mt-4 grid grid-cols-2 rounded-lg bg-blue-50 p-2">
                 <Show
                   when={
                     wrapped()?.top_teammates_i_assisted &&
@@ -195,7 +204,7 @@ const WrappedYearDisplay = props => {
                         {teammate => (
                           <div class="flex items-center gap-1">
                             <span class="font-semibold text-blue-600 dark:text-blue-400">
-                              {teammate.player_name}
+                              {formatPlayerName(teammate.player_name)}
                             </span>
                             <span class="text-sm font-medium text-blue-600 dark:text-blue-400">
                               ({teammate.count})
@@ -227,7 +236,7 @@ const WrappedYearDisplay = props => {
                         {teammate => (
                           <div class="flex items-center gap-1">
                             <span class="font-semibold text-blue-600 dark:text-blue-400">
-                              {teammate.player_name}
+                              {formatPlayerName(teammate.player_name)}
                             </span>
                             <span class="text-sm font-medium text-blue-600 dark:text-blue-400">
                               ({teammate.count})
@@ -247,7 +256,7 @@ const WrappedYearDisplay = props => {
             wrapped()?.teams_played_for.length > 0
           }
         >
-          <div class="mt-2 rounded-lg bg-blue-50 p-2">
+          <div class="mt-4 rounded-lg bg-blue-50 p-2">
             <h3 class="text-md text-left font-semibold text-black mb-2">
               Jerseys I Wore
             </h3>
@@ -339,7 +348,7 @@ const Wrapped = () => {
                             <h3 class="mt-4 text-lg font-semibold text-gray-900 dark:text-white">
                               No Wrapped Data Available
                             </h3>
-                            <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                            <p class="mt-4 text-sm text-gray-600 dark:text-gray-400">
                               Wrapped data will be available after the year
                               ends. Check back soon!
                             </p>
