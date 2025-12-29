@@ -2,7 +2,11 @@
 module.exports = {
   content: ["./src/**/*.{js,jsx,ts,tsx}", "./node_modules/flowbite/**/*.js"],
   theme: {
-    extend: {}
+    extend: {
+      fontFamily: {
+        serif: ["DM Serif Text", "serif"]
+      }
+    }
   },
   plugins: [require("flowbite/plugin"), require("@tailwindcss/typography")],
   safelist: [
