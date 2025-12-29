@@ -172,7 +172,10 @@ class Command(BaseCommand):
         if not tournaments:
             return None
 
-        match_stats = MatchStats.objects.filter(match__tournament__in=tournaments)
+        match_stats = MatchStats.objects.filter(
+            match__tournament__in=tournaments,
+            match__time__year=year,
+        )
         match_events = MatchEvent.objects.filter(stats__in=match_stats)
 
         if event_type == "scores":
@@ -248,7 +251,10 @@ class Command(BaseCommand):
         if not tournaments:
             return []
 
-        match_stats = MatchStats.objects.filter(match__tournament__in=tournaments)
+        match_stats = MatchStats.objects.filter(
+            match__tournament__in=tournaments,
+            match__time__year=year,
+        )
         assists = MatchEvent.objects.filter(
             stats__in=match_stats,
             assisted_by=player,
@@ -281,7 +287,10 @@ class Command(BaseCommand):
         if not tournaments:
             return []
 
-        match_stats = MatchStats.objects.filter(match__tournament__in=tournaments)
+        match_stats = MatchStats.objects.filter(
+            match__tournament__in=tournaments,
+            match__time__year=year,
+        )
         assists = MatchEvent.objects.filter(
             stats__in=match_stats,
             scored_by=player,
