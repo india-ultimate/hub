@@ -47,7 +47,6 @@ const TournamentBestCard = props => {
 };
 
 const WrappedYearDisplay = props => {
-  // Temporary wrapped data for preview/demo
   const wrapped = () => props.wrapped;
   const player = () => props.player;
   const [isDownloading, setIsDownloading] = createSignal(false);
@@ -165,15 +164,15 @@ const WrappedYearDisplay = props => {
               {/* Tournament Bests */}
               <div class="mt-4 grid grid-cols-1 rounded-lg bg-blue-50 p-2 md:grid-cols-3">
                 <TournamentBestCard
-                  title="Peak Offensive Performance"
+                  title="⚡ Peak Offensive Performance"
                   data={wrapped()?.most_scores_in_tournament}
                 />
                 <TournamentBestCard
-                  title="Playmaking Masterclass"
+                  title="🎨 Playmaking Masterclass"
                   data={wrapped()?.most_assists_in_tournament}
                 />
                 <TournamentBestCard
-                  title="Defensive Brilliance"
+                  title="🚫 Disc Denial Expert"
                   data={wrapped()?.most_blocks_in_tournament}
                 />
               </div>
@@ -188,7 +187,7 @@ const WrappedYearDisplay = props => {
                 >
                   <div>
                     <h3 class="text-md text-left font-semibold text-black">
-                      My Favourite Targets 🎯
+                      🎯 My Favourite Targets
                     </h3>
                     <div class="mt-1 text-base">
                       <For
@@ -217,7 +216,7 @@ const WrappedYearDisplay = props => {
                 >
                   <div>
                     <h3 class="text-md text-left font-semibold text-black">
-                      They found me in space 🤝
+                      🙌 My Favorite Throwers
                     </h3>
                     <div class="mt-1 text-base">
                       <For
