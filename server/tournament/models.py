@@ -372,6 +372,8 @@ class MatchEvent(models.Model):
     started_on = models.CharField(max_length=3, choices=Mode.choices)
     time = models.DateTimeField(auto_now_add=True)
     type = models.CharField(max_length=3, choices=EventType.choices)
+    post_event_score_team_1 = models.PositiveIntegerField(null=True, blank=True)
+    post_event_score_team_2 = models.PositiveIntegerField(null=True, blank=True)
 
     scored_by = models.ForeignKey(
         Player, on_delete=models.CASCADE, related_name="match_events_scored", blank=True, null=True

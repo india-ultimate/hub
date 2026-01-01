@@ -9,7 +9,10 @@ const EventTitle = props => {
           O-Line
         </Show>
       </Match>
-      <Match when={props.event?.type === "SC"}>Score</Match>
+      <Match when={props.event?.type === "SC"}>
+        Score {props.event?.post_event_score_team_1} -{" "}
+        {props.event?.post_event_score_team_2}
+      </Match>
       <Match when={props.event?.type === "DR"}>Drop</Match>
       <Match when={props.event?.type === "TA"}>Throwaway</Match>
       <Match when={props.event?.type === "BL"}>Block</Match>
