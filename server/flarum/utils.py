@@ -159,7 +159,7 @@ def get_flarum_token(identification: str, creation_timestamp: datetime) -> dict[
         "remember": 1,  # Request session_remember token (expires after 5 years)
     }
 
-    headers = _get_api_key_headers()
+    headers = _get_api_key_headers(1)
 
     try:
         response = requests.post(url, json=data, headers=headers, timeout=15)
@@ -215,7 +215,7 @@ def create_flarum_user(
         return None
 
     url = f"{base_url}/api/users"
-    headers = _get_api_key_headers()
+    headers = _get_api_key_headers(1)
 
     # Try creating user with generated username, retry with suffix if username is taken
     max_retries = 5
