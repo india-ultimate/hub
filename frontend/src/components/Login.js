@@ -146,13 +146,17 @@ const SendEmailOTP = props => {
   const [otpData, setOtpData] = createSignal();
   const [store, { setLoggedIn, setData }] = useStore();
   const [enableRetry, setEnableRetry] = createSignal(false);
+  const [forumLogin, setForumLogin] = createSignal(false);
 
   createEffect(() => {
+    const redirect = new URL(window.location.href).searchParams.get("redirect");
+
+    if (redirect && redirect.includes("forum")) {
+      setForumLogin(true);
+    }
+
     if (store.loggedIn) {
       const navigate = useNavigate();
-      const redirect = new URL(window.location.href).searchParams.get(
-        "redirect"
-      );
       const isSafe =
         redirect && redirect.startsWith("/") && !redirect.startsWith("//");
       navigate(isSafe ? redirect : "/dashboard", { replace: true });
@@ -209,6 +213,7 @@ const SendEmailOTP = props => {
       body: JSON.stringify({
         email: email()?.trim(),
         otp: otp()?.trim(),
+        forum_login: forumLogin(),
         ...otpData()
       })
     });

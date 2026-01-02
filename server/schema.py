@@ -40,6 +40,7 @@ class OTPLoginCredentials(Schema):
     email: str
     otp: str
     otp_ts: int
+    forum_login: bool
 
 
 class Response(Schema):
