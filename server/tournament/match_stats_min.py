@@ -139,6 +139,8 @@ def handle_block(
         started_on=MatchEvent.Mode.OFFENSE,  # ignore this for now, not used
         block_by=block_by,
         type=MatchEvent.EventType.BLOCK,
+        post_event_score_team_1=match.stats.score_team_1,
+        post_event_score_team_2=match.stats.score_team_2,
     )
     new_match_event.save()
 
