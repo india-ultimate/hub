@@ -498,6 +498,34 @@ def get_otp(
     return 200, {"otp_ts": current_ts}
 
 
+def handle_forum_login(user: User, response: HttpResponse) -> None:
+    """
+    Handle forum login for a user if they have active membership.
+
+    Args:
+        user: The authenticated user
+        response: HTTP response object to set cookies
+    """
+    # Check if user has active membership before proceeding with forum login
+    try:
+        player = user.player_profile
+        membership = Membership.objects.filter(player=player).first()
+        if membership and membership.is_active:
+            token = get_flarum_token(user.username, user.date_joined)
+
+            if not token:
+                create_flarum_user(user.get_full_name(), user.username, user.date_joined)
+                token = get_flarum_token(user.username, user.date_joined)
+
+            if token:
+                response.set_cookie(
+                    "flarum_remember", token["token"], max_age=60 * 60 * 24 * 365 * 5
+                )  # 5 years
+    except Player.DoesNotExist:
+        # User doesn't have a player profile, skip forum login
+        pass
+
+
 @api.post("/otp-login", auth=None, response={200: UserSchema, 403: Response, 404: Response})
 def otp_login(
     request: HttpRequest, response: HttpResponse, credentials: OTPLoginCredentials
@@ -515,16 +543,7 @@ def otp_login(
         login(request, user)
 
         if credentials.forum_login:
-            token = get_flarum_token(user.username, user.date_joined)
-
-            if not token:
-                create_flarum_user(user.get_full_name(), user.username, user.date_joined)
-                token = get_flarum_token(user.username, user.date_joined)
-
-            if token:
-                response.set_cookie(
-                    "flarum_remember", token["token"], max_age=60 * 60 * 24 * 365 * 5
-                )  # 5 years
+            handle_forum_login(user, response)
 
         return 200, user
 
@@ -584,16 +603,7 @@ def passkey_finish_login(
     login(request, user)
 
     if body.forum_login:
-        token = get_flarum_token(user.username, user.date_joined)
-
-        if not token:
-            create_flarum_user(user.get_full_name(), user.username, user.date_joined)
-            token = get_flarum_token(user.username, user.date_joined)
-
-        if token:
-            response.set_cookie(
-                "flarum_remember", token["token"], max_age=60 * 60 * 24 * 365 * 5
-            )  # 5 years
+        handle_forum_login(user, response)
 
     return 200, user
 
