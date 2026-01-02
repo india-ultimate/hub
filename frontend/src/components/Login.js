@@ -339,13 +339,18 @@ const PasskeyLogin = props => {
   const csrftoken = getCookie("csrftoken");
   const [loading, setLoading] = createSignal(false);
   const [store, { setLoggedIn, setData }] = useStore();
+  const [forumLogin, setForumLogin] = createSignal(false);
 
   createEffect(() => {
+    const redirect = new URL(window.location.href).searchParams.get("redirect");
+
+    if (redirect && redirect.includes("forum")) {
+      setForumLogin(true);
+    }
+
     if (store.loggedIn) {
       const navigate = useNavigate();
-      const redirect = new URL(window.location.href).searchParams.get(
-        "redirect"
-      );
+
       const isSafe =
         redirect && redirect.startsWith("/") && !redirect.startsWith("//");
       navigate(isSafe ? redirect : "/dashboard", { replace: true });
@@ -381,7 +386,10 @@ const PasskeyLogin = props => {
           "Content-Type": "application/json",
           "X-CSRFToken": getCookie("csrftoken")
         },
-        body: JSON.stringify({ passkey_request: JSON.stringify(credential) })
+        body: JSON.stringify({
+          passkey_request: JSON.stringify(credential),
+          forum_login: forumLogin()
+        })
       });
 
       if (loginResponse.ok) {

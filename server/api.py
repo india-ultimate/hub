@@ -568,7 +568,7 @@ def passkey_start_login(request: HttpRequest) -> tuple[int, message_response]:
 
 @api.post("/passkey/login/finish", auth=None, response={200: UserSchema, 400: Response})
 def passkey_finish_login(
-    request: HttpRequest, body: PasskeyRequestSchema
+    request: HttpRequest, response: HttpResponse, body: PasskeyRequestSchema
 ) -> tuple[int, User | message_response]:
     data, error, user_id = passkey_client.finish_login(body.passkey_request)
 
@@ -582,6 +582,19 @@ def passkey_finish_login(
 
     request.user = user
     login(request, user)
+
+    if body.forum_login:
+        token = get_flarum_token(user.username, user.date_joined)
+
+        if not token:
+            create_flarum_user(user.get_full_name(), user.username, user.date_joined)
+            token = get_flarum_token(user.username, user.date_joined)
+
+        if token:
+            response.set_cookie(
+                "flarum_remember", token["token"], max_age=60 * 60 * 24 * 365 * 5
+            )  # 5 years
+
     return 200, user
 
 
