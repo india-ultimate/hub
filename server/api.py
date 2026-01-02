@@ -451,13 +451,17 @@ def create_team(
 
 @api.post("/login", auth=None, response={200: UserSchema, 403: Response})
 def api_login(
-    request: HttpRequest, credentials: Credentials
+    request: HttpRequest, response: HttpResponse, credentials: Credentials
 ) -> tuple[int, AbstractBaseUser | message_response]:
     user = authenticate(
         request, username=credentials.username.strip().lower(), password=credentials.password
     )
     if user is not None:
         login(request, user)
+
+        if credentials.forum_login:
+            base_user = User.objects.get(username=user.get_username())
+            handle_forum_login(base_user, response)
         return 200, user
     else:
         return 403, {"message": "Invalid credentials"}

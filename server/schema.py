@@ -20,6 +20,7 @@ from server.utils import mask_string
 class Credentials(Schema):
     username: str
     password: str
+    forum_login: bool
 
 
 class TopScoreCredentials(Schema):
