@@ -524,7 +524,10 @@ def handle_forum_login(user: User, response: HttpResponse) -> None:
 
             if token:
                 response.set_cookie(
-                    "flarum_remember", token["token"], max_age=60 * 60 * 24 * 365 * 5
+                    "flarum_remember",
+                    token["token"],
+                    max_age=60 * 60 * 24 * 365 * 5,
+                    domain=".indiaultimate.org",
                 )  # 5 years
     except Player.DoesNotExist:
         # User doesn't have a player profile, skip forum login
