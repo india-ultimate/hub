@@ -20,13 +20,18 @@ const PasswordLogin = props => {
   const [password, setPassword] = createSignal("");
   const [store, { setLoggedIn, setData }] = useStore();
   const [showPassword, setShowPassword] = createSignal(false);
+  const [forumLogin, setForumLogin] = createSignal(false);
 
   createEffect(() => {
+    const redirect = new URL(window.location.href).searchParams.get("redirect");
+
+    if (redirect && redirect.includes("forum")) {
+      setForumLogin(true);
+    }
+
     if (store.loggedIn) {
       const navigate = useNavigate();
-      const redirect = new URL(window.location.href).searchParams.get(
-        "redirect"
-      );
+
       const isSafe =
         redirect && redirect.startsWith("/") && !redirect.startsWith("//");
       navigate(isSafe ? redirect : "/dashboard", { replace: true });
@@ -43,7 +48,8 @@ const PasswordLogin = props => {
       },
       body: JSON.stringify({
         username: username()?.trim(),
-        password: password()
+        password: password(),
+        forum_login: forumLogin()
       })
     });
 
