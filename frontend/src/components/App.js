@@ -75,6 +75,9 @@ const ElectionPage = lazy(() => import("./election/ElectionPage"));
 // Chat Pages
 const ChatPage = lazy(() => import("./chat/ChatPage"));
 
+// Forum Pages
+const Forum = lazy(() => import("./forum/Forum"));
+
 // Wrapped Pages
 const Wrapped = lazy(() => import("./wrapped/Wrapped"));
 
@@ -112,6 +115,7 @@ export default function App() {
                     component={AnnouncementDetail}
                   />
                   <UserRoute path="/dashboard" component={Dashboard} />
+                  <UserRoute path="/forum" component={Forum} />
                   {/* Login related routes */}
                   <Route path="/login" component={Login} />
                   {/* Series routes */}
