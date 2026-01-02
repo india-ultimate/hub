@@ -21,7 +21,7 @@ from django.db import transaction
 from django.db.models import Count, F, Q, QuerySet, Value
 from django.db.models.functions import Concat
 from django.db.utils import IntegrityError
-from django.http import HttpRequest
+from django.http import HttpRequest, HttpResponse
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from django.utils.text import slugify
@@ -45,6 +45,7 @@ from server.core.models import (
     Vaccination,
 )
 from server.election.api import router as election_router
+from server.flarum.utils import create_flarum_user, get_flarum_token
 from server.lib.membership import get_membership_status
 from server.membership.models import Membership
 from server.passkey_utils import PassKeyClient
@@ -499,7 +500,7 @@ def get_otp(
 
 @api.post("/otp-login", auth=None, response={200: UserSchema, 403: Response, 404: Response})
 def otp_login(
-    request: HttpRequest, credentials: OTPLoginCredentials
+    request: HttpRequest, response: HttpResponse, credentials: OTPLoginCredentials
 ) -> tuple[int, User | message_response]:
     credentials.email = credentials.email.strip().lower()
     email_hash = get_email_hash(credentials.email)
@@ -512,6 +513,19 @@ def otp_login(
         )
         request.user = user
         login(request, user)
+
+        if credentials.forum_login:
+            token = get_flarum_token(user.username, user.date_joined)
+
+            if not token:
+                create_flarum_user(user.get_full_name(), user.username, user.date_joined)
+                token = get_flarum_token(user.username, user.date_joined)
+
+            if token:
+                response.set_cookie(
+                    "flarum_remember", token["token"], max_age=60 * 60 * 24 * 365 * 5
+                )  # 5 years
+
         return 200, user
 
     return 403, {"message": "Invalid OTP"}

@@ -163,4 +163,5 @@ class TestIntegration(BaseCase):
             self.click("button#validate-otp-button")
             self.assert_element("h2#accordion-heading-actions")
             self.assert_element('a[href="/registration/me"]')
+
             print("Successfully logged in!")
