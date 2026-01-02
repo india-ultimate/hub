@@ -242,6 +242,10 @@ CKEDITOR_CONFIGS = {
     }
 }
 
+# Flarum settings (India Ultimate Forum)
+FLARUM_BASE_URL = os.environ.get("FLARUM_BASE_URL", "https://forum.indiaultimate.org")
+FLARUM_API_KEY = os.environ.get("FLARUM_API_KEY", "")
+
 ########################################################################
 import django_stubs_ext
 
