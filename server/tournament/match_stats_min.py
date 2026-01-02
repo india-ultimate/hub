@@ -66,6 +66,13 @@ def handle_score(
     if team.id != match.stats.current_possession.id:
         return 422, {"message": "Team does not match the team in current possession"}
 
+    if match.team_1 is not None and match.team_2 is not None and team.id == match.team_1.id:
+        match.stats.score_team_1 += 1
+        match.stats.current_possession = match.team_2
+    if match.team_1 is not None and match.team_2 is not None and team.id == match.team_2.id:
+        match.stats.score_team_2 += 1
+        match.stats.current_possession = match.team_1
+
     new_match_event = MatchEvent(
         stats=match.stats,
         team=team,
@@ -73,15 +80,10 @@ def handle_score(
         scored_by=scored_by,
         assisted_by=assisted_by,
         type=MatchEvent.EventType.SCORE,
+        post_event_score_team_1=match.stats.score_team_1,
+        post_event_score_team_2=match.stats.score_team_2,
     )
     new_match_event.save()
-
-    if match.team_1 is not None and match.team_2 is not None and team.id == match.team_1.id:
-        match.stats.score_team_1 += 1
-        match.stats.current_possession = match.team_2
-    if match.team_1 is not None and match.team_2 is not None and team.id == match.team_2.id:
-        match.stats.score_team_2 += 1
-        match.stats.current_possession = match.team_1
 
     score_sum = match.stats.score_team_1 + match.stats.score_team_2
 
@@ -137,6 +139,8 @@ def handle_block(
         started_on=MatchEvent.Mode.OFFENSE,  # ignore this for now, not used
         block_by=block_by,
         type=MatchEvent.EventType.BLOCK,
+        post_event_score_team_1=match.stats.score_team_1,
+        post_event_score_team_2=match.stats.score_team_2,
     )
     new_match_event.save()
 
