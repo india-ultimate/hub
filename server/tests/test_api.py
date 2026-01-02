@@ -37,7 +37,7 @@ class TestLogin(ApiBaseTestCase):
         c = Client()
         response = c.post(
             "/api/login",
-            data={"username": self.username, "password": self.password},
+            data={"username": self.username, "password": self.password, "forum_login": False},
             content_type="application/json",
         )
         self.assertEqual(200, response.status_code)
@@ -48,7 +48,7 @@ class TestLogin(ApiBaseTestCase):
         c = Client()
         response = c.post(
             "/api/login",
-            data={"username": self.username, "password": self.password},
+            data={"username": self.username, "password": self.password, "forum_login": False},
             content_type="application/json",
         )
         self.assertEqual(200, response.status_code)
