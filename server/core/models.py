@@ -22,6 +22,8 @@ class User(AbstractUser):
 
     is_tournament_admin = models.BooleanField(default=False)
 
+    forum_id = models.PositiveIntegerField(null=True, blank=True)
+
 
 class StatesUTs(models.TextChoices):
     AN = "AN", _("Andaman and Nicobar Islands")
