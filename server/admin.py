@@ -161,6 +161,7 @@ class UserAdmin(DjangoUserAdmin):
                     "groups",
                     "user_permissions",
                     "is_tournament_admin",
+                    "forum_id",
                 ),
             },
         ),
