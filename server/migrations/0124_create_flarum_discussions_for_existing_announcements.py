@@ -66,7 +66,7 @@ def create_flarum_discussions_for_announcements(
 
             # Build announcement URL
             announcement_url = f"{base_url}/announcement/{announcement.slug}"
-            content = f'<p><a href="{announcement_url}" target="_blank">Read the full announcement here</a></p>'
+            content = f"[Read the full announcement here]({announcement_url})"
 
             # Build tag IDs: always include "Announcements" (id: 1) + type-specific tag
             tag_ids = [1]  # Announcements tag is mandatory
