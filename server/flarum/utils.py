@@ -1,3 +1,4 @@
+import contextlib
 import hashlib
 import logging
 import re
@@ -210,6 +211,11 @@ def create_flarum_user(user: User) -> dict[str, Any] | None:
     email = user.username
     creation_timestamp = user.date_joined
 
+    # Get profile picture URL if available
+    avatar_url = None
+    with contextlib.suppress(Exception):
+        avatar_url = user.player_profile.profile_pic_url
+
     # Generate password from timestamp
     password = _encode_timestamp_to_password(creation_timestamp)
 
@@ -237,6 +243,10 @@ def create_flarum_user(user: User) -> dict[str, Any] | None:
                 }
             }
         }
+
+        # Add avatarUrl if user has a profile picture
+        if avatar_url:
+            data["data"]["attributes"]["avatarUrl"] = avatar_url
 
         try:
             response = requests.post(url, json=data, headers=headers, timeout=15)
