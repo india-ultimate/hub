@@ -49,6 +49,7 @@ from server.election.api import router as election_router
 from server.flarum.utils import (
     create_flarum_user,
     get_flarum_token,
+    update_flarum_user_avatar,
 )
 from server.lib.membership import get_membership_status
 from server.membership.models import Membership
@@ -1126,6 +1127,10 @@ def upload_profile_pic(
         # Update player profile
         player.profile_pic_url = profile_pic_url
         player.save(update_fields=["profile_pic_url"])
+
+        # Update Flarum avatar if user has a forum_id
+        if request.user.forum_id:
+            update_flarum_user_avatar(request.user, profile_pic_url)
 
         return 200, player
 
