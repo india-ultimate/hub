@@ -314,6 +314,66 @@ def create_flarum_user(user: User) -> dict[str, Any] | None:
     return None
 
 
+def update_flarum_user_avatar(user: User, avatar_url: str) -> bool:
+    """
+    Update the avatar URL for a Flarum user.
+
+    Args:
+        user: User instance with a forum_id
+        avatar_url: URL of the new avatar image
+
+    Returns:
+        True if update was successful, False otherwise
+    """
+    if not user.forum_id:
+        logger.debug("User %s does not have forum_id, skipping avatar update", user.username)
+        return False
+
+    base_url = _get_flarum_base_url()
+    if not base_url:
+        logger.error("FLARUM_BASE_URL not configured")
+        return False
+
+    api_key = _get_flarum_api_key()
+    if not api_key:
+        logger.error("FLARUM_API_KEY not configured")
+        return False
+
+    url = f"{base_url}/api/users/{user.forum_id}"
+    headers = _get_api_key_headers(user.forum_id)
+
+    data = {
+        "data": {
+            "type": "users",
+            "id": str(user.forum_id),
+            "attributes": {
+                "avatarUrl": avatar_url,
+            },
+        }
+    }
+
+    try:
+        response = requests.patch(url, json=data, headers=headers, timeout=15)
+    except requests.exceptions.RequestException as e:
+        logger.error("Failed to update Flarum user avatar: %s", e)
+        return False
+
+    if response.status_code not in (200, 201):
+        logger.error(
+            "Failed to update Flarum user avatar: Server returned %s, error: %s",
+            response.status_code,
+            response.text,
+        )
+        return False
+
+    logger.info(
+        "Successfully updated Flarum avatar for user %s (forum_id: %s)",
+        user.username,
+        user.forum_id,
+    )
+    return True
+
+
 def create_flarum_discussion(
     title: str,
     content: str,
