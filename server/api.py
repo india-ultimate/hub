@@ -505,33 +505,41 @@ def get_otp(
 
 def handle_forum_login(user: User, response: HttpResponse) -> None:
     """
-    Handle forum login for a user if they have active membership.
+    Handle forum login for a user if they are an admin or have active membership.
 
     Args:
         user: The authenticated user
         response: HTTP response object to set cookies
     """
-    # Check if user has active membership before proceeding with forum login
-    try:
-        player = user.player_profile
-        membership = Membership.objects.filter(player=player).first()
-        if membership and membership.is_active:
+    # Check if user is admin (staff or superuser) or has active membership
+    is_admin = user.is_staff or user.is_superuser
+    has_active_membership = False
+
+    if not is_admin:
+        # Check if user has active membership
+        try:
+            player = user.player_profile
+            membership = Membership.objects.filter(player=player).first()
+            has_active_membership = membership is not None and membership.is_active
+        except Player.DoesNotExist:
+            # User doesn't have a player profile, no active membership
+            pass
+
+    # Proceed with forum login if user is admin or has active membership
+    if is_admin or has_active_membership:
+        token = get_flarum_token(user.username, user.date_joined)
+
+        if not token:
+            create_flarum_user(user.get_full_name(), user.username, user.date_joined)
             token = get_flarum_token(user.username, user.date_joined)
 
-            if not token:
-                create_flarum_user(user.get_full_name(), user.username, user.date_joined)
-                token = get_flarum_token(user.username, user.date_joined)
-
-            if token:
-                response.set_cookie(
-                    "flarum_remember",
-                    token["token"],
-                    max_age=60 * 60 * 24 * 365 * 5,
-                    domain=".indiaultimate.org",
-                )  # 5 years
-    except Player.DoesNotExist:
-        # User doesn't have a player profile, skip forum login
-        pass
+        if token:
+            response.set_cookie(
+                "flarum_remember",
+                token["token"],
+                max_age=60 * 60 * 24 * 365 * 5,
+                domain=".indiaultimate.org",
+            )  # 5 years
 
 
 @api.post("/otp-login", auth=None, response={200: UserSchema, 403: Response, 404: Response})
