@@ -6,6 +6,7 @@ import { Icon } from "solid-heroicons";
 import {
   arrowRight,
   calendarDays,
+  chatBubbleBottomCenterText,
   documentText,
   eye,
   eyeSlash,
@@ -234,6 +235,36 @@ export default function AnnouncementDetail() {
                   innerHTML={DOMPurify.sanitize(query.data.content)}
                 />
               </div>
+
+              <Show when={query.data.forum_discussion_id}>
+                <div class="mt-6 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/50">
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                      <Icon
+                        path={chatBubbleBottomCenterText}
+                        class="h-5 w-5 text-blue-600 dark:text-blue-400"
+                      />
+                      <div>
+                        <h3 class="text-sm font-semibold text-gray-900 dark:text-white">
+                          Have some thoughts?
+                        </h3>
+                        <p class="text-xs text-gray-600 dark:text-gray-400">
+                          Join the conversation on our forum
+                        </p>
+                      </div>
+                    </div>
+                    <a
+                      href={`https://forum.indiaultimate.org/d/${query.data.forum_discussion_id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:focus:ring-blue-800"
+                    >
+                      <span>View Discussion</span>
+                      <Icon path={arrowRight} class="h-4 w-4" />
+                    </a>
+                  </div>
+                </div>
+              </Show>
 
               <Show when={query.data.action_text && query.data.action_url}>
                 <div class="mt-6 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 p-4 dark:from-blue-900/20 dark:to-indigo-900/20">
