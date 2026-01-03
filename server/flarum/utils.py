@@ -7,6 +7,8 @@ from typing import Any
 import requests
 from django.conf import settings
 
+from server.core.models import User
+
 HTTP_SUCCESS = 200
 HTTP_UNPROCESSABLE_ENTITY = 422
 MIN_NAME_PARTS_FOR_FULL_NAME = 2
@@ -184,7 +186,7 @@ def get_flarum_token(identification: str, creation_timestamp: datetime) -> dict[
         return None
 
 
-def create_flarum_user(user: Any) -> dict[str, Any] | None:
+def create_flarum_user(user: User) -> dict[str, Any] | None:
     """
     Create a user in Flarum.
 
