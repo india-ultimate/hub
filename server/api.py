@@ -46,7 +46,10 @@ from server.core.models import (
     Vaccination,
 )
 from server.election.api import router as election_router
-from server.flarum.utils import create_flarum_user, get_flarum_token
+from server.flarum.utils import (
+    create_flarum_user,
+    get_flarum_token,
+)
 from server.lib.membership import get_membership_status
 from server.membership.models import Membership
 from server.passkey_utils import PassKeyClient
@@ -530,7 +533,7 @@ def handle_forum_login(user: User, response: HttpResponse) -> None:
         token = get_flarum_token(user.username, user.date_joined)
 
         if not token:
-            create_flarum_user(user.get_full_name(), user.username, user.date_joined)
+            create_flarum_user(user)
             token = get_flarum_token(user.username, user.date_joined)
 
         if token:

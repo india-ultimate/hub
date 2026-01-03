@@ -184,19 +184,16 @@ def get_flarum_token(identification: str, creation_timestamp: datetime) -> dict[
         return None
 
 
-def create_flarum_user(
-    full_name: str, email: str, creation_timestamp: datetime
-) -> dict[str, Any] | None:
+def create_flarum_user(user: Any) -> dict[str, Any] | None:
     """
     Create a user in Flarum.
 
     Generates username from full name by removing spaces, special characters, and numbers.
     If username is already taken, appends a number and retries up to 5 times.
+    Stores the Flarum user ID in the User model's forum_id field.
 
     Args:
-        full_name: Full name of the user (e.g., "John Doe")
-        email: Email address for the new user
-        creation_timestamp: Timestamp when the user was created (used to generate password)
+        user: User instance to create in Flarum
 
     Returns:
         Dictionary with user data, or None if request fails
@@ -205,6 +202,11 @@ def create_flarum_user(
     if not base_url:
         logger.error("FLARUM_BASE_URL not configured")
         return None
+
+    # Extract user information
+    full_name = user.get_full_name()
+    email = user.username
+    creation_timestamp = user.date_joined
 
     # Generate password from timestamp
     password = _encode_timestamp_to_password(creation_timestamp)
@@ -244,8 +246,26 @@ def create_flarum_user(
         if response.status_code in (200, 201):
             try:
                 result = response.json()
+                flarum_user_id = result.get("data", {}).get("id")
+
+                # Store Flarum user ID in User model
+                if flarum_user_id:
+                    try:
+                        user.forum_id = int(flarum_user_id)
+                        user.save(update_fields=["forum_id"])
+                        logger.info(
+                            "Stored Flarum user ID %s in User.forum_id for user %s",
+                            flarum_user_id,
+                            user.username,
+                        )
+                    except (ValueError, AttributeError) as e:
+                        logger.warning("Failed to store Flarum user ID in User model: %s", e)
+
                 logger.info(
-                    "Successfully created Flarum user: %s (username: %s)", full_name, username
+                    "Successfully created Flarum user: %s (username: %s, id: %s)",
+                    full_name,
+                    username,
+                    flarum_user_id,
                 )
                 return result
             except ValueError as e:
@@ -280,3 +300,78 @@ def create_flarum_user(
     # Should not reach here, but just in case
     logger.error("Failed to create Flarum user after %d attempts", max_retries)
     return None
+
+
+def create_flarum_discussion(
+    title: str,
+    content: str,
+    tag_ids: list[int] | None = None,
+    user_id: int = 1,
+) -> str | None:
+    """
+    Create a discussion in Flarum.
+
+    Args:
+        title: Title of the discussion
+        content: Content/body of the first post in the discussion
+        tag_ids: Optional list of tag IDs to associate with the discussion
+        user_id: User ID to create the discussion as (default: 1)
+
+    Returns:
+        Discussion ID as string if successful, None if request fails
+    """
+    base_url = _get_flarum_base_url()
+    if not base_url:
+        logger.error("FLARUM_BASE_URL not configured")
+        return None
+
+    api_key = _get_flarum_api_key()
+    if not api_key:
+        logger.error("FLARUM_API_KEY not configured")
+        return None
+
+    url = f"{base_url}/api/discussions"
+    headers = _get_api_key_headers(user_id)
+
+    data: dict[str, Any] = {
+        "data": {
+            "type": "discussions",
+            "attributes": {
+                "title": title,
+                "content": content,
+            },
+        }
+    }
+
+    # Add tags relationship if provided
+    if tag_ids:
+        data["data"]["relationships"] = {
+            "tags": {"data": [{"type": "tags", "id": str(tag_id)} for tag_id in tag_ids]}
+        }
+
+    try:
+        response = requests.post(url, json=data, headers=headers, timeout=15)
+    except requests.exceptions.RequestException as e:
+        logger.error("Failed to create Flarum discussion: %s", e)
+        return None
+
+    if response.status_code not in (200, 201):
+        logger.error(
+            "Failed to create Flarum discussion: Server returned %s, error: %s",
+            response.status_code,
+            response.text,
+        )
+        return None
+
+    try:
+        result = response.json()
+        discussion_id = result.get("data", {}).get("id")
+        if discussion_id:
+            logger.info("Successfully created Flarum discussion: %s (id: %s)", title, discussion_id)
+            return str(discussion_id)
+        else:
+            logger.error("Flarum discussion created but no ID in response: %s", result)
+            return None
+    except (ValueError, KeyError) as e:
+        logger.error("Failed to parse Flarum discussion creation response: %s", e)
+        return None
