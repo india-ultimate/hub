@@ -21,7 +21,7 @@ from django.db import transaction
 from django.db.models import Count, F, Q, QuerySet, Value
 from django.db.models.functions import Concat
 from django.db.utils import IntegrityError
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
 from django.shortcuts import redirect
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
@@ -617,11 +617,12 @@ def passkey_finish_login(
 
 
 @api.get("/forum-login", auth=None)
-def forum_login(request: HttpRequest, response: HttpResponse) -> HttpResponse:
+def forum_login(request: HttpRequest) -> HttpResponse:
     if request.user.is_authenticated:
+        response = HttpResponseRedirect("/forum")
         user = User.objects.get(username=request.user.get_username())
         handle_forum_login(user, response)
-        return redirect("/forum")
+        return response
     else:
         return redirect("/login?redirect=/forum")
 
