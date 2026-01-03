@@ -722,7 +722,20 @@ class AnnouncementAdmin(admin.ModelAdmin[Announcement]):
     change_form_template = "admin/announcement_change_form.html"
 
     fieldsets = (
-        (None, {"fields": ("title", "slug", "type", "content", "is_members_only", "is_published")}),
+        (
+            None,
+            {
+                "fields": (
+                    "title",
+                    "slug",
+                    "type",
+                    "content",
+                    "is_members_only",
+                    "is_published",
+                    "forum_discussion_id",
+                )
+            },
+        ),
         (
             "Call to Action (Optional)",
             {
