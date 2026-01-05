@@ -2,10 +2,10 @@
 
 import logging
 
-from django.conf import settings
 from django.db import migrations
 from django.db.backends.base.schema import BaseDatabaseSchemaEditor
 from django.db.migrations.state import StateApps
+from markdownify import markdownify as md
 
 logger = logging.getLogger(__name__)
 
@@ -36,14 +36,6 @@ def create_flarum_discussions_for_announcements(
         # PROJECT_GAMECHANGERS doesn't have a direct tag, skip it
     }
 
-    # Get base URL
-    base_url = getattr(settings, "EMAIL_INVITATION_BASE_URL", "")
-    if not base_url:
-        logger.warning(
-            "EMAIL_INVITATION_BASE_URL not configured, skipping Flarum discussion creation"
-        )
-        return
-
     # Get all published announcements that don't have a forum_discussion_id
     announcements = Announcement.objects.select_related("author").filter(
         is_published=True, forum_discussion_id__isnull=True
@@ -64,15 +56,18 @@ def create_flarum_discussions_for_announcements(
                 failed_count += 1
                 continue
 
-            # Build announcement URL
-            announcement_url = f"{base_url}/announcement/{announcement.slug}"
-            content = f"[Read the full announcement here]({announcement_url})"
+            # Convert HTML content to Markdown
+            content = md(announcement.content, heading_style="ATX")
 
-            # Build tag IDs: always include "Announcements" (id: 1) + type-specific tag
+            # Build tag IDs: always include "Announcements" (id: 1) + type-specific tag + Members Only if applicable
             tag_ids = [1]  # Announcements tag is mandatory
             type_tag_id = type_to_tag_id.get(announcement.type)
             if type_tag_id:
                 tag_ids.append(type_tag_id)
+
+            # Add "Members Only" tag (id: 19) if announcement is members only
+            if announcement.is_members_only:
+                tag_ids.append(19)
 
             # Ensure author has a Flarum user account
             # Get the actual User instance (not historical) to access methods like get_full_name
@@ -106,6 +101,7 @@ def create_flarum_discussions_for_announcements(
                 content=content,
                 tag_ids=tag_ids,
                 user_id=user_id,
+                created_at=announcement.created_at,
             )
 
             if discussion_id:
