@@ -2,9 +2,9 @@ import logging
 from typing import Any
 
 from ckeditor_uploader.fields import RichTextUploadingField
-from django.conf import settings
 from django.db import models
 from django.utils.text import slugify
+from markdownify import markdownify as md
 
 from server.core.models import User
 from server.flarum.utils import create_flarum_discussion, create_flarum_user
@@ -95,22 +95,18 @@ class Announcement(models.Model):
     def _create_flarum_discussion(self) -> None:
         """Create a Flarum discussion for this announcement."""
         try:
-            # Get announcement URL
-            base_url = getattr(settings, "EMAIL_INVITATION_BASE_URL", "")
-            if not base_url:
-                logger.warning(
-                    "EMAIL_INVITATION_BASE_URL not configured, cannot create Flarum discussion"
-                )
-                return
+            # Convert HTML content to Markdown
+            content = md(self.content, heading_style="ATX")
 
-            announcement_url = f"{base_url}/announcement/{self.slug}"
-            content = f"[Read the full announcement here]({announcement_url})"
-
-            # Build tag IDs: always include "Announcements" (id: 1) + type-specific tag
+            # Build tag IDs: always include "Announcements" (id: 1) + type-specific tag + Members Only if applicable
             tag_ids = [1]  # Announcements tag is mandatory
             type_tag_id = self._get_flarum_tag_id_for_type()
             if type_tag_id:
                 tag_ids.append(type_tag_id)
+
+            # Add "Members Only" tag (id: 19) if announcement is members only
+            if self.is_members_only:
+                tag_ids.append(19)
 
             # Ensure author has a Flarum user account
             user_id = self.author.forum_id
@@ -138,6 +134,7 @@ class Announcement(models.Model):
                 content=content,
                 tag_ids=tag_ids,
                 user_id=user_id,
+                created_at=self.created_at,
             )
 
             if discussion_id:
