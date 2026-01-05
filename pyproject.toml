@@ -26,6 +26,7 @@ pillow = "^10.4.0"
 groq = "^0.26.0"
 cloudinary = "^1.44.1"
 django-ckeditor = "^6.7.3"
+markdownify = "^1.2.2"
 
 [tool.poetry.group.dev.dependencies]
 ipython = "^8.13.2"

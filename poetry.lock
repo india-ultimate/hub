@@ -154,7 +154,7 @@ version = "4.12.2"
 description = "Screen-scraping library"
 optional = false
 python-versions = ">=3.6.0"
-groups = ["dev"]
+groups = ["main", "dev"]
 files = [
     {file = "beautifulsoup4-4.12.2-py3-none-any.whl", hash = "sha256:bd2520ca0d9d7d12694a53d44ac482d181b4ec1888909b035a3dbf40d0f57d4a"},
     {file = "beautifulsoup4-4.12.2.tar.gz", hash = "sha256:492bbc69dca35d12daac71c4db1bfff0c876c00ef4a2ffacce226d4638eb72da"},
@@ -1016,6 +1016,22 @@ plugins = ["mdit-py-plugins"]
 profiling = ["gprof2dot"]
 rtd = ["jupyter_sphinx", "mdit-py-plugins", "myst-parser", "pyyaml", "sphinx", "sphinx-copybutton", "sphinx-design", "sphinx_book_theme"]
 testing = ["coverage", "pytest", "pytest-cov", "pytest-regressions"]
+
+[[package]]
+name = "markdownify"
+version = "1.2.2"
+description = "Convert HTML to markdown."
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "markdownify-1.2.2-py3-none-any.whl", hash = "sha256:3f02d3cc52714084d6e589f70397b6fc9f2f3a8531481bf35e8cc39f975e186a"},
+    {file = "markdownify-1.2.2.tar.gz", hash = "sha256:b274f1b5943180b031b699b199cbaeb1e2ac938b75851849a31fd0c3d6603d09"},
+]
+
+[package.dependencies]
+beautifulsoup4 = ">=4.9,<5"
+six = ">=1.15,<2"
 
 [[package]]
 name = "marshmallow"
@@ -2374,7 +2390,7 @@ version = "2.4.1"
 description = "A modern CSS selector implementation for Beautiful Soup."
 optional = false
 python-versions = ">=3.7"
-groups = ["dev"]
+groups = ["main", "dev"]
 files = [
     {file = "soupsieve-2.4.1-py3-none-any.whl", hash = "sha256:1c1bfee6819544a3447586c889157365a27e10d88cde3ad3da0cf0ddf646feb8"},
     {file = "soupsieve-2.4.1.tar.gz", hash = "sha256:89d12b2d5dfcd2c9e8c22326da9d9aa9cb3dfab0a83a024f05704076ee8d35ea"},
@@ -2722,4 +2738,4 @@ resolved_reference = "85de0cbadbba3f498deba32f861bb9a478faa3b4"
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.10"
-content-hash = "f06c52b35057c5c71a224eab6318c539c15963e28b12db169c3814b6eb127077"
+content-hash = "52fe7d15956a021db289364b0a422147821e4dacc5cc52c822c18b5a76746060"
