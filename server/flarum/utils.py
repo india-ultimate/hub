@@ -379,6 +379,7 @@ def create_flarum_discussion(
     content: str,
     tag_ids: list[int] | None = None,
     user_id: int = 1,
+    created_at: datetime | None = None,
 ) -> str | None:
     """
     Create a discussion in Flarum.
@@ -388,6 +389,7 @@ def create_flarum_discussion(
         content: Content/body of the first post in the discussion
         tag_ids: Optional list of tag IDs to associate with the discussion
         user_id: User ID to create the discussion as (default: 1)
+        created_at: Optional datetime for when the discussion was created (ISO format)
 
     Returns:
         Discussion ID as string if successful, None if request fails
@@ -405,13 +407,20 @@ def create_flarum_discussion(
     url = f"{base_url}/api/discussions"
     headers = _get_api_key_headers(user_id)
 
+    attributes: dict[str, Any] = {
+        "title": title,
+        "content": content,
+    }
+
+    # Add createdAt if provided
+    if created_at:
+        # Format datetime as ISO 8601 string with timezone
+        attributes["createdAt"] = created_at.isoformat()
+
     data: dict[str, Any] = {
         "data": {
             "type": "discussions",
-            "attributes": {
-                "title": title,
-                "content": content,
-            },
+            "attributes": attributes,
         }
     }
 
