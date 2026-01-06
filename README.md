@@ -21,7 +21,7 @@ You can report issues on
 
 ## Development
 
-This project Poetry to manage the backend dependencies
+This project uses Poetry to manage the backend dependencies
 
 Follow the offical docs to [install Poetry](https://python-poetry.org/docs/#installing-with-pipx)
 
@@ -29,6 +29,12 @@ Install dependencies with Poetry
 
 ```bash
 poetry install
+```
+
+Install the poetry shell plugin
+
+```bash
+poetry self add poetry-plugin-shell
 ```
 
 Using the poetry virtual env
@@ -57,7 +63,7 @@ python manage.py runserver
 
 The frontend is built using SolidJS and Yarn.
 
-Prerequisites: Node v22 and npm. (Recommend using nvm to manage node versions!)
+Prerequisites: Node v22 and npm. (Recommend using [nvm](https://github.com/nvm-sh/nvm) to manage node versions!)
 
 Install Yarn following official documentations [here](https://classic.yarnpkg.com/lang/en/docs/install/#mac-stable).
 
