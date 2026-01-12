@@ -57,7 +57,7 @@ def create_flarum_discussions_for_announcements(
                 continue
 
             # Convert HTML content to Markdown
-            content = md(announcement.content, heading_style="ATX")
+            content = md(announcement.content, heading_style="ATX", table_infer_header=True)
 
             # Build tag IDs: always include "Announcements" (id: 1) + type-specific tag + Members Only if applicable
             tag_ids = [1]  # Announcements tag is mandatory
