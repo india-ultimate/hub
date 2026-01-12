@@ -14,7 +14,7 @@ from server.core.models import (
 from server.membership.models import (
     Membership,
 )
-from server.tournament.models import Tournament, Event
+from server.tournament.models import Event, Tournament
 from server.utils import mask_string
 
 
@@ -124,6 +124,7 @@ class EventTinySchema(ModelSchema):
         model = Event
         model_fields = ["title", "slug"]
 
+
 class TournamentTinySchema(ModelSchema):
     event: EventTinySchema
     current_seed: int | None
@@ -152,6 +153,7 @@ def get_team_seeding_position(tournament: Tournament, team_id: int) -> int | Non
                 return None
     return None
 
+
 class TeamSchema(ModelSchema):
     admins: list[UserMinSchema]
     tournaments: list[TournamentTinySchema]
@@ -159,8 +161,13 @@ class TeamSchema(ModelSchema):
     @staticmethod
     def resolve_tournaments(team: Team) -> list[TournamentTinySchema]:
         # Filter tournaments to only include LIVE or COMPLETED status
-        filtered_tournaments = team.tournaments.filter(
-            status__in=[Tournament.Status.LIVE, Tournament.Status.COMPLETED]
+        # Order by event start_date descending (most recent first) and limit to 5
+        filtered_tournaments = (
+            team.tournaments.filter(
+                status__in=[Tournament.Status.LIVE, Tournament.Status.COMPLETED]
+            )
+            .select_related("event")
+            .order_by("-event__start_date")[:5]
         )
 
         result = []
