@@ -88,40 +88,86 @@ const View = () => {
           </div>
         </div>
 
-        <dl class="mx-2 max-w-md divide-y divide-gray-200 text-gray-800 dark:divide-gray-700 dark:text-white">
-          <div class="flex flex-col pb-3">
-            <dt class="mb-1 text-gray-500 dark:text-gray-400 md:text-lg">
-              Category
-            </dt>
-            <dd class="text-lg font-semibold">
-              {teamQuery.data?.category || "-"}
-            </dd>
-          </div>
-          <div class="flex flex-col py-3">
-            <dt class="mb-1 text-gray-500 dark:text-gray-400 md:text-lg">
-              State
-            </dt>
-            <dd class="text-lg font-semibold">
-              {teamQuery.data?.state_ut || "-"}
-            </dd>
-          </div>
-          <div class="flex flex-col pt-3">
-            <dt class="mb-1 text-gray-500 dark:text-gray-400 md:text-lg">
-              City
-            </dt>
-            <dd class="text-lg font-semibold">{teamQuery.data?.city || "-"}</dd>
-          </div>
-          <div class="flex flex-col pt-3">
-            <dt class="mb-1 text-gray-500 dark:text-gray-400 md:text-lg">
-              Admins
-            </dt>
-            <dd class="text-lg font-semibold">
-              {teamQuery.data?.admins
-                .map(admin => admin.full_name + ` (${admin.username})`)
-                .join("\n") || "-"}
-            </dd>
-          </div>
-        </dl>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-y-6">
+          <dl class="mx-2 max-w-md divide-y divide-gray-200 text-gray-800 dark:divide-gray-700 dark:text-white">
+            <div class="flex flex-col pb-3">
+              <dt class="mb-1 text-gray-500 dark:text-gray-400 md:text-lg">
+                Category
+              </dt>
+              <dd class="text-lg font-semibold">
+                {teamQuery.data?.category || "-"}
+              </dd>
+            </div>
+            <div class="flex flex-col py-3">
+              <dt class="mb-1 text-gray-500 dark:text-gray-400 md:text-lg">
+                State
+              </dt>
+              <dd class="text-lg font-semibold">
+                {teamQuery.data?.state_ut || "-"}
+              </dd>
+            </div>
+            <div class="flex flex-col pt-3">
+              <dt class="mb-1 text-gray-500 dark:text-gray-400 md:text-lg">
+                City
+              </dt>
+              <dd class="text-lg font-semibold">{teamQuery.data?.city || "-"}</dd>
+            </div>
+            <div class="flex flex-col pt-3">
+              <dt class="mb-1 text-gray-500 dark:text-gray-400 md:text-lg">
+                Admins
+              </dt>
+              <dd class="text-lg font-semibold">
+                {teamQuery.data?.admins
+                  .map(admin => (<p>{admin.full_name + ` (${admin.username})`}</p>)) || "-"}
+              </dd>
+            </div>
+          </dl>
+          <dl class="mx-2 max-w-md divide-y divide-gray-200 text-gray-800 dark:divide-gray-700 dark:text-white">
+            <div class="flex flex-col pb-3">
+              <dt class="mb-1 text-gray-500 dark:text-gray-400 md:text-lg">
+                Last Played Tournaments
+              </dt>
+              <dd>
+                <div class="flex flex-col gap-y-3">
+                  <Show
+                    when={teamQuery.data?.tournaments && teamQuery.data.tournaments.length > 0}
+                    fallback={<p class="text-gray-500">No tournaments</p>}
+                  >
+                    {teamQuery.data?.tournaments.map(tournament => (
+                      <A
+                        href={`/tournament/${tournament.event.slug}/team/${params.slug}`}
+                        class="flex items-center gap-3 rounded-md bg-gray-100 p-3 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700"
+                      >
+                        <Show when={tournament.logo_light || tournament.logo_dark}>
+                          <img
+                            src={tournament.logo_dark || tournament.logo_light}
+                            alt="Tournament logo"
+                            class="hidden h-12 w-12 rounded-sm object-contain dark:block"
+                          />
+                          <img
+                            src={tournament.logo_light || tournament.logo_dark}
+                            alt="Tournament logo"
+                            class="block h-12 w-12 rounded-sm object-contain dark:hidden"
+                          />
+                        </Show>
+                        <div class="flex-1">
+                          <h3 class="text-sm font-bold text-gray-700 dark:text-white">
+                            {tournament.event.title}
+                          </h3>
+                          <Show when={tournament.current_seed}>
+                            <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">
+                              Seed: {tournament.current_seed}
+                            </p>
+                          </Show>
+                        </div>
+                      </A>
+                    ))}
+                  </Show>
+                </div>
+              </dd>
+            </div>
+          </dl>
+        </div>
       </div>
     </div>
   );
