@@ -113,6 +113,15 @@ def handle_score_undo(
         match.stats.score_team_2 -= 1
         match.stats.current_possession = match.team_2
 
+    score_sum = match.stats.score_team_1 + match.stats.score_team_2
+
+    # Change ratio when sum of score is even (cause its undo match score)
+    if score_sum % 2 == 0:
+        if match.stats.current_ratio == MatchStats.GenderRatio.MALE:
+            match.stats.current_ratio = MatchStats.GenderRatio.FEMALE
+        elif match.stats.current_ratio == MatchStats.GenderRatio.FEMALE:
+            match.stats.current_ratio = MatchStats.GenderRatio.MALE
+
     score_event.delete()
     match.stats.save()
 
