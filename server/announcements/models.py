@@ -96,7 +96,7 @@ class Announcement(models.Model):
         """Create a Flarum discussion for this announcement."""
         try:
             # Convert HTML content to Markdown
-            content = md(self.content, heading_style="ATX")
+            content = md(self.content, heading_style="ATX", table_infer_header=True)
 
             # Build tag IDs: always include "Announcements" (id: 1) + type-specific tag + Members Only if applicable
             tag_ids = [1]  # Announcements tag is mandatory
