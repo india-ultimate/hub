@@ -424,11 +424,22 @@ def populate_fixtures(tournament_id: int) -> None:
                     next_match.save()
 
         for bracket in brackets:
+            is_this_bracket_seeds_pool_matches_complete = True
             is_this_bracket_seeds_cross_pool_matches_complete = True
 
             bracket_initial_seeding_list = list(map(int, bracket.initial_seeding.keys()))
 
             for seed in bracket_initial_seeding_list:
+                pool_matches_not_completed = (
+                    Match.objects.exclude(pool__isnull=True)
+                    .filter(tournament=tournament_id)
+                    .exclude(status=Match.Status.COMPLETED)
+                    .filter(Q(placeholder_seed_1=seed) | Q(placeholder_seed_2=seed))
+                )
+
+                if pool_matches_not_completed.count() > 0:
+                    is_this_bracket_seeds_pool_matches_complete = False
+
                 cross_pool_matches_not_completed = (
                     Match.objects.exclude(cross_pool__isnull=True)
                     .filter(tournament=tournament_id)
@@ -439,7 +450,10 @@ def populate_fixtures(tournament_id: int) -> None:
                 if cross_pool_matches_not_completed.count() > 0:
                     is_this_bracket_seeds_cross_pool_matches_complete = False
 
-            if is_this_bracket_seeds_cross_pool_matches_complete:
+            if (
+                is_this_bracket_seeds_pool_matches_complete
+                and is_this_bracket_seeds_cross_pool_matches_complete
+            ):
                 if bracket.initial_seeding[next(iter(bracket.initial_seeding.keys()))] == 0:
                     for key in list(bracket.initial_seeding.keys()):
                         bracket.initial_seeding[int(key)] = tournament.current_seeding[key]
@@ -462,6 +476,7 @@ def populate_fixtures(tournament_id: int) -> None:
                     next_match.save()
 
         for position_pool in position_pools:
+            is_this_position_pool_seeds_pool_matches_complete = True
             is_this_position_pool_seeds_cross_pool_matches_complete = True
 
             position_pool_initial_seeding_list = list(
@@ -469,6 +484,16 @@ def populate_fixtures(tournament_id: int) -> None:
             )
 
             for seed in position_pool_initial_seeding_list:
+                pool_matches_not_completed = (
+                    Match.objects.exclude(pool__isnull=True)
+                    .filter(tournament=tournament_id)
+                    .exclude(status=Match.Status.COMPLETED)
+                    .filter(Q(placeholder_seed_1=seed) | Q(placeholder_seed_2=seed))
+                )
+
+                if pool_matches_not_completed.count() > 0:
+                    is_this_position_pool_seeds_pool_matches_complete = False
+
                 cross_pool_matches_not_completed = (
                     Match.objects.exclude(cross_pool__isnull=True)
                     .filter(tournament=tournament_id)
@@ -480,8 +505,8 @@ def populate_fixtures(tournament_id: int) -> None:
                     is_this_position_pool_seeds_cross_pool_matches_complete = False
 
             if (
-                is_this_position_pool_seeds_cross_pool_matches_complete
-                and is_all_pool_matches_complete
+                is_this_position_pool_seeds_pool_matches_complete
+                and is_this_position_pool_seeds_cross_pool_matches_complete
             ):
                 if (
                     position_pool.initial_seeding[next(iter(position_pool.initial_seeding.keys()))]
