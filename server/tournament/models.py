@@ -24,6 +24,9 @@ class Event(ExportModelOperationsMixin("event"), models.Model):  # type: ignore[
     team_registration_end_date = models.DateField()
     player_registration_start_date = models.DateField()
     player_registration_end_date = models.DateField()
+    team_partial_registration_end_date = models.DateField(blank=True, null=True)
+    team_late_penalty_end_date = models.DateField(blank=True, null=True)
+    player_late_penalty_end_date = models.DateField(blank=True, null=True)
     ultimate_central_id = models.PositiveIntegerField(unique=True, null=True, blank=True)
     ultimate_central_slug = models.SlugField(max_length=200, default="unknown")
     location = models.CharField(max_length=255, default="unknown")
@@ -31,9 +34,21 @@ class Event(ExportModelOperationsMixin("event"), models.Model):  # type: ignore[
     slug = models.SlugField(null=True, blank=True, db_index=True)
     max_num_teams = models.PositiveSmallIntegerField(blank=True, null=True)
     series = models.ForeignKey(Series, on_delete=models.SET_NULL, blank=True, null=True)
-    team_fee = models.PositiveIntegerField(default=0)
-    player_fee = models.PositiveIntegerField(default=0)
-    partial_team_fee = models.PositiveIntegerField(default=0)
+    team_fee = models.PositiveIntegerField(default=0, help_text="Team registration fee in paise.")
+    player_fee = models.PositiveIntegerField(
+        default=0, help_text="Player registration fee in paise."
+    )
+    partial_team_fee = models.PositiveIntegerField(
+        default=0, help_text="Partial team registration fee in paise."
+    )
+    team_late_penalty = models.PositiveIntegerField(
+        default=0,
+        help_text="Per-day late registration penalty for teams, in paise.",
+    )
+    player_late_penalty = models.PositiveIntegerField(
+        default=0,
+        help_text="Per-day late registration penalty for players, in paise.",
+    )
     is_membership_needed = models.BooleanField(default=False)
     tier = models.IntegerField(default=4)
 
