@@ -1,18 +1,26 @@
 {% extends "admin/index.html" %}
 {% load i18n %}
 
+{% block nav-sidebar %}
+<button class="sticky toggle-nav-sidebar" id="toggle-nav-sidebar" aria-label="{% translate 'Toggle navigation' %}"></button>
+<nav class="sticky" id="nav-sidebar" aria-label="{% translate 'Sidebar' %}">
+  <input type="search" id="nav-filter"
+         placeholder="{% translate 'Start typing to filter…' %}"
+         aria-label="{% translate 'Filter navigation items' %}">
+    <h3 class="section">{% translate "Tools" %}</h3>
+    <ul class="sidebar-list">
+        <li><a href="{% url 'admin:csv_imports' %}">{% translate "CSV import tools" %}</a></li>
+    </ul>
+  {% include 'admin/app_list.html' with app_list=available_apps show_changelinks=False %}
+</nav>
+{% endblock %}
+
 {% block content %}
 <div id="content-main" class="app-list">
-    <div class="module">
-        <h2>{% translate "Tools" %}</h2>
-        <ul class="actionlist">
-            <li>
-                <a href="{% url 'admin:csv_imports' %}">{% translate "CSV import tools" %}</a>
-                <br>
-                <span class="mini quiet">{% translate "Import players, activate memberships, add to series or event roster." %}</span>
-            </li>
-        </ul>
-    </div>
-    {% include "admin/app_list.html" with app_list=app_list show_changelinks=True %}
+    <h3 class="section">{% translate "Tools" %}</h3>
+    <ul class="sidebar-list">
+        <li><a href="{% url 'admin:csv_imports' %}">{% translate "CSV import tools" %}</a></li>
+    </ul>
+  {% include "admin/app_list.html" with app_list=app_list show_changelinks=True %}
 </div>
 {% endblock %}

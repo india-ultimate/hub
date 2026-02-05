@@ -64,9 +64,9 @@ def csv_imports_view(request: HttpRequest) -> HttpResponse:
 
         try:
             with tempfile.NamedTemporaryFile(delete=False, suffix=".csv", mode="wb") as tmp:
+                tmp_path = tmp.name  # set immediately so finally can clean up on any exception
                 for chunk in csv_file.chunks():
                     tmp.write(chunk)
-                tmp_path = tmp.name
 
             if action == "import_players":
                 date_format = request.POST.get("date_format") or "%Y-%m-%d"
