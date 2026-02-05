@@ -1,6 +1,11 @@
-import { createForm, required } from "@modular-forms/solid";
+import {
+  createForm,
+  getValues,
+  required,
+  setValue
+} from "@modular-forms/solid";
 import { createMutation, useQueryClient } from "@tanstack/solid-query";
-import { createSignal, Show } from "solid-js";
+import { createEffect, createSignal, Show } from "solid-js";
 
 import { tournamentTypeChoices } from "../../constants";
 import { createTournament } from "../../queries";
@@ -23,7 +28,7 @@ const CreateTournamentForm = () => {
   });
 
   const initialValues = {};
-  const [_tournamentForm, { Form, Field }] = createForm({
+  const [tournamentForm, { Form, Field }] = createForm({
     initialValues,
     validateOn: "touched",
     revalidateOn: "touched"
@@ -35,6 +40,28 @@ const CreateTournamentForm = () => {
   const handleSubmit = async values => {
     const { logo_light, logo_dark, ...tournamentData } = values;
     const data = { ...tournamentData };
+
+    // Convert fee fields from rupees to paise (multiply by 100)
+    const feeFields = [
+      "team_fee",
+      "player_fee",
+      "partial_team_fee",
+      "team_late_penalty",
+      "player_late_penalty"
+    ];
+
+    feeFields.forEach(field => {
+      if (
+        data[field] !== undefined &&
+        data[field] !== null &&
+        data[field] !== ""
+      ) {
+        const intValue = parseInt(data[field], 10);
+        if (!Number.isNaN(intValue)) {
+          data[field] = intValue * 100;
+        }
+      }
+    });
 
     const formData = new FormData();
     formData.append("tournament_details", JSON.stringify(data));
@@ -48,6 +75,60 @@ const CreateTournamentForm = () => {
   };
 
   const minDate = new Date().toISOString().split("T")[0];
+
+  // Auto-fill late penalty and partial registration end dates based on
+  // the corresponding registration dates
+  createEffect(() => {
+    const values = getValues(tournamentForm);
+
+    const {
+      team_registration_start_date,
+      team_registration_end_date,
+      player_registration_end_date,
+      team_partial_registration_end_date,
+      team_late_penalty_end_date,
+      player_late_penalty_end_date
+    } = values;
+
+    if (team_registration_end_date && !team_late_penalty_end_date) {
+      setValue(
+        tournamentForm,
+        "team_late_penalty_end_date",
+        team_registration_end_date,
+        {
+          shouldTouched: false,
+          shouldDirty: false,
+          shouldValidate: false
+        }
+      );
+    }
+
+    if (player_registration_end_date && !player_late_penalty_end_date) {
+      setValue(
+        tournamentForm,
+        "player_late_penalty_end_date",
+        player_registration_end_date,
+        {
+          shouldTouched: false,
+          shouldDirty: false,
+          shouldValidate: false
+        }
+      );
+    }
+
+    if (team_registration_start_date && !team_partial_registration_end_date) {
+      setValue(
+        tournamentForm,
+        "team_partial_registration_end_date",
+        team_registration_start_date,
+        {
+          shouldTouched: false,
+          shouldDirty: false,
+          shouldValidate: false
+        }
+      );
+    }
+  });
 
   return (
     <div>
@@ -132,7 +213,40 @@ const CreateTournamentForm = () => {
           <Field
             name="team_registration_end_date"
             validate={[
-              required("Please enter the team registration end date.")
+              required("Please enter the team registration end date."),
+              value => {
+                const {
+                  team_registration_start_date,
+                  team_partial_registration_end_date,
+                  team_late_penalty_end_date
+                } = getValues(tournamentForm);
+
+                if (
+                  value &&
+                  team_registration_start_date &&
+                  value < team_registration_start_date
+                ) {
+                  return "Team registration end date cannot be before start date.";
+                }
+
+                if (
+                  value &&
+                  team_partial_registration_end_date &&
+                  value < team_partial_registration_end_date
+                ) {
+                  return "Team registration end date cannot be before team partial registration end date.";
+                }
+
+                if (
+                  value &&
+                  team_late_penalty_end_date &&
+                  value > team_late_penalty_end_date
+                ) {
+                  return "Team registration end date cannot be after team late penalty end date.";
+                }
+
+                return "";
+              }
             ]}
           >
             {(field, props) => (
@@ -143,6 +257,101 @@ const CreateTournamentForm = () => {
                 type="date"
                 min={minDate}
                 label="Registration End Date"
+                placeholder={minDate}
+                required
+              />
+            )}
+          </Field>
+          <Field
+            name="team_partial_registration_end_date"
+            validate={[
+              required("Please enter the team partial registration end date."),
+              value => {
+                const {
+                  team_registration_start_date,
+                  team_registration_end_date
+                } = getValues(tournamentForm);
+
+                if (
+                  value &&
+                  team_registration_start_date &&
+                  value < team_registration_start_date
+                ) {
+                  return "Team partial registration end date cannot be before team registration start date.";
+                }
+
+                if (
+                  value &&
+                  team_registration_end_date &&
+                  value > team_registration_end_date
+                ) {
+                  return "Team partial registration end date cannot be after team registration end date.";
+                }
+
+                return "";
+              }
+            ]}
+          >
+            {(field, props) => (
+              <TextInput
+                {...props}
+                value={field.value}
+                error={field.error}
+                type="date"
+                min={minDate}
+                label="Team Partial Registration End Date"
+                placeholder={minDate}
+                required
+              />
+            )}
+          </Field>
+          <Field
+            name="team_late_penalty_end_date"
+            validate={[
+              required("Please enter the team late penalty end date."),
+              value => {
+                const {
+                  team_registration_end_date,
+                  team_partial_registration_end_date,
+                  team_registration_start_date
+                } = getValues(tournamentForm);
+
+                if (
+                  value &&
+                  team_registration_end_date &&
+                  value < team_registration_end_date
+                ) {
+                  return "Team late penalty end date cannot be before team registration end date.";
+                }
+
+                if (
+                  value &&
+                  team_partial_registration_end_date &&
+                  value < team_partial_registration_end_date
+                ) {
+                  return "Team late penalty end date cannot be before team partial registration end date.";
+                }
+
+                if (
+                  value &&
+                  team_registration_start_date &&
+                  value < team_registration_start_date
+                ) {
+                  return "Team late penalty end date cannot be before team registration start date.";
+                }
+
+                return "";
+              }
+            ]}
+          >
+            {(field, props) => (
+              <TextInput
+                {...props}
+                value={field.value}
+                error={field.error}
+                type="date"
+                min={minDate}
+                label="Team Late Penalty End Date"
                 placeholder={minDate}
                 required
               />
@@ -169,7 +378,23 @@ const CreateTournamentForm = () => {
           </Field>
           <Field
             name="player_registration_end_date"
-            validate={[required("Please enter the player rostering end date.")]}
+            validate={[
+              required("Please enter the player rostering end date."),
+              value => {
+                const { player_registration_start_date } =
+                  getValues(tournamentForm);
+
+                if (
+                  value &&
+                  player_registration_start_date &&
+                  value < player_registration_start_date
+                ) {
+                  return "Player rostering end date cannot be before start date.";
+                }
+
+                return "";
+              }
+            ]}
           >
             {(field, props) => (
               <TextInput
@@ -179,6 +404,49 @@ const CreateTournamentForm = () => {
                 type="date"
                 min={minDate}
                 label="Player Rostering End Date"
+                placeholder={minDate}
+                required
+              />
+            )}
+          </Field>
+          <Field
+            name="player_late_penalty_end_date"
+            validate={[
+              required("Please enter the player late penalty end date."),
+              value => {
+                const {
+                  player_registration_start_date,
+                  player_registration_end_date
+                } = getValues(tournamentForm);
+
+                if (
+                  value &&
+                  player_registration_end_date &&
+                  value < player_registration_end_date
+                ) {
+                  return "Player late penalty end date cannot be before player rostering end date.";
+                }
+
+                if (
+                  value &&
+                  player_registration_start_date &&
+                  value < player_registration_start_date
+                ) {
+                  return "Player late penalty end date cannot be before player rostering start date.";
+                }
+
+                return "";
+              }
+            ]}
+          >
+            {(field, props) => (
+              <TextInput
+                {...props}
+                value={field.value}
+                error={field.error}
+                type="date"
+                min={minDate}
+                label="Player Late Penalty End Date"
                 placeholder={minDate}
                 required
               />
@@ -196,6 +464,173 @@ const CreateTournamentForm = () => {
                 type="text"
                 label="Tournament Location"
                 placeholder="City, State"
+                required
+              />
+            )}
+          </Field>
+          {/* Team fees & penalties */}
+          <Field
+            name="team_fee"
+            validate={[
+              required("Please enter the team registration fee."),
+              value => {
+                if (value !== undefined && value !== null && value !== "") {
+                  const numValue = Number(value);
+                  if (
+                    Number.isNaN(numValue) ||
+                    numValue < 0 ||
+                    !Number.isInteger(numValue)
+                  ) {
+                    return "Team fee must be a non-negative integer in rupees.";
+                  }
+                }
+                return "";
+              }
+            ]}
+          >
+            {(field, props) => (
+              <TextInput
+                {...props}
+                value={field.value}
+                error={field.error}
+                type="number"
+                min="0"
+                step="1"
+                label="Team Registration Fee (₹)"
+                placeholder="0"
+                required
+              />
+            )}
+          </Field>
+          <Field
+            name="partial_team_fee"
+            validate={[
+              required("Please enter the partial team registration fee."),
+              value => {
+                if (value !== undefined && value !== null && value !== "") {
+                  const numValue = Number(value);
+                  if (
+                    Number.isNaN(numValue) ||
+                    numValue < 0 ||
+                    !Number.isInteger(numValue)
+                  ) {
+                    return "Partial team fee must be a non-negative integer in rupees.";
+                  }
+                }
+                return "";
+              }
+            ]}
+          >
+            {(field, props) => (
+              <TextInput
+                {...props}
+                value={field.value}
+                error={field.error}
+                type="number"
+                min="0"
+                step="1"
+                label="Partial Team Registration Fee (₹)"
+                placeholder="0"
+                required
+              />
+            )}
+          </Field>
+          <Field
+            name="team_late_penalty"
+            validate={[
+              required("Please enter the team late penalty fee."),
+              value => {
+                if (value !== undefined && value !== null && value !== "") {
+                  const numValue = Number(value);
+                  if (
+                    Number.isNaN(numValue) ||
+                    numValue < 0 ||
+                    !Number.isInteger(numValue)
+                  ) {
+                    return "Team late penalty must be a non-negative integer in rupees.";
+                  }
+                }
+                return "";
+              }
+            ]}
+          >
+            {(field, props) => (
+              <TextInput
+                {...props}
+                value={field.value}
+                error={field.error}
+                type="number"
+                min="0"
+                step="1"
+                label="Team Late Penalty per Day (₹)"
+                placeholder="0"
+                required
+              />
+            )}
+          </Field>
+          {/* Player fees & penalties */}
+          <Field
+            name="player_fee"
+            validate={[
+              required("Please enter the player registration fee."),
+              value => {
+                if (value !== undefined && value !== null && value !== "") {
+                  const numValue = Number(value);
+                  if (
+                    Number.isNaN(numValue) ||
+                    numValue < 0 ||
+                    !Number.isInteger(numValue)
+                  ) {
+                    return "Player fee must be a non-negative integer in rupees.";
+                  }
+                }
+                return "";
+              }
+            ]}
+          >
+            {(field, props) => (
+              <TextInput
+                {...props}
+                value={field.value}
+                error={field.error}
+                type="number"
+                min="0"
+                step="1"
+                label="Player Registration Fee (₹)"
+                placeholder="0"
+                required
+              />
+            )}
+          </Field>
+          <Field
+            name="player_late_penalty"
+            validate={[
+              required("Please enter the player late penalty fee."),
+              value => {
+                if (value !== undefined && value !== null && value !== "") {
+                  const numValue = Number(value);
+                  if (
+                    Number.isNaN(numValue) ||
+                    numValue < 0 ||
+                    !Number.isInteger(numValue)
+                  ) {
+                    return "Player late penalty must be a non-negative integer in rupees.";
+                  }
+                }
+                return "";
+              }
+            ]}
+          >
+            {(field, props) => (
+              <TextInput
+                {...props}
+                value={field.value}
+                error={field.error}
+                type="number"
+                min="0"
+                step="1"
+                label="Player Late Penalty per Day (₹)"
+                placeholder="0"
                 required
               />
             )}
