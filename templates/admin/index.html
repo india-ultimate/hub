@@ -1,0 +1,18 @@
+{% extends "admin/index.html" %}
+{% load i18n %}
+
+{% block content %}
+<div id="content-main" class="app-list">
+    <div class="module">
+        <h2>{% translate "Tools" %}</h2>
+        <ul class="actionlist">
+            <li>
+                <a href="{% url 'admin:csv_imports' %}">{% translate "CSV import tools" %}</a>
+                <br>
+                <span class="mini quiet">{% translate "Import players, activate memberships, add to series or event roster." %}</span>
+            </li>
+        </ul>
+    </div>
+    {% include "admin/app_list.html" with app_list=app_list show_changelinks=True %}
+</div>
+{% endblock %}

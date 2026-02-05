@@ -1,0 +1,180 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} | {% trans "Django site admin" %}{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+.csv-sample-pre {
+  padding: 10px;
+  overflow-x: auto;
+  font-size: 12px;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+  background: #f5f5f5;
+  color: #333;
+}
+@media (prefers-color-scheme: dark) {
+  .csv-sample-pre {
+    background: #2a2a2a;
+    border-color: #444;
+    color: #e0e0e0;
+  }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+
+{% if messages %}
+<ul class="messagelist">
+  {% for message in messages %}
+  <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+  {% endfor %}
+</ul>
+{% endif %}
+
+<div class="csv-import-section" style="margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 4px;">
+  <h2 style="margin-top: 0;">Import players</h2>
+  <p style="margin-bottom: 15px;">Import data from CSV and create Player and User objects.</p>
+  <details style="margin-bottom: 15px;">
+    <summary style="cursor: pointer; font-weight: bold;">CSV format and sample</summary>
+    <p><strong>Template:</strong> <a href="https://docs.google.com/spreadsheets/d/1UGSlRHqRA8V_Extze5mh2Y7TzmQlJjqZkwpXb2Osvck/edit?gid=0#gid=0" target="_blank" rel="noopener noreferrer">Import players CSV template (Google Sheets)</a> — copy and download as CSV.</p>
+    <p><strong>Required columns:</strong> first_name, last_name, email, phone, date_of_birth, gender, other_gender, city, state_ut, not_in_india (Y/N), occupation, educational_institution. For minors: guardian.first_name, guardian.last_name, guardian.email, guardian.phone, guardian.relation.</p>
+    <p><strong>Optional columns:</strong> uc.email (Ultimate Central), sponsored (Y/N), accreditation.wfdf_id, accreditation.date, accreditation.level, accreditation.certificate_file_name; vaccination.is_vaccinated (Y/N), vaccination.name or vaccination.explain_not_vaccinated, vaccination.certificate_file_name. Certificate/vaccination files are only used when running the command with a folder that has <code>certificates/</code> and <code>vaccinations/</code> next to the CSV; uploads here do not attach files.</p>
+    <p><strong>Date format:</strong> Must match the dates in your CSV. Default is <code>%Y-%m-%d</code> (e.g. 2001-01-15). For <code>DD-MM-YYYY</code> use <code>%d-%m-%Y</code>. Set below if different.</p>
+    <p><strong>Sample CSV (minimal):</strong></p>
+    <pre class="csv-sample-pre">first_name,last_name,email,phone,date_of_birth,gender,other_gender,city,state_ut,not_in_india,occupation,educational_institution,guardian.first_name,guardian.last_name,guardian.email,guardian.phone,guardian.relation
+Jane,Doe,jane@example.com,9876543210,2000-05-20,Female,,Mumbai,Maharashtra,N,Student,XYZ College,,,,,,</pre>
+  </details>
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="import_players">
+    <p>
+      <label for="id_import_players_csv">CSV file:</label>
+      <input type="file" name="csv_file" id="id_import_players_csv" accept=".csv" required>
+    </p>
+    <p>
+      <label for="id_date_format">Date format (optional):</label>
+      <input type="text" name="date_format" id="id_date_format" value="%Y-%m-%d" style="width: 200px;" placeholder="e.g. %Y-%m-%d or %d-%m-%Y">
+    </p>
+    <p>
+      <input type="checkbox" name="guardian_email_optional" id="id_guardian_email_optional">
+      <label for="id_guardian_email_optional">Guardian email optional</label>
+    </p>
+    <p>
+      <input type="submit" value="Import players" style="padding: 8px 16px; cursor: pointer;">
+    </p>
+  </form>
+</div>
+
+<div class="csv-import-section" style="margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 4px;">
+  <h2 style="margin-top: 0;">Activate memberships</h2>
+  <p style="margin-bottom: 15px;">Activate memberships for the current season. Players must already exist (e.g. imported via Import players).</p>
+  <details style="margin-bottom: 15px;">
+    <summary style="cursor: pointer; font-weight: bold;">CSV format and sample</summary>
+    <p><strong>Required column:</strong> email (one per row; must match an existing user username/email).</p>
+    <p><strong>Sample CSV:</strong></p>
+    <pre class="csv-sample-pre">email
+jane@example.com
+john@example.com</pre>
+  </details>
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="activate_memberships">
+    <p>
+      <label for="id_activate_csv">CSV file:</label>
+      <input type="file" name="csv_file" id="id_activate_csv" accept=".csv" required>
+    </p>
+    <p>
+      <input type="submit" value="Activate memberships" style="padding: 8px 16px; cursor: pointer;">
+    </p>
+  </form>
+</div>
+
+<div class="csv-import-section" style="margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 4px;">
+  <h2 style="margin-top: 0;">Add to series roster</h2>
+  <p style="margin-bottom: 15px;">Register players from the CSV onto the selected series and team. Players must already exist.</p>
+  <details style="margin-bottom: 15px;">
+    <summary style="cursor: pointer; font-weight: bold;">CSV format and sample</summary>
+    <p><strong>Required:</strong> CSV with column <strong>email</strong> (one per row; must match an existing user). Also select <strong>Series</strong> and <strong>Team</strong> above.</p>
+    <p><strong>Sample CSV:</strong></p>
+    <pre class="csv-sample-pre">email
+jane@example.com
+john@example.com</pre>
+  </details>
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="add_to_series_roster">
+    <p>
+      <label for="id_series_csv">CSV file:</label>
+      <input type="file" name="csv_file" id="id_series_csv" accept=".csv" required>
+    </p>
+    <p>
+      <label for="id_series_id">Series:</label>
+      <select name="series_id" id="id_series_id" required>
+        <option value="">---------</option>
+        {% for s in series_list %}
+        <option value="{{ s.id }}">{{ s.name }} (ID: {{ s.id }})</option>
+        {% endfor %}
+      </select>
+    </p>
+    <p>
+      <label for="id_series_team_id">Team:</label>
+      <select name="team_id" id="id_series_team_id" required>
+        <option value="">---------</option>
+        {% for t in team_list %}
+        <option value="{{ t.id }}">{{ t.name }} (ID: {{ t.id }})</option>
+        {% endfor %}
+      </select>
+    </p>
+    <p>
+      <input type="submit" value="Add to series roster" style="padding: 8px 16px; cursor: pointer;">
+    </p>
+  </form>
+</div>
+
+<div class="csv-import-section" style="margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 4px;">
+  <h2 style="margin-top: 0;">Add to event roster</h2>
+  <p style="margin-bottom: 15px;">Add players from the CSV to the selected event and team. Team must be registered for the event; if the event requires membership, players must have an active membership with valid waiver.</p>
+  <details style="margin-bottom: 15px;">
+    <summary style="cursor: pointer; font-weight: bold;">CSV format and sample</summary>
+    <p><strong>Required:</strong> CSV with column <strong>email</strong> (one per row; must match an existing user). Also select <strong>Event</strong> and <strong>Team</strong> above. Each player will be added to the chosen team for the chosen event (one team per event per player).</p>
+    <p><strong>Sample CSV:</strong></p>
+    <pre class="csv-sample-pre">email
+jane@example.com
+john@example.com</pre>
+  </details>
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="add_to_event_roster">
+    <p>
+      <label for="id_event_csv">CSV file:</label>
+      <input type="file" name="csv_file" id="id_event_csv" accept=".csv" required>
+    </p>
+    <p>
+      <label for="id_event_id">Event:</label>
+      <select name="event_id" id="id_event_id" required>
+        <option value="">---------</option>
+        {% for e in event_list %}
+        <option value="{{ e.id }}">{{ e.title }} (ID: {{ e.id }})</option>
+        {% endfor %}
+      </select>
+    </p>
+    <p>
+      <label for="id_event_team_id">Team:</label>
+      <select name="team_id" id="id_event_team_id" required>
+        <option value="">---------</option>
+        {% for t in team_list %}
+        <option value="{{ t.id }}">{{ t.name }} (ID: {{ t.id }})</option>
+        {% endfor %}
+      </select>
+    </p>
+    <p>
+      <input type="submit" value="Add to event roster" style="padding: 8px 16px; cursor: pointer;">
+    </p>
+  </form>
+</div>
+{% endblock %}
