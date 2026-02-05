@@ -17,7 +17,21 @@ Including another URLconf
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
-from django.urls import include, path
+from django.urls import URLPattern, URLResolver, include, path
+
+from server.admin_views import csv_imports_view
+
+_admin_urls = admin.site.get_urls()
+
+
+def _admin_get_urls() -> list[URLPattern | URLResolver]:
+    return [
+        path("csv-imports/", admin.site.admin_view(csv_imports_view), name="csv_imports"),
+        *_admin_urls,
+    ]
+
+
+admin.site.get_urls = _admin_get_urls  # type: ignore[method-assign]
 
 urlpatterns = [
     path("", include("server.urls")),
