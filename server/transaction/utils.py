@@ -12,7 +12,7 @@ from server.season.models import Season
 from server.tournament.models import Event, Registration, Tournament
 from server.tournament.utils import can_register_player_to_series_event
 from server.types import message_response
-from server.utils import is_today_in_between_dates
+from server.utils import calculate_late_penalty, is_today_in_between_dates
 
 from .client import phonepe, razorpay
 from .models import (
@@ -145,10 +145,24 @@ def create_transaction(
         else:
             amount = event.team_fee
 
+        days_late = 0
+        penalty = 0
+        if not order.partial:
+            days_late, penalty = calculate_late_penalty(
+                event.team_registration_end_date,
+                event.team_late_penalty,
+                event.team_late_penalty_end_date,
+            )
+        base_amount = amount
+        amount += penalty
+
         notes: dict[str, int | str] = {
             "user_id": user.id,
             "team_id": team.id,
             "event_id": event.id,
+            "base_amount": str(base_amount),
+            "penalty_amount": str(penalty),
+            "days_late": str(days_late),
         }
         receipt = f"team:{event.id}:{team.id}:{ts}"
 
@@ -162,7 +176,8 @@ def create_transaction(
 
         if not is_today_in_between_dates(
             from_date=tournament.event.player_registration_start_date,
-            to_date=tournament.event.player_registration_end_date,
+            to_date=tournament.event.player_late_penalty_end_date
+            or tournament.event.player_registration_end_date,
         ):
             return 400, {"message": "Rostering has closed, you can't roster players now !"}
 
@@ -205,8 +220,16 @@ def create_transaction(
 
         start_date = event.start_date
         end_date = event.end_date
-        amount = event.player_fee * len(players)
         season = None
+
+        days_late, per_player_penalty = calculate_late_penalty(
+            event.player_registration_end_date,
+            event.player_late_penalty,
+            event.player_late_penalty_end_date,
+        )
+        base_amount = event.player_fee * len(players)
+        penalty = per_player_penalty * len(players)
+        amount = base_amount + penalty
 
         player_names = ", ".join(sorted([player.user.get_full_name() for player in players]))
         if len(player_names) > razorpay.RAZORPAY_NOTES_MAX:
@@ -218,6 +241,9 @@ def create_transaction(
             "event_id": event.id,
             "player_ids": str(player_ids),
             "players": player_names,
+            "base_amount": str(base_amount),
+            "penalty_amount": str(penalty),
+            "days_late": str(days_late),
         }
         receipt = f"player:{event.id}:{team.id}:{ts}"
 

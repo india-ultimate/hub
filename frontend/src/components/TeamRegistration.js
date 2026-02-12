@@ -22,7 +22,7 @@ import {
   fetchUser,
   removeTeamRegistration
 } from "../queries";
-import { ifTodayInBetweenDates } from "../utils";
+import { calculateLatePenalty, ifTodayInBetweenDates } from "../utils";
 import Info from "./alerts/Info";
 import Breadcrumbs from "./Breadcrumbs";
 import Modal from "./Modal";
@@ -104,7 +104,10 @@ const TeamRegistration = () => {
         .includes(teamId) &&
       ifTodayInBetweenDates(
         Date.parse(tournamentQuery.data?.event?.player_registration_start_date),
-        Date.parse(tournamentQuery.data?.event?.player_registration_end_date)
+        Date.parse(
+          tournamentQuery.data?.event?.player_late_penalty_end_date ||
+            tournamentQuery.data?.event?.player_registration_end_date
+        )
       )
     );
   };
@@ -214,6 +217,17 @@ const TeamRegistration = () => {
         const playerIsOpen = now >= playerRegStart && now <= playerRegEnd;
         const playerIsLate = now > playerRegEnd && now <= playerLateEnd;
 
+        const teamPenalty = calculateLatePenalty(
+          event?.team_registration_end_date,
+          event?.team_late_penalty,
+          event?.team_late_penalty_end_date
+        );
+        const playerPenalty = calculateLatePenalty(
+          event?.player_registration_end_date,
+          event?.player_late_penalty,
+          event?.player_late_penalty_end_date
+        );
+
         const formatDate = d =>
           d.toLocaleDateString("en-US", {
             month: "short",
@@ -253,9 +267,16 @@ const TeamRegistration = () => {
                     : `Closed on ${formatDate(teamRegEnd)}`}
                 </p>
                 <p>Fee: {formatFee(event?.team_fee)}</p>
-                <Show when={teamIsLate && event?.team_late_penalty > 0}>
+                <Show when={teamIsLate && teamPenalty.daysLate > 0}>
                   <p>
-                    Late penalty: {formatFee(event?.team_late_penalty)} per day
+                    Late penalty: {formatFee(teamPenalty.penalty)} (
+                    {teamPenalty.daysLate} day
+                    {teamPenalty.daysLate > 1 ? "s" : ""} x{" "}
+                    {formatFee(event?.team_late_penalty)}/day)
+                  </p>
+                  <p class="font-semibold">
+                    Total payable:{" "}
+                    {formatFee(event?.team_fee + teamPenalty.penalty)}
                   </p>
                 </Show>
                 <Show
@@ -301,10 +322,16 @@ const TeamRegistration = () => {
                     : `Closed on ${formatDate(playerRegEnd)}`}
                 </p>
                 <p>Fee: {formatFee(event?.player_fee)}</p>
-                <Show when={playerIsLate && event?.player_late_penalty > 0}>
+                <Show when={playerIsLate && playerPenalty.daysLate > 0}>
                   <p>
-                    Late penalty: {formatFee(event?.player_late_penalty)} per
-                    day
+                    Late penalty: {formatFee(playerPenalty.penalty)}/player (
+                    {playerPenalty.daysLate} day
+                    {playerPenalty.daysLate > 1 ? "s" : ""} x{" "}
+                    {formatFee(event?.player_late_penalty)}/day)
+                  </p>
+                  <p class="font-semibold">
+                    Total per player:{" "}
+                    {formatFee(event?.player_fee + playerPenalty.penalty)}
                   </p>
                 </Show>
               </div>
@@ -417,34 +444,42 @@ const TeamRegistration = () => {
                           .map(team => team.id)
                           .includes(team.id)}
                       >
-                        <RazorpayPayment
-                          disabled={!isTeamFeeExists()}
-                          event={tournamentQuery.data?.event}
-                          team={team}
-                          amount={
-                            tournamentQuery.data?.event?.team_fee -
-                            tournamentQuery.data?.event?.partial_team_fee
-                          }
-                          setStatus={msg => {
-                            return msg;
-                          }}
-                          successCallback={() => {
-                            queryClient.invalidateQueries({
-                              queryKey: ["tournaments", params.slug]
-                            });
-                            setStatus("Paid successfully!");
-                            successPopoverRef.showPopover();
-                          }}
-                          failureCallback={msg => {
-                            setStatus(msg);
-                            errorPopoverRef.showPopover();
-                          }}
-                          buttonText={`Pay Pending (₹${(
-                            (tournamentQuery.data?.event?.team_fee -
-                              tournamentQuery.data?.event?.partial_team_fee) /
-                            100
-                          ).toLocaleString()})`}
-                        />
+                        {(() => {
+                          const evt = tournamentQuery.data?.event;
+                          const { penalty } = calculateLatePenalty(
+                            evt?.team_registration_end_date,
+                            evt?.team_late_penalty,
+                            evt?.team_late_penalty_end_date
+                          );
+                          const baseAmount =
+                            evt?.team_fee - evt?.partial_team_fee;
+                          const totalAmount = baseAmount + penalty;
+                          return (
+                            <RazorpayPayment
+                              disabled={!isTeamFeeExists()}
+                              event={evt}
+                              team={team}
+                              amount={totalAmount}
+                              setStatus={msg => {
+                                return msg;
+                              }}
+                              successCallback={() => {
+                                queryClient.invalidateQueries({
+                                  queryKey: ["tournaments", params.slug]
+                                });
+                                setStatus("Paid successfully!");
+                                successPopoverRef.showPopover();
+                              }}
+                              failureCallback={msg => {
+                                setStatus(msg);
+                                errorPopoverRef.showPopover();
+                              }}
+                              buttonText={`Pay Pending (₹${(
+                                totalAmount / 100
+                              ).toLocaleString()})`}
+                            />
+                          );
+                        })()}
                       </Show>
                     </div>
                   </div>
@@ -572,29 +607,40 @@ const TeamRegistration = () => {
                                 </button>
                               }
                             >
-                              <RazorpayPayment
-                                disabled={!isTeamFeeExists()}
-                                event={tournamentQuery.data?.event}
-                                team={team}
-                                amount={tournamentQuery.data?.event?.team_fee}
-                                setStatus={msg => {
-                                  return msg;
-                                }}
-                                successCallback={() => {
-                                  queryClient.invalidateQueries({
-                                    queryKey: ["tournaments", params.slug]
-                                  });
-                                  setStatus("Paid successfully!");
-                                  successPopoverRef.showPopover();
-                                }}
-                                failureCallback={msg => {
-                                  setStatus(msg);
-                                  errorPopoverRef.showPopover();
-                                }}
-                                buttonText={`Pay Full (₹${(
-                                  tournamentQuery.data?.event?.team_fee / 100
-                                ).toLocaleString()})`}
-                              />
+                              {(() => {
+                                const evt = tournamentQuery.data?.event;
+                                const { penalty } = calculateLatePenalty(
+                                  evt?.team_registration_end_date,
+                                  evt?.team_late_penalty,
+                                  evt?.team_late_penalty_end_date
+                                );
+                                const totalAmount = evt?.team_fee + penalty;
+                                return (
+                                  <RazorpayPayment
+                                    disabled={!isTeamFeeExists()}
+                                    event={evt}
+                                    team={team}
+                                    amount={totalAmount}
+                                    setStatus={msg => {
+                                      return msg;
+                                    }}
+                                    successCallback={() => {
+                                      queryClient.invalidateQueries({
+                                        queryKey: ["tournaments", params.slug]
+                                      });
+                                      setStatus("Paid successfully!");
+                                      successPopoverRef.showPopover();
+                                    }}
+                                    failureCallback={msg => {
+                                      setStatus(msg);
+                                      errorPopoverRef.showPopover();
+                                    }}
+                                    buttonText={`Pay Full (₹${(
+                                      totalAmount / 100
+                                    ).toLocaleString()})`}
+                                  />
+                                );
+                              })()}
                             </Show>
 
                             <Show when={isPartialTeamFeeExists()}>

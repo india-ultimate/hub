@@ -119,7 +119,10 @@ const TournamentTeam = () => {
   const isPlayerRegInProgress = () => {
     return ifTodayInBetweenDates(
       Date.parse(tournamentQuery.data?.event?.player_registration_start_date),
-      Date.parse(tournamentQuery.data?.event?.player_registration_end_date)
+      Date.parse(
+        tournamentQuery.data?.event?.player_late_penalty_end_date ||
+          tournamentQuery.data?.event?.player_registration_end_date
+      )
     );
   };
 
