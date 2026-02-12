@@ -38,11 +38,6 @@ class AuthenticatedHttpRequest(HttpRequest):
 ticket_api = Router()
 
 
-def get_staff_emails() -> list[str]:
-    """Get a list of all staff email addresses"""
-    return list(User.objects.filter(is_staff=True).values_list("email", flat=True))
-
-
 @ticket_api.get("/", response=list[TicketListItemSchema])
 def list_tickets(
     request: AuthenticatedHttpRequest, status: str | None = None, created_by_me: bool = False
@@ -80,11 +75,11 @@ def create_ticket(
         created_by=request.user,
     )
 
-    # Get all staff emails to notify
-    staff_emails = get_staff_emails()
+    # Get all emails from settings to notify
+    notification_emails = settings.NEW_TICKET_NOTIFICATION_EMAILS
 
-    # Send notification email to all staff if we have staff emails
-    if staff_emails:
+    # Send notification email to all emails if we have emails
+    if notification_emails:
         try:
             # Plain text version
             plain_message = "A new support ticket has been created:\n\n"
@@ -109,7 +104,7 @@ def create_ticket(
                 subject=subject,
                 message=plain_message,
                 from_email=settings.EMAIL_HOST_USER,
-                recipient_list=staff_emails,
+                recipient_list=notification_emails,
                 fail_silently=True,
                 html_message=html_message,
             )
