@@ -26,7 +26,6 @@ import {
   createPool,
   createPositionPool,
   deleteMatch,
-  deleteTournament,
   fetchBrackets,
   fetchCrossPool,
   fetchFieldsByTournamentId,
@@ -239,12 +238,6 @@ const TournamentManager = () => {
 
   const updateSeedingMutation = createMutation({
     mutationFn: updateSeeding,
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["tournaments"] })
-  });
-
-  const deleteTournamentMutation = createMutation({
-    mutationFn: deleteTournament,
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ["tournaments"] })
   });
@@ -534,18 +527,6 @@ const TournamentManager = () => {
               >
                 Updating...
               </Show>
-            </button>
-
-            <button
-              type="button"
-              onClick={() =>
-                deleteTournamentMutation.mutate({
-                  id: selectedTournamentID()
-                })
-              }
-              class="mb-2 mr-2 rounded-lg bg-red-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-red-800 dark:bg-red-600 dark:hover:bg-red-700"
-            >
-              Delete Tournament
             </button>
 
             <button
