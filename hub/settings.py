@@ -246,6 +246,9 @@ CKEDITOR_CONFIGS = {
 FLARUM_BASE_URL = os.environ.get("FLARUM_BASE_URL", "https://forum.indiaultimate.org")
 FLARUM_API_KEY = os.environ.get("FLARUM_API_KEY", "")
 
+# Ticket Email Notifications
+NEW_TICKET_NOTIFICATION_EMAILS = os.environ.get("NEW_TICKET_NOTIFICATION_EMAILS", "").split(",")
+
 ########################################################################
 import django_stubs_ext
 
