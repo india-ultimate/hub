@@ -98,8 +98,16 @@ class TournamentCreateSchema(Schema):
     team_registration_end_date: str
     player_registration_start_date: str
     player_registration_end_date: str
+    team_partial_registration_end_date: str
+    team_late_penalty_end_date: str
+    player_late_penalty_end_date: str
     location: str
     type: str
+    team_fee: int
+    player_fee: int
+    partial_team_fee: int
+    team_late_penalty: int
+    player_late_penalty: int
 
 
 class TournamentUpdateSeedingSchema(Schema):
