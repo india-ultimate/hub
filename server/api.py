@@ -1690,6 +1690,38 @@ def create_tournament(
     ):
         return 400, {"message": "Player registration can't end before Team registration ends"}
 
+    if tournament_details.team_partial_registration_end_date and if_dates_are_not_in_order(
+        tournament_details.team_registration_start_date,
+        tournament_details.team_partial_registration_end_date,
+    ):
+        return 400, {
+            "message": "Team partial registration end date can't be before team registration start date"
+        }
+
+    if tournament_details.team_partial_registration_end_date and if_dates_are_not_in_order(
+        tournament_details.team_partial_registration_end_date,
+        tournament_details.team_registration_end_date,
+    ):
+        return 400, {
+            "message": "Team partial registration end date can't be after team registration end date"
+        }
+
+    if tournament_details.team_late_penalty_end_date and if_dates_are_not_in_order(
+        tournament_details.team_registration_end_date,
+        tournament_details.team_late_penalty_end_date,
+    ):
+        return 400, {
+            "message": "Team late penalty end date can't be before team registration end date"
+        }
+
+    if tournament_details.player_late_penalty_end_date and if_dates_are_not_in_order(
+        tournament_details.player_registration_end_date,
+        tournament_details.player_late_penalty_end_date,
+    ):
+        return 400, {
+            "message": "Player late penalty end date can't be before player registration end date"
+        }
+
     event = Event(
         title=tournament_details.title,
         start_date=tournament_details.start_date,
@@ -1698,8 +1730,16 @@ def create_tournament(
         team_registration_end_date=tournament_details.team_registration_end_date,
         player_registration_start_date=tournament_details.player_registration_start_date,
         player_registration_end_date=tournament_details.player_registration_end_date,
+        team_partial_registration_end_date=tournament_details.team_partial_registration_end_date,
+        team_late_penalty_end_date=tournament_details.team_late_penalty_end_date,
+        player_late_penalty_end_date=tournament_details.player_late_penalty_end_date,
         location=tournament_details.location,
         type=tournament_details.type,
+        team_fee=tournament_details.team_fee,
+        player_fee=tournament_details.player_fee,
+        partial_team_fee=tournament_details.partial_team_fee,
+        team_late_penalty=tournament_details.team_late_penalty,
+        player_late_penalty=tournament_details.player_late_penalty,
     )
     event.save()
 
