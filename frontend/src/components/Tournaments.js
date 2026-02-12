@@ -120,7 +120,7 @@ const Tournaments = () => {
                   <Match when={tournament.status === "SCH"}>
                     <span
                       class={clsx(
-                        "h-fit rounded px-2.5 py-0.5 text-sm font-medium",
+                        "mr-2 h-fit rounded px-2.5 py-0.5 text-sm font-medium",
                         new Date() >=
                           new Date(
                             tournament.event?.team_registration_start_date
@@ -146,7 +146,7 @@ const Tournaments = () => {
                     </span>
                     <span
                       class={clsx(
-                        "h-fit rounded px-2.5 py-0.5 text-sm font-medium",
+                        "mr-2 h-fit rounded px-2.5 py-0.5 text-sm font-medium",
                         new Date() >=
                           new Date(
                             tournament.event?.player_registration_start_date
