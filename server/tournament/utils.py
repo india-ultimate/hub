@@ -2,6 +2,7 @@ import contextlib
 import os
 from collections import Counter
 
+from django.db import transaction
 from django.db.models import Q
 
 from server.core.models import Player, Team, UCPerson, User
@@ -229,12 +230,14 @@ def update_match_score_and_results(match: Match, team_1_score: int, team_2_score
     match.save()
 
 
+@transaction.atomic
 def populate_fixtures(tournament_id: int) -> None:
     pools = Pool.objects.filter(tournament=tournament_id)
     cross_pool = CrossPool.objects.filter(tournament=tournament_id)
     brackets = Bracket.objects.filter(tournament=tournament_id)
     position_pools = PositionPool.objects.filter(tournament=tournament_id)
     tournament = Tournament.objects.get(id=tournament_id)
+    teams_by_id = {team.id: team for team in tournament.teams.all()}
 
     is_all_pool_matches_complete = True
 
@@ -248,23 +251,21 @@ def populate_fixtures(tournament_id: int) -> None:
                 is_all_pool_matches_complete = False
 
         if is_current_pool_matches_completed:
-            tournament_current_seeding = {
-                int(k): v for k, v in pool.tournament.current_seeding.items()
-            }
+            tournament_current_seeding = {int(k): v for k, v in tournament.current_seeding.items()}
             pool_initial_seeding_list = list(map(int, pool.initial_seeding.keys()))
 
             for seed in pool_initial_seeding_list:
                 team_id = int(tournament_current_seeding[seed])
 
                 next_matches = (
-                    Match.objects.exclude(cross_pool__isnull=True)
+                    Match.objects.filter(cross_pool__isnull=False)
                     .filter(tournament=tournament_id, sequence_number=1)
                     .filter(Q(placeholder_seed_1=seed) | Q(placeholder_seed_2=seed))
                 )
 
                 if next_matches.count() == 0:
                     next_matches = (
-                        Match.objects.exclude(cross_pool__isnull=True)
+                        Match.objects.filter(cross_pool__isnull=False)
                         .filter(tournament=tournament_id, sequence_number=2)
                         .filter(Q(placeholder_seed_1=seed) | Q(placeholder_seed_2=seed))
                     )
@@ -280,9 +281,9 @@ def populate_fixtures(tournament_id: int) -> None:
 
                 for match in next_matches:
                     if match.placeholder_seed_1 == seed and match.team_1 is None:
-                        match.team_1 = Team.objects.get(id=team_id)
+                        match.team_1 = teams_by_id[team_id]
                     elif match.placeholder_seed_2 == seed and match.team_2 is None:
-                        match.team_2 = Team.objects.get(id=team_id)
+                        match.team_2 = teams_by_id[team_id]
 
                     if (
                         match.status == Match.Status.YET_TO_FIX
@@ -330,7 +331,7 @@ def populate_fixtures(tournament_id: int) -> None:
         for match in matches:
             if match.status == Match.Status.COMPLETED:
                 next_matches_seed_1 = (
-                    Match.objects.exclude(cross_pool__isnull=True)
+                    Match.objects.filter(cross_pool__isnull=False)
                     .filter(tournament=tournament_id, sequence_number=match.sequence_number + 1)
                     .filter(
                         Q(placeholder_seed_1=match.placeholder_seed_1)
@@ -351,7 +352,7 @@ def populate_fixtures(tournament_id: int) -> None:
                     )
 
                 next_matches_seed_2 = (
-                    Match.objects.exclude(cross_pool__isnull=True)
+                    Match.objects.filter(cross_pool__isnull=False)
                     .filter(tournament=tournament_id, sequence_number=match.sequence_number + 1)
                     .filter(
                         Q(placeholder_seed_1=match.placeholder_seed_2)
@@ -372,21 +373,20 @@ def populate_fixtures(tournament_id: int) -> None:
                     )
 
                 for next_match in next_matches_seed_1:
-                    print(next_match.id)
                     if (
                         next_match.placeholder_seed_1 == match.placeholder_seed_1
                         and next_match.team_1 is None
                     ):
-                        next_match.team_1 = Team.objects.get(
-                            id=tournament.current_seeding[str(next_match.placeholder_seed_1)]
-                        )
+                        next_match.team_1 = teams_by_id[
+                            tournament.current_seeding[str(next_match.placeholder_seed_1)]
+                        ]
                     elif (
                         next_match.placeholder_seed_2 == match.placeholder_seed_1
                         and next_match.team_2 is None
                     ):
-                        next_match.team_2 = Team.objects.get(
-                            id=tournament.current_seeding[str(next_match.placeholder_seed_2)]
-                        )
+                        next_match.team_2 = teams_by_id[
+                            tournament.current_seeding[str(next_match.placeholder_seed_2)]
+                        ]
 
                     if (
                         next_match.status == Match.Status.YET_TO_FIX
@@ -398,21 +398,20 @@ def populate_fixtures(tournament_id: int) -> None:
                     next_match.save()
 
                 for next_match in next_matches_seed_2:
-                    print(next_match.id)
                     if (
                         next_match.placeholder_seed_1 == match.placeholder_seed_2
                         and next_match.team_1 is None
                     ):
-                        next_match.team_1 = Team.objects.get(
-                            id=tournament.current_seeding[str(next_match.placeholder_seed_1)]
-                        )
+                        next_match.team_1 = teams_by_id[
+                            tournament.current_seeding[str(next_match.placeholder_seed_1)]
+                        ]
                     elif (
                         next_match.placeholder_seed_2 == match.placeholder_seed_2
                         and next_match.team_2 is None
                     ):
-                        next_match.team_2 = Team.objects.get(
-                            id=tournament.current_seeding[str(next_match.placeholder_seed_2)]
-                        )
+                        next_match.team_2 = teams_by_id[
+                            tournament.current_seeding[str(next_match.placeholder_seed_2)]
+                        ]
 
                     if (
                         next_match.status == Match.Status.YET_TO_FIX
@@ -431,7 +430,7 @@ def populate_fixtures(tournament_id: int) -> None:
 
             for seed in bracket_initial_seeding_list:
                 pool_matches_not_completed = (
-                    Match.objects.exclude(pool__isnull=True)
+                    Match.objects.filter(pool__isnull=False)
                     .filter(tournament=tournament_id)
                     .exclude(status=Match.Status.COMPLETED)
                     .filter(Q(placeholder_seed_1=seed) | Q(placeholder_seed_2=seed))
@@ -441,7 +440,7 @@ def populate_fixtures(tournament_id: int) -> None:
                     is_this_bracket_seeds_pool_matches_complete = False
 
                 cross_pool_matches_not_completed = (
-                    Match.objects.exclude(cross_pool__isnull=True)
+                    Match.objects.filter(cross_pool__isnull=False)
                     .filter(tournament=tournament_id)
                     .exclude(status=Match.Status.COMPLETED)
                     .filter(Q(placeholder_seed_1=seed) | Q(placeholder_seed_2=seed))
@@ -465,13 +464,13 @@ def populate_fixtures(tournament_id: int) -> None:
                 )
                 for next_match in next_matches:
                     if next_match.team_1 is None:
-                        next_match.team_1 = Team.objects.get(
-                            id=tournament.current_seeding[str(next_match.placeholder_seed_1)]
-                        )
+                        next_match.team_1 = teams_by_id[
+                            tournament.current_seeding[str(next_match.placeholder_seed_1)]
+                        ]
                     if next_match.team_2 is None:
-                        next_match.team_2 = Team.objects.get(
-                            id=tournament.current_seeding[str(next_match.placeholder_seed_2)]
-                        )
+                        next_match.team_2 = teams_by_id[
+                            tournament.current_seeding[str(next_match.placeholder_seed_2)]
+                        ]
                     next_match.status = Match.Status.SCHEDULED
                     next_match.save()
 
@@ -485,7 +484,7 @@ def populate_fixtures(tournament_id: int) -> None:
 
             for seed in position_pool_initial_seeding_list:
                 pool_matches_not_completed = (
-                    Match.objects.exclude(pool__isnull=True)
+                    Match.objects.filter(pool__isnull=False)
                     .filter(tournament=tournament_id)
                     .exclude(status=Match.Status.COMPLETED)
                     .filter(Q(placeholder_seed_1=seed) | Q(placeholder_seed_2=seed))
@@ -495,7 +494,7 @@ def populate_fixtures(tournament_id: int) -> None:
                     is_this_position_pool_seeds_pool_matches_complete = False
 
                 cross_pool_matches_not_completed = (
-                    Match.objects.exclude(cross_pool__isnull=True)
+                    Match.objects.filter(cross_pool__isnull=False)
                     .filter(tournament=tournament_id)
                     .exclude(status=Match.Status.COMPLETED)
                     .filter(Q(placeholder_seed_1=seed) | Q(placeholder_seed_2=seed))
@@ -529,13 +528,13 @@ def populate_fixtures(tournament_id: int) -> None:
                 )
                 for next_match in next_matches:
                     if next_match.team_1 is None:
-                        next_match.team_1 = Team.objects.get(
-                            id=tournament.current_seeding[str(next_match.placeholder_seed_1)]
-                        )
+                        next_match.team_1 = teams_by_id[
+                            tournament.current_seeding[str(next_match.placeholder_seed_1)]
+                        ]
                     if next_match.team_2 is None:
-                        next_match.team_2 = Team.objects.get(
-                            id=tournament.current_seeding[str(next_match.placeholder_seed_2)]
-                        )
+                        next_match.team_2 = teams_by_id[
+                            tournament.current_seeding[str(next_match.placeholder_seed_2)]
+                        ]
                     next_match.status = Match.Status.SCHEDULED
                     next_match.save()
 
@@ -558,30 +557,30 @@ def populate_fixtures(tournament_id: int) -> None:
                         next_match.placeholder_seed_1 == match.placeholder_seed_1
                         and next_match.team_1 is None
                     ):
-                        next_match.team_1 = Team.objects.get(
-                            id=tournament.current_seeding[str(next_match.placeholder_seed_1)]
-                        )
+                        next_match.team_1 = teams_by_id[
+                            tournament.current_seeding[str(next_match.placeholder_seed_1)]
+                        ]
                     elif (
                         next_match.placeholder_seed_2 == match.placeholder_seed_1
                         and next_match.team_2 is None
                     ):
-                        next_match.team_2 = Team.objects.get(
-                            id=tournament.current_seeding[str(next_match.placeholder_seed_2)]
-                        )
+                        next_match.team_2 = teams_by_id[
+                            tournament.current_seeding[str(next_match.placeholder_seed_2)]
+                        ]
                     elif (
                         next_match.placeholder_seed_1 == match.placeholder_seed_2
                         and next_match.team_1 is None
                     ):
-                        next_match.team_1 = Team.objects.get(
-                            id=tournament.current_seeding[str(next_match.placeholder_seed_1)]
-                        )
+                        next_match.team_1 = teams_by_id[
+                            tournament.current_seeding[str(next_match.placeholder_seed_1)]
+                        ]
                     elif (
                         next_match.placeholder_seed_2 == match.placeholder_seed_2
                         and next_match.team_2 is None
                     ):
-                        next_match.team_2 = Team.objects.get(
-                            id=tournament.current_seeding[str(next_match.placeholder_seed_2)]
-                        )
+                        next_match.team_2 = teams_by_id[
+                            tournament.current_seeding[str(next_match.placeholder_seed_2)]
+                        ]
 
                     if (
                         next_match.status == Match.Status.YET_TO_FIX
