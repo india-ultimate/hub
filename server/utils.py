@@ -58,6 +58,24 @@ def is_today_in_between_dates(from_date: datetime.date, to_date: datetime.date) 
     return from_date <= today() <= to_date
 
 
+def calculate_late_penalty(
+    reg_end_date: datetime.date,
+    penalty_per_day: int,
+    penalty_end_date: datetime.date | None = None,
+) -> tuple[int, int]:
+    """Returns (days_late, penalty_amount_in_paise). Both 0 if not late.
+
+    Uses IST (India Standard Time) for date comparison via today().
+    """
+    current_date = today()
+    if current_date <= reg_end_date or penalty_per_day <= 0:
+        return 0, 0
+    if penalty_end_date and current_date > penalty_end_date:
+        return 0, 0
+    days_late = (current_date - reg_end_date).days
+    return days_late, days_late * penalty_per_day
+
+
 def default_invitation_expiry_date() -> datetime.date:
     return today() + datetime.timedelta(days=4)
 

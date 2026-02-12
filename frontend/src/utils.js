@@ -354,9 +354,15 @@ export const registerPasskey = async () => {
   return { success: "Created passkey!" };
 };
 
+export const todayIST = () => {
+  const now = new Date();
+  const utc = now.getTime() + now.getTimezoneOffset() * 60000;
+  const ist = new Date(utc + 5.5 * 3600000);
+  return new Date(ist.getFullYear(), ist.getMonth(), ist.getDate());
+};
+
 export const ifTodayInBetweenDates = (start, end) => {
-  const currentDate = new Date(Date.now());
-  currentDate.setHours(5, 30, 0, 0);
+  const currentDate = todayIST();
 
   let startDate = new Date(start);
   let endDate = new Date(end);
@@ -365,4 +371,23 @@ export const ifTodayInBetweenDates = (start, end) => {
     return true;
   }
   return false;
+};
+
+export const calculateLatePenalty = (
+  regEndDate,
+  penaltyPerDay,
+  penaltyEndDate
+) => {
+  const today = todayIST();
+  const regEnd = new Date(regEndDate + "T00:00:00");
+
+  if (today <= regEnd || penaltyPerDay <= 0) return { daysLate: 0, penalty: 0 };
+
+  if (penaltyEndDate) {
+    const penaltyEnd = new Date(penaltyEndDate + "T00:00:00");
+    if (today > penaltyEnd) return { daysLate: 0, penalty: 0 };
+  }
+
+  const daysLate = Math.ceil((today - regEnd) / (1000 * 60 * 60 * 24));
+  return { daysLate, penalty: daysLate * penaltyPerDay };
 };
