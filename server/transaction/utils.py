@@ -120,9 +120,9 @@ def create_transaction(
         except Tournament.DoesNotExist:
             return 400, {"message": "Tournament does not exist"}
 
-        if (
-            team not in tournament.partial_teams.all()
-            and tournament.status != Tournament.Status.REGISTERING
+        if team not in tournament.partial_teams.all() and not is_today_in_between_dates(
+            event.team_registration_start_date,
+            event.team_late_penalty_end_date or event.team_registration_end_date,
         ):
             return 400, {"message": "Team registration has closed, you can't register a team now !"}
 

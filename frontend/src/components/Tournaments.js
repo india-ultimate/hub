@@ -94,7 +94,7 @@ const Tournaments = () => {
             <Show when={tournament.status !== "DFT"}>
               <A
                 href={
-                  tournament.status === "REG" || tournament.status === "SCH"
+                  tournament.status === "SCH"
                     ? `/tournament/${tournament.event?.slug}/register`
                     : `/tournament/${tournament.event?.slug}`
                 }
@@ -117,14 +117,58 @@ const Tournaments = () => {
                 </Show>
 
                 <Switch>
-                  <Match when={tournament.status === "REG"}>
-                    <span class="h-fit rounded bg-green-200 px-2.5 py-0.5 text-sm font-medium text-green-800 dark:bg-green-900 dark:text-green-300">
-                      Registrations open
-                    </span>
-                  </Match>
                   <Match when={tournament.status === "SCH"}>
-                    <span class="h-fit rounded bg-yellow-100 px-2.5 py-0.5 text-sm font-medium text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">
-                      Registrations closed
+                    <span
+                      class={clsx(
+                        "h-fit rounded px-2.5 py-0.5 text-sm font-medium",
+                        new Date() >=
+                          new Date(
+                            tournament.event?.team_registration_start_date
+                          ) &&
+                          new Date() <=
+                            new Date(
+                              tournament.event?.team_registration_end_date
+                            )
+                          ? "bg-green-200 text-green-800 dark:bg-green-900 dark:text-green-300"
+                          : new Date() >
+                              new Date(
+                                tournament.event?.team_registration_end_date
+                              ) &&
+                            new Date() <=
+                              new Date(
+                                tournament.event?.team_late_penalty_end_date
+                              )
+                          ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
+                          : "bg-red-200 text-red-800 dark:bg-red-900 dark:text-red-300"
+                      )}
+                    >
+                      Team Reg
+                    </span>
+                    <span
+                      class={clsx(
+                        "h-fit rounded px-2.5 py-0.5 text-sm font-medium",
+                        new Date() >=
+                          new Date(
+                            tournament.event?.player_registration_start_date
+                          ) &&
+                          new Date() <=
+                            new Date(
+                              tournament.event?.player_registration_end_date
+                            )
+                          ? "bg-green-200 text-green-800 dark:bg-green-900 dark:text-green-300"
+                          : new Date() >
+                              new Date(
+                                tournament.event?.player_registration_end_date
+                              ) &&
+                            new Date() <=
+                              new Date(
+                                tournament.event?.player_late_penalty_end_date
+                              )
+                          ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
+                          : "bg-red-200 text-red-800 dark:bg-red-900 dark:text-red-300"
+                      )}
+                    >
+                      Player Reg
                     </span>
                   </Match>
                   <Match when={tournament.status === "LIV"}>

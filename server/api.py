@@ -1753,7 +1753,7 @@ def create_tournament(
     tournament.rules = get_default_rules()
 
     if if_today(tournament_details.team_registration_start_date):
-        tournament.status = Tournament.Status.REGISTERING
+        tournament.status = Tournament.Status.SCHEDULING
 
     tournament.save()
 
@@ -1819,7 +1819,10 @@ def add_team_registration(
     except Tournament.DoesNotExist:
         return 400, {"message": "Tournament does not exist"}
 
-    if tournament.status != Tournament.Status.REGISTERING:
+    if not is_today_in_between_dates(
+        tournament.event.team_registration_start_date,
+        tournament.event.team_late_penalty_end_date or tournament.event.team_registration_end_date,
+    ):
         return 400, {"message": "Team registration has closed, you can't register a team now !"}
 
     if tournament.event.series and team not in tournament.event.series.teams.all():
@@ -1866,7 +1869,10 @@ def remove_team_registration(
     except Tournament.DoesNotExist:
         return 400, {"message": "Tournament does not exist"}
 
-    if tournament.status != Tournament.Status.REGISTERING:
+    if not is_today_in_between_dates(
+        tournament.event.team_registration_start_date,
+        tournament.event.team_late_penalty_end_date or tournament.event.team_registration_end_date,
+    ):
         return 400, {"message": "Team registration has closed, you can't de-register a team now !"}
 
     tournament.teams.remove(team)
