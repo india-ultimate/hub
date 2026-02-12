@@ -55,9 +55,7 @@ class Command(BaseCommand):
                     "email": email,
                     "phone": row["phone"].strip(),
                 }
-                user, created = User.objects.get_or_create(
-                    username=email, email=email, defaults=user_data
-                )
+                user, created = User.objects.update_or_create(username=email, defaults=user_data)
 
                 date_of_birth = row["date_of_birth"]
 
