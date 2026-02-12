@@ -471,7 +471,18 @@ const TeamRegistration = () => {
             Click to create, edit or view all teams
           </A>
           <Show
-            when={tournamentQuery.data?.status == "REG"}
+            when={
+              tournamentQuery.data?.event &&
+              new Date() >=
+                new Date(
+                  tournamentQuery.data.event.team_registration_start_date
+                ) &&
+              new Date() <=
+                new Date(
+                  tournamentQuery.data.event.team_late_penalty_end_date ||
+                    tournamentQuery.data.event.team_registration_end_date
+                )
+            }
             fallback={<Info text="Registrations has closed !" />}
           >
             <Switch>

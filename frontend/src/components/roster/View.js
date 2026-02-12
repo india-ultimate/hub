@@ -123,7 +123,6 @@ const Roster = () => {
           { url: "/tournaments", name: "All Tournaments" },
           {
             url:
-              tournamentQuery.data?.status === "REG" ||
               tournamentQuery.data?.status === "SCH"
                 ? `/tournament/${params.tournament_slug}/register`
                 : `/tournament/${params.tournament_slug}`,

@@ -74,7 +74,6 @@ class Event(ExportModelOperationsMixin("event"), models.Model):  # type: ignore[
 class Tournament(ExportModelOperationsMixin("tournament"), models.Model):  # type: ignore[misc]
     class Status(models.TextChoices):
         DRAFT = "DFT", _("Draft")
-        REGISTERING = "REG", _("Registering")
         SCHEDULING = "SCH", _("Scheduling")
         LIVE = "LIV", _("Live")
         COMPLETED = "COM", _("Completed")
