@@ -117,45 +117,6 @@ const TeamRegistration = () => {
     return tournamentQuery.data?.event?.partial_team_fee > 0;
   };
 
-  const getPlayerFee = event => {
-    if (event?.player_fee > 0) {
-      return (
-        "Rs. " + (event?.player_fee / 100).toLocaleString() + " per player"
-      );
-    } else {
-      return "Free";
-    }
-  };
-
-  const getTeamFee = event => {
-    if (event?.team_fee > 0) {
-      return "Rs. " + (event?.team_fee / 100).toLocaleString() + " per team";
-    } else {
-      return "Free";
-    }
-  };
-
-  const getPartialTeamFee = event => {
-    if (event?.partial_team_fee > 0) {
-      return (
-        "Rs. " + (event?.partial_team_fee / 100).toLocaleString() + " per team"
-      );
-    } else {
-      return "Not Available";
-    }
-  };
-
-  const getPartialRemainingTeamFee = event => {
-    if (event?.partial_team_fee > 0) {
-      return (
-        "Rs. " +
-        ((event?.team_fee - event?.partial_team_fee) / 100).toLocaleString()
-      );
-    } else {
-      return "-";
-    }
-  };
-
   const isTeamPartOfSeries = team => {
     if (!tournamentQuery.data?.event?.series) {
       return true;
@@ -238,89 +199,119 @@ const TeamRegistration = () => {
         </p>
       </div>
 
-      <div
-        class="my-4 rounded-lg bg-yellow-50 p-4 text-sm text-yellow-800 dark:bg-gray-800 dark:text-yellow-300"
-        role="alert"
-      >
-        <details open>
-          <summary class="text-base font-bold">Registration Details!</summary>
-          <div class="mt-2">
-            <ul class="max-w-md list-inside list-disc space-y-1">
-              <li>
-                <strong>Team Registration Fee:</strong>{" "}
-                {getTeamFee(tournamentQuery.data?.event)}
-              </li>
-              <li>
-                <strong>Partial Team Registration Fee:</strong>{" "}
-                {getPartialTeamFee(tournamentQuery.data?.event)} (Pay the
-                balance of{" "}
-                {getPartialRemainingTeamFee(tournamentQuery.data?.event)} later)
-              </li>
-              <li>
-                <strong>Player Registration Fee:</strong>{" "}
-                {getPlayerFee(tournamentQuery.data?.event)}
-              </li>
-              <li>
-                Team Registrations window open from{" "}
-                <span class="inline-flex font-medium">
-                  {new Date(
-                    Date.parse(
-                      tournamentQuery.data?.event?.team_registration_start_date
+      {(() => {
+        const event = tournamentQuery.data?.event;
+        const now = new Date();
+        const teamRegStart = new Date(event?.team_registration_start_date);
+        const teamRegEnd = new Date(event?.team_registration_end_date);
+        const teamLateEnd = new Date(event?.team_late_penalty_end_date);
+        const playerRegStart = new Date(event?.player_registration_start_date);
+        const playerRegEnd = new Date(event?.player_registration_end_date);
+        const playerLateEnd = new Date(event?.player_late_penalty_end_date);
+
+        const teamIsOpen = now >= teamRegStart && now <= teamRegEnd;
+        const teamIsLate = now > teamRegEnd && now <= teamLateEnd;
+        const playerIsOpen = now >= playerRegStart && now <= playerRegEnd;
+        const playerIsLate = now > playerRegEnd && now <= playerLateEnd;
+
+        const formatDate = d =>
+          d.toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            timeZone: "UTC"
+          });
+
+        const formatFee = amount =>
+          amount > 0 ? `₹${(amount / 100).toLocaleString()}` : "Free";
+
+        return (
+          <div class="mx-auto my-4 grid max-w-screen-md grid-cols-1 gap-3 md:grid-cols-2">
+            <div
+              class={clsx(
+                "rounded-lg border p-4 text-sm",
+                teamIsOpen
+                  ? "border-green-300 bg-green-50 text-green-800 dark:border-green-700 dark:bg-green-900/30 dark:text-green-300"
+                  : teamIsLate
+                  ? "border-yellow-300 bg-yellow-50 text-yellow-800 dark:border-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300"
+                  : "border-red-300 bg-red-50 text-red-800 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
+              )}
+            >
+              <div class="mb-2 font-bold">
+                Team Registration
+                {teamIsOpen
+                  ? " (Open)"
+                  : teamIsLate
+                  ? " (Open with Late Penalty)"
+                  : " (Closed)"}
+              </div>
+              <div class="space-y-1">
+                <p>
+                  {teamIsOpen
+                    ? `Open till ${formatDate(teamRegEnd)}`
+                    : teamIsLate
+                    ? `Late penalty till ${formatDate(teamLateEnd)}`
+                    : `Closed on ${formatDate(teamRegEnd)}`}
+                </p>
+                <p>Fee: {formatFee(event?.team_fee)}</p>
+                <Show when={teamIsLate && event?.team_late_penalty > 0}>
+                  <p>
+                    Late penalty: {formatFee(event?.team_late_penalty)} per day
+                  </p>
+                </Show>
+                <Show
+                  when={
+                    event?.partial_team_fee > 0 && (teamIsOpen || teamIsLate)
+                  }
+                >
+                  <p>
+                    Partial reg: {formatFee(event?.partial_team_fee)} (till{" "}
+                    {formatDate(
+                      new Date(event?.team_partial_registration_end_date)
+                    )}
                     )
-                  ).toLocaleDateString("en-US", {
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric",
-                    timeZone: "UTC"
-                  })}
-                </span>{" "}
-                to{" "}
-                <span class="inline-flex font-medium">
-                  {new Date(
-                    Date.parse(
-                      tournamentQuery.data?.event?.team_registration_end_date
-                    )
-                  ).toLocaleDateString("en-US", {
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric",
-                    timeZone: "UTC"
-                  })}
-                </span>
-              </li>
-              <li>
-                Player Registrations window open from{" "}
-                <span class="inline-flex font-medium">
-                  {new Date(
-                    Date.parse(
-                      tournamentQuery.data?.event
-                        ?.player_registration_start_date
-                    )
-                  ).toLocaleDateString("en-US", {
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric",
-                    timeZone: "UTC"
-                  })}
-                </span>{" "}
-                to{" "}
-                <span class="inline-flex font-medium">
-                  {new Date(
-                    Date.parse(
-                      tournamentQuery.data?.event?.player_registration_end_date
-                    )
-                  ).toLocaleDateString("en-US", {
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric",
-                    timeZone: "UTC"
-                  })}
-                </span>
-              </li>
-            </ul>
+                  </p>
+                </Show>
+              </div>
+            </div>
+
+            <div
+              class={clsx(
+                "rounded-lg border p-4 text-sm",
+                playerIsOpen
+                  ? "border-green-300 bg-green-50 text-green-800 dark:border-green-700 dark:bg-green-900/30 dark:text-green-300"
+                  : playerIsLate
+                  ? "border-yellow-300 bg-yellow-50 text-yellow-800 dark:border-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300"
+                  : "border-red-300 bg-red-50 text-red-800 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
+              )}
+            >
+              <div class="mb-2 font-bold">
+                Player Registration
+                {playerIsOpen
+                  ? " (Open)"
+                  : playerIsLate
+                  ? " (Open with Late Penalty)"
+                  : " (Closed)"}
+              </div>
+              <div class="space-y-1">
+                <p>
+                  {playerIsOpen
+                    ? `Open till ${formatDate(playerRegEnd)}`
+                    : playerIsLate
+                    ? `Open with Late penalty till ${formatDate(playerLateEnd)}`
+                    : `Closed on ${formatDate(playerRegEnd)}`}
+                </p>
+                <p>Fee: {formatFee(event?.player_fee)}</p>
+                <Show when={playerIsLate && event?.player_late_penalty > 0}>
+                  <p>
+                    Late penalty: {formatFee(event?.player_late_penalty)} per
+                    day
+                  </p>
+                </Show>
+              </div>
+            </div>
           </div>
-        </details>
-      </div>
+        );
+      })()}
 
       <div class="mx-auto max-w-screen-md">
         <div class="mt-4">
