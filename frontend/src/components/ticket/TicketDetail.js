@@ -105,8 +105,6 @@ const TicketDetail = () => {
         return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300";
       case "RES":
         return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300";
-      case "CLS":
-        return "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300";
       default:
         return "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300";
     }
@@ -135,8 +133,6 @@ const TicketDetail = () => {
         return "In Progress";
       case "RES":
         return "Resolved";
-      case "CLS":
-        return "Closed";
       default:
         return status;
     }
@@ -377,13 +373,6 @@ const TicketDetail = () => {
                       class="rounded-lg bg-green-100 px-4 py-2 text-sm font-medium text-green-800 hover:bg-green-200 disabled:opacity-50 dark:bg-green-900 dark:text-green-300 dark:hover:bg-green-800"
                     >
                       Mark as Resolved
-                    </button>
-                    <button
-                      onClick={() => handleStatusChange("CLS")}
-                      disabled={ticketQuery.data.status === "CLS"}
-                      class="rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-200 disabled:opacity-50 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-                    >
-                      Close Ticket
                     </button>
                     <Show when={isAdmin() && userQuery.data}>
                       <button

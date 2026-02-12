@@ -11,7 +11,6 @@ class Ticket(models.Model):
         OPEN = "OPN", "Open"
         IN_PROGRESS = "PRG", "In Progress"
         RESOLVED = "RES", "Resolved"
-        CLOSED = "CLS", "Closed"
 
     class Priority(models.TextChoices):
         LOW = "LOW", "Low"

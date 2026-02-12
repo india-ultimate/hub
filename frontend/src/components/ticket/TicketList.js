@@ -20,23 +20,6 @@ const TicketList = props => {
         return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300";
       case "RES":
         return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300";
-      case "CLS":
-        return "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300";
-      default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300";
-    }
-  };
-
-  const getPriorityBadgeClass = priority => {
-    switch (priority) {
-      case "URG":
-        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300";
-      case "HIG":
-        return "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300";
-      case "MED":
-        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300";
-      case "LOW":
-        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300";
       default:
         return "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300";
     }
@@ -50,25 +33,29 @@ const TicketList = props => {
         return "In Progress";
       case "RES":
         return "Resolved";
-      case "CLS":
-        return "Closed";
       default:
         return status;
     }
   };
 
-  const getPriorityText = priority => {
-    switch (priority) {
-      case "URG":
-        return "Urgent";
-      case "HIG":
-        return "High";
-      case "MED":
-        return "Medium";
-      case "LOW":
-        return "Low";
+  const getCategoryBadgeClass = category => {
+    switch (category) {
+      case "Account":
+        return "bg-sky-100 text-sky-800 dark:bg-sky-900 dark:text-sky-300";
+      case "Competitions":
+        return "bg-violet-100 text-violet-800 dark:bg-violet-900 dark:text-violet-300";
+      case "Membership":
+        return "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-300";
+      case "Tournament":
+        return "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300";
+      case "Payment":
+        return "bg-lime-100 text-lime-800 dark:bg-lime-900 dark:text-lime-300";
+      case "Tech":
+        return "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300";
+      case "Other":
+        return "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300";
       default:
-        return priority;
+        return "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400";
     }
   };
 
@@ -94,7 +81,6 @@ const TicketList = props => {
               { value: "OPN", label: "Open" },
               { value: "PRG", label: "In Progress" },
               { value: "RES", label: "Resolved" },
-              { value: "CLS", label: "Closed" },
               { value: "ME", label: "Created by me" }
             ]}
           >
@@ -146,14 +132,9 @@ const TicketList = props => {
                   <th scope="col" class="px-6 py-3">
                     Created By
                   </th>
-                  <Show when={props.user.is_staff}>
-                    <th scope="col" class="px-6 py-3">
-                      Assigned To
-                    </th>
-                    <th scope="col" class="px-6 py-3">
-                      Priority
-                    </th>
-                  </Show>
+                  <th scope="col" class="px-6 py-3">
+                    Category
+                  </th>
                   <th scope="col" class="px-6 py-3">
                     Created At
                   </th>
@@ -191,22 +172,15 @@ const TicketList = props => {
                         {ticket.created_by.first_name}{" "}
                         {ticket.created_by.last_name}
                       </td>
-                      <Show when={props.user.is_staff}>
-                        <td class="px-6 py-4">
-                          {ticket.assigned_to
-                            ? `${ticket.assigned_to.first_name} ${ticket.assigned_to.last_name}`
-                            : "Unassigned"}
-                        </td>
-                        <td class="px-6 py-4">
-                          <span
-                            class={`mr-2 rounded px-2.5 py-0.5 text-xs font-medium ${getPriorityBadgeClass(
-                              ticket.priority
-                            )}`}
-                          >
-                            {getPriorityText(ticket.priority)}
-                          </span>
-                        </td>
-                      </Show>
+                      <td class="px-6 py-4">
+                        <span
+                          class={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${getCategoryBadgeClass(
+                            ticket.category
+                          )}`}
+                        >
+                          {ticket.category ?? "—"}
+                        </span>
+                      </td>
                       <td class="px-6 py-4">
                         {new Date(ticket.created_at).toLocaleDateString()}
                       </td>

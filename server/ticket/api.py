@@ -199,11 +199,8 @@ def add_message(
         attachment=attachment_url,
     )
 
-    # If ticket is closed or resolved, set it back to in progress when user adds message
-    if (
-        ticket.status in [Ticket.Status.CLOSED, Ticket.Status.RESOLVED]
-        and ticket.created_by == request.user
-    ):
+    # If ticket is resolved, set it back to in progress when creator adds message
+    if ticket.status == Ticket.Status.RESOLVED and ticket.created_by == request.user:
         ticket.status = Ticket.Status.IN_PROGRESS
         ticket.save()
 
