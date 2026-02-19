@@ -22,7 +22,12 @@ import {
   fetchUser,
   removeTeamRegistration
 } from "../queries";
-import { calculateLatePenalty, ifTodayInBetweenDates } from "../utils";
+import {
+  calculateLatePenalty,
+  ifTodayInBetweenDates,
+  latestDate,
+  todayIST
+} from "../utils";
 import Info from "./alerts/Info";
 import Breadcrumbs from "./Breadcrumbs";
 import Modal from "./Modal";
@@ -104,9 +109,9 @@ const TeamRegistration = () => {
         .includes(teamId) &&
       ifTodayInBetweenDates(
         Date.parse(tournamentQuery.data?.event?.player_registration_start_date),
-        Date.parse(
-          tournamentQuery.data?.event?.player_late_penalty_end_date ||
-            tournamentQuery.data?.event?.player_registration_end_date
+        latestDate(
+          tournamentQuery.data?.event?.player_late_penalty_end_date,
+          tournamentQuery.data?.event?.player_registration_end_date
         )
       )
     );
@@ -118,6 +123,20 @@ const TeamRegistration = () => {
 
   const isPartialTeamFeeExists = () => {
     return tournamentQuery.data?.event?.partial_team_fee > 0;
+  };
+
+  const isPartialRegOpen = () => {
+    const evt = tournamentQuery.data?.event;
+    return (
+      isPartialTeamFeeExists() &&
+      ifTodayInBetweenDates(
+        Date.parse(evt?.team_registration_start_date),
+        Date.parse(
+          evt?.team_partial_registration_end_date ||
+            evt?.team_registration_end_date
+        )
+      )
+    );
   };
 
   const isTeamPartOfSeries = team => {
@@ -204,7 +223,7 @@ const TeamRegistration = () => {
 
       {(() => {
         const event = tournamentQuery.data?.event;
-        const now = new Date();
+        const now = todayIST();
         const teamRegStart = new Date(event?.team_registration_start_date);
         const teamRegEnd = new Date(event?.team_registration_end_date);
         const teamLateEnd = new Date(event?.team_late_penalty_end_date);
@@ -279,11 +298,7 @@ const TeamRegistration = () => {
                     {formatFee(event?.team_fee + teamPenalty.penalty)}
                   </p>
                 </Show>
-                <Show
-                  when={
-                    event?.partial_team_fee > 0 && (teamIsOpen || teamIsLate)
-                  }
-                >
+                <Show when={isPartialRegOpen()}>
                   <p>
                     Partial reg: {formatFee(event?.partial_team_fee)} (till{" "}
                     {formatDate(
@@ -440,9 +455,23 @@ const TeamRegistration = () => {
                     </div>
                     <div class="shrink grow-0">
                       <Show
-                        when={userQuery.data?.admin_teams
-                          .map(team => team.id)
-                          .includes(team.id)}
+                        when={
+                          userQuery.data?.admin_teams
+                            .map(team => team.id)
+                            .includes(team.id) &&
+                          ifTodayInBetweenDates(
+                            Date.parse(
+                              tournamentQuery.data?.event
+                                ?.team_registration_start_date
+                            ),
+                            latestDate(
+                              tournamentQuery.data?.event
+                                ?.team_late_penalty_end_date,
+                              tournamentQuery.data?.event
+                                ?.team_registration_end_date
+                            )
+                          )
+                        }
                       >
                         {(() => {
                           const evt = tournamentQuery.data?.event;
@@ -499,15 +528,15 @@ const TeamRegistration = () => {
           <Show
             when={
               tournamentQuery.data?.event &&
-              new Date() >=
-                new Date(
+              ifTodayInBetweenDates(
+                Date.parse(
                   tournamentQuery.data.event.team_registration_start_date
-                ) &&
-              new Date() <=
-                new Date(
-                  tournamentQuery.data.event.team_late_penalty_end_date ||
-                    tournamentQuery.data.event.team_registration_end_date
+                ),
+                latestDate(
+                  tournamentQuery.data.event.team_late_penalty_end_date,
+                  tournamentQuery.data.event.team_registration_end_date
                 )
+              )
             }
             fallback={<Info text="Registrations has closed !" />}
           >
@@ -643,9 +672,9 @@ const TeamRegistration = () => {
                               })()}
                             </Show>
 
-                            <Show when={isPartialTeamFeeExists()}>
+                            <Show when={isPartialRegOpen()}>
                               <RazorpayPayment
-                                disabled={!isPartialTeamFeeExists()}
+                                disabled={!isPartialRegOpen()}
                                 event={tournamentQuery.data?.event}
                                 team={team}
                                 amount={

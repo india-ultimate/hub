@@ -361,6 +361,11 @@ export const todayIST = () => {
   return new Date(ist.getFullYear(), ist.getMonth(), ist.getDate());
 };
 
+export const latestDate = (...dates) => {
+  const valid = dates.filter(Boolean).map(d => Date.parse(d));
+  return valid.length > 0 ? Math.max(...valid) : NaN;
+};
+
 export const ifTodayInBetweenDates = (start, end) => {
   const currentDate = todayIST();
 
