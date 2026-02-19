@@ -17,8 +17,11 @@ import {
   updatePlayerRegistration
 } from "../../queries";
 import { useStore } from "../../store";
-import { getTournamentBreadcrumbName } from "../../utils";
-import { ifTodayInBetweenDates } from "../../utils";
+import {
+  getTournamentBreadcrumbName,
+  ifTodayInBetweenDates,
+  latestDate
+} from "../../utils";
 import Info from "../alerts/Info";
 import Warning from "../alerts/Warning";
 import Breadcrumbs from "../Breadcrumbs";
@@ -99,9 +102,9 @@ const Roster = () => {
   const isPlayerRegInProgress = () => {
     return ifTodayInBetweenDates(
       Date.parse(tournamentQuery.data?.event?.player_registration_start_date),
-      Date.parse(
-        tournamentQuery.data?.event?.player_late_penalty_end_date ||
-          tournamentQuery.data?.event?.player_registration_end_date
+      latestDate(
+        tournamentQuery.data?.event?.player_late_penalty_end_date,
+        tournamentQuery.data?.event?.player_registration_end_date
       )
     );
   };

@@ -30,7 +30,11 @@ import {
 import RosterSkeleton from "../skeletons/Roster";
 import { TournamentTeamMatches as TournamentTeamMatchesSkeleton } from "../skeletons/TournamentMatch";
 import { useStore } from "../store";
-import { getTournamentBreadcrumbName, ifTodayInBetweenDates } from "../utils";
+import {
+  getTournamentBreadcrumbName,
+  ifTodayInBetweenDates,
+  latestDate
+} from "../utils";
 import Info from "./alerts/Info";
 import Breadcrumbs from "./Breadcrumbs";
 import MatchCard from "./match/MatchCard";
@@ -119,9 +123,9 @@ const TournamentTeam = () => {
   const isPlayerRegInProgress = () => {
     return ifTodayInBetweenDates(
       Date.parse(tournamentQuery.data?.event?.player_registration_start_date),
-      Date.parse(
-        tournamentQuery.data?.event?.player_late_penalty_end_date ||
-          tournamentQuery.data?.event?.player_registration_end_date
+      latestDate(
+        tournamentQuery.data?.event?.player_late_penalty_end_date,
+        tournamentQuery.data?.event?.player_registration_end_date
       )
     );
   };

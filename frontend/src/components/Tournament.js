@@ -22,7 +22,7 @@ import {
   SpiritStandings as SpiritStandingsSkeleton,
   Standings as StandingsSkeleton
 } from "../skeletons/Standings";
-import { ifTodayInBetweenDates } from "../utils";
+import { ifTodayInBetweenDates, latestDate } from "../utils";
 import Breadcrumbs from "./Breadcrumbs";
 
 /**
@@ -108,9 +108,9 @@ const Tournament = () => {
   const isPlayerRegInProgress = () => {
     return ifTodayInBetweenDates(
       Date.parse(tournamentQuery.data?.event?.player_registration_start_date),
-      Date.parse(
-        tournamentQuery.data?.event?.player_late_penalty_end_date ||
-          tournamentQuery.data?.event?.player_registration_end_date
+      latestDate(
+        tournamentQuery.data?.event?.player_late_penalty_end_date,
+        tournamentQuery.data?.event?.player_registration_end_date
       )
     );
   };
