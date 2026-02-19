@@ -79,6 +79,7 @@ from server.schema import (
     RegistrationWardSchema,
     Response,
     TeamCreateSchema,
+    TeamDetailedSchema,
     TeamNameUpdateSchema,
     TeamSchema,
     TeamUpdateSchema,
@@ -352,7 +353,7 @@ def search_teams(request: AuthenticatedHttpRequest, text: str = "") -> QuerySet[
     return Team.objects.filter(name__icontains=text.lower()).order_by("name")
 
 
-@api.get("/team/{team_slug}", auth=None, response={200: TeamSchema, 400: Response})
+@api.get("/team/{team_slug}", auth=None, response={200: TeamDetailedSchema, 400: Response})
 def get_team(
     request: AuthenticatedHttpRequest, team_slug: str
 ) -> tuple[int, Team | message_response]:

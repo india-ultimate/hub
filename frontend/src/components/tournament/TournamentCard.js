@@ -1,5 +1,5 @@
 import { A } from "@solidjs/router";
-import { Show } from "solid-js";
+import { Match, Show, Switch } from "solid-js";
 
 const TournamentCard = props => {
   return (
@@ -15,12 +15,8 @@ const TournamentCard = props => {
         <Show when={props.tournament.event?.type}>
           <span class="mr-2 h-fit rounded bg-blue-200 px-2.5 py-0.5 text-sm font-medium text-blue-800 dark:bg-green-900 dark:text-green-300">
             <Switch>
-              <Match when={props.tournament.event?.type === "MXD"}>
-                Mixed
-              </Match>
-              <Match when={props.tournament.event?.type === "OPN"}>
-                Opens
-              </Match>
+              <Match when={props.tournament.event?.type === "MXD"}>Mixed</Match>
+              <Match when={props.tournament.event?.type === "OPN"}>Opens</Match>
               <Match when={props.tournament.event?.type === "WMN"}>
                 Womens
               </Match>
@@ -89,7 +85,8 @@ const TournamentCard = props => {
           })}
           <Show
             when={
-              props.tournament.event.start_date !== props.tournament.event.end_date
+              props.tournament.event.start_date !==
+              props.tournament.event.end_date
             }
           >
             {" "}
@@ -107,7 +104,7 @@ const TournamentCard = props => {
         {props.children}
       </A>
     </Show>
-  )
+  );
 };
 
 export default TournamentCard;

@@ -122,12 +122,13 @@ class UserMinSchema(ModelSchema):
 class EventTinySchema(ModelSchema):
     class Config:
         model = Event
-        model_fields = ["title", "slug"]
+        model_fields = ["title", "slug", "type", "location", "start_date", "end_date"]
 
 
 class TournamentTinySchema(ModelSchema):
     event: EventTinySchema
     current_seed: int | None
+    spirit_ranking: int | None
 
     @staticmethod
     def resolve_current_seed(tournament: Tournament) -> int | None:
@@ -135,9 +136,15 @@ class TournamentTinySchema(ModelSchema):
         # The actual value will be set in TeamSchema.resolve_tournaments
         return None
 
+    @staticmethod
+    def resolve_spirit_ranking(tournament: Tournament) -> int | None:
+        # Default resolver returns None since we don't have team context here
+        # The actual value will be set in TeamSchema.resolve_tournaments
+        return None
+
     class Config:
         model = Tournament
-        model_fields = ["event", "logo_light", "logo_dark"]
+        model_fields = ["event", "logo_light", "logo_dark", "status"]
 
 
 def get_team_seeding_position(tournament: Tournament, team_id: int) -> int | None:
@@ -154,7 +161,31 @@ def get_team_seeding_position(tournament: Tournament, team_id: int) -> int | Non
     return None
 
 
+def get_team_spirint_ranking(tournament: Tournament, team_id: int) -> int | None:
+    """Find the spirit ranking for a specific team in the tournament's spirit_ranking."""
+    if not tournament.spirit_ranking:
+        return None
+    for team in tournament.spirit_ranking:
+        if team.get("team_id") == team_id:
+            # Convert rank to int if it's a string
+
+            print(team)
+            try:
+                return int(team.get("rank"))
+            except (ValueError, TypeError):
+                return None
+    return None
+
+
 class TeamSchema(ModelSchema):
+    admins: list[UserMinSchema]
+
+    class Config:
+        model = Team
+        model_fields = "__all__"
+
+
+class TeamDetailedSchema(ModelSchema):
     admins: list[UserMinSchema]
     tournaments: list[TournamentTinySchema]
 
@@ -167,7 +198,7 @@ class TeamSchema(ModelSchema):
                 status__in=[Tournament.Status.LIVE, Tournament.Status.COMPLETED]
             )
             .select_related("event")
-            .order_by("-event__start_date")[:5]
+            .order_by("-event__start_date")
         )
 
         result = []
@@ -176,9 +207,11 @@ class TeamSchema(ModelSchema):
             schema_instance = TournamentTinySchema.from_orm(tournament)
             # Get the seeding position for this team
             seeding_position = get_team_seeding_position(tournament, team.id)
+            spirit_ranking = get_team_spirint_ranking(tournament, team.id)
             # Create a new instance with the seeding position
             schema_dict = schema_instance.dict()
             schema_dict["current_seed"] = seeding_position
+            schema_dict["spirit_ranking"] = spirit_ranking
             result.append(TournamentTinySchema(**schema_dict))
 
         return result

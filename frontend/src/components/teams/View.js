@@ -3,9 +3,11 @@ import { createQuery } from "@tanstack/solid-query";
 import { userGroup } from "solid-heroicons/solid";
 import { For, Show } from "solid-js";
 
+import { ChevronRight } from "../../icons";
 import { fetchTeamBySlug, fetchUser } from "../../queries";
 import Breadcrumbs from "../Breadcrumbs";
 import Modal from "../Modal";
+import TournamentCard from "../tournament/TournamentCard";
 import EditTeamNameForm from "./EditTeamNameForm";
 
 const EditNameModal = props => {
@@ -22,6 +24,30 @@ const EditNameModal = props => {
       <Modal
         ref={modalRef}
         title={<span class="text-md font-semibold">Edit name</span>}
+        close={() => modalRef.close()}
+      >
+        {props.children}
+      </Modal>
+    </>
+  );
+};
+
+const AllTournamentsModal = props => {
+  let modalRef;
+  return (
+    <>
+      <A
+        href="#"
+        onclick={() => modalRef.showModal()}
+        class="text-sm text-blue-600 md:text-base"
+      >
+        <span class="inline-flex items-center">
+          View all <ChevronRight height={16} width={16} />
+        </span>
+      </A>
+      <Modal
+        ref={modalRef}
+        title={<span class="text-md font-semibold">All Tournaments</span>}
         close={() => modalRef.close()}
       >
         {props.children}
@@ -127,9 +153,42 @@ const View = () => {
           </dl>
           <dl class="mx-2 max-w-md divide-y divide-gray-200 text-gray-800 dark:divide-gray-700 dark:text-white">
             <div class="flex flex-col pb-3">
-              <dt class="mb-1 text-gray-500 dark:text-gray-400 md:text-lg">
-                Last Played Tournaments
-              </dt>
+              <div class="mb-3 flex items-center justify-between">
+                <dt class="text-gray-500 dark:text-gray-400 md:text-lg">
+                  Last Played Tournaments
+                </dt>
+                <Show
+                  when={
+                    teamQuery.data?.tournaments &&
+                    teamQuery.data.tournaments.length > 2
+                  }
+                >
+                  <AllTournamentsModal>
+                    <div class="flex flex-col gap-y-3">
+                      {
+                        <For each={teamQuery.data?.tournaments}>
+                          {tournament => (
+                            <TournamentCard tournament={tournament}>
+                              <div class="mt-2 flex justify-between font-bold">
+                                <Show when={tournament.current_seed}>
+                                  <span class="text-sm">
+                                    Current Seed: {tournament.current_seed}
+                                  </span>
+                                </Show>
+                                <Show when={tournament.spirit_ranking}>
+                                  <span class="text-sm">
+                                    SOTG Ranking: {tournament.spirit_ranking}
+                                  </span>
+                                </Show>
+                              </div>
+                            </TournamentCard>
+                          )}
+                        </For>
+                      }
+                    </div>
+                  </AllTournamentsModal>
+                </Show>
+              </div>
               <dd>
                 <div class="flex flex-col gap-y-3">
                   <Show
@@ -137,46 +196,25 @@ const View = () => {
                       teamQuery.data?.tournaments &&
                       teamQuery.data.tournaments.length > 0
                     }
-                    fallback={<p class="text-gray-500">No tournaments</p>}
+                    fallback={<p class="text-md">No tournaments played!</p>}
                   >
                     {
-                      <For each={teamQuery.data?.tournaments}>
+                      <For each={teamQuery.data?.tournaments.slice(0, 2)}>
                         {tournament => (
-                          <A
-                            href={`/tournament/${tournament.event.slug}/team/${params.slug}`}
-                            class="flex items-center gap-3 rounded-md bg-gray-100 p-3 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700"
-                          >
-                            <Show
-                              when={
-                                tournament.logo_light || tournament.logo_dark
-                              }
-                            >
-                              <img
-                                src={
-                                  tournament.logo_dark || tournament.logo_light
-                                }
-                                alt="Tournament logo"
-                                class="hidden h-12 w-12 rounded-sm object-contain dark:block"
-                              />
-                              <img
-                                src={
-                                  tournament.logo_light || tournament.logo_dark
-                                }
-                                alt="Tournament logo"
-                                class="block h-12 w-12 rounded-sm object-contain dark:hidden"
-                              />
-                            </Show>
-                            <div class="flex-1">
-                              <h3 class="text-sm font-bold text-gray-700 dark:text-white">
-                                {tournament.event.title}
-                              </h3>
+                          <TournamentCard tournament={tournament}>
+                            <div class="mt-2 flex justify-between font-bold">
                               <Show when={tournament.current_seed}>
-                                <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">
-                                  Seed: {tournament.current_seed}
-                                </p>
+                                <span class="text-sm">
+                                  Current Seed: {tournament.current_seed}
+                                </span>
+                              </Show>
+                              <Show when={tournament.spirit_ranking}>
+                                <span class="text-sm">
+                                  SOTG Ranking: {tournament.spirit_ranking}
+                                </span>
                               </Show>
                             </div>
-                          </A>
+                          </TournamentCard>
                         )}
                       </For>
                     }
