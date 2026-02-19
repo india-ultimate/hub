@@ -14,6 +14,7 @@ from server.core.models import (
 from server.membership.models import (
     Membership,
 )
+from server.tournament.models import Event, Tournament
 from server.utils import mask_string
 
 
@@ -118,8 +119,69 @@ class UserMinSchema(ModelSchema):
         ]
 
 
+class EventTinySchema(ModelSchema):
+    class Config:
+        model = Event
+        model_fields = ["title", "slug"]
+
+
+class TournamentTinySchema(ModelSchema):
+    event: EventTinySchema
+    current_seed: int | None
+
+    @staticmethod
+    def resolve_current_seed(tournament: Tournament) -> int | None:
+        # Default resolver returns None since we don't have team context here
+        # The actual value will be set in TeamSchema.resolve_tournaments
+        return None
+
+    class Config:
+        model = Tournament
+        model_fields = ["event", "logo_light", "logo_dark"]
+
+
+def get_team_seeding_position(tournament: Tournament, team_id: int) -> int | None:
+    """Find the seeding position for a specific team in the tournament's current_seeding."""
+    if not tournament.current_seeding:
+        return None
+    for seed_pos, tid in tournament.current_seeding.items():
+        if tid == team_id:
+            # Convert seed_pos to int if it's a string
+            try:
+                return int(seed_pos)
+            except (ValueError, TypeError):
+                return None
+    return None
+
+
 class TeamSchema(ModelSchema):
     admins: list[UserMinSchema]
+    tournaments: list[TournamentTinySchema]
+
+    @staticmethod
+    def resolve_tournaments(team: Team) -> list[TournamentTinySchema]:
+        # Filter tournaments to only include LIVE or COMPLETED status
+        # Order by event start_date descending (most recent first) and limit to 5
+        filtered_tournaments = (
+            team.tournaments.filter(
+                status__in=[Tournament.Status.LIVE, Tournament.Status.COMPLETED]
+            )
+            .select_related("event")
+            .order_by("-event__start_date")[:5]
+        )
+
+        result = []
+        for tournament in filtered_tournaments:
+            # Create schema instance
+            schema_instance = TournamentTinySchema.from_orm(tournament)
+            # Get the seeding position for this team
+            seeding_position = get_team_seeding_position(tournament, team.id)
+            # Create a new instance with the seeding position
+            schema_dict = schema_instance.dict()
+            schema_dict["current_seed"] = seeding_position
+            result.append(TournamentTinySchema(**schema_dict))
+
+        return result
 
     class Config:
         model = Team
