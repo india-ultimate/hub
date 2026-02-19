@@ -38,7 +38,7 @@ def fake_order(amount: int) -> dict[str, Any]:
         "name": "India Ultimate Hub",
         "image": "https://d36m266ykvepgv.cloudfront.net/uploads/media/o4G97mT9vR/s-448-250/upai-2.png",
         "description": "Membership for ",
-        "prefill": {"name": "", "email": "username@foo.com", "contact": ""},
+        "prefill": {"name": "John Doe", "email": "username@foo.com", "contact": "9898234512"},
     }
 
 
