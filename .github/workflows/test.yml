@@ -155,10 +155,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-      - uses: whoan/docker-build-with-cache-action@v5
-        with:
-          image_name: india-ultimate/hub
-          push_image_and_stages: false
+      - name: Build docker image
+        run: docker build --tag india-ultimate/hub .
       - name: Run the migrations
         run: docker run india-ultimate/hub:latest python manage.py migrate
       - name: Run the deploy checks
