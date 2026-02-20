@@ -4,6 +4,7 @@ import { createEffect, createSignal, For, Show } from "solid-js";
 
 import { ChevronRight } from "../../icons";
 import { fetchTournaments } from "../../queries";
+import { parseLocalDate, todayIST } from "../../utils";
 
 const TournamentSection = () => {
   const tournamentsQuery = createQuery(() => ["tournaments"], fetchTournaments);
@@ -15,11 +16,11 @@ const TournamentSection = () => {
     let pastTournaments = [];
     let upcomingTournaments = [];
     let liveTournaments = [];
-    const today = new Date();
+    const today = todayIST();
 
     tournamentsQuery.data?.forEach(tournament => {
-      const startDate = new Date(Date.parse(tournament.event.start_date));
-      const endDate = new Date(Date.parse(tournament.event.end_date));
+      const startDate = parseLocalDate(tournament.event.start_date);
+      const endDate = parseLocalDate(tournament.event.end_date);
 
       if (endDate < today) {
         pastTournaments.push(tournament);
@@ -31,12 +32,14 @@ const TournamentSection = () => {
     });
 
     pastTournaments.sort(
-      (a, b) => new Date(b.event.end_date) - new Date(a.event.end_date)
+      (a, b) =>
+        parseLocalDate(b.event.end_date) - parseLocalDate(a.event.end_date)
     );
 
+    const threeMonthsAgo = new Date(today);
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
     const lastThreeMonthTournaments = pastTournaments.filter(
-      tournament =>
-        tournament.event.end_date > today.setMonth(today.getMonth() - 3)
+      tournament => parseLocalDate(tournament.event.end_date) > threeMonthsAgo
     );
 
     if (lastThreeMonthTournaments.length > 0) {
@@ -46,13 +49,15 @@ const TournamentSection = () => {
     }
 
     upcomingTournaments.sort(
-      (a, b) => new Date(a.event.end_date) - new Date(b.event.end_date)
+      (a, b) =>
+        parseLocalDate(a.event.end_date) - parseLocalDate(b.event.end_date)
     );
 
     setUpcoming(upcomingTournaments);
 
     liveTournaments.sort(
-      (a, b) => new Date(a.event.end_date) - new Date(b.event.end_date)
+      (a, b) =>
+        parseLocalDate(a.event.end_date) - parseLocalDate(b.event.end_date)
     );
 
     setLive(liveTournaments);

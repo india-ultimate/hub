@@ -361,21 +361,24 @@ export const todayIST = () => {
   return new Date(ist.getFullYear(), ist.getMonth(), ist.getDate());
 };
 
+/** Parse "YYYY-MM-DD" as local midnight, matching todayIST(). */
+export const parseLocalDate = dateStr => {
+  if (!dateStr) return new Date(NaN);
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(y, m - 1, d);
+};
+
 export const latestDate = (...dates) => {
-  const valid = dates.filter(Boolean).map(d => Date.parse(d));
+  const valid = dates.filter(Boolean).map(d => parseLocalDate(d).getTime());
   return valid.length > 0 ? Math.max(...valid) : NaN;
 };
 
 export const ifTodayInBetweenDates = (start, end) => {
   const currentDate = todayIST();
-
-  let startDate = new Date(start);
-  let endDate = new Date(end);
-
-  if (currentDate >= startDate && currentDate <= endDate) {
-    return true;
-  }
-  return false;
+  const startDate =
+    typeof start === "string" ? parseLocalDate(start) : new Date(start);
+  const endDate = typeof end === "string" ? parseLocalDate(end) : new Date(end);
+  return currentDate >= startDate && currentDate <= endDate;
 };
 
 export const calculateLatePenalty = (
@@ -384,12 +387,12 @@ export const calculateLatePenalty = (
   penaltyEndDate
 ) => {
   const today = todayIST();
-  const regEnd = new Date(regEndDate + "T00:00:00");
+  const regEnd = parseLocalDate(regEndDate);
 
   if (today <= regEnd || penaltyPerDay <= 0) return { daysLate: 0, penalty: 0 };
 
   if (penaltyEndDate) {
-    const penaltyEnd = new Date(penaltyEndDate + "T00:00:00");
+    const penaltyEnd = parseLocalDate(penaltyEndDate);
     if (today > penaltyEnd) return { daysLate: 0, penalty: 0 };
   }
 
