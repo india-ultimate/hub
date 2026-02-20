@@ -4,6 +4,7 @@ import clsx from "clsx";
 import { createSignal, For, Match, Show, Switch } from "solid-js";
 
 import { fetchTournaments } from "../queries";
+import { parseLocalDate, todayIST } from "../utils";
 
 const Tournaments = () => {
   const tournamentsQuery = createQuery(() => ["tournaments"], fetchTournaments);
@@ -118,58 +119,57 @@ const Tournaments = () => {
 
                 <Switch>
                   <Match when={tournament.status === "SCH"}>
-                    <span
-                      class={clsx(
-                        "mr-2 h-fit rounded px-2.5 py-0.5 text-sm font-medium",
-                        new Date() >=
-                          new Date(
-                            tournament.event?.team_registration_start_date
-                          ) &&
-                          new Date() <=
-                            new Date(
-                              tournament.event?.team_registration_end_date
-                            )
-                          ? "bg-green-200 text-green-800 dark:bg-green-900 dark:text-green-300"
-                          : new Date() >
-                              new Date(
-                                tournament.event?.team_registration_end_date
-                              ) &&
-                            new Date() <=
-                              new Date(
-                                tournament.event?.team_late_penalty_end_date
-                              )
-                          ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
-                          : "bg-red-200 text-red-800 dark:bg-red-900 dark:text-red-300"
-                      )}
-                    >
-                      Team Reg
-                    </span>
-                    <span
-                      class={clsx(
-                        "mr-2 h-fit rounded px-2.5 py-0.5 text-sm font-medium",
-                        new Date() >=
-                          new Date(
-                            tournament.event?.player_registration_start_date
-                          ) &&
-                          new Date() <=
-                            new Date(
-                              tournament.event?.player_registration_end_date
-                            )
-                          ? "bg-green-200 text-green-800 dark:bg-green-900 dark:text-green-300"
-                          : new Date() >
-                              new Date(
-                                tournament.event?.player_registration_end_date
-                              ) &&
-                            new Date() <=
-                              new Date(
-                                tournament.event?.player_late_penalty_end_date
-                              )
-                          ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
-                          : "bg-red-200 text-red-800 dark:bg-red-900 dark:text-red-300"
-                      )}
-                    >
-                      Player Reg
-                    </span>
+                    {(() => {
+                      const now = todayIST();
+                      const evt = tournament.event;
+                      const teamIsOpen =
+                        now >=
+                          parseLocalDate(evt?.team_registration_start_date) &&
+                        now <= parseLocalDate(evt?.team_registration_end_date);
+                      const teamIsLate =
+                        now > parseLocalDate(evt?.team_registration_end_date) &&
+                        !!evt?.team_late_penalty_end_date &&
+                        now <= parseLocalDate(evt?.team_late_penalty_end_date);
+                      const playerIsOpen =
+                        now >=
+                          parseLocalDate(evt?.player_registration_start_date) &&
+                        now <=
+                          parseLocalDate(evt?.player_registration_end_date);
+                      const playerIsLate =
+                        now >
+                          parseLocalDate(evt?.player_registration_end_date) &&
+                        !!evt?.player_late_penalty_end_date &&
+                        now <=
+                          parseLocalDate(evt?.player_late_penalty_end_date);
+                      return (
+                        <>
+                          <span
+                            class={clsx(
+                              "mr-2 h-fit rounded px-2.5 py-0.5 text-sm font-medium",
+                              teamIsOpen
+                                ? "bg-green-200 text-green-800 dark:bg-green-900 dark:text-green-300"
+                                : teamIsLate
+                                ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
+                                : "bg-red-200 text-red-800 dark:bg-red-900 dark:text-red-300"
+                            )}
+                          >
+                            Team Reg
+                          </span>
+                          <span
+                            class={clsx(
+                              "mr-2 h-fit rounded px-2.5 py-0.5 text-sm font-medium",
+                              playerIsOpen
+                                ? "bg-green-200 text-green-800 dark:bg-green-900 dark:text-green-300"
+                                : playerIsLate
+                                ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
+                                : "bg-red-200 text-red-800 dark:bg-red-900 dark:text-red-300"
+                            )}
+                          >
+                            Player Reg
+                          </span>
+                        </>
+                      );
+                    })()}
                   </Match>
                   <Match when={tournament.status === "LIV"}>
                     <span

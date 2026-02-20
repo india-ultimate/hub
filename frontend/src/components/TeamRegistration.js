@@ -26,6 +26,7 @@ import {
   calculateLatePenalty,
   ifTodayInBetweenDates,
   latestDate,
+  parseLocalDate,
   todayIST
 } from "../utils";
 import Info from "./alerts/Info";
@@ -108,7 +109,7 @@ const TeamRegistration = () => {
         .map(adminTeam => adminTeam.id)
         .includes(teamId) &&
       ifTodayInBetweenDates(
-        Date.parse(tournamentQuery.data?.event?.player_registration_start_date),
+        tournamentQuery.data?.event?.player_registration_start_date,
         latestDate(
           tournamentQuery.data?.event?.player_late_penalty_end_date,
           tournamentQuery.data?.event?.player_registration_end_date
@@ -130,11 +131,9 @@ const TeamRegistration = () => {
     return (
       isPartialTeamFeeExists() &&
       ifTodayInBetweenDates(
-        Date.parse(evt?.team_registration_start_date),
-        Date.parse(
-          evt?.team_partial_registration_end_date ||
-            evt?.team_registration_end_date
-        )
+        evt?.team_registration_start_date,
+        evt?.team_partial_registration_end_date ||
+          evt?.team_registration_end_date
       )
     );
   };
@@ -224,12 +223,20 @@ const TeamRegistration = () => {
       {(() => {
         const event = tournamentQuery.data?.event;
         const now = todayIST();
-        const teamRegStart = new Date(event?.team_registration_start_date);
-        const teamRegEnd = new Date(event?.team_registration_end_date);
-        const teamLateEnd = new Date(event?.team_late_penalty_end_date);
-        const playerRegStart = new Date(event?.player_registration_start_date);
-        const playerRegEnd = new Date(event?.player_registration_end_date);
-        const playerLateEnd = new Date(event?.player_late_penalty_end_date);
+        const teamRegStart = parseLocalDate(
+          event?.team_registration_start_date
+        );
+        const teamRegEnd = parseLocalDate(event?.team_registration_end_date);
+        const teamLateEnd = parseLocalDate(event?.team_late_penalty_end_date);
+        const playerRegStart = parseLocalDate(
+          event?.player_registration_start_date
+        );
+        const playerRegEnd = parseLocalDate(
+          event?.player_registration_end_date
+        );
+        const playerLateEnd = parseLocalDate(
+          event?.player_late_penalty_end_date
+        );
 
         const teamIsOpen = now >= teamRegStart && now <= teamRegEnd;
         const teamIsLate = now > teamRegEnd && now <= teamLateEnd;
@@ -302,7 +309,7 @@ const TeamRegistration = () => {
                   <p>
                     Partial reg: {formatFee(event?.partial_team_fee)} (till{" "}
                     {formatDate(
-                      new Date(event?.team_partial_registration_end_date)
+                      parseLocalDate(event?.team_partial_registration_end_date)
                     )}
                     )
                   </p>
@@ -460,10 +467,8 @@ const TeamRegistration = () => {
                             .map(team => team.id)
                             .includes(team.id) &&
                           ifTodayInBetweenDates(
-                            Date.parse(
-                              tournamentQuery.data?.event
-                                ?.team_registration_start_date
-                            ),
+                            tournamentQuery.data?.event
+                              ?.team_registration_start_date,
                             latestDate(
                               tournamentQuery.data?.event
                                 ?.team_late_penalty_end_date,
@@ -529,9 +534,7 @@ const TeamRegistration = () => {
             when={
               tournamentQuery.data?.event &&
               ifTodayInBetweenDates(
-                Date.parse(
-                  tournamentQuery.data.event.team_registration_start_date
-                ),
+                tournamentQuery.data.event.team_registration_start_date,
                 latestDate(
                   tournamentQuery.data.event.team_late_penalty_end_date,
                   tournamentQuery.data.event.team_registration_end_date
