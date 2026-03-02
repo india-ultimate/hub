@@ -98,9 +98,9 @@ def create_swiss_round_matches(tournament: Tournament, swiss_round: SwissRound) 
             # Placeholder slots: arbitrary seed pairs (1,2), (3,4), etc.
             pairs = [(seeds[i * 2], seeds[i * 2 + 1]) for i in range(num_matches_per_round)]
 
-        for _match_num, (seed_1, seed_2) in enumerate(pairs, 1):
+        for match_num, (seed_1, seed_2) in enumerate(pairs, 1):
             Match(
-                name=f"Swiss R{round_num}",
+                name=f"Swiss R{round_num} M{match_num}",
                 tournament=tournament,
                 swiss_round=swiss_round,
                 sequence_number=round_num,
