@@ -413,6 +413,54 @@ def populate_fixtures(tournament_id: int) -> None:
     if not is_all_swiss_complete:
         is_all_pool_matches_complete = False
 
+    # When Swiss is complete, assign teams to next stage matches (cross pool/bracket/position pool)
+    if is_all_swiss_complete and swiss_rounds.exists():
+        tournament.refresh_from_db()
+        tournament_current_seeding = {int(k): v for k, v in tournament.current_seeding.items()}
+
+        for swiss_round in swiss_rounds:
+            swiss_seeding_list = list(map(int, swiss_round.initial_seeding.keys()))
+
+            for seed in swiss_seeding_list:
+                team_id = int(tournament_current_seeding[seed])
+
+                next_matches = (
+                    Match.objects.filter(cross_pool__isnull=False)
+                    .filter(tournament=tournament_id, sequence_number=1)
+                    .filter(Q(placeholder_seed_1=seed) | Q(placeholder_seed_2=seed))
+                )
+
+                if next_matches.count() == 0:
+                    next_matches = (
+                        Match.objects.filter(cross_pool__isnull=False)
+                        .filter(tournament=tournament_id, sequence_number=2)
+                        .filter(Q(placeholder_seed_1=seed) | Q(placeholder_seed_2=seed))
+                    )
+
+                if next_matches.count() == 0:
+                    next_matches = (
+                        Match.objects.filter(
+                            Q(bracket__isnull=False) | Q(position_pool__isnull=False)
+                        )
+                        .filter(tournament=tournament_id, sequence_number=1)
+                        .filter(Q(placeholder_seed_1=seed) | Q(placeholder_seed_2=seed))
+                    )
+
+                for match in next_matches:
+                    if match.placeholder_seed_1 == seed and match.team_1 is None:
+                        match.team_1 = teams_by_id[team_id]
+                    elif match.placeholder_seed_2 == seed and match.team_2 is None:
+                        match.team_2 = teams_by_id[team_id]
+
+                    if (
+                        match.status == Match.Status.YET_TO_FIX
+                        and match.team_1 is not None
+                        and match.team_2 is not None
+                    ):
+                        match.status = Match.Status.SCHEDULED
+
+                    match.save()
+
     for pool in pools:
         is_current_pool_matches_completed = True
 
