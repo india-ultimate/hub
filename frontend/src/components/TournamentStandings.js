@@ -170,19 +170,21 @@ const TournamentStandings = () => {
               </button>
             </li>
           </Show>
-          <li class="mr-2" role="presentation">
-            <button
-              class="inline-block rounded-t-lg border-b-2 p-4"
-              id={"tab-pools"}
-              data-tabs-target={"#pools"}
-              type="button"
-              role="tab"
-              aria-controls={"pools"}
-              aria-selected="false"
-            >
-              Pools
-            </button>
-          </li>
+          <Show when={poolsQuery.data?.length > 0}>
+            <li class="mr-2" role="presentation">
+              <button
+                class="inline-block rounded-t-lg border-b-2 p-4"
+                id={"tab-pools"}
+                data-tabs-target={"#pools"}
+                type="button"
+                role="tab"
+                aria-controls={"pools"}
+                aria-selected="false"
+              >
+                Pools
+              </button>
+            </li>
+          </Show>
           <Show when={!crossPoolQuery.data?.message}>
             <li class="mr-2" role="presentation">
               <button
@@ -199,19 +201,21 @@ const TournamentStandings = () => {
             </li>
           </Show>
 
-          <li class="mr-2" role="presentation">
-            <button
-              class="inline-block rounded-t-lg border-b-2 p-4"
-              id={"tab-brackets"}
-              data-tabs-target={"#brackets"}
-              type="button"
-              role="tab"
-              aria-controls={"brackets"}
-              aria-selected="false"
-            >
-              Brackets
-            </button>
-          </li>
+          <Show when={bracketQuery.data?.length > 0}>
+            <li class="mr-2" role="presentation">
+              <button
+                class="inline-block rounded-t-lg border-b-2 p-4"
+                id={"tab-brackets"}
+                data-tabs-target={"#brackets"}
+                type="button"
+                role="tab"
+                aria-controls={"brackets"}
+                aria-selected="false"
+              >
+                Brackets
+              </button>
+            </li>
+          </Show>
         </ul>
       </div>
       <div id="myTabContent">
@@ -281,67 +285,70 @@ const TournamentStandings = () => {
             </div>
           </div>
         </Show>
-        <div
-          class="hidden rounded-lg p-4"
-          id={"pools"}
-          role="tabpanel"
-          aria-labelledby={"tab-pools"}
-        >
-          <For each={Object.keys(poolsMap())}>
-            {poolName => (
-              <div>
-                <h2 class="text-center text-lg">Pool {poolName}</h2>
+        <Show when={poolsQuery.data?.length > 0}>
+          <div
+            class="hidden rounded-lg p-4"
+            id={"pools"}
+            role="tabpanel"
+            aria-labelledby={"tab-pools"}
+          >
+            <For each={Object.keys(poolsMap())}>
+              {poolName => (
+                <div>
+                  <h2 class="text-center text-lg">Pool {poolName}</h2>
 
-                <div class="relative my-5 overflow-x-auto rounded-lg shadow-lg">
-                  <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
-                    <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
-                      <tr>
-                        <th scope="col" class="px-4 py-3">
-                          Seed
-                        </th>
-                        <th scope="col" class="px-4 py-3">
-                          Team
-                        </th>
-                        <th scope="col" class="px-4 py-3">
-                          W
-                        </th>
-                        <th scope="col" class="px-4 py-3">
-                          L
-                        </th>
-                        <th scope="col" class="px-4 py-3">
-                          GD
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <For each={poolsMap()[poolName]}>
-                        {result => (
-                          <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
-                            <td class="px-4 py-4">{result.seed}</td>
-                            <td class="px-4 py-4">
-                              <A
-                                href={`/tournament/${params.slug}/team/${
-                                  teamsMap()[result.team_id]?.slug
-                                }`}
-                              >
-                                {teamsMap()[result.team_id]?.name}
-                              </A>
-                            </td>
-                            <td class="px-4 py-4">{result.wins}</td>
-                            <td class="px-4 py-4">{result.losses}</td>
-                            <td class="px-4 py-4">
-                              {parseInt(result["GF"]) - parseInt(result["GA"])}
-                            </td>
-                          </tr>
-                        )}
-                      </For>
-                    </tbody>
-                  </table>
+                  <div class="relative my-5 overflow-x-auto rounded-lg shadow-lg">
+                    <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
+                      <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
+                        <tr>
+                          <th scope="col" class="px-4 py-3">
+                            Seed
+                          </th>
+                          <th scope="col" class="px-4 py-3">
+                            Team
+                          </th>
+                          <th scope="col" class="px-4 py-3">
+                            W
+                          </th>
+                          <th scope="col" class="px-4 py-3">
+                            L
+                          </th>
+                          <th scope="col" class="px-4 py-3">
+                            GD
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <For each={poolsMap()[poolName]}>
+                          {result => (
+                            <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
+                              <td class="px-4 py-4">{result.seed}</td>
+                              <td class="px-4 py-4">
+                                <A
+                                  href={`/tournament/${params.slug}/team/${
+                                    teamsMap()[result.team_id]?.slug
+                                  }`}
+                                >
+                                  {teamsMap()[result.team_id]?.name}
+                                </A>
+                              </td>
+                              <td class="px-4 py-4">{result.wins}</td>
+                              <td class="px-4 py-4">{result.losses}</td>
+                              <td class="px-4 py-4">
+                                {parseInt(result["GF"]) -
+                                  parseInt(result["GA"])}
+                              </td>
+                            </tr>
+                          )}
+                        </For>
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
-            )}
-          </For>
-        </div>
+              )}
+            </For>
+          </div>
+        </Show>
         <Show when={!crossPoolQuery.data?.message}>
           <div
             class="hidden rounded-lg p-4"
@@ -439,164 +446,167 @@ const TournamentStandings = () => {
             </Show>
           </div>
         </Show>
-        <div
-          class="hidden rounded-lg p-4"
-          id={"brackets"}
-          role="tabpanel"
-          aria-labelledby={"tab-brackets"}
-        >
-          <For each={bracketQuery.data}>
-            {bracket => (
-              <div>
-                <h2 class="mt-4 text-center text-lg font-bold text-blue-600 dark:text-blue-500">
-                  Bracket {bracket.name}
-                </h2>
-                <Show
-                  when={
-                    Object.keys(bracket.initial_seeding || {}).length > 0 &&
-                    bracket.initial_seeding[
-                      Object.keys(bracket.initial_seeding)[0]
-                    ] > 0
-                  }
-                  fallback={
-                    <p class="my-5 text-center text-sm">
-                      This Bracket is not generated yet!
-                    </p>
-                  }
-                >
-                  <h2 class="mt-5 text-center text-lg">Initial Standings</h2>
-                  <div class="relative mt-5 overflow-x-auto rounded-lg shadow-md">
-                    <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
-                      <tbody>
-                        <For
-                          each={Object.entries(bracket.initial_seeding || {})}
-                        >
-                          {([rank, team_id]) => (
-                            <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
-                              <th
-                                scope="row"
-                                class="whitespace-nowrap py-4 pl-10 pr-6 font-normal"
-                              >
-                                {rank}
-                              </th>
-                              <Show when={team_id > 0}>
-                                <td class="px-6 py-4">
-                                  <img
-                                    class="mr-3 inline-block h-8 w-8 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
-                                    src={getTeamImage(teamsMap()[team_id])}
-                                    alt="Bordered avatar"
-                                  />
-                                  <A
-                                    href={`/tournament/${params.slug}/team/${
-                                      teamsMap()[team_id]?.slug
-                                    }`}
-                                  >
-                                    {teamsMap()[team_id]?.name}
-                                  </A>
-                                </td>
-                              </Show>
-                            </tr>
-                          )}
-                        </For>
-                      </tbody>
-                    </table>
-                  </div>
-                  <h2 class="mt-5 text-center text-lg">Current Standings</h2>
-                  <div class="relative mt-5 overflow-x-auto rounded-lg shadow-md">
-                    <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
-                      <tbody>
-                        <For
-                          each={Object.entries(bracket.current_seeding || {})}
-                        >
-                          {([rank, team_id]) => (
-                            <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
-                              <th
-                                scope="row"
-                                class="whitespace-nowrap py-4 pl-10 pr-6 font-normal"
-                              >
-                                {rank}
-                              </th>
-                              <Show when={team_id > 0}>
-                                <td class="px-6 py-4">
-                                  <img
-                                    class="mr-3 inline-block h-8 w-8 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
-                                    src={getTeamImage(teamsMap()[team_id])}
-                                    alt="Bordered avatar"
-                                  />
-                                  <A
-                                    href={`/tournament/${params.slug}/team/${
-                                      teamsMap()[team_id]?.slug
-                                    }`}
-                                  >
-                                    {teamsMap()[team_id]?.name}
-                                  </A>
-                                </td>
-                              </Show>
-                            </tr>
-                          )}
-                        </For>
-                      </tbody>
-                    </table>
-                  </div>
-                </Show>
-              </div>
-            )}
-          </For>
-          <For each={Object.keys(positionPoolsMap())}>
-            {poolName => (
-              <div class="mt-5">
-                <h2 class="text-center text-lg">Position Pool {poolName}</h2>
-
-                <div class="relative my-5 overflow-x-auto rounded-lg shadow-lg">
-                  <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
-                    <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
-                      <tr>
-                        <th scope="col" class="px-4 py-3">
-                          Seed
-                        </th>
-                        <th scope="col" class="px-4 py-3">
-                          Team
-                        </th>
-                        <th scope="col" class="px-4 py-3">
-                          W
-                        </th>
-                        <th scope="col" class="px-4 py-3">
-                          L
-                        </th>
-                        <th scope="col" class="px-4 py-3">
-                          GD
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <For each={positionPoolsMap()[poolName]}>
-                        {result => (
-                          <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
-                            <td class="px-4 py-4">{result.seed}</td>
-                            <td class="px-4 py-4">
-                              <A
-                                href={`/tournament/${params.slug}/team/${
-                                  teamsMap()[result.team_id]?.slug
-                                }`}
-                              >
-                                {teamsMap()[result.team_id]?.name}
-                              </A>
-                            </td>
-                            <td class="px-4 py-4">{result.wins}</td>
-                            <td class="px-4 py-4">{result.losses}</td>
-                            <td class="px-4 py-4">
-                              {parseInt(result["GF"]) - parseInt(result["GA"])}
-                            </td>
-                          </tr>
-                        )}
-                      </For>
-                    </tbody>
-                  </table>
+        <Show when={bracketQuery.data?.length > 0}>
+          <div
+            class="hidden rounded-lg p-4"
+            id={"brackets"}
+            role="tabpanel"
+            aria-labelledby={"tab-brackets"}
+          >
+            <For each={bracketQuery.data}>
+              {bracket => (
+                <div>
+                  <h2 class="mt-4 text-center text-lg font-bold text-blue-600 dark:text-blue-500">
+                    Bracket {bracket.name}
+                  </h2>
+                  <Show
+                    when={
+                      Object.keys(bracket.initial_seeding || {}).length > 0 &&
+                      bracket.initial_seeding[
+                        Object.keys(bracket.initial_seeding)[0]
+                      ] > 0
+                    }
+                    fallback={
+                      <p class="my-5 text-center text-sm">
+                        This Bracket is not generated yet!
+                      </p>
+                    }
+                  >
+                    <h2 class="mt-5 text-center text-lg">Initial Standings</h2>
+                    <div class="relative mt-5 overflow-x-auto rounded-lg shadow-md">
+                      <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
+                        <tbody>
+                          <For
+                            each={Object.entries(bracket.initial_seeding || {})}
+                          >
+                            {([rank, team_id]) => (
+                              <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
+                                <th
+                                  scope="row"
+                                  class="whitespace-nowrap py-4 pl-10 pr-6 font-normal"
+                                >
+                                  {rank}
+                                </th>
+                                <Show when={team_id > 0}>
+                                  <td class="px-6 py-4">
+                                    <img
+                                      class="mr-3 inline-block h-8 w-8 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
+                                      src={getTeamImage(teamsMap()[team_id])}
+                                      alt="Bordered avatar"
+                                    />
+                                    <A
+                                      href={`/tournament/${params.slug}/team/${
+                                        teamsMap()[team_id]?.slug
+                                      }`}
+                                    >
+                                      {teamsMap()[team_id]?.name}
+                                    </A>
+                                  </td>
+                                </Show>
+                              </tr>
+                            )}
+                          </For>
+                        </tbody>
+                      </table>
+                    </div>
+                    <h2 class="mt-5 text-center text-lg">Current Standings</h2>
+                    <div class="relative mt-5 overflow-x-auto rounded-lg shadow-md">
+                      <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
+                        <tbody>
+                          <For
+                            each={Object.entries(bracket.current_seeding || {})}
+                          >
+                            {([rank, team_id]) => (
+                              <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
+                                <th
+                                  scope="row"
+                                  class="whitespace-nowrap py-4 pl-10 pr-6 font-normal"
+                                >
+                                  {rank}
+                                </th>
+                                <Show when={team_id > 0}>
+                                  <td class="px-6 py-4">
+                                    <img
+                                      class="mr-3 inline-block h-8 w-8 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
+                                      src={getTeamImage(teamsMap()[team_id])}
+                                      alt="Bordered avatar"
+                                    />
+                                    <A
+                                      href={`/tournament/${params.slug}/team/${
+                                        teamsMap()[team_id]?.slug
+                                      }`}
+                                    >
+                                      {teamsMap()[team_id]?.name}
+                                    </A>
+                                  </td>
+                                </Show>
+                              </tr>
+                            )}
+                          </For>
+                        </tbody>
+                      </table>
+                    </div>
+                  </Show>
                 </div>
-              </div>
-            )}
-          </For>
-        </div>
+              )}
+            </For>
+            <For each={Object.keys(positionPoolsMap())}>
+              {poolName => (
+                <div class="mt-5">
+                  <h2 class="text-center text-lg">Position Pool {poolName}</h2>
+
+                  <div class="relative my-5 overflow-x-auto rounded-lg shadow-lg">
+                    <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
+                      <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
+                        <tr>
+                          <th scope="col" class="px-4 py-3">
+                            Seed
+                          </th>
+                          <th scope="col" class="px-4 py-3">
+                            Team
+                          </th>
+                          <th scope="col" class="px-4 py-3">
+                            W
+                          </th>
+                          <th scope="col" class="px-4 py-3">
+                            L
+                          </th>
+                          <th scope="col" class="px-4 py-3">
+                            GD
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <For each={positionPoolsMap()[poolName]}>
+                          {result => (
+                            <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
+                              <td class="px-4 py-4">{result.seed}</td>
+                              <td class="px-4 py-4">
+                                <A
+                                  href={`/tournament/${params.slug}/team/${
+                                    teamsMap()[result.team_id]?.slug
+                                  }`}
+                                >
+                                  {teamsMap()[result.team_id]?.name}
+                                </A>
+                              </td>
+                              <td class="px-4 py-4">{result.wins}</td>
+                              <td class="px-4 py-4">{result.losses}</td>
+                              <td class="px-4 py-4">
+                                {parseInt(result["GF"]) -
+                                  parseInt(result["GA"])}
+                              </td>
+                            </tr>
+                          )}
+                        </For>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </For>
+          </div>
+        </Show>
       </div>
     </Show>
   );
