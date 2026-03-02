@@ -24,6 +24,7 @@ from .models import (
     PositionPool,
     Registration,
     SpiritScore,
+    SwissRound,
     Tournament,
     TournamentField,
     UCRegistration,
@@ -177,6 +178,16 @@ class PoolCreateSchema(Schema):
     name: str
 
 
+class SwissRoundSchema(ModelSchema):
+    class Config:
+        model = SwissRound
+        model_exclude = ["tournament"]
+
+
+class SwissRoundCreateSchema(Schema):
+    num_rounds: int
+
+
 class CrossPoolSchema(ModelSchema):
     class Config:
         model = CrossPool
@@ -308,6 +319,7 @@ class MatchSchema(ModelSchema):
     cross_pool: CrossPoolSchema | None
     bracket: BracketSchema | None
     position_pool: PositionPoolSchema | None
+    swiss_round: SwissRoundSchema | None
     team_1: TeamSchema | None
     team_2: TeamSchema | None
     spirit_score_team_1: SpiritScoreSchema | None
