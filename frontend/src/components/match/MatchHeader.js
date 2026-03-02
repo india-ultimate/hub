@@ -12,6 +12,11 @@ const getSmallName = matchName => {
   if (matchName === "Semi Finals") {
     return "SF";
   }
+  // Swiss round matches are named like "Swiss R1", "Swiss R2"
+  const swissPattern = matchName?.match(/Swiss R(\d+)/);
+  if (swissPattern) {
+    return `Swiss R${swissPattern[1]}`;
+  }
   // Bracket matches are named like 5-8 Bracket, 9-12 Bracket
   // On smaller screens show as B 5-8, B 9-12
   const matchBracketPattern = matchName?.match(/(\d+-\d+) Bracket/);
@@ -84,7 +89,13 @@ const MatchCard = props => {
   const renderBadge = () => {
     return (
       <Switch>
-        <Match when={props.match?.pool || props.match?.position_pool}>
+        <Match
+          when={
+            props.match?.pool ||
+            props.match?.position_pool ||
+            props.match?.swiss_round
+          }
+        >
           <div
             class={`flex w-full flex-wrap justify-center bg-${color()}-100 text-${color()}-800 rounded px-2.5 py-0.5 text-xs font-medium dark:bg-${color()}-900 dark:text-${color()}-300`}
           >
@@ -137,7 +148,8 @@ const MatchCard = props => {
               props.match?.pool ||
               props.match?.position_pool ||
               props.match?.cross_pool ||
-              props.match?.bracket
+              props.match?.bracket ||
+              props.match?.swiss_round
             )
           }
         >

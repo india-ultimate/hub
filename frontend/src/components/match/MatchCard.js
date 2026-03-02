@@ -148,7 +148,9 @@ const TournamentMatch = props => {
           when={props.match[`team_${currTeamNo()}`]}
           fallback={
             <span class="w-1/3 text-center font-bold">
-              {props.match[`placeholder_seed_${currTeamNo()}`]}
+              {props.match?.swiss_round
+                ? "TBD"
+                : props.match[`placeholder_seed_${currTeamNo()}`]}
             </span>
           }
         >
@@ -187,7 +189,9 @@ const TournamentMatch = props => {
           when={props.match[`team_${oppTeamNo()}`]}
           fallback={
             <span class="w-1/3 text-center font-bold">
-              {props.match[`placeholder_seed_${oppTeamNo()}`]}
+              {props.match?.swiss_round
+                ? "TBD"
+                : props.match[`placeholder_seed_${oppTeamNo()}`]}
             </span>
           }
         >
