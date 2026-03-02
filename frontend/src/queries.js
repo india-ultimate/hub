@@ -471,6 +471,30 @@ export const fetchPositionPoolsBySlug = async tournament_slug => {
   return await response.json();
 };
 
+export const fetchSwissRound = async tournament_id => {
+  const response = await fetch(
+    `/api/tournament/swiss-round?id=${tournament_id}`,
+    {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin"
+    }
+  );
+  return await response.json();
+};
+
+export const fetchSwissRoundBySlug = async tournament_slug => {
+  const response = await fetch(
+    `/api/tournament/swiss-round?slug=${tournament_slug}`,
+    {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin"
+    }
+  );
+  return await response.json();
+};
+
 export const fetchMatches = async tournament_id => {
   const response = await fetch(`/api/tournament/${tournament_id}/matches`, {
     method: "GET",
@@ -1087,6 +1111,21 @@ export const createPool = async ({
       seeding: JSON.parse(seeding_list),
       sequence_number: parseInt(seq_num),
       name: name
+    })
+  });
+  return await response.json();
+};
+
+export const createSwissRound = async ({ tournament_id, num_rounds }) => {
+  const response = await fetch(`/api/tournament/swiss-round/${tournament_id}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin",
+    body: JSON.stringify({
+      num_rounds: parseInt(num_rounds)
     })
   });
   return await response.json();
