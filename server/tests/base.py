@@ -151,6 +151,19 @@ def start_tournament(tournament: Tournament) -> None:
 
         match.save()
 
+    # Also assign teams to Swiss round 1 matches
+    swiss_r1_matches = Match.objects.filter(
+        tournament=tournament, swiss_round__isnull=False, sequence_number=1
+    )
+    for match in swiss_r1_matches:
+        team_1_id = tournament.initial_seeding[str(match.placeholder_seed_1)]
+        team_2_id = tournament.initial_seeding[str(match.placeholder_seed_2)]
+
+        match.team_1 = Team.objects.get(id=team_1_id)
+        match.team_2 = Team.objects.get(id=team_2_id)
+        match.status = Match.Status.SCHEDULED
+        match.save()
+
     tournament.status = Tournament.Status.LIVE
     tournament.save()
 
