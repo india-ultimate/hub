@@ -171,6 +171,14 @@ class Pool(ExportModelOperationsMixin("pool"), models.Model):  # type: ignore[mi
         unique_together = ["name", "tournament"]
 
 
+class SwissRound(ExportModelOperationsMixin("swiss_round"), models.Model):  # type: ignore[misc]
+    tournament = models.OneToOneField(Tournament, on_delete=models.CASCADE)
+    num_rounds = models.PositiveIntegerField()
+    current_round = models.PositiveIntegerField(default=0)
+    initial_seeding = models.JSONField()
+    results = models.JSONField()
+
+
 class CrossPool(ExportModelOperationsMixin("cross_pool"), models.Model):  # type: ignore[misc]
     tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE)
 
@@ -256,6 +264,7 @@ class Match(ExportModelOperationsMixin("match"), models.Model):  # type: ignore[
     cross_pool = models.ForeignKey(CrossPool, on_delete=models.CASCADE, blank=True, null=True)
     bracket = models.ForeignKey(Bracket, on_delete=models.CASCADE, blank=True, null=True)
     position_pool = models.ForeignKey(PositionPool, on_delete=models.CASCADE, blank=True, null=True)
+    swiss_round = models.ForeignKey(SwissRound, on_delete=models.CASCADE, blank=True, null=True)
     sequence_number = (
         models.PositiveIntegerField()
     )  # For Cross Pool and Brackets to have round number
