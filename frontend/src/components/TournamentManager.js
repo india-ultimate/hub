@@ -25,6 +25,7 @@ import {
   createMatch,
   createPool,
   createPositionPool,
+  createSwissRound,
   deleteMatch,
   fetchBrackets,
   fetchCrossPool,
@@ -32,6 +33,7 @@ import {
   fetchMatches,
   fetchPools,
   fetchPositionPools,
+  fetchSwissRound,
   fetchTeams,
   fetchTournaments,
   generateTournamentFixtures,
@@ -226,6 +228,15 @@ const TournamentManager = () => {
       }
     }
   );
+  const swissRoundQuery = createQuery(
+    () => ["swiss-round", selectedTournamentID()],
+    () => fetchSwissRound(selectedTournamentID()),
+    {
+      get enabled() {
+        return selectedTournamentID() !== 0;
+      }
+    }
+  );
   const matchesQuery = createQuery(
     () => ["matches", selectedTournamentID()],
     () => fetchMatches(selectedTournamentID()),
@@ -265,6 +276,18 @@ const TournamentManager = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["pools", selectedTournamentID()]
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["matches", selectedTournamentID()]
+      });
+    }
+  });
+
+  const createSwissRoundMutation = createMutation({
+    mutationFn: createSwissRound,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["swiss-round", selectedTournamentID()]
       });
       queryClient.invalidateQueries({
         queryKey: ["matches", selectedTournamentID()]
@@ -581,47 +604,186 @@ const TournamentManager = () => {
               </div>
             </div>
           </div>
-          <div>
-            <h2 class="mb-5 text-xl font-bold text-blue-500">Pools</h2>
-            <Show
-              when={!poolsQuery.data?.message}
-              fallback={<p>Select Tournament to see/add Pools</p>}
-            >
-              <div class="grid grid-cols-3 gap-4">
-                <For each={poolsQuery.data}>
-                  {pool => (
+          <h2 class="mb-5 text-xl font-bold text-blue-500">Initial Stage</h2>
+          <div class="flex items-start gap-4">
+            <div class="flex-1">
+              <h3 class="mb-3 text-lg font-semibold text-gray-700 dark:text-gray-300">
+                Pools
+              </h3>
+              <Show
+                when={!poolsQuery.data?.message}
+                fallback={<p>Select Tournament to see/add Pools</p>}
+              >
+                <div class="grid grid-cols-3 gap-4">
+                  <For each={poolsQuery.data}>
+                    {pool => (
+                      <div>
+                        <h3>Pool - {pool.name}</h3>{" "}
+                        <div class="relative overflow-x-auto">
+                          <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
+                            <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
+                              <tr>
+                                <th scope="col" class="px-6 py-3">
+                                  Seeding
+                                </th>
+                                <th scope="col" class="px-6 py-3">
+                                  Team Name
+                                </th>
+                                <th scope="col" class="px-6 py-3">
+                                  Team ID
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <For each={Object.keys(pool.initial_seeding)}>
+                                {seed => (
+                                  <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
+                                    <th
+                                      scope="row"
+                                      class="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white"
+                                    >
+                                      {seed}
+                                    </th>
+                                    <td class="px-6 py-4">
+                                      {teamsMap()[pool.initial_seeding[seed]]}
+                                    </td>
+                                    <td class="px-6 py-4">
+                                      {pool.initial_seeding[seed]}
+                                    </td>
+                                  </tr>
+                                )}
+                              </For>
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                  </For>
+                  <div class="rounded-lg border border-blue-600 p-5">
+                    <h3>Add New Pool</h3>
                     <div>
-                      <h3>Pool - {pool.name}</h3>{" "}
-                      <div class="relative overflow-x-auto">
+                      <label
+                        for="pool-name"
+                        class="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
+                      >
+                        Pool Name
+                      </label>
+                      <input
+                        type="text"
+                        id="pool-name"
+                        value={enteredPoolName()}
+                        onChange={e => setEnteredPoolName(e.target.value)}
+                        class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500 sm:text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        for="seedings-pool"
+                        class="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
+                      >
+                        Seedings List
+                      </label>
+                      <input
+                        type="text"
+                        id="seedings-pool"
+                        value={enteredSeedingList()}
+                        onChange={e => setEnteredSeedingList(e.target.value)}
+                        class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500 sm:text-xs"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        createPoolMutation.mutate({
+                          tournament_id: selectedTournamentID(),
+                          name: enteredPoolName(),
+                          seq_num: poolsQuery.data.length + 1,
+                          seeding_list: enteredSeedingList()
+                        })
+                      }
+                      disabled={
+                        selectedTournament()?.status !== "SCH" ||
+                        !!swissRoundQuery.data?.id
+                      }
+                      class="mb-2 mr-2 mt-5 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 disabled:bg-gray-400 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
+                    >
+                      Create Pool
+                    </button>
+                    <Show when={swissRoundQuery.data?.id}>
+                      <p class="text-sm text-red-500">
+                        Cannot create pools when Swiss Round is active
+                      </p>
+                    </Show>
+                  </div>
+                </div>
+              </Show>
+            </div>
+            <div class="flex items-center px-4">
+              <span class="text-lg font-bold text-gray-400">OR</span>
+            </div>
+            <div class="flex-1">
+              <h3 class="mb-3 text-lg font-semibold text-gray-700 dark:text-gray-300">
+                Swiss Round
+              </h3>
+              <Show
+                when={
+                  swissRoundQuery.data?.message || !swissRoundQuery.data?.id
+                }
+                fallback={
+                  <div>
+                    <p>
+                      Swiss Round enabled — Round{" "}
+                      {swissRoundQuery.data?.current_round}/
+                      {swissRoundQuery.data?.num_rounds}
+                    </p>
+                    <Show when={swissRoundQuery.data?.results}>
+                      <div class="relative my-3 overflow-x-auto rounded-lg shadow-lg">
                         <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
                           <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
                             <tr>
-                              <th scope="col" class="px-6 py-3">
-                                Seeding
+                              <th scope="col" class="px-4 py-3">
+                                Seed
                               </th>
-                              <th scope="col" class="px-6 py-3">
-                                Team Name
+                              <th scope="col" class="px-4 py-3">
+                                Team
                               </th>
-                              <th scope="col" class="px-6 py-3">
-                                Team ID
+                              <th scope="col" class="px-4 py-3">
+                                W
+                              </th>
+                              <th scope="col" class="px-4 py-3">
+                                L
+                              </th>
+                              <th scope="col" class="px-4 py-3">
+                                GD
                               </th>
                             </tr>
                           </thead>
                           <tbody>
-                            <For each={Object.keys(pool.initial_seeding)}>
-                              {seed => (
+                            <For
+                              each={Object.values(
+                                swissRoundQuery.data?.results || {}
+                              )
+                                .map((r, i) => ({
+                                  ...r,
+                                  team_id: Object.keys(
+                                    swissRoundQuery.data?.results || {}
+                                  )[i]
+                                }))
+                                .sort(
+                                  (a, b) => parseInt(a.rank) - parseInt(b.rank)
+                                )}
+                            >
+                              {result => (
                                 <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
-                                  <th
-                                    scope="row"
-                                    class="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white"
-                                  >
-                                    {seed}
-                                  </th>
-                                  <td class="px-6 py-4">
-                                    {teamsMap()[pool.initial_seeding[seed]]}
+                                  <td class="px-4 py-4">{result.rank}</td>
+                                  <td class="px-4 py-4">
+                                    {teamsMap()[result.team_id]}
                                   </td>
-                                  <td class="px-6 py-4">
-                                    {pool.initial_seeding[seed]}
+                                  <td class="px-4 py-4">{result.wins}</td>
+                                  <td class="px-4 py-4">{result.losses}</td>
+                                  <td class="px-4 py-4">
+                                    {parseInt(result["GF"]) -
+                                      parseInt(result["GA"])}
                                   </td>
                                 </tr>
                               )}
@@ -629,59 +791,55 @@ const TournamentManager = () => {
                           </tbody>
                         </table>
                       </div>
-                    </div>
-                  )}
-                </For>
-                <div class="rounded-lg border border-blue-600 p-5">
-                  <h3>Add New Pool</h3>
-                  <div>
-                    <label
-                      for="pool-name"
-                      class="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
-                    >
-                      Pool Name
-                    </label>
-                    <input
-                      type="text"
-                      id="pool-name"
-                      value={enteredPoolName()}
-                      onChange={e => setEnteredPoolName(e.target.value)}
-                      class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500 sm:text-xs"
-                    />
+                    </Show>
                   </div>
-                  <div>
-                    <label
-                      for="seedings-pool"
-                      class="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
-                    >
-                      Seedings List
-                    </label>
-                    <input
-                      type="text"
-                      id="seedings-pool"
-                      value={enteredSeedingList()}
-                      onChange={e => setEnteredSeedingList(e.target.value)}
-                      class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500 sm:text-xs"
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      createPoolMutation.mutate({
-                        tournament_id: selectedTournamentID(),
-                        name: enteredPoolName(),
-                        seq_num: poolsQuery.data.length + 1,
-                        seeding_list: enteredSeedingList()
-                      })
-                    }
-                    disabled={selectedTournament()?.status !== "SCH"}
-                    class="mb-2 mr-2 mt-5 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 disabled:bg-gray-400 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
+                }
+              >
+                <p>{swissRoundQuery.data?.message}</p>
+                <div class="my-3">
+                  <label
+                    for="swiss-num-rounds"
+                    class="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
                   >
-                    Create Pool
-                  </button>
+                    Number of Rounds
+                  </label>
+                  <input
+                    type="number"
+                    id="swiss-num-rounds"
+                    min="1"
+                    max="10"
+                    value="3"
+                    class="block w-1/4 rounded-lg border border-gray-300 bg-gray-50 p-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500 sm:text-xs"
+                  />
                 </div>
-              </div>
-            </Show>
+                <button
+                  type="button"
+                  onClick={() =>
+                    createSwissRoundMutation.mutate({
+                      tournament_id: selectedTournamentID(),
+                      num_rounds:
+                        document.getElementById("swiss-num-rounds").value
+                    })
+                  }
+                  disabled={
+                    selectedTournament()?.status !== "SCH" ||
+                    (poolsQuery.data?.length > 0 && !poolsQuery.data?.message)
+                  }
+                  class="mb-2 mr-2 mt-2 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 disabled:bg-gray-400 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
+                >
+                  Create Swiss Round
+                </button>
+                <Show
+                  when={
+                    poolsQuery.data?.length > 0 && !poolsQuery.data?.message
+                  }
+                >
+                  <p class="text-sm text-red-500">
+                    Cannot create Swiss Round when Pools exist
+                  </p>
+                </Show>
+              </Show>
+            </div>
           </div>
           <div>
             <h3 class="my-5 text-xl font-bold text-blue-500">Cross Pool</h3>
@@ -924,6 +1082,7 @@ const TournamentManager = () => {
                   >
                     <option selected>Choose a stage</option>
                     <option value="pool">Pool</option>
+                    <option value="swiss_round">Swiss Round</option>
                     <option value="cross_pool">Cross Pool</option>
                     <option value="bracket">Bracket</option>
                     <option value="position_pool">Position Pool</option>
@@ -969,6 +1128,13 @@ const TournamentManager = () => {
                               </option>
                             )}
                           </For>
+                        </Match>
+                        <Match when={matchFields["stage"] === "swiss_round"}>
+                          <Show when={!swissRoundQuery.data?.message}>
+                            <option value={swissRoundQuery.data?.id}>
+                              Swiss Round
+                            </option>
+                          </Show>
                         </Match>
                       </Switch>
                     </select>
@@ -1112,9 +1278,15 @@ const TournamentManager = () => {
                         scope="row"
                         class="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white"
                       >
-                        {match.placeholder_seed_1 +
-                          " vs " +
-                          match.placeholder_seed_2}
+                        {match.swiss_round
+                          ? (() => {
+                              const mNum = match.name?.match(/M(\d+)/);
+                              const label = mNum ? `M${mNum[1]}: ` : "";
+                              return `${label}${match.placeholder_seed_1} vs ${match.placeholder_seed_2}`;
+                            })()
+                          : match.placeholder_seed_1 +
+                            " vs " +
+                            match.placeholder_seed_2}
                       </th>
                       <td class="px-6 py-4 text-center">
                         {match.team_1 ? match.team_1.name : "-"}
@@ -1544,6 +1716,10 @@ const TournamentManager = () => {
                       Cross Pool Matches: "CP 1 vs 2" (CP followed by seed
                       numbers)
                     </li>
+                    <li>
+                      Swiss Round Matches: "SR1 M1" (round number + match
+                      number)
+                    </li>
                     <li>Bracket Matches: "1 vs 2" (just seed numbers)</li>
                   </ul>
                 </div>
@@ -1555,7 +1731,7 @@ const TournamentManager = () => {
                   <div class="rounded bg-gray-100 p-3 font-mono text-sm dark:bg-gray-700">
                     <pre>
                       Date,Start Time,End Time,Field 1,Field 2 {"\n"}
-                      24/03/2025,06:30:00,07:45:00,A1 vs A2,B1 vs B2 {"\n"}
+                      24/03/2025,06:30:00,07:45:00,A1 vs A2,SR1 M1 {"\n"}
                       24/03/2025,08:00:00,09:15:00,CP 1 vs 2,1 vs 2
                     </pre>
                   </div>

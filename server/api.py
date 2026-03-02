@@ -2885,8 +2885,9 @@ def contact(
 
 def parse_match_name(name: str) -> tuple[str | None, list[int] | None]:
     """
-    Parse match name to determine type and seeds
-    Returns: (match_type, [seed1, seed2]) where match_type is 'pool', 'cross_pool', or 'bracket'
+    Parse match name to determine type and seeds.
+    Returns: (match_type, seeds) where match_type is 'pool', 'cross_pool', 'swiss_round', or 'bracket'.
+    For swiss_round, seeds = [round_num, match_num].
     """
     name = name.strip().upper()
 
@@ -2905,6 +2906,13 @@ def parse_match_name(name: str) -> tuple[str | None, list[int] | None]:
     if cp_match:
         seed1, seed2 = cp_match.groups()
         return "cross_pool", [int(seed1), int(seed2)]
+
+    # Swiss round pattern: "SR1 M1" or "SWISS R1 M1"
+    swiss_pattern = r"^(?:SR|SWISS\s*R)(\d+)\s+M(\d+)$"
+    swiss_match = re.match(swiss_pattern, name)
+    if swiss_match:
+        round_num, match_num = swiss_match.groups()
+        return "swiss_round", [int(round_num), int(match_num)]
 
     # Bracket pattern: "1 vs 2"
     bracket_pattern = r"^(\d+)\s+(?:vs|VS)\s+(\d+)$"
@@ -3022,6 +3030,13 @@ def update_tournament_schedule(
                                 tournament=tournament,
                                 placeholder_seed_1=seeds[0],
                                 placeholder_seed_2=seeds[1],
+                            ).first()
+                        elif match_type == "swiss_round":
+                            # seeds = [round_number, match_num]
+                            match = Match.objects.filter(
+                                swiss_round__isnull=False,
+                                tournament=tournament,
+                                name=f"Swiss R{seeds[0]} M{seeds[1]}",
                             ).first()
                         elif match_type == "bracket":
                             match = Match.objects.filter(

@@ -12,10 +12,10 @@ const getSmallName = matchName => {
   if (matchName === "Semi Finals") {
     return "SF";
   }
-  // Swiss round matches are named like "Swiss R1", "Swiss R2"
+  // Swiss round matches are named like "Swiss R1 M1"
   const swissPattern = matchName?.match(/Swiss R(\d+)/);
   if (swissPattern) {
-    return `Swiss R${swissPattern[1]}`;
+    return `SR ${swissPattern[1]}`;
   }
   // Bracket matches are named like 5-8 Bracket, 9-12 Bracket
   // On smaller screens show as B 5-8, B 9-12
@@ -26,6 +26,9 @@ const getSmallName = matchName => {
   // Return same name otherwise (Finals)
   return matchName;
 };
+
+// Strip match number from Swiss names for public display: "Swiss R1 M1" -> "Swiss R1"
+const getPublicSwissName = name => name?.replace(/\s*M\d+$/, "") ?? name;
 
 const showSeedForBracketMatch = matchName => {
   // Don't show seed for finals or position matches (3rd Place match is 3v4)
@@ -49,7 +52,9 @@ const MatchName = props => (
           class="hidden w-full text-center sm:block"
           classList={{ "py-2": props.extraVerticalPadding }}
         >
-          {props.name}
+          {props.match?.swiss_round
+            ? getPublicSwissName(props.name)
+            : props.name}
         </h6>
       </>
     }
@@ -58,7 +63,7 @@ const MatchName = props => (
       class="w-full text-center"
       classList={{ "py-2": props.extraVerticalPadding }}
     >
-      {props.name}
+      {props.match?.swiss_round ? getPublicSwissName(props.name) : props.name}
     </h6>
   </Show>
 );
@@ -102,10 +107,18 @@ const MatchCard = props => {
             <Show
               when={props.showSeed}
               fallback={
-                <h6 class="w-full py-2 text-center">{props.match?.name}</h6>
+                <h6 class="w-full py-2 text-center">
+                  {props.match?.swiss_round
+                    ? getPublicSwissName(props.match?.name)
+                    : props.match?.name}
+                </h6>
               }
             >
-              <h6 class="w-full text-center">{props.match?.name}</h6>
+              <h6 class="w-full text-center">
+                {props.match?.swiss_round
+                  ? getPublicSwissName(props.match?.name)
+                  : props.match?.name}
+              </h6>
               <h6 class="text-center">
                 {props.match?.placeholder_seed_1 +
                   " v " +
