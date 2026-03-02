@@ -19,6 +19,7 @@ from .models import (
     PositionPool,
     Registration,
     SpiritScore,
+    SwissRound,
     Tournament,
     UCRegistration,
 )
@@ -77,6 +78,145 @@ def create_position_pool_matches(tournament: Tournament, position_pool: Position
             )
 
             match.save()
+
+
+def create_swiss_round_matches(tournament: Tournament, swiss_round: SwissRound) -> None:
+    """Create all match slots for all Swiss rounds upfront.
+
+    Round 1: Real pairings (seed 1 vs seed N, seed 2 vs seed N-1, etc.)
+    Rounds 2+: Placeholder match slots with arbitrary seed pairs.
+    """
+    seeds = sorted(map(int, swiss_round.initial_seeding.keys()))
+    n = len(seeds)
+    num_matches_per_round = n // 2
+
+    for round_num in range(1, swiss_round.num_rounds + 1):
+        if round_num == 1:
+            # Real pairings: 1 vs N, 2 vs N-1, etc.
+            pairs = [(seeds[i], seeds[n - 1 - i]) for i in range(num_matches_per_round)]
+        else:
+            # Placeholder slots: arbitrary seed pairs (1,2), (3,4), etc.
+            pairs = [(seeds[i * 2], seeds[i * 2 + 1]) for i in range(num_matches_per_round)]
+
+        for _match_num, (seed_1, seed_2) in enumerate(pairs, 1):
+            Match(
+                name=f"Swiss R{round_num}",
+                tournament=tournament,
+                swiss_round=swiss_round,
+                sequence_number=round_num,
+                placeholder_seed_1=seed_1,
+                placeholder_seed_2=seed_2,
+            ).save()
+
+
+def assign_swiss_round_teams(
+    tournament: Tournament, swiss_round: SwissRound, round_number: int
+) -> None:
+    """Assign teams to Swiss round match slots.
+
+    Round 1: Assigns based on initial seeding placeholder seeds.
+    Rounds 2+: Runs pairing algorithm and assigns teams to pre-created slots.
+    """
+    teams_by_id = {team.id: team for team in tournament.teams.all()}
+    round_matches = list(
+        Match.objects.filter(swiss_round=swiss_round, sequence_number=round_number).order_by("id")
+    )
+
+    if round_number == 1:
+        # Round 1 match slots already have correct placeholder seeds
+        for match in round_matches:
+            team_1_id = int(swiss_round.initial_seeding[str(match.placeholder_seed_1)])
+            team_2_id = int(swiss_round.initial_seeding[str(match.placeholder_seed_2)])
+            match.team_1 = teams_by_id[team_1_id]
+            match.team_2 = teams_by_id[team_2_id]
+            match.status = Match.Status.SCHEDULED
+            match.save()
+    else:
+        # Generate pairings based on current standings
+        pairings = generate_swiss_pairings(swiss_round)
+
+        # Build team_id -> current rank map from results
+        results = swiss_round.results
+        ranked_teams = sorted(
+            results.items(),
+            key=lambda item: (
+                item[1]["wins"],
+                item[1]["GF"] - item[1]["GA"],
+                item[1]["GF"],
+            ),
+            reverse=True,
+        )
+        team_rank: dict[int, int] = {
+            int(tid): rank + 1 for rank, (tid, _) in enumerate(ranked_teams)
+        }
+
+        for i, (team_1_id, team_2_id) in enumerate(pairings):
+            if i < len(round_matches):
+                match = round_matches[i]
+                match.team_1 = teams_by_id[team_1_id]
+                match.team_2 = teams_by_id[team_2_id]
+                match.placeholder_seed_1 = team_rank[team_1_id]
+                match.placeholder_seed_2 = team_rank[team_2_id]
+                match.status = Match.Status.SCHEDULED
+                match.save()
+
+
+def generate_swiss_pairings(swiss_round: SwissRound) -> list[tuple[int, int]]:
+    """Generate Swiss pairings based on current standings, avoiding rematches.
+
+    Greedy algorithm: sort teams by standings, pair adjacent teams,
+    skip rematches by trying the next available opponent.
+    """
+    results = swiss_round.results
+    standings = sorted(
+        [(int(team_id), stats) for team_id, stats in results.items()],
+        key=lambda item: (
+            item[1]["wins"],
+            item[1]["GF"] - item[1]["GA"],
+            item[1]["GF"],
+        ),
+        reverse=True,
+    )
+
+    # Build set of already-played matchups
+    played_matches = (
+        Match.objects.filter(swiss_round=swiss_round)
+        .exclude(team_1__isnull=True)
+        .exclude(team_2__isnull=True)
+    )
+    played_pairs: set[frozenset[int]] = set()
+    for m in played_matches:
+        if m.team_1 and m.team_2:
+            played_pairs.add(frozenset([m.team_1.id, m.team_2.id]))
+
+    # Greedy pairing
+    team_ids = [team_id for team_id, _ in standings]
+    paired: set[int] = set()
+    pairs: list[tuple[int, int]] = []
+
+    for i, tid in enumerate(team_ids):
+        if tid in paired:
+            continue
+        for j in range(i + 1, len(team_ids)):
+            candidate = team_ids[j]
+            if candidate in paired:
+                continue
+            if frozenset([tid, candidate]) not in played_pairs:
+                pairs.append((tid, candidate))
+                paired.add(tid)
+                paired.add(candidate)
+                break
+        else:
+            # If no non-rematch partner found, pair with first available (allows rematch)
+            for j in range(i + 1, len(team_ids)):
+                candidate = team_ids[j]
+                if candidate not in paired:
+                    pairs.append((tid, candidate))
+                    paired.add(tid)
+                    paired.add(candidate)
+                    break
+
+    return pairs
 
 
 def sort_tied_teams(tied_teams: list[dict[str, int]], tournament_id: int) -> list[dict[str, int]]:
@@ -226,6 +366,9 @@ def update_match_score_and_results(match: Match, team_1_score: int, team_2_score
     elif match.position_pool is not None:
         update_for_pool_or_position_pool(match, match.position_pool)
 
+    elif match.swiss_round is not None:
+        update_for_pool_or_position_pool(match, match.swiss_round)
+
     match.status = Match.Status.COMPLETED
     match.save()
 
@@ -240,6 +383,35 @@ def populate_fixtures(tournament_id: int) -> None:
     teams_by_id = {team.id: team for team in tournament.teams.all()}
 
     is_all_pool_matches_complete = True
+
+    # Handle Swiss round progression
+    swiss_rounds = SwissRound.objects.filter(tournament=tournament_id)
+    is_all_swiss_complete = True
+
+    for swiss_round in swiss_rounds:
+        if swiss_round.current_round == 0:
+            is_all_swiss_complete = False
+            continue
+
+        current_round_matches = Match.objects.filter(
+            swiss_round=swiss_round, sequence_number=swiss_round.current_round
+        )
+        is_current_round_complete = all(
+            m.status == Match.Status.COMPLETED for m in current_round_matches
+        )
+
+        if is_current_round_complete and swiss_round.current_round < swiss_round.num_rounds:
+            # Generate next round pairings
+            next_round = swiss_round.current_round + 1
+            assign_swiss_round_teams(tournament, swiss_round, next_round)
+            swiss_round.current_round = next_round
+            swiss_round.save()
+            is_all_swiss_complete = False
+        elif not is_current_round_complete:
+            is_all_swiss_complete = False
+
+    if not is_all_swiss_complete:
+        is_all_pool_matches_complete = False
 
     for pool in pools:
         is_current_pool_matches_completed = True
@@ -430,7 +602,7 @@ def populate_fixtures(tournament_id: int) -> None:
 
             for seed in bracket_initial_seeding_list:
                 pool_matches_not_completed = (
-                    Match.objects.filter(pool__isnull=False)
+                    Match.objects.filter(Q(pool__isnull=False) | Q(swiss_round__isnull=False))
                     .filter(tournament=tournament_id)
                     .exclude(status=Match.Status.COMPLETED)
                     .filter(Q(placeholder_seed_1=seed) | Q(placeholder_seed_2=seed))
@@ -484,7 +656,7 @@ def populate_fixtures(tournament_id: int) -> None:
 
             for seed in position_pool_initial_seeding_list:
                 pool_matches_not_completed = (
-                    Match.objects.filter(pool__isnull=False)
+                    Match.objects.filter(Q(pool__isnull=False) | Q(swiss_round__isnull=False))
                     .filter(tournament=tournament_id)
                     .exclude(status=Match.Status.COMPLETED)
                     .filter(Q(placeholder_seed_1=seed) | Q(placeholder_seed_2=seed))
@@ -849,7 +1021,7 @@ def rank_spirit_scores(scores: list[dict[str, int | float]]) -> list[dict[str, i
     return sorted(scores, key=lambda x: x["rank"])
 
 
-def update_for_pool_or_position_pool(match: Match, pool: Pool | PositionPool) -> None:
+def update_for_pool_or_position_pool(match: Match, pool: Pool | PositionPool | SwissRound) -> None:
     results = pool.results
     results = {int(k): v for k, v in results.items()}
 
@@ -940,6 +1112,13 @@ def validate_new_pool(
         already_present_seeds.update(
             map(int, pool.keys())
         )  # Pool.initial_seeding : dict[seed(str), team_id(int)]. Convert seeds from str to ints
+
+    # Also check seeds used in Swiss rounds
+    swiss_rounds = SwissRound.objects.filter(tournament=tournament).values_list(
+        "initial_seeding", flat=True
+    )
+    for swiss_seeding in swiss_rounds:
+        already_present_seeds.update(map(int, swiss_seeding.keys()))
 
     repeated_seeds_in_new_pool = already_present_seeds.intersection(new_pool)
     # the seed shouldn't negative, 0 or more than roster size
