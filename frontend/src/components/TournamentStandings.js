@@ -9,6 +9,7 @@ import {
   fetchCrossPoolBySlug,
   fetchPoolsBySlug,
   fetchPositionPoolsBySlug,
+  fetchSwissRoundBySlug,
   fetchTournamentBySlug
 } from "../queries";
 import { getTournamentBreadcrumbName } from "../utils";
@@ -39,6 +40,10 @@ const TournamentStandings = () => {
   const postionPoolsQuery = createQuery(
     () => ["position-pools", params.slug],
     () => fetchPositionPoolsBySlug(params.slug)
+  );
+  const swissRoundQuery = createQuery(
+    () => ["swiss-round", params.slug],
+    () => fetchSwissRoundBySlug(params.slug)
   );
 
   createEffect(() => {
@@ -150,6 +155,21 @@ const TournamentStandings = () => {
           data-tabs-toggle="#myTabContent"
           role="tablist"
         >
+          <Show when={!swissRoundQuery.data?.message}>
+            <li class="mr-2" role="presentation">
+              <button
+                class="inline-block rounded-t-lg border-b-2 p-4"
+                id={"tab-swiss"}
+                data-tabs-target={"#swiss"}
+                type="button"
+                role="tab"
+                aria-controls={"swiss"}
+                aria-selected="false"
+              >
+                Swiss
+              </button>
+            </li>
+          </Show>
           <li class="mr-2" role="presentation">
             <button
               class="inline-block rounded-t-lg border-b-2 p-4"
@@ -195,6 +215,72 @@ const TournamentStandings = () => {
         </ul>
       </div>
       <div id="myTabContent">
+        <Show when={!swissRoundQuery.data?.message}>
+          <div
+            class="hidden rounded-lg p-4"
+            id={"swiss"}
+            role="tabpanel"
+            aria-labelledby={"tab-swiss"}
+          >
+            <h2 class="mb-3 text-center text-lg">
+              Round {swissRoundQuery.data?.current_round}/
+              {swissRoundQuery.data?.num_rounds}
+            </h2>
+            <div class="relative my-5 overflow-x-auto rounded-lg shadow-lg">
+              <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
+                <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
+                  <tr>
+                    <th scope="col" class="px-4 py-3">
+                      Seed
+                    </th>
+                    <th scope="col" class="px-4 py-3">
+                      Team
+                    </th>
+                    <th scope="col" class="px-4 py-3">
+                      W
+                    </th>
+                    <th scope="col" class="px-4 py-3">
+                      L
+                    </th>
+                    <th scope="col" class="px-4 py-3">
+                      GD
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <For
+                    each={Object.entries(swissRoundQuery.data?.results || {})
+                      .map(([team_id, stats]) => ({
+                        ...stats,
+                        team_id
+                      }))
+                      .sort((a, b) => parseInt(a.rank) - parseInt(b.rank))}
+                  >
+                    {result => (
+                      <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
+                        <td class="px-4 py-4">{result.rank}</td>
+                        <td class="px-4 py-4">
+                          <A
+                            href={`/tournament/${params.slug}/team/${
+                              teamsMap()[result.team_id]?.slug
+                            }`}
+                          >
+                            {teamsMap()[result.team_id]?.name}
+                          </A>
+                        </td>
+                        <td class="px-4 py-4">{result.wins}</td>
+                        <td class="px-4 py-4">{result.losses}</td>
+                        <td class="px-4 py-4">
+                          {parseInt(result["GF"]) - parseInt(result["GA"])}
+                        </td>
+                      </tr>
+                    )}
+                  </For>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </Show>
         <div
           class="hidden rounded-lg p-4"
           id={"pools"}
