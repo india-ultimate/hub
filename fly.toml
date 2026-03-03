@@ -24,6 +24,7 @@ swap_size_mb = 512
 
 [[vm]]
   size = "shared-cpu-4x"
+  memory = "2gb"
 
 [[services]]
   protocol = "tcp"
