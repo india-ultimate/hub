@@ -81,6 +81,11 @@ const Forum = lazy(() => import("./forum/Forum"));
 // Wrapped Pages
 const Wrapped = lazy(() => import("./wrapped/Wrapped"));
 
+// Simulation Pages
+const TournamentSimulator = lazy(() =>
+  import("./simulations/TournamentSimulator")
+);
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -294,6 +299,11 @@ export default function App() {
                   <UserRoute path="/chat" component={ChatPage} />
                   {/* Wrapped */}
                   <UserRoute path="/wrapped" component={Wrapped} />
+                  {/* Simulations */}
+                  <Route
+                    path="/simulations/tournament"
+                    component={TournamentSimulator}
+                  />
                   <Route path="*" component={Error404} />
                 </Routes>
               </div>
