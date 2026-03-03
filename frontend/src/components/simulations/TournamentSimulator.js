@@ -841,7 +841,9 @@ export default function TournamentSimulator() {
                 value={numTeams()}
                 onInput={e => {
                   const val = parseInt(e.target.value) || 4;
-                  const clamped = Math.max(4, Math.min(24, val));
+                  let clamped = Math.max(4, Math.min(24, val));
+                  if (initialStage() === "swiss" && clamped % 2 !== 0)
+                    clamped = Math.min(24, clamped + 1);
                   setNumTeams(clamped);
                   setNumPools(
                     clamped <= 4 ? 1 : clamped <= 8 ? 2 : clamped <= 12 ? 3 : 4
@@ -897,7 +899,11 @@ export default function TournamentSimulator() {
                       ? "border-teal-500 bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400"
                       : "border-gray-300 text-gray-700 hover:border-gray-400 dark:border-gray-600 dark:text-gray-300"
                   }`}
-                  onClick={() => setInitialStage("swiss")}
+                  onClick={() => {
+                    setInitialStage("swiss");
+                    if (numTeams() % 2 !== 0)
+                      setNumTeams(Math.min(24, numTeams() + 1));
+                  }}
                 >
                   Swiss Round
                 </button>
