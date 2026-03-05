@@ -241,10 +241,19 @@ const TournamentStandings = () => {
                       Team
                     </th>
                     <th scope="col" class="px-4 py-3">
+                      Pts
+                    </th>
+                    <th scope="col" class="px-4 py-3">
                       W
                     </th>
                     <th scope="col" class="px-4 py-3">
                       L
+                    </th>
+                    <th scope="col" class="px-4 py-3">
+                      D
+                    </th>
+                    <th scope="col" class="px-4 py-3">
+                      OS
                     </th>
                     <th scope="col" class="px-4 py-3">
                       GD
@@ -272,8 +281,15 @@ const TournamentStandings = () => {
                             {teamsMap()[result.team_id]?.name}
                           </A>
                         </td>
+                        <td class="px-4 py-4">
+                          {result.wins * 2 + (result.draws || 0)}
+                        </td>
                         <td class="px-4 py-4">{result.wins}</td>
                         <td class="px-4 py-4">{result.losses}</td>
+                        <td class="px-4 py-4">{result.draws || 0}</td>
+                        <td class="px-4 py-4">
+                          {result.opp_strength || 0}
+                        </td>
                         <td class="px-4 py-4">
                           {parseInt(result["GF"]) - parseInt(result["GA"])}
                         </td>
@@ -283,6 +299,11 @@ const TournamentStandings = () => {
                 </tbody>
               </table>
             </div>
+            <p class="mt-2 text-center text-xs text-gray-500 dark:text-gray-400">
+              Pts = Win(2) + Draw(1). OS = sum of opponents' points (higher =
+              faced stronger opponents). Tiebreaker: Pts &gt; H2H &gt; OS &gt;
+              GD.
+            </p>
             <Show
               when={
                 swissRoundQuery.data?.byes &&
