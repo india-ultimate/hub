@@ -80,23 +80,87 @@ def create_position_pool_matches(tournament: Tournament, position_pool: Position
             match.save()
 
 
+BYE_SCORE = 15
+
+
+def select_bye_team(swiss_round: SwissRound) -> int:
+    """Select lowest-ranked team that hasn't had a bye yet."""
+    teams_with_byes = set(swiss_round.byes.values())
+    standings = sorted(
+        [(int(tid), stats) for tid, stats in swiss_round.results.items()],
+        key=lambda item: (
+            item[1]["wins"],
+            item[1]["GF"] - item[1]["GA"],
+            item[1]["GF"],
+        ),
+    )  # ascending — worst first
+    for tid, _ in standings:
+        if tid not in teams_with_byes:
+            return tid
+    return standings[0][0]  # fallback: all have had byes
+
+
+def apply_bye(swiss_round: SwissRound, team_id: int, round_number: int) -> None:
+    """Apply bye: +1 win, +BYE_SCORE GF, re-rank, update seeding."""
+    results = {int(k): v for k, v in swiss_round.results.items()}
+
+    results[team_id]["wins"] += 1
+    results[team_id]["GF"] += BYE_SCORE
+
+    # Re-rank all teams
+    results_list = sorted(
+        results.items(),
+        key=lambda item: (
+            item[1]["wins"],
+            item[1]["GF"] - item[1]["GA"],
+            item[1]["GF"],
+        ),
+        reverse=True,
+    )
+
+    pool_seeding_list = sorted(map(int, swiss_round.initial_seeding.keys()))
+    tournament = swiss_round.tournament
+    tournament_seeding = tournament.current_seeding
+
+    for i, (tid, stats) in enumerate(results_list):
+        results[tid]["rank"] = i + 1
+        tournament_seeding[pool_seeding_list[i]] = tid
+
+    swiss_round.results = results
+    byes = dict(swiss_round.byes)
+    byes[str(round_number)] = team_id
+    swiss_round.byes = byes
+    swiss_round.save()
+
+    tournament.current_seeding = tournament_seeding
+    tournament.save()
+
+
 def create_swiss_round_matches(tournament: Tournament, swiss_round: SwissRound) -> None:
     """Create all match slots for all Swiss rounds upfront.
 
     Round 1: Real pairings (seed 1 vs seed N, seed 2 vs seed N-1, etc.)
     Rounds 2+: Placeholder match slots with arbitrary seed pairs.
+    For odd team counts, last seed gets bye in R1 and is excluded from pairings.
     """
     seeds = sorted(map(int, swiss_round.initial_seeding.keys()))
     n = len(seeds)
     num_matches_per_round = n // 2
+    is_odd = n % 2 != 0
 
     for round_num in range(1, swiss_round.num_rounds + 1):
         if round_num == 1:
-            # Real pairings: 1 vs N, 2 vs N-1, etc.
-            pairs = [(seeds[i], seeds[n - 1 - i]) for i in range(num_matches_per_round)]
+            if is_odd:
+                # Exclude last seed (bye), pair remaining n-1 seeds
+                active_seeds = seeds[:-1]
+                active_n = len(active_seeds)
+                pairs = [(active_seeds[i], active_seeds[active_n - 1 - i]) for i in range(active_n // 2)]
+            else:
+                pairs = [(seeds[i], seeds[n - 1 - i]) for i in range(num_matches_per_round)]
         else:
-            # Placeholder slots: arbitrary seed pairs (1,2), (3,4), etc.
-            pairs = [(seeds[i * 2], seeds[i * 2 + 1]) for i in range(num_matches_per_round)]
+            # Placeholder slots using first n-1 seeds (even count) for odd, or all for even
+            active_seeds = seeds[:-1] if is_odd else seeds
+            pairs = [(active_seeds[i * 2], active_seeds[i * 2 + 1]) for i in range(num_matches_per_round)]
 
         for match_num, (seed_1, seed_2) in enumerate(pairs, 1):
             Match(
@@ -116,8 +180,22 @@ def assign_swiss_round_teams(
 
     Round 1: Assigns based on initial seeding placeholder seeds.
     Rounds 2+: Runs pairing algorithm and assigns teams to pre-created slots.
+    For odd team counts, applies bye before assigning matches.
     """
     teams_by_id = {team.id: team for team in tournament.teams.all()}
+    is_odd = len(teams_by_id) % 2 != 0
+
+    # Apply bye for odd team counts
+    bye_team_id: int | None = None
+    if is_odd:
+        if round_number == 1:
+            # Last seed gets bye in round 1
+            last_seed = max(int(s) for s in swiss_round.initial_seeding.keys())
+            bye_team_id = int(swiss_round.initial_seeding[str(last_seed)])
+        else:
+            bye_team_id = select_bye_team(swiss_round)
+        apply_bye(swiss_round, bye_team_id, round_number)
+
     round_matches = list(
         Match.objects.filter(swiss_round=swiss_round, sequence_number=round_number).order_by("id")
     )
@@ -132,8 +210,8 @@ def assign_swiss_round_teams(
             match.status = Match.Status.SCHEDULED
             match.save()
     else:
-        # Generate pairings based on current standings
-        pairings = generate_swiss_pairings(swiss_round)
+        # Generate pairings based on current standings, excluding bye team
+        pairings = generate_swiss_pairings(swiss_round, exclude_team_id=bye_team_id)
 
         # Build team_id -> current rank map from results
         results = swiss_round.results
@@ -161,7 +239,9 @@ def assign_swiss_round_teams(
                 match.save()
 
 
-def generate_swiss_pairings(swiss_round: SwissRound) -> list[tuple[int, int]]:
+def generate_swiss_pairings(
+    swiss_round: SwissRound, exclude_team_id: int | None = None
+) -> list[tuple[int, int]]:
     """Generate Swiss pairings based on current standings, avoiding rematches.
 
     Greedy algorithm: sort teams by standings, pair adjacent teams,
@@ -169,7 +249,11 @@ def generate_swiss_pairings(swiss_round: SwissRound) -> list[tuple[int, int]]:
     """
     results = swiss_round.results
     standings = sorted(
-        [(int(team_id), stats) for team_id, stats in results.items()],
+        [
+            (int(team_id), stats)
+            for team_id, stats in results.items()
+            if int(team_id) != exclude_team_id
+        ],
         key=lambda item: (
             item[1]["wins"],
             item[1]["GF"] - item[1]["GA"],

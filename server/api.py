@@ -2037,8 +2037,6 @@ def create_swiss_round(
     num_teams = tournament.teams.count()
     if num_teams < min_teams_for_swiss:
         return 400, {"message": "Need at least 2 teams for a swiss round"}
-    if num_teams % 2 != 0:
-        return 400, {"message": "Swiss round requires an even number of teams"}
     if swiss_details.num_rounds < 1:
         return 400, {"message": "Number of rounds must be at least 1"}
 
@@ -2060,6 +2058,7 @@ def create_swiss_round(
         current_round=1,
         initial_seeding=swiss_seeding,
         results=swiss_results,
+        byes={},
     )
     swiss_round.save()
 

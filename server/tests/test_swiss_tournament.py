@@ -1,4 +1,4 @@
-from server.tests.base import ApiBaseTestCase
+from server.tests.base import ApiBaseTestCase, add_teams_to_event, create_event, create_tournament
 from server.tournament.models import Bracket, Match, SwissRound
 
 
@@ -204,8 +204,201 @@ class TestSwissTournamentLifecycle(ApiBaseTestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("already exists", response.json()["message"])
 
+    def test_even_swiss_no_byes(self) -> None:
+        """Test that even-team Swiss has no byes."""
+        self.swiss_round.refresh_from_db()
+        self.assertEqual(self.swiss_round.byes, {})
+
+        # Score round 1
+        self._score_round_matches(1, [(15, 8), (15, 9), (15, 10), (15, 11)])
+
+        self.swiss_round.refresh_from_db()
+        self.assertEqual(self.swiss_round.byes, {})
+
     def tearDown(self) -> None:
         Match.objects.filter(tournament=self.tournament).delete()
         SwissRound.objects.filter(tournament=self.tournament).delete()
         Bracket.objects.filter(tournament=self.tournament).delete()
+        super().tearDown()
+
+
+class TestOddSwissTournamentLifecycle(ApiBaseTestCase):
+    """Tests for Swiss rounds with odd number of teams (bye system)."""
+
+    def setUp(self) -> None:
+        # Override to create 7 teams instead of 8
+        from django.test import TestCase
+
+        TestCase.setUp(self)
+        from server.core.models import Player, UCPerson, User
+        from server.season.models import Season
+        from server.tournament.models import UCRegistration
+
+        self.username = "username@foo.com"
+        self.password = "password"
+        self.user = User.objects.create(
+            username=self.username, email=self.username, first_name="John", last_name="Williamson"
+        )
+        self.user.set_password(self.password)
+        self.user.is_staff = True
+        self.user.save()
+
+        person = UCPerson.objects.create(email=self.username, slug="username")
+        self.player = Player.objects.create(
+            user=self.user, date_of_birth="1990-01-01", ultimate_central_id=person.id
+        )
+
+        self.event = create_event("Odd Teams Tournament")
+        self.teams = add_teams_to_event(self.event, 7)  # 7 teams (odd)
+        UCRegistration.objects.create(
+            event=self.event, team=self.teams[0], person=person, roles=["admin", "player"]
+        )
+        self.tournament = create_tournament(self.event)
+        self.season = Season.objects.create(
+            name="Season 24-25",
+            start_date="2024-08-01",
+            end_date="2025-07-30",
+            annual_membership_amount=70000,
+            sponsored_annual_membership_amount=20000,
+            supporter_annual_membership_amount=50000,
+        )
+
+        self.client.force_login(self.user)
+
+        # Create Swiss Round with 3 rounds
+        response = self.client.post(
+            f"/api/tournament/swiss-round/{self.tournament.id}",
+            {"num_rounds": 3},
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.swiss_round = SwissRound.objects.get(tournament=self.tournament)
+
+        # Start tournament
+        response = self.client.post(f"/api/tournament/start/{self.tournament.id}")
+        self.assertEqual(response.status_code, 200)
+
+    def _score_round_matches(self, round_number: int, scores: list[tuple[int, int]]) -> None:
+        """Score all matches in a Swiss round."""
+        matches = Match.objects.filter(
+            swiss_round=self.swiss_round, sequence_number=round_number
+        ).order_by("id")
+        for match, score in zip(matches, scores, strict=True):
+            response = self.client.post(
+                f"/api/match/{match.id}/score",
+                {"team_1_score": score[0], "team_2_score": score[1]},
+                content_type="application/json",
+            )
+            self.assertEqual(response.status_code, 200)
+
+    def _get_round_pairs(self, round_number: int) -> set[frozenset[int]]:
+        """Get team pairs for a Swiss round."""
+        matches = Match.objects.filter(
+            swiss_round=self.swiss_round, sequence_number=round_number
+        ).order_by("id")
+        pairs: set[frozenset[int]] = set()
+        for match in matches:
+            self.assertIsNotNone(match.team_1)
+            self.assertIsNotNone(match.team_2)
+            pairs.add(frozenset([match.team_1.id, match.team_2.id]))  # type: ignore[union-attr, list-item]
+        return pairs
+
+    def test_odd_swiss_round_creation(self) -> None:
+        """Test Swiss round creation with 7 teams: 3 matches per round, 9 total."""
+        # 7 teams -> 3 matches per round (floor(7/2))
+        for round_num in range(1, 4):
+            count = Match.objects.filter(
+                swiss_round=self.swiss_round, sequence_number=round_num
+            ).count()
+            self.assertEqual(count, 3, f"Round {round_num} should have 3 matches")
+
+        # Total: 3 rounds * 3 matches = 9
+        total = Match.objects.filter(swiss_round=self.swiss_round).count()
+        self.assertEqual(total, 9)
+
+    def test_odd_swiss_full_lifecycle(self) -> None:
+        """Test full lifecycle with byes: each round one team gets bye."""
+        self.swiss_round.refresh_from_db()
+
+        # Round 1: verify bye was applied
+        self.assertIn("1", self.swiss_round.byes)
+        bye_team_r1 = self.swiss_round.byes["1"]
+
+        # Verify bye team has 1 win and 15 GF in results
+        results = self.swiss_round.results
+        bye_stats = results[str(bye_team_r1)]
+        self.assertEqual(bye_stats["wins"], 1)
+        self.assertEqual(bye_stats["GF"], 15)
+
+        # Verify 3 matches have teams assigned, bye team is not in any match
+        r1_matches = Match.objects.filter(
+            swiss_round=self.swiss_round, sequence_number=1
+        ).order_by("id")
+        self.assertEqual(r1_matches.count(), 3)
+        for match in r1_matches:
+            self.assertIsNotNone(match.team_1)
+            self.assertIsNotNone(match.team_2)
+            self.assertNotEqual(match.team_1.id, bye_team_r1)
+            self.assertNotEqual(match.team_2.id, bye_team_r1)
+
+        # Score round 1
+        self._score_round_matches(1, [(15, 8), (15, 9), (15, 10)])
+
+        # Round 2: verify different bye team
+        self.swiss_round.refresh_from_db()
+        self.assertEqual(self.swiss_round.current_round, 2)
+        self.assertIn("2", self.swiss_round.byes)
+        bye_team_r2 = self.swiss_round.byes["2"]
+        self.assertNotEqual(bye_team_r1, bye_team_r2, "Round 2 bye should be different team")
+
+        # Verify bye team not in round 2 matches
+        r2_matches = Match.objects.filter(
+            swiss_round=self.swiss_round, sequence_number=2
+        ).order_by("id")
+        for match in r2_matches:
+            self.assertNotEqual(match.team_1.id, bye_team_r2)
+            self.assertNotEqual(match.team_2.id, bye_team_r2)
+
+        # Score round 2
+        self._score_round_matches(2, [(15, 10), (15, 11), (15, 12)])
+
+        # Round 3: verify yet another bye team
+        self.swiss_round.refresh_from_db()
+        self.assertEqual(self.swiss_round.current_round, 3)
+        self.assertIn("3", self.swiss_round.byes)
+        bye_team_r3 = self.swiss_round.byes["3"]
+        self.assertNotEqual(bye_team_r3, bye_team_r1)
+        self.assertNotEqual(bye_team_r3, bye_team_r2)
+
+        # Score round 3
+        self._score_round_matches(3, [(15, 10), (15, 11), (15, 12)])
+
+        # Verify all byes are unique teams
+        all_bye_teams = set(self.swiss_round.byes.values())
+        self.assertEqual(len(all_bye_teams), 3, "All 3 byes should be different teams")
+
+    def test_odd_swiss_no_rematch_with_bye(self) -> None:
+        """Test that bye team is excluded from pairings and no rematches occur."""
+        # Score round 1
+        self._score_round_matches(1, [(15, 8), (15, 9), (15, 10)])
+
+        # Verify round 2 has no rematches
+        r1_pairs = self._get_round_pairs(1)
+        r2_pairs = self._get_round_pairs(2)
+        self.assertEqual(
+            len(r1_pairs & r2_pairs), 0, "Round 2 should have no rematches from round 1"
+        )
+
+    def test_odd_swiss_api_returns_byes(self) -> None:
+        """Test that Swiss round API returns byes data."""
+        response = self.client.get(f"/api/tournament/swiss-round?id={self.tournament.id}")
+        self.assertEqual(response.status_code, 200)
+
+        data = response.json()
+        self.assertIn("byes", data)
+        self.assertIn("1", data["byes"])  # Round 1 bye exists
+
+    def tearDown(self) -> None:
+        Match.objects.filter(tournament=self.tournament).delete()
+        SwissRound.objects.filter(tournament=self.tournament).delete()
         super().tearDown()

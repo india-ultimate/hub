@@ -792,6 +792,27 @@ const TournamentManager = () => {
                         </table>
                       </div>
                     </Show>
+                    <Show
+                      when={
+                        swissRoundQuery.data?.byes &&
+                        Object.keys(swissRoundQuery.data.byes).length > 0
+                      }
+                    >
+                      <div class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                        <For
+                          each={Object.entries(
+                            swissRoundQuery.data?.byes || {}
+                          ).sort(([a], [b]) => a - b)}
+                        >
+                          {([round, teamId]) => (
+                            <p>
+                              Round {round} bye:{" "}
+                              {teamsMap()[teamId] || `Team ${teamId}`} (15-0)
+                            </p>
+                          )}
+                        </For>
+                      </div>
+                    </Show>
                   </div>
                 }
               >
