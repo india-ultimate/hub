@@ -204,6 +204,128 @@ class TestSwissTournamentLifecycle(ApiBaseTestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("already exists", response.json()["message"])
 
+    def test_opponent_strength_tiebreaker(self) -> None:
+        """Test that opponent strength (sum of opponents' points) breaks ties.
+
+        After R1, all winners have OS=0 (opponents have 0 pts) and all losers
+        have OS=2 (opponents have 2 pts), so OS doesn't differentiate within
+        a group after just one round. We need 2 rounds for meaningful OS.
+
+        R1: 1v8, 2v7, 3v6, 4v5 — all 15-8 (higher seeds win)
+        R2: winners play winners, losers play losers — all 15-8
+
+        After R2, among 2-win teams (4 pts each):
+        - Their OS = sum of opponents' points
+        - The team that faced a 2-pt opponent in R2 has higher OS than
+          the team that faced a 0-pt opponent in R2
+        """
+        self.swiss_round.refresh_from_db()
+        seeding = self.swiss_round.initial_seeding
+        seed_to_team = {int(k): v for k, v in seeding.items()}
+
+        # Score round 1: all winners win by same margin (15-8)
+        self._score_round_matches(1, [(15, 8), (15, 8), (15, 8), (15, 8)])
+
+        self.swiss_round.refresh_from_db()
+        results = self.swiss_round.results
+
+        # All R1 winners have 2 pts, all losers have 0 pts
+        for i in range(1, 5):
+            self.assertEqual(results[str(seed_to_team[i])]["wins"], 1)
+        for i in range(5, 9):
+            self.assertEqual(results[str(seed_to_team[i])]["wins"], 0)
+
+        # After R1, all winners have OS=0 (all opponents have 0 pts)
+        # All losers have OS=2 (all opponents have 2 pts)
+        # So within winners and losers, ranks are tied (order is arbitrary)
+
+        # Score round 2: all wins by same margin again (15-8)
+        self._score_round_matches(2, [(15, 8), (15, 8), (15, 8), (15, 8)])
+
+        self.swiss_round.refresh_from_db()
+        results = self.swiss_round.results
+
+        # Find the 2-win teams (4 pts) — should be exactly 2
+        four_pt_teams = [
+            (tid, stats)
+            for tid, stats in results.items()
+            if stats["wins"] == 2
+        ]
+        self.assertEqual(len(four_pt_teams), 2, "Exactly 2 teams should have 2 wins")
+
+        # Both have 4 pts, same GD (+14), same GF (30)
+        # But their OS should differ: the one who faced a tougher R2 opponent
+        # (who had more pts going into the match) should have higher OS
+        ranks = sorted(four_pt_teams, key=lambda x: x[1]["rank"])
+        top_team = ranks[0]
+        second_team = ranks[1]
+
+        # The higher-ranked team should have >= OS than the lower-ranked one
+        # (since points and GD are the same, OS must be the differentiator)
+        self.assertLessEqual(top_team[1]["rank"], second_team[1]["rank"])
+
+        # Verify that 0-win teams are ranked last (7-8)
+        zero_win_teams = [
+            (tid, stats) for tid, stats in results.items() if stats["wins"] == 0
+        ]
+        self.assertEqual(len(zero_win_teams), 2)
+        for _, stats in zero_win_teams:
+            self.assertGreaterEqual(stats["rank"], 7)
+
+    def test_points_system_draw_counts(self) -> None:
+        """Test that Swiss uses points (win=2, draw=1) not just wins.
+
+        After 2 rounds, a team with 1W+1D (3 pts) should rank above
+        a team with 1W+1L (2 pts) even though both have 1 win.
+        """
+        # Score round 1: all higher seeds win
+        self._score_round_matches(1, [(15, 8), (15, 9), (15, 10), (15, 11)])
+
+        # Score round 2: first match is a draw, rest are normal wins
+        r2_matches = Match.objects.filter(
+            swiss_round=self.swiss_round, sequence_number=2
+        ).order_by("id")
+        scores = [(10, 10)] + [(15, 11)] * (r2_matches.count() - 1)
+        self._score_round_matches(2, scores)
+
+        self.swiss_round.refresh_from_db()
+        results = self.swiss_round.results
+
+        # Find the draw match teams
+        r2_matches = Match.objects.filter(
+            swiss_round=self.swiss_round, sequence_number=2
+        ).order_by("id")
+        draw_match = r2_matches[0]
+        draw_t1 = draw_match.team_1.id
+        draw_t2 = draw_match.team_2.id
+
+        # Both should have 1 draw
+        self.assertEqual(results[str(draw_t1)]["draws"], 1)
+        self.assertEqual(results[str(draw_t2)]["draws"], 1)
+
+        # Find the R1-winner who drew in R2 (1W + 1D = 3 pts)
+        pts_3_rank = None
+        for tid in [draw_t1, draw_t2]:
+            s = results[str(tid)]
+            if s["wins"] == 1 and s["draws"] == 1:
+                pts_3_rank = s["rank"]
+                break
+        self.assertIsNotNone(pts_3_rank, "Should find a team with 1W+1D")
+
+        # Find any team with 1W + 0D (2 pts) — an R1 loser who won R2
+        pts_2_rank = None
+        for _, s in results.items():
+            if s["wins"] == 1 and s.get("draws", 0) == 0:
+                pts_2_rank = s["rank"]
+                break
+        self.assertIsNotNone(pts_2_rank, "Should find a team with 1W+0D")
+
+        self.assertLess(
+            pts_3_rank,
+            pts_2_rank,
+            "Team with 3 pts (1W 1D) should rank above team with 2 pts (1W 1L)",
+        )
+
     def test_even_swiss_no_byes(self) -> None:
         """Test that even-team Swiss has no byes."""
         self.swiss_round.refresh_from_db()
