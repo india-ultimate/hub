@@ -2050,6 +2050,7 @@ def create_swiss_round(
             "draws": 0,
             "GF": 0,
             "GA": 0,
+            "opp_strength": 0,
         }
 
     swiss_round = SwissRound(
