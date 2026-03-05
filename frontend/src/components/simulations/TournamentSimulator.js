@@ -96,7 +96,7 @@ function computePoolResults(matches, teamIds) {
   return results;
 }
 
-function generateSwissPairings(results, playedPairs) {
+function generateSwissPairings(results, playedPairs, excludeTeam = null) {
   const standings = Object.entries(results)
     .sort(([, a], [, b]) => {
       const wDiff = b.wins - a.wins;
@@ -105,7 +105,8 @@ function generateSwissPairings(results, playedPairs) {
       if (gdDiff !== 0) return gdDiff;
       return b.GF - a.GF;
     })
-    .map(([id]) => parseInt(id));
+    .map(([id]) => parseInt(id))
+    .filter(id => id !== excludeTeam);
 
   const paired = new Set();
   const pairs = [];
@@ -142,6 +143,44 @@ function generateSwissPairings(results, playedPairs) {
     }
   }
   return pairs;
+}
+
+const BYE_SCORE = 15;
+
+function selectByeTeam(results, teamsWithByes) {
+  // Sort ascending (worst first)
+  const standings = Object.entries(results)
+    .sort(([, a], [, b]) => {
+      const wDiff = a.wins - b.wins;
+      if (wDiff !== 0) return wDiff;
+      const gdDiff = a.GF - a.GA - (b.GF - b.GA);
+      if (gdDiff !== 0) return gdDiff;
+      return a.GF - b.GF;
+    })
+    .map(([id]) => parseInt(id));
+
+  for (const tid of standings) {
+    if (!teamsWithByes.has(tid)) return tid;
+  }
+  return standings[0]; // fallback
+}
+
+function applyByeToResults(results, teamId) {
+  results[teamId].wins += 1;
+  results[teamId].GF += BYE_SCORE;
+}
+
+function rerankResults(results) {
+  const ranked = Object.entries(results).sort(([, a], [, b]) => {
+    const wDiff = b.wins - a.wins;
+    if (wDiff !== 0) return wDiff;
+    const gdDiff = b.GF - b.GA - (a.GF - a.GA);
+    if (gdDiff !== 0) return gdDiff;
+    return b.GF - a.GF;
+  });
+  ranked.forEach(([, stats], i) => {
+    stats.rank = i + 1;
+  });
 }
 
 function updateBracketSeeding(seeding, match) {
@@ -327,6 +366,8 @@ function recomputeTournament(config, scoreOverrides) {
     const swissRef = { id: 1, type: "swiss" };
     const allSwissMatches = [];
     const playedPairs = new Set();
+    const isOdd = numTeams % 2 !== 0;
+    const teamsWithByes = new Set();
 
     // Initialize results
     let swissResults = {};
@@ -343,16 +384,32 @@ function recomputeTournament(config, scoreOverrides) {
 
     for (let round = 1; round <= numSwissRounds; round++) {
       let pairings;
+      let byeTeamId = null;
+
       if (round === 1) {
-        // Seed 1 vs N, 2 vs N-1, etc.
+        // Bye: last seed in round 1
+        if (isOdd) {
+          byeTeamId = initialSeeding[numTeams];
+          teamsWithByes.add(byeTeamId);
+          applyByeToResults(swissResults, byeTeamId);
+          rerankResults(swissResults);
+        }
+        // Pair remaining seeds: 1 vs N-1, 2 vs N-2, etc.
         pairings = [];
-        for (let i = 0; i < numTeams / 2; i++) {
+        const activeCount = isOdd ? numTeams - 1 : numTeams;
+        for (let i = 0; i < activeCount / 2; i++) {
           const seed1 = i + 1;
-          const seed2 = numTeams - i;
+          const seed2 = activeCount - i;
           pairings.push([initialSeeding[seed1], initialSeeding[seed2]]);
         }
       } else {
-        pairings = generateSwissPairings(swissResults, playedPairs);
+        if (isOdd) {
+          byeTeamId = selectByeTeam(swissResults, teamsWithByes);
+          teamsWithByes.add(byeTeamId);
+          applyByeToResults(swissResults, byeTeamId);
+          rerankResults(swissResults);
+        }
+        pairings = generateSwissPairings(swissResults, playedPairs, byeTeamId);
       }
 
       const roundMatches = [];
@@ -410,11 +467,17 @@ function recomputeTournament(config, scoreOverrides) {
         playedPairs.add(key);
       });
 
-      // Update swiss results after this round
+      // Update swiss results after this round (rebuilds from matches only)
       swissResults = computePoolResults(
         allSwissMatches,
         teams.map(t => t.id)
       );
+
+      // Re-apply all bye bonuses (not captured in match objects)
+      for (const btId of teamsWithByes) {
+        applyByeToResults(swissResults, btId);
+      }
+      rerankResults(swissResults);
 
       stages.push({
         type: "swiss",
@@ -422,7 +485,8 @@ function recomputeTournament(config, scoreOverrides) {
         matches: roundMatches,
         results: { ...swissResults },
         round,
-        totalRounds: numSwissRounds
+        totalRounds: numSwissRounds,
+        byeTeamId
       });
     }
 
@@ -750,6 +814,12 @@ function StageSection(props) {
         </Show>
       </div>
 
+      <Show when={props.stage.byeTeamId}>
+        <div class="mt-2 rounded border border-teal-200 bg-teal-50 px-3 py-2 text-sm text-teal-700 dark:border-teal-800 dark:bg-teal-900/30 dark:text-teal-300">
+          Bye: {props.teamsById[props.stage.byeTeamId]?.name} (15-0 win)
+        </div>
+      </Show>
+
       <Show when={props.stage.results}>
         <StandingsTable
           results={props.stage.results}
@@ -841,9 +911,7 @@ export default function TournamentSimulator() {
                 value={numTeams()}
                 onInput={e => {
                   const val = parseInt(e.target.value) || 4;
-                  let clamped = Math.max(4, Math.min(24, val));
-                  if (initialStage() === "swiss" && clamped % 2 !== 0)
-                    clamped = Math.min(24, clamped + 1);
+                  const clamped = Math.max(4, Math.min(24, val));
                   setNumTeams(clamped);
                   setNumPools(
                     clamped <= 4 ? 1 : clamped <= 8 ? 2 : clamped <= 12 ? 3 : 4
@@ -899,11 +967,7 @@ export default function TournamentSimulator() {
                       ? "border-teal-500 bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400"
                       : "border-gray-300 text-gray-700 hover:border-gray-400 dark:border-gray-600 dark:text-gray-300"
                   }`}
-                  onClick={() => {
-                    setInitialStage("swiss");
-                    if (numTeams() % 2 !== 0)
-                      setNumTeams(Math.min(24, numTeams() + 1));
-                  }}
+                  onClick={() => setInitialStage("swiss")}
                 >
                   Swiss Round
                 </button>

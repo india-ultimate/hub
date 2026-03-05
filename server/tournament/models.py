@@ -177,6 +177,7 @@ class SwissRound(ExportModelOperationsMixin("swiss_round"), models.Model):  # ty
     current_round = models.PositiveIntegerField(default=0)
     initial_seeding = models.JSONField()
     results = models.JSONField()
+    byes = models.JSONField(default=dict, blank=True)
 
 
 class CrossPool(ExportModelOperationsMixin("cross_pool"), models.Model):  # type: ignore[misc]
