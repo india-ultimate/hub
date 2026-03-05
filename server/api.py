@@ -1347,9 +1347,17 @@ def remove_from_roster(
     except (Event.DoesNotExist, Team.DoesNotExist, Tournament.DoesNotExist):
         return 400, {"message": "Team/Event/Tournament does not exist"}
 
+    end_date = (
+        max(
+            tournament.event.player_registration_end_date,
+            tournament.event.player_late_penalty_end_date,
+        )
+        if tournament.event.player_late_penalty_end_date
+        else tournament.event.player_registration_end_date
+    )
     if not is_today_in_between_dates(
         from_date=tournament.event.player_registration_start_date,
-        to_date=tournament.event.player_registration_end_date,
+        to_date=end_date,
     ):
         return 400, {"message": "Rostering has closed, you can't remove players now !"}
 
