@@ -2308,7 +2308,7 @@ def create_match(
         elif match_details.stage == "swiss_round":
             swiss_round = SwissRound.objects.get(id=match_details.stage_id)
             match.swiss_round = swiss_round
-            match.name = f"Swiss R{match_details.seq_num}"
+            match.name = f"Swiss {swiss_round.name} R{match_details.seq_num}"
 
     except (
         Pool.DoesNotExist,
@@ -2918,12 +2918,19 @@ def parse_match_name(name: str) -> tuple[str | None, list[int] | None]:
         seed1, seed2 = cp_match.groups()
         return "cross_pool", [int(seed1), int(seed2)]
 
-    # Swiss round pattern: "SR1 M1" or "SWISS R1 M1"
-    swiss_pattern = r"^(?:SR|SWISS\s*R)(\d+)\s+M(\d+)$"
+    # Swiss round pattern: "SW A - 1 M1" or "SA R1 M1"
+    swiss_pattern = r"^SW\s+([A-Z]+)\s*-\s*(\d+)\s+M(\d+)$"
     swiss_match = re.match(swiss_pattern, name)
     if swiss_match:
-        round_num, match_num = swiss_match.groups()
-        return "swiss_round", [int(round_num), int(match_num)]
+        group_name, round_num, match_num = swiss_match.groups()
+        return "swiss_round", [group_name, int(round_num), int(match_num)]
+
+    # Legacy format: "SA R1 M1"
+    swiss_pattern = r"^S([A-Z]+)\s*R(\d+)\s+M(\d+)$"
+    swiss_match = re.match(swiss_pattern, name)
+    if swiss_match:
+        group_name, round_num, match_num = swiss_match.groups()
+        return "swiss_round", [group_name, int(round_num), int(match_num)]
 
     # Bracket pattern: "1 vs 2"
     bracket_pattern = r"^(\d+)\s+(?:vs|VS)\s+(\d+)$"
@@ -3043,11 +3050,11 @@ def update_tournament_schedule(
                                 placeholder_seed_2=seeds[1],
                             ).first()
                         elif match_type == "swiss_round":
-                            # seeds = [round_number, match_num]
+                            # seeds = [group_name, round_number, match_num]
                             match = Match.objects.filter(
                                 swiss_round__isnull=False,
                                 tournament=tournament,
-                                name=f"Swiss R{seeds[0]} M{seeds[1]}",
+                                name=f"Swiss {seeds[0]} R{seeds[1]} M{seeds[2]}",
                             ).first()
                         elif match_type == "bracket":
                             match = Match.objects.filter(
