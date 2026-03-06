@@ -471,9 +471,9 @@ export const fetchPositionPoolsBySlug = async tournament_slug => {
   return await response.json();
 };
 
-export const fetchSwissRound = async tournament_id => {
+export const fetchSwissRounds = async tournament_id => {
   const response = await fetch(
-    `/api/tournament/swiss-round?id=${tournament_id}`,
+    `/api/tournament/swiss-rounds?id=${tournament_id}`,
     {
       method: "GET",
       headers: { "Content-Type": "application/json" },
@@ -483,9 +483,9 @@ export const fetchSwissRound = async tournament_id => {
   return await response.json();
 };
 
-export const fetchSwissRoundBySlug = async tournament_slug => {
+export const fetchSwissRoundsBySlug = async tournament_slug => {
   const response = await fetch(
-    `/api/tournament/swiss-round?slug=${tournament_slug}`,
+    `/api/tournament/swiss-rounds?slug=${tournament_slug}`,
     {
       method: "GET",
       headers: { "Content-Type": "application/json" },
@@ -1116,7 +1116,13 @@ export const createPool = async ({
   return await response.json();
 };
 
-export const createSwissRound = async ({ tournament_id, num_rounds }) => {
+export const createSwissRound = async ({
+  tournament_id,
+  num_rounds,
+  seeding,
+  sequence_number,
+  name
+}) => {
   const response = await fetch(`/api/tournament/swiss-round/${tournament_id}`, {
     method: "POST",
     headers: {
@@ -1125,7 +1131,10 @@ export const createSwissRound = async ({ tournament_id, num_rounds }) => {
     },
     credentials: "same-origin",
     body: JSON.stringify({
-      num_rounds: parseInt(num_rounds)
+      num_rounds: parseInt(num_rounds),
+      seeding: JSON.parse(seeding),
+      sequence_number: parseInt(sequence_number),
+      name
     })
   });
   return await response.json();
