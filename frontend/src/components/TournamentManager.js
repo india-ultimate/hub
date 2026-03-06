@@ -33,7 +33,7 @@ import {
   fetchMatches,
   fetchPools,
   fetchPositionPools,
-  fetchSwissRound,
+  fetchSwissRounds,
   fetchTeams,
   fetchTournaments,
   generateTournamentFixtures,
@@ -63,6 +63,9 @@ const TournamentManager = () => {
   const [teamsMap, setTeamsMap] = createSignal({});
   const [enteredPoolName, setEnteredPoolName] = createSignal("");
   const [enteredSeedingList, setEnteredSeedingList] = createSignal("[]");
+  const [enteredSwissName, setEnteredSwissName] = createSignal("");
+  const [enteredSwissSeedings, setEnteredSwissSeedings] = createSignal("[]");
+  const [enteredSwissNumRounds, setEnteredSwissNumRounds] = createSignal("3");
   const [enteredBracketName, setEnteredBracketName] = createSignal("1-8");
   const [enteredPositionPoolName, setEnteredPositionPoolName] =
     createSignal("");
@@ -228,9 +231,9 @@ const TournamentManager = () => {
       }
     }
   );
-  const swissRoundQuery = createQuery(
-    () => ["swiss-round", selectedTournamentID()],
-    () => fetchSwissRound(selectedTournamentID()),
+  const swissRoundsQuery = createQuery(
+    () => ["swiss-rounds", selectedTournamentID()],
+    () => fetchSwissRounds(selectedTournamentID()),
     {
       get enabled() {
         return selectedTournamentID() !== 0;
@@ -287,7 +290,7 @@ const TournamentManager = () => {
     mutationFn: createSwissRound,
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["swiss-round", selectedTournamentID()]
+        queryKey: ["swiss-rounds", selectedTournamentID()]
       });
       queryClient.invalidateQueries({
         queryKey: ["matches", selectedTournamentID()]
@@ -703,15 +706,15 @@ const TournamentManager = () => {
                       }
                       disabled={
                         selectedTournament()?.status !== "SCH" ||
-                        !!swissRoundQuery.data?.id
+                        swissRoundsQuery.data?.length > 0
                       }
                       class="mb-2 mr-2 mt-5 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 disabled:bg-gray-400 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
                     >
                       Create Pool
                     </button>
-                    <Show when={swissRoundQuery.data?.id}>
+                    <Show when={swissRoundsQuery.data?.length > 0}>
                       <p class="text-sm text-red-500">
-                        Cannot create pools when Swiss Round is active
+                        Cannot create pools when Swiss groups exist
                       </p>
                     </Show>
                   </div>
@@ -723,142 +726,163 @@ const TournamentManager = () => {
             </div>
             <div class="flex-1">
               <h3 class="mb-3 text-lg font-semibold text-gray-700 dark:text-gray-300">
-                Swiss Round
+                Swiss
               </h3>
               <Show
-                when={
-                  swissRoundQuery.data?.message || !swissRoundQuery.data?.id
-                }
-                fallback={
-                  <div>
-                    <p>
-                      Swiss Round enabled — Round{" "}
-                      {swissRoundQuery.data?.current_round}/
-                      {swissRoundQuery.data?.num_rounds}
-                    </p>
-                    <Show when={swissRoundQuery.data?.results}>
-                      <div class="relative my-3 overflow-x-auto rounded-lg shadow-lg">
-                        <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
-                          <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
-                            <tr>
-                              <th scope="col" class="px-4 py-3">
-                                Seed
-                              </th>
-                              <th scope="col" class="px-4 py-3">
-                                Team
-                              </th>
-                              <th scope="col" class="px-4 py-3">
-                                W
-                              </th>
-                              <th scope="col" class="px-4 py-3">
-                                L
-                              </th>
-                              <th scope="col" class="px-4 py-3">
-                                GD
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <For
-                              each={Object.values(
-                                swissRoundQuery.data?.results || {}
-                              )
-                                .map((r, i) => ({
-                                  ...r,
-                                  team_id: Object.keys(
-                                    swissRoundQuery.data?.results || {}
-                                  )[i]
-                                }))
-                                .sort(
-                                  (a, b) => parseInt(a.rank) - parseInt(b.rank)
+                when={!swissRoundsQuery.data?.message}
+                fallback={<p>Select Tournament to see/add Swiss groups</p>}
+              >
+                <div class="grid grid-cols-3 gap-4">
+                  <For each={swissRoundsQuery.data}>
+                    {swissRound => (
+                      <div>
+                        <h3>Swiss - {swissRound.name}</h3>
+                        <p class="text-sm text-gray-500">
+                          Round {swissRound.current_round}/{swissRound.num_rounds}
+                        </p>
+                        <div class="relative overflow-x-auto">
+                          <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
+                            <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
+                              <tr>
+                                <th scope="col" class="px-6 py-3">
+                                  Seeding
+                                </th>
+                                <th scope="col" class="px-6 py-3">
+                                  Team Name
+                                </th>
+                                <th scope="col" class="px-6 py-3">
+                                  Team ID
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <For each={Object.keys(swissRound.initial_seeding)}>
+                                {seed => (
+                                  <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
+                                    <th
+                                      scope="row"
+                                      class="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white"
+                                    >
+                                      {seed}
+                                    </th>
+                                    <td class="px-6 py-4">
+                                      {teamsMap()[swissRound.initial_seeding[seed]]}
+                                    </td>
+                                    <td class="px-6 py-4">
+                                      {swissRound.initial_seeding[seed]}
+                                    </td>
+                                  </tr>
                                 )}
+                              </For>
+                            </tbody>
+                          </table>
+                        </div>
+                        <Show
+                          when={
+                            swissRound.byes &&
+                            Object.keys(swissRound.byes).length > 0
+                          }
+                        >
+                          <div class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                            <For
+                              each={Object.entries(swissRound.byes || {}).sort(
+                                ([a], [b]) => a - b
+                              )}
                             >
-                              {result => (
-                                <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
-                                  <td class="px-4 py-4">{result.rank}</td>
-                                  <td class="px-4 py-4">
-                                    {teamsMap()[result.team_id]}
-                                  </td>
-                                  <td class="px-4 py-4">{result.wins}</td>
-                                  <td class="px-4 py-4">{result.losses}</td>
-                                  <td class="px-4 py-4">
-                                    {parseInt(result["GF"]) -
-                                      parseInt(result["GA"])}
-                                  </td>
-                                </tr>
+                              {([round, teamId]) => (
+                                <p>
+                                  Round {round} bye:{" "}
+                                  {teamsMap()[teamId] || `Team ${teamId}`} (15-0)
+                                </p>
                               )}
                             </For>
-                          </tbody>
-                        </table>
+                          </div>
+                        </Show>
                       </div>
-                    </Show>
+                    )}
+                  </For>
+                  <div class="rounded-lg border border-blue-600 p-5">
+                    <h3>Add New Swiss Group</h3>
+                    <div>
+                      <label
+                        for="swiss-name"
+                        class="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
+                      >
+                        Group Name
+                      </label>
+                      <input
+                        type="text"
+                        id="swiss-name"
+                        value={enteredSwissName()}
+                        onChange={e => setEnteredSwissName(e.target.value)}
+                        class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500 sm:text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        for="swiss-num-rounds"
+                        class="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
+                      >
+                        Number of Rounds
+                      </label>
+                      <input
+                        type="number"
+                        id="swiss-num-rounds"
+                        min="1"
+                        max="10"
+                        value={enteredSwissNumRounds()}
+                        onChange={e => setEnteredSwissNumRounds(e.target.value)}
+                        class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500 sm:text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        for="seedings-swiss"
+                        class="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
+                      >
+                        Seedings List
+                      </label>
+                      <input
+                        type="text"
+                        id="seedings-swiss"
+                        value={enteredSwissSeedings()}
+                        onChange={e => setEnteredSwissSeedings(e.target.value)}
+                        class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500 sm:text-xs"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        createSwissRoundMutation.mutate({
+                          tournament_id: selectedTournamentID(),
+                          name: enteredSwissName(),
+                          num_rounds: enteredSwissNumRounds(),
+                          seeding: enteredSwissSeedings(),
+                          sequence_number:
+                            (swissRoundsQuery.data?.length || 0) + 1
+                        })
+                      }
+                      disabled={
+                        selectedTournament()?.status !== "SCH" ||
+                        (poolsQuery.data?.length > 0 &&
+                          !poolsQuery.data?.message)
+                      }
+                      class="mb-2 mr-2 mt-5 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 disabled:bg-gray-400 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
+                    >
+                      Create Swiss Group
+                    </button>
                     <Show
                       when={
-                        swissRoundQuery.data?.byes &&
-                        Object.keys(swissRoundQuery.data.byes).length > 0
+                        poolsQuery.data?.length > 0 &&
+                        !poolsQuery.data?.message
                       }
                     >
-                      <div class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                        <For
-                          each={Object.entries(
-                            swissRoundQuery.data?.byes || {}
-                          ).sort(([a], [b]) => a - b)}
-                        >
-                          {([round, teamId]) => (
-                            <p>
-                              Round {round} bye:{" "}
-                              {teamsMap()[teamId] || `Team ${teamId}`} (15-0)
-                            </p>
-                          )}
-                        </For>
-                      </div>
+                      <p class="text-sm text-red-500">
+                        Cannot create Swiss groups when Pools exist
+                      </p>
                     </Show>
                   </div>
-                }
-              >
-                <p>{swissRoundQuery.data?.message}</p>
-                <div class="my-3">
-                  <label
-                    for="swiss-num-rounds"
-                    class="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
-                  >
-                    Number of Rounds
-                  </label>
-                  <input
-                    type="number"
-                    id="swiss-num-rounds"
-                    min="1"
-                    max="10"
-                    value="3"
-                    class="block w-1/4 rounded-lg border border-gray-300 bg-gray-50 p-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500 sm:text-xs"
-                  />
                 </div>
-                <button
-                  type="button"
-                  onClick={() =>
-                    createSwissRoundMutation.mutate({
-                      tournament_id: selectedTournamentID(),
-                      num_rounds:
-                        document.getElementById("swiss-num-rounds").value
-                    })
-                  }
-                  disabled={
-                    selectedTournament()?.status !== "SCH" ||
-                    (poolsQuery.data?.length > 0 && !poolsQuery.data?.message)
-                  }
-                  class="mb-2 mr-2 mt-2 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 disabled:bg-gray-400 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
-                >
-                  Create Swiss Round
-                </button>
-                <Show
-                  when={
-                    poolsQuery.data?.length > 0 && !poolsQuery.data?.message
-                  }
-                >
-                  <p class="text-sm text-red-500">
-                    Cannot create Swiss Round when Pools exist
-                  </p>
-                </Show>
               </Show>
             </div>
           </div>
@@ -1151,11 +1175,11 @@ const TournamentManager = () => {
                           </For>
                         </Match>
                         <Match when={matchFields["stage"] === "swiss_round"}>
-                          <Show when={!swissRoundQuery.data?.message}>
-                            <option value={swissRoundQuery.data?.id}>
-                              Swiss Round
-                            </option>
-                          </Show>
+                          <For each={swissRoundsQuery.data}>
+                            {s => (
+                              <option value={s.id}>Swiss - {s.name}</option>
+                            )}
+                          </For>
                         </Match>
                       </Switch>
                     </select>
