@@ -10,10 +10,15 @@ class TestSwissTournamentLifecycle(ApiBaseTestCase):
         self.user.save()
         self.client.force_login(self.user)
 
-        # Create Swiss Round via API
+        # Create Swiss Round via API (all 8 seeds in one group)
         response = self.client.post(
             f"/api/tournament/swiss-round/{self.tournament.id}",
-            {"num_rounds": 3},
+            {
+                "num_rounds": 3,
+                "seeding": [1, 2, 3, 4, 5, 6, 7, 8],
+                "sequence_number": 1,
+                "name": "A",
+            },
             content_type="application/json",
         )
         self.assertEqual(response.status_code, 200)
@@ -169,40 +174,52 @@ class TestSwissTournamentLifecycle(ApiBaseTestCase):
     def test_swiss_round_creation_api(self) -> None:
         """Test creating Swiss round via API returns correct data."""
         # Use the GET API to verify swiss round data
-        response = self.client.get(f"/api/tournament/swiss-round?id={self.tournament.id}")
+        response = self.client.get(f"/api/tournament/swiss-rounds?id={self.tournament.id}")
         self.assertEqual(response.status_code, 200)
 
         data = response.json()
-        self.assertEqual(data["num_rounds"], 3)
-        self.assertEqual(data["current_round"], 1)
-        self.assertTrue(len(data["initial_seeding"]) > 0)
-        self.assertTrue(len(data["results"]) > 0)
+        self.assertIsInstance(data, list)
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]["num_rounds"], 3)
+        self.assertEqual(data[0]["current_round"], 1)
+        self.assertEqual(data[0]["name"], "A")
+        self.assertTrue(len(data[0]["initial_seeding"]) > 0)
+        self.assertTrue(len(data[0]["results"]) > 0)
 
         # Verify matches were created (3 rounds * 4 matches per round = 12)
         match_count = Match.objects.filter(swiss_round=self.swiss_round).count()
         self.assertEqual(match_count, 12)
 
     def test_swiss_round_get_api(self) -> None:
-        """Test fetching Swiss round via API."""
-        response = self.client.get(f"/api/tournament/swiss-round?id={self.tournament.id}")
+        """Test fetching Swiss rounds via API returns a list."""
+        response = self.client.get(f"/api/tournament/swiss-rounds?id={self.tournament.id}")
         self.assertEqual(response.status_code, 200)
 
         data = response.json()
-        self.assertEqual(data["num_rounds"], 3)
+        self.assertIsInstance(data, list)
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]["num_rounds"], 3)
 
         # Also test by slug
-        response = self.client.get(f"/api/tournament/swiss-round?slug={self.event.slug}")
+        response = self.client.get(f"/api/tournament/swiss-rounds?slug={self.event.slug}")
         self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertIsInstance(data, list)
 
-    def test_swiss_duplicate_creation_blocked(self) -> None:
-        """Test that creating a second Swiss round is blocked."""
+    def test_swiss_seed_overlap_blocked(self) -> None:
+        """Test that creating a second Swiss group with overlapping seeds is blocked."""
         response = self.client.post(
             f"/api/tournament/swiss-round/{self.tournament.id}",
-            {"num_rounds": 3},
+            {
+                "num_rounds": 3,
+                "seeding": [1, 2, 3, 4],
+                "sequence_number": 2,
+                "name": "B",
+            },
             content_type="application/json",
         )
         self.assertEqual(response.status_code, 400)
-        self.assertIn("already exists", response.json()["message"])
+        self.assertIn("repeated_seeds", response.json()["message"])
 
     def test_opponent_strength_tiebreaker(self) -> None:
         """Test that opponent strength (sum of opponents' points) breaks ties.
@@ -387,10 +404,15 @@ class TestOddSwissTournamentLifecycle(ApiBaseTestCase):
 
         self.client.force_login(self.user)
 
-        # Create Swiss Round with 3 rounds
+        # Create Swiss Round with 3 rounds (all 7 seeds)
         response = self.client.post(
             f"/api/tournament/swiss-round/{self.tournament.id}",
-            {"num_rounds": 3},
+            {
+                "num_rounds": 3,
+                "seeding": [1, 2, 3, 4, 5, 6, 7],
+                "sequence_number": 1,
+                "name": "A",
+            },
             content_type="application/json",
         )
         self.assertEqual(response.status_code, 200)
@@ -512,15 +534,200 @@ class TestOddSwissTournamentLifecycle(ApiBaseTestCase):
         )
 
     def test_odd_swiss_api_returns_byes(self) -> None:
-        """Test that Swiss round API returns byes data."""
-        response = self.client.get(f"/api/tournament/swiss-round?id={self.tournament.id}")
+        """Test that Swiss rounds API returns byes data."""
+        response = self.client.get(f"/api/tournament/swiss-rounds?id={self.tournament.id}")
         self.assertEqual(response.status_code, 200)
 
         data = response.json()
-        self.assertIn("byes", data)
-        self.assertIn("1", data["byes"])  # Round 1 bye exists
+        self.assertIsInstance(data, list)
+        self.assertEqual(len(data), 1)
+        self.assertIn("byes", data[0])
+        self.assertIn("1", data[0]["byes"])  # Round 1 bye exists
 
     def tearDown(self) -> None:
         Match.objects.filter(tournament=self.tournament).delete()
         SwissRound.objects.filter(tournament=self.tournament).delete()
+        super().tearDown()
+
+
+class TestMultipleSwissGroups(ApiBaseTestCase):
+    """Tests for multiple Swiss groups (Swiss A, Swiss B)."""
+
+    def setUp(self) -> None:
+        super().setUp()
+
+        self.user.is_staff = True
+        self.user.save()
+        self.client.force_login(self.user)
+
+    def test_create_two_swiss_groups(self) -> None:
+        """Test creating Swiss A and Swiss B with different seeds."""
+        # Create Swiss A with seeds 1,3,5,7
+        response = self.client.post(
+            f"/api/tournament/swiss-round/{self.tournament.id}",
+            {
+                "num_rounds": 2,
+                "seeding": [1, 3, 5, 7],
+                "sequence_number": 1,
+                "name": "A",
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+
+        # Create Swiss B with seeds 2,4,6,8
+        response = self.client.post(
+            f"/api/tournament/swiss-round/{self.tournament.id}",
+            {
+                "num_rounds": 2,
+                "seeding": [2, 4, 6, 8],
+                "sequence_number": 2,
+                "name": "B",
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+
+        # Verify both exist
+        swiss_rounds = SwissRound.objects.filter(tournament=self.tournament).order_by(
+            "sequence_number"
+        )
+        self.assertEqual(swiss_rounds.count(), 2)
+        self.assertEqual(swiss_rounds[0].name, "A")
+        self.assertEqual(swiss_rounds[1].name, "B")
+
+        # Verify seedings are correct
+        self.assertEqual(set(map(int, swiss_rounds[0].initial_seeding.keys())), {1, 3, 5, 7})
+        self.assertEqual(set(map(int, swiss_rounds[1].initial_seeding.keys())), {2, 4, 6, 8})
+
+    def test_swiss_seed_overlap_rejected(self) -> None:
+        """Test that overlapping seeds between groups are rejected."""
+        # Create Swiss A with seeds 1,2,3,4
+        response = self.client.post(
+            f"/api/tournament/swiss-round/{self.tournament.id}",
+            {
+                "num_rounds": 2,
+                "seeding": [1, 2, 3, 4],
+                "sequence_number": 1,
+                "name": "A",
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+
+        # Try Swiss B with overlapping seeds 3,4,5,6
+        response = self.client.post(
+            f"/api/tournament/swiss-round/{self.tournament.id}",
+            {
+                "num_rounds": 2,
+                "seeding": [3, 4, 5, 6],
+                "sequence_number": 2,
+                "name": "B",
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("repeated_seeds", response.json()["message"])
+
+    def test_get_swiss_rounds_returns_list(self) -> None:
+        """Test that GET API returns a list ordered by sequence_number."""
+        # Create two groups
+        self.client.post(
+            f"/api/tournament/swiss-round/{self.tournament.id}",
+            {"num_rounds": 2, "seeding": [1, 3, 5, 7], "sequence_number": 1, "name": "A"},
+            content_type="application/json",
+        )
+        self.client.post(
+            f"/api/tournament/swiss-round/{self.tournament.id}",
+            {"num_rounds": 2, "seeding": [2, 4, 6, 8], "sequence_number": 2, "name": "B"},
+            content_type="application/json",
+        )
+
+        response = self.client.get(f"/api/tournament/swiss-rounds?id={self.tournament.id}")
+        self.assertEqual(response.status_code, 200)
+
+        data = response.json()
+        self.assertIsInstance(data, list)
+        self.assertEqual(len(data), 2)
+        self.assertEqual(data[0]["name"], "A")
+        self.assertEqual(data[1]["name"], "B")
+
+    def test_multiple_swiss_groups_full_lifecycle(self) -> None:
+        """Test playing through two Swiss groups and populating a bracket."""
+        # Create Swiss A and B
+        self.client.post(
+            f"/api/tournament/swiss-round/{self.tournament.id}",
+            {"num_rounds": 2, "seeding": [1, 3, 5, 7], "sequence_number": 1, "name": "A"},
+            content_type="application/json",
+        )
+        self.client.post(
+            f"/api/tournament/swiss-round/{self.tournament.id}",
+            {"num_rounds": 2, "seeding": [2, 4, 6, 8], "sequence_number": 2, "name": "B"},
+            content_type="application/json",
+        )
+
+        swiss_a = SwissRound.objects.get(tournament=self.tournament, name="A")
+        swiss_b = SwissRound.objects.get(tournament=self.tournament, name="B")
+
+        # Create bracket
+        self.client.post(
+            f"/api/tournament/bracket/{self.tournament.id}",
+            {"name": "1-4", "sequence_number": 1},
+            content_type="application/json",
+        )
+        bracket = Bracket.objects.get(tournament=self.tournament)
+
+        # Start tournament
+        response = self.client.post(f"/api/tournament/start/{self.tournament.id}")
+        self.assertEqual(response.status_code, 200)
+
+        # Verify both groups have R1 matches with teams assigned
+        for sr in [swiss_a, swiss_b]:
+            r1_matches = Match.objects.filter(swiss_round=sr, sequence_number=1)
+            self.assertEqual(r1_matches.count(), 2)
+            for m in r1_matches:
+                self.assertIsNotNone(m.team_1)
+                self.assertIsNotNone(m.team_2)
+
+        # Score R1 for both groups
+        for sr in [swiss_a, swiss_b]:
+            matches = Match.objects.filter(swiss_round=sr, sequence_number=1).order_by("id")
+            for match in matches:
+                self.client.post(
+                    f"/api/match/{match.id}/score",
+                    {"team_1_score": 15, "team_2_score": 8},
+                    content_type="application/json",
+                )
+
+        # Verify R2 generated for both
+        for sr in [swiss_a, swiss_b]:
+            sr.refresh_from_db()
+            self.assertEqual(sr.current_round, 2)
+            r2_matches = Match.objects.filter(swiss_round=sr, sequence_number=2)
+            self.assertEqual(r2_matches.count(), 2)
+            for m in r2_matches:
+                self.assertIsNotNone(m.team_1)
+                self.assertIsNotNone(m.team_2)
+
+        # Score R2 for both groups
+        for sr in [swiss_a, swiss_b]:
+            matches = Match.objects.filter(swiss_round=sr, sequence_number=2).order_by("id")
+            for match in matches:
+                self.client.post(
+                    f"/api/match/{match.id}/score",
+                    {"team_1_score": 15, "team_2_score": 10},
+                    content_type="application/json",
+                )
+
+        # Verify bracket is populated after both groups complete
+        bracket.refresh_from_db()
+        bracket_matches = Match.objects.filter(bracket=bracket, sequence_number=1)
+        for m in bracket_matches:
+            self.assertIsNotNone(m.team_1)
+            self.assertIsNotNone(m.team_2)
+
+    def tearDown(self) -> None:
+        Match.objects.filter(tournament=self.tournament).delete()
+        SwissRound.objects.filter(tournament=self.tournament).delete()
+        Bracket.objects.filter(tournament=self.tournament).delete()
         super().tearDown()
