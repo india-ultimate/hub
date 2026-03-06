@@ -72,9 +72,7 @@ function getMatchCsvLabel(match) {
 }
 
 function downloadScheduleCsv(matches, fields, tournamentName) {
-  const sortedFields = [...fields].sort((a, b) =>
-    a.name.localeCompare(b.name)
-  );
+  const sortedFields = [...fields].sort((a, b) => a.name.localeCompare(b.name));
   const fieldNames = sortedFields.map(f => f.name);
 
   // Split into scheduled and unscheduled
@@ -101,19 +99,25 @@ function downloadScheduleCsv(matches, fields, tournamentName) {
   }
 
   // Sort time slots chronologically
-  const sortedSlots = [...timeSlots.values()].sort(
-    (a, b) => a.start - b.start
-  );
+  const sortedSlots = [...timeSlots.values()].sort((a, b) => a.start - b.start);
 
   // Build CSV
-  const headers = ["Date", "Start Time", "End Time", ...fieldNames, "Not Placed Matches"];
+  const headers = [
+    "Date",
+    "Start Time",
+    "End Time",
+    ...fieldNames,
+    "Not Placed Matches"
+  ];
   const rows = [headers.join(",")];
 
   const pad = n => String(n).padStart(2, "0");
   const formatDate = d =>
     `${pad(d.getUTCDate())}/${pad(d.getUTCMonth() + 1)}/${d.getUTCFullYear()}`;
   const formatTime = d =>
-    `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`;
+    `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(
+      d.getUTCSeconds()
+    )}`;
 
   const unplacedCopy = [...unscheduled];
 
@@ -128,7 +132,9 @@ function downloadScheduleCsv(matches, fields, tournamentName) {
       cells.push(match ? getMatchCsvLabel(match) : "");
     }
     // Pop one unplaced match into last column
-    cells.push(unplacedCopy.length > 0 ? getMatchCsvLabel(unplacedCopy.shift()) : "");
+    cells.push(
+      unplacedCopy.length > 0 ? getMatchCsvLabel(unplacedCopy.shift()) : ""
+    );
     rows.push(cells.join(","));
   }
 
@@ -833,7 +839,8 @@ const TournamentManager = () => {
                       <div>
                         <h3>Swiss - {swissRound.name}</h3>
                         <p class="text-sm text-gray-500">
-                          Round {swissRound.current_round}/{swissRound.num_rounds}
+                          Round {swissRound.current_round}/
+                          {swissRound.num_rounds}
                         </p>
                         <div class="relative overflow-x-auto">
                           <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
@@ -851,7 +858,9 @@ const TournamentManager = () => {
                               </tr>
                             </thead>
                             <tbody>
-                              <For each={Object.keys(swissRound.initial_seeding)}>
+                              <For
+                                each={Object.keys(swissRound.initial_seeding)}
+                              >
                                 {seed => (
                                   <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
                                     <th
@@ -861,7 +870,11 @@ const TournamentManager = () => {
                                       {seed}
                                     </th>
                                     <td class="px-6 py-4">
-                                      {teamsMap()[swissRound.initial_seeding[seed]]}
+                                      {
+                                        teamsMap()[
+                                          swissRound.initial_seeding[seed]
+                                        ]
+                                      }
                                     </td>
                                     <td class="px-6 py-4">
                                       {swissRound.initial_seeding[seed]}
@@ -887,7 +900,8 @@ const TournamentManager = () => {
                               {([round, teamId]) => (
                                 <p>
                                   Round {round} bye:{" "}
-                                  {teamsMap()[teamId] || `Team ${teamId}`} (15-0)
+                                  {teamsMap()[teamId] || `Team ${teamId}`}{" "}
+                                  (15-0)
                                 </p>
                               )}
                             </For>
@@ -968,8 +982,7 @@ const TournamentManager = () => {
                     </button>
                     <Show
                       when={
-                        poolsQuery.data?.length > 0 &&
-                        !poolsQuery.data?.message
+                        poolsQuery.data?.length > 0 && !poolsQuery.data?.message
                       }
                     >
                       <p class="text-sm text-red-500">
@@ -1420,7 +1433,9 @@ const TournamentManager = () => {
                       >
                         {match.swiss_round
                           ? (() => {
-                              const parts = match.name?.match(/Swiss ([A-Z]+) R(\d+) M(\d+)/);
+                              const parts = match.name?.match(
+                                /Swiss ([A-Z]+) R(\d+) M(\d+)/
+                              );
                               const label = parts
                                 ? `SW ${parts[1]} - ${parts[2]} M${parts[3]}: `
                                 : "";
@@ -1822,13 +1837,13 @@ const TournamentManager = () => {
           </div>
 
           <div class="my-5">
-            <h2 class="mb-4 text-xl font-bold text-blue-500">
-              Schedule CSV
-            </h2>
+            <h2 class="mb-4 text-xl font-bold text-blue-500">Schedule CSV</h2>
             <div class="mb-4">
               <button
                 type="button"
-                disabled={!matchesQuery.data?.length || !fieldsQuery.data?.length}
+                disabled={
+                  !matchesQuery.data?.length || !fieldsQuery.data?.length
+                }
                 onClick={() =>
                   downloadScheduleCsv(
                     matchesQuery.data,
@@ -1880,8 +1895,8 @@ const TournamentManager = () => {
                       numbers)
                     </li>
                     <li>
-                      Swiss Round Matches: "SW A - 1 M1" (SW + group letter
-                      + round number + match number)
+                      Swiss Round Matches: "SW A - 1 M1" (SW + group letter +
+                      round number + match number)
                     </li>
                     <li>Bracket Matches: "1 vs 2" (just seed numbers)</li>
                   </ul>
