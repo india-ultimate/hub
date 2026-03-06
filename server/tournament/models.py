@@ -172,12 +172,17 @@ class Pool(ExportModelOperationsMixin("pool"), models.Model):  # type: ignore[mi
 
 
 class SwissRound(ExportModelOperationsMixin("swiss_round"), models.Model):  # type: ignore[misc]
-    tournament = models.OneToOneField(Tournament, on_delete=models.CASCADE)
+    tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE)
+    sequence_number = models.PositiveIntegerField(default=1)
+    name = models.CharField(max_length=2, default="A")
     num_rounds = models.PositiveIntegerField()
     current_round = models.PositiveIntegerField(default=0)
     initial_seeding = models.JSONField()
     results = models.JSONField()
     byes = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        unique_together = ["name", "tournament"]
 
 
 class CrossPool(ExportModelOperationsMixin("cross_pool"), models.Model):  # type: ignore[misc]

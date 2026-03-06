@@ -186,6 +186,9 @@ class SwissRoundSchema(ModelSchema):
 
 class SwissRoundCreateSchema(Schema):
     num_rounds: int
+    seeding: list[int]
+    sequence_number: int
+    name: str
 
 
 class CrossPoolSchema(ModelSchema):
