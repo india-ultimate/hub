@@ -2030,14 +2030,13 @@ def create_swiss_round(
     except Tournament.DoesNotExist:
         return 400, {"message": "Tournament does not exist"}
 
-    if len(swiss_details.seeding) < 2:
+    min_swiss_teams = 2
+    if len(swiss_details.seeding) < min_swiss_teams:
         return 400, {"message": "Need at least 2 teams for a swiss group"}
     if swiss_details.num_rounds < 1:
         return 400, {"message": "Number of rounds must be at least 1"}
 
-    valid, errors = validate_new_pool(
-        tournament=tournament, new_pool=set(swiss_details.seeding)
-    )
+    valid, errors = validate_new_pool(tournament=tournament, new_pool=set(swiss_details.seeding))
     if not valid:
         message = "Cannot create swiss group, due to following errors: \n"
         message += "\n".join(f"{key}: {value}" for key, value in errors.items())
@@ -2894,7 +2893,7 @@ def contact(
         return 422, {"message": str(e)}
 
 
-def parse_match_name(name: str) -> tuple[str | None, list[int] | None]:
+def parse_match_name(name: str) -> tuple[str | None, list[str | int] | None]:
     """
     Parse match name to determine type and seeds.
     Returns: (match_type, seeds) where match_type is 'pool', 'cross_pool', 'swiss_round', or 'bracket'.

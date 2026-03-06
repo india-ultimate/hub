@@ -263,12 +263,11 @@ class TestSwissTournamentLifecycle(ApiBaseTestCase):
         results = self.swiss_round.results
 
         # Find the 2-win teams (4 pts) — should be exactly 2
+        expected_wins = 2
         four_pt_teams = [
-            (tid, stats)
-            for tid, stats in results.items()
-            if stats["wins"] == 2
+            (tid, stats) for tid, stats in results.items() if stats["wins"] == expected_wins
         ]
-        self.assertEqual(len(four_pt_teams), 2, "Exactly 2 teams should have 2 wins")
+        self.assertEqual(len(four_pt_teams), expected_wins, "Exactly 2 teams should have 2 wins")
 
         # Both have 4 pts, same GD (+14), same GF (30)
         # But their OS should differ: the one who faced a tougher R2 opponent
@@ -282,9 +281,7 @@ class TestSwissTournamentLifecycle(ApiBaseTestCase):
         self.assertLessEqual(top_team[1]["rank"], second_team[1]["rank"])
 
         # Verify that 0-win teams are ranked last (7-8)
-        zero_win_teams = [
-            (tid, stats) for tid, stats in results.items() if stats["wins"] == 0
-        ]
+        zero_win_teams = [(tid, stats) for tid, stats in results.items() if stats["wins"] == 0]
         self.assertEqual(len(zero_win_teams), 2)
         for _, stats in zero_win_teams:
             self.assertGreaterEqual(stats["rank"], 7)
@@ -299,9 +296,9 @@ class TestSwissTournamentLifecycle(ApiBaseTestCase):
         self._score_round_matches(1, [(15, 8), (15, 9), (15, 10), (15, 11)])
 
         # Score round 2: first match is a draw, rest are normal wins
-        r2_matches = Match.objects.filter(
-            swiss_round=self.swiss_round, sequence_number=2
-        ).order_by("id")
+        r2_matches = Match.objects.filter(swiss_round=self.swiss_round, sequence_number=2).order_by(
+            "id"
+        )
         scores = [(10, 10)] + [(15, 11)] * (r2_matches.count() - 1)
         self._score_round_matches(2, scores)
 
@@ -309,12 +306,14 @@ class TestSwissTournamentLifecycle(ApiBaseTestCase):
         results = self.swiss_round.results
 
         # Find the draw match teams
-        r2_matches = Match.objects.filter(
-            swiss_round=self.swiss_round, sequence_number=2
-        ).order_by("id")
+        r2_matches = Match.objects.filter(swiss_round=self.swiss_round, sequence_number=2).order_by(
+            "id"
+        )
         draw_match = r2_matches[0]
-        draw_t1 = draw_match.team_1.id
-        draw_t2 = draw_match.team_2.id
+        self.assertIsNotNone(draw_match.team_1)
+        self.assertIsNotNone(draw_match.team_2)
+        draw_t1 = draw_match.team_1.id  # type: ignore[union-attr]
+        draw_t2 = draw_match.team_2.id  # type: ignore[union-attr]
 
         # Both should have 1 draw
         self.assertEqual(results[str(draw_t1)]["draws"], 1)
@@ -337,8 +336,10 @@ class TestSwissTournamentLifecycle(ApiBaseTestCase):
                 break
         self.assertIsNotNone(pts_2_rank, "Should find a team with 1W+0D")
 
+        self.assertIsNotNone(pts_3_rank)
+        self.assertIsNotNone(pts_2_rank)
         self.assertLess(
-            pts_3_rank,
+            pts_3_rank,  # type: ignore[arg-type]
             pts_2_rank,
             "Team with 3 pts (1W 1D) should rank above team with 2 pts (1W 1L)",
         )
@@ -475,15 +476,17 @@ class TestOddSwissTournamentLifecycle(ApiBaseTestCase):
         self.assertEqual(bye_stats["GF"], 15)
 
         # Verify 3 matches have teams assigned, bye team is not in any match
-        r1_matches = Match.objects.filter(
-            swiss_round=self.swiss_round, sequence_number=1
-        ).order_by("id")
+        r1_matches = Match.objects.filter(swiss_round=self.swiss_round, sequence_number=1).order_by(
+            "id"
+        )
         self.assertEqual(r1_matches.count(), 3)
         for match in r1_matches:
             self.assertIsNotNone(match.team_1)
             self.assertIsNotNone(match.team_2)
-            self.assertNotEqual(match.team_1.id, bye_team_r1)
-            self.assertNotEqual(match.team_2.id, bye_team_r1)
+            self.assertIsNotNone(match.team_1)
+            self.assertIsNotNone(match.team_2)
+            self.assertNotEqual(match.team_1.id, bye_team_r1)  # type: ignore[union-attr]
+            self.assertNotEqual(match.team_2.id, bye_team_r1)  # type: ignore[union-attr]
 
         # Score round 1
         self._score_round_matches(1, [(15, 8), (15, 9), (15, 10)])
@@ -496,12 +499,14 @@ class TestOddSwissTournamentLifecycle(ApiBaseTestCase):
         self.assertNotEqual(bye_team_r1, bye_team_r2, "Round 2 bye should be different team")
 
         # Verify bye team not in round 2 matches
-        r2_matches = Match.objects.filter(
-            swiss_round=self.swiss_round, sequence_number=2
-        ).order_by("id")
+        r2_matches = Match.objects.filter(swiss_round=self.swiss_round, sequence_number=2).order_by(
+            "id"
+        )
         for match in r2_matches:
-            self.assertNotEqual(match.team_1.id, bye_team_r2)
-            self.assertNotEqual(match.team_2.id, bye_team_r2)
+            self.assertIsNotNone(match.team_1)
+            self.assertIsNotNone(match.team_2)
+            self.assertNotEqual(match.team_1.id, bye_team_r2)  # type: ignore[union-attr]
+            self.assertNotEqual(match.team_2.id, bye_team_r2)  # type: ignore[union-attr]
 
         # Score round 2
         self._score_round_matches(2, [(15, 10), (15, 11), (15, 12)])
