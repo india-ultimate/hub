@@ -1357,3 +1357,79 @@ class TestSwissTiebreakerRecursiveH2H(ApiBaseTestCase):
         Match.objects.filter(tournament=self.tournament).delete()
         SwissRound.objects.filter(tournament=self.tournament).delete()
         super().tearDown()
+
+
+class TestSwissNoRematch4Rounds(ApiBaseTestCase):
+    """Test that 8 teams over 4 rounds produces no rematches."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.user.is_staff = True
+        self.user.save()
+        self.client.force_login(self.user)
+
+        response = self.client.post(
+            f"/api/tournament/swiss-round/{self.tournament.id}",
+            {
+                "num_rounds": 4,
+                "seeding": [1, 2, 3, 4, 5, 6, 7, 8],
+                "sequence_number": 1,
+                "name": "A",
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.swiss_round = SwissRound.objects.get(tournament=self.tournament)
+
+        response = self.client.post(f"/api/tournament/start/{self.tournament.id}")
+        self.assertEqual(response.status_code, 200)
+
+    def _score_round_matches(self, round_number: int, scores: list[tuple[int, int]]) -> None:
+        matches = Match.objects.filter(
+            swiss_round=self.swiss_round, sequence_number=round_number
+        ).order_by("id")
+        for match, score in zip(matches, scores, strict=True):
+            response = self.client.post(
+                f"/api/match/{match.id}/score",
+                {"team_1_score": score[0], "team_2_score": score[1]},
+                content_type="application/json",
+            )
+            self.assertEqual(response.status_code, 200)
+
+    def _get_round_pairs(self, round_number: int) -> set[frozenset[int]]:
+        matches = Match.objects.filter(
+            swiss_round=self.swiss_round, sequence_number=round_number
+        ).order_by("id")
+        pairs: set[frozenset[int]] = set()
+        for match in matches:
+            self.assertIsNotNone(match.team_1)
+            self.assertIsNotNone(match.team_2)
+            pairs.add(frozenset([match.team_1.id, match.team_2.id]))  # type: ignore[union-attr, list-item]
+        return pairs
+
+    def test_no_rematches_across_4_rounds(self) -> None:
+        """8 teams, 4 rounds — every round should have unique matchups."""
+        # R1: higher seeds win with varying margins
+        self._score_round_matches(1, [(15, 8), (15, 9), (15, 10), (15, 11)])
+        # R2: mix of results
+        self._score_round_matches(2, [(15, 10), (15, 12), (15, 13), (15, 14)])
+        # R3
+        self._score_round_matches(3, [(15, 11), (15, 9), (15, 13), (15, 10)])
+
+        # Collect all pairs from rounds 1-3
+        all_pairs: set[frozenset[int]] = set()
+        for r in range(1, 4):
+            round_pairs = self._get_round_pairs(r)
+            all_pairs |= round_pairs
+
+        # R4 should exist and have no rematches
+        r4_pairs = self._get_round_pairs(4)
+        self.assertEqual(len(r4_pairs), 4, "R4 should have 4 matches")
+
+        rematches = all_pairs & r4_pairs
+        self.assertEqual(len(rematches), 0, f"R4 should have no rematches, but found: {rematches}")
+
+    def tearDown(self) -> None:
+        Match.objects.filter(tournament=self.tournament).delete()
+        SwissRound.objects.filter(tournament=self.tournament).delete()
+        super().tearDown()

@@ -258,13 +258,54 @@ def assign_swiss_round_teams(
                 match.save()
 
 
+def _backtrack_pair(
+    team_ids: list[int],
+    played_pairs: set[frozenset[int]],
+    paired: set[int],
+    pairs: list[tuple[int, int]],
+    index: int,
+) -> bool:
+    """Recursively try to pair all teams without rematches.
+
+    Preserves standings order: higher-ranked teams get first pick of
+    closest-ranked available opponent. Backtracks if a choice leads
+    to a dead end for later teams.
+    """
+    # Skip already-paired teams
+    while index < len(team_ids) and team_ids[index] in paired:
+        index += 1
+    if index >= len(team_ids):
+        return True  # All teams paired successfully
+
+    tid = team_ids[index]
+    for j in range(index + 1, len(team_ids)):
+        candidate = team_ids[j]
+        if candidate in paired:
+            continue
+        if frozenset([tid, candidate]) in played_pairs:
+            continue
+        # Try this pairing
+        paired.add(tid)
+        paired.add(candidate)
+        pairs.append((tid, candidate))
+        if _backtrack_pair(team_ids, played_pairs, paired, pairs, index + 1):
+            return True
+        # Undo and try next candidate
+        paired.discard(tid)
+        paired.discard(candidate)
+        pairs.pop()
+    return False
+
+
 def generate_swiss_pairings(
     swiss_round: SwissRound, exclude_team_id: int | None = None
 ) -> list[tuple[int, int]]:
     """Generate Swiss pairings based on current standings, avoiding rematches.
 
-    Greedy algorithm: sort teams by standings, pair adjacent teams,
-    skip rematches by trying the next available opponent.
+    Uses backtracking to find a valid complete matching without rematches.
+    Teams are sorted by standings and higher-ranked teams get priority
+    in choosing closest-ranked opponents. Falls back to greedy pairing
+    with rematches only if no valid matching exists.
     """
     results = swiss_round.results
 
@@ -303,11 +344,17 @@ def generate_swiss_pairings(
         reverse=True,
     )
 
-    # Greedy pairing
     team_ids = [team_id for team_id, _ in standings]
     paired: set[int] = set()
     pairs: list[tuple[int, int]] = []
 
+    # Try backtracking to find a complete no-rematch matching
+    if _backtrack_pair(team_ids, played_pairs, paired, pairs, 0):
+        return pairs
+
+    # Fallback: greedy pairing allowing rematches (should rarely happen)
+    paired.clear()
+    pairs.clear()
     for i, tid in enumerate(team_ids):
         if tid in paired:
             continue
@@ -321,7 +368,6 @@ def generate_swiss_pairings(
                 paired.add(candidate)
                 break
         else:
-            # If no non-rematch partner found, pair with first available (allows rematch)
             for j in range(i + 1, len(team_ids)):
                 candidate = team_ids[j]
                 if candidate not in paired:
