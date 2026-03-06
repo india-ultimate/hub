@@ -43,6 +43,7 @@ export const matchCardColorToBorderColorMap = {
   green: "border-green-400 dark:border-green-400",
   pink: "border-pink-400 dark:border-pink-400",
   purple: "border-purple-400 dark:border-purple-400",
+  violet: "border-violet-400 dark:border-violet-400",
   yellow: "border-yellow-400 dark:border-yellow-400",
   red: "border-red-400 dark:border-red-400",
   fuchsia: "border-fuchsia-400 dark:border-fuchsia-400",
@@ -62,6 +63,7 @@ export const matchCardColorToRingColorMap = {
   green: "ring-green-500 dark:ring-green-400",
   pink: "ring-pink-500 dark:ring-pink-400",
   purple: "ring-purple-500 dark:ring-purple-400",
+  violet: "ring-violet-500 dark:ring-violet-400",
   yellow: "ring-yellow-500 dark:ring-yellow-400",
   red: "ring-red-500 dark:ring-red-400",
   fuchsia: "ring-fuchsia-500 dark:ring-fuchsia-400",
@@ -83,6 +85,8 @@ export const matchCardColorToButtonStyles = {
   pink: "bg-pink-600 hover:bg-pink-800 dark:bg-pink-500 dark:hover:bg-pink-700 focus:ring-pink-300 dark:focus:ring-pink-800",
   purple:
     "bg-purple-600 hover:bg-purple-800 dark:bg-purple-500 dark:hover:bg-purple-700 focus:ring-purple-300 dark:focus:ring-purple-800",
+  violet:
+    "bg-violet-600 hover:bg-violet-800 dark:bg-violet-500 dark:hover:bg-violet-700 focus:ring-violet-300 dark:focus:ring-violet-800",
   yellow:
     "bg-yellow-600 hover:bg-yellow-800 dark:bg-yellow-500 dark:hover:bg-yellow-700 focus:ring-yellow-300 dark:focus:ring-yellow-800",
   red: "bg-red-600 hover:bg-red-800 dark:bg-red-500 dark:hover:bg-red-700 focus:ring-red-300 dark:focus:ring-red-800",
