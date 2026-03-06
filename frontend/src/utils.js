@@ -208,7 +208,10 @@ export const getMatchCardColor = match => {
     color =
       matchCardColors["position_pool"][match.position_pool.sequence_number - 1];
   } else if (match && match.swiss_round) {
-    color = matchCardColors["swiss_round"][match.sequence_number - 1];
+    const groupColors =
+      matchCardColors["swiss_round"][match.swiss_round.sequence_number - 1] ||
+      matchCardColors["swiss_round"][0];
+    color = groupColors[(match.sequence_number - 1) % groupColors.length];
   }
   return color;
 };
