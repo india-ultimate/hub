@@ -1,8 +1,7 @@
 import { A, useParams } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
-import { initFlowbite } from "flowbite";
 import { trophy } from "solid-heroicons/solid";
-import { createSignal, For, onMount, Show } from "solid-js";
+import { createSignal, For, Show } from "solid-js";
 
 import {
   fetchTournamentBySlug,
@@ -10,11 +9,13 @@ import {
 } from "../../queries";
 import { getTournamentBreadcrumbName } from "../../utils";
 import Breadcrumbs from "../Breadcrumbs";
+import PillTabs from "../tabs/PillTabs";
 
 const TournamentStandings = () => {
   const params = useParams();
   const [selectedTeam, setSelectedTeam] = createSignal("all");
   const [selectedGender, setSelectedGender] = createSignal("all");
+  const [activeTab, setActiveTab] = createSignal("total");
 
   const tournamentQuery = createQuery(
     () => ["tournaments", params.slug],
@@ -25,15 +26,6 @@ const TournamentStandings = () => {
     () => ["tournaments", params.slug, "leaderboard"],
     () => fetchTournamentLeaderboard(params.slug)
   );
-
-  onMount(() => {
-    setTimeout(() => initFlowbite(), 100);
-    setTimeout(() => initFlowbite(), 500);
-    setTimeout(() => initFlowbite(), 1000);
-    setTimeout(() => initFlowbite(), 3000);
-    setTimeout(() => initFlowbite(), 5000);
-    setTimeout(() => initFlowbite(), 8000);
-  });
 
   return (
     <Show
@@ -96,74 +88,19 @@ const TournamentStandings = () => {
         </div>
       </div>
 
-      <div class="mb-4 border-b border-gray-200 dark:border-gray-700">
-        <ul
-          class="-mb-px flex flex-wrap justify-center text-center text-sm font-medium"
-          id="myTab"
-          data-tabs-toggle="#myTabContent"
-          role="tablist"
-        >
-          <li class="mr-2" role="presentation">
-            <button
-              class="inline-block rounded-t-lg border-b-2 p-4"
-              id={"tab-total"}
-              data-tabs-target={"#total"}
-              type="button"
-              role="tab"
-              aria-controls={"total"}
-              aria-selected="true"
-            >
-              Total
-            </button>
-          </li>
-          <li class="mr-2" role="presentation">
-            <button
-              class="inline-block rounded-t-lg border-b-2 p-4"
-              id={"tab-scores"}
-              data-tabs-target={"#scores"}
-              type="button"
-              role="tab"
-              aria-controls={"scores"}
-              aria-selected="false"
-            >
-              Scores
-            </button>
-          </li>
-          <li class="mr-2" role="presentation">
-            <button
-              class="inline-block rounded-t-lg border-b-2 p-4"
-              id={"tab-assists"}
-              data-tabs-target={"#assists"}
-              type="button"
-              role="tab"
-              aria-controls={"assists"}
-              aria-selected="false"
-            >
-              Assists
-            </button>
-          </li>
-          <li class="mr-2" role="presentation">
-            <button
-              class="inline-block rounded-t-lg border-b-2 p-4"
-              id={"tab-blocks"}
-              data-tabs-target={"#blocks"}
-              type="button"
-              role="tab"
-              aria-controls={"blocks"}
-              aria-selected="false"
-            >
-              Blocks
-            </button>
-          </li>
-        </ul>
-      </div>
-      <div id="myTabContent">
-        <div
-          class="hidden rounded-lg"
-          id={"total"}
-          role="tabpanel"
-          aria-labelledby={"tab-total"}
-        >
+      <PillTabs
+        tabs={[
+          { id: "total", label: "Total" },
+          { id: "scores", label: "Scores" },
+          { id: "assists", label: "Assists" },
+          { id: "blocks", label: "Blocks" }
+        ]}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+      />
+
+      <Show when={activeTab() === "total"}>
+        <div class="rounded-lg">
           <div class="relative overflow-x-auto rounded-lg shadow-lg">
             <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
               <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
@@ -212,12 +149,10 @@ const TournamentStandings = () => {
             </Show>
           </div>
         </div>
-        <div
-          class="hidden rounded-lg"
-          id={"scores"}
-          role="tabpanel"
-          aria-labelledby={"tab-scores"}
-        >
+      </Show>
+
+      <Show when={activeTab() === "scores"}>
+        <div class="rounded-lg">
           <div class="relative overflow-x-auto rounded-lg shadow-lg">
             <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
               <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
@@ -266,12 +201,10 @@ const TournamentStandings = () => {
             </Show>
           </div>
         </div>
-        <div
-          class="hidden rounded-lg"
-          id={"assists"}
-          role="tabpanel"
-          aria-labelledby={"tab-assists"}
-        >
+      </Show>
+
+      <Show when={activeTab() === "assists"}>
+        <div class="rounded-lg">
           <div class="relative overflow-x-auto rounded-lg shadow-lg">
             <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
               <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
@@ -320,12 +253,10 @@ const TournamentStandings = () => {
             </Show>
           </div>
         </div>
-        <div
-          class="hidden rounded-lg"
-          id={"blocks"}
-          role="tabpanel"
-          aria-labelledby={"tab-blocks"}
-        >
+      </Show>
+
+      <Show when={activeTab() === "blocks"}>
+        <div class="rounded-lg">
           <div class="relative overflow-x-auto rounded-lg shadow-lg">
             <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
               <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
@@ -374,7 +305,7 @@ const TournamentStandings = () => {
             </Show>
           </div>
         </div>
-      </div>
+      </Show>
     </Show>
   );
 };

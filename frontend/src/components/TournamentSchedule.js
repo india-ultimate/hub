@@ -1,14 +1,13 @@
 import { A, useParams } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
 import clsx from "clsx";
-import { initFlowbite } from "flowbite";
 import { trophy } from "solid-heroicons/solid";
 import {
   createEffect,
+  createMemo,
   createSignal,
   For,
   Match,
-  onMount,
   Show,
   Suspense,
   Switch
@@ -26,6 +25,7 @@ import { TournamentMatches as TournamentMatchesSkeleton } from "../skeletons/Tou
 import { getMatchCardColor, getTournamentBreadcrumbName } from "../utils";
 import Breadcrumbs from "./Breadcrumbs";
 import MatchCard from "./match/MatchCard";
+import PillTabs from "./tabs/PillTabs";
 import ScheduleTable from "./tournament/ScheduleTable";
 
 const TournamentSchedule = () => {
@@ -34,9 +34,9 @@ const TournamentSchedule = () => {
   const [flash, setFlash] = createSignal(-1);
   const [matchDayTimeFieldMap, setMatchDayTimeFieldMap] = createStore({});
   const [dayFieldMap, setDayFieldMap] = createStore({});
-  // const [_, setDateTimeMatchMap] = createSignal({});
   const [doneBuildingScheduleMap, setDoneBuildingScheduleMap] =
     createSignal(false);
+  const [activeDay, setActiveDay] = createSignal(null);
 
   const tournamentQuery = createQuery(
     () => ["tournaments", params.slug],
@@ -73,9 +73,24 @@ const TournamentSchedule = () => {
       }
 
       setTournamentDays(days);
-
-      setTimeout(() => initFlowbite(), 500);
     }
+  });
+
+  createEffect(() => {
+    const days = tournamentDays();
+    if (days.length > 0 && activeDay() === null) {
+      const todayIndex = days.findIndex(day =>
+        sameDay(day, new Date(Date.now()))
+      );
+      setActiveDay(todayIndex >= 0 ? todayIndex + 1 : 1);
+    }
+  });
+
+  const dayTabs = createMemo(() => {
+    return tournamentDays().map((_, i) => ({
+      id: i + 1,
+      label: `Day ${i + 1}`
+    }));
   });
 
   const mapFieldIdToField = fields => {
@@ -121,34 +136,8 @@ const TournamentSchedule = () => {
         }
       });
       setDoneBuildingScheduleMap(true);
-      setTimeout(() => initFlowbite(), 500);
     }
   });
-
-  onMount(() => {
-    setTimeout(() => initFlowbite(), 100);
-    setTimeout(() => initFlowbite(), 500);
-    setTimeout(() => initFlowbite(), 1000);
-    setTimeout(() => initFlowbite(), 3000);
-    setTimeout(() => initFlowbite(), 5000);
-    setTimeout(() => initFlowbite(), 8000);
-  });
-
-  // createEffect(() => {
-  //   if (matchesQuery.status === "success" && !matchesQuery.data?.message) {
-  //     let dateMatchMap = {};
-  //
-  //     for (const match of matchesQuery.data) {
-  //       if (dateMatchMap[new Date(match.time)]) {
-  //         dateMatchMap[new Date(match.time)].push(match);
-  //       } else {
-  //         dateMatchMap[new Date(match.time)] = [match];
-  //       }
-  //     }
-  //
-  //     setDateTimeMatchMap(dateMatchMap);
-  //   }
-  // });
 
   return (
     <Show
@@ -182,43 +171,16 @@ const TournamentSchedule = () => {
         </span>
       </h1>
 
-      <div class="mb-4 border-b border-gray-200 dark:border-gray-700">
-        <ul
-          class="-mb-px flex flex-wrap justify-center text-center text-sm font-medium"
-          id="myTab"
-          data-tabs-toggle="#myTabContent"
-          role="tablist"
-        >
-          <For each={tournamentDays()}>
-            {(day, i) => (
-              <li class="mr-2" role="presentation">
-                <button
-                  class="inline-block rounded-t-lg border-b-2 p-4"
-                  id={"day-tab-" + (i() + 1)}
-                  data-tabs-target={"#day-" + (i() + 1)}
-                  type="button"
-                  role="tab"
-                  aria-controls={"day-" + (i() + 1)}
-                  aria-selected={
-                    sameDay(day, new Date(Date.now())) ? "true" : "false"
-                  }
-                >
-                  {"Day " + (i() + 1)}
-                </button>
-              </li>
-            )}
-          </For>
-        </ul>
-      </div>
-      <div id="myTabContent">
-        <For each={tournamentDays()}>
-          {(day, i) => (
-            <div
-              class="hidden rounded-lg p-4"
-              id={"day-" + (i() + 1)}
-              role="tabpanel"
-              aria-labelledby={"day-tab-" + (i() + 1)}
-            >
+      <PillTabs
+        tabs={dayTabs()}
+        activeTab={activeDay}
+        onTabChange={setActiveDay}
+      />
+
+      <For each={tournamentDays()}>
+        {(day, i) => (
+          <Show when={activeDay() === i() + 1}>
+            <div class="rounded-lg p-4">
               <Show
                 when={doneBuildingScheduleMap()}
                 fallback={<DayScheduleSkeleton />}
@@ -310,9 +272,9 @@ const TournamentSchedule = () => {
                 </For>
               </Suspense>
             </div>
-          )}
-        </For>
-      </div>
+          </Show>
+        )}
+      </For>
     </Show>
   );
 };

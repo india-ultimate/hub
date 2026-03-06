@@ -4,15 +4,15 @@ import {
   supported
 } from "@github/webauthn-json/browser-ponyfill";
 import { useNavigate } from "@solidjs/router";
-import { initFlowbite } from "flowbite";
 import { Icon } from "solid-heroicons";
 import { eye, eyeSlash, fingerPrint, home } from "solid-heroicons/solid";
-import { createEffect, createSignal, onMount, Show } from "solid-js";
+import { createEffect, createSignal, Show } from "solid-js";
 
 import { Spinner } from "../icons";
 import { useStore } from "../store";
 import { getCookie } from "../utils";
 import Breadcrumbs from "./Breadcrumbs";
+import PillTabs from "./tabs/PillTabs";
 
 const PasswordLogin = props => {
   const csrftoken = getCookie("csrftoken");
@@ -472,6 +472,7 @@ const PasskeyLogin = props => {
 
 const Login = () => {
   const [status, setStatus] = createSignal("");
+  const [activeTab, setActiveTab] = createSignal("email-otp");
   const [store, _] = useStore();
 
   const signInFailed = window.localStorage.getItem("emailSignInFailed");
@@ -487,90 +488,38 @@ const Login = () => {
     }
   });
 
-  onMount(async () => {
-    initFlowbite();
-  });
-
   return (
     <>
       <Breadcrumbs
         icon={home}
         pageList={[{ url: "/", name: "Home" }, { name: "Login" }]}
       />
-      <div class="mb-4 border-b border-gray-200 dark:border-gray-700">
-        <ul
-          class="-mb-px flex flex-wrap text-center text-sm font-medium"
-          id="signinTabs"
-          data-tabs-toggle="#signinTabContent"
-          role="tablist"
-        >
-          <li class="mr-2" role="presentation">
-            <button
-              class="inline-block rounded-t-lg border-b-2 p-4"
-              id="email-otp-tab"
-              data-tabs-target="#email-otp"
-              type="button"
-              role="tab"
-              aria-controls="email-otp"
-              aria-selected="false"
-            >
-              OTP
-            </button>
-          </li>
-          <li class="mr-2" role="presentation">
-            <button
-              class="inline-block rounded-t-lg border-b-2 p-4"
-              id="passkey-tab"
-              data-tabs-target="#passkey"
-              type="button"
-              role="tab"
-              aria-controls="passkey"
-              aria-selected="false"
-            >
-              One-Tap Login
-            </button>
-          </li>
-          <li class="mr-2" role="presentation">
-            <button
-              class="inline-block rounded-t-lg border-b-2 p-4"
-              id="password-tab"
-              data-tabs-target="#password"
-              type="button"
-              role="tab"
-              aria-controls="password"
-              aria-selected="false"
-            >
-              Password
-            </button>
-          </li>
-        </ul>
-      </div>
-      <div id="signinTabContent">
-        <div
-          class="hidden rounded-lg bg-gray-50 p-4 dark:bg-gray-800"
-          id="email-otp"
-          role="tabpanel"
-          aria-labelledby="email-otp-tab"
-        >
+
+      <PillTabs
+        tabs={[
+          { id: "email-otp", label: "OTP" },
+          { id: "passkey", label: "One-Tap Login" },
+          { id: "password", label: "Password" }
+        ]}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+      />
+
+      <Show when={activeTab() === "email-otp"}>
+        <div class="rounded-lg bg-gray-50 p-4 dark:bg-gray-800">
           <SendEmailOTP setStatus={setStatus} />
         </div>
-        <div
-          class="hidden rounded-lg bg-gray-50 p-4 dark:bg-gray-800"
-          id="password"
-          role="tabpanel"
-          aria-labelledby="password-tab"
-        >
+      </Show>
+      <Show when={activeTab() === "password"}>
+        <div class="rounded-lg bg-gray-50 p-4 dark:bg-gray-800">
           <PasswordLogin setStatus={setStatus} />
         </div>
-        <div
-          class="hidden rounded-lg bg-gray-50 p-4 dark:bg-gray-800"
-          id="passkey"
-          role="tabpanel"
-          aria-labelledby="passkey-tab"
-        >
+      </Show>
+      <Show when={activeTab() === "passkey"}>
+        <div class="rounded-lg bg-gray-50 p-4 dark:bg-gray-800">
           <PasskeyLogin setStatus={setStatus} />
         </div>
-      </div>
+      </Show>
       <p>{status()}</p>
     </>
   );

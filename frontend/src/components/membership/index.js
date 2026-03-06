@@ -9,6 +9,7 @@ import { displayDate, getAge } from "../../utils";
 import Info from "../alerts/Info";
 import Breadcrumbs from "../Breadcrumbs";
 import RazorpayPayment from "../RazorpayPayment";
+import PillTabs from "../tabs/PillTabs";
 import GroupMembership from "./GroupMembership";
 import ServiceRequestModal from "./ServiceRequestModal";
 
@@ -24,6 +25,7 @@ const Membership = () => {
   const [event, _setEvent] = createSignal();
 
   const [status, setStatus] = createSignal();
+  const [activeTab, setActiveTab] = createSignal("individual");
 
   const params = useParams();
 
@@ -101,7 +103,7 @@ const Membership = () => {
           </summary>
           <div class="my-2 space-y-2 text-sm">
             <p>
-              Membership fees help cover India Ultimate’s essential costs: WFDF
+              Membership fees help cover India Ultimate's essential costs: WFDF
               dues, audit, accountant, legal fees etc., along with the salary of
               at least one full-time staff member. Currently, IU has a team of a
               CEO, two senior operations executives, and one part-time staff.
@@ -210,162 +212,119 @@ const Membership = () => {
           </div>
         }
       >
-        <div class="mb-4 mt-2 border-b border-gray-200 dark:border-gray-700">
-          <ul
-            class="-mb-px flex flex-wrap justify-center text-center text-sm font-medium"
-            id="myTab"
-            data-tabs-toggle="#myTabContent"
-            role="tablist"
-          >
-            <li class="mr-2" role="presentation">
-              <button
-                class="inline-block rounded-t-lg border-b-2 p-4"
-                id="tab-individual"
-                data-tabs-target="#individual"
-                type="button"
-                role="tab"
-                aria-controls="individual"
-                aria-selected="false"
-              >
-                Individual Membership
-              </button>
-            </li>
-            <li class="mr-2" role="presentation">
-              <button
-                class="inline-block rounded-t-lg border-b-2 p-4"
-                id="tab-group"
-                data-tabs-target="#group"
-                type="button"
-                role="tab"
-                aria-controls="group"
-                aria-selected="false"
-              >
-                Group Membership
-              </button>
-            </li>
-          </ul>
-        </div>
+        <PillTabs
+          tabs={[
+            { id: "individual", label: "Individual Membership" },
+            { id: "group", label: "Group Membership" }
+          ]}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+        />
 
-        <div id="individual">
-          <h1 class="text-lg font-semibold text-blue-500">
-            Individual Membership
-          </h1>
-          <h3 class="text-sm italic">
-            Renew membership for {player()?.full_name}
-          </h3>
-          <Show
-            when={!membership()?.is_active}
-            fallback={
-              <div id="membership-exist" class="mt-4">
-                Membership for {player().full_name} is active until{" "}
-                {displayDate(membership().end_date)}
-              </div>
-            }
-          >
-            {/* <label class="relative inline-flex cursor-pointer items-center">
-            <input
-              type="checkbox"
-              value=""
-              class="peer sr-only"
-              checked={annual()}
-              onChange={() => setAnnual(!annual())}
-            />
-            <div class="peer h-6 w-11 rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-0.5 after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-blue-600 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:ring-4 peer-focus:ring-blue-300 dark:border-gray-600 dark:bg-gray-700 dark:peer-focus:ring-blue-800" />
-            <span class="ml-3 text-sm font-medium text-gray-900 dark:text-gray-300">
-              Annual membership
-            </span>
-          </label> */}
-            <Show when={annual()}>
-              <div class="mt-4">
-                <label class="mb-2 block text-sm font-medium text-gray-900 dark:text-white">
-                  Membership Type
-                </label>
-                <Show
-                  when={!player()?.sponsored}
-                  fallback={
-                    <div class="block w-full rounded-lg border border-gray-300 bg-gray-100 p-2.5 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
-                      Supported Membership – ₹{" "}
-                      {season()?.sponsored_annual_membership_amount / 100}
-                    </div>
-                  }
-                >
-                  <select
-                    class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
-                    value={membershipType()}
-                    onChange={e => setMembershipType(e.target.value)}
+        <Show when={activeTab() === "individual"}>
+          <div>
+            <h1 class="text-lg font-semibold text-blue-500">
+              Individual Membership
+            </h1>
+            <h3 class="text-sm italic">
+              Renew membership for {player()?.full_name}
+            </h3>
+            <Show
+              when={!membership()?.is_active}
+              fallback={
+                <div id="membership-exist" class="mt-4">
+                  Membership for {player().full_name} is active until{" "}
+                  {displayDate(membership().end_date)}
+                </div>
+              }
+            >
+              <Show when={annual()}>
+                <div class="mt-4">
+                  <label class="mb-2 block text-sm font-medium text-gray-900 dark:text-white">
+                    Membership Type
+                  </label>
+                  <Show
+                    when={!player()?.sponsored}
+                    fallback={
+                      <div class="block w-full rounded-lg border border-gray-300 bg-gray-100 p-2.5 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+                        Supported Membership – ₹{" "}
+                        {season()?.sponsored_annual_membership_amount / 100}
+                      </div>
+                    }
                   >
-                    <option value="patron">
-                      Patron Membership - ₹{" "}
-                      {season()?.supporter_annual_membership_amount / 100}
-                    </option>
-                    <option value="standard">
-                      Standard Membership - ₹{" "}
-                      {season()?.annual_membership_amount / 100}
-                    </option>
-                  </select>
-                </Show>
-              </div>
-              <p class="mt-4 font-bold">
-                Paying India Ultimate membership fee:
-              </p>
-              <p class="mt-1">
-                Validity: {displayDate(season()?.start_date)} to{" "}
-                {displayDate(season()?.end_date)}
-              </p>
-              <p class="mt-1 font-extrabold">Total Amount: ₹ {getAmount()}</p>
+                    <select
+                      class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
+                      value={membershipType()}
+                      onChange={e => setMembershipType(e.target.value)}
+                    >
+                      <option value="patron">
+                        Patron Membership - ₹{" "}
+                        {season()?.supporter_annual_membership_amount / 100}
+                      </option>
+                      <option value="standard">
+                        Standard Membership - ₹{" "}
+                        {season()?.annual_membership_amount / 100}
+                      </option>
+                    </select>
+                  </Show>
+                </div>
+                <p class="mt-4 font-bold">
+                  Paying India Ultimate membership fee:
+                </p>
+                <p class="mt-1">
+                  Validity: {displayDate(season()?.start_date)} to{" "}
+                  {displayDate(season()?.end_date)}
+                </p>
+                <p class="mt-1 font-extrabold">Total Amount: ₹ {getAmount()}</p>
+              </Show>
+              <Show when={ageRestricted()}>
+                <div
+                  class="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-800 dark:bg-gray-800 dark:text-red-400"
+                  role="alert"
+                >
+                  {minAgeWarning}
+                </div>
+              </Show>
+              <RazorpayPayment
+                disabled={payDisabled()}
+                annual={annual()}
+                season={season()}
+                event={event()}
+                player_id={player().id}
+                amount={getAmount()}
+                setStatus={setStatus}
+                is_supporter={membershipType() === "patron"}
+                successCallback={() => {
+                  playerQuery.refetch();
+                }}
+              />
+              <p>{status()}</p>
             </Show>
-            {/* <MembershipEventSelector
-            event={event()}
-            setEvent={setEvent}
-            annual={annual()}
-            startDate={startDate()}
-            endDate={endDate()}
-          /> */}
-            <Show when={ageRestricted()}>
-              <div
-                class="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-800 dark:bg-gray-800 dark:text-red-400"
-                role="alert"
-              >
-                {minAgeWarning}
-              </div>
-            </Show>
-            <RazorpayPayment
-              disabled={payDisabled()}
-              annual={annual()}
+          </div>
+        </Show>
+
+        <Show when={activeTab() === "group"}>
+          <div class="space-y-2">
+            <div>
+              <h1 class="text-lg font-semibold text-blue-500">
+                Group Membership
+              </h1>
+              <h3 class="text-sm italic">Renew membership for a group</h3>
+            </div>
+
+            <div class="mb-4">
+              <ServiceRequestModal currentPlayer={player()} />
+            </div>
+
+            <GroupMembership
               season={season()}
-              event={event()}
-              player_id={player().id}
-              amount={getAmount()}
-              setStatus={setStatus}
-              is_supporter={membershipType() === "patron"}
+              membershipType={membershipType()}
               successCallback={() => {
                 playerQuery.refetch();
               }}
             />
-            <p>{status()}</p>
-          </Show>
-        </div>
-
-        <div class="space-y-2" id="group">
-          <div>
-            <h1 class="text-lg font-semibold text-blue-500">
-              Group Membership
-            </h1>
-            <h3 class="text-sm italic">Renew membership for a group</h3>
           </div>
-
-          <div class="mb-4">
-            <ServiceRequestModal currentPlayer={player()} />
-          </div>
-
-          <GroupMembership
-            season={season()}
-            membershipType={membershipType()}
-            successCallback={() => {
-              playerQuery.refetch();
-            }}
-          />
-        </div>
+        </Show>
       </Show>
     </div>
   );

@@ -1,6 +1,5 @@
 import { A, useParams } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
-import { initFlowbite } from "flowbite";
 import { Icon } from "solid-heroicons";
 import { arrowSmallDown, arrowSmallUp, trophy } from "solid-heroicons/solid";
 import {
@@ -8,7 +7,6 @@ import {
   createSignal,
   For,
   Match,
-  onMount,
   Show,
   Suspense,
   Switch
@@ -24,6 +22,7 @@ import {
 } from "../skeletons/Standings";
 import { ifTodayInBetweenDates, latestDate } from "../utils";
 import Breadcrumbs from "./Breadcrumbs";
+import PillTabs from "./tabs/PillTabs";
 
 /**
  * @param {object} props
@@ -58,6 +57,7 @@ const Tournament = () => {
   const [teamsMap, setTeamsMap] = createSignal({});
   const [teamsInitialSeeding, setTeamsInitialSeeding] = createSignal(undefined);
   const [playingTeam, setPlayingTeam] = createSignal(null);
+  const [activeTab, setActiveTab] = createSignal("current");
 
   const tournamentQuery = createQuery(
     () => ["tournaments", params.slug],
@@ -67,15 +67,6 @@ const Tournament = () => {
     () => ["user-access", params.slug],
     () => fetchUserAccessByTournamentSlug(params.slug)
   );
-
-  onMount(() => {
-    setTimeout(() => initFlowbite(), 100);
-    setTimeout(() => initFlowbite(), 500);
-    setTimeout(() => initFlowbite(), 1000);
-    setTimeout(() => initFlowbite(), 3000);
-    setTimeout(() => initFlowbite(), 5000);
-    setTimeout(() => initFlowbite(), 8000);
-  });
 
   createEffect(() => {
     if (userAccessQuery.status == "success") {
@@ -113,6 +104,11 @@ const Tournament = () => {
         tournamentQuery.data?.event?.player_registration_end_date
       )
     );
+  };
+
+  const currentLabel = () => {
+    if (tournamentQuery.data?.status === "COM") return "Final";
+    return "Current";
   };
 
   return (
@@ -208,7 +204,6 @@ const Tournament = () => {
       <Show when={playingTeam()}>
         <A
           href={`/tournament/${params.slug}/team/${playingTeam().slug}`}
-          //
           class="mt-5 block w-full rounded-lg bg-gradient-to-br from-pink-600 to-orange-400 p-0.5 shadow-md"
         >
           <div class="rounded-md bg-white p-4 dark:bg-gray-800">
@@ -298,71 +293,18 @@ const Tournament = () => {
 
       <h2 class="mt-5 text-center text-xl font-bold">Overall Standings</h2>
 
-      <div class="mb-4 border-b border-gray-200 dark:border-gray-700">
-        <ul
-          class="-mb-px flex flex-wrap justify-center text-center text-sm font-medium"
-          id="myTab"
-          data-tabs-toggle="#myTabContent"
-          role="tablist"
-        >
-          <li class="mr-2" role="presentation">
-            <button
-              class="inline-block rounded-t-lg border-b-2 p-4"
-              id={"tab-current"}
-              data-tabs-target={"#current"}
-              type="button"
-              role="tab"
-              aria-controls={"current"}
-              aria-selected="false"
-            >
-              <Suspense fallback={"Current"}>
-                <Switch>
-                  <Match when={tournamentQuery.data?.status === "COM"}>
-                    Final
-                  </Match>
-                  <Match when={tournamentQuery.data?.status === "LIV"}>
-                    Current
-                  </Match>
-                </Switch>
-              </Suspense>
-            </button>
-          </li>
-          <li class="mr-2" role="presentation">
-            <button
-              class="inline-block rounded-t-lg border-b-2 p-4"
-              id={"tab-initial"}
-              data-tabs-target={"#initial"}
-              type="button"
-              role="tab"
-              aria-controls={"initial"}
-              aria-selected="false"
-            >
-              Initial
-            </button>
-          </li>
-          <li class="mr-2" role="presentation">
-            <button
-              class="inline-block rounded-t-lg border-b-2 p-4"
-              id={"tab-sotg"}
-              data-tabs-target={"#sotg"}
-              type="button"
-              role="tab"
-              aria-controls={"sotg"}
-              aria-selected="false"
-            >
-              SoTG
-            </button>
-          </li>
-        </ul>
-      </div>
+      <PillTabs
+        tabs={[
+          { id: "current", label: currentLabel() },
+          { id: "initial", label: "Initial" },
+          { id: "sotg", label: "SoTG" }
+        ]}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+      />
 
-      <div id="myTabContent">
-        <div
-          class="hidden rounded-lg p-2"
-          id={"current"}
-          role="tabpanel"
-          aria-labelledby={"tab-current"}
-        >
+      <Show when={activeTab() === "current"}>
+        <div class="rounded-lg p-2">
           <div class="relative overflow-x-auto rounded-lg shadow-md">
             <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
               <tbody>
@@ -413,12 +355,10 @@ const Tournament = () => {
             </table>
           </div>
         </div>
-        <div
-          class="hidden rounded-lg p-2"
-          id={"initial"}
-          role="tabpanel"
-          aria-labelledby={"tab-initial"}
-        >
+      </Show>
+
+      <Show when={activeTab() === "initial"}>
+        <div class="rounded-lg p-2">
           <div class="relative overflow-x-auto rounded-lg shadow-md">
             <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
               <tbody>
@@ -461,12 +401,10 @@ const Tournament = () => {
             </table>
           </div>
         </div>
-        <div
-          class="hidden rounded-lg p-2"
-          id={"sotg"}
-          role="tabpanel"
-          aria-labelledby={"tab-sotg"}
-        >
+      </Show>
+
+      <Show when={activeTab() === "sotg"}>
+        <div class="rounded-lg p-2">
           <Suspense fallback={<SpiritStandingsSkeleton />}>
             <Show
               when={
@@ -533,7 +471,7 @@ const Tournament = () => {
             </Show>
           </Suspense>
         </div>
-      </div>
+      </Show>
     </Show>
   );
 };
