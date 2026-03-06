@@ -227,109 +227,161 @@ const TournamentStandings = () => {
             aria-labelledby={"tab-swiss"}
           >
             <For each={swissRoundsQuery.data}>
-              {swissRound => (
-                <div class="mb-6">
-                  <h2 class="mb-3 text-center text-lg font-bold text-blue-600 dark:text-blue-500">
-                    Swiss {swissRound.name}
-                  </h2>
-                  <p class="mb-2 text-center text-sm">
-                    Round {swissRound.current_round}/{swissRound.num_rounds}
-                  </p>
-                  <div class="relative my-5 overflow-x-auto rounded-lg shadow-lg">
-                    <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
-                      <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
-                        <tr>
-                          <th scope="col" class="px-4 py-3">
-                            Seed
-                          </th>
-                          <th scope="col" class="px-4 py-3">
-                            Team
-                          </th>
-                          <th scope="col" class="px-4 py-3">
-                            Pts
-                          </th>
-                          <th scope="col" class="px-4 py-3">
-                            W
-                          </th>
-                          <th scope="col" class="px-4 py-3">
-                            L
-                          </th>
-                          <th scope="col" class="px-4 py-3">
-                            D
-                          </th>
-                          <th scope="col" class="px-4 py-3">
-                            OS
-                          </th>
-                          <th scope="col" class="px-4 py-3">
-                            GD
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <For
-                          each={Object.entries(swissRound.results || {})
-                            .map(([team_id, stats]) => ({
-                              ...stats,
-                              team_id
-                            }))
-                            .sort(
-                              (a, b) => parseInt(a.rank) - parseInt(b.rank)
-                            )}
-                        >
-                          {result => (
-                            <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
-                              <td class="px-4 py-4">{result.rank}</td>
-                              <td class="px-4 py-4">
-                                <A
-                                  href={`/tournament/${params.slug}/team/${
-                                    teamsMap()[result.team_id]?.slug
-                                  }`}
-                                >
-                                  {teamsMap()[result.team_id]?.name}
-                                </A>
-                              </td>
-                              <td class="px-4 py-4">
-                                {result.wins * 2 + (result.draws || 0)}
-                              </td>
-                              <td class="px-4 py-4">{result.wins}</td>
-                              <td class="px-4 py-4">{result.losses}</td>
-                              <td class="px-4 py-4">{result.draws || 0}</td>
-                              <td class="px-4 py-4">
-                                {result.opp_strength || 0}
-                              </td>
-                              <td class="px-4 py-4">
-                                {parseInt(result["GF"]) -
-                                  parseInt(result["GA"])}
-                              </td>
-                            </tr>
+              {swissRound => {
+                const [selectedRound, setSelectedRound] = createSignal(null);
+
+                const displayResults = () => {
+                  const round = selectedRound();
+                  if (
+                    round !== null &&
+                    swissRound.round_results &&
+                    swissRound.round_results[String(round)]
+                  ) {
+                    return swissRound.round_results[String(round)];
+                  }
+                  return swissRound.results;
+                };
+
+                const completedRounds = () => {
+                  if (!swissRound.round_results) return [];
+                  return Object.keys(swissRound.round_results)
+                    .map(Number)
+                    .sort((a, b) => a - b);
+                };
+
+                return (
+                  <div class="mb-6">
+                    <h2 class="mb-3 text-center text-lg font-bold text-blue-600 dark:text-blue-500">
+                      Swiss {swissRound.name}
+                    </h2>
+                    <p class="mb-2 text-center text-sm">
+                      Round {swissRound.current_round}/{swissRound.num_rounds}
+                    </p>
+                    <Show when={completedRounds().length > 0}>
+                      <div class="mb-3 flex flex-wrap justify-center gap-1">
+                        <For each={completedRounds()}>
+                          {round => (
+                            <button
+                              class={`rounded-full px-3 py-1 text-xs font-medium ${
+                                selectedRound() === round
+                                  ? "bg-blue-600 text-white"
+                                  : "bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-300"
+                              }`}
+                              onClick={() => setSelectedRound(round)}
+                            >
+                              R{round}
+                            </button>
                           )}
                         </For>
-                      </tbody>
-                    </table>
-                  </div>
-                  <Show
-                    when={
-                      swissRound.byes && Object.keys(swissRound.byes).length > 0
-                    }
-                  >
-                    <div class="mx-auto mt-3 max-w-md text-sm text-gray-500 dark:text-gray-400">
-                      <For
-                        each={Object.entries(swissRound.byes || {}).sort(
-                          ([a], [b]) => a - b
-                        )}
-                      >
-                        {([round, teamId]) => (
-                          <p>
-                            Round {round} bye:{" "}
-                            {teamsMap()[teamId]?.name || `Team ${teamId}`}{" "}
-                            (15-0)
-                          </p>
-                        )}
-                      </For>
+                        <button
+                          class={`rounded-full px-3 py-1 text-xs font-medium ${
+                            selectedRound() === null
+                              ? "bg-blue-600 text-white"
+                              : "bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-300"
+                          }`}
+                          onClick={() => setSelectedRound(null)}
+                        >
+                          Current
+                        </button>
+                      </div>
+                    </Show>
+                    <div class="relative my-5 overflow-x-auto rounded-lg shadow-lg">
+                      <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
+                        <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
+                          <tr>
+                            <th scope="col" class="px-4 py-3">
+                              Seed
+                            </th>
+                            <th scope="col" class="px-4 py-3">
+                              Team
+                            </th>
+                            <th scope="col" class="px-4 py-3">
+                              Pts
+                            </th>
+                            <th scope="col" class="px-4 py-3">
+                              W
+                            </th>
+                            <th scope="col" class="px-4 py-3">
+                              L
+                            </th>
+                            <th scope="col" class="px-4 py-3">
+                              D
+                            </th>
+                            <th scope="col" class="px-4 py-3">
+                              OS
+                            </th>
+                            <th scope="col" class="px-4 py-3">
+                              GD
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <For
+                            each={Object.entries(displayResults() || {})
+                              .map(([team_id, stats]) => ({
+                                ...stats,
+                                team_id
+                              }))
+                              .sort(
+                                (a, b) => parseInt(a.rank) - parseInt(b.rank)
+                              )}
+                          >
+                            {result => (
+                              <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
+                                <td class="px-4 py-4">{result.rank}</td>
+                                <td class="px-4 py-4">
+                                  <A
+                                    href={`/tournament/${params.slug}/team/${
+                                      teamsMap()[result.team_id]?.slug
+                                    }`}
+                                  >
+                                    {teamsMap()[result.team_id]?.name}
+                                  </A>
+                                </td>
+                                <td class="px-4 py-4">
+                                  {result.wins * 2 + (result.draws || 0)}
+                                </td>
+                                <td class="px-4 py-4">{result.wins}</td>
+                                <td class="px-4 py-4">{result.losses}</td>
+                                <td class="px-4 py-4">{result.draws || 0}</td>
+                                <td class="px-4 py-4">
+                                  {result.opp_strength || 0}
+                                </td>
+                                <td class="px-4 py-4">
+                                  {parseInt(result["GF"]) -
+                                    parseInt(result["GA"])}
+                                </td>
+                              </tr>
+                            )}
+                          </For>
+                        </tbody>
+                      </table>
                     </div>
-                  </Show>
-                </div>
-              )}
+                    <Show
+                      when={
+                        swissRound.byes &&
+                        Object.keys(swissRound.byes).length > 0
+                      }
+                    >
+                      <div class="mx-auto mt-3 max-w-md text-sm text-gray-500 dark:text-gray-400">
+                        <For
+                          each={Object.entries(swissRound.byes || {}).sort(
+                            ([a], [b]) => a - b
+                          )}
+                        >
+                          {([round, teamId]) => (
+                            <p>
+                              Round {round} bye:{" "}
+                              {teamsMap()[teamId]?.name || `Team ${teamId}`}{" "}
+                              (15-0)
+                            </p>
+                          )}
+                        </For>
+                      </div>
+                    </Show>
+                  </div>
+                );
+              }}
             </For>
             <p class="mt-2 text-center text-xs text-gray-500 dark:text-gray-400">
               Pts = Win(2) + Draw(1). OS = sum of opponents' points (higher =
