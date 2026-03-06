@@ -320,6 +320,7 @@ function recomputeTournament(config, scoreOverrides) {
     initialStage,
     numPools,
     swissRounds: numSwissRounds,
+    numSwissGroups,
     teamNames
   } = config;
 
@@ -405,151 +406,178 @@ function recomputeTournament(config, scoreOverrides) {
       });
     });
   } else {
-    // Swiss Round
-    const swissRef = { id: 1, type: "swiss" };
-    const allSwissMatches = [];
-    const playedPairs = new Set();
-    const isOdd = numTeams % 2 !== 0;
-    const teamsWithByes = new Set();
+    // Swiss Groups
+    const groupDist = distributeTeamsToPoolsSerpentine(
+      numTeams,
+      numSwissGroups
+    );
+    const multiGroup = numSwissGroups > 1;
 
-    // Initialize results
-    let swissResults = {};
-    teams.forEach(t => {
-      swissResults[t.id] = {
-        rank: t.id,
-        wins: 0,
-        losses: 0,
-        draws: 0,
-        GF: 0,
-        GA: 0
+    groupDist.forEach((seedsInGroup, groupIdx) => {
+      const groupName = POOL_NAMES[groupIdx];
+      const swissRef = {
+        id: groupIdx + 1,
+        name: groupName,
+        type: "swiss"
       };
-    });
+      const groupTeamIds = seedsInGroup.map(s => initialSeeding[s]);
+      const allSwissMatches = [];
+      const playedPairs = new Set();
+      const isOdd = seedsInGroup.length % 2 !== 0;
+      const teamsWithByes = new Set();
 
-    for (let round = 1; round <= numSwissRounds; round++) {
-      let pairings;
-      let byeTeamId = null;
+      // Build group-local seeding: position → teamId
+      const groupSeeding = {};
+      seedsInGroup.forEach((seed, i) => {
+        groupSeeding[i + 1] = initialSeeding[seed];
+      });
+      const groupSize = seedsInGroup.length;
 
-      if (round === 1) {
-        // Bye: last seed in round 1
-        if (isOdd) {
-          byeTeamId = initialSeeding[numTeams];
-          teamsWithByes.add(byeTeamId);
-          applyByeToResults(swissResults, byeTeamId);
-          rerankResults(swissResults, allSwissMatches);
-        }
-        // Pair remaining seeds: 1 vs N-1, 2 vs N-2, etc.
-        pairings = [];
-        const activeCount = isOdd ? numTeams - 1 : numTeams;
-        for (let i = 0; i < activeCount / 2; i++) {
-          const seed1 = i + 1;
-          const seed2 = activeCount - i;
-          pairings.push([initialSeeding[seed1], initialSeeding[seed2]]);
-        }
-      } else {
-        if (isOdd) {
-          byeTeamId = selectByeTeam(
+      // Initialize results
+      let swissResults = {};
+      groupTeamIds.forEach((tid, i) => {
+        swissResults[tid] = {
+          rank: i + 1,
+          wins: 0,
+          losses: 0,
+          draws: 0,
+          GF: 0,
+          GA: 0
+        };
+      });
+
+      for (let round = 1; round <= numSwissRounds; round++) {
+        let pairings;
+        let byeTeamId = null;
+
+        if (round === 1) {
+          if (isOdd) {
+            byeTeamId = groupSeeding[groupSize];
+            teamsWithByes.add(byeTeamId);
+            applyByeToResults(swissResults, byeTeamId);
+            rerankResults(swissResults, allSwissMatches);
+          }
+          pairings = [];
+          const activeCount = isOdd ? groupSize - 1 : groupSize;
+          for (let i = 0; i < activeCount / 2; i++) {
+            const seed1 = i + 1;
+            const seed2 = activeCount - i;
+            pairings.push([groupSeeding[seed1], groupSeeding[seed2]]);
+          }
+        } else {
+          if (isOdd) {
+            byeTeamId = selectByeTeam(
+              swissResults,
+              teamsWithByes,
+              allSwissMatches
+            );
+            teamsWithByes.add(byeTeamId);
+            applyByeToResults(swissResults, byeTeamId);
+            rerankResults(swissResults, allSwissMatches);
+          }
+          pairings = generateSwissPairings(
             swissResults,
-            teamsWithByes,
+            playedPairs,
+            byeTeamId,
             allSwissMatches
           );
-          teamsWithByes.add(byeTeamId);
-          applyByeToResults(swissResults, byeTeamId);
-          rerankResults(swissResults, allSwissMatches);
         }
-        pairings = generateSwissPairings(
-          swissResults,
-          playedPairs,
-          byeTeamId,
-          allSwissMatches
+
+        const roundMatches = [];
+        const namePrefix = multiGroup ? `Swiss ${groupName} ` : "Swiss ";
+        pairings.forEach(([t1Id, t2Id], matchIdx) => {
+          const matchId = idCounter.next++;
+          const [s1, s2] = scoreOverrides[matchId] || generateScore(matchId);
+
+          let ps1, ps2;
+          if (round === 1) {
+            ps1 = parseInt(
+              Object.entries(groupSeeding).find(([, v]) => v === t1Id)[0]
+            );
+            ps2 = parseInt(
+              Object.entries(groupSeeding).find(([, v]) => v === t2Id)[0]
+            );
+          } else {
+            ps1 = swissResults[t1Id]?.rank || 1;
+            ps2 = swissResults[t2Id]?.rank || 1;
+          }
+
+          const m = {
+            id: matchId,
+            name: `${namePrefix}R${round} M${matchIdx + 1}`,
+            pool: null,
+            swiss_round: swissRef,
+            bracket: null,
+            position_pool: null,
+            sequence_number: round,
+            placeholder_seed_1: ps1,
+            placeholder_seed_2: ps2,
+            team_1: teamsById[t1Id],
+            team_2: teamsById[t2Id],
+            score_team_1: s1,
+            score_team_2: s2
+          };
+          roundMatches.push(m);
+          allSwissMatches.push(m);
+          allMatches.push(m);
+
+          const key = [Math.min(t1Id, t2Id), Math.max(t1Id, t2Id)].join("-");
+          playedPairs.add(key);
+        });
+
+        swissResults = computePoolResults(allSwissMatches, groupTeamIds);
+
+        for (const btId of teamsWithByes) {
+          applyByeToResults(swissResults, btId);
+        }
+        rerankResults(swissResults, allSwissMatches);
+
+        // Update currentSeeding after each round: rank 1 → lowest seed, etc.
+        const sortedSeeds = [...seedsInGroup].sort((a, b) => a - b);
+        const roundOppStrength = computeOpponentStrength(
+          allSwissMatches,
+          swissResults
         );
+        const rankedTeams = Object.entries(swissResults).sort(
+          ([idA, a], [idB, b]) =>
+            swissSort(
+              a,
+              b,
+              roundOppStrength[parseInt(idA)] || 0,
+              roundOppStrength[parseInt(idB)] || 0
+            )
+        );
+        rankedTeams.forEach(([teamId], idx) => {
+          currentSeeding[sortedSeeds[idx]] = parseInt(teamId);
+        });
+
+        // Build teamId → tournament seed map from updated seeding
+        const teamSeedMap = {};
+        sortedSeeds.forEach(seed => {
+          teamSeedMap[currentSeeding[seed]] = seed;
+        });
+
+        const stageName = multiGroup
+          ? `Swiss ${groupName} Round ${round}`
+          : `Swiss Round ${round}`;
+
+        stages.push({
+          type: "swiss",
+          name: stageName,
+          matches: roundMatches,
+          results: JSON.parse(JSON.stringify(swissResults)),
+          round,
+          totalRounds: numSwissRounds,
+          byeTeamId,
+          swissMatchesSoFar: [...allSwissMatches],
+          teamSeedMap
+        });
       }
-
-      const roundMatches = [];
-      pairings.forEach(([t1Id, t2Id], matchIdx) => {
-        const matchId = idCounter.next++;
-        const [s1, s2] = scoreOverrides[matchId] || generateScore(matchId);
-
-        // Compute placeholder seeds (rank in current standings for round 2+)
-        let ps1, ps2;
-        if (round === 1) {
-          // Find seed for team
-          ps1 = parseInt(
-            Object.entries(initialSeeding).find(([, v]) => v === t1Id)[0]
-          );
-          ps2 = parseInt(
-            Object.entries(initialSeeding).find(([, v]) => v === t2Id)[0]
-          );
-        } else {
-          ps1 = swissResults[t1Id]?.rank || 1;
-          ps2 = swissResults[t2Id]?.rank || 1;
-        }
-
-        const m = {
-          id: matchId,
-          name: `Swiss R${round} M${matchIdx + 1}`,
-          pool: null,
-          swiss_round: swissRef,
-          bracket: null,
-          position_pool: null,
-          sequence_number: round,
-          placeholder_seed_1: ps1,
-          placeholder_seed_2: ps2,
-          team_1: teamsById[t1Id],
-          team_2: teamsById[t2Id],
-          score_team_1: s1,
-          score_team_2: s2
-        };
-        roundMatches.push(m);
-        allSwissMatches.push(m);
-        allMatches.push(m);
-
-        // Track played pairs
-        const key = [Math.min(t1Id, t2Id), Math.max(t1Id, t2Id)].join("-");
-        playedPairs.add(key);
-      });
-
-      // Update swiss results after this round (rebuilds from matches only)
-      swissResults = computePoolResults(
-        allSwissMatches,
-        teams.map(t => t.id)
-      );
-
-      // Re-apply all bye bonuses (not captured in match objects)
-      for (const btId of teamsWithByes) {
-        applyByeToResults(swissResults, btId);
-      }
-      rerankResults(swissResults, allSwissMatches);
-
-      stages.push({
-        type: "swiss",
-        name: `Swiss Round ${round}`,
-        matches: roundMatches,
-        results: JSON.parse(JSON.stringify(swissResults)),
-        round,
-        totalRounds: numSwissRounds,
-        byeTeamId,
-        swissMatchesSoFar: [...allSwissMatches]
-      });
-    }
-
-    // Update current seeding from final swiss results
-    const finalOppStrength = computeOpponentStrength(
-      allSwissMatches,
-      swissResults
-    );
-    const rankedTeams = Object.entries(swissResults).sort(
-      ([idA, a], [idB, b]) =>
-        swissSort(
-          a,
-          b,
-          finalOppStrength[parseInt(idA)] || 0,
-          finalOppStrength[parseInt(idB)] || 0
-        )
-    );
-    rankedTeams.forEach(([teamId], idx) => {
-      currentSeeding[idx + 1] = parseInt(teamId);
     });
   }
+
+  // Snapshot seeding after pools/swiss, before brackets
+  const postSeedingStageSeeding = { ...currentSeeding };
 
   // 4. Create brackets and position pools
   // Rules: first bracket is 1-8 (or 1-4 if <=4 teams), then remaining in 8s or 4s.
@@ -640,6 +668,11 @@ function recomputeTournament(config, scoreOverrides) {
       }
     }
 
+    // Write bracket results back to currentSeeding
+    for (let s = start; s <= end; s++) {
+      currentSeeding[s] = bracketSeeding[s];
+    }
+
     const matchesByRound = {};
     for (const m of bracketMatches) {
       if (!matchesByRound[m.sequence_number]) {
@@ -696,6 +729,18 @@ function recomputeTournament(config, scoreOverrides) {
     const teamIdsInPP = seeds.map(s => currentSeeding[s]);
     const results = computePoolResults(ppMatches, teamIdsInPP);
 
+    // Update currentSeeding from position pool results
+    const rankedPP = Object.entries(results).sort(([, a], [, b]) => {
+      const wDiff = b.wins - a.wins;
+      if (wDiff !== 0) return wDiff;
+      const gdDiff = b.GF - b.GA - (a.GF - a.GA);
+      if (gdDiff !== 0) return gdDiff;
+      return b.GF - a.GF;
+    });
+    rankedPP.forEach(([teamId], idx) => {
+      currentSeeding[seeds[idx]] = parseInt(teamId);
+    });
+
     stages.push({
       type: "position_pool",
       name: `${ppName} Position Pool`,
@@ -706,7 +751,15 @@ function recomputeTournament(config, scoreOverrides) {
     });
   }
 
-  return { teams, stages, allMatches, currentSeeding, teamsById };
+  return {
+    teams,
+    stages,
+    allMatches,
+    currentSeeding,
+    postSeedingStageSeeding,
+    teamsById,
+    initialStage
+  };
 }
 
 // ============ SUB-COMPONENTS ============
@@ -734,15 +787,27 @@ function StandingsTable(props) {
           <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
             <tr>
               <th class="px-4 py-2">#</th>
+              <Show when={isSwiss() && props.teamSeedMap}>
+                <th class="px-4 py-2" title="Tournament seed">
+                  Seed
+                </th>
+              </Show>
               <th class="px-4 py-2">Team</th>
               <Show when={isSwiss()}>
-                <th class="px-4 py-2" title="Points: Win=2, Draw=1, Loss=0">Pts</th>
+                <th class="px-4 py-2" title="Points: Win=2, Draw=1, Loss=0">
+                  Pts
+                </th>
               </Show>
               <th class="px-4 py-2">W</th>
               <th class="px-4 py-2">L</th>
               <th class="px-4 py-2">D</th>
               <Show when={isSwiss()}>
-                <th class="px-4 py-2" title="Opponent Strength: sum of opponents' points (higher = faced stronger opponents)">OS</th>
+                <th
+                  class="px-4 py-2"
+                  title="Opponent Strength: sum of opponents' points (higher = faced stronger opponents)"
+                >
+                  OS
+                </th>
               </Show>
               <th class="px-4 py-2">GF</th>
               <th class="px-4 py-2">GA</th>
@@ -754,6 +819,11 @@ function StandingsTable(props) {
               {result => (
                 <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
                   <td class="px-4 py-2 font-medium">{result.rank}</td>
+                  <Show when={isSwiss() && props.teamSeedMap}>
+                    <td class="px-4 py-2 text-gray-400">
+                      {props.teamSeedMap[result.teamId]}
+                    </td>
+                  </Show>
                   <td class="px-4 py-2 font-medium">{result.teamName}</td>
                   <Show when={result.points !== null}>
                     <td class="px-4 py-2 font-semibold">{result.points}</td>
@@ -775,7 +845,8 @@ function StandingsTable(props) {
       </div>
       <Show when={isSwiss()}>
         <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-          Pts = Win(2) + Draw(1). OS = sum of opponents' points (higher = faced stronger opponents). Tiebreaker: Pts &gt; H2H &gt; OS &gt; GD.
+          Pts = Win(2) + Draw(1). OS = sum of opponents' points (higher = faced
+          stronger opponents). Tiebreaker: Pts &gt; H2H &gt; OS &gt; GD.
         </p>
       </Show>
     </div>
@@ -822,6 +893,44 @@ function MatchRow(props) {
       <span class="flex-1 text-sm font-medium text-gray-900 dark:text-white">
         {props.match.team_2?.name || "TBD"}
       </span>
+    </div>
+  );
+}
+
+function SeedingTable(props) {
+  const entries = createMemo(() =>
+    Object.entries(props.seeding || {}).sort(
+      ([a], [b]) => parseInt(a) - parseInt(b)
+    )
+  );
+
+  return (
+    <div class={`mb-6 rounded-lg border border-${props.colorClass}-200 bg-${props.colorClass}-50 p-4 dark:border-${props.colorClass}-800 dark:bg-${props.colorClass}-900/30`}>
+      <h3 class={`mb-2 text-sm font-semibold text-${props.colorClass}-700 dark:text-${props.colorClass}-300`}>
+        {props.title}
+      </h3>
+      <div class="overflow-x-auto rounded-lg shadow">
+        <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
+          <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
+            <tr>
+              <th class="px-4 py-2">Seed</th>
+              <th class="px-4 py-2">Team</th>
+            </tr>
+          </thead>
+          <tbody>
+            <For each={entries()}>
+              {([seed, teamId]) => (
+                <tr class="border-b border-gray-200 dark:border-gray-700">
+                  <td class="px-4 py-2 font-medium">{seed}</td>
+                  <td class="px-4 py-2 font-medium">
+                    {props.teamsById[teamId]?.name}
+                  </td>
+                </tr>
+              )}
+            </For>
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -896,6 +1005,7 @@ function StageSection(props) {
           results={props.stage.results}
           teamsById={props.teamsById}
           swissMatches={props.stage.swissMatchesSoFar}
+          teamSeedMap={props.stage.teamSeedMap}
         />
       </Show>
     </div>
@@ -909,6 +1019,7 @@ export default function TournamentSimulator() {
   const [initialStage, setInitialStage] = createSignal("pools");
   const [numPools, setNumPools] = createSignal(2);
   const [swissRounds, setSwissRounds] = createSignal(3);
+  const [numSwissGroups, setNumSwissGroups] = createSignal(1);
   const [isGenerated, setIsGenerated] = createSignal(false);
   const [scoreOverrides, setScoreOverrides] = createSignal({});
   const [teamNames, setTeamNames] = createSignal(
@@ -928,6 +1039,7 @@ export default function TournamentSimulator() {
     initialStage: initialStage(),
     numPools: numPools(),
     swissRounds: swissRounds(),
+    numSwissGroups: numSwissGroups(),
     teamNames: teamNames()
   }));
 
@@ -1014,10 +1126,14 @@ export default function TournamentSimulator() {
                   Swiss Rounds
                 </h4>
                 <p class="mt-1">
-                  All teams play in each round, paired against opponents with
+                  Teams can be split into multiple Swiss groups (A, B, etc.)
+                  using serpentine seeding — just like pools. Within each group,
+                  teams play in each round, paired against opponents with
                   similar records. In round 1, seeds are paired top-vs-bottom (1
                   vs N, 2 vs N-1, etc.). In subsequent rounds, teams are paired
-                  by current standings, avoiding rematches where possible.
+                  by current standings, avoiding rematches where possible. After
+                  all rounds, each group's ranked teams are mapped back to their
+                  original seed slots for bracket placement.
                 </p>
               </div>
 
@@ -1206,6 +1322,33 @@ export default function TournamentSimulator() {
             <Show when={initialStage() === "swiss"}>
               <div>
                 <label class="mb-2 block text-sm font-medium text-gray-900 dark:text-white">
+                  Number of Swiss Groups
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={Math.floor(numTeams() / 2)}
+                  value={numSwissGroups()}
+                  onInput={e =>
+                    setNumSwissGroups(
+                      Math.max(
+                        1,
+                        Math.min(
+                          Math.floor(numTeams() / 2),
+                          parseInt(e.target.value) || 1
+                        )
+                      )
+                    )
+                  }
+                  class="w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                />
+                <p class="mt-1 text-xs text-gray-500">
+                  ~{Math.ceil(numTeams() / numSwissGroups())} teams per group
+                  (serpentine seeding)
+                </p>
+              </div>
+              <div>
+                <label class="mb-2 block text-sm font-medium text-gray-900 dark:text-white">
                   Number of Swiss Rounds
                 </label>
                 <input
@@ -1292,24 +1435,40 @@ export default function TournamentSimulator() {
             </button>
           </div>
 
-          {/* Seeding Overview */}
-          <div class="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800">
-            <h3 class="mb-2 text-sm font-semibold text-gray-700 dark:text-gray-300">
-              Initial Seeding
-            </h3>
-            <div class="flex flex-wrap gap-2">
-              <For each={computed()?.teams || []}>
-                {(team, i) => (
-                  <span class="rounded bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-800 dark:bg-gray-700 dark:text-gray-300">
-                    {i() + 1}. {team.name}
-                  </span>
-                )}
-              </For>
-            </div>
-          </div>
+          {/* Initial Tournament Standings */}
+          <SeedingTable
+            title="Initial Tournament Seedings"
+            seeding={computed()?.teams?.reduce((acc, t, i) => {
+              acc[i + 1] = t.id;
+              return acc;
+            }, {}) || {}}
+            teamsById={computed()?.teamsById || {}}
+            colorClass="gray"
+          />
 
-          {/* Stages */}
-          <For each={computed()?.stages || []}>
+          {/* Seeding Stages (Pools / Swiss) */}
+          <For each={(computed()?.stages || []).filter(s => s.type === "pool" || s.type === "swiss")}>
+            {stage => (
+              <StageSection
+                stage={stage}
+                teamsById={computed()?.teamsById || {}}
+                onScoreChange={handleScoreChange}
+              />
+            )}
+          </For>
+
+          {/* Tournament Standings after Seeding Stage */}
+          <Show when={computed()?.postSeedingStageSeeding}>
+            <SeedingTable
+              title={`Tournament Seedings after ${computed().initialStage === "swiss" ? "Swiss" : "Pools"}`}
+              seeding={computed().postSeedingStageSeeding}
+              teamsById={computed()?.teamsById || {}}
+              colorClass="teal"
+            />
+          </Show>
+
+          {/* Bracket & Position Pool Stages */}
+          <For each={(computed()?.stages || []).filter(s => s.type !== "pool" && s.type !== "swiss")}>
             {stage => (
               <StageSection
                 stage={stage}
@@ -1321,29 +1480,12 @@ export default function TournamentSimulator() {
 
           {/* Final Seeding */}
           <Show when={computed()}>
-            <div class="mt-6 rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-900/30">
-              <h3 class="mb-2 text-sm font-semibold text-green-700 dark:text-green-300">
-                Final Tournament Seeding
-              </h3>
-              <div class="space-y-1">
-                <For
-                  each={Object.entries(computed().currentSeeding).sort(
-                    ([a], [b]) => parseInt(a) - parseInt(b)
-                  )}
-                >
-                  {([seed, teamId]) => (
-                    <div class="flex items-center gap-2 text-sm">
-                      <span class="w-8 font-bold text-green-600 dark:text-green-400">
-                        {seed}.
-                      </span>
-                      <span class="text-gray-900 dark:text-white">
-                        {computed().teamsById[teamId]?.name}
-                      </span>
-                    </div>
-                  )}
-                </For>
-              </div>
-            </div>
+            <SeedingTable
+              title="Final Tournament Standings"
+              seeding={computed().currentSeeding}
+              teamsById={computed()?.teamsById || {}}
+              colorClass="green"
+            />
           </Show>
         </div>
       </Show>
