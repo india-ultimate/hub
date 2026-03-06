@@ -181,7 +181,7 @@ def create_swiss_round_matches(tournament: Tournament, swiss_round: SwissRound) 
 
         for match_num, (seed_1, seed_2) in enumerate(pairs, 1):
             Match(
-                name=f"Swiss R{round_num} M{match_num}",
+                name=f"Swiss {swiss_round.name} R{round_num} M{match_num}",
                 tournament=tournament,
                 swiss_round=swiss_round,
                 sequence_number=round_num,

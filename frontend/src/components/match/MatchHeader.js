@@ -12,10 +12,10 @@ const getSmallName = matchName => {
   if (matchName === "Semi Finals") {
     return "SF";
   }
-  // Swiss round matches are named like "Swiss R1 M1"
-  const swissPattern = matchName?.match(/Swiss R(\d+)/);
+  // Swiss round matches are named like "Swiss A R1 M1"
+  const swissPattern = matchName?.match(/Swiss ([A-Z]+) R(\d+)/);
   if (swissPattern) {
-    return `SR ${swissPattern[1]}`;
+    return `SW ${swissPattern[1]} - ${swissPattern[2]}`;
   }
   // Bracket matches are named like 5-8 Bracket, 9-12 Bracket
   // On smaller screens show as B 5-8, B 9-12
@@ -27,8 +27,11 @@ const getSmallName = matchName => {
   return matchName;
 };
 
-// Strip match number from Swiss names for public display: "Swiss R1 M1" -> "Swiss R1"
-const getPublicSwissName = name => name?.replace(/\s*M\d+$/, "") ?? name;
+// Format Swiss names for public display: "Swiss A R1 M1" -> "Swiss A - 1"
+const getPublicSwissName = name => {
+  const m = name?.match(/Swiss ([A-Z]+) R(\d+)/);
+  return m ? `Swiss ${m[1]} - ${m[2]}` : name;
+};
 
 const showSeedForBracketMatch = matchName => {
   // Don't show seed for finals or position matches (3rd Place match is 3v4)
