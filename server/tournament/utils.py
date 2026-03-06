@@ -397,7 +397,14 @@ def sort_swiss_tied_teams(
     1. Head-to-head wins (between tied teams)
     2. Strength of opponents faced (sum of opponents' points — higher = stronger)
     3. Overall goal difference
+
+    When multiple teams share the same H2H win count, recursively
+    re-evaluate tiebreakers within that sub-group (smaller group means
+    different H2H dynamics).
     """
+    if len(tied_teams) <= 1:
+        return tied_teams
+
     team_ids = [team["id"] for team in tied_teams]
 
     # 1. Compute H2H stats between tied teams
@@ -430,7 +437,7 @@ def sort_swiss_tied_teams(
                     "draws", 0
                 )
 
-    return sorted(
+    sorted_teams = sorted(
         tied_teams,
         key=lambda t: (
             h2h_wins[t["id"]],  # 1. H2H wins (higher = better)
@@ -439,6 +446,24 @@ def sort_swiss_tied_teams(
         ),
         reverse=True,
     )
+
+    # Recursively break sub-ties among teams with same H2H wins
+    final_order: list[dict[str, int]] = []
+    i = 0
+    while i < len(sorted_teams):
+        j = i + 1
+        while (
+            j < len(sorted_teams)
+            and h2h_wins[sorted_teams[j]["id"]] == h2h_wins[sorted_teams[i]["id"]]
+        ):
+            j += 1
+        sub_group = sorted_teams[i:j]
+        if len(sub_group) > 1 and len(sub_group) < len(tied_teams):
+            sub_group = sort_swiss_tied_teams(sub_group, all_results, swiss_round)
+        final_order.extend(sub_group)
+        i = j
+
+    return final_order
 
 
 def get_new_pool_results(
