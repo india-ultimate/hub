@@ -653,14 +653,24 @@ def populate_fixtures(tournament_id: int) -> None:
             m.status == Match.Status.COMPLETED for m in current_round_matches
         )
 
-        if is_current_round_complete and swiss_round.current_round < swiss_round.num_rounds:
-            # Generate next round pairings
-            next_round = swiss_round.current_round + 1
-            assign_swiss_round_teams(tournament, swiss_round, next_round)
-            swiss_round.current_round = next_round
-            swiss_round.save()
-            is_all_swiss_complete = False
-        elif not is_current_round_complete:
+        if is_current_round_complete:
+            # Snapshot current round results
+            round_results = dict(swiss_round.round_results or {})
+            round_results[str(swiss_round.current_round)] = {
+                k: dict(v) for k, v in swiss_round.results.items()
+            }
+            swiss_round.round_results = round_results
+
+            if swiss_round.current_round < swiss_round.num_rounds:
+                # Generate next round pairings
+                next_round = swiss_round.current_round + 1
+                assign_swiss_round_teams(tournament, swiss_round, next_round)
+                swiss_round.current_round = next_round
+                swiss_round.save()
+                is_all_swiss_complete = False
+            else:
+                swiss_round.save()
+        else:
             is_all_swiss_complete = False
 
     if not is_all_swiss_complete:
