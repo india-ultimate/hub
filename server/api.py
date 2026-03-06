@@ -2030,19 +2030,24 @@ def create_swiss_round(
     except Tournament.DoesNotExist:
         return 400, {"message": "Tournament does not exist"}
 
-    if SwissRound.objects.filter(tournament=tournament).exists():
-        return 400, {"message": "Swiss round already exists for this tournament"}
-
-    min_teams_for_swiss = 2
-    num_teams = tournament.teams.count()
-    if num_teams < min_teams_for_swiss:
-        return 400, {"message": "Need at least 2 teams for a swiss round"}
+    if len(swiss_details.seeding) < 2:
+        return 400, {"message": "Need at least 2 teams for a swiss group"}
     if swiss_details.num_rounds < 1:
         return 400, {"message": "Number of rounds must be at least 1"}
 
-    swiss_seeding = dict(tournament.initial_seeding)
+    valid, errors = validate_new_pool(
+        tournament=tournament, new_pool=set(swiss_details.seeding)
+    )
+    if not valid:
+        message = "Cannot create swiss group, due to following errors: \n"
+        message += "\n".join(f"{key}: {value}" for key, value in errors.items())
+        return 400, {"message": message}
+
+    swiss_seeding: dict[int, int] = {}
     swiss_results: dict[str, Any] = {}
-    for i, (_seed, team_id) in enumerate(sorted(swiss_seeding.items(), key=lambda x: int(x[0]))):
+    for i, seed in enumerate(swiss_details.seeding):
+        team_id = tournament.initial_seeding[str(seed)]
+        swiss_seeding[seed] = team_id
         swiss_results[str(team_id)] = {
             "rank": i + 1,
             "wins": 0,
@@ -2055,9 +2060,11 @@ def create_swiss_round(
 
     swiss_round = SwissRound(
         tournament=tournament,
+        sequence_number=swiss_details.sequence_number,
+        name=swiss_details.name,
         num_rounds=swiss_details.num_rounds,
         current_round=1,
-        initial_seeding=swiss_seeding,
+        initial_seeding=dict(sorted(swiss_seeding.items())),
         results=swiss_results,
         byes={},
     )
@@ -2068,10 +2075,12 @@ def create_swiss_round(
     return 200, swiss_round
 
 
-@api.get("/tournament/swiss-round", auth=None, response={200: SwissRoundSchema, 400: Response})
-def get_swiss_round(
+@api.get(
+    "/tournament/swiss-rounds", auth=None, response={200: list[SwissRoundSchema], 400: Response}
+)
+def get_swiss_rounds(
     request: AuthenticatedHttpRequest, id: int | None = None, slug: str | None = None
-) -> tuple[int, SwissRound] | tuple[int, message_response]:
+) -> tuple[int, QuerySet[SwissRound]] | tuple[int, message_response]:
     if id is None and slug is None:
         return 400, {"message": "Need either tournament id or slug"}
     try:
@@ -2083,12 +2092,7 @@ def get_swiss_round(
     except Tournament.DoesNotExist:
         return 400, {"message": "Tournament does not exist"}
 
-    try:
-        swiss_round = SwissRound.objects.get(tournament=tournament)
-    except SwissRound.DoesNotExist:
-        return 400, {"message": "Swiss round does not exist"}
-
-    return 200, swiss_round
+    return 200, SwissRound.objects.filter(tournament=tournament).order_by("sequence_number")
 
 
 @api.post(
@@ -2366,9 +2370,8 @@ def start_tournament(
 
         match.save()
 
-    # Assign teams to Swiss round 1 matches
-    swiss_round = SwissRound.objects.filter(tournament=tournament).first()
-    if swiss_round:
+    # Assign teams to Swiss round 1 matches for all Swiss groups
+    for swiss_round in SwissRound.objects.filter(tournament=tournament):
         assign_swiss_round_teams(tournament, swiss_round, 1)
 
     tournament.status = Tournament.Status.LIVE
