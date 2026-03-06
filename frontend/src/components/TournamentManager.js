@@ -54,6 +54,101 @@ import UpdateSpiritScoreForm from "./tournament/UpdateSpiritScoreForm";
 import CreatedFields from "./tournament-manager/CreatedFields";
 import CreateFieldForm from "./tournament-manager/CreateFieldForm";
 
+function getMatchCsvLabel(match) {
+  if (match.pool || match.position_pool) {
+    return match.name;
+  }
+  if (match.cross_pool) {
+    return `CP ${match.placeholder_seed_1} vs ${match.placeholder_seed_2}`;
+  }
+  if (match.swiss_round) {
+    const m = match.name?.match(/Swiss ([A-Z]+) R(\d+) M(\d+)/);
+    return m ? `SW ${m[1]} - ${m[2]} M${m[3]}` : match.name;
+  }
+  if (match.bracket) {
+    return `${match.placeholder_seed_1} vs ${match.placeholder_seed_2}`;
+  }
+  return match.name;
+}
+
+function downloadScheduleCsv(matches, fields, tournamentName) {
+  const sortedFields = [...fields].sort((a, b) =>
+    a.name.localeCompare(b.name)
+  );
+  const fieldNames = sortedFields.map(f => f.name);
+
+  // Split into scheduled and unscheduled
+  const scheduled = [];
+  const unscheduled = [];
+  for (const match of matches) {
+    if (match.time && match.field) {
+      scheduled.push(match);
+    } else {
+      unscheduled.push(match);
+    }
+  }
+
+  // Group scheduled matches by time slot: "date|startISO|endISO" → { fieldId → match }
+  const timeSlots = new Map();
+  for (const match of scheduled) {
+    const start = new Date(Date.parse(match.time));
+    const end = new Date(start.getTime() + (match.duration_mins || 75) * 60000);
+    const key = start.toISOString() + "|" + end.toISOString();
+    if (!timeSlots.has(key)) {
+      timeSlots.set(key, { start, end, fields: {} });
+    }
+    timeSlots.get(key).fields[match.field.id] = match;
+  }
+
+  // Sort time slots chronologically
+  const sortedSlots = [...timeSlots.values()].sort(
+    (a, b) => a.start - b.start
+  );
+
+  // Build CSV
+  const headers = ["Date", "Start Time", "End Time", ...fieldNames, "Not Placed Matches"];
+  const rows = [headers.join(",")];
+
+  const pad = n => String(n).padStart(2, "0");
+  const formatDate = d =>
+    `${pad(d.getUTCDate())}/${pad(d.getUTCMonth() + 1)}/${d.getUTCFullYear()}`;
+  const formatTime = d =>
+    `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`;
+
+  const unplacedCopy = [...unscheduled];
+
+  for (const slot of sortedSlots) {
+    const cells = [
+      formatDate(slot.start),
+      formatTime(slot.start),
+      formatTime(slot.end)
+    ];
+    for (const field of sortedFields) {
+      const match = slot.fields[field.id];
+      cells.push(match ? getMatchCsvLabel(match) : "");
+    }
+    // Pop one unplaced match into last column
+    cells.push(unplacedCopy.length > 0 ? getMatchCsvLabel(unplacedCopy.shift()) : "");
+    rows.push(cells.join(","));
+  }
+
+  // Remaining unplaced matches
+  while (unplacedCopy.length > 0) {
+    const emptyCols = Array(3 + sortedFields.length).fill("");
+    emptyCols.push(getMatchCsvLabel(unplacedCopy.shift()));
+    rows.push(emptyCols.join(","));
+  }
+
+  const csv = rows.join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${tournamentName || "tournament"}-schedule.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 const TournamentManager = () => {
   const queryClient = useQueryClient();
   const [store] = useStore();
@@ -1325,8 +1420,10 @@ const TournamentManager = () => {
                       >
                         {match.swiss_round
                           ? (() => {
-                              const mNum = match.name?.match(/M(\d+)/);
-                              const label = mNum ? `M${mNum[1]}: ` : "";
+                              const parts = match.name?.match(/Swiss ([A-Z]+) R(\d+) M(\d+)/);
+                              const label = parts
+                                ? `SW ${parts[1]} - ${parts[2]} M${parts[3]}: `
+                                : "";
                               return `${label}${match.placeholder_seed_1} vs ${match.placeholder_seed_2}`;
                             })()
                           : match.placeholder_seed_1 +
@@ -1726,8 +1823,29 @@ const TournamentManager = () => {
 
           <div class="my-5">
             <h2 class="mb-4 text-xl font-bold text-blue-500">
-              Update Schedule from CSV
+              Schedule CSV
             </h2>
+            <div class="mb-4">
+              <button
+                type="button"
+                disabled={!matchesQuery.data?.length || !fieldsQuery.data?.length}
+                onClick={() =>
+                  downloadScheduleCsv(
+                    matchesQuery.data,
+                    fieldsQuery.data,
+                    selectedTournament()?.event?.title
+                  )
+                }
+                class="rounded-lg bg-green-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-green-800 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 dark:bg-green-600 dark:hover:bg-green-700"
+              >
+                Download Schedule
+              </button>
+              <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                Downloads a CSV with all scheduled matches placed in their
+                time/field slots and unscheduled matches in a "Not Placed
+                Matches" column.
+              </p>
+            </div>
             <div class="flex flex-col gap-4">
               <div class="rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
                 <h3 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
@@ -1762,8 +1880,8 @@ const TournamentManager = () => {
                       numbers)
                     </li>
                     <li>
-                      Swiss Round Matches: "SR1 M1" (round number + match
-                      number)
+                      Swiss Round Matches: "SW A - 1 M1" (SW + group letter
+                      + round number + match number)
                     </li>
                     <li>Bracket Matches: "1 vs 2" (just seed numbers)</li>
                   </ul>
@@ -1776,7 +1894,7 @@ const TournamentManager = () => {
                   <div class="rounded bg-gray-100 p-3 font-mono text-sm dark:bg-gray-700">
                     <pre>
                       Date,Start Time,End Time,Field 1,Field 2 {"\n"}
-                      24/03/2025,06:30:00,07:45:00,A1 vs A2,SR1 M1 {"\n"}
+                      24/03/2025,06:30:00,07:45:00,A1 vs A2,SW A - 1 M1 {"\n"}
                       24/03/2025,08:00:00,09:15:00,CP 1 vs 2,1 vs 2
                     </pre>
                   </div>
