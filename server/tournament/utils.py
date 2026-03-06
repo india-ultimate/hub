@@ -122,14 +122,12 @@ def apply_bye(swiss_round: SwissRound, team_id: int, round_number: int) -> None:
     tournament = swiss_round.tournament
     tournament_seeding = tournament.current_seeding
 
-    for i, (tid, stats) in enumerate(results_list):
+    for i, (tid, _stats) in enumerate(results_list):
         results[tid]["rank"] = i + 1
         tournament_seeding[pool_seeding_list[i]] = tid
 
     # Compute and store opponent strength (sum of opponents' points)
-    all_swiss_matches = Match.objects.filter(
-        swiss_round=swiss_round, status=Match.Status.COMPLETED
-    )
+    all_swiss_matches = Match.objects.filter(swiss_round=swiss_round, status=Match.Status.COMPLETED)
     opp_strength: dict[int, int] = {tid: 0 for tid in results}
     for m in all_swiss_matches:
         if m.team_1 and m.team_2:
@@ -171,13 +169,17 @@ def create_swiss_round_matches(tournament: Tournament, swiss_round: SwissRound) 
                 # Exclude last seed (bye), pair remaining n-1 seeds
                 active_seeds = seeds[:-1]
                 active_n = len(active_seeds)
-                pairs = [(active_seeds[i], active_seeds[active_n - 1 - i]) for i in range(active_n // 2)]
+                pairs = [
+                    (active_seeds[i], active_seeds[active_n - 1 - i]) for i in range(active_n // 2)
+                ]
             else:
                 pairs = [(seeds[i], seeds[n - 1 - i]) for i in range(num_matches_per_round)]
         else:
             # Placeholder slots using first n-1 seeds (even count) for odd, or all for even
             active_seeds = seeds[:-1] if is_odd else seeds
-            pairs = [(active_seeds[i * 2], active_seeds[i * 2 + 1]) for i in range(num_matches_per_round)]
+            pairs = [
+                (active_seeds[i * 2], active_seeds[i * 2 + 1]) for i in range(num_matches_per_round)
+            ]
 
         for match_num, (seed_1, seed_2) in enumerate(pairs, 1):
             Match(
@@ -207,7 +209,7 @@ def assign_swiss_round_teams(
     if is_odd:
         if round_number == 1:
             # Last seed gets bye in round 1
-            last_seed = max(int(s) for s in swiss_round.initial_seeding.keys())
+            last_seed = max(int(s) for s in swiss_round.initial_seeding)
             bye_team_id = int(swiss_round.initial_seeding[str(last_seed)])
         else:
             bye_team_id = select_bye_team(swiss_round)
@@ -294,7 +296,7 @@ def generate_swiss_pairings(
         ],
         key=lambda item: (
             item[1]["wins"] * 2 + item[1].get("draws", 0),  # Points: win=2, draw=1
-            opp_strength.get(item[0], 0),              # Opponent strength: higher = faced stronger
+            opp_strength.get(item[0], 0),  # Opponent strength: higher = faced stronger
             item[1]["GF"] - item[1]["GA"],
             item[1]["GF"],
         ),
@@ -419,17 +421,21 @@ def sort_swiss_tied_teams(
         if m.team_1 and m.team_2:
             if m.team_1.id in opp_strength:
                 opp_stats = all_results.get(m.team_2.id, {})
-                opp_strength[m.team_1.id] += opp_stats.get("wins", 0) * 2 + opp_stats.get("draws", 0)
+                opp_strength[m.team_1.id] += opp_stats.get("wins", 0) * 2 + opp_stats.get(
+                    "draws", 0
+                )
             if m.team_2.id in opp_strength:
                 opp_stats = all_results.get(m.team_1.id, {})
-                opp_strength[m.team_2.id] += opp_stats.get("wins", 0) * 2 + opp_stats.get("draws", 0)
+                opp_strength[m.team_2.id] += opp_stats.get("wins", 0) * 2 + opp_stats.get(
+                    "draws", 0
+                )
 
     return sorted(
         tied_teams,
         key=lambda t: (
-            h2h_wins[t["id"]],        # 1. H2H wins (higher = better)
-            opp_strength[t["id"]],     # 2. Opponent strength: higher = faced stronger
-            t["GF"] - t["GA"],         # 3. Overall goal difference
+            h2h_wins[t["id"]],  # 1. H2H wins (higher = better)
+            opp_strength[t["id"]],  # 2. Opponent strength: higher = faced stronger
+            t["GF"] - t["GA"],  # 3. Overall goal difference
         ),
         reverse=True,
     )
@@ -545,10 +551,9 @@ def get_new_swiss_results(
         if len(tied_teams) == 1:
             ranked_results.extend(tied_teams)
         else:
-            assert match.swiss_round is not None
-            sorted_tied_teams = sort_swiss_tied_teams(
-                tied_teams, old_results, match.swiss_round
-            )
+            if match.swiss_round is None:
+                raise ValueError("Swiss round must be set for swiss tiebreaker sorting")
+            sorted_tied_teams = sort_swiss_tied_teams(tied_teams, old_results, match.swiss_round)
             ranked_results.extend(sorted_tied_teams)
 
     new_results = {}
@@ -558,7 +563,8 @@ def get_new_swiss_results(
         tournament_seeding[pool_seeding_list[i]] = int(result["id"])
 
     # Compute and store opponent strength (sum of opponents' points)
-    assert match.swiss_round is not None
+    if match.swiss_round is None:
+        raise ValueError("Swiss round must be set for opponent strength calculation")
     all_swiss_matches = Match.objects.filter(
         swiss_round=match.swiss_round, status=Match.Status.COMPLETED
     )
