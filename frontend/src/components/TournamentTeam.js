@@ -5,17 +5,9 @@ import {
   useQueryClient
 } from "@tanstack/solid-query";
 import clsx from "clsx";
-import { initFlowbite } from "flowbite";
 import { Icon } from "solid-heroicons";
 import { star, trophy } from "solid-heroicons/solid";
-import {
-  createEffect,
-  createSignal,
-  For,
-  onMount,
-  Show,
-  Suspense
-} from "solid-js";
+import { createEffect, createSignal, For, Show, Suspense } from "solid-js";
 
 import { matchCardColorToBorderColorMap } from "../colors";
 import {
@@ -40,6 +32,7 @@ import Breadcrumbs from "./Breadcrumbs";
 import MatchCard from "./match/MatchCard";
 import Registration from "./roster/Registration";
 import UCRegistration from "./roster/UCRegistration";
+import PillTabs from "./tabs/PillTabs";
 
 const TournamentTeam = () => {
   const params = useParams();
@@ -50,6 +43,7 @@ const TournamentTeam = () => {
   const [tournamentDates, setTournamentDates] = createSignal([]);
   const [matchesGroupedByDate, setMatchesGroupedByDate] = createSignal({});
   const [doneFetching, setDoneFetching] = createSignal(false);
+  const [activeTab, setActiveTab] = createSignal("matches");
 
   const tournamentQuery = createQuery(
     () => ["tournaments", params.tournament_slug],
@@ -164,8 +158,6 @@ const TournamentTeam = () => {
       }
 
       setTournamentDates(dates);
-
-      setTimeout(() => initFlowbite(), 500);
     }
   });
 
@@ -176,7 +168,6 @@ const TournamentTeam = () => {
       let groupedMatches = {};
 
       for (const match of teamMatches) {
-        // Object.keys returns a list of strings, so converting date to a string
         const date = new Date(Date.parse(match?.time)).getUTCDate().toString();
         if (!Object.keys(groupedMatches).includes(date)) {
           groupedMatches[date] = [];
@@ -187,15 +178,6 @@ const TournamentTeam = () => {
       setMatchesGroupedByDate(groupedMatches);
       setDoneFetching(true);
     }
-  });
-
-  onMount(() => {
-    setTimeout(() => initFlowbite(), 100);
-    setTimeout(() => initFlowbite(), 500);
-    setTimeout(() => initFlowbite(), 1000);
-    setTimeout(() => initFlowbite(), 3000);
-    setTimeout(() => initFlowbite(), 5000);
-    setTimeout(() => initFlowbite(), 8000);
   });
 
   const players = () => {
@@ -256,48 +238,17 @@ const TournamentTeam = () => {
         </p>
       </div>
 
-      <div class="mb-4 border-b border-gray-200 dark:border-gray-700">
-        <ul
-          class="-mb-px flex flex-wrap justify-center text-center text-sm font-medium"
-          id="myTab"
-          data-tabs-toggle="#myTabContent"
-          role="tablist"
-        >
-          <li class="mr-2" role="presentation">
-            <button
-              class="inline-block rounded-t-lg border-b-2 p-4"
-              id="tab-matches"
-              data-tabs-target="#matches"
-              type="button"
-              role="tab"
-              aria-controls="matches"
-              aria-selected="false"
-            >
-              Matches
-            </button>
-          </li>
-          <li class="mr-2" role="presentation">
-            <button
-              class="inline-block rounded-t-lg border-b-2 p-4"
-              id="tab-roster"
-              data-tabs-target="#roster"
-              type="button"
-              role="tab"
-              aria-controls="roster"
-              aria-selected="false"
-            >
-              Roster
-            </button>
-          </li>
-        </ul>
-      </div>
-      <div id="myTabContent">
-        <div
-          class="hidden rounded-lg"
-          id="matches"
-          role="tabpanel"
-          aria-labelledby="tab-matches"
-        >
+      <PillTabs
+        tabs={[
+          { id: "matches", label: "Matches" },
+          { id: "roster", label: "Roster" }
+        ]}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+      />
+
+      <Show when={activeTab() === "matches"}>
+        <div class="rounded-lg">
           <Show
             when={doneFetching()}
             fallback={<TournamentTeamMatchesSkeleton />}
@@ -345,13 +296,10 @@ const TournamentTeam = () => {
             </For>
           </Show>
         </div>
+      </Show>
 
-        <div
-          class="hidden rounded-lg"
-          id="roster"
-          role="tabpanel"
-          aria-labelledby="tab-roster"
-        >
+      <Show when={activeTab() === "roster"}>
+        <div class="rounded-lg">
           <Suspense fallback={<RosterSkeleton />}>
             <h2 class="my-4 text-xl font-bold underline underline-offset-2">
               Players {`(${players()?.length || "-"})`}
@@ -436,7 +384,7 @@ const TournamentTeam = () => {
             </Show>
           </Suspense>
         </div>
-      </div>
+      </Show>
     </Show>
   );
 };
