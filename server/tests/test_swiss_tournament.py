@@ -1,5 +1,6 @@
 from server.tests.base import ApiBaseTestCase, add_teams_to_event, create_event, create_tournament
 from server.tournament.models import Bracket, CrossPool, Match, PositionPool, SwissRound
+from server.tournament.utils import sort_swiss_tied_teams
 
 
 class TestSwissTournamentLifecycle(ApiBaseTestCase):
@@ -1062,4 +1063,297 @@ class TestSwissCPPositionPoolBracketLifecycle(ApiBaseTestCase):
         CrossPool.objects.filter(tournament=self.tournament).delete()
         PositionPool.objects.filter(tournament=self.tournament).delete()
         Bracket.objects.filter(tournament=self.tournament).delete()
+        super().tearDown()
+
+
+class TestSwissTiebreakerRecursiveH2H(ApiBaseTestCase):
+    """Test that 3-way H2H ties are resolved by recursive sub-group tiebreaking.
+
+    Production bug: 3 teams tied on points (A, B, C). A beat B, B beat C,
+    A-C didn't play. H2H wins: A=1, B=1, C=0. Without recursive fix,
+    A and B fall to OS/GD tiebreaker. With fix, recursive call on {A,B}
+    finds A beat B → A > B > C.
+    """
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.user.is_staff = True
+        self.user.save()
+        self.client.force_login(self.user)
+
+    def _create_swiss_round(self, name: str = "A") -> SwissRound:
+        """Helper to create a swiss round with empty results for all teams."""
+        initial_seeding = {str(i): self.teams[i - 1].id for i in range(1, 9)}
+        results = {
+            str(self.teams[i - 1].id): {
+                "wins": 0,
+                "losses": 0,
+                "draws": 0,
+                "GF": 0,
+                "GA": 0,
+            }
+            for i in range(1, 9)
+        }
+        return SwissRound.objects.create(
+            tournament=self.tournament,
+            name=name,
+            sequence_number=1,
+            num_rounds=3,
+            current_round=3,
+            initial_seeding=initial_seeding,
+            results=results,
+        )
+
+    def test_three_way_tie_recursive_h2h(self) -> None:
+        """A beats B, B beats C, A-C didn't play. All tied on points.
+
+        Expected ranking: A > B > C (A beat B in direct H2H after recursive call).
+        B should NOT rank above A just because B has better GD.
+        """
+        swiss_round = self._create_swiss_round()
+
+        team_a = self.teams[0]  # Seed 1
+        team_b = self.teams[1]  # Seed 2
+        team_c = self.teams[2]  # Seed 3
+
+        # Create completed matches: A beats B, B beats C, A-C don't play
+        Match.objects.create(
+            tournament=self.tournament,
+            swiss_round=swiss_round,
+            sequence_number=1,
+            team_1=team_a,
+            team_2=team_b,
+            score_team_1=15,
+            score_team_2=10,
+            status=Match.Status.COMPLETED,
+            placeholder_seed_1=1,
+            placeholder_seed_2=2,
+        )
+        Match.objects.create(
+            tournament=self.tournament,
+            swiss_round=swiss_round,
+            sequence_number=2,
+            team_1=team_b,
+            team_2=team_c,
+            score_team_1=15,
+            score_team_2=8,
+            status=Match.Status.COMPLETED,
+            placeholder_seed_1=2,
+            placeholder_seed_2=3,
+        )
+
+        # Give each team additional matches against other teams so all end up 2W-1L
+        team_d = self.teams[3]
+        team_e = self.teams[4]
+        team_f = self.teams[5]
+
+        # A lost to D (so A is 1W-1L before last match)
+        Match.objects.create(
+            tournament=self.tournament,
+            swiss_round=swiss_round,
+            sequence_number=2,
+            team_1=team_a,
+            team_2=team_d,
+            score_team_1=8,
+            score_team_2=15,
+            status=Match.Status.COMPLETED,
+            placeholder_seed_1=1,
+            placeholder_seed_2=4,
+        )
+        # A beats E (A goes to 2W-1L)
+        Match.objects.create(
+            tournament=self.tournament,
+            swiss_round=swiss_round,
+            sequence_number=3,
+            team_1=team_a,
+            team_2=team_e,
+            score_team_1=15,
+            score_team_2=10,
+            status=Match.Status.COMPLETED,
+            placeholder_seed_1=1,
+            placeholder_seed_2=5,
+        )
+
+        # B lost to F (so B goes to 2W-1L)
+        Match.objects.create(
+            tournament=self.tournament,
+            swiss_round=swiss_round,
+            sequence_number=3,
+            team_1=team_b,
+            team_2=team_f,
+            score_team_1=8,
+            score_team_2=15,
+            status=Match.Status.COMPLETED,
+            placeholder_seed_1=2,
+            placeholder_seed_2=6,
+        )
+
+        # C beats D (C gets a win)
+        Match.objects.create(
+            tournament=self.tournament,
+            swiss_round=swiss_round,
+            sequence_number=1,
+            team_1=team_c,
+            team_2=team_d,
+            score_team_1=15,
+            score_team_2=10,
+            status=Match.Status.COMPLETED,
+            placeholder_seed_1=3,
+            placeholder_seed_2=4,
+        )
+        # C lost to E (C goes to 2W-1L)
+        Match.objects.create(
+            tournament=self.tournament,
+            swiss_round=swiss_round,
+            sequence_number=3,
+            team_1=team_c,
+            team_2=team_e,
+            score_team_1=8,
+            score_team_2=15,
+            status=Match.Status.COMPLETED,
+            placeholder_seed_1=3,
+            placeholder_seed_2=5,
+        )
+
+        # Build results: all three at 2W-1L (4pts)
+        # Give B higher GD than A to verify recursive H2H overrides GD
+        all_results: dict[int, dict[str, int]] = {
+            team_a.id: {"id": team_a.id, "wins": 2, "losses": 1, "draws": 0, "GF": 38, "GA": 35},
+            team_b.id: {"id": team_b.id, "wins": 2, "losses": 1, "draws": 0, "GF": 38, "GA": 25},
+            team_c.id: {"id": team_c.id, "wins": 2, "losses": 1, "draws": 0, "GF": 38, "GA": 33},
+        }
+
+        tied_teams = list(all_results.values())
+
+        result = sort_swiss_tied_teams(tied_teams, all_results, swiss_round)
+
+        # A should be first (beat B in recursive H2H), then B (beat C), then C
+        self.assertEqual(result[0]["id"], team_a.id, "A should rank 1st (beat B in direct H2H)")
+        self.assertEqual(result[1]["id"], team_b.id, "B should rank 2nd (beat C in direct H2H)")
+        self.assertEqual(result[2]["id"], team_c.id, "C should rank 3rd")
+
+    def test_three_way_tie_all_equal_h2h_falls_to_os_then_gd(self) -> None:
+        """When all 3 teams have equal H2H wins, recursion stops and falls to OS, then GD.
+
+        Circular H2H: A beats B, B beats C, C beats A → each has 1 H2H win.
+        Each also plays one match against a different-strength opponent:
+        - A played D (3W, strong) → A gets high OS
+        - B played E (1W, medium) → B gets medium OS
+        - C played F (0W, weak) → C gets low OS
+        C has the best GD but worst OS → verifies OS takes precedence over GD.
+        """
+        swiss_round = self._create_swiss_round()
+
+        team_a = self.teams[0]
+        team_b = self.teams[1]
+        team_c = self.teams[2]
+        team_d = self.teams[3]  # Strong opponent (3W)
+        team_e = self.teams[4]  # Medium opponent (1W)
+        team_f = self.teams[5]  # Weak opponent (0W)
+
+        # Circular H2H: A beats B, B beats C, C beats A → each has 1 H2H win
+        Match.objects.create(
+            tournament=self.tournament,
+            swiss_round=swiss_round,
+            sequence_number=1,
+            team_1=team_a,
+            team_2=team_b,
+            score_team_1=15,
+            score_team_2=10,
+            status=Match.Status.COMPLETED,
+            placeholder_seed_1=1,
+            placeholder_seed_2=2,
+        )
+        Match.objects.create(
+            tournament=self.tournament,
+            swiss_round=swiss_round,
+            sequence_number=2,
+            team_1=team_b,
+            team_2=team_c,
+            score_team_1=15,
+            score_team_2=10,
+            status=Match.Status.COMPLETED,
+            placeholder_seed_1=2,
+            placeholder_seed_2=3,
+        )
+        Match.objects.create(
+            tournament=self.tournament,
+            swiss_round=swiss_round,
+            sequence_number=3,
+            team_1=team_c,
+            team_2=team_a,
+            score_team_1=15,
+            score_team_2=10,
+            status=Match.Status.COMPLETED,
+            placeholder_seed_1=3,
+            placeholder_seed_2=1,
+        )
+
+        # Extra matches to differentiate OS:
+        # A beats D (strong, 3W)
+        Match.objects.create(
+            tournament=self.tournament,
+            swiss_round=swiss_round,
+            sequence_number=2,
+            team_1=team_a,
+            team_2=team_d,
+            score_team_1=15,
+            score_team_2=14,
+            status=Match.Status.COMPLETED,
+            placeholder_seed_1=1,
+            placeholder_seed_2=4,
+        )
+        # B beats E (medium, 1W)
+        Match.objects.create(
+            tournament=self.tournament,
+            swiss_round=swiss_round,
+            sequence_number=1,
+            team_1=team_b,
+            team_2=team_e,
+            score_team_1=15,
+            score_team_2=14,
+            status=Match.Status.COMPLETED,
+            placeholder_seed_1=2,
+            placeholder_seed_2=5,
+        )
+        # C beats F (weak, 0W)
+        Match.objects.create(
+            tournament=self.tournament,
+            swiss_round=swiss_round,
+            sequence_number=1,
+            team_1=team_c,
+            team_2=team_f,
+            score_team_1=15,
+            score_team_2=14,
+            status=Match.Status.COMPLETED,
+            placeholder_seed_1=3,
+            placeholder_seed_2=6,
+        )
+
+        # All three at 2W-1L (4pts). C has best GD, A has worst.
+        # OS should override GD: A faced strongest opponents, C faced weakest.
+        all_results: dict[int, dict[str, int]] = {
+            team_a.id: {"id": team_a.id, "wins": 2, "losses": 1, "draws": 0, "GF": 30, "GA": 30},
+            team_b.id: {"id": team_b.id, "wins": 2, "losses": 1, "draws": 0, "GF": 35, "GA": 30},
+            team_c.id: {"id": team_c.id, "wins": 2, "losses": 1, "draws": 0, "GF": 40, "GA": 30},
+            team_d.id: {"id": team_d.id, "wins": 3, "losses": 0, "draws": 0, "GF": 45, "GA": 20},
+            team_e.id: {"id": team_e.id, "wins": 1, "losses": 2, "draws": 0, "GF": 25, "GA": 35},
+            team_f.id: {"id": team_f.id, "wins": 0, "losses": 3, "draws": 0, "GF": 15, "GA": 45},
+        }
+
+        tied_teams = [all_results[team_a.id], all_results[team_b.id], all_results[team_c.id]]
+
+        result = sort_swiss_tied_teams(tied_teams, all_results, swiss_round)
+
+        # All have 1 H2H win → recursion stops (sub_group == tied_teams)
+        # OS: A faced D(6pts)+B(4pts)+C(4pts)=14, B faced A(4pts)+C(4pts)+E(2pts)=10,
+        #     C faced B(4pts)+A(4pts)+F(0pts)=8
+        # A (OS=14) > B (OS=10) > C (OS=8), even though C has best GD
+        self.assertEqual(result[0]["id"], team_a.id, "A first by OS (faced strongest opponents)")
+        self.assertEqual(result[1]["id"], team_b.id, "B second by OS")
+        self.assertEqual(result[2]["id"], team_c.id, "C third by OS (despite best GD)")
+
+    def tearDown(self) -> None:
+        Match.objects.filter(tournament=self.tournament).delete()
+        SwissRound.objects.filter(tournament=self.tournament).delete()
         super().tearDown()
