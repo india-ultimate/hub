@@ -1,5 +1,5 @@
 from server.tests.base import ApiBaseTestCase, add_teams_to_event, create_event, create_tournament
-from server.tournament.models import Bracket, Match, SwissRound
+from server.tournament.models import Bracket, CrossPool, Match, SwissRound
 
 
 class TestSwissTournamentLifecycle(ApiBaseTestCase):
@@ -734,5 +734,163 @@ class TestMultipleSwissGroups(ApiBaseTestCase):
     def tearDown(self) -> None:
         Match.objects.filter(tournament=self.tournament).delete()
         SwissRound.objects.filter(tournament=self.tournament).delete()
+        Bracket.objects.filter(tournament=self.tournament).delete()
+        super().tearDown()
+
+
+class TestSwissCrossPoolBracketLifecycle(ApiBaseTestCase):
+    """Test full lifecycle: 2 Swiss groups → Cross Pools → Bracket 1-8."""
+
+    def setUp(self) -> None:
+        super().setUp()
+
+        self.user.is_staff = True
+        self.user.save()
+        self.client.force_login(self.user)
+
+        # Create Swiss A (seeds 1,3,5,7) and Swiss B (seeds 2,4,6,8)
+        self.client.post(
+            f"/api/tournament/swiss-round/{self.tournament.id}",
+            {"num_rounds": 2, "seeding": [1, 3, 5, 7], "sequence_number": 1, "name": "A"},
+            content_type="application/json",
+        )
+        self.client.post(
+            f"/api/tournament/swiss-round/{self.tournament.id}",
+            {"num_rounds": 2, "seeding": [2, 4, 6, 8], "sequence_number": 2, "name": "B"},
+            content_type="application/json",
+        )
+        self.swiss_a = SwissRound.objects.get(tournament=self.tournament, name="A")
+        self.swiss_b = SwissRound.objects.get(tournament=self.tournament, name="B")
+
+        # Create cross pool with matches: 1v2, 3v4, 5v6, 7v8
+        response = self.client.post(
+            f"/api/tournament/cross-pool/{self.tournament.id}",
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.cross_pool = CrossPool.objects.get(tournament=self.tournament)
+
+        cp_seeds = [(1, 2), (3, 4), (5, 6), (7, 8)]
+        for seed_1, seed_2 in cp_seeds:
+            Match.objects.create(
+                tournament=self.tournament,
+                cross_pool=self.cross_pool,
+                sequence_number=1,
+                placeholder_seed_1=seed_1,
+                placeholder_seed_2=seed_2,
+                name="Cross Pool",
+            )
+
+        # Create bracket 1-8
+        response = self.client.post(
+            f"/api/tournament/bracket/{self.tournament.id}",
+            {"name": "1-8", "sequence_number": 1},
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.bracket = Bracket.objects.get(tournament=self.tournament)
+
+        # Start tournament
+        response = self.client.post(f"/api/tournament/start/{self.tournament.id}")
+        self.assertEqual(response.status_code, 200)
+
+    def _score_swiss_round(self, swiss_round: SwissRound, round_number: int) -> None:
+        """Score all matches in a swiss round with higher seeds winning."""
+        matches = Match.objects.filter(
+            swiss_round=swiss_round, sequence_number=round_number
+        ).order_by("id")
+        for match in matches:
+            self.client.post(
+                f"/api/match/{match.id}/score",
+                {"team_1_score": 15, "team_2_score": 10},
+                content_type="application/json",
+            )
+
+    def test_full_swiss_cp_bracket_lifecycle(self) -> None:
+        """
+        Test full lifecycle:
+        1. Play 2 rounds of Swiss A and Swiss B
+        2. Cross pool matches get populated and played
+        3. Bracket matches get populated and played
+        4. Tournament completes
+        """
+        # Step 1: Play Swiss rounds
+        for swiss_round in [self.swiss_a, self.swiss_b]:
+            self._score_swiss_round(swiss_round, 1)
+
+        # Verify R2 generated
+        for swiss_round in [self.swiss_a, self.swiss_b]:
+            swiss_round.refresh_from_db()
+            self.assertEqual(swiss_round.current_round, 2)
+
+        for swiss_round in [self.swiss_a, self.swiss_b]:
+            self._score_swiss_round(swiss_round, 2)
+
+        # Verify round_results snapshots were created
+        for swiss_round in [self.swiss_a, self.swiss_b]:
+            swiss_round.refresh_from_db()
+            self.assertIn("1", swiss_round.round_results)
+            self.assertIn("2", swiss_round.round_results)
+
+        # Step 2: Cross pool matches should be populated with teams
+        cp_matches = Match.objects.filter(cross_pool=self.cross_pool).order_by("id")
+        self.assertEqual(cp_matches.count(), 4)
+        for match in cp_matches:
+            self.assertIsNotNone(match.team_1, f"CP match {match.id} missing team_1")
+            self.assertIsNotNone(match.team_2, f"CP match {match.id} missing team_2")
+            self.assertEqual(match.status, Match.Status.SCHEDULED)
+
+        # Score cross pool matches: higher seed wins
+        for match in cp_matches:
+            response = self.client.post(
+                f"/api/match/{match.id}/score",
+                {"team_1_score": 15, "team_2_score": 12},
+                content_type="application/json",
+            )
+            self.assertEqual(response.status_code, 200)
+
+        # Step 3: Bracket should be populated
+        bracket_r1 = Match.objects.filter(bracket=self.bracket, sequence_number=1).order_by("id")
+        for match in bracket_r1:
+            self.assertIsNotNone(match.team_1, f"Bracket match {match.id} missing team_1")
+            self.assertIsNotNone(match.team_2, f"Bracket match {match.id} missing team_2")
+
+        # Score bracket quarter finals
+        for match in bracket_r1:
+            response = self.client.post(
+                f"/api/match/{match.id}/score",
+                {"team_1_score": 15, "team_2_score": 11},
+                content_type="application/json",
+            )
+            self.assertEqual(response.status_code, 200)
+
+        # Score bracket semi finals
+        bracket_r2 = Match.objects.filter(bracket=self.bracket, sequence_number=2).order_by("id")
+        for match in bracket_r2:
+            response = self.client.post(
+                f"/api/match/{match.id}/score",
+                {"team_1_score": 15, "team_2_score": 12},
+                content_type="application/json",
+            )
+            self.assertEqual(response.status_code, 200)
+
+        # Score bracket finals (seq 3)
+        bracket_r3 = Match.objects.filter(bracket=self.bracket, sequence_number=3).order_by("id")
+        for match in bracket_r3:
+            response = self.client.post(
+                f"/api/match/{match.id}/score",
+                {"team_1_score": 15, "team_2_score": 13},
+                content_type="application/json",
+            )
+            self.assertEqual(response.status_code, 200)
+
+        # Step 4: Tournament should be complete
+        self.tournament.refresh_from_db()
+        self.assertEqual(self.tournament.status, "COM")
+
+    def tearDown(self) -> None:
+        Match.objects.filter(tournament=self.tournament).delete()
+        SwissRound.objects.filter(tournament=self.tournament).delete()
+        CrossPool.objects.filter(tournament=self.tournament).delete()
         Bracket.objects.filter(tournament=self.tournament).delete()
         super().tearDown()
