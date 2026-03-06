@@ -1,6 +1,8 @@
+from typing import Any, cast
+
 from server.tests.base import ApiBaseTestCase, add_teams_to_event, create_event, create_tournament
 from server.tournament.models import Bracket, CrossPool, Match, PositionPool, SwissRound
-from server.tournament.utils import sort_swiss_tied_teams
+from server.tournament.utils import rerun_swiss_round, sort_swiss_tied_teams
 
 
 class TestSwissTournamentLifecycle(ApiBaseTestCase):
@@ -549,6 +551,55 @@ class TestOddSwissTournamentLifecycle(ApiBaseTestCase):
         self.assertEqual(len(data), 1)
         self.assertIn("byes", data[0])
         self.assertIn("1", data[0]["byes"])  # Round 1 bye exists
+
+    def test_rerun_recomputes_bye_when_no_games_played_in_round(self) -> None:
+        """Rerun should be able to move the bye to the lowest-ranked eligible team when the round has no results yet."""
+        self.swiss_round.refresh_from_db()
+
+        # Start from a clean slate for this swiss round's matches so that
+        # current_round has no COMPLETED matches and rerun can safely adjust the bye.
+        Match.objects.filter(swiss_round=self.swiss_round).delete()
+
+        team_ids = [team.id for team in self.teams]
+        t1, t2, t3 = team_ids[0], team_ids[1], team_ids[2]
+
+        # Construct results where t3 is clearly the worst team and t2 is mid-table.
+        # We then simulate an incorrect bye already given to t2 in the current round.
+        results: dict[int, dict[str, int]] = {
+            t1: {"wins": 0, "losses": 0, "draws": 0, "GF": 20, "GA": 10},
+            t2: {"wins": 0, "losses": 0, "draws": 0, "GF": 10, "GA": 10},
+            t3: {"wins": 0, "losses": 0, "draws": 0, "GF": 5, "GA": 15},
+        }
+        for tid in team_ids[3:]:
+            results[tid] = {"wins": 0, "losses": 0, "draws": 0, "GF": 10, "GA": 10}
+
+        # Simulate that t2 has already been given a bye in round 2 (extra win).
+        results[t2]["wins"] += 1
+
+        self.swiss_round.results = results
+        self.swiss_round.current_round = 2
+        # Round 1 bye given to last team, round 2 (incorrectly) to t2.
+        self.swiss_round.byes = {"1": team_ids[-1], "2": t2}
+        self.swiss_round.save()
+
+        # Use a simple current seeding mapping 1..7 -> team_ids so rerun can update it.
+        self.tournament.current_seeding = {seed: team_ids[seed - 1] for seed in range(1, 8)}
+        self.tournament.save()
+
+        # When we rerun, we expect it to remove the round-2 bye from t2,
+        # then (re)select the lowest-ranked eligible team (t3) as the new bye.
+        rerun_swiss_round(self.tournament, self.swiss_round)
+
+        self.swiss_round.refresh_from_db()
+        final_results = {int(k): v for k, v in self.swiss_round.results.items()}
+
+        self.assertEqual(
+            int(self.swiss_round.byes["2"]),
+            t3,
+            "Rerun should move the bye to the lowest-ranked eligible team for the current round",
+        )
+        self.assertEqual(final_results[t2]["wins"], 0)
+        self.assertEqual(final_results[t3]["wins"], 1)
 
     def tearDown(self) -> None:
         Match.objects.filter(tournament=self.tournament).delete()
@@ -1428,6 +1479,156 @@ class TestSwissNoRematch4Rounds(ApiBaseTestCase):
 
         rematches = all_pairs & r4_pairs
         self.assertEqual(len(rematches), 0, f"R4 should have no rematches, but found: {rematches}")
+
+    def tearDown(self) -> None:
+        Match.objects.filter(tournament=self.tournament).delete()
+        SwissRound.objects.filter(tournament=self.tournament).delete()
+        super().tearDown()
+
+
+class TestSwissRerun(ApiBaseTestCase):
+    """Test that rerun fixes corrupted rankings and rematch pairings."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.user.is_staff = True
+        self.user.save()
+        self.client.force_login(self.user)
+
+        response = self.client.post(
+            f"/api/tournament/swiss-round/{self.tournament.id}",
+            {
+                "num_rounds": 4,
+                "seeding": [1, 2, 3, 4, 5, 6, 7, 8],
+                "sequence_number": 1,
+                "name": "A",
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.swiss_round = SwissRound.objects.get(tournament=self.tournament)
+
+        response = self.client.post(f"/api/tournament/start/{self.tournament.id}")
+        self.assertEqual(response.status_code, 200)
+
+    def _score_round_matches(self, round_number: int, scores: list[tuple[int, int]]) -> None:
+        matches = Match.objects.filter(
+            swiss_round=self.swiss_round, sequence_number=round_number
+        ).order_by("id")
+        for match, score in zip(matches, scores, strict=True):
+            response = self.client.post(
+                f"/api/match/{match.id}/score",
+                {"team_1_score": score[0], "team_2_score": score[1]},
+                content_type="application/json",
+            )
+            self.assertEqual(response.status_code, 200)
+
+    def test_rerun_fixes_corrupted_rankings_and_rematches(self) -> None:
+        """Simulate stale rankings + rematch, then rerun to fix both."""
+        # Play R1-R3 normally
+        self._score_round_matches(1, [(15, 8), (15, 9), (15, 10), (15, 11)])
+        self._score_round_matches(2, [(15, 10), (15, 12), (15, 13), (15, 14)])
+        self._score_round_matches(3, [(15, 11), (15, 9), (15, 13), (15, 10)])
+
+        # R4 matches should now be SCHEDULED
+        self.swiss_round.refresh_from_db()
+        self.assertEqual(self.swiss_round.current_round, 4)
+
+        r4_matches = list(
+            Match.objects.filter(
+                swiss_round=self.swiss_round, sequence_number=4, status=Match.Status.SCHEDULED
+            ).order_by("id")
+        )
+        self.assertEqual(len(r4_matches), 4)
+
+        # Collect R1-R3 pairs to find a rematch candidate
+        prev_pairs: set[frozenset[int]] = set()
+        for r in range(1, 4):
+            for m in Match.objects.filter(swiss_round=self.swiss_round, sequence_number=r):
+                if m.team_1 and m.team_2:
+                    prev_pairs.add(frozenset([m.team_1.id, m.team_2.id]))
+
+        # Corrupt R4: force R4 match 0 to have same teams as R1 match 0 (rematch)
+        r1_match = (
+            Match.objects.filter(swiss_round=self.swiss_round, sequence_number=1)
+            .order_by("id")
+            .first()
+        )
+        self.assertIsNotNone(r1_match)
+        self.assertIsNotNone(r1_match.team_1)  # type: ignore[union-attr]
+        self.assertIsNotNone(r1_match.team_2)  # type: ignore[union-attr]
+
+        # Django field typing in tests can surface as Field descriptors to mypy;
+        # treat these as runtime values for corruption setup.
+        r1_match_any = cast(Any, r1_match)
+        r4_matches[0].team_1_id = r1_match_any.team_1_id
+        r4_matches[0].team_2_id = r1_match_any.team_2_id
+        r4_matches[0].save()
+
+        # Also corrupt rankings: swap rank 1 and rank 2
+        results = {int(k): v for k, v in self.swiss_round.results.items()}
+        team_ids_by_rank = sorted(results, key=lambda tid: results[tid]["rank"])
+        rank1_tid = team_ids_by_rank[0]
+        rank2_tid = team_ids_by_rank[1]
+        results[rank1_tid]["rank"], results[rank2_tid]["rank"] = (
+            results[rank2_tid]["rank"],
+            results[rank1_tid]["rank"],
+        )
+        self.swiss_round.results = results
+        self.swiss_round.save()
+
+        # Verify corruption: R4 now has a rematch
+        corrupted_r4_pairs: set[frozenset[int]] = set()
+        for m in Match.objects.filter(
+            swiss_round=self.swiss_round, sequence_number=4, status=Match.Status.SCHEDULED
+        ):
+            if m.team_1 and m.team_2:
+                corrupted_r4_pairs.add(frozenset([m.team_1.id, m.team_2.id]))
+        self.assertTrue(
+            len(prev_pairs & corrupted_r4_pairs) > 0, "Corruption should create a rematch"
+        )
+
+        # Verify corruption: rankings are swapped
+        self.swiss_round.refresh_from_db()
+        corrupted_results = {int(k): v for k, v in self.swiss_round.results.items()}
+        self.assertEqual(corrupted_results[rank1_tid]["rank"], 2)
+        self.assertEqual(corrupted_results[rank2_tid]["rank"], 1)
+
+        # Call rerun API
+        response = self.client.post(
+            f"/api/tournament/swiss-round/{self.swiss_round.id}/rerun",
+        )
+        self.assertEqual(response.status_code, 200)
+
+        # Verify rankings are fixed
+        self.swiss_round.refresh_from_db()
+        fixed_results = {int(k): v for k, v in self.swiss_round.results.items()}
+        self.assertEqual(fixed_results[rank1_tid]["rank"], 1, "Rank 1 should be restored")
+        self.assertEqual(fixed_results[rank2_tid]["rank"], 2, "Rank 2 should be restored")
+
+        # Verify R4 has no rematches
+        fixed_r4_pairs: set[frozenset[int]] = set()
+        for m in Match.objects.filter(
+            swiss_round=self.swiss_round, sequence_number=4, status=Match.Status.SCHEDULED
+        ):
+            if m.team_1 and m.team_2:
+                fixed_r4_pairs.add(frozenset([m.team_1.id, m.team_2.id]))
+
+        rematches = prev_pairs & fixed_r4_pairs
+        self.assertEqual(len(rematches), 0, f"Rerun should fix rematches, but found: {rematches}")
+
+        # Verify completed matches (R1-R3) are untouched
+        for r in range(1, 4):
+            completed = Match.objects.filter(
+                swiss_round=self.swiss_round, sequence_number=r, status=Match.Status.COMPLETED
+            )
+            self.assertEqual(completed.count(), 4, f"R{r} should still have 4 completed matches")
+
+        # Verify R4 matches still have SCHEDULED status (metadata preserved)
+        r4_scheduled = Match.objects.filter(
+            swiss_round=self.swiss_round, sequence_number=4, status=Match.Status.SCHEDULED
+        )
+        self.assertEqual(r4_scheduled.count(), 4, "R4 should still have 4 SCHEDULED matches")
 
     def tearDown(self) -> None:
         Match.objects.filter(tournament=self.tournament).delete()

@@ -1140,6 +1140,21 @@ export const createSwissRound = async ({
   return await response.json();
 };
 
+export const rerunSwissRound = async ({ swiss_round_id }) => {
+  const response = await fetch(
+    `/api/tournament/swiss-round/${swiss_round_id}/rerun`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCookie("csrftoken")
+      },
+      credentials: "same-origin"
+    }
+  );
+  return await response.json();
+};
+
 export const createCrossPool = async ({ tournament_id }) => {
   const response = await fetch(`/api/tournament/cross-pool/${tournament_id}`, {
     method: "POST",
