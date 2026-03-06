@@ -309,8 +309,7 @@ const TournamentStandings = () => {
                   </div>
                   <Show
                     when={
-                      swissRound.byes &&
-                      Object.keys(swissRound.byes).length > 0
+                      swissRound.byes && Object.keys(swissRound.byes).length > 0
                     }
                   >
                     <div class="mx-auto mt-3 max-w-md text-sm text-gray-500 dark:text-gray-400">

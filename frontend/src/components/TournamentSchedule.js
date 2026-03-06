@@ -244,8 +244,8 @@ const TournamentSchedule = () => {
                         </Match>
                       </Switch>
                       <p class="mt-2 text-sm">
-                        * SW A, SW B - Swiss Group A, B | CP - Cross Pool | B
-                        - Brackets
+                        * SW A, SW B - Swiss Group A, B | CP - Cross Pool | B -
+                        Brackets
                       </p>
                     </div>
                   </Show>

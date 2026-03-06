@@ -905,8 +905,12 @@ function SeedingTable(props) {
   );
 
   return (
-    <div class={`mb-6 rounded-lg border border-${props.colorClass}-200 bg-${props.colorClass}-50 p-4 dark:border-${props.colorClass}-800 dark:bg-${props.colorClass}-900/30`}>
-      <h3 class={`mb-2 text-sm font-semibold text-${props.colorClass}-700 dark:text-${props.colorClass}-300`}>
+    <div
+      class={`mb-6 rounded-lg border border-${props.colorClass}-200 bg-${props.colorClass}-50 p-4 dark:border-${props.colorClass}-800 dark:bg-${props.colorClass}-900/30`}
+    >
+      <h3
+        class={`mb-2 text-sm font-semibold text-${props.colorClass}-700 dark:text-${props.colorClass}-300`}
+      >
         {props.title}
       </h3>
       <div class="overflow-x-auto rounded-lg shadow">
@@ -1438,16 +1442,22 @@ export default function TournamentSimulator() {
           {/* Initial Tournament Standings */}
           <SeedingTable
             title="Initial Tournament Seedings"
-            seeding={computed()?.teams?.reduce((acc, t, i) => {
-              acc[i + 1] = t.id;
-              return acc;
-            }, {}) || {}}
+            seeding={
+              computed()?.teams?.reduce((acc, t, i) => {
+                acc[i + 1] = t.id;
+                return acc;
+              }, {}) || {}
+            }
             teamsById={computed()?.teamsById || {}}
             colorClass="gray"
           />
 
           {/* Seeding Stages (Pools / Swiss) */}
-          <For each={(computed()?.stages || []).filter(s => s.type === "pool" || s.type === "swiss")}>
+          <For
+            each={(computed()?.stages || []).filter(
+              s => s.type === "pool" || s.type === "swiss"
+            )}
+          >
             {stage => (
               <StageSection
                 stage={stage}
@@ -1460,7 +1470,9 @@ export default function TournamentSimulator() {
           {/* Tournament Standings after Seeding Stage */}
           <Show when={computed()?.postSeedingStageSeeding}>
             <SeedingTable
-              title={`Tournament Seedings after ${computed().initialStage === "swiss" ? "Swiss" : "Pools"}`}
+              title={`Tournament Seedings after ${
+                computed().initialStage === "swiss" ? "Swiss" : "Pools"
+              }`}
               seeding={computed().postSeedingStageSeeding}
               teamsById={computed()?.teamsById || {}}
               colorClass="teal"
@@ -1468,7 +1480,11 @@ export default function TournamentSimulator() {
           </Show>
 
           {/* Bracket & Position Pool Stages */}
-          <For each={(computed()?.stages || []).filter(s => s.type !== "pool" && s.type !== "swiss")}>
+          <For
+            each={(computed()?.stages || []).filter(
+              s => s.type !== "pool" && s.type !== "swiss"
+            )}
+          >
             {stage => (
               <StageSection
                 stage={stage}

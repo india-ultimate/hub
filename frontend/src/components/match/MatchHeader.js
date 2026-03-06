@@ -112,14 +112,18 @@ const MatchCard = props => {
               fallback={
                 <h6 class="w-full py-2 text-center">
                   {props.match?.swiss_round
-                    ? (props.useSmallSwissName ? getSmallName(props.match?.name) : getPublicSwissName(props.match?.name))
+                    ? props.useSmallSwissName
+                      ? getSmallName(props.match?.name)
+                      : getPublicSwissName(props.match?.name)
                     : props.match?.name}
                 </h6>
               }
             >
               <h6 class="w-full text-center">
                 {props.match?.swiss_round
-                  ? (props.useSmallSwissName ? getSmallName(props.match?.name) : getPublicSwissName(props.match?.name))
+                  ? props.useSmallSwissName
+                    ? getSmallName(props.match?.name)
+                    : getPublicSwissName(props.match?.name)
                   : props.match?.name}
               </h6>
               <h6 class="text-center">
