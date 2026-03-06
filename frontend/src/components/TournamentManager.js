@@ -37,6 +37,7 @@ import {
   fetchTeams,
   fetchTournaments,
   generateTournamentFixtures,
+  rerunSwissRound,
   startTournament,
   updateField,
   updateMatch,
@@ -389,6 +390,18 @@ const TournamentManager = () => {
 
   const createSwissRoundMutation = createMutation({
     mutationFn: createSwissRound,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["swiss-rounds", selectedTournamentID()]
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["matches", selectedTournamentID()]
+      });
+    }
+  });
+
+  const rerunSwissRoundMutation = createMutation({
+    mutationFn: rerunSwissRound,
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["swiss-rounds", selectedTournamentID()]
@@ -906,6 +919,26 @@ const TournamentManager = () => {
                               )}
                             </For>
                           </div>
+                        </Show>
+                        <Show
+                          when={
+                            selectedTournament()?.status === "LIV" &&
+                            swissRound.current_round > 0
+                          }
+                        >
+                          <button
+                            class="mt-2 rounded bg-amber-500 px-3 py-1 text-sm font-medium text-white hover:bg-amber-600 disabled:opacity-50"
+                            disabled={rerunSwissRoundMutation.isLoading}
+                            onClick={() =>
+                              rerunSwissRoundMutation.mutate({
+                                swiss_round_id: swissRound.id
+                              })
+                            }
+                          >
+                            {rerunSwissRoundMutation.isLoading
+                              ? "Rerunning..."
+                              : "Rerun Current Round"}
+                          </button>
                         </Show>
                       </div>
                     )}

@@ -168,6 +168,7 @@ from server.tournament.utils import (
     get_default_rules,
     is_submitted_scores_equal,
     populate_fixtures,
+    rerun_swiss_round,
     update_match_score_and_results,
     update_tournament_spirit_rankings,
     user_tournament_teams,
@@ -2090,6 +2091,27 @@ def get_swiss_rounds(
             tournament = Tournament.objects.get(event=event)
     except Tournament.DoesNotExist:
         return 400, {"message": "Tournament does not exist"}
+
+    return 200, SwissRound.objects.filter(tournament=tournament).order_by("sequence_number")
+
+
+@api.post(
+    "/tournament/swiss-round/{swiss_round_id}/rerun",
+    response={200: list[SwissRoundSchema], 400: Response, 401: Response},
+)
+def rerun_swiss_round_api(
+    request: AuthenticatedHttpRequest, swiss_round_id: int
+) -> tuple[int, QuerySet[SwissRound]] | tuple[int, message_response]:
+    if not request.user.is_staff:
+        return 401, {"message": "Only Admins can rerun swiss rounds"}
+
+    try:
+        swiss_round = SwissRound.objects.get(id=swiss_round_id)
+    except SwissRound.DoesNotExist:
+        return 400, {"message": "Swiss round does not exist"}
+
+    tournament = swiss_round.tournament
+    rerun_swiss_round(tournament, swiss_round)
 
     return 200, SwissRound.objects.filter(tournament=tournament).order_by("sequence_number")
 

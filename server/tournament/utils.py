@@ -84,20 +84,39 @@ BYE_SCORE = 15
 
 
 def select_bye_team(swiss_round: SwissRound) -> int:
-    """Select lowest-ranked team that hasn't had a bye yet."""
+    """Select lowest-ranked team that hasn't had a bye yet.
+
+    Uses the same Swiss standings logic as the rest of the system:
+    - Prefer the existing ``rank`` field when present (already computed via
+      points → H2H → opponent strength → goal difference).
+    - Fall back to a points/GD/GF sort if ranks have not yet been assigned.
+    """
     teams_with_byes = set(swiss_round.byes.values())
-    standings = sorted(
-        [(int(tid), stats) for tid, stats in swiss_round.results.items()],
-        key=lambda item: (
-            item[1]["wins"] * 2 + item[1].get("draws", 0),
-            item[1]["GF"] - item[1]["GA"],
-            item[1]["GF"],
-        ),
-    )  # ascending — worst first
+    results = {int(tid): stats for tid, stats in swiss_round.results.items()}
+
+    has_rank = bool(results) and "rank" in next(iter(results.values()))
+
+    if has_rank:
+        # Lower rank number = better; we want the worst available team,
+        # so iterate from highest rank value downward.
+        standings = sorted(results.items(), key=lambda item: item[1]["rank"], reverse=True)
+    else:
+        # Fallback: sort by points, then GD, then GF (ascending — worst first)
+        standings = sorted(
+            results.items(),
+            key=lambda item: (
+                item[1]["wins"] * 2 + item[1].get("draws", 0),
+                item[1]["GF"] - item[1]["GA"],
+                item[1]["GF"],
+            ),
+        )
+
     for tid, _ in standings:
         if tid not in teams_with_byes:
             return tid
-    return standings[0][0]  # fallback: all have had byes
+
+    # Fallback: if all teams have had byes, just return the worst by standings.
+    return standings[0][0]
 
 
 def apply_bye(swiss_round: SwissRound, team_id: int, round_number: int) -> None:
@@ -695,6 +714,171 @@ def update_match_score_and_results(match: Match, team_1_score: int, team_2_score
 
     match.status = Match.Status.COMPLETED
     match.save()
+
+
+@transaction.atomic
+def rerun_swiss_round(tournament: Tournament, swiss_round: SwissRound) -> None:
+    """Re-rank teams with current tiebreaker logic and re-pair unplayed current round matches.
+
+    Part A: Re-rank using existing W/L/D/GF/GA stats (stats unchanged, only rank order).
+    Part B: Optionally re-evaluate bye for the current round (when safe) and
+            re-pair SCHEDULED matches using backtracking pairing.
+    """
+
+    def _recompute_ranks(
+        results: dict[int, dict[str, int]],
+        pool_seeding_list: list[int],
+    ) -> tuple[dict[int, dict[str, int]], dict[int, int]]:
+        """Apply Swiss tiebreakers to assign ranks and update tournament seeding."""
+        for tid in results:
+            results[tid]["id"] = tid
+
+        points_groups: dict[int, list[dict[str, int]]] = {}
+        for result in results.values():
+            pts = result["wins"] * 2 + result.get("draws", 0)
+            points_groups.setdefault(pts, []).append(result)
+
+        ranked: list[dict[str, int]] = []
+        for pts in sorted(points_groups, reverse=True):
+            tied = points_groups[pts]
+            if len(tied) == 1:
+                ranked.extend(tied)
+            else:
+                ranked.extend(sort_swiss_tied_teams(tied, results, swiss_round))
+
+        tournament_seeding_local = {int(k): v for k, v in tournament.current_seeding.items()}
+        for i, result in enumerate(ranked):
+            results[result["id"]]["rank"] = i + 1
+            tournament_seeding_local[pool_seeding_list[i]] = int(result["id"])
+
+        return results, tournament_seeding_local
+
+    def _recompute_opp_strength(results: dict[int, dict[str, int]]) -> None:
+        """Recompute opponent strength (sum of opponents' points) for all teams."""
+        all_matches = Match.objects.filter(swiss_round=swiss_round, status=Match.Status.COMPLETED)
+        opp_strength: dict[int, int] = {tid: 0 for tid in results}
+        for m in all_matches:
+            if m.team_1 and m.team_2:
+                t1, t2 = m.team_1.id, m.team_2.id
+                if t1 in opp_strength:
+                    opp_stats = results.get(t2, {})
+                    opp_strength[t1] += opp_stats.get("wins", 0) * 2 + opp_stats.get("draws", 0)
+                if t2 in opp_strength:
+                    opp_stats = results.get(t1, {})
+                    opp_strength[t2] += opp_stats.get("wins", 0) * 2 + opp_stats.get("draws", 0)
+        for tid in results:
+            results[tid]["opp_strength"] = opp_strength.get(tid, 0)
+
+    results = {int(k): v for k, v in swiss_round.results.items()}
+    pool_seeding_list = sorted(map(int, swiss_round.initial_seeding.keys()))
+    current_round = swiss_round.current_round
+
+    teams_by_id = {team.id: team for team in tournament.teams.all()}
+    is_odd = len(teams_by_id) % 2 != 0
+
+    # Determine whether it is safe to change the bye for the current round:
+    # we only change it if no matches in the current round have been completed.
+    current_round_matches = Match.objects.filter(
+        swiss_round=swiss_round, sequence_number=current_round
+    )
+    has_completed_in_current_round = current_round_matches.filter(
+        status=Match.Status.COMPLETED
+    ).exists()
+
+    byes: dict[str, int] = dict(swiss_round.byes or {})
+    existing_bye_str = byes.get(str(current_round))
+    existing_bye_id: int | None = int(existing_bye_str) if existing_bye_str is not None else None
+
+    # If we have an odd-team Swiss and the current round has no completed matches,
+    # undo this round's existing bye (if any) before re-ranking.
+    if is_odd and not has_completed_in_current_round and existing_bye_id is not None:
+        stats = results.get(existing_bye_id)
+        if stats is not None:
+            stats["wins"] = max(0, stats.get("wins", 0) - 1)
+            stats["GF"] = max(0, stats.get("GF", 0) - BYE_SCORE)
+        byes.pop(str(current_round), None)
+        existing_bye_id = None
+
+    # Part A: Re-rank with current Swiss tiebreaker logic (using latest stats).
+    results, tournament_seeding = _recompute_ranks(results, pool_seeding_list)
+
+    # If this is an odd-team Swiss and no games are completed in the current round,
+    # (re)select the bye team based on the latest rankings and re-apply the bye
+    # using the same BYE_SCORE convention.
+    if is_odd and not has_completed_in_current_round:
+        # Persist intermediate results/byes so they reflect the latest stats
+        # before we decide the new bye team.
+        swiss_round.results = results
+        swiss_round.byes = byes
+        swiss_round.save(update_fields=["results", "byes"])
+
+        # Recompute bye based on the latest Swiss standings.
+        new_bye_team_id = select_bye_team(swiss_round)
+
+        stats = results.get(new_bye_team_id)
+        if stats is not None:
+            stats["wins"] = stats.get("wins", 0) + 1
+            stats["GF"] = stats.get("GF", 0) + BYE_SCORE
+        else:
+            results[new_bye_team_id] = {
+                "wins": 1,
+                "losses": 0,
+                "draws": 0,
+                "GF": BYE_SCORE,
+                "GA": 0,
+            }
+
+        byes[str(current_round)] = new_bye_team_id
+
+        # Re-rank again now that the (possibly new) bye has been applied.
+        results, tournament_seeding = _recompute_ranks(results, pool_seeding_list)
+        bye_team_id_for_pairings: int | None = new_bye_team_id
+    else:
+        bye_team_id_for_pairings = existing_bye_id
+
+    # Recompute opponent strength from the final results.
+    _recompute_opp_strength(results)
+
+    swiss_round.results = results
+    swiss_round.byes = byes
+    swiss_round.save()
+    tournament.current_seeding = tournament_seeding
+    tournament.save()
+
+    # Part B: Re-pair SCHEDULED matches in current round
+    scheduled_matches = list(
+        Match.objects.filter(
+            swiss_round=swiss_round,
+            sequence_number=current_round,
+            status=Match.Status.SCHEDULED,
+        ).order_by("id")
+    )
+
+    if not scheduled_matches:
+        return
+
+    pairings = generate_swiss_pairings(swiss_round, exclude_team_id=bye_team_id_for_pairings)
+
+    # Build rank map from current results
+    ranked_teams = sorted(
+        results.items(),
+        key=lambda item: (
+            item[1]["wins"],
+            item[1]["GF"] - item[1]["GA"],
+            item[1]["GF"],
+        ),
+        reverse=True,
+    )
+    team_rank: dict[int, int] = {int(tid): rank + 1 for rank, (tid, _) in enumerate(ranked_teams)}
+
+    for i, (t1_id, t2_id) in enumerate(pairings):
+        if i < len(scheduled_matches):
+            match = scheduled_matches[i]
+            match.team_1 = teams_by_id[t1_id]
+            match.team_2 = teams_by_id[t2_id]
+            match.placeholder_seed_1 = team_rank[t1_id]
+            match.placeholder_seed_2 = team_rank[t2_id]
+            match.save()
 
 
 @transaction.atomic
