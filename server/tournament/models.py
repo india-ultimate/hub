@@ -179,6 +179,7 @@ class SwissRound(ExportModelOperationsMixin("swiss_round"), models.Model):  # ty
     current_round = models.PositiveIntegerField(default=0)
     initial_seeding = models.JSONField()
     results = models.JSONField()
+    round_results = models.JSONField(default=dict, blank=True)
     byes = models.JSONField(default=dict, blank=True)
 
     class Meta:
