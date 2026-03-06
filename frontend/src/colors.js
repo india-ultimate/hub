@@ -22,7 +22,14 @@ export const matchCardColors = {
     ["cyan", "indigo", "sky", "rose"]
   ],
   position_pool: ["lime", "pink", "emerald", "teal"],
-  swiss_round: ["teal", "emerald", "sky", "amber", "violet", "rose"]
+  swiss_round: [
+    ["teal", "green"],
+    ["violet", "blue"],
+    ["purple", "teal"],
+    ["green", "violet"],
+    ["blue", "purple"],
+    ["teal", "blue"]
+  ]
 };
 
 export const matchOutcomeColors = Object.freeze({
