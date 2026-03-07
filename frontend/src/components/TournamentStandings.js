@@ -3,16 +3,20 @@ import { createQuery } from "@tanstack/solid-query";
 import { trophy } from "solid-heroicons/solid";
 import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
 
+import { matchCardColors, matchCardColorToBorderColorMap } from "../colors";
 import {
   fetchBracketsBySlug,
   fetchCrossPoolBySlug,
+  fetchMatchesBySlug,
   fetchPoolsBySlug,
   fetchPositionPoolsBySlug,
   fetchSwissRoundsBySlug,
   fetchTournamentBySlug
 } from "../queries";
 import { getTournamentBreadcrumbName } from "../utils";
+import { getMatchCardColor } from "../utils";
 import Breadcrumbs from "./Breadcrumbs";
+import MatchCard from "./match/MatchCard";
 import PillTabs from "./tabs/PillTabs";
 import VerticalTabs from "./tabs/VerticalTabs";
 
@@ -28,6 +32,10 @@ const TournamentStandings = () => {
   const tournamentQuery = createQuery(
     () => ["tournaments", params.slug],
     () => fetchTournamentBySlug(params.slug)
+  );
+  const matchesQuery = createQuery(
+    () => ["matches", params.slug],
+    () => fetchMatchesBySlug(params.slug)
   );
   const poolsQuery = createQuery(
     () => ["pools", params.slug],
@@ -112,7 +120,8 @@ const TournamentStandings = () => {
     swissRoundsQuery.isSuccess &&
     poolsQuery.isSuccess &&
     crossPoolQuery.isSuccess &&
-    bracketQuery.isSuccess;
+    bracketQuery.isSuccess &&
+    matchesQuery.isSuccess;
 
   const stageTabs = createMemo(() => {
     const tabs = [];
@@ -274,6 +283,9 @@ const TournamentStandings = () => {
                 swissRound={activeSwissRound()}
                 teamsMap={teamsMap}
                 params={params}
+                matchesQuery={matchesQuery}
+                tournamentType={tournamentQuery.data?.event?.type}
+                useUCRegistrations={tournamentQuery.data?.use_uc_registrations}
               />
             }
           >
@@ -287,6 +299,11 @@ const TournamentStandings = () => {
                   swissRound={activeSwissRound()}
                   teamsMap={teamsMap}
                   params={params}
+                  matchesQuery={matchesQuery}
+                  tournamentType={tournamentQuery.data?.event?.type}
+                  useUCRegistrations={
+                    tournamentQuery.data?.use_uc_registrations
+                  }
                 />
               </Show>
             </VerticalTabs>
@@ -302,9 +319,11 @@ const TournamentStandings = () => {
         <div class="rounded-lg p-4">
           <For each={Object.keys(poolsMap())}>
             {poolName => (
-              <div>
-                <h2 class="text-center text-lg">Pool {poolName}</h2>
-                <div class="relative my-5 overflow-x-auto rounded-lg shadow-lg">
+              <div class="mb-8">
+                <h2 class="mb-2 text-center text-lg font-semibold">
+                  Pool {poolName}
+                </h2>
+                <div class="relative my-3 overflow-x-auto rounded-lg shadow-lg">
                   <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
                     <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
                       <tr>
@@ -350,6 +369,42 @@ const TournamentStandings = () => {
                     </tbody>
                   </table>
                 </div>
+                <Show when={matchesQuery.isSuccess}>
+                  <div class="mt-4">
+                    <h3 class="mb-2 text-center text-sm font-semibold text-gray-700 dark:text-gray-200">
+                      Pool {poolName} matches
+                    </h3>
+                    <div class="space-y-3">
+                      <For
+                        each={matchesQuery.data?.filter(
+                          m => m.pool && m.pool.name === poolName
+                        )}
+                      >
+                        {match => (
+                          <div
+                            id={match.id}
+                            class={`mb-3 block w-full rounded-lg border bg-white px-1 py-2 shadow dark:bg-gray-800 ${
+                              matchCardColorToBorderColorMap[
+                                getMatchCardColor(match)
+                              ]
+                            }`}
+                          >
+                            <MatchCard
+                              match={match}
+                              tournamentSlug={params.slug}
+                              tournamentType={tournamentQuery.data?.event?.type}
+                              useUCRegistrations={
+                                tournamentQuery.data?.use_uc_registrations
+                              }
+                              bothTeamsClickable
+                              compact
+                            />
+                          </div>
+                        )}
+                      </For>
+                    </div>
+                  </div>
+                </Show>
               </div>
             )}
           </For>
@@ -446,6 +501,42 @@ const TournamentStandings = () => {
                 </tbody>
               </table>
             </div>
+            <Show when={matchesQuery.isSuccess}>
+              <div class="mt-6">
+                <h3 class="mb-2 text-center text-sm font-semibold text-gray-700 dark:text-gray-200">
+                  Cross Pool matches
+                </h3>
+                <div class="space-y-3">
+                  <For
+                    each={matchesQuery.data?.filter(
+                      m => m.cross_pool?.id === crossPoolQuery.data?.id
+                    )}
+                  >
+                    {match => (
+                      <div
+                        id={match.id}
+                        class={`mb-3 block w-full rounded-lg border bg-white px-1 py-2 shadow dark:bg-gray-800 ${
+                          matchCardColorToBorderColorMap[
+                            getMatchCardColor(match)
+                          ]
+                        }`}
+                      >
+                        <MatchCard
+                          match={match}
+                          tournamentSlug={params.slug}
+                          tournamentType={tournamentQuery.data?.event?.type}
+                          useUCRegistrations={
+                            tournamentQuery.data?.use_uc_registrations
+                          }
+                          bothTeamsClickable
+                          compact
+                        />
+                      </div>
+                    )}
+                  </For>
+                </div>
+              </div>
+            </Show>
           </Show>
         </div>
       </Show>
@@ -464,6 +555,11 @@ const TournamentStandings = () => {
                     teamsMap={teamsMap}
                     params={params}
                     getTeamImage={getTeamImage}
+                    matchesQuery={matchesQuery}
+                    tournamentType={tournamentQuery.data?.event?.type}
+                    useUCRegistrations={
+                      tournamentQuery.data?.use_uc_registrations
+                    }
                   />
                 </Show>
                 <Show when={activePoolName()}>
@@ -472,6 +568,11 @@ const TournamentStandings = () => {
                     results={positionPoolsMap()[activePoolName()]}
                     teamsMap={teamsMap}
                     params={params}
+                    matchesQuery={matchesQuery}
+                    tournamentType={tournamentQuery.data?.event?.type}
+                    useUCRegistrations={
+                      tournamentQuery.data?.use_uc_registrations
+                    }
                   />
                 </Show>
               </>
@@ -488,6 +589,11 @@ const TournamentStandings = () => {
                   teamsMap={teamsMap}
                   params={params}
                   getTeamImage={getTeamImage}
+                  matchesQuery={matchesQuery}
+                  tournamentType={tournamentQuery.data?.event?.type}
+                  useUCRegistrations={
+                    tournamentQuery.data?.use_uc_registrations
+                  }
                 />
               </Show>
               <Show when={activePoolName()}>
@@ -496,6 +602,11 @@ const TournamentStandings = () => {
                   results={positionPoolsMap()[activePoolName()]}
                   teamsMap={teamsMap}
                   params={params}
+                  matchesQuery={matchesQuery}
+                  tournamentType={tournamentQuery.data?.event?.type}
+                  useUCRegistrations={
+                    tournamentQuery.data?.use_uc_registrations
+                  }
                 />
               </Show>
             </VerticalTabs>
@@ -507,10 +618,23 @@ const TournamentStandings = () => {
 };
 
 const SwissGroupContent = props => {
+  const allRoundsComplete = () =>
+    props.swissRound.current_round > props.swissRound.num_rounds;
+
   const [selectedRound, setSelectedRound] = createSignal(null);
+
+  // Default to "final" when all rounds are complete
+  createEffect(() => {
+    if (allRoundsComplete() && selectedRound() === null) {
+      setSelectedRound("final");
+    }
+  });
 
   const displayResults = () => {
     const round = selectedRound();
+    if (round === "final") {
+      return props.swissRound.results;
+    }
     if (
       round !== null &&
       props.swissRound.round_results &&
@@ -552,16 +676,30 @@ const SwissGroupContent = props => {
               </button>
             )}
           </For>
-          <button
-            class={`rounded-full px-3 py-1 text-xs font-medium ${
-              selectedRound() === null
-                ? "bg-blue-600 text-white"
-                : "bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-300"
-            }`}
-            onClick={() => setSelectedRound(null)}
-          >
-            Current
-          </button>
+          <Show when={!allRoundsComplete()}>
+            <button
+              class={`rounded-full px-3 py-1 text-xs font-medium ${
+                selectedRound() === null
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-300"
+              }`}
+              onClick={() => setSelectedRound(null)}
+            >
+              R{props.swissRound.current_round} (Current)
+            </button>
+          </Show>
+          <Show when={allRoundsComplete()}>
+            <button
+              class={`rounded-full px-3 py-1 text-xs font-medium ${
+                selectedRound() === "final"
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-300"
+              }`}
+              onClick={() => setSelectedRound("final")}
+            >
+              Final
+            </button>
+          </Show>
         </div>
       </Show>
       <div class="relative my-5 overflow-x-auto rounded-lg shadow-lg">
@@ -631,24 +769,87 @@ const SwissGroupContent = props => {
           </tbody>
         </table>
       </div>
-      <Show
-        when={
-          props.swissRound.byes && Object.keys(props.swissRound.byes).length > 0
-        }
-      >
-        <div class="mx-auto mt-3 max-w-md text-sm text-gray-500 dark:text-gray-400">
-          <For
-            each={Object.entries(props.swissRound.byes || {}).sort(
-              ([a], [b]) => a - b
-            )}
-          >
-            {([round, teamId]) => (
-              <p>
-                Round {round} bye:{" "}
-                {props.teamsMap()[teamId]?.name || `Team ${teamId}`} (15-0)
-              </p>
-            )}
-          </For>
+      <Show when={props.matchesQuery?.isSuccess && selectedRound() !== "final"}>
+        <div class="mt-6">
+          <h3 class="mb-2 text-center text-sm font-semibold text-gray-700 dark:text-gray-200">
+            Swiss {props.swissRound.name} — Round{" "}
+            {selectedRound() ?? props.swissRound.current_round} Matches
+          </h3>
+          <div class="mt-3 space-y-3">
+            <Show
+              when={
+                props.swissRound.byes &&
+                props.swissRound.byes[
+                  String(selectedRound() ?? props.swissRound.current_round)
+                ]
+              }
+            >
+              {() => {
+                const round = () =>
+                  selectedRound() ?? props.swissRound.current_round;
+                const teamId = () => props.swissRound.byes[String(round())];
+                const groupColors = () =>
+                  matchCardColors["swiss_round"][
+                    props.swissRound.sequence_number - 1
+                  ] || matchCardColors["swiss_round"][0];
+                const byeColor = () =>
+                  groupColors()[(round() - 1) % groupColors().length];
+                return (
+                  <div
+                    class={`mb-3 block w-full rounded-lg border bg-white px-4 py-3 shadow dark:bg-gray-800 ${
+                      matchCardColorToBorderColorMap[byeColor()]
+                    }`}
+                  >
+                    <div class="flex items-center justify-between">
+                      <div class="flex items-center gap-3">
+                        <span class="text-xs font-medium uppercase text-gray-400 dark:text-gray-500">
+                          Bye
+                        </span>
+                        <A
+                          href={`/tournament/${props.params.slug}/team/${
+                            props.teamsMap()[teamId()]?.slug
+                          }`}
+                          class="font-semibold text-gray-800 dark:text-gray-200"
+                        >
+                          {props.teamsMap()[teamId()]?.name ||
+                            `Team ${teamId()}`}
+                        </A>
+                      </div>
+                      <span class="font-bold text-green-600 dark:text-green-400">
+                        15 - 0
+                      </span>
+                    </div>
+                  </div>
+                );
+              }}
+            </Show>
+            <For
+              each={props.matchesQuery.data?.filter(
+                m =>
+                  m.swiss_round?.id === props.swissRound.id &&
+                  m.sequence_number ===
+                    (selectedRound() ?? props.swissRound.current_round)
+              )}
+            >
+              {match => (
+                <div
+                  id={match.id}
+                  class={`mb-3 block w-full rounded-lg border bg-white px-1 py-2 shadow dark:bg-gray-800 ${
+                    matchCardColorToBorderColorMap[getMatchCardColor(match)]
+                  }`}
+                >
+                  <MatchCard
+                    match={match}
+                    tournamentSlug={props.params.slug}
+                    tournamentType={props.tournamentType}
+                    useUCRegistrations={props.useUCRegistrations}
+                    bothTeamsClickable
+                    compact
+                  />
+                </div>
+              )}
+            </For>
+          </div>
         </div>
       </Show>
     </div>
@@ -744,6 +945,38 @@ const BracketContent = props => {
             </tbody>
           </table>
         </div>
+        <Show when={props.matchesQuery?.isSuccess}>
+          <div class="mt-6">
+            <h3 class="mb-2 text-center text-sm font-semibold text-gray-700 dark:text-gray-200">
+              Bracket {props.bracket.name} matches
+            </h3>
+            <div class="space-y-3">
+              <For
+                each={props.matchesQuery.data?.filter(
+                  m => m.bracket?.id === props.bracket.id
+                )}
+              >
+                {match => (
+                  <div
+                    id={match.id}
+                    class={`mb-3 block w-full rounded-lg border bg-white px-1 py-2 shadow dark:bg-gray-800 ${
+                      matchCardColorToBorderColorMap[getMatchCardColor(match)]
+                    }`}
+                  >
+                    <MatchCard
+                      match={match}
+                      tournamentSlug={props.params.slug}
+                      tournamentType={props.tournamentType}
+                      useUCRegistrations={props.useUCRegistrations}
+                      bothTeamsClickable
+                      compact
+                    />
+                  </div>
+                )}
+              </For>
+            </div>
+          </div>
+        </Show>
       </Show>
     </div>
   );
@@ -752,8 +985,10 @@ const BracketContent = props => {
 const PositionPoolContent = props => {
   return (
     <div>
-      <h2 class="text-center text-lg">Position Pool {props.poolName}</h2>
-      <div class="relative my-5 overflow-x-auto rounded-lg shadow-lg">
+      <h2 class="mb-2 text-center text-lg font-semibold">
+        Position Pool {props.poolName}
+      </h2>
+      <div class="relative my-3 overflow-x-auto rounded-lg shadow-lg">
         <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
           <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
             <tr>
@@ -799,6 +1034,38 @@ const PositionPoolContent = props => {
           </tbody>
         </table>
       </div>
+      <Show when={props.matchesQuery?.isSuccess}>
+        <div class="mt-4">
+          <h3 class="mb-2 text-center text-sm font-semibold text-gray-700 dark:text-gray-200">
+            Position Pool {props.poolName} matches
+          </h3>
+          <div class="space-y-3">
+            <For
+              each={props.matchesQuery.data?.filter(
+                m => m.position_pool && m.position_pool.name === props.poolName
+              )}
+            >
+              {match => (
+                <div
+                  id={match.id}
+                  class={`mb-3 block w-full rounded-lg border bg-white px-1 py-2 shadow dark:bg-gray-800 ${
+                    matchCardColorToBorderColorMap[getMatchCardColor(match)]
+                  }`}
+                >
+                  <MatchCard
+                    match={match}
+                    tournamentSlug={props.params.slug}
+                    tournamentType={props.tournamentType}
+                    useUCRegistrations={props.useUCRegistrations}
+                    bothTeamsClickable
+                    compact
+                  />
+                </div>
+              )}
+            </For>
+          </div>
+        </div>
+      </Show>
     </div>
   );
 };
