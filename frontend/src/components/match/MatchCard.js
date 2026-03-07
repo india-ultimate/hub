@@ -661,7 +661,11 @@ const TournamentMatch = props => {
       {/*Team Admin Actions*/}
 
       <Show
-        when={props.match.status === "SCH" && (isMatchTeamAdmin() || isStaff())}
+        when={
+          !props.compact &&
+          props.match.status === "SCH" &&
+          (isMatchTeamAdmin() || isStaff())
+        }
       >
         <div class="inline-flex w-full items-center justify-center">
           <hr class="my-6 h-px w-64 border-0 bg-gray-200 dark:bg-gray-700" />
@@ -772,6 +776,7 @@ const TournamentMatch = props => {
 
       <Show
         when={
+          !props.compact &&
           (props.match.status === "COM" || props.match.status === "SCH") &&
           isStaff() &&
           (!props.match["spirit_score_team_2"] ||
@@ -798,6 +803,7 @@ const TournamentMatch = props => {
 
       <Show
         when={
+          !props.compact &&
           (props.match.status === "COM" || props.match.status === "SCH") &&
           isMatchTeamAdmin() &&
           canUserSubmitSpiritScores()
@@ -847,6 +853,7 @@ const TournamentMatch = props => {
 
       <Show
         when={
+          !props.compact &&
           (props.match.status === "COM" || props.match.status === "SCH") &&
           isStaff()
         }
