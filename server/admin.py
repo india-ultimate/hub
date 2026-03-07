@@ -43,6 +43,7 @@ from server.tournament.models import (
     PositionPool,
     Registration,
     SpiritScore,
+    SwissRound,
     Tournament,
     TournamentField,
 )
@@ -261,6 +262,16 @@ class PositionPoolAdmin(admin.ModelAdmin[PositionPool]):
 
     @admin.display(description="Tournament Name", ordering="tournament__event__title")
     def get_name(self, obj: Pool) -> str:
+        return obj.tournament.event.title
+
+
+@admin.register(SwissRound)
+class SwissRoundAdmin(admin.ModelAdmin[SwissRound]):
+    search_fields = ["tournament__event__title"]
+    list_display = ["get_name", "name", "current_round", "num_rounds"]
+
+    @admin.display(description="Tournament Name", ordering="tournament__event__title")
+    def get_name(self, obj: SwissRound) -> str:
         return obj.tournament.event.title
 
 
