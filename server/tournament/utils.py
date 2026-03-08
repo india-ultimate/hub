@@ -693,9 +693,12 @@ def get_new_bracket_seeding(seeding: dict[int, int], match: Match) -> dict[int, 
     return seeding
 
 
+@transaction.atomic
 def update_match_score_and_results(match: Match, team_1_score: int, team_2_score: int) -> None:
     match.score_team_1 = team_1_score
     match.score_team_2 = team_2_score
+    match.status = Match.Status.COMPLETED
+    match.save()
 
     if match.pool is not None:
         update_for_pool_or_position_pool(match, match.pool)
@@ -711,9 +714,6 @@ def update_match_score_and_results(match: Match, team_1_score: int, team_2_score
 
     elif match.swiss_round is not None:
         update_for_swiss_round(match, match.swiss_round)
-
-    match.status = Match.Status.COMPLETED
-    match.save()
 
 
 @transaction.atomic
