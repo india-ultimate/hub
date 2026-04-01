@@ -40,8 +40,8 @@ jobs:
       - name: Replace cpu size
         uses: jacobtomlinson/gha-find-replace@v3
         with:
-          find: "shared-cpu-[0-9]+x"
-          replace: "shared-cpu-${{github.event.inputs.cpu}}x"
+          find: "cpus = [0-9]+"
+          replace: "cpus = ${{github.event.inputs.cpu}}"
           include: "fly.toml"
       - name: Replace gunicorn servers
         uses: jacobtomlinson/gha-find-replace@v3
