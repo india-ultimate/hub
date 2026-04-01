@@ -17,7 +17,8 @@ swap_size_mb = 512
 MB_DB_FILE = "/data/metabase.db"
 
 [[vm]]
-  size = "shared-cpu-1x"
+  cpu_kind = "shared"
+  cpus = 1
   memory = "1gb"
 
 [http_service]

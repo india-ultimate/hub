@@ -22,4 +22,4 @@ tmux new-session -d -s hub-worker "python manage.py run_task_worker --sleep-seco
 
 # Start the server using gunicorn
 export PATH="$HOME/.local/bin:$PATH"
-gunicorn -w 12 hub.wsgi
+gunicorn -w 4 hub.wsgi
