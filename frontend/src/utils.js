@@ -196,21 +196,24 @@ export const assetURL = name =>
 export const getMatchCardColor = match => {
   let color = "";
   if (match && match.pool) {
-    color = matchCardColors["pool"][match.pool.sequence_number - 1];
+    const poolColors = matchCardColors["pool"];
+    color = poolColors[(match.pool.sequence_number - 1) % poolColors.length];
   } else if (match && match.cross_pool) {
-    color = matchCardColors["cross_pool"][match.sequence_number - 1];
+    const cpColors = matchCardColors["cross_pool"];
+    color = cpColors[(match.sequence_number - 1) % cpColors.length];
   } else if (match && match.bracket) {
-    color =
-      matchCardColors["bracket"][match.bracket.sequence_number - 1][
-        match.sequence_number - 1
-      ];
-  } else if (match && match.position_pool) {
-    color =
-      matchCardColors["position_pool"][match.position_pool.sequence_number - 1];
-  } else if (match && match.swiss_round) {
+    const bracketGroups = matchCardColors["bracket"];
     const groupColors =
-      matchCardColors["swiss_round"][match.swiss_round.sequence_number - 1] ||
-      matchCardColors["swiss_round"][0];
+      bracketGroups[(match.bracket.sequence_number - 1) % bracketGroups.length];
+    color = groupColors[(match.sequence_number - 1) % groupColors.length];
+  } else if (match && match.position_pool) {
+    const ppColors = matchCardColors["position_pool"];
+    color =
+      ppColors[(match.position_pool.sequence_number - 1) % ppColors.length];
+  } else if (match && match.swiss_round) {
+    const swissGroups = matchCardColors["swiss_round"];
+    const groupColors =
+      swissGroups[(match.swiss_round.sequence_number - 1) % swissGroups.length];
     color = groupColors[(match.sequence_number - 1) % groupColors.length];
   }
   return color;

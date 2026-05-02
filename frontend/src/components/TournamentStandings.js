@@ -788,10 +788,12 @@ const SwissGroupContent = props => {
                 const round = () =>
                   selectedRound() ?? props.swissRound.current_round;
                 const teamId = () => props.swissRound.byes[String(round())];
-                const groupColors = () =>
-                  matchCardColors["swiss_round"][
-                    props.swissRound.sequence_number - 1
-                  ] || matchCardColors["swiss_round"][0];
+                const groupColors = () => {
+                  const swissGroups = matchCardColors["swiss_round"];
+                  return swissGroups[
+                    (props.swissRound.sequence_number - 1) % swissGroups.length
+                  ];
+                };
                 const byeColor = () =>
                   groupColors()[(round() - 1) % groupColors().length];
                 return (
