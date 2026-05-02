@@ -7,6 +7,7 @@ const PillTabs = props => {
         {tab => (
           <li class="me-2">
             <button
+              id={`${tab.id}-tab`}
               class={
                 props.activeTab() === tab.id
                   ? "inline-block rounded-full bg-blue-600 px-4 py-2.5 text-white"
