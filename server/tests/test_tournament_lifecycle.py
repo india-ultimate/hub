@@ -1,5 +1,5 @@
-from server.tests.base import ApiBaseTestCase, start_tournament
-from server.tournament.models import Bracket, Match, Pool
+from server.tests.base import ApiBaseTestCase, create_pool, start_tournament
+from server.tournament.models import Bracket, CrossPool, Match, Pool
 
 
 class TestTournamentLifecycle(ApiBaseTestCase):
@@ -269,3 +269,108 @@ class TestTournamentLifecycle(ApiBaseTestCase):
         )
 
         return bracket
+
+
+class TestCrossPoolSeqGapProgression(ApiBaseTestCase):
+    """
+    Regression test: a seed that plays CP seq 1 and seq 3 (no seq 2 match)
+    should have its team populated in the seq 3 match after seq 1 completes.
+    """
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.user.is_staff = True
+        self.user.save()
+        self.client.force_login(self.user)
+
+        # Two 2-team pools so pool matches are trivial (one match each)
+        self.pool_a = create_pool("A", self.tournament, [1, 2])
+        self.pool_b = create_pool("B", self.tournament, [3, 4])
+
+        # Create the CrossPool container
+        response = self.client.post(
+            f"/api/tournament/cross-pool/{self.tournament.id}",
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.cross_pool = CrossPool.objects.get(tournament=self.tournament)
+
+        # CP seq 1: seed 1 vs seed 3
+        Match.objects.create(
+            tournament=self.tournament,
+            cross_pool=self.cross_pool,
+            sequence_number=1,
+            placeholder_seed_1=1,
+            placeholder_seed_2=3,
+        )
+        # CP seq 2: seed 2 vs seed 4 — seed 1 has NO match here (the gap)
+        Match.objects.create(
+            tournament=self.tournament,
+            cross_pool=self.cross_pool,
+            sequence_number=2,
+            placeholder_seed_1=2,
+            placeholder_seed_2=4,
+        )
+        # CP seq 3: seed 1 vs seed 2 — seed 1 jumps from seq 1 to seq 3
+        self.cp_seq3 = Match.objects.create(
+            tournament=self.tournament,
+            cross_pool=self.cross_pool,
+            sequence_number=3,
+            placeholder_seed_1=1,
+            placeholder_seed_2=2,
+        )
+
+        start_tournament(self.tournament)
+
+    def _score_match(self, match: Match, score_1: int, score_2: int) -> None:
+        response = self.client.post(
+            f"/api/match/{match.id}/score",
+            {"team_1_score": score_1, "team_2_score": score_2},
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+
+    def test_cp_seq3_populated_after_seq1_completes(self) -> None:
+        """
+        Completing pool matches triggers CP seq 1 population.
+        Completing CP seq 1 should populate CP seq 3 for seed 1,
+        skipping seq 2 where seed 1 has no match.
+        """
+        # Resolve the team that corresponds to seed 1 before any matches
+        seed_1_team_id = self.tournament.initial_seeding["1"]
+
+        # Complete both pool matches (higher seed wins each)
+        pool_a_match = Match.objects.get(pool=self.pool_a)
+        pool_b_match = Match.objects.get(pool=self.pool_b)
+        self._score_match(pool_a_match, 15, 10)
+        self._score_match(pool_b_match, 15, 10)
+
+        # CP seq 1 should now have teams assigned
+        cp_seq1 = Match.objects.get(cross_pool=self.cross_pool, sequence_number=1)
+        self.assertIsNotNone(cp_seq1.team_1, "CP seq 1 should have team_1 after pools complete")
+        self.assertIsNotNone(cp_seq1.team_2, "CP seq 1 should have team_2 after pools complete")
+        if cp_seq1.team_1:  # Type guard for mypy
+            self.assertEqual(cp_seq1.team_1.id, seed_1_team_id)
+
+        # Complete CP seq 1 (seed 1 wins)
+        self._score_match(cp_seq1, 15, 10)
+
+        # CP seq 3 must now have seed 1's team populated,
+        # even though seed 1 has no CP seq 2 match
+        self.cp_seq3.refresh_from_db()
+        self.assertIsNotNone(
+            self.cp_seq3.team_1,
+            "CP seq 3 team_1 should be populated after seq 1 completes despite gap at seq 2",
+        )
+        if self.cp_seq3.team_1:  # Type guard for mypy
+            self.assertEqual(
+                self.cp_seq3.team_1.id,
+                seed_1_team_id,
+                "CP seq 3 team_1 should be seed 1's team",
+            )
+
+    def tearDown(self) -> None:
+        Match.objects.filter(tournament=self.tournament).delete()
+        Pool.objects.filter(tournament=self.tournament).delete()
+        CrossPool.objects.filter(tournament=self.tournament).delete()
+        super().tearDown()
