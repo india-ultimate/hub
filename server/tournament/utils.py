@@ -1068,16 +1068,24 @@ def populate_fixtures(tournament_id: int) -> None:
         matches = Match.objects.filter(cross_pool=cross_pool[0])
         for match in matches:
             if match.status == Match.Status.COMPLETED:
-                next_matches_seed_1 = (
+                _next_cp_seed_1 = (
                     Match.objects.filter(cross_pool__isnull=False)
-                    .filter(tournament=tournament_id, sequence_number=match.sequence_number + 1)
+                    .filter(
+                        tournament=tournament_id,
+                        sequence_number__gt=match.sequence_number,
+                    )
                     .filter(
                         Q(placeholder_seed_1=match.placeholder_seed_1)
                         | Q(placeholder_seed_2=match.placeholder_seed_1)
                     )
+                    .order_by("sequence_number")
                 )
-
-                if next_matches_seed_1.count() == 0:
+                _first_cp_seed_1 = _next_cp_seed_1.first()
+                if _first_cp_seed_1 is not None:
+                    next_matches_seed_1 = _next_cp_seed_1.filter(
+                        sequence_number=_first_cp_seed_1.sequence_number
+                    )
+                else:
                     next_matches_seed_1 = (
                         Match.objects.filter(
                             Q(bracket__isnull=False) | Q(position_pool__isnull=False)
@@ -1089,16 +1097,24 @@ def populate_fixtures(tournament_id: int) -> None:
                         )
                     )
 
-                next_matches_seed_2 = (
+                _next_cp_seed_2 = (
                     Match.objects.filter(cross_pool__isnull=False)
-                    .filter(tournament=tournament_id, sequence_number=match.sequence_number + 1)
+                    .filter(
+                        tournament=tournament_id,
+                        sequence_number__gt=match.sequence_number,
+                    )
                     .filter(
                         Q(placeholder_seed_1=match.placeholder_seed_2)
                         | Q(placeholder_seed_2=match.placeholder_seed_2)
                     )
+                    .order_by("sequence_number")
                 )
-
-                if next_matches_seed_2.count() == 0:
+                _first_cp_seed_2 = _next_cp_seed_2.first()
+                if _first_cp_seed_2 is not None:
+                    next_matches_seed_2 = _next_cp_seed_2.filter(
+                        sequence_number=_first_cp_seed_2.sequence_number
+                    )
+                else:
                     next_matches_seed_2 = (
                         Match.objects.filter(
                             Q(bracket__isnull=False) | Q(position_pool__isnull=False)
