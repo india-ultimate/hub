@@ -294,6 +294,10 @@ export const getTournamentBreadcrumbName = tournamentSlug => {
     name += ` (${area})`;
   }
 
+  if (name.length === 0) {
+    name = tournamentSlug.split("-")[0];
+  }
+
   return name;
 };
 
