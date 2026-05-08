@@ -1,8 +1,20 @@
+import datetime
 from typing import Any, cast
 
 from server.tests.base import ApiBaseTestCase, add_teams_to_event, create_event, create_tournament
-from server.tournament.models import Bracket, CrossPool, Match, PositionPool, SwissRound
+from server.tournament.models import (
+    Bracket,
+    CrossPool,
+    Match,
+    PositionPool,
+    SwissRound,
+    TournamentField,
+)
 from server.tournament.utils import rerun_swiss_round, sort_swiss_tied_teams
+
+# Slot pairs farther apart than this are not considered back-to-back
+# (e.g. an overnight gap between rounds is fine).
+BACK_TO_BACK_GAP_HOURS = 2
 
 
 class TestSwissTournamentLifecycle(ApiBaseTestCase):
@@ -1633,4 +1645,454 @@ class TestSwissRerun(ApiBaseTestCase):
     def tearDown(self) -> None:
         Match.objects.filter(tournament=self.tournament).delete()
         SwissRound.objects.filter(tournament=self.tournament).delete()
+        super().tearDown()
+
+
+class TestSwissBackToBackAvoidance(ApiBaseTestCase):
+    """Tests for back-to-back match avoidance in Swiss rounds."""
+
+    def setUp(self) -> None:
+        from django.test import TestCase
+
+        from server.core.models import Player, UCPerson, User
+        from server.season.models import Season
+        from server.tournament.models import UCRegistration
+
+        TestCase.setUp(self)
+
+        self.username = "username@foo.com"
+        self.password = "password"
+        self.user = User.objects.create(
+            username=self.username, email=self.username, first_name="John", last_name="Williamson"
+        )
+        self.user.set_password(self.password)
+        self.user.is_staff = True
+        self.user.save()
+
+        person = UCPerson.objects.create(email=self.username, slug="username")
+        self.player = Player.objects.create(
+            user=self.user, date_of_birth="1990-01-01", ultimate_central_id=person.id
+        )
+
+        self.event = create_event("Back-to-Back Test Tournament")
+        self.teams = add_teams_to_event(self.event, 6)
+        UCRegistration.objects.create(
+            event=self.event, team=self.teams[0], person=person, roles=["admin", "player"]
+        )
+        self.tournament = create_tournament(self.event)
+
+        tournament_seeding = {}
+        for i, team in enumerate(self.teams, 1):
+            tournament_seeding[i] = team.id
+        self.tournament.initial_seeding = tournament_seeding
+        self.tournament.current_seeding = tournament_seeding
+        self.tournament.save()
+
+        self.season = Season.objects.create(
+            name="Season 24-25",
+            start_date="2024-08-01",
+            end_date="2025-07-30",
+            annual_membership_amount=70000,
+            sponsored_annual_membership_amount=20000,
+            supporter_annual_membership_amount=50000,
+        )
+
+        self.client.force_login(self.user)
+
+        # Create Swiss Round with 3 rounds
+        response = self.client.post(
+            f"/api/tournament/swiss-round/{self.tournament.id}",
+            {
+                "num_rounds": 3,
+                "seeding": [1, 2, 3, 4, 5, 6],
+                "sequence_number": 1,
+                "name": "A",
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.swiss_round = SwissRound.objects.get(tournament=self.tournament)
+
+        # Create 1 tournament field
+        self.field = TournamentField.objects.create(name="Field 1", tournament=self.tournament)
+
+        # Assign schedule to all Swiss matches before starting
+        # 6 teams, 1 field => 3 matches per round
+        # R1: 9:00, 10:00, 11:00
+        # R2: 12:00, 13:00, 14:00
+        # R3: 15:00, 16:00, 17:00
+        ind_tz = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
+        base_date = datetime.datetime(2024, 3, 24, 9, 0, tzinfo=ind_tz)
+
+        matches = list(
+            Match.objects.filter(swiss_round=self.swiss_round).order_by("sequence_number", "id")
+        )
+        for i, match in enumerate(matches):
+            round_offset = (match.sequence_number - 1) * 3  # 3 hours between rounds
+            slot_offset = i % 3  # 1 hour between slots
+            match.time = base_date + datetime.timedelta(hours=round_offset + slot_offset)
+            match.field = self.field
+            match.save()
+
+        # Start tournament
+        response = self.client.post(f"/api/tournament/start/{self.tournament.id}")
+        self.assertEqual(response.status_code, 200)
+
+    def _score_round_matches(self, round_number: int, scores: list[tuple[int, int]]) -> None:
+        matches = Match.objects.filter(
+            swiss_round=self.swiss_round, sequence_number=round_number
+        ).order_by("id")
+        for match, score in zip(matches, scores, strict=True):
+            response = self.client.post(
+                f"/api/match/{match.id}/score",
+                {"team_1_score": score[0], "team_2_score": score[1]},
+                content_type="application/json",
+            )
+            self.assertEqual(response.status_code, 200)
+
+    def _assert_no_back_to_backs(self, round_number: int) -> None:
+        """Assert no team plays in two consecutive slots (gap <= 2 hours) across round boundaries."""
+        prev_matches = Match.objects.filter(
+            swiss_round=self.swiss_round, sequence_number=round_number - 1
+        )
+        current_matches = Match.objects.filter(
+            swiss_round=self.swiss_round, sequence_number=round_number
+        )
+
+        # Collect all unique slot times across both rounds, sorted chronologically
+        all_times = sorted({m.time for m in list(prev_matches) + list(current_matches) if m.time})
+
+        # Check every pair of consecutive slots. Only flag as back-to-back if the
+        # gap is small (<= 2 hours). Large gaps (e.g. overnight) are fine.
+        for i in range(len(all_times) - 1):
+            t1, t2 = all_times[i], all_times[i + 1]
+            gap_hours = (t2 - t1).total_seconds() / 3600
+            if gap_hours > BACK_TO_BACK_GAP_HOURS:
+                continue  # Not a back-to-back risk (e.g. overnight gap)
+
+            teams_t1 = set()
+            for m in prev_matches.filter(time=t1) | current_matches.filter(time=t1):
+                if m.team_1_id:
+                    teams_t1.add(m.team_1_id)
+                if m.team_2_id:
+                    teams_t1.add(m.team_2_id)
+
+            teams_t2 = set()
+            for m in prev_matches.filter(time=t2) | current_matches.filter(time=t2):
+                if m.team_1_id:
+                    teams_t2.add(m.team_1_id)
+                if m.team_2_id:
+                    teams_t2.add(m.team_2_id)
+
+            overlap = teams_t1 & teams_t2
+            self.assertEqual(
+                len(overlap),
+                0,
+                f"Teams {overlap} have back-to-back at {t1} and {t2}",
+            )
+
+    def test_no_back_to_back_6_teams_1_field(self) -> None:
+        """Test that no back-to-backs occur across Swiss rounds with 6 teams and 1 field."""
+        # Score R1 with varied results so pairings change
+        self._score_round_matches(1, [(15, 8), (15, 10), (15, 12)])
+
+        # After scoring last R1 match, populate_fixtures is triggered
+        # R2 should be populated and reordered
+        self.swiss_round.refresh_from_db()
+        self.assertEqual(self.swiss_round.current_round, 2)
+
+        # Verify no back-to-backs in R2
+        self._assert_no_back_to_backs(2)
+
+        # Score R2
+        self._score_round_matches(2, [(15, 9), (15, 11), (15, 13)])
+
+        self.swiss_round.refresh_from_db()
+        self.assertEqual(self.swiss_round.current_round, 3)
+
+        # Verify no back-to-backs in R3
+        self._assert_no_back_to_backs(3)
+
+    def test_cross_day_round_split_across_two_days(self) -> None:
+        """Reorder works correctly when a single round spans 2 days.
+
+        R2 is scheduled with one slot at the end of day 1 and the rest on day 2.
+        The team that played in R1's last slot should be moved to a day-2 slot
+        rather than left in the day-1 evening slot (which would be back-to-back).
+        """
+        ind_tz = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
+        day1 = datetime.datetime(2024, 3, 24, tzinfo=ind_tz)
+        day2 = datetime.datetime(2024, 3, 25, tzinfo=ind_tz)
+
+        # Override R1/R2/R3 schedules: R2 spans day 1 evening and day 2 morning
+        r1_times = [day1.replace(hour=13), day1.replace(hour=14), day1.replace(hour=15)]
+        r2_times = [day1.replace(hour=16), day2.replace(hour=9), day2.replace(hour=10)]
+        r3_times = [day2.replace(hour=11), day2.replace(hour=12), day2.replace(hour=13)]
+
+        # Clear all times first to avoid UNIQUE (tournament, time, field) collisions
+        # while reassigning across the existing schedule.
+        Match.objects.filter(swiss_round=self.swiss_round).update(time=None, field=None)
+
+        for round_num, times in enumerate([r1_times, r2_times, r3_times], start=1):
+            matches = list(
+                Match.objects.filter(
+                    swiss_round=self.swiss_round, sequence_number=round_num
+                ).order_by("id")
+            )
+            for m, t in zip(matches, times, strict=True):
+                m.time = t
+                m.field = self.field
+                m.save()
+
+        # Score R1 — this triggers populate_fixtures + reorder for R2
+        self._score_round_matches(1, [(15, 8), (15, 10), (15, 12)])
+
+        self.swiss_round.refresh_from_db()
+        self.assertEqual(self.swiss_round.current_round, 2)
+
+        # Slot set in R2 should be unchanged — only assignments are reordered
+        r2_actual_times = sorted(
+            {
+                m.time
+                for m in Match.objects.filter(swiss_round=self.swiss_round, sequence_number=2)
+                if m.time
+            }
+        )
+        self.assertEqual(r2_actual_times, sorted(r2_times))
+
+        # Teams that played in R1's last slot (15:00) — only 1 hour before R2's
+        # day-1 16:00 slot. They should NOT be assigned to that slot.
+        r1_last_match = Match.objects.get(
+            swiss_round=self.swiss_round, sequence_number=1, time=r1_times[2]
+        )
+        last_played_teams = {r1_last_match.team_1_id, r1_last_match.team_2_id}
+
+        r2_day1_match = Match.objects.get(
+            swiss_round=self.swiss_round, sequence_number=2, time=r2_times[0]
+        )
+        r2_day1_teams = {r2_day1_match.team_1_id, r2_day1_match.team_2_id}
+
+        self.assertEqual(
+            last_played_teams & r2_day1_teams,
+            set(),
+            "Team(s) that played R1's last slot ended up in R2's day-1 evening slot "
+            "(back-to-back across the day boundary)",
+        )
+
+        # Both teams from R1's last slot should be in day-2 slots
+        r2_day2_matches = Match.objects.filter(
+            swiss_round=self.swiss_round, sequence_number=2, time__gte=day2
+        )
+        r2_day2_teams: set[int] = set()
+        for m in r2_day2_matches:
+            if m.team_1_id:
+                r2_day2_teams.add(m.team_1_id)
+            if m.team_2_id:
+                r2_day2_teams.add(m.team_2_id)
+        self.assertTrue(
+            last_played_teams.issubset(r2_day2_teams),
+            "Teams that played R1's last slot should be moved to day-2 slots",
+        )
+
+        # And the standard back-to-back check (with overnight gap exemption) holds
+        self._assert_no_back_to_backs(2)
+
+    def tearDown(self) -> None:
+        Match.objects.filter(tournament=self.tournament).delete()
+        SwissRound.objects.filter(tournament=self.tournament).delete()
+        TournamentField.objects.filter(tournament=self.tournament).delete()
+        super().tearDown()
+
+
+class TestSwiss24TeamLifecycle(ApiBaseTestCase):
+    """Full lifecycle test: 24 teams, 5 Swiss rounds, 4 fields, zero back-to-backs."""
+
+    def setUp(self) -> None:
+        from django.test import TestCase
+
+        from server.core.models import Player, UCPerson, User
+        from server.season.models import Season
+        from server.tournament.models import UCRegistration
+
+        TestCase.setUp(self)
+
+        self.username = "username@foo.com"
+        self.password = "password"
+        self.user = User.objects.create(
+            username=self.username, email=self.username, first_name="John", last_name="Williamson"
+        )
+        self.user.set_password(self.password)
+        self.user.is_staff = True
+        self.user.save()
+
+        person = UCPerson.objects.create(email=self.username, slug="username")
+        self.player = Player.objects.create(
+            user=self.user, date_of_birth="1990-01-01", ultimate_central_id=person.id
+        )
+
+        self.event = create_event("24 Team Swiss Tournament")
+        self.teams = add_teams_to_event(self.event, 24)
+        UCRegistration.objects.create(
+            event=self.event, team=self.teams[0], person=person, roles=["admin", "player"]
+        )
+        self.tournament = create_tournament(self.event)
+
+        tournament_seeding = {}
+        for i, team in enumerate(self.teams, 1):
+            tournament_seeding[i] = team.id
+        self.tournament.initial_seeding = tournament_seeding
+        self.tournament.current_seeding = tournament_seeding
+        self.tournament.save()
+
+        self.season = Season.objects.create(
+            name="Season 24-25",
+            start_date="2024-08-01",
+            end_date="2025-07-30",
+            annual_membership_amount=70000,
+            sponsored_annual_membership_amount=20000,
+            supporter_annual_membership_amount=50000,
+        )
+
+        self.client.force_login(self.user)
+
+        # Create Swiss Round with 5 rounds
+        response = self.client.post(
+            f"/api/tournament/swiss-round/{self.tournament.id}",
+            {
+                "num_rounds": 5,
+                "seeding": list(range(1, 25)),
+                "sequence_number": 1,
+                "name": "A",
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.swiss_round = SwissRound.objects.get(tournament=self.tournament)
+
+        # Create 4 tournament fields
+        self.fields = []
+        for i in range(1, 5):
+            field = TournamentField.objects.create(name=f"Field {i}", tournament=self.tournament)
+            self.fields.append(field)
+
+        # Assign schedule to all Swiss matches
+        # 24 teams, 4 fields => 12 matches per round, 3 slots per round
+        ind_tz = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
+        base_date = datetime.datetime(2024, 3, 24, 9, 0, tzinfo=ind_tz)
+
+        matches = list(
+            Match.objects.filter(swiss_round=self.swiss_round).order_by("sequence_number", "id")
+        )
+        for i, match in enumerate(matches):
+            round_num = match.sequence_number
+            round_offset = (round_num - 1) * 3  # 3 hours between rounds
+            index_in_round = i - (round_num - 1) * 12
+            slot_index = index_in_round // 4  # 0, 1, 2
+            field_index = index_in_round % 4  # 0, 1, 2, 3
+            match.time = base_date + datetime.timedelta(hours=round_offset + slot_index)
+            match.field = self.fields[field_index]
+            match.save()
+
+        # Start tournament
+        response = self.client.post(f"/api/tournament/start/{self.tournament.id}")
+        self.assertEqual(response.status_code, 200)
+
+    def _score_round_matches(self, round_number: int, scores: list[tuple[int, int]]) -> None:
+        matches = Match.objects.filter(
+            swiss_round=self.swiss_round, sequence_number=round_number
+        ).order_by("id")
+        for match, score in zip(matches, scores, strict=True):
+            response = self.client.post(
+                f"/api/match/{match.id}/score",
+                {"team_1_score": score[0], "team_2_score": score[1]},
+                content_type="application/json",
+            )
+            self.assertEqual(response.status_code, 200)
+
+    def _assert_no_back_to_backs(self, round_number: int) -> None:
+        """Assert no team plays in two consecutive slots (gap <= 2 hours) across round boundaries."""
+        prev_matches = Match.objects.filter(
+            swiss_round=self.swiss_round, sequence_number=round_number - 1
+        )
+        current_matches = Match.objects.filter(
+            swiss_round=self.swiss_round, sequence_number=round_number
+        )
+
+        # Collect all unique slot times across both rounds, sorted chronologically
+        all_times = sorted({m.time for m in list(prev_matches) + list(current_matches) if m.time})
+
+        # Check every pair of consecutive slots. Only flag as back-to-back if the
+        # gap is small (<= 2 hours). Large gaps (e.g. overnight) are fine.
+        for i in range(len(all_times) - 1):
+            t1, t2 = all_times[i], all_times[i + 1]
+            gap_hours = (t2 - t1).total_seconds() / 3600
+            if gap_hours > BACK_TO_BACK_GAP_HOURS:
+                continue  # Not a back-to-back risk (e.g. overnight gap)
+
+            teams_t1 = set()
+            for m in prev_matches.filter(time=t1) | current_matches.filter(time=t1):
+                if m.team_1_id:
+                    teams_t1.add(m.team_1_id)
+                if m.team_2_id:
+                    teams_t1.add(m.team_2_id)
+
+            teams_t2 = set()
+            for m in prev_matches.filter(time=t2) | current_matches.filter(time=t2):
+                if m.team_1_id:
+                    teams_t2.add(m.team_1_id)
+                if m.team_2_id:
+                    teams_t2.add(m.team_2_id)
+
+            overlap = teams_t1 & teams_t2
+            self.assertEqual(
+                len(overlap),
+                0,
+                f"Teams {overlap} have back-to-back at {t1} and {t2}",
+            )
+
+    def test_full_lifecycle_24_teams_4_fields_zero_back_to_back(self) -> None:
+        """Full lifecycle: score all 5 rounds and verify zero back-to-back matches."""
+        # Round 1: score all matches
+        r1_scores = [(15, 8)] * 12
+        self._score_round_matches(1, r1_scores)
+
+        self.swiss_round.refresh_from_db()
+        self.assertEqual(self.swiss_round.current_round, 2)
+        self._assert_no_back_to_backs(2)
+
+        # Round 2
+        r2_scores = [(15, 9)] * 12
+        self._score_round_matches(2, r2_scores)
+
+        self.swiss_round.refresh_from_db()
+        self.assertEqual(self.swiss_round.current_round, 3)
+        self._assert_no_back_to_backs(3)
+
+        # Round 3
+        r3_scores = [(15, 10)] * 12
+        self._score_round_matches(3, r3_scores)
+
+        self.swiss_round.refresh_from_db()
+        self.assertEqual(self.swiss_round.current_round, 4)
+        self._assert_no_back_to_backs(4)
+
+        # Round 4
+        r4_scores = [(15, 11)] * 12
+        self._score_round_matches(4, r4_scores)
+
+        self.swiss_round.refresh_from_db()
+        self.assertEqual(self.swiss_round.current_round, 5)
+        self._assert_no_back_to_backs(5)
+
+        # Round 5 (final round)
+        r5_scores = [(15, 12)] * 12
+        self._score_round_matches(5, r5_scores)
+
+        self.swiss_round.refresh_from_db()
+        self.assertEqual(self.swiss_round.current_round, 5)
+
+    def tearDown(self) -> None:
+        Match.objects.filter(tournament=self.tournament).delete()
+        SwissRound.objects.filter(tournament=self.tournament).delete()
+        TournamentField.objects.filter(tournament=self.tournament).delete()
         super().tearDown()
