@@ -1,6 +1,8 @@
 import contextlib
+import datetime
 import os
 from collections import Counter
+from typing import cast
 
 from django.db import transaction
 from django.db.models import Q
@@ -275,6 +277,102 @@ def assign_swiss_round_teams(
                 match.placeholder_seed_2 = team_rank[team_2_id]
                 match.status = Match.Status.SCHEDULED
                 match.save()
+
+
+def reorder_swiss_round_matches(swiss_round: SwissRound, round_number: int) -> None:
+    """Reassign time/field slots within a Swiss round to avoid back-to-back matches.
+
+    Teams that played most recently are scheduled in the latest available slots.
+    Only operates within the current round; pairings are never changed.
+    """
+    round_matches = list(
+        Match.objects.filter(swiss_round=swiss_round, sequence_number=round_number)
+        .select_related("team_1", "team_2", "field")
+        .order_by("id")
+    )
+
+    # Only proceed if there are scheduled matches with times
+    scheduled_matches = [m for m in round_matches if m.time is not None]
+    if len(scheduled_matches) <= 1:
+        return
+
+    unique_times = {m.time for m in scheduled_matches}
+    if len(unique_times) <= 1:
+        return
+
+    # Gather all team IDs in this round
+    team_ids_in_round: set[int] = set()
+    for m in round_matches:
+        if m.team_1_id:
+            team_ids_in_round.add(m.team_1_id)
+        if m.team_2_id:
+            team_ids_in_round.add(m.team_2_id)
+
+    if not team_ids_in_round:
+        return
+
+    # Find each team's most recent match time before this round
+    team_last_played: dict[int, datetime.datetime] = {}
+    for team_id in team_ids_in_round:
+        last_match = (
+            Match.objects.filter(
+                Q(team_1_id=team_id) | Q(team_2_id=team_id),
+                tournament=swiss_round.tournament,
+            )
+            .exclude(swiss_round=swiss_round, sequence_number=round_number)
+            .filter(time__isnull=False)
+            .order_by("-time")
+            .first()
+        )
+        if last_match and last_match.time:
+            team_last_played[team_id] = last_match.time
+
+    min_dt = datetime.datetime.min.replace(tzinfo=datetime.timezone.utc)
+
+    def _last_played(team_id: int | None) -> datetime.datetime:
+        if team_id is None:
+            return min_dt
+        return team_last_played.get(team_id, min_dt)
+
+    # Compute sort key for each scheduled match: the latest last-played time of its two teams
+    match_sort_key: list[tuple[datetime.datetime, Match]] = []
+    for m in scheduled_matches:
+        latest = max(_last_played(m.team_1_id), _last_played(m.team_2_id))
+        match_sort_key.append((latest, m))
+
+    # Sort by latest last-played descending (least rested first)
+    match_sort_key.sort(key=lambda x: x[0], reverse=True)
+
+    # Collect slots (time, field_id) from this round, sort by time descending (latest first).
+    # `scheduled_matches` is pre-filtered to non-null times, so the cast is safe.
+    slots: list[tuple[datetime.datetime, int | None]] = [
+        (cast(datetime.datetime, m.time), m.field_id) for m in scheduled_matches
+    ]
+    slots.sort(key=lambda x: x[0], reverse=True)
+
+    # Reassign: least-rested match gets the latest slot.
+    # To avoid UNIQUE constraint violations when two matches swap time+field,
+    # we first clear time/field for all matches that need updating, then set
+    # the final values.
+    matches_to_update: list[tuple[Match, datetime.datetime, int | None]] = []
+    for (_, match), (new_time, new_field_id) in zip(match_sort_key, slots, strict=True):
+        if match.time != new_time or match.field_id != new_field_id:
+            matches_to_update.append((match, new_time, new_field_id))
+
+    if not matches_to_update:
+        return
+
+    # Phase 1: clear time/field
+    for match, _, _ in matches_to_update:
+        match.time = None
+        match.field = None
+        match.save()
+
+    # Phase 2: set final time/field
+    for match, new_time, new_field_id in matches_to_update:
+        match.time = new_time
+        match.field_id = new_field_id
+        match.save()
 
 
 def _backtrack_pair(
@@ -880,6 +978,9 @@ def rerun_swiss_round(tournament: Tournament, swiss_round: SwissRound) -> None:
             match.placeholder_seed_2 = team_rank[t2_id]
             match.save()
 
+    if current_round > 1:
+        reorder_swiss_round_matches(swiss_round, current_round)
+
 
 @transaction.atomic
 def populate_fixtures(tournament_id: int) -> None:
@@ -920,6 +1021,8 @@ def populate_fixtures(tournament_id: int) -> None:
                 # Generate next round pairings
                 next_round = swiss_round.current_round + 1
                 assign_swiss_round_teams(tournament, swiss_round, next_round)
+                if next_round > 1:
+                    reorder_swiss_round_matches(swiss_round, next_round)
                 swiss_round.current_round = next_round
                 swiss_round.save()
                 is_all_swiss_complete = False
