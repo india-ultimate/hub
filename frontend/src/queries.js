@@ -2138,3 +2138,103 @@ export const createServiceRequest = async data => {
   }
   return responseData;
 };
+
+// Forms ----------------------------------------------------------------------
+
+export const fetchForms = async () => {
+  const response = await fetch("/api/forms/", {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin"
+  });
+  return await response.json();
+};
+
+export const fetchForm = async slug => {
+  const response = await fetch(`/api/forms/${slug}`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin"
+  });
+  if (!response.ok) {
+    const data = await response.json();
+    throw new Error(data?.message || "Failed to fetch form");
+  }
+  return await response.json();
+};
+
+export const createForm = async data => {
+  const response = await fetch("/api/forms/", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin",
+    body: JSON.stringify(data)
+  });
+  const responseData = await response.json();
+  if (!response.ok) {
+    throw new Error(responseData?.message || "Failed to create form");
+  }
+  return responseData;
+};
+
+export const updateForm = async ({ slug, data }) => {
+  const response = await fetch(`/api/forms/${slug}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin",
+    body: JSON.stringify(data)
+  });
+  const responseData = await response.json();
+  if (!response.ok) {
+    throw new Error(responseData?.message || "Failed to update form");
+  }
+  return responseData;
+};
+
+export const submitFormResponse = async ({ slug, answers }) => {
+  const response = await fetch(`/api/forms/${slug}/responses`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin",
+    body: JSON.stringify({ answers })
+  });
+  const responseData = await response.json();
+  if (!response.ok) {
+    throw new Error(responseData?.message || "Failed to submit response");
+  }
+  return responseData;
+};
+
+export const fetchFormResponses = async slug => {
+  const response = await fetch(`/api/forms/${slug}/responses`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin"
+  });
+  if (!response.ok) {
+    const data = await response.json();
+    throw new Error(data?.message || "Failed to fetch responses");
+  }
+  return await response.json();
+};
+
+export const fetchMyFormResponses = async slug => {
+  const response = await fetch(`/api/forms/${slug}/my-responses`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin"
+  });
+  if (!response.ok) {
+    return [];
+  }
+  return await response.json();
+};
