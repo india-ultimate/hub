@@ -138,7 +138,7 @@ const FormView = () => {
             {formQuery.data.title}
           </h1>
           <Show when={formQuery.data.description}>
-            <p class="mt-2 text-gray-600 dark:text-gray-300">
+            <p class="mt-2 whitespace-pre-line text-gray-600 dark:text-gray-300">
               {formQuery.data.description}
             </p>
           </Show>
