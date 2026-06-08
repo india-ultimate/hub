@@ -1,5 +1,6 @@
 import { useParams } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
+import DOMPurify from "dompurify";
 import { documentText } from "solid-heroicons/solid";
 import {
   createSignal,
@@ -138,9 +139,11 @@ const FormView = () => {
             {formQuery.data.title}
           </h1>
           <Show when={formQuery.data.description}>
-            <p class="mt-2 whitespace-pre-line text-gray-600 dark:text-gray-300">
-              {formQuery.data.description}
-            </p>
+            <div
+              class="prose prose-sm mt-2 max-w-none whitespace-pre-line text-gray-600 dark:prose-invert dark:text-gray-300 [&_a]:text-blue-600 [&_a]:underline dark:[&_a]:text-blue-400"
+              // eslint-disable-next-line solid/no-innerhtml
+              innerHTML={DOMPurify.sanitize(formQuery.data.description)}
+            />
           </Show>
 
           <Show when={myResponsesQuery.data?.length}>

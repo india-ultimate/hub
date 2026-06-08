@@ -1,11 +1,19 @@
 import { A } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
+import DOMPurify from "dompurify";
 import { documentText } from "solid-heroicons/solid";
 import { For, Show, Suspense } from "solid-js";
 
 import { fetchForms } from "../../queries";
 import { useStore } from "../../store";
 import Breadcrumbs from "../Breadcrumbs";
+
+// The description is rich HTML; show a plain-text snippet in the list.
+const toPlainText = html => {
+  const tmp = document.createElement("div");
+  tmp.innerHTML = DOMPurify.sanitize(html || "");
+  return tmp.textContent || "";
+};
 
 const FormsList = () => {
   const [store] = useStore();
@@ -60,7 +68,7 @@ const FormsList = () => {
                       </Show>
                       <Show when={form.description}>
                         <p class="mt-1 line-clamp-2 text-sm text-gray-500">
-                          {form.description}
+                          {toPlainText(form.description)}
                         </p>
                       </Show>
                     </div>
