@@ -26,6 +26,7 @@ from server.election.models import (
     RankedVoteChoice,
     VoterVerification,
 )
+from server.forms.models import Form, FormResponse
 from server.membership.models import Membership
 from server.season.models import Season
 from server.series.models import Series, SeriesRegistration, SeriesRosterInvitation
@@ -903,3 +904,17 @@ class TaskAdmin(admin.ModelAdmin[Task]):
                     self.message_user(request, f"Failed to queue test email: {e}", level="error")
 
         return super().changelist_view(request, extra_context)
+
+
+@admin.register(Form)
+class FormAdmin(admin.ModelAdmin[Form]):
+    list_display = ["title", "slug", "payment_amount", "is_active", "created_at"]
+    search_fields = ["title", "slug"]
+    list_filter = ["is_active"]
+
+
+@admin.register(FormResponse)
+class FormResponseAdmin(admin.ModelAdmin[FormResponse]):
+    list_display = ["form", "user", "is_paid", "submitted_at"]
+    search_fields = ["form__title", "user__first_name", "user__last_name", "user__email"]
+    list_filter = ["form", "is_paid"]

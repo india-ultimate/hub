@@ -51,6 +51,7 @@ from server.flarum.utils import (
     get_flarum_token,
     update_flarum_user_avatar,
 )
+from server.forms.api import router as forms_router
 from server.lib.membership import get_membership_status
 from server.membership.models import Membership
 from server.passkey_utils import PassKeyClient
@@ -198,6 +199,7 @@ class AuthenticatedHttpRequest(HttpRequest):
 api.add_router("/seasons", season_router)
 api.add_router("/series/", series_router)
 api.add_router("/transactions", transaction_router)
+api.add_router("/forms", forms_router)
 api.add_router("/ticket", ticket_api)
 api.add_router("/election", election_router)
 api.add_router("/chat", chat_router)
