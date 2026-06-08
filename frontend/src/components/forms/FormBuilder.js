@@ -49,6 +49,21 @@ const FormBuilder = () => {
 
   const removeField = i => setFields(produce(f => f.splice(i, 1)));
 
+  // Rich-text editor for the description (Bold / Italic / Underline / Link).
+  let editorRef;
+  const syncDescription = () => setDescription(editorRef?.innerHTML || "");
+  const exec = (command, value) => {
+    document.execCommand(command, false, value);
+    editorRef?.focus();
+    syncDescription();
+  };
+  const addLink = () => {
+    const url = window.prompt("Enter the link URL (include https://)");
+    if (url) {
+      exec("createLink", url);
+    }
+  };
+
   // Prefill when editing an existing form.
   onMount(async () => {
     if (isEdit()) {
@@ -56,6 +71,9 @@ const FormBuilder = () => {
         const form = await fetchForm(params.slug);
         setTitle(form.title);
         setDescription(form.description || "");
+        if (editorRef) {
+          editorRef.innerHTML = form.description || "";
+        }
         setPaymentAmount(
           form.payment_amount ? String(form.payment_amount / 100) : ""
         );
@@ -148,12 +166,48 @@ const FormBuilder = () => {
           <label class="mb-1 block text-sm font-medium text-gray-900 dark:text-white">
             Description
           </label>
-          <textarea
-            value={description()}
-            onInput={e => setDescription(e.target.value)}
-            rows="2"
-            class="w-full rounded-lg border border-gray-300 p-2.5 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-          />
+          <div class="overflow-hidden rounded-lg border border-gray-300 dark:border-gray-600">
+            <div class="flex gap-1 border-b border-gray-300 bg-gray-50 p-1 dark:border-gray-600 dark:bg-gray-800">
+              <button
+                type="button"
+                title="Bold"
+                onClick={() => exec("bold")}
+                class="h-8 w-8 rounded font-bold hover:bg-gray-200 dark:text-white dark:hover:bg-gray-700"
+              >
+                B
+              </button>
+              <button
+                type="button"
+                title="Italic"
+                onClick={() => exec("italic")}
+                class="h-8 w-8 rounded italic hover:bg-gray-200 dark:text-white dark:hover:bg-gray-700"
+              >
+                I
+              </button>
+              <button
+                type="button"
+                title="Underline"
+                onClick={() => exec("underline")}
+                class="h-8 w-8 rounded underline hover:bg-gray-200 dark:text-white dark:hover:bg-gray-700"
+              >
+                U
+              </button>
+              <button
+                type="button"
+                title="Add link"
+                onClick={addLink}
+                class="h-8 w-8 rounded text-blue-600 hover:bg-gray-200 dark:text-blue-400 dark:hover:bg-gray-700"
+              >
+                🔗
+              </button>
+            </div>
+            <div
+              ref={el => (editorRef = el)}
+              contentEditable={true}
+              onInput={syncDescription}
+              class="prose prose-sm min-h-[5rem] max-w-none p-2.5 dark:prose-invert focus:outline-none dark:text-white [&_a]:text-blue-600 [&_a]:underline"
+            />
+          </div>
         </div>
 
         <div>
