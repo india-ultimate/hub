@@ -43,6 +43,7 @@ class RazorpayTransaction(ExportModelOperationsMixin("razorpay_transaction"), mo
         TEAM_REGISTRATION = "team-reg", _("Team Registration")
         PARTIAL_TEAM_REGISTRATION = "partial-team-reg", _("Partial Team Registration")
         PLAYER_REGISTRATION = "player-reg", _("Player Registration")
+        FORM_PAYMENT = "form-payment", _("Form Payment")
 
     order_id = models.CharField(primary_key=True, max_length=255)
     payment_id = models.CharField(max_length=255)

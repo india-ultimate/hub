@@ -27,6 +27,10 @@ from server.election.models import (  # noqa: F401
     RankedVoteChoice,
     VoterVerification,
 )
+from server.forms.models import (  # noqa: F401
+    Form,
+    FormResponse,
+)
 from server.membership.models import (  # noqa: F401
     Membership,
 )

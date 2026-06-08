@@ -121,6 +121,11 @@ def handle_razorpay_callback(
         update_transaction_player_registrations(transaction)
     elif transaction.type == RazorpayTransaction.TransactionTypeChoices.PARTIAL_TEAM_REGISTRATION:
         update_transaction_partial_team_registration(transaction)
+    elif transaction.type == RazorpayTransaction.TransactionTypeChoices.FORM_PAYMENT:
+        # Lazy import to avoid a transaction <-> forms import cycle.
+        from server.forms.utils import mark_form_response_paid
+
+        mark_form_response_paid(transaction)
 
     return 200, transaction.players.all()
 
@@ -200,6 +205,11 @@ def payment_webhook(request: HttpRequest) -> message_response:
         update_transaction_player_registrations(transaction)
     elif transaction.type == RazorpayTransaction.TransactionTypeChoices.PARTIAL_TEAM_REGISTRATION:
         update_transaction_partial_team_registration(transaction)
+    elif transaction.type == RazorpayTransaction.TransactionTypeChoices.FORM_PAYMENT:
+        # Lazy import to avoid a transaction <-> forms import cycle.
+        from server.forms.utils import mark_form_response_paid
+
+        mark_form_response_paid(transaction)
 
     return {"message": "Webhook processed"}
 
