@@ -81,6 +81,12 @@ const Forum = lazy(() => import("./forum/Forum"));
 // Wrapped Pages
 const Wrapped = lazy(() => import("./wrapped/Wrapped"));
 
+// Forms Pages
+const FormsList = lazy(() => import("./forms/FormsList"));
+const FormView = lazy(() => import("./forms/FormView"));
+const FormBuilder = lazy(() => import("./forms/FormBuilder"));
+const FormResponses = lazy(() => import("./forms/FormResponses"));
+
 // Simulation Pages
 const TournamentSimulator = lazy(() =>
   import("./simulations/TournamentSimulator")
@@ -299,6 +305,24 @@ export default function App() {
                   <UserRoute path="/chat" component={ChatPage} />
                   {/* Wrapped */}
                   <UserRoute path="/wrapped" component={Wrapped} />
+                  {/* Forms */}
+                  <UserRoute path="/forms" component={FormsList} />
+                  <UserRoute
+                    path="/forms/new"
+                    component={FormBuilder}
+                    admin={true}
+                  />
+                  <UserRoute path="/forms/:slug" component={FormView} />
+                  <UserRoute
+                    path="/forms/:slug/edit"
+                    component={FormBuilder}
+                    admin={true}
+                  />
+                  <UserRoute
+                    path="/forms/:slug/responses"
+                    component={FormResponses}
+                    admin={true}
+                  />
                   {/* Simulations */}
                   <Route
                     path="/simulations/tournament"
