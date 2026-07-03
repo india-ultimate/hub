@@ -1,0 +1,69 @@
+---
+description: Run scripts/lint and follow gitlint commit message format
+alwaysApply: true
+---
+
+# Lint Before Commit
+
+Always run the project linter before committing or pushing:
+
+```bash
+poetry run ./scripts/lint
+```
+
+If linters report auto-fixable issues, run:
+
+```bash
+poetry run ./scripts/lint --fix
+```
+
+Fix any remaining failures before committing. Do not push with lint failures.
+
+## No Cursor co-author
+
+Never add Cursor (or any AI assistant) as a co-author on commits. Do not
+include `Co-authored-by:` trailers for Cursor in commit messages, and do
+not use `--co-author` flags or hooks that add them.
+
+Every commit must pass gitlint (config: `.gitlint`, custom rules in
+`scripts/lib/gitlint_rules.py`). Use this structure:
+
+```
+area: Imperative summary of the change
+
+Optional body explaining why, wrapped at 79 characters per line.
+Blank line between title and body.
+```
+
+### Title rules
+
+- **Prefix required**: `area:` where `area` is a lowercase identifier
+  using only `[a-z-_]` (e.g. `frontend`, `fly`, `gunicorn`, `forms`).
+  Do not use conventional-commit prefixes (`feat`, `fix`, `chore`, etc.).
+- **Imperative mood**: first word after the prefix must be imperative
+  (`Add`, `Fix`, `Remove`), not past/continuous tense (`Added`, `Adding`,
+  `Fixes`).
+- **Capital letter**: title text after the prefix starts with a capital.
+- **No trailing punctuation**: no period or other punctuation at end of title.
+- **Max 72 characters** for the full title line.
+
+### Body rules
+
+- **Max 79 characters** per line.
+- Body is optional but encouraged for non-trivial changes.
+
+### Examples
+
+```
+fly: Scale down hub VM and gunicorn workers
+
+Reduce hub VM to shared 2x CPU / 1GB RAM with matching
+gunicorn workers.
+```
+
+```
+frontend: Preserve newlines in form description
+
+The form description is rendered in plain HTML, which collapses line
+breaks into spaces, so multi-line formatting was lost.
+```
