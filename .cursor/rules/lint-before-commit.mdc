@@ -23,7 +23,14 @@ Fix any remaining failures before committing. Do not push with lint failures.
 
 Never add Cursor (or any AI assistant) as a co-author on commits. Do not
 include `Co-authored-by:` trailers for Cursor in commit messages, and do
-not use `--co-author` flags or hooks that add them.
+not use `--co-author` flags.
+
+If a hook or tool adds `Co-authored-by: Cursor`, rewrite the commit to
+remove that trailer before pushing. Verify with:
+
+```bash
+git log -1 --format=%B
+```
 
 Every commit must pass gitlint (config: `.gitlint`, custom rules in
 `scripts/lib/gitlint_rules.py`). Use this structure:
