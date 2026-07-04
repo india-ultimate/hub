@@ -10,6 +10,7 @@ from hub.settings import BASE_DIR
 from server.core.models import Player, User
 from server.season.models import Season
 from server.tests.localserver import running_test_server
+from server.tests.razorpay_checkout import complete_razorpay_test_payment
 from server.tests.utils import create_empty_directory, get_otp_from_email_logs
 from server.tournament.models import Event
 
@@ -18,7 +19,11 @@ def create_login_user() -> tuple[str, str, int]:
     username = "jagdeep@indiaultimate.org"
     password = "password"
     user = User.objects.create(
-        username=username, email=username, first_name="Jagdeep", last_name="Chatterjee"
+        username=username,
+        email=username,
+        first_name="Jagdeep",
+        last_name="Chatterjee",
+        phone="9898234512",
     )
     user.set_password(password)
     user.save()
@@ -91,7 +96,7 @@ class TestIntegration(BaseCase):
             self.assert_element("div#date_of_birth-error")
             self.type("input#date_of_birth", "1985-10-01")
             self.select_option_by_text("select#gender", "Male")
-            self.type("input#phone", "+919876543210")
+            self.type("input#phone", "+919898234512")
             self.select_option_by_text("select#occupation", "Government")
             self.type("input#city", "Bengaluru")
             self.select_option_by_text("select#state_ut", "Karnataka")
@@ -111,18 +116,9 @@ class TestIntegration(BaseCase):
 
             self.click(f'a[href="/membership/{player_id}"]')
             self.assert_element('button:contains("Pay")')
-            self.click('button:contains("Pay")')
 
-            # Redirect to Razorpay modal
-            self.switch_to_frame("iframe")
-            self.js_click('div[data-value="upi"]', timeout=45)
-            # self.js_click('div[type="button"]')
-            self.type('input[name="vpa"]', "success@razorpay\n")
-            # self.click("button#redesign-v15-cta")
-            # self.js_click_all(
-            #     "button#redesign-v15-cta"
-            # )  # Somehow only having both clicks is working
-            self.switch_to_parent_frame()
+            # Redirect to Razorpay modal (card flow; UPI Collect was removed in 2026)
+            complete_razorpay_test_payment(self)
             self.wait_for_element("div#membership-exist", timeout=45)
             self.save_screenshot_to_logs("pay-clicked.png")
 
