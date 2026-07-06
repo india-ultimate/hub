@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import time
 from typing import TYPE_CHECKING
 
@@ -119,26 +120,32 @@ def _submit_card_otp_if_needed(test_case: BaseCase) -> None:
     test_case.js_click('form[name="otp"] button[type="submit"]', timeout=45)
 
 
+def _checkout_is_open(test_case: BaseCase) -> bool | None:
+    """Return whether checkout is open, or None if the browser frame is gone."""
+    with contextlib.suppress(Exception):
+        return test_case.execute_script(
+            """
+                const container = document.querySelector(".razorpay-container");
+                return !!(container && container.offsetParent !== null);
+            """
+        )
+    return None
+
+
 def _leave_checkout_if_open(test_case: BaseCase, timeout: float = 45) -> None:
-    try:
+    with contextlib.suppress(Exception):
         test_case.switch_to_default_content()
-    except Exception:
-        pass
 
     deadline = time.time() + timeout
     while time.time() < deadline:
-        try:
-            checkout_open = test_case.execute_script(
-                """
-                    const container = document.querySelector(".razorpay-container");
-                    return !!(container && container.offsetParent !== null);
-                """
-            )
-            if not checkout_open:
-                return
-        except Exception:
+        if _checkout_is_open(test_case) is not True:
             return
         time.sleep(0.5)
+
+
+def _click_success_if_available(test_case: BaseCase) -> None:
+    with contextlib.suppress(AssertionError, Exception):
+        _click_button_with_text(test_case, "Success", timeout=5)
 
 
 def _complete_card_payment(test_case: BaseCase) -> None:
@@ -157,11 +164,7 @@ def _complete_card_payment(test_case: BaseCase) -> None:
     test_case.js_click('button[data-test-id="add-card-cta"]', timeout=45)
     _dismiss_save_card_prompt_if_needed(test_case)
     _submit_card_otp_if_needed(test_case)
-
-    try:
-        _click_button_with_text(test_case, "Success", timeout=5)
-    except (AssertionError, Exception):
-        pass
+    _click_success_if_available(test_case)
     _leave_checkout_if_open(test_case)
 
 
