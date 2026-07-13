@@ -1,8 +1,10 @@
 app = "upai-hub-metabase"
 primary_region = "ams"
 kill_signal = "SIGTERM"
-kill_timeout = 5
-swap_size_mb = 512
+# Metabase (JVM) needs longer than the default to shut down cleanly.
+kill_timeout = 30
+# Suspend is incompatible with swap; omit swap_size_mb so idle machines
+# can autosuspend instead of full-stopping (multi-minute Metabase boot).
 
 [build]
   image = "metabase/metabase:latest"
@@ -15,16 +17,20 @@ swap_size_mb = 512
 # Tells Metabse to store the H2 database on
 # the mounted volume.
 MB_DB_FILE = "/data/metabase.db"
+# Leave headroom for the OS; Metabase still cold-starts slowly on shared CPU.
+JAVA_TOOL_OPTIONS = "-Xmx1536m"
 
 [[vm]]
   cpu_kind = "shared"
-  cpus = 1
-  memory = "1gb"
+  cpus = 2
+  memory = "2gb"
 
 [http_service]
 internal_port = 3000
 force_https = true
-auto_stop_machines = "stop"
+# Suspend freezes the running JVM so wake is ~seconds, not a full Metabase
+# boot. Requires no swap (see above). First boot after deploy is still slow.
+auto_stop_machines = "suspend"
 auto_start_machines = true
 min_machines_running = 0
 
@@ -34,8 +40,11 @@ hard_limit = 150
 soft_limit = 100
 
 [[http_service.checks]]
-grace_period = "60s"
-interval = "30s"
+# Fly caps HTTP check grace_period at 1 minute (larger values are lowered).
+# Metabase often needs several minutes to bind :3000, so deploys must use a
+# long wait, e.g. --wait-timeout=15m (default is only 5m).
+grace_period = "1m"
+interval = "15s"
 method = "GET"
-timeout = "5s"
+timeout = "10s"
 path = "/api/health"
