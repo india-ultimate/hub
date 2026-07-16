@@ -27,6 +27,7 @@ const FormBuilder = () => {
   const [title, setTitle] = createSignal("");
   const [description, setDescription] = createSignal("");
   const [paymentAmount, setPaymentAmount] = createSignal("");
+  const [isActive, setIsActive] = createSignal(true);
   const [fields, setFields] = createStore([]);
   const [status, setStatus] = createSignal("");
   const [saving, setSaving] = createSignal(false);
@@ -77,6 +78,7 @@ const FormBuilder = () => {
         setPaymentAmount(
           form.payment_amount ? String(form.payment_amount / 100) : ""
         );
+        setIsActive(form.is_active !== false);
         setFields(
           form.fields.map(f => ({
             key: f.key,
@@ -105,6 +107,7 @@ const FormBuilder = () => {
       payment_amount: paymentAmount()
         ? Math.round(Number(paymentAmount()) * 100)
         : null,
+      is_active: isActive(),
       fields: fields.map(f => ({
         key: f.key,
         label: f.label,
@@ -223,6 +226,15 @@ const FormBuilder = () => {
             class="w-full rounded-lg border border-gray-300 p-2.5 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
           />
         </div>
+
+        <label class="flex items-center gap-2 text-sm text-gray-900 dark:text-white">
+          <input
+            type="checkbox"
+            checked={isActive()}
+            onChange={e => setIsActive(e.target.checked)}
+          />
+          Accepting responses
+        </label>
 
         <div class="space-y-4">
           <h2 class="text-lg font-semibold text-gray-900 dark:text-white">

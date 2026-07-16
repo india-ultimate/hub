@@ -1,6 +1,7 @@
 from typing import Any
 
 from django.db.models import QuerySet
+from django.http import HttpResponse
 from ninja import Router
 
 from server.schema import Response
@@ -18,7 +19,12 @@ from .schema import (
     FormSubmitResponseSchema,
     MyFormResponseSchema,
 )
-from .utils import create_form_payment_order, send_form_submission_email, validate_answers
+from .utils import (
+    build_responses_csv,
+    create_form_payment_order,
+    send_form_submission_email,
+    validate_answers,
+)
 
 router = Router()
 
@@ -52,6 +58,7 @@ def create_form(
         slug=_unique_slug(data.title),
         fields=[f.dict() for f in data.fields],
         payment_amount=data.payment_amount,
+        is_active=data.is_active,
         created_by=request.user,
     )
     return 200, form
@@ -81,7 +88,8 @@ def update_form(
     form.description = data.description
     form.fields = [f.dict() for f in data.fields]
     form.payment_amount = data.payment_amount
-    form.save(update_fields=["title", "description", "fields", "payment_amount"])
+    form.is_active = data.is_active
+    form.save(update_fields=["title", "description", "fields", "payment_amount", "is_active"])
     return 200, form
 
 
@@ -135,6 +143,28 @@ def list_responses(
         200,
         form.responses.filter(is_paid=True).select_related("user").order_by("-submitted_at"),
     )
+
+
+@router.get(
+    "/{slug}/responses/csv",
+    response={200: None, 401: Response, 404: Response},
+)
+def export_responses_csv(
+    request: AuthenticatedHttpRequest, slug: str
+) -> HttpResponse | tuple[int, message_response]:
+    if not request.user.is_staff:
+        return 401, {"message": "Only Admins can download responses"}
+
+    try:
+        form = Form.objects.get(slug=slug)
+    except Form.DoesNotExist:
+        return 404, {"message": "Form does not exist"}
+
+    responses = form.responses.filter(is_paid=True).select_related("user").order_by("-submitted_at")
+    csv_content = build_responses_csv(form, responses)
+    response = HttpResponse(csv_content, content_type="text/csv")
+    response["Content-Disposition"] = f'attachment; filename="{form.slug}-responses.csv"'
+    return response
 
 
 @router.get("/{slug}/my-responses", response={200: list[MyFormResponseSchema], 404: Response})
