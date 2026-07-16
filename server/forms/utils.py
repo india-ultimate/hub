@@ -1,13 +1,48 @@
+import csv
+import io
 import time
 from typing import Any
 
 from django.conf import settings
 from django.core import mail
+from django.db.models import QuerySet
 
 from server.transaction.client import razorpay
 from server.transaction.models import AuthenticatedHttpRequest, RazorpayTransaction
 
 from .models import CHOICE_FIELD_TYPES, FieldType, Form, FormResponse
+
+
+def format_answer_for_csv(value: Any) -> str:
+    if value is None or value == "":
+        return ""
+    if isinstance(value, list):
+        return ", ".join(str(v) for v in value)
+    return str(value)
+
+
+def build_responses_csv(form: Form, responses: QuerySet[FormResponse] | list[FormResponse]) -> str:
+    """Build a CSV string of form responses for staff download."""
+    field_defs = form.fields or []
+    headers = ["Name", "Email", "Phone", "Submitted"] + [
+        str(f.get("label") or f.get("key") or "") for f in field_defs
+    ]
+    field_keys = [str(f.get("key") or "") for f in field_defs]
+
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(headers)
+    for response in responses:
+        answers = response.answers or {}
+        row = [
+            response.user.get_full_name(),
+            response.user.email,
+            response.user.phone,
+            response.submitted_at.isoformat(sep=" ", timespec="seconds"),
+        ]
+        row.extend(format_answer_for_csv(answers.get(key)) for key in field_keys)
+        writer.writerow(row)
+    return buffer.getvalue()
 
 
 def validate_answers(form: Form, answers: dict[str, Any]) -> str | None:

@@ -176,128 +176,139 @@ const FormView = () => {
           </Show>
 
           <Show
-            when={!done()}
+            when={formQuery.data.is_active}
             fallback={
-              <p class="mt-6 text-green-600 dark:text-green-400">{status()}</p>
+              <p class="mt-6 rounded-lg bg-gray-100 p-4 text-sm text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                This form is no longer accepting responses.
+              </p>
             }
           >
-            <form class="mt-6 space-y-5" onSubmit={handleSubmit}>
-              <For each={formQuery.data.fields}>
-                {field => (
-                  <div>
-                    <label
-                      class="mb-1 block text-sm font-medium text-gray-900 dark:text-white"
-                      for={field.key}
-                    >
-                      {field.label}
-                      <Show when={field.required}>
-                        <span class="ml-1 text-red-500">*</span>
-                      </Show>
-                    </label>
-                    <Switch>
-                      <Match when={field.type === "textarea"}>
-                        <textarea
-                          id={field.key}
-                          required={field.required}
-                          class="w-full rounded-lg border border-gray-300 p-2.5 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-                          rows="4"
-                          onInput={e => setValue(field.key, e.target.value)}
-                        />
-                      </Match>
-                      <Match when={field.type === "dropdown"}>
-                        <select
-                          id={field.key}
-                          required={field.required}
-                          class="w-full rounded-lg border border-gray-300 p-2.5 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-                          onChange={e => setValue(field.key, e.target.value)}
-                        >
-                          <option value="">Select...</option>
-                          <For each={field.options}>
-                            {opt => <option value={opt}>{opt}</option>}
-                          </For>
-                        </select>
-                      </Match>
-                      <Match when={field.type === "radio"}>
-                        <div class="space-y-1">
-                          <For each={field.options}>
-                            {opt => (
-                              <label class="flex items-center gap-2 text-sm text-gray-900 dark:text-white">
-                                <input
-                                  type="radio"
-                                  name={field.key}
-                                  value={opt}
-                                  required={field.required}
-                                  onChange={() => setValue(field.key, opt)}
-                                />
-                                {opt}
-                              </label>
-                            )}
-                          </For>
-                        </div>
-                      </Match>
-                      <Match when={field.type === "checkbox"}>
-                        <div class="space-y-1">
-                          <For each={field.options}>
-                            {opt => (
-                              <label class="flex items-center gap-2 text-sm text-gray-900 dark:text-white">
-                                <input
-                                  type="checkbox"
-                                  value={opt}
-                                  onChange={e =>
-                                    toggleCheckbox(
-                                      field.key,
-                                      opt,
-                                      e.target.checked
-                                    )
-                                  }
-                                />
-                                {opt}
-                              </label>
-                            )}
-                          </For>
-                        </div>
-                      </Match>
-                      <Match when={true}>
-                        <input
-                          id={field.key}
-                          type={
-                            field.type === "number"
-                              ? "number"
-                              : field.type === "email"
-                              ? "email"
-                              : field.type === "date"
-                              ? "date"
-                              : "text"
-                          }
-                          required={field.required}
-                          class="w-full rounded-lg border border-gray-300 p-2.5 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-                          onInput={e => setValue(field.key, e.target.value)}
-                        />
-                      </Match>
-                    </Switch>
-                  </div>
-                )}
-              </For>
+            <Show
+              when={!done()}
+              fallback={
+                <p class="mt-6 text-green-600 dark:text-green-400">
+                  {status()}
+                </p>
+              }
+            >
+              <form class="mt-6 space-y-5" onSubmit={handleSubmit}>
+                <For each={formQuery.data.fields}>
+                  {field => (
+                    <div>
+                      <label
+                        class="mb-1 block text-sm font-medium text-gray-900 dark:text-white"
+                        for={field.key}
+                      >
+                        {field.label}
+                        <Show when={field.required}>
+                          <span class="ml-1 text-red-500">*</span>
+                        </Show>
+                      </label>
+                      <Switch>
+                        <Match when={field.type === "textarea"}>
+                          <textarea
+                            id={field.key}
+                            required={field.required}
+                            class="w-full rounded-lg border border-gray-300 p-2.5 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                            rows="4"
+                            onInput={e => setValue(field.key, e.target.value)}
+                          />
+                        </Match>
+                        <Match when={field.type === "dropdown"}>
+                          <select
+                            id={field.key}
+                            required={field.required}
+                            class="w-full rounded-lg border border-gray-300 p-2.5 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                            onChange={e => setValue(field.key, e.target.value)}
+                          >
+                            <option value="">Select...</option>
+                            <For each={field.options}>
+                              {opt => <option value={opt}>{opt}</option>}
+                            </For>
+                          </select>
+                        </Match>
+                        <Match when={field.type === "radio"}>
+                          <div class="space-y-1">
+                            <For each={field.options}>
+                              {opt => (
+                                <label class="flex items-center gap-2 text-sm text-gray-900 dark:text-white">
+                                  <input
+                                    type="radio"
+                                    name={field.key}
+                                    value={opt}
+                                    required={field.required}
+                                    onChange={() => setValue(field.key, opt)}
+                                  />
+                                  {opt}
+                                </label>
+                              )}
+                            </For>
+                          </div>
+                        </Match>
+                        <Match when={field.type === "checkbox"}>
+                          <div class="space-y-1">
+                            <For each={field.options}>
+                              {opt => (
+                                <label class="flex items-center gap-2 text-sm text-gray-900 dark:text-white">
+                                  <input
+                                    type="checkbox"
+                                    value={opt}
+                                    onChange={e =>
+                                      toggleCheckbox(
+                                        field.key,
+                                        opt,
+                                        e.target.checked
+                                      )
+                                    }
+                                  />
+                                  {opt}
+                                </label>
+                              )}
+                            </For>
+                          </div>
+                        </Match>
+                        <Match when={true}>
+                          <input
+                            id={field.key}
+                            type={
+                              field.type === "number"
+                                ? "number"
+                                : field.type === "email"
+                                ? "email"
+                                : field.type === "date"
+                                ? "date"
+                                : "text"
+                            }
+                            required={field.required}
+                            class="w-full rounded-lg border border-gray-300 p-2.5 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                            onInput={e => setValue(field.key, e.target.value)}
+                          />
+                        </Match>
+                      </Switch>
+                    </div>
+                  )}
+                </For>
 
-              <Show when={status() && !done()}>
-                <p class="text-sm text-red-500">{status()}</p>
-              </Show>
-
-              <button
-                type="submit"
-                disabled={submitting()}
-                class="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-400"
-              >
-                <Show
-                  when={formQuery.data.payment_amount}
-                  fallback={submitting() ? "Submitting..." : "Submit"}
-                >
-                  {submitting()
-                    ? "Processing..."
-                    : `Pay ₹${formQuery.data.payment_amount / 100} & Submit`}
+                <Show when={status() && !done()}>
+                  <p class="text-sm text-red-500">{status()}</p>
                 </Show>
-              </button>
-            </form>
+
+                <button
+                  type="submit"
+                  disabled={submitting()}
+                  class="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-400"
+                >
+                  <Show
+                    when={formQuery.data.payment_amount}
+                    fallback={submitting() ? "Submitting..." : "Submit"}
+                  >
+                    {submitting()
+                      ? "Processing..."
+                      : `Pay ₹${formQuery.data.payment_amount / 100} & Submit`}
+                  </Show>
+                </button>
+              </form>
+            </Show>
           </Show>
         </Show>
       </Suspense>

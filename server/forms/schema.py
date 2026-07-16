@@ -18,6 +18,7 @@ class FormCreateSchema(Schema):
     description: str = ""
     fields: list[FormFieldSchema]
     payment_amount: int | None = None
+    is_active: bool = True
 
 
 class FormListSchema(ModelSchema):
