@@ -177,6 +177,7 @@ from server.tournament.utils import (
     validate_bracket_name,
     validate_new_pool,
 )
+from server.tournament_agent.api import router as tournament_agent_router
 from server.transaction.api import router as transaction_router
 from server.types import message_response
 from server.utils import if_dates_are_not_in_order, if_today, is_today_in_between_dates, slugify_max
@@ -204,6 +205,7 @@ api.add_router("/forms", forms_router)
 api.add_router("/ticket", ticket_api)
 api.add_router("/election", election_router)
 api.add_router("/chat", chat_router)
+api.add_router("/tournament-agent", tournament_agent_router)
 api.add_router("/service-requests", servicerequests_router)
 api.add_router("/announcements", announcements_router)
 api.add_router("/task", task_router)
