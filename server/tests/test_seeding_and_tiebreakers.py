@@ -11,6 +11,7 @@ from server.tournament.utils import (
     recompute_swiss_ranks,
     sort_swiss_tied_teams,
     sort_tied_teams,
+    validate_bracket_name,
 )
 
 
@@ -435,3 +436,70 @@ class SwissTieBreakRestartTests(ApiBaseTestCase):
         results, seeding = recompute_swiss_ranks(self.swiss_round, results, [1, 2], seeding)
         self.assertEqual(results[self.team_a.id]["rank"], 1)
         self.assertEqual(seeding[1], self.team_a.id)
+
+
+class BracketNameValidationTests(ApiBaseTestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        self.user.is_staff = True
+        self.user.save()
+        self.client.force_login(self.user)
+
+    def _create(self, name: str) -> int:
+        response = self.client.post(
+            f"/api/tournament/bracket/{self.tournament.id}",
+            {"name": name, "sequence_number": 1},
+            content_type="application/json",
+        )
+        return response.status_code
+
+    def test_valid_bracket_creates_matches(self) -> None:
+        self.assertEqual(self._create("1-8"), 200)
+        bracket = Bracket.objects.get(tournament=self.tournament)
+        self.assertEqual(Match.objects.filter(bracket=bracket).count(), 12)
+
+    def test_non_numeric_name_rejected(self) -> None:
+        self.assertEqual(self._create("Top8"), 400)
+        self.assertEqual(Bracket.objects.filter(tournament=self.tournament).count(), 0)
+
+    def test_reversed_range_rejected(self) -> None:
+        self.assertEqual(self._create("8-1"), 400)
+
+    def test_odd_sized_range_rejected(self) -> None:
+        # Odd ranges used to create a bracket silently containing no matches
+        self.assertEqual(self._create("1-5"), 400)
+        self.assertEqual(Bracket.objects.filter(tournament=self.tournament).count(), 0)
+
+    def test_zero_seed_rejected(self) -> None:
+        self.assertEqual(self._create("0-3"), 400)
+
+    def test_seeds_beyond_the_registered_teams_rejected(self) -> None:
+        # Eight teams are registered, so a 9-16 bracket is a set of matches that
+        # could never be filled.
+        self.assertEqual(self._create("9-16"), 400)
+        self.assertEqual(Bracket.objects.filter(tournament=self.tournament).count(), 0)
+
+    def test_name_too_long_for_the_column_rejected(self) -> None:
+        # Enough teams that the seed range itself is legitimate: what fails is
+        # that "101-128" does not fit Bracket.name, which used to surface as a
+        # 500 from the database rather than a 400 from here.
+        registered = self.tournament.teams.count()
+        self.tournament.teams.add(
+            *[
+                Team.objects.create(name=f"Filler {i}", ultimate_central_id=1000 + i)
+                for i in range(128 - registered)
+            ]
+        )
+        ok, error = validate_bracket_name(self.tournament, "101-128")
+        self.assertFalse(ok)
+        self.assertIn("longer than", (error or {}).get("message", ""))
+        self.assertTrue(validate_bracket_name(self.tournament, "1-128")[0])
+
+    def test_validate_bracket_name_unit(self) -> None:
+        self.assertTrue(validate_bracket_name(self.tournament, "1-8")[0])
+        self.assertTrue(validate_bracket_name(self.tournament, "5-6")[0])
+        self.assertFalse(validate_bracket_name(self.tournament, "5-5")[0])
+        self.assertFalse(validate_bracket_name(self.tournament, "1-8-9")[0])
+        self.assertFalse(validate_bracket_name(self.tournament, "finals")[0])
+        # Only eight teams are registered, so seed 16 does not exist.
+        self.assertFalse(validate_bracket_name(self.tournament, "9-16")[0])
