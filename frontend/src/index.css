@@ -291,3 +291,60 @@ dialog[open]::backdrop {
     background-color: rgb(55 65 81 / 0.9);
   }
 }
+
+/* ---------------------------------------------------------------------------
+ * Tournament agent surface
+ *
+ * The agent tab is deliberately its own surface: a warm paper canvas instead of
+ * the app's cool gray, so a conversation reads as a document rather than a form.
+ * Tokens live here (not Tailwind config) to keep the change contained.
+ * ------------------------------------------------------------------------- */
+
+.agent-surface {
+  --agent-canvas: #faf9f7;
+  --agent-raised: #ffffff;
+  --agent-ink: #1f1d1a;
+  --agent-ink-muted: #6b6660;
+  --agent-line: #e7e3dd;
+  --agent-line-strong: #d6d1c8;
+  --agent-accent: #1d4ed8;
+  --agent-user-chip: #f1efe9;
+}
+
+.dark .agent-surface {
+  --agent-canvas: #1a1917;
+  --agent-raised: #232220;
+  --agent-ink: #ece9e4;
+  --agent-ink-muted: #9d968c;
+  --agent-line: #35332f;
+  --agent-line-strong: #454239;
+  --agent-accent: #93c5fd;
+  --agent-user-chip: #2b2926;
+}
+
+/* Streaming caret: marks the live reply without shifting layout. A pseudo-element
+ * can't be expressed as a utility class, so it lives here; all agent markdown
+ * styling is Tailwind, applied via agentClassMap in TournamentAgentTab. */
+.agent-caret::after {
+  content: "";
+  display: inline-block;
+  width: 0.45em;
+  height: 1.05em;
+  margin-left: 0.12em;
+  vertical-align: text-bottom;
+  background-color: currentColor;
+  opacity: 0.6;
+  animation: agent-caret-blink 1.1s steps(2, start) infinite;
+}
+
+@keyframes agent-caret-blink {
+  to {
+    visibility: hidden;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agent-caret::after {
+    animation: none;
+  }
+}
