@@ -2,7 +2,8 @@ import contextlib
 import datetime
 import os
 from collections import Counter
-from typing import cast
+from collections.abc import Callable
+from typing import Any, cast
 
 from django.db import transaction
 from django.db.models import Q
@@ -198,24 +199,14 @@ def apply_bye(swiss_round: SwissRound, team_id: int, round_number: int) -> None:
     results[team_id]["wins"] += 1
     results[team_id]["GF"] += BYE_SCORE
 
-    # Re-rank all teams by points (win=2, draw=1)
-    results_list = sorted(
-        results.items(),
-        key=lambda item: (
-            item[1]["wins"] * 2 + item[1].get("draws", 0),
-            item[1]["GF"] - item[1]["GA"],
-            item[1]["GF"],
-        ),
-        reverse=True,
-    )
-
+    # Re-rank all teams by points (win=2, draw=1) with Swiss tiebreakers
     pool_seeding_list = sorted(map(int, swiss_round.initial_seeding.keys()))
     tournament = swiss_round.tournament
-    tournament_seeding = tournament.current_seeding
+    tournament_seeding = {int(k): v for k, v in tournament.current_seeding.items()}
 
-    for i, (tid, _stats) in enumerate(results_list):
-        results[tid]["rank"] = i + 1
-        tournament_seeding[pool_seeding_list[i]] = tid
+    results, tournament_seeding = recompute_swiss_ranks(
+        swiss_round, results, pool_seeding_list, tournament_seeding
+    )
 
     # Compute and store opponent strength (sum of opponents' points)
     all_swiss_matches = Match.objects.filter(swiss_round=swiss_round, status=Match.Status.COMPLETED)
@@ -324,19 +315,7 @@ def assign_swiss_round_teams(
         pairings = generate_swiss_pairings(swiss_round, exclude_team_id=bye_team_id)
 
         # Build team_id -> current rank map from results
-        results = swiss_round.results
-        ranked_teams = sorted(
-            results.items(),
-            key=lambda item: (
-                item[1]["wins"],
-                item[1]["GF"] - item[1]["GA"],
-                item[1]["GF"],
-            ),
-            reverse=True,
-        )
-        team_rank: dict[int, int] = {
-            int(tid): rank + 1 for rank, (tid, _) in enumerate(ranked_teams)
-        }
+        team_rank: dict[int, int] = swiss_team_rank_map(swiss_round.results)
 
         for i, (team_1_id, team_2_id) in enumerate(pairings):
             if i < len(round_matches):
@@ -566,27 +545,42 @@ def generate_swiss_pairings(
     return pairs
 
 
-def sort_tied_teams(tied_teams: list[dict[str, int]], tournament_id: int) -> list[dict[str, int]]:
+def sort_tied_teams(
+    tied_teams: list[dict[str, int]],
+    tournament_id: int,
+    stage: Pool | PositionPool | None = None,
+) -> list[dict[str, int]]:
+    """Order teams tied on pool wins, following the WFDF tie-break procedure.
+
+    Criteria, in order of precedence:
+    1. Games won counting only games between tied teams
+    2. Goal difference counting only games between tied teams
+    3. Goal difference counting all pool games
+    4. Goals scored counting only games between tied teams
+    5. Goals scored counting all pool games
+
+    Per WFDF, whenever a criterion separates the tied group into smaller
+    groups, the procedure restarts at criterion 1 within each remaining
+    tied sub-group (head-to-head stats are recomputed among only those
+    teams). Only games from the same stage (this pool / position pool)
+    count towards the head-to-head criteria.
     """
-    This is the comparator function for comparing pool results
-    The order of precedence is as follows:
-    1. Games won in pool
-    2. Games won counting only games between tied teams
-    3. Goal Difference only games between tied teams
-    4. Goal Difference counting all pool games
-    5. Goals Scored only games between tied teams
-    6. Goals Scored counting all pool games
-    """
+    if len(tied_teams) <= 1:
+        return list(tied_teams)
 
     team_stats: dict[int, dict[str, int]] = {
         team["id"]: {"wins": 0, "gd": 0, "gf": 0} for team in tied_teams
     }
 
-    # Get all matches between tied teams
+    # Get matches between tied teams, restricted to this stage's games
     team_ids = [team["id"] for team in tied_teams]
     matches = Match.objects.filter(
         tournament_id=tournament_id, status=Match.Status.COMPLETED
     ).filter(Q(team_1__id__in=team_ids, team_2__id__in=team_ids))
+    if isinstance(stage, Pool):
+        matches = matches.filter(pool=stage)
+    elif isinstance(stage, PositionPool):
+        matches = matches.filter(position_pool=stage)
 
     # Calculate head-to-head stats
     for match in matches:
@@ -605,18 +599,51 @@ def sort_tied_teams(tied_teams: list[dict[str, int]], tournament_id: int) -> lis
         team_stats[match.team_1.id]["gf"] += match.score_team_1
         team_stats[match.team_2.id]["gf"] += match.score_team_2
 
-    # Sort teams based on criteria
-    return sorted(
-        tied_teams,
-        key=lambda team: (
+    def criteria(team: dict[str, int]) -> tuple[int, int, int, int, int]:
+        return (
             team_stats[team["id"]]["wins"],  # 1. Head-to-head wins
             team_stats[team["id"]]["gd"],  # 2. Head-to-head goal difference
             team["GF"] - team["GA"],  # 3. Overall goal difference
             team_stats[team["id"]]["gf"],  # 4. Head-to-head goals scored
             team["GF"],  # 5. Overall goals scored
-        ),
-        reverse=True,
+        )
+
+    return _rank_by_criteria_with_restart(
+        tied_teams,
+        criteria,
+        lambda sub_group: sort_tied_teams(sub_group, tournament_id, stage),
     )
+
+
+def _rank_by_criteria_with_restart(
+    tied_teams: list[dict[str, int]],
+    criteria: Callable[[dict[str, int]], tuple[int, ...]],
+    restart: Callable[[list[dict[str, int]]], list[dict[str, int]]],
+) -> list[dict[str, int]]:
+    """Apply ordered tie-break criteria with the WFDF restart rule.
+
+    Finds the first criterion that separates the group, orders sub-groups by
+    that criterion, then restarts the full procedure within each sub-group
+    that is still tied. Returns the teams unchanged when no criterion can
+    separate them.
+    """
+    num_criteria = len(criteria(tied_teams[0]))
+    for index in range(num_criteria):
+        values = {criteria(team)[index] for team in tied_teams}
+        if len(values) == 1:
+            continue
+
+        ordered: list[dict[str, int]] = []
+        for value in sorted(values, reverse=True):
+            sub_group = [team for team in tied_teams if criteria(team)[index] == value]
+            if len(sub_group) > 1:
+                # Strictly smaller than tied_teams (values has >1 entry),
+                # so the restart always terminates.
+                sub_group = restart(sub_group)
+            ordered.extend(sub_group)
+        return ordered
+
+    return list(tied_teams)
 
 
 def sort_swiss_tied_teams(
@@ -631,9 +658,9 @@ def sort_swiss_tied_teams(
     2. Strength of opponents faced (sum of opponents' points — higher = stronger)
     3. Overall goal difference
 
-    When multiple teams share the same H2H win count, recursively
-    re-evaluate tiebreakers within that sub-group (smaller group means
-    different H2H dynamics).
+    Whenever a criterion separates the tied group, the procedure restarts
+    at criterion 1 within each remaining tied sub-group (smaller group
+    means different H2H dynamics).
     """
     if len(tied_teams) <= 1:
         return tied_teams
@@ -670,33 +697,74 @@ def sort_swiss_tied_teams(
                     "draws", 0
                 )
 
-    sorted_teams = sorted(
-        tied_teams,
-        key=lambda t: (
+    def criteria(t: dict[str, int]) -> tuple[int, ...]:
+        return (
             h2h_wins[t["id"]],  # 1. H2H wins (higher = better)
             opp_strength[t["id"]],  # 2. Opponent strength: higher = faced stronger
             t["GF"] - t["GA"],  # 3. Overall goal difference
+        )
+
+    # Whenever a criterion separates the group, restart the procedure within
+    # each remaining tied sub-group (H2H is recomputed among only those teams).
+    return _rank_by_criteria_with_restart(
+        tied_teams,
+        criteria,
+        lambda sub_group: sort_swiss_tied_teams(sub_group, all_results, swiss_round),
+    )
+
+
+def recompute_swiss_ranks(
+    swiss_round: SwissRound,
+    results: dict[int, dict[str, int]],
+    pool_seeding_list: list[int],
+    tournament_seeding: dict[int, int],
+) -> tuple[dict[int, dict[str, int]], dict[int, int]]:
+    """Assign ranks by points (win=2, draw=1) with Swiss tiebreakers.
+
+    Updates the given tournament seeding map so the group's seeds follow the
+    new rank order. This is the single source of truth for Swiss ranking —
+    byes, reruns and score updates must all rank teams the same way.
+    """
+    for tid in results:
+        results[tid]["id"] = tid
+
+    points_groups: dict[int, list[dict[str, int]]] = {}
+    for result in results.values():
+        points = result["wins"] * 2 + result.get("draws", 0)
+        points_groups.setdefault(points, []).append(result)
+
+    ranked: list[dict[str, int]] = []
+    for points in sorted(points_groups, reverse=True):
+        tied = points_groups[points]
+        if len(tied) == 1:
+            ranked.extend(tied)
+        else:
+            ranked.extend(sort_swiss_tied_teams(tied, results, swiss_round))
+
+    for i, result in enumerate(ranked):
+        results[result["id"]]["rank"] = i + 1
+        tournament_seeding[pool_seeding_list[i]] = int(result["id"])
+
+    return results, tournament_seeding
+
+
+def swiss_team_rank_map(results: dict[Any, dict[str, int]]) -> dict[int, int]:
+    """Team id -> current rank, preferring stored ranks over a raw points sort."""
+    normalized = {int(tid): stats for tid, stats in results.items()}
+    ranks = [stats.get("rank") for stats in normalized.values()]
+    if all(isinstance(rank, int) for rank in ranks) and len(set(ranks)) == len(ranks):
+        return {tid: stats["rank"] for tid, stats in normalized.items()}
+
+    ranked = sorted(
+        normalized.items(),
+        key=lambda item: (
+            item[1]["wins"] * 2 + item[1].get("draws", 0),
+            item[1]["GF"] - item[1]["GA"],
+            item[1]["GF"],
         ),
         reverse=True,
     )
-
-    # Recursively break sub-ties among teams with same H2H wins
-    final_order: list[dict[str, int]] = []
-    i = 0
-    while i < len(sorted_teams):
-        j = i + 1
-        while (
-            j < len(sorted_teams)
-            and h2h_wins[sorted_teams[j]["id"]] == h2h_wins[sorted_teams[i]["id"]]
-        ):
-            j += 1
-        sub_group = sorted_teams[i:j]
-        if len(sub_group) > 1 and len(sub_group) < len(tied_teams):
-            sub_group = sort_swiss_tied_teams(sub_group, all_results, swiss_round)
-        final_order.extend(sub_group)
-        i = j
-
-    return final_order
+    return {tid: i + 1 for i, (tid, _) in enumerate(ranked)}
 
 
 def get_new_pool_results(
@@ -745,8 +813,9 @@ def get_new_pool_results(
         if len(tied_teams) == 1:
             ranked_results.extend(tied_teams)
         else:
-            # Sort tied teams using head-to-head criteria
-            sorted_tied_teams = sort_tied_teams(tied_teams, match.tournament.id)
+            # Sort tied teams using head-to-head criteria within this stage
+            stage = match.pool or match.position_pool
+            sorted_tied_teams = sort_tied_teams(tied_teams, match.tournament.id, stage)
             ranked_results.extend(sorted_tied_teams)
 
     new_results = {}
@@ -898,28 +967,10 @@ def rerun_swiss_round(tournament: Tournament, swiss_round: SwissRound) -> None:
         pool_seeding_list: list[int],
     ) -> tuple[dict[int, dict[str, int]], dict[int, int]]:
         """Apply Swiss tiebreakers to assign ranks and update tournament seeding."""
-        for tid in results:
-            results[tid]["id"] = tid
-
-        points_groups: dict[int, list[dict[str, int]]] = {}
-        for result in results.values():
-            pts = result["wins"] * 2 + result.get("draws", 0)
-            points_groups.setdefault(pts, []).append(result)
-
-        ranked: list[dict[str, int]] = []
-        for pts in sorted(points_groups, reverse=True):
-            tied = points_groups[pts]
-            if len(tied) == 1:
-                ranked.extend(tied)
-            else:
-                ranked.extend(sort_swiss_tied_teams(tied, results, swiss_round))
-
         tournament_seeding_local = {int(k): v for k, v in tournament.current_seeding.items()}
-        for i, result in enumerate(ranked):
-            results[result["id"]]["rank"] = i + 1
-            tournament_seeding_local[pool_seeding_list[i]] = int(result["id"])
-
-        return results, tournament_seeding_local
+        return recompute_swiss_ranks(
+            swiss_round, results, pool_seeding_list, tournament_seeding_local
+        )
 
     def _recompute_opp_strength(results: dict[int, dict[str, int]]) -> None:
         """Recompute opponent strength (sum of opponents' points) for all teams."""
@@ -1028,16 +1079,7 @@ def rerun_swiss_round(tournament: Tournament, swiss_round: SwissRound) -> None:
     pairings = generate_swiss_pairings(swiss_round, exclude_team_id=bye_team_id_for_pairings)
 
     # Build rank map from current results
-    ranked_teams = sorted(
-        results.items(),
-        key=lambda item: (
-            item[1]["wins"],
-            item[1]["GF"] - item[1]["GA"],
-            item[1]["GF"],
-        ),
-        reverse=True,
-    )
-    team_rank: dict[int, int] = {int(tid): rank + 1 for rank, (tid, _) in enumerate(ranked_teams)}
+    team_rank: dict[int, int] = swiss_team_rank_map(results)
 
     for i, (t1_id, t2_id) in enumerate(pairings):
         if i < len(scheduled_matches):
