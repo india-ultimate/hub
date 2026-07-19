@@ -41,6 +41,76 @@ PLAYER_ROLE = "player"
 # Exported Functions ####################
 
 
+def update_tournament_seeding(
+    tournament: Tournament, seeding: dict[int, int]
+) -> tuple[bool, message_response | None]:
+    """Validate and apply a new tournament seeding before the tournament starts.
+
+    Pools and Swiss groups snapshot seed -> team_id (and per-team results) at
+    creation time. Re-syncing those snapshots here lets staff re-seed freely
+    at any point before the tournament starts, without having to delete and
+    recreate the whole structure. Matches only hold placeholder seeds until
+    the tournament starts, so they need no update.
+    """
+    if tournament.status in (Tournament.Status.LIVE, Tournament.Status.COMPLETED):
+        return False, {
+            "message": "Cannot update seeding after the tournament has started. "
+            "Match results drive the current seeding once the tournament is live."
+        }
+
+    valid_seeds_and_teams, errors = validate_seeds_and_teams(tournament, seeding)
+    if not valid_seeds_and_teams:
+        message = "Cannot update standings, due to following errors: \n"
+        message += "\n".join(f"{key}: {value}" for key, value in errors.items())
+        return False, {"message": message}
+
+    with transaction.atomic():
+        tournament.initial_seeding = dict(sorted(seeding.items()))
+        tournament.current_seeding = dict(sorted(seeding.items()))
+        tournament.save()
+
+        seed_to_team = {int(seed): team_id for seed, team_id in seeding.items()}
+
+        for pool in Pool.objects.filter(tournament=tournament):
+            new_seeding: dict[int, int] = {}
+            new_results: dict[int, dict[str, int]] = {}
+            for i, seed in enumerate(sorted(map(int, pool.initial_seeding.keys()))):
+                team_id = seed_to_team[seed]
+                new_seeding[seed] = team_id
+                new_results[team_id] = {
+                    "rank": i + 1,
+                    "wins": 0,
+                    "losses": 0,
+                    "draws": 0,
+                    "GF": 0,
+                    "GA": 0,
+                }
+            pool.initial_seeding = new_seeding
+            pool.results = new_results
+            pool.save()
+
+        for swiss_round in SwissRound.objects.filter(tournament=tournament):
+            new_swiss_seeding: dict[int, int] = {}
+            new_swiss_results: dict[str, dict[str, int]] = {}
+            for i, seed in enumerate(sorted(map(int, swiss_round.initial_seeding.keys()))):
+                team_id = seed_to_team[seed]
+                new_swiss_seeding[seed] = team_id
+                new_swiss_results[str(team_id)] = {
+                    "rank": i + 1,
+                    "wins": 0,
+                    "losses": 0,
+                    "draws": 0,
+                    "GF": 0,
+                    "GA": 0,
+                    "opp_strength": 0,
+                }
+            swiss_round.initial_seeding = new_swiss_seeding
+            swiss_round.results = new_swiss_results
+            swiss_round.save()
+
+    return True, None
+
+
 def create_pool_matches(tournament: Tournament, pool: Pool) -> None:
     pool_seeding_list = list(map(int, pool.initial_seeding.keys()))
 

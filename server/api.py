@@ -171,10 +171,10 @@ from server.tournament.utils import (
     populate_fixtures,
     rerun_swiss_round,
     update_match_score_and_results,
+    update_tournament_seeding,
     update_tournament_spirit_rankings,
     user_tournament_teams,
     validate_new_pool,
-    validate_seeds_and_teams,
 )
 from server.transaction.api import router as transaction_router
 from server.types import message_response
@@ -1913,16 +1913,9 @@ def update_standings(
     except Tournament.DoesNotExist:
         return 400, {"message": "Tournament does not exist"}
 
-    valid_seeds_and_teams, errors = validate_seeds_and_teams(tournament, tournament_details.seeding)
-
-    if not valid_seeds_and_teams:
-        message = "Cannot update standings, due to following errors: \n"
-        message += "\n".join(f"{key}: {value}" for key, value in errors.items())
-        return 400, {"message": message}
-
-    tournament.initial_seeding = dict(sorted(tournament_details.seeding.items()))
-    tournament.current_seeding = dict(sorted(tournament_details.seeding.items()))
-    tournament.save()
+    ok, error = update_tournament_seeding(tournament, tournament_details.seeding)
+    if not ok:
+        return 400, error or {"message": "Cannot update seeding"}
 
     return 200, tournament
 
