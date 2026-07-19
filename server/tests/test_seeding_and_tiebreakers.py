@@ -1,7 +1,17 @@
-"""Tests for pre-start seeding re-sync."""
+"""Tests for pre-start seeding re-sync and WFDF-style tie-breaker fixes."""
 
+from typing import Any
+
+from server.core.models import Team
 from server.tests.base import ApiBaseTestCase
-from server.tournament.models import Match, Pool, SwissRound
+from server.tournament.models import Bracket, Match, Pool, PositionPool, SwissRound
+from server.tournament.utils import (
+    apply_bye,
+    get_new_pool_results,
+    recompute_swiss_ranks,
+    sort_swiss_tied_teams,
+    sort_tied_teams,
+)
 
 
 class SeedingUpdateResyncTests(ApiBaseTestCase):
@@ -176,3 +186,252 @@ class SeedingUpdateResyncSwissTests(ApiBaseTestCase):
             placeholder_seed_2=8,
         )
         self.assertEqual(match.team_1_id, original_seed_2_team)
+
+
+class PoolThreeWayTieBreakTests(ApiBaseTestCase):
+    """WFDF restart: once a criterion separates teams, remaining ties restart at H2H."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.team_a, self.team_b, self.team_c, self.team_d = self.teams[:4]
+        self.pool = Pool.objects.create(
+            name="A",
+            tournament=self.tournament,
+            sequence_number=1,
+            initial_seeding={
+                1: self.team_a.id,
+                2: self.team_b.id,
+                3: self.team_c.id,
+                4: self.team_d.id,
+            },
+            results={},
+        )
+
+    def _play(self, team_1: Team, team_2: Team, score_1: int, score_2: int, **kwargs: Any) -> Match:
+        return Match.objects.create(
+            tournament=self.tournament,
+            team_1=team_1,
+            team_2=team_2,
+            score_team_1=score_1,
+            score_team_2=score_2,
+            status=Match.Status.COMPLETED,
+            sequence_number=1,
+            placeholder_seed_1=1,
+            placeholder_seed_2=2,
+            **kwargs,
+        )
+
+    def _run_pool(self, matches: list[Match]) -> tuple[dict[int, dict[str, int]], dict[int, int]]:
+        results = {
+            team.id: {"wins": 0, "losses": 0, "draws": 0, "GF": 0, "GA": 0}
+            for team in (self.team_a, self.team_b, self.team_c, self.team_d)
+        }
+        seeding = {1: 0, 2: 0, 3: 0, 4: 0}
+        for match in matches:
+            results, seeding = get_new_pool_results(results, match, [1, 2, 3, 4], seeding)
+        return results, seeding
+
+    def test_three_way_tie_restarts_at_head_to_head(self) -> None:
+        """A/B/C cycle with equal H2H GD; overall GD separates A; then C>B by H2H.
+
+        The old single-pass sort left B ahead of C (input order) because
+        every remaining criterion was equal; WFDF requires restarting at
+        head-to-head between B and C, which C won.
+        """
+        matches = [
+            self._play(self.team_a, self.team_b, 10, 15, pool=self.pool),  # B beats A
+            self._play(self.team_b, self.team_c, 10, 15, pool=self.pool),  # C beats B
+            self._play(self.team_c, self.team_a, 10, 15, pool=self.pool),  # A beats C
+            self._play(self.team_a, self.team_d, 15, 5, pool=self.pool),  # A +10
+            self._play(self.team_b, self.team_d, 15, 10, pool=self.pool),  # B +5
+            self._play(self.team_c, self.team_d, 15, 10, pool=self.pool),  # C +5
+        ]
+        results, seeding = self._run_pool(matches)
+
+        self.assertEqual(results[self.team_a.id]["rank"], 1)  # best overall GD
+        self.assertEqual(results[self.team_c.id]["rank"], 2)  # beat B head-to-head
+        self.assertEqual(results[self.team_b.id]["rank"], 3)
+        self.assertEqual(results[self.team_d.id]["rank"], 4)
+        self.assertEqual(seeding[2], self.team_c.id)
+
+    def test_head_to_head_ignores_matches_from_other_stages(self) -> None:
+        """A bracket game between two pool-tied teams must not affect pool ranks."""
+        # Pool: A beats B and D, loses to C; B beats C and D, loses to A.
+        matches = [
+            self._play(self.team_a, self.team_b, 15, 14, pool=self.pool),
+            self._play(self.team_c, self.team_a, 15, 10, pool=self.pool),
+            self._play(self.team_a, self.team_d, 15, 10, pool=self.pool),
+            self._play(self.team_b, self.team_c, 15, 10, pool=self.pool),
+            self._play(self.team_b, self.team_d, 15, 10, pool=self.pool),
+            self._play(self.team_d, self.team_c, 15, 10, pool=self.pool),
+        ]
+        # Same-tournament bracket game where B crushed A. If it leaked into the
+        # pool tie-break, B would jump ahead of A.
+        bracket = Bracket.objects.create(
+            name="1-4",
+            tournament=self.tournament,
+            sequence_number=1,
+            initial_seeding={1: 0, 2: 0, 3: 0, 4: 0},
+            current_seeding={1: 0, 2: 0, 3: 0, 4: 0},
+        )
+        self._play(self.team_a, self.team_b, 0, 15, bracket=bracket)
+
+        results, _ = self._run_pool(matches)
+
+        self.assertEqual(results[self.team_a.id]["rank"], 1)  # won pool H2H vs B
+        self.assertEqual(results[self.team_b.id]["rank"], 2)
+        self.assertEqual(results[self.team_d.id]["rank"], 3)  # won pool H2H vs C
+        self.assertEqual(results[self.team_c.id]["rank"], 4)
+
+    def test_position_pool_head_to_head_ignores_pool_games(self) -> None:
+        """Position pool ties must only count position pool games."""
+        position_pool = PositionPool.objects.create(
+            name="E",
+            tournament=self.tournament,
+            sequence_number=1,
+            initial_seeding={5: 0, 6: 0, 7: 0},
+            results={},
+        )
+        # Earlier pool game: C thrashed B. Must not leak into position pool.
+        self._play(self.team_c, self.team_b, 15, 0, pool=self.pool)
+
+        pp_matches = [
+            # Cycle: A beats B (+1), B beats C (+5), C beats A (+2)
+            self._play(self.team_a, self.team_b, 15, 14, position_pool=position_pool),
+            self._play(self.team_b, self.team_c, 15, 10, position_pool=position_pool),
+            self._play(self.team_c, self.team_a, 15, 13, position_pool=position_pool),
+        ]
+        results = {
+            team.id: {"wins": 0, "losses": 0, "draws": 0, "GF": 0, "GA": 0}
+            for team in (self.team_a, self.team_b, self.team_c)
+        }
+        seeding = {5: 0, 6: 0, 7: 0}
+        for match in pp_matches:
+            results, seeding = get_new_pool_results(results, match, [5, 6, 7], seeding)
+
+        # H2H GD within the position pool only: B +4, A -1, C -3
+        self.assertEqual(results[self.team_b.id]["rank"], 1)
+        self.assertEqual(results[self.team_a.id]["rank"], 2)
+        self.assertEqual(results[self.team_c.id]["rank"], 3)
+
+    def test_sort_tied_teams_fully_tied_group_keeps_order(self) -> None:
+        tied = [
+            {"id": self.team_a.id, "GF": 30, "GA": 30},
+            {"id": self.team_b.id, "GF": 30, "GA": 30},
+        ]
+        result = sort_tied_teams(tied, self.tournament.id, self.pool)
+        self.assertEqual([t["id"] for t in result], [self.team_a.id, self.team_b.id])
+
+
+class SwissTieBreakRestartTests(ApiBaseTestCase):
+    """Swiss ties must restart at H2H once a criterion separates the group."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.swiss_round = SwissRound.objects.create(
+            tournament=self.tournament,
+            name="A",
+            sequence_number=1,
+            num_rounds=4,
+            current_round=3,
+            initial_seeding={i + 1: self.teams[i].id for i in range(6)},
+            results={},
+            byes={},
+        )
+        self.team_a, self.team_b, self.team_c = self.teams[:3]
+        self.team_d, self.team_e, self.team_f = self.teams[3:6]
+
+    def _swiss_match(self, team_1: Team, team_2: Team, score_1: int, score_2: int) -> Match:
+        return Match.objects.create(
+            tournament=self.tournament,
+            swiss_round=self.swiss_round,
+            team_1=team_1,
+            team_2=team_2,
+            score_team_1=score_1,
+            score_team_2=score_2,
+            status=Match.Status.COMPLETED,
+            sequence_number=1,
+            placeholder_seed_1=1,
+            placeholder_seed_2=2,
+        )
+
+    def test_restart_uses_head_to_head_after_opp_strength_separates(self) -> None:
+        """Cycle A>B>C>A; A faced stronger opponents; then B beat C directly.
+
+        Old behaviour ordered the B/C remainder by goal difference (C ahead);
+        WFDF restart puts B ahead because B won the head-to-head.
+        """
+        # The A/B/C cycle
+        self._swiss_match(self.team_a, self.team_b, 15, 10)
+        self._swiss_match(self.team_b, self.team_c, 15, 10)
+        self._swiss_match(self.team_c, self.team_a, 15, 10)
+        # Extra games defining opponent strength: A played D (strong),
+        # B played E (weak), C played F (weak).
+        self._swiss_match(self.team_a, self.team_d, 15, 10)
+        self._swiss_match(self.team_b, self.team_e, 15, 10)
+        self._swiss_match(self.team_c, self.team_f, 15, 10)
+
+        all_results = {
+            self.team_a.id: {"wins": 2, "draws": 0, "losses": 1, "GF": 40, "GA": 35},
+            self.team_b.id: {"wins": 2, "draws": 0, "losses": 1, "GF": 40, "GA": 38},
+            # C gets the best goal difference so the old sort would rank C > B
+            self.team_c.id: {"wins": 2, "draws": 0, "losses": 1, "GF": 45, "GA": 30},
+            self.team_d.id: {"wins": 3, "draws": 0, "losses": 1, "GF": 60, "GA": 40},
+            self.team_e.id: {"wins": 0, "draws": 0, "losses": 3, "GF": 20, "GA": 45},
+            self.team_f.id: {"wins": 0, "draws": 0, "losses": 3, "GF": 20, "GA": 45},
+        }
+        tied = [
+            {"id": self.team_c.id, **all_results[self.team_c.id]},
+            {"id": self.team_b.id, **all_results[self.team_b.id]},
+            {"id": self.team_a.id, **all_results[self.team_a.id]},
+        ]
+
+        result = sort_swiss_tied_teams(tied, all_results, self.swiss_round)
+
+        self.assertEqual(
+            [t["id"] for t in result],
+            [self.team_a.id, self.team_b.id, self.team_c.id],
+        )
+
+    def test_bye_reranks_with_swiss_tiebreakers(self) -> None:
+        """apply_bye must rank with H2H/opp-strength, not raw goal difference."""
+        self._swiss_match(self.team_a, self.team_b, 15, 13)
+
+        self.swiss_round.initial_seeding = {
+            1: self.team_a.id,
+            2: self.team_b.id,
+            3: self.team_c.id,
+        }
+        self.swiss_round.results = {
+            self.team_a.id: {"wins": 1, "draws": 0, "losses": 0, "GF": 15, "GA": 13},
+            self.team_b.id: {"wins": 1, "draws": 0, "losses": 0, "GF": 25, "GA": 15},
+            self.team_c.id: {"wins": 0, "draws": 0, "losses": 0, "GF": 0, "GA": 0},
+        }
+        self.swiss_round.save()
+        self.tournament.current_seeding = {
+            "1": self.team_a.id,
+            "2": self.team_b.id,
+            "3": self.team_c.id,
+        }
+        self.tournament.save()
+
+        # C's bye makes it 15-0 (GD +15) — best GD of the three, but C has
+        # no head-to-head wins and faced nobody, so C must rank last.
+        apply_bye(self.swiss_round, self.team_c.id, 2)
+
+        self.swiss_round.refresh_from_db()
+        results = {int(k): v for k, v in self.swiss_round.results.items()}
+        self.assertEqual(results[self.team_a.id]["rank"], 1)  # beat B head-to-head
+        self.assertEqual(results[self.team_b.id]["rank"], 2)
+        self.assertEqual(results[self.team_c.id]["rank"], 3)
+
+    def test_recompute_swiss_ranks_prefers_head_to_head_over_gd(self) -> None:
+        self._swiss_match(self.team_a, self.team_b, 15, 14)
+        results = {
+            self.team_a.id: {"wins": 1, "draws": 0, "losses": 0, "GF": 15, "GA": 14},
+            self.team_b.id: {"wins": 1, "draws": 0, "losses": 0, "GF": 30, "GA": 14},
+        }
+        seeding = {1: 0, 2: 0}
+        results, seeding = recompute_swiss_ranks(self.swiss_round, results, [1, 2], seeding)
+        self.assertEqual(results[self.team_a.id]["rank"], 1)
+        self.assertEqual(seeding[1], self.team_a.id)
