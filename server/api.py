@@ -174,6 +174,7 @@ from server.tournament.utils import (
     update_tournament_seeding,
     update_tournament_spirit_rankings,
     user_tournament_teams,
+    validate_bracket_name,
     validate_new_pool,
 )
 from server.transaction.api import router as transaction_router
@@ -2167,6 +2168,10 @@ def create_bracket(
         tournament = Tournament.objects.get(id=tournament_id)
     except Tournament.DoesNotExist:
         return 400, {"message": "Tournament does not exist"}
+
+    valid_name, name_error = validate_bracket_name(bracket_details.name)
+    if not valid_name:
+        return 400, name_error or {"message": "Invalid bracket name"}
 
     bracket_seeding = {}
     start, end = map(int, bracket_details.name.split("-"))

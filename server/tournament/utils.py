@@ -1955,6 +1955,34 @@ def validate_new_pool(
     return valid_pool, errors
 
 
+def validate_bracket_name(name: str) -> tuple[bool, message_response | None]:
+    """Bracket names must be seed ranges like '1-8' spanning an even seed count.
+
+    Odd-sized ranges would silently create no matches (create_bracket_matches
+    only handles even sizes), and non-numeric names crash seed parsing.
+    """
+    expected_parts = 2
+    parts = name.split("-")
+    if len(parts) != expected_parts or not all(part.isdigit() for part in parts):
+        return False, {"message": "Bracket name must be a seed range like '1-8' or '9-16'"}
+
+    start, end = int(parts[0]), int(parts[1])
+    if start < 1 or end <= start:
+        return False, {
+            "message": f"Bracket name '{name}' is not a valid seed range: "
+            "the first seed must be 1 or higher and lower than the last seed"
+        }
+
+    if ((end - start) + 1) % 2 != 0:
+        return False, {
+            "message": f"Bracket '{name}' spans an odd number of seeds "
+            f"({(end - start) + 1}); brackets need an even seed count. "
+            "Use a position pool for the leftover seeds instead."
+        }
+
+    return True, None
+
+
 def get_bracket_match_name(start: int, end: int, seed_1: int, seed_2: int) -> str:
     """Get type of bracket match (Quarter Finals, Semi Finals, Finals, Position match)"""
 
