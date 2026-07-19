@@ -4,13 +4,14 @@ from typing import Any
 
 from server.core.models import Team
 from server.tests.base import ApiBaseTestCase
-from server.tournament.models import Bracket, Match, Pool, PositionPool, SwissRound
+from server.tournament.models import Bracket, Match, Pool, PositionPool, SwissRound, Tournament
 from server.tournament.utils import (
     apply_bye,
     get_new_pool_results,
     recompute_swiss_ranks,
     sort_swiss_tied_teams,
     sort_tied_teams,
+    update_tournament_seeding,
     validate_bracket_name,
 )
 
@@ -27,11 +28,7 @@ class SeedingUpdateResyncTests(ApiBaseTestCase):
         for name, seeds in (("A", [1, 4, 5, 8]), ("B", [2, 3, 6, 7])):
             response = self.client.post(
                 f"/api/tournament/pool/{self.tournament.id}",
-                {
-                    "name": name,
-                    "sequence_number": 1 if name == "A" else 2,
-                    "seeding": seeds,
-                },
+                {"name": name, "sequence_number": 1 if name == "A" else 2, "seeding": seeds},
                 content_type="application/json",
             )
             self.assertEqual(response.status_code, 200)
@@ -63,9 +60,7 @@ class SeedingUpdateResyncTests(ApiBaseTestCase):
         self.assertEqual(self.pool_b.initial_seeding["2"], original_seed_1_team)
         self.assertIn(str(original_seed_2_team), self.pool_a.results)
         self.assertNotIn(str(original_seed_1_team), self.pool_a.results)
-        self.assertEqual(
-            sorted(row["rank"] for row in self.pool_a.results.values()), [1, 2, 3, 4]
-        )
+        self.assertEqual(sorted(row["rank"] for row in self.pool_a.results.values()), [1, 2, 3, 4])
 
     def test_reseed_keeps_matches_as_placeholders(self) -> None:
         response = self.client.put(
@@ -94,10 +89,7 @@ class SeedingUpdateResyncTests(ApiBaseTestCase):
 
         # The seed-1 vs seed-4 match in pool A must feature the new seed-1 team
         match = Match.objects.get(
-            tournament=self.tournament,
-            pool=self.pool_a,
-            placeholder_seed_1=1,
-            placeholder_seed_2=4,
+            tournament=self.tournament, pool=self.pool_a, placeholder_seed_1=1, placeholder_seed_2=4
         )
         self.assertEqual(match.team_1_id, original_seed_2_team)
 
@@ -164,9 +156,7 @@ class SeedingUpdateResyncSwissTests(ApiBaseTestCase):
         self.assertEqual(self.swiss_round.initial_seeding["2"], original_seed_1_team)
         self.assertIn(str(original_seed_1_team), self.swiss_round.results)
         self.assertEqual(self.swiss_round.results[str(original_seed_2_team)]["rank"], 1)
-        self.assertEqual(
-            self.swiss_round.results[str(original_seed_2_team)]["opp_strength"], 0
-        )
+        self.assertEqual(self.swiss_round.results[str(original_seed_2_team)]["opp_strength"], 0)
 
     def test_start_after_reseed_assigns_new_teams_to_round_one(self) -> None:
         original_seed_2_team = self.tournament.initial_seeding["2"]
@@ -193,6 +183,50 @@ class SeedingUpdateResyncSwissTests(ApiBaseTestCase):
         self.assertEqual(match.team_1_id, original_seed_2_team)
 
 
+class AgentSeedingProposalTests(ApiBaseTestCase):
+    """The agent's update-seeding proposal shares the same guarded util."""
+
+    def test_util_rejects_started_tournament(self) -> None:
+        self.tournament.status = Tournament.Status.LIVE
+        self.tournament.save()
+        ok, error = update_tournament_seeding(
+            self.tournament, {int(k): v for k, v in self.tournament.initial_seeding.items()}
+        )
+        self.assertFalse(ok)
+        self.assertIn("after the tournament has started", (error or {}).get("message", ""))
+
+    def test_util_rejects_invalid_seeding(self) -> None:
+        seeding = {int(k): v for k, v in self.tournament.initial_seeding.items()}
+        seeding.pop(8)
+        ok, error = update_tournament_seeding(self.tournament, seeding)
+        self.assertFalse(ok)
+        self.assertIn("errors", (error or {}).get("message", ""))
+
+    def test_agent_proposal_apply_goes_through_guard(self) -> None:
+        from server.core.models import User
+        from server.tournament_agent.models import TournamentAgentSession
+        from server.tournament_agent.proposals import ProposalApplyError, apply_proposal
+        from server.tournament_agent.tools import ToolContext, propose_update_seeding
+
+        staff = User.objects.create(username="agent-staff", is_staff=True)
+        session = TournamentAgentSession.objects.create(
+            user=staff, tournament=self.tournament, model_id="minimax-m3"
+        )
+        ctx = ToolContext(session=session, tournament=self.tournament)
+
+        self.tournament.status = Tournament.Status.LIVE
+        self.tournament.save()
+
+        from server.tournament_agent.models import AgentProposal
+
+        result = propose_update_seeding(
+            ctx, seeding={str(k): v for k, v in self.tournament.initial_seeding.items()}
+        )
+        proposal = AgentProposal.objects.get(id=result["proposal_id"])
+        with self.assertRaises(ProposalApplyError):
+            apply_proposal(proposal)
+
+
 class PoolThreeWayTieBreakTests(ApiBaseTestCase):
     """WFDF restart: once a criterion separates teams, remaining ties restart at H2H."""
 
@@ -212,9 +246,7 @@ class PoolThreeWayTieBreakTests(ApiBaseTestCase):
             results={},
         )
 
-    def _play(
-        self, team_1: Team, team_2: Team, score_1: int, score_2: int, **kwargs: Any
-    ) -> Match:
+    def _play(self, team_1: Team, team_2: Team, score_1: int, score_2: int, **kwargs: Any) -> Match:
         return Match.objects.create(
             tournament=self.tournament,
             team_1=team_1,
@@ -228,18 +260,14 @@ class PoolThreeWayTieBreakTests(ApiBaseTestCase):
             **kwargs,
         )
 
-    def _run_pool(
-        self, matches: list[Match]
-    ) -> tuple[dict[int, dict[str, int]], dict[int, int]]:
+    def _run_pool(self, matches: list[Match]) -> tuple[dict[int, dict[str, int]], dict[int, int]]:
         results = {
             team.id: {"wins": 0, "losses": 0, "draws": 0, "GF": 0, "GA": 0}
             for team in (self.team_a, self.team_b, self.team_c, self.team_d)
         }
         seeding = {1: 0, 2: 0, 3: 0, 4: 0}
         for match in matches:
-            results, seeding = get_new_pool_results(
-                results, match, [1, 2, 3, 4], seeding
-            )
+            results, seeding = get_new_pool_results(results, match, [1, 2, 3, 4], seeding)
         return results, seeding
 
     def test_three_way_tie_restarts_at_head_to_head(self) -> None:
@@ -352,9 +380,7 @@ class SwissTieBreakRestartTests(ApiBaseTestCase):
         self.team_a, self.team_b, self.team_c = self.teams[:3]
         self.team_d, self.team_e, self.team_f = self.teams[3:6]
 
-    def _swiss_match(
-        self, team_1: Team, team_2: Team, score_1: int, score_2: int
-    ) -> Match:
+    def _swiss_match(self, team_1: Team, team_2: Team, score_1: int, score_2: int) -> Match:
         return Match.objects.create(
             tournament=self.tournament,
             swiss_round=self.swiss_round,
@@ -445,9 +471,7 @@ class SwissTieBreakRestartTests(ApiBaseTestCase):
             self.team_b.id: {"wins": 1, "draws": 0, "losses": 0, "GF": 30, "GA": 14},
         }
         seeding = {1: 0, 2: 0}
-        results, seeding = recompute_swiss_ranks(
-            self.swiss_round, results, [1, 2], seeding
-        )
+        results, seeding = recompute_swiss_ranks(self.swiss_round, results, [1, 2], seeding)
         self.assertEqual(results[self.team_a.id]["rank"], 1)
         self.assertEqual(seeding[1], self.team_a.id)
 
