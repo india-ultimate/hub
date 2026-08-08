@@ -20,6 +20,16 @@ else:
 MEDIA_ROOT = DATA_DIR / "media"
 MEDIA_URL = "/media/"
 
+ALLOWED_HOSTS = [
+    "hub.indiaultimate.org",
+    "upai-hub.fly.dev",
+    "upai-hub-staging.fly.dev",
+    "127.0.0.1",
+    "localhost",
+    gethostname(), 
+    gethostbyname(gethostname()),
+]
+
 SENTRY_DSN = os.environ.get("SENTRY_DSN")
 if SENTRY_DSN:
     import sentry_sdk
