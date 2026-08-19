@@ -15,6 +15,10 @@ const TOOL_TITLES = {
   propose_delete_match: "Delete match",
   propose_bulk_schedule: "Schedule matches",
   propose_recommended_schedule: "Schedule matches",
+  propose_shift_schedule: "Shift schedule",
+  propose_match_score: "Record match result",
+  propose_spirit_scores: "Record spirit scores",
+  propose_delete_stage: "Delete stage",
   propose_full_setup: "Full tournament setup",
   propose_start_tournament: "Start tournament"
 };
@@ -22,16 +26,23 @@ const TOOL_TITLES = {
 /** Destructive/irreversible proposals get a heavier confirm treatment. */
 const HIGH_IMPACT = new Set([
   "propose_delete_match",
+  "propose_delete_stage",
+  "propose_match_score",
   "propose_start_tournament",
   "propose_update_seeding"
 ]);
 
+/**
+ * The agent only ever handles player ids. The server resolves them on the way out
+ * and sends the names alongside the proposal, so this is a lookup, not a fetch.
+ */
+const PlayerName = props => (
+  <span>{props.names?.[String(props.id)] || `Player ${props.id}`}</span>
+);
+
 const Field = props => (
   <div class="flex gap-2 text-xs">
-    <span
-      class="w-20 shrink-0"
-      style={{ color: "var(--agent-ink-muted)" }}
-    >
+    <span class="w-20 shrink-0" style={{ color: "var(--agent-ink-muted)" }}>
       {props.label}
     </span>
     <span class="min-w-0 flex-1" style={{ color: "var(--agent-ink)" }}>
@@ -73,6 +84,7 @@ const ProposalPreview = props => {
   const p = () => props.proposal.payload || {};
   const tool = () => props.proposal.tool_name;
   const teamName = seed => props.seedToTeamName?.(seed);
+  const playerNames = () => props.proposal.player_names || {};
 
   return (
     <div class="space-y-1.5">
@@ -144,10 +156,59 @@ const ProposalPreview = props => {
         </p>
       </Show>
 
+      <Show when={tool() === "propose_match_score"}>
+        <Field label="Match">{p().match_id}</Field>
+        <Field label="Score">
+          {p().score_team_1} - {p().score_team_2}
+          {p().forfeit ? " (forfeit)" : ""}
+        </Field>
+        <p class="mt-1 text-[11px]" style={{ color: "var(--agent-ink-muted)" }}>
+          Completes the match, recomputes standings and seeding, and fills the
+          next stage. Results cannot be edited afterwards.
+        </p>
+      </Show>
+
+      <Show when={tool() === "propose_spirit_scores"}>
+        <Field label="Match">{p().match_id}</Field>
+        <For
+          each={[
+            ["team_1_received", "Team 1 received"],
+            ["team_2_received", "Team 2 received"],
+            ["team_1_self", "Team 1 self"],
+            ["team_2_self", "Team 2 self"]
+          ].filter(([key]) => p()[key])}
+        >
+          {([key, label]) => (
+            <Field label={label}>
+              {p()[key].rules}/{p()[key].fouls}/{p()[key].fair}/
+              {p()[key].positive}/{p()[key].communication}
+              <Show when={p()[key].mvp_id}>
+                {" · MVP "}
+                <PlayerName id={p()[key].mvp_id} names={playerNames()} />
+              </Show>
+              <Show when={p()[key].msp_id}>
+                {" · MSP "}
+                <PlayerName id={p()[key].msp_id} names={playerNames()} />
+              </Show>
+            </Field>
+          )}
+        </For>
+      </Show>
+
+      <Show when={tool() === "propose_delete_stage"}>
+        <Field label="Stage">
+          {p().stage} #{p().stage_id}
+        </Field>
+        <p class="mt-1 text-[11px]" style={{ color: "var(--agent-ink-muted)" }}>
+          Deletes the stage and every match in it.
+        </p>
+      </Show>
+
       <Show
         when={
           tool() === "propose_bulk_schedule" ||
-          tool() === "propose_recommended_schedule"
+          tool() === "propose_recommended_schedule" ||
+          tool() === "propose_shift_schedule"
         }
       >
         <Field label="Matches">{(p().assignments || []).length}</Field>
@@ -179,9 +240,13 @@ const ProposalPreview = props => {
                     <td class="px-2 py-1 tabular-nums">
                       {a.match_name || `#${a.match_id}`}
                     </td>
-                    <td class="px-2 py-1">{props.fieldName?.(a.field_id) || a.field_id}</td>
+                    <td class="px-2 py-1">
+                      {props.fieldName?.(a.field_id) || a.field_id}
+                    </td>
                     <td class="px-2 py-1 tabular-nums">
-                      {String(a.time || "").replace("T", " ").slice(0, 16)}
+                      {String(a.time || "")
+                        .replace("T", " ")
+                        .slice(0, 16)}
                     </td>
                   </tr>
                 )}
