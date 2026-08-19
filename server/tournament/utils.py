@@ -153,6 +153,159 @@ def create_position_pool_matches(tournament: Tournament, position_pool: Position
             match.save()
 
 
+# Stage builders ####################
+#
+# Single source of truth for creating a stage and its matches. Both the staff API
+# and the tournament agent's proposal apply path call these, so the two can never
+# drift apart on seeding shape, results shape or validation. They raise ValueError
+# with a staff-readable message; callers translate that to their own error type.
+
+
+def _validation_message(prefix: str, errors: validation_error_dict) -> str:
+    details = "\n".join(f"{key}: {value}" for key, value in errors.items())
+    return f"{prefix}, due to following errors: \n{details}"
+
+
+def _team_id_for_seed(tournament: Tournament, seed: int) -> int:
+    # Seeds come back from the database as strings, but the m2m signal that rebuilds
+    # seeding leaves int keys on the in-memory instance, so accept either.
+    seeding = tournament.initial_seeding or {}
+    team_id = seeding.get(str(seed), seeding.get(seed))
+    if team_id is None:
+        raise ValueError(f"Seed {seed} is not in the tournament seeding")
+    return int(team_id)
+
+
+def _seeded_results(
+    tournament: Tournament, seeding: list[int], *, with_opp_strength: bool = False
+) -> tuple[dict[int, int], dict[str, dict[str, int]]]:
+    """Build (seed -> team_id, team_id -> zeroed standings row) in seeding order."""
+    stage_seeding: dict[int, int] = {}
+    results: dict[str, dict[str, int]] = {}
+    for rank, seed in enumerate(seeding, start=1):
+        team_id = _team_id_for_seed(tournament, seed)
+        stage_seeding[seed] = team_id
+        results[str(team_id)] = {
+            "rank": rank,
+            "wins": 0,
+            "losses": 0,
+            "draws": 0,
+            "GF": 0,  # Goals For
+            "GA": 0,  # Goals Against
+            **({"opp_strength": 0} if with_opp_strength else {}),
+        }
+    return dict(sorted(stage_seeding.items())), results
+
+
+def build_pool(
+    tournament: Tournament, *, name: str, sequence_number: int, seeding: list[int]
+) -> Pool:
+    valid, errors = validate_new_pool(tournament=tournament, new_pool=set(seeding))
+    if not valid:
+        raise ValueError(_validation_message("Cannot create pools", errors))
+
+    pool_seeding, results = _seeded_results(tournament, seeding)
+    pool = Pool.objects.create(
+        tournament=tournament,
+        name=name,
+        sequence_number=sequence_number,
+        initial_seeding=pool_seeding,
+        results=results,
+    )
+    create_pool_matches(tournament, pool)
+    return pool
+
+
+def build_swiss_round(
+    tournament: Tournament,
+    *,
+    name: str,
+    sequence_number: int,
+    seeding: list[int],
+    num_rounds: int,
+) -> SwissRound:
+    min_swiss_teams = 2
+    if len(seeding) < min_swiss_teams:
+        raise ValueError("Need at least 2 teams for a swiss group")
+    if num_rounds < 1:
+        raise ValueError("Number of rounds must be at least 1")
+
+    valid, errors = validate_new_pool(tournament=tournament, new_pool=set(seeding))
+    if not valid:
+        raise ValueError(_validation_message("Cannot create swiss group", errors))
+
+    swiss_seeding, results = _seeded_results(tournament, seeding, with_opp_strength=True)
+    swiss_round = SwissRound.objects.create(
+        tournament=tournament,
+        name=name,
+        sequence_number=sequence_number,
+        num_rounds=num_rounds,
+        # Round 1 exists as soon as the group does. Leaving this at 0 would make
+        # populate_fixtures skip the group forever, so it must never be omitted.
+        current_round=1,
+        initial_seeding=swiss_seeding,
+        results=results,
+        byes={},
+    )
+    create_swiss_round_matches(tournament, swiss_round)
+    return swiss_round
+
+
+def build_bracket(tournament: Tournament, *, name: str, sequence_number: int) -> Bracket:
+    valid_name, name_error = validate_bracket_name(name)
+    if not valid_name:
+        raise ValueError((name_error or {}).get("message", "Invalid bracket name"))
+
+    start, end = (int(part) for part in name.split("-"))
+    seeding = {seed: 0 for seed in range(start, end + 1)}
+    bracket = Bracket.objects.create(
+        tournament=tournament,
+        name=name,
+        sequence_number=sequence_number,
+        initial_seeding=dict(seeding),
+        current_seeding=dict(seeding),
+    )
+    create_bracket_matches(tournament, bracket)
+    return bracket
+
+
+def build_position_pool(
+    tournament: Tournament, *, name: str, sequence_number: int, seeding: list[int]
+) -> PositionPool:
+    # Seeds are placeholders until the feeding stage completes, and `results` is
+    # keyed by team id — populate_fixtures fills both. Seeding it here with seed
+    # keys would leave two incompatible key sets in one dict.
+    position_pool = PositionPool.objects.create(
+        tournament=tournament,
+        name=name,
+        sequence_number=sequence_number,
+        initial_seeding={seed: 0 for seed in sorted(seeding)},
+        results={},
+    )
+    create_position_pool_matches(tournament, position_pool)
+    return position_pool
+
+
+def start_tournament(tournament: Tournament) -> None:
+    """Assign teams into pool and Swiss round-1 matches, and go live."""
+    if tournament.status in (Tournament.Status.LIVE, Tournament.Status.COMPLETED):
+        # Re-running would reset completed matches back to Scheduled while keeping
+        # their scores, leaving standings that no stage can be derived from again.
+        raise ValueError("Tournament has already been started")
+
+    for match in Match.objects.filter(tournament=tournament).exclude(pool__isnull=True):
+        match.team_1 = Team.objects.get(id=_team_id_for_seed(tournament, match.placeholder_seed_1))
+        match.team_2 = Team.objects.get(id=_team_id_for_seed(tournament, match.placeholder_seed_2))
+        match.status = Match.Status.SCHEDULED
+        match.save()
+
+    for swiss_round in SwissRound.objects.filter(tournament=tournament):
+        assign_swiss_round_teams(tournament, swiss_round, 1)
+
+    tournament.status = Tournament.Status.LIVE
+    tournament.save()
+
+
 BYE_SCORE = 15
 
 

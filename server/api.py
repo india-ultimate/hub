@@ -158,13 +158,12 @@ from server.tournament.schema import (
     UCRegistrationSchema,
 )
 from server.tournament.utils import (
-    assign_swiss_round_teams,
+    build_bracket,
+    build_pool,
+    build_position_pool,
+    build_swiss_round,
     can_register_player_to_series_event,
-    create_bracket_matches,
-    create_pool_matches,
-    create_position_pool_matches,
     create_spirit_scores,
-    create_swiss_round_matches,
     get_bracket_match_name,
     get_default_rules,
     is_submitted_scores_equal,
@@ -174,9 +173,8 @@ from server.tournament.utils import (
     update_tournament_seeding,
     update_tournament_spirit_rankings,
     user_tournament_teams,
-    validate_bracket_name,
-    validate_new_pool,
 )
+from server.tournament.utils import start_tournament as begin_tournament
 from server.tournament_agent.api import router as tournament_agent_router
 from server.transaction.api import router as transaction_router
 from server.types import message_response
@@ -1956,40 +1954,15 @@ def create_pool(
     except Tournament.DoesNotExist:
         return 400, {"message": "Tournament does not exist"}
 
-    valid_pool, errors = validate_new_pool(
-        tournament=tournament, new_pool=set(pool_details.seeding)
-    )
-    if not valid_pool:
-        message = "Cannot create pools, due to following errors: \n"
-        message += "\n".join(f"{key}: {value}" for key, value in errors.items())
-        return 400, {"message": message}
-
-    # seed -> team_id. If the same seed present twice, we'll only get one object since its a map with seed as the key
-    pool_seeding: dict[int, str] = {}
-    pool_results: dict[str, Any] = {}
-    for i, seed in enumerate(pool_details.seeding):
-        team_id = tournament.initial_seeding[str(seed)]
-
-        pool_seeding[seed] = team_id
-        pool_results[team_id] = {
-            "rank": i + 1,
-            "wins": 0,
-            "losses": 0,
-            "draws": 0,
-            "GF": 0,  # Goals For
-            "GA": 0,  # Goals Against
-        }
-
-    pool = Pool(
-        sequence_number=pool_details.sequence_number,
-        name=pool_details.name,
-        tournament=tournament,
-        initial_seeding=dict(sorted(pool_seeding.items())),
-        results=pool_results,
-    )
-    pool.save()
-
-    create_pool_matches(tournament, pool)
+    try:
+        pool = build_pool(
+            tournament,
+            name=pool_details.name,
+            sequence_number=pool_details.sequence_number,
+            seeding=pool_details.seeding,
+        )
+    except ValueError as exc:
+        return 400, {"message": str(exc)}
 
     return 200, pool
 
@@ -2029,46 +2002,16 @@ def create_swiss_round(
     except Tournament.DoesNotExist:
         return 400, {"message": "Tournament does not exist"}
 
-    min_swiss_teams = 2
-    if len(swiss_details.seeding) < min_swiss_teams:
-        return 400, {"message": "Need at least 2 teams for a swiss group"}
-    if swiss_details.num_rounds < 1:
-        return 400, {"message": "Number of rounds must be at least 1"}
-
-    valid, errors = validate_new_pool(tournament=tournament, new_pool=set(swiss_details.seeding))
-    if not valid:
-        message = "Cannot create swiss group, due to following errors: \n"
-        message += "\n".join(f"{key}: {value}" for key, value in errors.items())
-        return 400, {"message": message}
-
-    swiss_seeding: dict[int, int] = {}
-    swiss_results: dict[str, Any] = {}
-    for i, seed in enumerate(swiss_details.seeding):
-        team_id = tournament.initial_seeding[str(seed)]
-        swiss_seeding[seed] = team_id
-        swiss_results[str(team_id)] = {
-            "rank": i + 1,
-            "wins": 0,
-            "losses": 0,
-            "draws": 0,
-            "GF": 0,
-            "GA": 0,
-            "opp_strength": 0,
-        }
-
-    swiss_round = SwissRound(
-        tournament=tournament,
-        sequence_number=swiss_details.sequence_number,
-        name=swiss_details.name,
-        num_rounds=swiss_details.num_rounds,
-        current_round=1,
-        initial_seeding=dict(sorted(swiss_seeding.items())),
-        results=swiss_results,
-        byes={},
-    )
-    swiss_round.save()
-
-    create_swiss_round_matches(tournament, swiss_round)
+    try:
+        swiss_round = build_swiss_round(
+            tournament,
+            name=swiss_details.name,
+            sequence_number=swiss_details.sequence_number,
+            seeding=swiss_details.seeding,
+            num_rounds=swiss_details.num_rounds,
+        )
+    except ValueError as exc:
+        return 400, {"message": str(exc)}
 
     return 200, swiss_round
 
@@ -2171,25 +2114,14 @@ def create_bracket(
     except Tournament.DoesNotExist:
         return 400, {"message": "Tournament does not exist"}
 
-    valid_name, name_error = validate_bracket_name(bracket_details.name)
-    if not valid_name:
-        return 400, name_error or {"message": "Invalid bracket name"}
-
-    bracket_seeding = {}
-    start, end = map(int, bracket_details.name.split("-"))
-    for i in range(start, end + 1):
-        bracket_seeding[i] = 0
-
-    bracket = Bracket(
-        sequence_number=bracket_details.sequence_number,
-        name=bracket_details.name,
-        tournament=tournament,
-        initial_seeding=dict(sorted(bracket_seeding.items())),
-        current_seeding=dict(sorted(bracket_seeding.items())),
-    )
-    bracket.save()
-
-    create_bracket_matches(tournament, bracket)
+    try:
+        bracket = build_bracket(
+            tournament,
+            name=bracket_details.name,
+            sequence_number=bracket_details.sequence_number,
+        )
+    except ValueError as exc:
+        return 400, {"message": str(exc)}
 
     return 200, bracket
 
@@ -2229,20 +2161,15 @@ def create_position_pool(
     except Tournament.DoesNotExist:
         return 400, {"message": "Tournament does not exist"}
 
-    pool_seeding = {}
-    for seed in position_pool_details.seeding:
-        pool_seeding[seed] = 0
-
-    pool = PositionPool(
-        sequence_number=position_pool_details.sequence_number,
-        name=position_pool_details.name,
-        tournament=tournament,
-        initial_seeding=dict(sorted(pool_seeding.items())),
-        results={},
-    )
-    pool.save()
-
-    create_position_pool_matches(tournament, pool)
+    try:
+        pool = build_position_pool(
+            tournament,
+            name=position_pool_details.name,
+            sequence_number=position_pool_details.sequence_number,
+            seeding=position_pool_details.seeding,
+        )
+    except ValueError as exc:
+        return 400, {"message": str(exc)}
 
     return 200, pool
 
@@ -2378,27 +2305,10 @@ def start_tournament(
     except Tournament.DoesNotExist:
         return 400, {"message": "Tournament does not exist"}
 
-    pool_matches = Match.objects.filter(tournament=tournament).exclude(pool__isnull=True)
-
-    for match in pool_matches:
-        team_1_id = tournament.initial_seeding[str(match.placeholder_seed_1)]
-        team_2_id = tournament.initial_seeding[str(match.placeholder_seed_2)]
-
-        team_1 = Team.objects.get(id=team_1_id)
-        team_2 = Team.objects.get(id=team_2_id)
-
-        match.team_1 = team_1
-        match.team_2 = team_2
-        match.status = Match.Status.SCHEDULED
-
-        match.save()
-
-    # Assign teams to Swiss round 1 matches for all Swiss groups
-    for swiss_round in SwissRound.objects.filter(tournament=tournament):
-        assign_swiss_round_teams(tournament, swiss_round, 1)
-
-    tournament.status = Tournament.Status.LIVE
-    tournament.save()
+    try:
+        begin_tournament(tournament)
+    except ValueError as exc:
+        return 400, {"message": str(exc)}
 
     return 200, tournament
 
