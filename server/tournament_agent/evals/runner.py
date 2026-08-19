@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime
 import time
 import uuid
 from typing import Any
@@ -10,14 +11,18 @@ from django.db import transaction
 
 from server.core.models import Team, User
 from server.tests.base import create_event
-from server.tournament.models import Pool, Tournament, TournamentField
-from server.tournament.utils import create_pool_matches
+from server.tournament.models import Match, Tournament, TournamentField
+from server.tournament.utils import build_pool, start_tournament
 from server.tournament_agent.evals import (
     TrajectoryTrace,
     load_cases,
     score_case,
 )
-from server.tournament_agent.service import TournamentAgentService
+from server.tournament_agent.services.agent import TournamentAgentService
+
+MIN_POOL_TEAMS = 2
+# Score at or above which a single case counts as passed.
+PASS_MARK = 80
 
 
 def _build_fixture(case: dict[str, Any], user: User) -> Tournament:
@@ -49,29 +54,28 @@ def _build_fixture(case: dict[str, Any], user: User) -> Tournament:
     for name in fixture.get("fields") or ["Field 1"]:
         TournamentField.objects.create(tournament=tournament, name=f"{name}-{suffix[:4]}")
 
-    if fixture.get("create_pool") and team_count >= 2:
-        seeding_seeds = list(range(1, team_count + 1))
-        pool_seeding: dict[int, Any] = {}
-        results: dict[str, Any] = {}
-        for i, seed in enumerate(seeding_seeds):
-            tid = tournament.initial_seeding[str(seed)]
-            pool_seeding[seed] = tid
-            results[str(tid)] = {
-                "rank": i + 1,
-                "wins": 0,
-                "losses": 0,
-                "draws": 0,
-                "GF": 0,
-                "GA": 0,
-            }
-        pool = Pool.objects.create(
-            tournament=tournament,
+    if fixture.get("create_pool") and team_count >= MIN_POOL_TEAMS:
+        # The same builder the proposal apply path and the staff API use, so eval
+        # fixtures cannot drift onto a stale seeding or results shape.
+        build_pool(
+            tournament,
             name="A",
             sequence_number=1,
-            initial_seeding=pool_seeding,
-            results=results,
+            seeding=list(range(1, team_count + 1)),
         )
-        create_pool_matches(tournament, pool)
+
+    if fixture.get("status") == "LIV":
+        start_tournament(tournament)
+
+    if fixture.get("schedule"):
+        fields = list(TournamentField.objects.filter(tournament=tournament).order_by("name"))
+        # `datetime.UTC` is 3.11+; CI runs 3.10.
+        slot = datetime.datetime(2026, 8, 1, 7, 0, tzinfo=datetime.timezone.utc)
+        for i, match in enumerate(Match.objects.filter(tournament=tournament).order_by("id")):
+            match.time = slot + datetime.timedelta(minutes=90 * (i // max(1, len(fields))))
+            match.field = fields[i % len(fields)]
+            match.save()
+
     return tournament
 
 
@@ -121,19 +125,13 @@ def _resolve_scripted_option_ids(
 
 
 def _mark_ask_before_propose(trace: TrajectoryTrace) -> None:
-    saw_propose = False
-    asked = False
     for t in trace.tool_calls:
         name = t.get("name") or ""
         if name.startswith("propose_"):
-            saw_propose = True
+            return
         if name == "ask_user":
-            asked = True
-            if not saw_propose:
-                trace.asked_before_propose = True
-                return
-    if asked and not saw_propose:
-        trace.asked_before_propose = True
+            trace.asked_before_propose = True
+            return
 
 
 def run_case(case: dict[str, Any], model_id: str, user: User) -> dict[str, Any]:
@@ -142,20 +140,6 @@ def run_case(case: dict[str, Any], model_id: str, user: User) -> dict[str, Any]:
         tournament = _build_fixture(case, user)
         service = TournamentAgentService(user)
         expect = case.get("expect_state") or {}
-        # OpenCode Go rejects tool_choice=required for several models; stay on auto.
-        # Hints are opt-in (use_hints) so hard cases are not spoon-fed.
-        service.force_tool_choice = "auto"
-        if case.get("use_hints"):
-            if expect.get("must_ask_user"):
-                service.case_hint = (
-                    "The staff request is ambiguous. Your FIRST tool call must be ask_user "
-                    "(pools vs Swiss). Do not call propose_* until after the user answers."
-                )
-            elif expect.get("min_proposals") or expect.get("proposal_tools"):
-                service.case_hint = (
-                    "After any needed reads, call the appropriate propose_* tool to create "
-                    "a pending proposal the staff can confirm."
-                )
         session = service.get_or_create_session(tournament.id, model_id=model_id)
         trace = TrajectoryTrace()
         full_trace: list[dict[str, Any]] = []
@@ -182,14 +166,6 @@ def run_case(case: dict[str, Any], model_id: str, user: User) -> dict[str, Any]:
             if step["type"] == "message":
                 out = service.process_message(session, step["text"])
             elif step["type"] == "answer":
-                service.force_tool_choice = "auto"
-                if case.get("use_hints"):
-                    service.case_hint = (
-                        "The user answered your clarifying question. Continue with the "
-                        "appropriate propose_* tools based on their answer."
-                    )
-                else:
-                    service.case_hint = ""
                 hist = service.history(session)
                 q = hist.get("pending_question")
                 if not q:
@@ -234,10 +210,6 @@ def run_case(case: dict[str, Any], model_id: str, user: User) -> dict[str, Any]:
                     trace.proposals.append(p)
             trace.steps += 1
 
-            if hist.get("pending_question") and script_i < len(script):
-                if script[script_i].get("type") == "answer":
-                    continue
-
         latency = time.time() - t0
         hist = service.history(session)
         if hist.get("pending_question"):
@@ -245,12 +217,7 @@ def run_case(case: dict[str, Any], model_id: str, user: User) -> dict[str, Any]:
         trace.proposals = hist.get("pending_proposals") or []
         _mark_ask_before_propose(trace)
 
-        # Credit recommend_schedule when bulk schedule carries recommender meta.
         for p in trace.proposals:
-            payload = p.get("payload") or {}
-            if p.get("tool_name") == "propose_bulk_schedule" and payload.get("meta"):
-                if not any(t.get("name") == "propose_recommended_schedule" for t in trace.tool_calls):
-                    trace.tool_calls.append({"name": "propose_recommended_schedule"})
             name = p.get("tool_name")
             if name and not any(t.get("name") == name for t in trace.tool_calls):
                 trace.tool_calls.append({"name": name})
@@ -300,7 +267,7 @@ def run_suite(
         for case in cases:
             try:
                 result = run_case(case, model_id, user)
-            except Exception as exc:  # noqa: BLE001 — bakeoff must continue across models
+            except Exception as exc:  # — bakeoff must continue across models
                 result = {
                     "case_id": case["id"],
                     "overall": 0.0,
@@ -323,7 +290,9 @@ def run_suite(
         trial_passes.append(trial_ok)
 
     suite_score = sum(all_scores) / len(all_scores) if all_scores else 0.0
-    pass_at_1 = sum(1 for s in all_scores if s >= 80) / len(all_scores) if all_scores else 0.0
+    pass_at_1 = (
+        sum(1 for s in all_scores if s >= PASS_MARK) / len(all_scores) if all_scores else 0.0
+    )
     pass_hat_k = sum(1 for ok in trial_passes if ok) / len(trial_passes) if trial_passes else 0.0
 
     return {

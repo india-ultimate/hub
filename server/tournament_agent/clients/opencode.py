@@ -6,13 +6,15 @@ import json
 import os
 import re
 from collections.abc import Iterator
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 import httpx
 from django.conf import settings
 
 from server.tournament_agent.catalog import AgentModel, get_model
+
+HTTP_ERROR_STATUS = 400
 
 
 @dataclass
@@ -34,12 +36,6 @@ class StreamChunk:
     type: str
     text: str = ""
     result: ChatCompletionResult | None = None
-
-
-@dataclass
-class TraceEvent:
-    kind: str
-    data: dict[str, Any] = field(default_factory=dict)
 
 
 class OpenCodeGoError(Exception):
@@ -153,7 +149,28 @@ class OpenCodeGoClient:
         self.api_key = api_key if api_key is not None else settings.OPENCODE_GO_API_KEY
         self.base_url = (base_url or settings.OPENCODE_GO_BASE_URL).rstrip("/")
         self.timeout = timeout
-        self.last_raw: dict[str, Any] | None = None
+
+    def _resolve(
+        self, model_id: str, temperature: float | None, max_tokens: int | None
+    ) -> tuple[AgentModel, float | None, int]:
+        model = get_model(model_id)
+        if model is None:
+            raise OpenCodeGoError(f"Model not allowed: {model_id}")
+        if not self.api_key:
+            raise OpenCodeGoError("OPENCODE_GO_API_KEY is not configured")
+
+        temp = (
+            temperature
+            if temperature is not None
+            else getattr(settings, "OPENCODE_GO_TEMPERATURE", None)
+        )
+        # OpenCode Go + tools is unreliable with temperature for some models (Kimi).
+        # Only send temperature when explicitly configured to a usable value via
+        # OPENCODE_GO_SEND_TEMPERATURE=1.
+        if not bool(int(os.environ.get("OPENCODE_GO_SEND_TEMPERATURE", "0"))):
+            temp = None
+        tokens = max_tokens if max_tokens is not None else settings.OPENCODE_GO_MAX_TOKENS
+        return model, temp, tokens
 
     def chat(
         self,
@@ -163,30 +180,11 @@ class OpenCodeGoClient:
         tools: list[dict[str, Any]] | None = None,
         temperature: float | None = None,
         max_tokens: int | None = None,
-        tool_choice: str | dict[str, Any] | None = "auto",
     ) -> ChatCompletionResult:
-        model = get_model(model_id)
-        if model is None:
-            raise OpenCodeGoError(f"Model not allowed: {model_id}")
-        if not self.api_key:
-            raise OpenCodeGoError("OPENCODE_GO_API_KEY is not configured")
-
-        temp = temperature if temperature is not None else getattr(
-            settings, "OPENCODE_GO_TEMPERATURE", None
-        )
-        # OpenCode Go + tools is unreliable with temperature for some models (Kimi).
-        # Only send temperature when explicitly configured to a usable value via
-        # OPENCODE_GO_SEND_TEMPERATURE=1.
-        send_temperature = bool(int(os.environ.get("OPENCODE_GO_SEND_TEMPERATURE", "0")))
-        tokens = max_tokens if max_tokens is not None else settings.OPENCODE_GO_MAX_TOKENS
-
+        model, temp, tokens = self._resolve(model_id, temperature, max_tokens)
         if model.api_style == "openai":
-            return self._openai_chat(
-                model, messages, tools, temp if send_temperature else None, tokens, tool_choice
-            )
-        return self._anthropic_chat(
-            model, messages, tools, temp if send_temperature else None, tokens
-        )
+            return self._openai_chat(model, messages, tools, temp, tokens)
+        return self._anthropic_chat(model, messages, tools, temp, tokens)
 
     def chat_stream(
         self,
@@ -196,29 +194,13 @@ class OpenCodeGoClient:
         tools: list[dict[str, Any]] | None = None,
         temperature: float | None = None,
         max_tokens: int | None = None,
-        tool_choice: str | dict[str, Any] | None = "auto",
     ) -> Iterator[StreamChunk]:
         """Same contract as `chat`, but yields text deltas before the result."""
-        model = get_model(model_id)
-        if model is None:
-            raise OpenCodeGoError(f"Model not allowed: {model_id}")
-        if not self.api_key:
-            raise OpenCodeGoError("OPENCODE_GO_API_KEY is not configured")
-
-        temp = temperature if temperature is not None else getattr(
-            settings, "OPENCODE_GO_TEMPERATURE", None
-        )
-        send_temperature = bool(int(os.environ.get("OPENCODE_GO_SEND_TEMPERATURE", "0")))
-        tokens = max_tokens if max_tokens is not None else settings.OPENCODE_GO_MAX_TOKENS
-
+        model, temp, tokens = self._resolve(model_id, temperature, max_tokens)
         if model.api_style == "openai":
-            yield from self._openai_chat_stream(
-                model, messages, tools, temp if send_temperature else None, tokens, tool_choice
-            )
+            yield from self._openai_chat_stream(model, messages, tools, temp, tokens)
         else:
-            yield from self._anthropic_chat_stream(
-                model, messages, tools, temp if send_temperature else None, tokens
-            )
+            yield from self._anthropic_chat_stream(model, messages, tools, temp, tokens)
 
     def _headers(self) -> dict[str, str]:
         return {
@@ -245,7 +227,7 @@ class OpenCodeGoClient:
 
     @staticmethod
     def _raise_for_stream_status(resp: httpx.Response) -> None:
-        if resp.status_code >= 400:
+        if resp.status_code >= HTTP_ERROR_STATUS:
             body = resp.read().decode(resp.encoding or "utf-8", errors="replace")
             raise OpenCodeGoError(f"OpenCode Go error {resp.status_code}: {body[:800]}")
 
@@ -256,7 +238,6 @@ class OpenCodeGoClient:
         tools: list[dict[str, Any]] | None,
         temperature: float | None,
         max_tokens: int,
-        tool_choice: str | dict[str, Any] | None,
     ) -> dict[str, Any]:
         body: dict[str, Any] = {
             "model": model.id,
@@ -267,14 +248,9 @@ class OpenCodeGoClient:
             body["temperature"] = temperature
         if tools:
             body["tools"] = tools
-            # Only "auto" is reliably supported across Go models with tools.
-            # "required" / forced-function tool_choice returns 400 for Kimi/DeepSeek.
-            if tool_choice in (None, "auto"):
-                body["tool_choice"] = "auto"
-            elif tool_choice == "required":
-                body["tool_choice"] = "auto"
-            else:
-                body["tool_choice"] = tool_choice
+            # Only "auto" is reliably supported across Go models with tools;
+            # "required" / forced-function returns 400 for Kimi and DeepSeek.
+            body["tool_choice"] = "auto"
         return body
 
     def _openai_chat(
@@ -284,17 +260,15 @@ class OpenCodeGoClient:
         tools: list[dict[str, Any]] | None,
         temperature: float | None,
         max_tokens: int,
-        tool_choice: str | dict[str, Any] | None,
     ) -> ChatCompletionResult:
-        body = self._openai_body(model, messages, tools, temperature, max_tokens, tool_choice)
+        body = self._openai_body(model, messages, tools, temperature, max_tokens)
 
         url = f"{self.base_url}/chat/completions"
         with httpx.Client(timeout=self.timeout) as client:
             resp = client.post(url, headers=self._headers(), json=body)
-        if resp.status_code >= 400:
+        if resp.status_code >= HTTP_ERROR_STATUS:
             raise OpenCodeGoError(f"OpenCode Go error {resp.status_code}: {resp.text[:800]}")
         data = resp.json()
-        self.last_raw = data
         if data.get("error"):
             raise OpenCodeGoError(f"OpenCode Go API error: {data['error']}")
 
@@ -416,10 +390,9 @@ class OpenCodeGoClient:
         headers = self._anthropic_headers()
         with httpx.Client(timeout=self.timeout) as client:
             resp = client.post(url, headers=headers, json=body)
-        if resp.status_code >= 400:
+        if resp.status_code >= HTTP_ERROR_STATUS:
             raise OpenCodeGoError(f"OpenCode Go error {resp.status_code}: {resp.text[:800]}")
         data = resp.json()
-        self.last_raw = data
         content_blocks = data.get("content") or []
         text_parts: list[str] = []
         tool_calls: list[dict[str, Any]] = []
@@ -453,9 +426,8 @@ class OpenCodeGoClient:
         tools: list[dict[str, Any]] | None,
         temperature: float | None,
         max_tokens: int,
-        tool_choice: str | dict[str, Any] | None,
     ) -> Iterator[StreamChunk]:
-        body = self._openai_body(model, messages, tools, temperature, max_tokens, tool_choice)
+        body = self._openai_body(model, messages, tools, temperature, max_tokens)
         body["stream"] = True
 
         url = f"{self.base_url}/chat/completions"
@@ -464,32 +436,34 @@ class OpenCodeGoClient:
         acc: dict[int, dict[str, str]] = {}
         finish_reason: str | None = None
 
-        with httpx.Client(timeout=self.timeout) as client:
-            with client.stream("POST", url, headers=self._headers(), json=body) as resp:
-                self._raise_for_stream_status(resp)
-                for payload in self._sse_payloads(resp):
-                    if payload.get("error"):
-                        raise OpenCodeGoError(f"OpenCode Go API error: {payload['error']}")
-                    choice = (payload.get("choices") or [{}])[0]
-                    finish_reason = choice.get("finish_reason") or finish_reason
-                    delta = choice.get("delta") or {}
-                    piece = delta.get("content")
-                    if piece:
-                        text_parts.append(str(piece))
-                        yield StreamChunk(type="text", text=str(piece))
-                    for tc in delta.get("tool_calls") or []:
-                        idx = int(tc.get("index") or 0)
-                        slot = acc.setdefault(idx, {"id": "", "name": "", "arguments": ""})
-                        if tc.get("id"):
-                            slot["id"] = str(tc["id"])
-                        fn = tc.get("function") or {}
-                        # Spec sends the name once and streams only arguments, but not
-                        # every model behind OpenCode Go conforms. Appending is a no-op
-                        # for the conforming case and survives a name split over deltas.
-                        if fn.get("name"):
-                            slot["name"] += str(fn["name"])
-                        if fn.get("arguments"):
-                            slot["arguments"] += str(fn["arguments"])
+        with (
+            httpx.Client(timeout=self.timeout) as client,
+            client.stream("POST", url, headers=self._headers(), json=body) as resp,
+        ):
+            self._raise_for_stream_status(resp)
+            for payload in self._sse_payloads(resp):
+                if payload.get("error"):
+                    raise OpenCodeGoError(f"OpenCode Go API error: {payload['error']}")
+                choice = (payload.get("choices") or [{}])[0]
+                finish_reason = choice.get("finish_reason") or finish_reason
+                delta = choice.get("delta") or {}
+                piece = delta.get("content")
+                if piece:
+                    text_parts.append(str(piece))
+                    yield StreamChunk(type="text", text=str(piece))
+                for tc in delta.get("tool_calls") or []:
+                    idx = int(tc.get("index") or 0)
+                    slot = acc.setdefault(idx, {"id": "", "name": "", "arguments": ""})
+                    if tc.get("id"):
+                        slot["id"] = str(tc["id"])
+                    fn = tc.get("function") or {}
+                    # Spec sends the name once and streams only arguments, but not
+                    # every model behind OpenCode Go conforms. Appending is a no-op
+                    # for the conforming case and survives a name split over deltas.
+                    if fn.get("name"):
+                        slot["name"] += str(fn["name"])
+                    if fn.get("arguments"):
+                        slot["arguments"] += str(fn["arguments"])
 
         content: str | None = "".join(text_parts) or None
         tool_calls = [
@@ -503,7 +477,6 @@ class OpenCodeGoClient:
             content = _INVOKE_RE.sub("", content).strip() or None
 
         raw = {"streamed": True, "finish_reason": finish_reason}
-        self.last_raw = raw
         yield StreamChunk(
             type="result",
             result=ChatCompletionResult(
@@ -531,37 +504,39 @@ class OpenCodeGoClient:
         blocks: dict[int, dict[str, str]] = {}
         stop_reason: str | None = None
 
-        with httpx.Client(timeout=self.timeout) as client:
-            with client.stream("POST", url, headers=self._anthropic_headers(), json=body) as resp:
-                self._raise_for_stream_status(resp)
-                for payload in self._sse_payloads(resp):
-                    kind = payload.get("type")
-                    if kind == "error":
-                        raise OpenCodeGoError(f"OpenCode Go API error: {payload.get('error')}")
-                    if kind == "content_block_start":
-                        idx = int(payload.get("index") or 0)
-                        block = payload.get("content_block") or {}
-                        blocks[idx] = {
-                            "type": str(block.get("type") or ""),
-                            "id": str(block.get("id") or ""),
-                            "name": str(block.get("name") or ""),
-                            "json": "",
-                        }
-                    elif kind == "content_block_delta":
-                        idx = int(payload.get("index") or 0)
-                        delta = payload.get("delta") or {}
-                        if delta.get("type") == "text_delta":
-                            piece = str(delta.get("text") or "")
-                            if piece:
-                                text_parts.append(piece)
-                                yield StreamChunk(type="text", text=piece)
-                        elif delta.get("type") == "input_json_delta":
-                            slot = blocks.setdefault(
-                                idx, {"type": "tool_use", "id": "", "name": "", "json": ""}
-                            )
-                            slot["json"] += str(delta.get("partial_json") or "")
-                    elif kind == "message_delta":
-                        stop_reason = (payload.get("delta") or {}).get("stop_reason") or stop_reason
+        with (
+            httpx.Client(timeout=self.timeout) as client,
+            client.stream("POST", url, headers=self._anthropic_headers(), json=body) as resp,
+        ):
+            self._raise_for_stream_status(resp)
+            for payload in self._sse_payloads(resp):
+                kind = payload.get("type")
+                if kind == "error":
+                    raise OpenCodeGoError(f"OpenCode Go API error: {payload.get('error')}")
+                if kind == "content_block_start":
+                    idx = int(payload.get("index") or 0)
+                    block = payload.get("content_block") or {}
+                    blocks[idx] = {
+                        "type": str(block.get("type") or ""),
+                        "id": str(block.get("id") or ""),
+                        "name": str(block.get("name") or ""),
+                        "json": "",
+                    }
+                elif kind == "content_block_delta":
+                    idx = int(payload.get("index") or 0)
+                    delta = payload.get("delta") or {}
+                    if delta.get("type") == "text_delta":
+                        piece = str(delta.get("text") or "")
+                        if piece:
+                            text_parts.append(piece)
+                            yield StreamChunk(type="text", text=piece)
+                    elif delta.get("type") == "input_json_delta":
+                        slot = blocks.setdefault(
+                            idx, {"type": "tool_use", "id": "", "name": "", "json": ""}
+                        )
+                        slot["json"] += str(delta.get("partial_json") or "")
+                elif kind == "message_delta":
+                    stop_reason = (payload.get("delta") or {}).get("stop_reason") or stop_reason
 
         content: str | None = "".join(text_parts) or None
         tool_calls = [
@@ -575,7 +550,6 @@ class OpenCodeGoClient:
             content = _INVOKE_RE.sub("", content).strip() or None
 
         raw = {"streamed": True, "stop_reason": stop_reason}
-        self.last_raw = raw
         yield StreamChunk(
             type="result",
             result=ChatCompletionResult(

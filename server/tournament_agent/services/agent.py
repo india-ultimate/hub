@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 import time
 from collections.abc import Generator, Iterator
-from pathlib import Path
 from typing import Any
 
 from django.conf import settings
@@ -14,35 +13,38 @@ from django.utils import timezone
 from server.core.models import User
 from server.tournament.models import Tournament
 from server.tournament_agent.catalog import default_model_id, is_allowed_model
-from server.tournament_agent.mask import scrub_user_text
+from server.tournament_agent.clients.opencode import (
+    ChatCompletionResult,
+    OpenCodeGoClient,
+    OpenCodeGoError,
+)
 from server.tournament_agent.models import (
     AgentProposal,
     AgentQuestion,
     MessageKind,
     MessageRole,
+    ProposalStatus,
     QuestionSelectionMode,
     QuestionStatus,
     TournamentAgentMessage,
     TournamentAgentSession,
 )
-from server.tournament_agent.provider import (
-    ChatCompletionResult,
-    OpenCodeGoClient,
-    OpenCodeGoError,
+from server.tournament_agent.privacy.display import (
+    TokenTextStream,
+    player_names_for_payload,
+    resolve_player_tokens,
 )
-from server.tournament_agent.tools import TOOL_DEFINITIONS, AskUserPause, ToolContext, dispatch_tool
+from server.tournament_agent.privacy.mask import scrub_user_text
+from server.tournament_agent.services.skills import load_skills, render_skills, select_skills
+from server.tournament_agent.tools import (
+    READ_ONLY_TOOLS,
+    TOOL_DEFINITIONS,
+    AskUserPause,
+    ToolContext,
+    dispatch_tool,
+)
 
-SKILL_PATH = Path(__file__).parent / "skills" / "schedule_orchestration.md"
-
-
-def _load_skill() -> str:
-    try:
-        return SKILL_PATH.read_text(encoding="utf-8")
-    except OSError:
-        return ""
-
-
-SYSTEM_PROMPT = """You are the Tournament Manager AI Agent for India Ultimate Hub.
+BASE_PROMPT = """You are the Tournament Manager AI Agent for India Ultimate Hub.
 You help staff design pools, Swiss groups, brackets, schedules, and orchestrate tournaments.
 
 Hard rules (non-negotiable):
@@ -59,10 +61,19 @@ Examples:
 - User: "Recommend a schedule for Saturday starting 2026-08-01 with 75 minute games"
   → call list_fields and/or list_matches, then propose_recommended_schedule with start_date and duration_mins=75.
 
-""" + _load_skill()
+"""
+
+
+def build_system_prompt(tournament: Tournament, user_text: str = "") -> str:
+    """Base rules plus the skills relevant to this tournament and this turn."""
+    skills = select_skills(load_skills(), tournament_status=tournament.status, user_text=user_text)
+    return BASE_PROMPT + render_skills(skills)
 
 
 MAX_EVENT_ARGS_CHARS = 4000
+# The context-gathering nudge is a stall-breaker, not a policy: after this many
+# rounds the model is left to finish the turn however it sees fit.
+MAX_NUDGE_ROUNDS = 2
 
 
 def _tool_event_args(args: dict[str, Any]) -> dict[str, Any]:
@@ -108,8 +119,6 @@ class TournamentAgentService:
         self.client = client or OpenCodeGoClient()
         self.max_tool_rounds = 8
         self.last_trace: list[dict[str, Any]] = []
-        self.force_tool_choice: str | dict[str, Any] | None = "auto"
-        self.case_hint: str = ""
         # When on, model text is pulled via chat_stream and re-emitted as text_delta
         # events. Off (the default) keeps the single-shot chat() call, so callers and
         # tests that never opted into streaming behave exactly as before.
@@ -146,7 +155,12 @@ class TournamentAgentService:
     def clear_session(self, session: TournamentAgentSession) -> None:
         session.messages.all().delete()
         session.questions.all().delete()
-        # Leave proposals for audit; mark pending as expired? keep them.
+        # Confirmed/rejected proposals stay for audit, but pending ones belong to a
+        # conversation that no longer exists — leaving them would keep offering
+        # staff a Confirm button for a plan they can no longer read.
+        session.proposals.filter(status=ProposalStatus.PENDING).update(
+            status=ProposalStatus.EXPIRED, resolved_at=timezone.now()
+        )
         session.updated_at = timezone.now()
         session.save(update_fields=["updated_at"])
 
@@ -166,14 +180,19 @@ class TournamentAgentService:
         pending_q = (
             session.questions.filter(status=QuestionStatus.PENDING).order_by("-created_at").first()
         )
-        return {
-            "session_id": session.id,
-            "tournament_id": session.tournament_id,
-            "model_id": session.model_id,
-            "messages": messages,
-            "pending_question": self._serialize_question(pending_q) if pending_q else None,
-            "pending_proposals": self._pending_proposals(session),
-        }
+        # One pass over the whole response: assistant text and the tool events stored
+        # on each message can all carry `{{player:<id>}}`.
+        return resolve_player_tokens(
+            {
+                "session_id": session.id,
+                "tournament_id": session.tournament_id,
+                "model_id": session.model_id,
+                "messages": messages,
+                "pending_question": self._serialize_question(pending_q) if pending_q else None,
+                "pending_proposals": self._pending_proposals(session),
+            },
+            session.tournament,
+        )
 
     def _serialize_question(self, q: AgentQuestion) -> dict[str, Any]:
         return {
@@ -188,9 +207,7 @@ class TournamentAgentService:
             "answer": q.answer,
         }
 
-    def process_message(
-        self, session: TournamentAgentSession, message: str
-    ) -> dict[str, Any]:
+    def process_message(self, session: TournamentAgentSession, message: str) -> dict[str, Any]:
         display = message
         masked = scrub_user_text(message)
         TournamentAgentMessage.objects.create(
@@ -200,7 +217,7 @@ class TournamentAgentService:
             message_kind=MessageKind.TEXT,
             payload={"masked_content": masked},
         )
-        return self._run_agent(session, user_content_for_model=masked)
+        return self._run_agent(session)
 
     def answer_question(
         self,
@@ -210,10 +227,8 @@ class TournamentAgentService:
         other_text: str | None = None,
         skip: bool = False,
     ) -> dict[str, Any]:
-        model_text = self._record_answer(
-            session, question_id, selected_ids, other_text=other_text, skip=skip
-        )
-        return self._run_agent(session, user_content_for_model=model_text)
+        self._record_answer(session, question_id, selected_ids, other_text=other_text, skip=skip)
+        return self._run_agent(session)
 
     def _record_answer(
         self,
@@ -222,8 +237,12 @@ class TournamentAgentService:
         selected_ids: list[str],
         other_text: str | None = None,
         skip: bool = False,
-    ) -> str:
-        """Validate and persist a question answer; returns the text handed to the model."""
+    ) -> None:
+        """Validate and persist a question answer.
+
+        The model reads the answer back off the stored message like any other user
+        turn, so nothing needs to be handed to the caller.
+        """
         try:
             question = AgentQuestion.objects.get(id=question_id, session=session)
         except AgentQuestion.DoesNotExist as exc:
@@ -238,25 +257,29 @@ class TournamentAgentService:
             question.answer = {"skipped": True, "cancelled": True}
             question.answered_at = timezone.now()
             question.save()
-            answer_text = "User cancelled the clarifying question."
             TournamentAgentMessage.objects.create(
                 session=session,
                 role=MessageRole.USER,
-                content=answer_text,
+                content="User cancelled the clarifying question.",
                 message_kind=MessageKind.ANSWER,
                 payload={"question_id": question.id, "skipped": True, "cancelled": True},
             )
-            return answer_text
+            return
 
         selected_ids = [str(x) for x in selected_ids]
         option_ids = {str(o["id"]) for o in question.options}
         if any(sid not in option_ids for sid in selected_ids):
             raise ValueError("Invalid option id")
-        if question.selection_mode == QuestionSelectionMode.SINGLE and len(selected_ids) != 1:
-            if not (question.allow_other and other_text and not selected_ids):
-                raise ValueError("Single select requires exactly one option")
-        if question.selection_mode == QuestionSelectionMode.MULTI and not selected_ids and not (
-            question.allow_other and other_text
+        if (
+            question.selection_mode == QuestionSelectionMode.SINGLE
+            and len(selected_ids) != 1
+            and not (question.allow_other and other_text and not selected_ids)
+        ):
+            raise ValueError("Single select requires exactly one option")
+        if (
+            question.selection_mode == QuestionSelectionMode.MULTI
+            and not selected_ids
+            and not (question.allow_other and other_text)
         ):
             raise ValueError("Multi select requires at least one option")
 
@@ -276,11 +299,6 @@ class TournamentAgentService:
         display = "Selected: " + ", ".join(labels)
         if other_text:
             display += f" | Other: {other_text}"
-        model_text = (
-            f"User answered question {question.id}: selected_ids={selected_ids}, "
-            f"labels={labels}"
-            + (f", other={other_scrubbed}" if other_scrubbed else "")
-        )
         TournamentAgentMessage.objects.create(
             session=session,
             role=MessageRole.USER,
@@ -292,26 +310,24 @@ class TournamentAgentService:
                 "other_text": other_scrubbed,
             },
         )
-        return model_text
 
     def _build_model_messages(self, session: TournamentAgentSession) -> list[dict[str, Any]]:
-        system = SYSTEM_PROMPT
-        if self.case_hint:
-            system = system + "\n\nEval / case guidance:\n" + self.case_hint
-        messages: list[dict[str, Any]] = [{"role": "system", "content": system}]
+        turns: list[dict[str, Any]] = []
         for m in session.messages.all():
             if m.role == MessageRole.USER:
                 content = (m.payload or {}).get("masked_content") or scrub_user_text(m.content)
-                messages.append({"role": "user", "content": content})
+                turns.append({"role": "user", "content": content})
             elif m.role == MessageRole.ASSISTANT:
-                messages.append({"role": "assistant", "content": m.content or ""})
-        return messages
+                turns.append({"role": "assistant", "content": m.content or ""})
+
+        latest_user = next((t["content"] for t in reversed(turns) if t["role"] == "user"), "")
+        system = build_system_prompt(session.tournament, latest_user)
+        return [{"role": "system", "content": system}, *turns]
 
     def _chat_round(
         self,
         session: TournamentAgentSession,
         messages: list[dict[str, Any]],
-        tool_choice: str | dict[str, Any] | None,
     ) -> Generator[dict[str, Any], None, ChatCompletionResult]:
         """One model call. Yields text_delta events; returns the assembled result."""
         if not self.streaming:
@@ -319,52 +335,68 @@ class TournamentAgentService:
                 model_id=session.model_id,
                 messages=messages,
                 tools=TOOL_DEFINITIONS,
-                tool_choice=tool_choice,
             )
 
         streamed: list[str] = []
         result: ChatCompletionResult | None = None
+        # Names are substituted as the text goes past, so a `{{player:812}}` never
+        # flashes up raw. The stream holds back anything that could still become a
+        # token, since one can arrive split across two chunks.
+        text_stream = TokenTextStream(session.tournament)
         for chunk in self.client.chat_stream(
             model_id=session.model_id,
             messages=messages,
             tools=TOOL_DEFINITIONS,
-            tool_choice=tool_choice,
         ):
             if chunk.type == "text" and chunk.text:
                 streamed.append(chunk.text)
-                yield {"type": "text_delta", "text": chunk.text}
+                ready = text_stream.feed(chunk.text)
+                if ready:
+                    yield {"type": "text_delta", "text": ready}
             elif chunk.type == "result":
                 result = chunk.result
+        tail = text_stream.flush()
+        if tail:
+            yield {"type": "text_delta", "text": tail}
         if result is None:
             raise OpenCodeGoError("Stream ended without a result")
         # Models that emit tool calls as text get that text stripped from the reply.
         # The raw blob was already streamed, so correct what the client is showing.
         raw_streamed = "".join(streamed)
         if raw_streamed and (result.content or "") != raw_streamed:
-            yield {"type": "text_replace", "text": result.content or ""}
+            yield {
+                "type": "text_replace",
+                "text": resolve_player_tokens(result.content or "", session.tournament),
+            }
         return result
 
-    def _run_agent(
-        self, session: TournamentAgentSession, user_content_for_model: str
-    ) -> dict[str, Any]:
+    def _resolved_events(
+        self, events: Iterator[dict[str, Any]], session: TournamentAgentSession
+    ) -> Iterator[dict[str, Any]]:
+        """Every event on its way to the browser gets its player tokens resolved.
+
+        `text_delta` is already resolved by `_chat_round`, so this is a no-op pass
+        for it; what it catches is the reply text on `done`, ask_user prompts and
+        option labels, proposal summaries, and the tool-event arguments.
+        """
+        for event in events:
+            yield resolve_player_tokens(event, session.tournament)
+
+    def _run_agent(self, session: TournamentAgentSession) -> dict[str, Any]:
         """Drain the event stream and return only the final payload."""
         payload: dict[str, Any] = {}
-        for event in self._run_agent_events(session, user_content_for_model):
+        for event in self._resolved_events(self._run_agent_events(session), session):
             if event["type"] == "done":
                 payload = event["payload"]
         return payload
 
-    def _run_agent_events(
-        self, session: TournamentAgentSession, user_content_for_model: str
-    ) -> Iterator[dict[str, Any]]:
+    def _run_agent_events(self, session: TournamentAgentSession) -> Iterator[dict[str, Any]]:
         messages = self._build_model_messages(session)
-        _ = user_content_for_model
 
         self.last_trace = []
         pending_question = None
         final_text = ""
         assistant_msg: TournamentAgentMessage | None = None
-        tool_choice: str | dict[str, Any] | None = self.force_tool_choice
         turn_tool_events: list[dict[str, Any]] = []
 
         def persist_tool_events() -> None:
@@ -377,33 +409,19 @@ class TournamentAgentService:
 
         try:
             for round_i in range(self.max_tool_rounds):
-                try:
-                    result = yield from self._chat_round(session, messages, tool_choice)
-                except OpenCodeGoError as exc:
-                    # Some Go models reject tool_choice=required; fall back once.
-                    if tool_choice == "required":
-                        self.last_trace.append(
-                            {"warning": f"tool_choice=required failed: {exc}; retrying auto"}
-                        )
-                        tool_choice = "auto"
-                        result = yield from self._chat_round(session, messages, "auto")
-                    else:
-                        raise
+                result = yield from self._chat_round(session, messages)
                 self.last_trace.append(
                     {
                         "round": round_i,
                         "finish_reason": result.finish_reason,
                         "content_preview": (result.content or "")[:300],
                         "tool_calls": [
-                            {"name": tc.get("name"), "id": tc.get("id")}
-                            for tc in result.tool_calls
+                            {"name": tc.get("name"), "id": tc.get("id")} for tc in result.tool_calls
                         ],
                     }
                 )
 
                 if result.tool_calls:
-                    # After the first tool round, let the model decide freely
-                    tool_choice = "auto"
                     if assistant_msg is None:
                         assistant_msg = TournamentAgentMessage.objects.create(
                             session=session,
@@ -502,7 +520,7 @@ class TournamentAgentService:
                                 },
                             }
                             return
-                        except Exception as exc:  # noqa: BLE001 — model must see and recover from tool errors
+                        except Exception as exc:  # — model must see and recover from tool errors
                             tool_result = {"error": str(exc)[:500]}
                             event["status"] = "error"
                             event["summary"] = str(exc)[:200]
@@ -531,49 +549,29 @@ class TournamentAgentService:
                             }
                         )
 
-                    # If the model only gathered context, nudge toward the action tool once.
-                    read_only = {
-                        "get_tournament_overview",
-                        "list_teams_seeding",
-                        "list_pools",
-                        "list_swiss_rounds",
-                        "list_brackets",
-                        "list_cross_pools",
-                        "list_position_pools",
-                        "list_fields",
-                        "list_matches",
-                        "get_standings",
-                        "get_schedule_grid",
-                    }
-                    action_tools = {
-                        "ask_user",
-                        "propose_recommended_schedule",
-                        "propose_create_pool",
-                        "propose_full_setup",
-                        "propose_bulk_schedule",
-                    }
-                    if (
-                        round_i < 2
-                        and called_names
-                        and all(n in read_only for n in called_names)
-                        and not any(n in action_tools for n in called_names)
-                    ):
+                    # If the model only gathered context, push it to finish the turn once.
+                    # Deliberately does not demand a mutation: plenty of turns are staff
+                    # asking a question, and telling the model to propose something
+                    # anyway is how an "what do the standings look like?" turn ends in an
+                    # unwanted ask_user or proposal.
+                    only_read = called_names and all(n in READ_ONLY_TOOLS for n in called_names)
+                    if round_i < MAX_NUDGE_ROUNDS and only_read:
                         messages.append(
                             {
                                 "role": "user",
                                 "content": (
-                                    "You have enough context from read tools. "
-                                    "Now take action: if the staff request is ambiguous about "
-                                    "format (pools vs Swiss), call ask_user; if they asked for a "
-                                    "schedule, call propose_recommended_schedule with start_date "
-                                    "and duration_mins."
+                                    "You have read enough. Finish the turn now: if the staff "
+                                    "member asked a question, answer it in plain text; if they "
+                                    "asked for a change, call ask_user when the request is "
+                                    "ambiguous about format, days or fields, or the matching "
+                                    "propose_* tool when it is not."
                                 ),
                             }
                         )
                     continue
 
                 final_text = result.content or ""
-                # If model refused tools on first round, nudge once (keep tool_choice=auto).
+                # If the model refused tools on the first round, nudge it once.
                 if round_i == 0 and not result.tool_calls:
                     messages.append(
                         {
@@ -600,10 +598,9 @@ class TournamentAgentService:
                 message_kind=MessageKind.TEXT,
                 model_id=session.model_id,
             )
-        else:
-            if final_text:
-                assistant_msg.content = final_text
-                assistant_msg.save(update_fields=["content"])
+        elif final_text:
+            assistant_msg.content = final_text
+            assistant_msg.save(update_fields=["content"])
 
         persist_tool_events()
 
@@ -638,7 +635,7 @@ class TournamentAgentService:
             message_kind=MessageKind.TEXT,
             payload={"masked_content": masked},
         )
-        return self._run_agent_events(session, user_content_for_model=masked)
+        return self._resolved_events(self._run_agent_events(session), session)
 
     def answer_question_events(
         self,
@@ -649,17 +646,19 @@ class TournamentAgentService:
         skip: bool = False,
     ) -> Iterator[dict[str, Any]]:
         """Streaming twin of `answer_question`. Raises ValueError on a bad answer."""
-        model_text = self._record_answer(
-            session, question_id, selected_ids, other_text=other_text, skip=skip
-        )
-        return self._run_agent_events(session, user_content_for_model=model_text)
+        self._record_answer(session, question_id, selected_ids, other_text=other_text, skip=skip)
+        return self._resolved_events(self._run_agent_events(session), session)
 
     def _serialize_proposal(self, row: AgentProposal) -> dict[str, Any]:
+        tournament = row.session.tournament
         return {
             "id": row.id,
             "tool_name": row.tool_name,
-            "summary": row.summary,
+            "summary": resolve_player_tokens(row.summary, tournament),
             "payload": row.payload,
+            # The payload keeps bare ids — it is replayed into the applier verbatim —
+            # so names for the ids it mentions travel alongside it instead.
+            "player_names": player_names_for_payload(row.payload, tournament),
             "status": row.status,
             "created_at": row.created_at.isoformat(),
         }
@@ -667,11 +666,17 @@ class TournamentAgentService:
     def _serialize_proposal_by_id(
         self, session: TournamentAgentSession, proposal_id: int
     ) -> dict[str, Any] | None:
-        row = session.proposals.filter(id=proposal_id).first()
+        row = (
+            session.proposals.select_related("session__tournament__event")
+            .filter(id=proposal_id)
+            .first()
+        )
         return self._serialize_proposal(row) if row else None
 
     def _pending_proposals(self, session: TournamentAgentSession) -> list[dict[str, Any]]:
         return [
             self._serialize_proposal(row)
-            for row in session.proposals.filter(status="pending").order_by("-created_at")
+            for row in session.proposals.select_related("session__tournament__event")
+            .filter(status=ProposalStatus.PENDING)
+            .order_by("-created_at")
         ]

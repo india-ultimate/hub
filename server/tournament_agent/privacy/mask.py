@@ -15,28 +15,54 @@ PHONE_RE = re.compile(
     r")(?!\d)"
 )
 
-# Keys that must never appear in model-bound tool payloads.
+# Identity, not identifiers: an id may always cross the boundary, a person's name
+# or contact detail never may. These keys must not appear in anything a tool
+# returns to the model.
+#
+# `comments` is listed because spirit comments are free text people write names
+# into. It stays accepted as a tool *argument* — this list only guards results,
+# since proposal payloads are stored, never replayed into model context.
 FORBIDDEN_KEYS = frozenset(
     {
+        # contact
         "email",
+        "guardian_email",
         "phone",
         "phone_number",
         "mobile",
-        "membership_number",
+        # identity
         "first_name",
         "last_name",
         "full_name",
-        "guardian_email",
-        "player_id",
-        "user_id",
-        "volunteer",
-        "volunteers",
-        "registrations",
-        "roster",
-        "players",
-        "spirit_score",
+        "username",
+        "player_name",
+        "person_name",
+        "mvp_name",
+        "msp_name",
+        # sensitive attributes and free text
+        "membership_number",
+        "date_of_birth",
+        "dob",
+        "gender",
+        "other_gender",
+        "match_up",  # gender-matching category on Player
+        "comments",
+    }
+)
+
+# Keys that carry a person. Their values must be bare ids, so a nested object
+# smuggling a name in fails loudly instead of relying on someone remembering to
+# flatten it.
+ID_ONLY_KEYS = frozenset(
+    {
         "mvp",
         "msp",
+        "mvp_id",
+        "msp_id",
+        "mvp_player_id",
+        "msp_player_id",
+        "player_id",
+        "entered_by",
     }
 )
 
@@ -64,10 +90,38 @@ def contains_forbidden_keys(obj: Any, path: str = "") -> list[str]:
     return found
 
 
+def non_id_person_values(obj: Any, path: str = "") -> list[str]:
+    """Return paths where a person-bearing key holds something other than an id."""
+    found: list[str] = []
+    if isinstance(obj, dict):
+        for key, value in obj.items():
+            full = f"{path}.{key}" if path else str(key)
+            # A bool, a nested object, or a string that is not digits — all of them
+            # mean this person-bearing key is carrying more than an id.
+            if (
+                str(key).lower() in ID_ONLY_KEYS
+                and value is not None
+                and (
+                    isinstance(value, bool)
+                    or not isinstance(value, int | str)
+                    or (isinstance(value, str) and not value.isdigit())
+                )
+            ):
+                found.append(full)
+            found.extend(non_id_person_values(value, full))
+    elif isinstance(obj, list):
+        for i, item in enumerate(obj):
+            found.extend(non_id_person_values(item, f"{path}[{i}]"))
+    return found
+
+
 def assert_safe_tool_payload(payload: Any) -> None:
     bad = contains_forbidden_keys(payload)
     if bad:
         raise ValueError(f"PII/forbidden keys in tool payload: {', '.join(bad)}")
+    not_ids = non_id_person_values(payload)
+    if not_ids:
+        raise ValueError(f"Person fields must be ids, not objects/names: {', '.join(not_ids)}")
 
 
 def scrub_json_strings(obj: Any) -> Any:
@@ -79,24 +133,3 @@ def scrub_json_strings(obj: Any) -> Any:
     if isinstance(obj, list):
         return [scrub_json_strings(v) for v in obj]
     return obj
-
-
-class SessionPseudonymMap:
-    """Optional stable team pseudonyms for a session (Team:42 -> Team_T7)."""
-
-    def __init__(self) -> None:
-        self._team: dict[int, str] = {}
-        self._next = 1
-
-    def team_token(self, team_id: int) -> str:
-        if team_id not in self._team:
-            self._team[team_id] = f"Team_T{self._next}"
-            self._next += 1
-        return self._team[team_id]
-
-    def mask_team_name(self, team_id: int | None, name: str | None, *, use_pseudonyms: bool) -> str:
-        if team_id is None:
-            return name or ""
-        if use_pseudonyms:
-            return self.team_token(team_id)
-        return name or f"Team {team_id}"
