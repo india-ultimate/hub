@@ -6,8 +6,13 @@ from django.http import HttpRequest, StreamingHttpResponse
 from ninja import Router
 
 from server.core.models import User
+from server.tournament.utils import can_access_tournament_agent, can_manage_tournament
 from server.tournament_agent.catalog import default_model_id, models_for_api
-from server.tournament_agent.models import AgentProposal, AgentQuestion
+from server.tournament_agent.models import (
+    AgentProposal,
+    AgentQuestion,
+    TournamentAgentSession,
+)
 from server.tournament_agent.schema import (
     AgentResponseSchema,
     AnswerQuestionSchema,
@@ -33,9 +38,17 @@ class AuthenticatedHttpRequest(HttpRequest):
     user: User
 
 
-def _staff_or_401(request: AuthenticatedHttpRequest) -> dict[str, str] | None:
-    if not request.user.is_staff:
-        return {"message": "Staff only"}
+def _agent_user_or_401(request: AuthenticatedHttpRequest) -> dict[str, str] | None:
+    if not can_access_tournament_agent(request.user):
+        return {"message": "Staff or assigned tournament director only"}
+    return None
+
+
+def _manage_session_or_401(
+    request: AuthenticatedHttpRequest, session: TournamentAgentSession
+) -> dict[str, str] | None:
+    if not can_manage_tournament(request.user, session.tournament):
+        return {"message": "Staff or assigned tournament director only"}
     return None
 
 
@@ -76,7 +89,7 @@ def _sse_error(message: str, status: int) -> StreamingHttpResponse:
 
 @router.get("/models", response={200: ModelsResponseSchema, 401: ErrorSchema})
 def list_models(request: AuthenticatedHttpRequest) -> dict[str, Any] | tuple[int, dict[str, str]]:
-    err = _staff_or_401(request)
+    err = _agent_user_or_401(request)
     if err:
         return 401, err
     return {"models": models_for_api(), "default_model_id": default_model_id()}
@@ -86,13 +99,12 @@ def list_models(request: AuthenticatedHttpRequest) -> dict[str, Any] | tuple[int
 def get_history(
     request: AuthenticatedHttpRequest, tournament_id: int
 ) -> dict[str, Any] | tuple[int, dict[str, str]]:
-    err = _staff_or_401(request)
-    if err:
-        return 401, err
     service = TournamentAgentService(request.user)
     try:
         session = service.get_or_create_session(tournament_id)
         return service.history(session)
+    except PermissionError as exc:
+        return 401, {"message": str(exc)}
     except Exception as exc:
         return 400, {"message": str(exc)}
 
@@ -104,13 +116,12 @@ def get_history(
 def send_message(
     request: AuthenticatedHttpRequest, data: SendMessageSchema
 ) -> dict[str, Any] | tuple[int, dict[str, str]]:
-    err = _staff_or_401(request)
-    if err:
-        return 401, err
     service = TournamentAgentService(request.user)
     try:
         session = service.get_or_create_session(data.tournament_id, model_id=data.model_id)
         return service.process_message(session, data.message)
+    except PermissionError as exc:
+        return 401, {"message": str(exc)}
     except ValueError as exc:
         return 400, {"message": str(exc)}
     except Exception as exc:
@@ -122,12 +133,11 @@ def stream_message(
     request: AuthenticatedHttpRequest, data: SendMessageSchema
 ) -> StreamingHttpResponse:
     """Same turn as send_message, delivered as Server-Sent Events."""
-    err = _staff_or_401(request)
-    if err:
-        return _sse_error(err["message"], 401)
     service = TournamentAgentService(request.user, streaming=True)
     try:
         session = service.get_or_create_session(data.tournament_id, model_id=data.model_id)
+    except PermissionError as exc:
+        return _sse_error(str(exc), 401)
     except Exception as exc:
         return _sse_error(str(exc), 400)
     return _sse_response(service.process_message_events(session, data.message))
@@ -138,15 +148,15 @@ def answer_question_stream(
     request: AuthenticatedHttpRequest, question_id: int, data: AnswerQuestionSchema
 ) -> StreamingHttpResponse:
     """Same turn as answer_question, delivered as Server-Sent Events."""
-    err = _staff_or_401(request)
-    if err:
-        return _sse_error(err["message"], 401)
     try:
-        question = AgentQuestion.objects.select_related("session").get(id=question_id)
+        question = AgentQuestion.objects.select_related("session__tournament").get(id=question_id)
     except AgentQuestion.DoesNotExist:
         return _sse_error("Question not found", 400)
     if question.session.user_id != request.user.id:
         return _sse_error("Not your session", 401)
+    err = _manage_session_or_401(request, question.session)
+    if err:
+        return _sse_error(err["message"], 401)
     service = TournamentAgentService(request.user, streaming=True)
     try:
         # Validates and records the answer eagerly, so a bad answer is a 400 rather
@@ -170,15 +180,15 @@ def answer_question_stream(
 def answer_question(
     request: AuthenticatedHttpRequest, question_id: int, data: AnswerQuestionSchema
 ) -> dict[str, Any] | tuple[int, dict[str, str]]:
-    err = _staff_or_401(request)
-    if err:
-        return 401, err
     try:
-        question = AgentQuestion.objects.select_related("session").get(id=question_id)
+        question = AgentQuestion.objects.select_related("session__tournament").get(id=question_id)
     except AgentQuestion.DoesNotExist:
         return 400, {"message": "Question not found"}
     if question.session.user_id != request.user.id:
         return 401, {"message": "Not your session"}
+    err = _manage_session_or_401(request, question.session)
+    if err:
+        return 401, err
     service = TournamentAgentService(request.user)
     try:
         return service.answer_question(
@@ -201,15 +211,15 @@ def answer_question(
 def confirm_proposal(
     request: AuthenticatedHttpRequest, proposal_id: int
 ) -> dict[str, Any] | tuple[int, dict[str, str]]:
-    err = _staff_or_401(request)
-    if err:
-        return 401, err
     try:
-        proposal = AgentProposal.objects.select_related("session").get(id=proposal_id)
+        proposal = AgentProposal.objects.select_related("session__tournament").get(id=proposal_id)
     except AgentProposal.DoesNotExist:
         return 400, {"message": "Proposal not found"}
     if proposal.session.user_id != request.user.id and not request.user.is_superuser:
         return 401, {"message": "Not your proposal"}
+    err = _manage_session_or_401(request, proposal.session)
+    if err:
+        return 401, err
     try:
         result = apply_proposal(proposal)
         return {"message": "Proposal confirmed", "result": result}
@@ -224,15 +234,15 @@ def confirm_proposal(
 def reject_proposal_endpoint(
     request: AuthenticatedHttpRequest, proposal_id: int
 ) -> dict[str, Any] | tuple[int, dict[str, str]]:
-    err = _staff_or_401(request)
-    if err:
-        return 401, err
     try:
-        proposal = AgentProposal.objects.select_related("session").get(id=proposal_id)
+        proposal = AgentProposal.objects.select_related("session__tournament").get(id=proposal_id)
     except AgentProposal.DoesNotExist:
         return 400, {"message": "Proposal not found"}
     if proposal.session.user_id != request.user.id and not request.user.is_superuser:
         return 401, {"message": "Not your proposal"}
+    err = _manage_session_or_401(request, proposal.session)
+    if err:
+        return 401, err
     try:
         reject_proposal(proposal)
         return {"message": "Proposal rejected"}
@@ -244,14 +254,13 @@ def reject_proposal_endpoint(
 def set_model(
     request: AuthenticatedHttpRequest, data: SetModelSchema
 ) -> dict[str, Any] | tuple[int, dict[str, str]]:
-    err = _staff_or_401(request)
-    if err:
-        return 401, err
     service = TournamentAgentService(request.user)
     try:
         session = service.get_or_create_session(data.tournament_id)
         service.set_model(session, data.model_id)
         return {"message": f"Model set to {data.model_id}"}
+    except PermissionError as exc:
+        return 401, {"message": str(exc)}
     except ValueError as exc:
         return 400, {"message": str(exc)}
 
@@ -260,13 +269,12 @@ def set_model(
 def clear_history(
     request: AuthenticatedHttpRequest, tournament_id: int
 ) -> dict[str, Any] | tuple[int, dict[str, str]]:
-    err = _staff_or_401(request)
-    if err:
-        return 401, err
     service = TournamentAgentService(request.user)
     try:
         session = service.get_or_create_session(tournament_id)
         service.clear_session(session)
         return {"message": "History cleared"}
+    except PermissionError as exc:
+        return 401, {"message": str(exc)}
     except Exception as exc:
         return 400, {"message": str(exc)}

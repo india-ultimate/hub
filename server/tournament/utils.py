@@ -1770,6 +1770,24 @@ def update_tournament_spirit_rankings(tournament: Tournament) -> None:
     tournament.save()
 
 
+def can_manage_tournament(user: User, tournament: Tournament) -> bool:
+    """Staff may manage any tournament; directors only the ones they are assigned to."""
+    if not getattr(user, "is_authenticated", False):
+        return False
+    if user.is_staff:
+        return True
+    return tournament.directors.filter(pk=user.pk).exists()
+
+
+def can_access_tournament_agent(user: User) -> bool:
+    """Catalog and agent entry: staff, or anyone assigned as a director somewhere."""
+    if not getattr(user, "is_authenticated", False):
+        return False
+    if user.is_staff:
+        return True
+    return Tournament.objects.filter(directors=user).exists()
+
+
 def user_tournament_teams(tournament: Tournament, user: User) -> tuple[int | None, set[int]]:
     player_team_id = 0
     admin_team_ids: set[int] = set()

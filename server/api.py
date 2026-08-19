@@ -146,6 +146,7 @@ from server.tournament.schema import (
     SwissRoundSchema,
     TournamentCreateFromEventSchema,
     TournamentCreateSchema,
+    TournamentDirectorAddSchema,
     TournamentFieldCreateSchema,
     TournamentFieldSchema,
     TournamentFieldUpdateSchema,
@@ -162,6 +163,7 @@ from server.tournament.utils import (
     build_pool,
     build_position_pool,
     build_swiss_round,
+    can_manage_tournament,
     can_register_player_to_series_event,
     create_spirit_scores,
     get_bracket_match_name,
@@ -193,6 +195,12 @@ api = NinjaAPI(auth=django_auth, csrf=True)
 
 class AuthenticatedHttpRequest(HttpRequest):
     user: User
+
+
+def _deny_unless_manager(user: User, tournament: Tournament) -> tuple[int, message_response] | None:
+    if not can_manage_tournament(user, tournament):
+        return 401, {"message": "Only staff or assigned tournament directors can do this"}
+    return None
 
 
 # Routers
@@ -237,6 +245,7 @@ def me_access(
     return 200, {
         "is_staff": request.user.is_staff,
         "is_tournament_admin": request.user.is_tournament_admin,
+        "is_tournament_director": tournament.directors.filter(pk=request.user.pk).exists(),
         "playing_team_id": player_team_id,
         "admin_team_ids": admin_team_ids,
         "is_tournament_volunteer": request.user in tournament.volunteers.all(),
@@ -1552,13 +1561,14 @@ def create_field(
     tournament_id: int,
     field_details: TournamentFieldCreateSchema,
 ) -> tuple[int, TournamentField | message_response]:
-    if not request.user.is_staff:
-        return 401, {"message": "Only Admins can create fields"}
-
     try:
         tournament = Tournament.objects.get(id=tournament_id)
     except Tournament.DoesNotExist:
         return 400, {"message": "Tournament does not exist"}
+
+    denied = _deny_unless_manager(request.user, tournament)
+    if denied:
+        return denied
 
     field = TournamentField(
         name=field_details.name.strip(),
@@ -1585,9 +1595,6 @@ def create_field(
 def update_field(
     request: AuthenticatedHttpRequest, field_id: int, field_details: TournamentFieldUpdateSchema
 ) -> tuple[int, TournamentField | message_response]:
-    if not request.user.is_staff:
-        return 401, {"message": "Only Admins can edit fields"}
-
     try:
         tournament = Tournament.objects.get(id=field_details.tournament_id)
         field = TournamentField.objects.get(id=field_id, tournament=tournament)
@@ -1597,6 +1604,10 @@ def update_field(
 
     except TournamentField.DoesNotExist:
         return 400, {"message": "Field does not exist"}
+
+    denied = _deny_unless_manager(request.user, tournament)
+    if denied:
+        return denied
 
     if field_details.name:
         field.name = field_details.name
@@ -1906,13 +1917,14 @@ def update_standings(
     tournament_id: int,
     tournament_details: TournamentUpdateSeedingSchema,
 ) -> tuple[int, Tournament] | tuple[int, message_response]:
-    if not request.user.is_staff:
-        return 401, {"message": "Only Admins can update tournament"}
-
     try:
         tournament = Tournament.objects.get(id=tournament_id)
     except Tournament.DoesNotExist:
         return 400, {"message": "Tournament does not exist"}
+
+    denied = _deny_unless_manager(request.user, tournament)
+    if denied:
+        return denied
 
     ok, error = update_tournament_seeding(tournament, tournament_details.seeding)
     if not ok:
@@ -1940,19 +1952,89 @@ def delete_tournament(
     return 200, {"message": "Tournament successfully deleted"}
 
 
+@api.get(
+    "/tournament/{tournament_id}/directors",
+    response={200: list[UserMinSchema], 400: Response, 401: Response},
+)
+def list_tournament_directors(
+    request: AuthenticatedHttpRequest, tournament_id: int
+) -> tuple[int, QuerySet[User] | message_response]:
+    try:
+        tournament = Tournament.objects.get(id=tournament_id)
+    except Tournament.DoesNotExist:
+        return 400, {"message": "Tournament does not exist"}
+
+    denied = _deny_unless_manager(request.user, tournament)
+    if denied:
+        return denied
+
+    return 200, tournament.directors.all().order_by("first_name", "last_name", "username")
+
+
+@api.post(
+    "/tournament/{tournament_id}/directors",
+    response={200: list[UserMinSchema], 400: Response, 401: Response},
+)
+def add_tournament_director(
+    request: AuthenticatedHttpRequest,
+    tournament_id: int,
+    body: TournamentDirectorAddSchema,
+) -> tuple[int, QuerySet[User] | message_response]:
+    if not request.user.is_staff:
+        return 401, {"message": "Only staff can appoint tournament directors"}
+
+    try:
+        tournament = Tournament.objects.get(id=tournament_id)
+    except Tournament.DoesNotExist:
+        return 400, {"message": "Tournament does not exist"}
+
+    try:
+        director = User.objects.get(id=body.user_id)
+    except User.DoesNotExist:
+        return 400, {"message": "User does not exist"}
+
+    tournament.directors.add(director)
+    return 200, tournament.directors.all().order_by("first_name", "last_name", "username")
+
+
+@api.delete(
+    "/tournament/{tournament_id}/directors/{user_id}",
+    response={200: list[UserMinSchema], 400: Response, 401: Response},
+)
+def remove_tournament_director(
+    request: AuthenticatedHttpRequest, tournament_id: int, user_id: int
+) -> tuple[int, QuerySet[User] | message_response]:
+    if not request.user.is_staff:
+        return 401, {"message": "Only staff can remove tournament directors"}
+
+    try:
+        tournament = Tournament.objects.get(id=tournament_id)
+    except Tournament.DoesNotExist:
+        return 400, {"message": "Tournament does not exist"}
+
+    try:
+        director = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return 400, {"message": "User does not exist"}
+
+    tournament.directors.remove(director)
+    return 200, tournament.directors.all().order_by("first_name", "last_name", "username")
+
+
 @api.post(
     "/tournament/pool/{tournament_id}", response={200: PoolSchema, 400: Response, 401: Response}
 )
 def create_pool(
     request: AuthenticatedHttpRequest, tournament_id: int, pool_details: PoolCreateSchema
 ) -> tuple[int, Pool] | tuple[int, message_response]:
-    if not request.user.is_staff:
-        return 401, {"message": "Only Admins can create pools"}
-
     try:
         tournament = Tournament.objects.get(id=tournament_id)
     except Tournament.DoesNotExist:
         return 400, {"message": "Tournament does not exist"}
+
+    denied = _deny_unless_manager(request.user, tournament)
+    if denied:
+        return denied
 
     try:
         pool = build_pool(
@@ -1994,13 +2076,14 @@ def create_swiss_round(
     tournament_id: int,
     swiss_details: SwissRoundCreateSchema,
 ) -> tuple[int, SwissRound] | tuple[int, message_response]:
-    if not request.user.is_staff:
-        return 401, {"message": "Only Admins can create swiss rounds"}
-
     try:
         tournament = Tournament.objects.get(id=tournament_id)
     except Tournament.DoesNotExist:
         return 400, {"message": "Tournament does not exist"}
+
+    denied = _deny_unless_manager(request.user, tournament)
+    if denied:
+        return denied
 
     try:
         swiss_round = build_swiss_round(
@@ -2043,15 +2126,15 @@ def get_swiss_rounds(
 def rerun_swiss_round_api(
     request: AuthenticatedHttpRequest, swiss_round_id: int
 ) -> tuple[int, QuerySet[SwissRound]] | tuple[int, message_response]:
-    if not request.user.is_staff:
-        return 401, {"message": "Only Admins can rerun swiss rounds"}
-
     try:
         swiss_round = SwissRound.objects.get(id=swiss_round_id)
     except SwissRound.DoesNotExist:
         return 400, {"message": "Swiss round does not exist"}
 
     tournament = swiss_round.tournament
+    denied = _deny_unless_manager(request.user, tournament)
+    if denied:
+        return denied
     rerun_swiss_round(tournament, swiss_round)
 
     return 200, SwissRound.objects.filter(tournament=tournament).order_by("sequence_number")
@@ -2064,13 +2147,14 @@ def rerun_swiss_round_api(
 def create_cross_pool(
     request: AuthenticatedHttpRequest, tournament_id: int
 ) -> tuple[int, CrossPool] | tuple[int, message_response]:
-    if not request.user.is_staff:
-        return 401, {"message": "Only Admins can create pools"}
-
     try:
         tournament = Tournament.objects.get(id=tournament_id)
     except Tournament.DoesNotExist:
         return 400, {"message": "Tournament does not exist"}
+
+    denied = _deny_unless_manager(request.user, tournament)
+    if denied:
+        return denied
 
     cross_pool = CrossPool(tournament=tournament)
     cross_pool.save()
@@ -2106,13 +2190,14 @@ def get_cross_pool(
 def create_bracket(
     request: AuthenticatedHttpRequest, tournament_id: int, bracket_details: BracketCreateSchema
 ) -> tuple[int, Bracket] | tuple[int, message_response]:
-    if not request.user.is_staff:
-        return 401, {"message": "Only Admins can create brackets"}
-
     try:
         tournament = Tournament.objects.get(id=tournament_id)
     except Tournament.DoesNotExist:
         return 400, {"message": "Tournament does not exist"}
+
+    denied = _deny_unless_manager(request.user, tournament)
+    if denied:
+        return denied
 
     try:
         bracket = build_bracket(
@@ -2153,13 +2238,14 @@ def create_position_pool(
     tournament_id: int,
     position_pool_details: PositionPoolCreateSchema,
 ) -> tuple[int, PositionPool] | tuple[int, message_response]:
-    if not request.user.is_staff:
-        return 401, {"message": "Only Admins can create position pools"}
-
     try:
         tournament = Tournament.objects.get(id=tournament_id)
     except Tournament.DoesNotExist:
         return 400, {"message": "Tournament does not exist"}
+
+    denied = _deny_unless_manager(request.user, tournament)
+    if denied:
+        return denied
 
     try:
         pool = build_position_pool(
@@ -2202,13 +2288,14 @@ def get_position_pools(
 def create_match(
     request: AuthenticatedHttpRequest, tournament_id: int, match_details: MatchCreateSchema
 ) -> tuple[int, Match] | tuple[int, message_response]:
-    if not request.user.is_staff:
-        return 401, {"message": "Only Admins can create matches"}
-
     try:
         tournament = Tournament.objects.get(id=tournament_id)
     except Tournament.DoesNotExist:
         return 400, {"message": "Tournament does not exist"}
+
+    denied = _deny_unless_manager(request.user, tournament)
+    if denied:
+        return denied
 
     ind_tz = datetime.timezone(datetime.timedelta(hours=5, minutes=30), name="IND")
     match_datetime = datetime.datetime.strptime(match_details.time, "%Y-%m-%dT%H:%M").astimezone(
@@ -2297,13 +2384,14 @@ def get_matches(
 def start_tournament(
     request: AuthenticatedHttpRequest, tournament_id: int
 ) -> tuple[int, Tournament] | tuple[int, message_response]:
-    if not request.user.is_staff:
-        return 401, {"message": "Only Admins can start tournament"}
-
     try:
         tournament = Tournament.objects.get(id=tournament_id)
     except Tournament.DoesNotExist:
         return 400, {"message": "Tournament does not exist"}
+
+    denied = _deny_unless_manager(request.user, tournament)
+    if denied:
+        return denied
 
     try:
         begin_tournament(tournament)
@@ -2320,13 +2408,14 @@ def start_tournament(
 def generate_tournament_fixtures(
     request: AuthenticatedHttpRequest, tournament_id: int
 ) -> tuple[int, message_response]:
-    if not request.user.is_staff:
-        return 401, {"message": "Only Admins can start tournament"}
-
     try:
         tournament = Tournament.objects.get(id=tournament_id)
     except Tournament.DoesNotExist:
         return 400, {"message": "Tournament does not exist"}
+
+    denied = _deny_unless_manager(request.user, tournament)
+    if denied:
+        return denied
 
     populate_fixtures(tournament.id)
 
@@ -2340,13 +2429,14 @@ def generate_tournament_fixtures(
 def update_rules(
     request: AuthenticatedHttpRequest, tournament_id: int, tournament_rules: TournamentRulesSchema
 ) -> tuple[int, Tournament | message_response]:
-    if not request.user.is_staff:
-        return 401, {"message": "Only Admins can edit rules"}
-
     try:
         tournament = Tournament.objects.get(id=tournament_id)
     except Tournament.DoesNotExist:
         return 400, {"message": "Tournament does not exist"}
+
+    denied = _deny_unless_manager(request.user, tournament)
+    if denied:
+        return denied
 
     tournament.rules = tournament_rules.rules
     tournament.save()
@@ -2368,13 +2458,14 @@ def get_match(request: HttpRequest, match_id: int) -> tuple[int, Match | message
 def add_match_score(
     request: AuthenticatedHttpRequest, match_id: int, match_scores: MatchScoreSchema
 ) -> tuple[int, Match | message_response]:
-    if not request.user.is_staff:
-        return 401, {"message": "Only Admins can add scores"}
-
     try:
         match = Match.objects.get(id=match_id)
     except Match.DoesNotExist:
         return 400, {"message": "Match does not exist"}
+
+    denied = _deny_unless_manager(request.user, match.tournament)
+    if denied:
+        return denied
 
     if match.status in {Match.Status.COMPLETED, Match.Status.YET_TO_FIX}:
         return 400, {"message": "Match score cant be added in current status"}
@@ -2433,13 +2524,14 @@ def submit_match_score(
 def update_match(
     request: AuthenticatedHttpRequest, match_id: int, match_details: MatchUpdateSchema
 ) -> tuple[int, Match] | tuple[int, message_response]:
-    if not request.user.is_staff:
-        return 401, {"message": "Only Admins can update matches"}
-
     try:
         match = Match.objects.get(id=match_id)
     except Match.DoesNotExist:
         return 400, {"message": "Match does not exist"}
+
+    denied = _deny_unless_manager(request.user, match.tournament)
+    if denied:
+        return denied
 
     if match_details.time:
         ind_tz = datetime.timezone(datetime.timedelta(hours=5, minutes=30), name="IND")
@@ -2535,13 +2627,14 @@ def submit_match_spirit_score(
 
 @api.delete("/match/{match_id}", response={200: Response, 400: Response, 401: Response})
 def delete_match(request: AuthenticatedHttpRequest, match_id: int) -> tuple[int, message_response]:
-    if not request.user.is_staff:
-        return 401, {"message": "Only Admins can delete matches"}
-
     try:
         match = Match.objects.get(id=match_id)
     except Match.DoesNotExist:
         return 400, {"message": "Match does not exist"}
+
+    denied = _deny_unless_manager(request.user, match.tournament)
+    if denied:
+        return denied
 
     match.delete()
 
@@ -2881,13 +2974,14 @@ def update_tournament_schedule(
     tournament_id: int,
     schedule_file: UploadedFile = File(...),  # noqa: B008
 ) -> tuple[int, message_response]:
-    if not request.user.is_staff:
-        return 400, {"message": "Only staff users can update tournament schedule"}
-
     try:
         tournament = Tournament.objects.get(id=tournament_id)
     except Tournament.DoesNotExist:
         return 400, {"message": "Tournament not found"}
+
+    denied = _deny_unless_manager(request.user, tournament)
+    if denied:
+        return denied
 
     # Read CSV file
     try:

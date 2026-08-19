@@ -326,17 +326,25 @@ const ProposalCard = props => {
       const parts = [];
       if (payload.pool_defs?.length)
         parts.push(
-          `${payload.pool_defs.length} pool${payload.pool_defs.length > 1 ? "s" : ""}`
+          `${payload.pool_defs.length} pool${
+            payload.pool_defs.length > 1 ? "s" : ""
+          }`
         );
       if (payload.swiss_defs?.length)
         parts.push(
-          `${payload.swiss_defs.length} Swiss group${payload.swiss_defs.length > 1 ? "s" : ""}`
+          `${payload.swiss_defs.length} Swiss group${
+            payload.swiss_defs.length > 1 ? "s" : ""
+          }`
         );
       if (payload.bracket_names?.length)
         parts.push(
-          `${payload.bracket_names.length} bracket${payload.bracket_names.length > 1 ? "s" : ""}`
+          `${payload.bracket_names.length} bracket${
+            payload.bracket_names.length > 1 ? "s" : ""
+          }`
         );
-      return parts.length ? `Create ${parts.join(" + ")}` : "Full tournament setup";
+      return parts.length
+        ? `Create ${parts.join(" + ")}`
+        : "Full tournament setup";
     }
     return TOOL_TITLES[p().tool_name] || p().tool_name;
   };

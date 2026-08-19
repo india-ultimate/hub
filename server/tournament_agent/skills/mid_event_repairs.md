@@ -5,12 +5,40 @@ always: false
 priority: 25
 when_status: [SCH, LIV]
 triggers:
-  [delay, rain, lightning, weather, waterlogged, field down, field lost, move, shift,
-   swap, reschedule, push back, wrong, fix, mistake, rebuild, redo, withdraw, drop out,
-   finals field, broadcast]
+  [
+    delay,
+    rain,
+    lightning,
+    weather,
+    waterlogged,
+    field down,
+    field lost,
+    move,
+    shift,
+    swap,
+    reschedule,
+    push back,
+    wrong,
+    fix,
+    mistake,
+    rebuild,
+    redo,
+    withdraw,
+    drop out,
+    finals field,
+    broadcast
+  ]
 requires_tools:
-  [check_schedule_conflicts, propose_shift_schedule, propose_delete_stage, list_matches,
-   list_fields, list_stages, propose_update_match, propose_bulk_schedule]
+  [
+    check_schedule_conflicts,
+    propose_shift_schedule,
+    propose_delete_stage,
+    list_matches,
+    list_fields,
+    list_stages,
+    propose_update_match,
+    propose_bulk_schedule
+  ]
 ---
 
 # Mid-event repairs skill
@@ -75,7 +103,7 @@ the remaining fields' free slots.
 ## Seeding mistakes
 
 - **Before the tournament starts**, `propose_update_seeding` is the right fix and it is safe: it
-  rewrites the tournament seeding *and* resyncs every pool and Swiss group's snapshot to match. You
+  rewrites the tournament seeding _and_ resyncs every pool and Swiss group's snapshot to match. You
   do not need to rebuild stages for a re-seed.
 - **After the tournament starts**, seeding cannot be edited — the Confirm is rejected. Say so, and
   explain that mid-event seeds move only through results. If a pool genuinely holds the wrong teams,
@@ -86,6 +114,7 @@ the remaining fields' free slots.
 `propose_delete_stage(kind, stage_id)` removes the stage and its matches together.
 
 Only propose it when:
+
 - no match in that stage is COMPLETED, and
 - nothing downstream has already been seeded from it, and
 - for pools and Swiss groups, the tournament has not started.

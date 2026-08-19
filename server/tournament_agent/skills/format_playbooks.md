@@ -5,13 +5,40 @@ always: false
 priority: 10
 when_status: [DFT, SCH]
 triggers:
-  [set up, setup, configure, format, pools, swiss, bracket, cross pool, crossover,
-   position pool, structure, snake, seeding order, re-seed, reseed]
+  [
+    set up,
+    setup,
+    configure,
+    format,
+    pools,
+    swiss,
+    bracket,
+    cross pool,
+    crossover,
+    position pool,
+    structure,
+    snake,
+    seeding order,
+    re-seed,
+    reseed
+  ]
 requires_tools:
-  [list_teams_seeding, list_stages, list_pools, list_brackets, propose_update_seeding,
-   propose_create_pool, propose_create_swiss_round, propose_create_cross_pool,
-   propose_create_cross_pool_matches, propose_create_bracket, propose_create_position_pool,
-   propose_full_setup, propose_start_tournament, ask_user]
+  [
+    list_teams_seeding,
+    list_stages,
+    list_pools,
+    list_brackets,
+    propose_update_seeding,
+    propose_create_pool,
+    propose_create_swiss_round,
+    propose_create_cross_pool,
+    propose_create_cross_pool_matches,
+    propose_create_bracket,
+    propose_create_position_pool,
+    propose_full_setup,
+    propose_start_tournament,
+    ask_user
+  ]
 ---
 
 # Format playbooks
@@ -24,23 +51,23 @@ events, 4–31 teams.
 
 Confirm with staff only when two families are genuinely both common.
 
-| Teams | Structure (most common in production) | Brackets / position pools |
-|---|---|---|
-| 4 | 1 pool of 4 (RR) | `1-4`, or `1-2` + `3-4` finals |
-| 5 | 1 pool of 5 (RR) | `1-4`, or CP (2v3, 4v5) then `1-2` + `3-4` |
-| 6 | 1 pool of 6 (full RR, 5 games/team over 2 days) **or** 2×3 pools + CP | `1-6` full placement, or `1-2`/`3-4`/`5-6`, or `1-4` + `5-6` |
-| 7 | 1 pool of 7 (pure RR, often no bracket) **or** 4+3 pools | `1-2`, `3-4`, `5-6` placement pairs |
-| 8 | 2×4 pools → full crossover CP → brackets | `1-4` + `5-8` (or single `1-8`) |
-| 9 | 5+4 pools → CP → bracket + PP | `1-4` + `5-6`, position pool of 3 for 7–9 |
-| 10 | 2×5 pools → CP (3v6, 4v5, 7v10, 8v9) | `1-4` + `5-8` + `9-10` |
-| 11 | 3+4+4 pools → CP | `1-8`, position pool of 3 |
-| 12 | **4×3 pools → CP → `1-8` + position pool 9–12** (canonical, 4 events). Alt: 2×6 pools → `1-4` + `5-8` + PP | `1-8` + PP(9,10,11,12) |
-| 13–15 | 4 pools of 3/4 → CP → `1-8` + PPs for the rest | e.g. 13t: `1-8` + PP(9–13) |
-| 16 | **4×4 pools → CP bands 1–4 / 5–12 / 13–16 → `1-8` + `9-16`** (canonical nationals format, 5 events verbatim) | `1-8` + `9-16` |
-| 17–18 | 5+4+4+4 pools → CP → `1-8` + lower brackets/PPs | e.g. `1-8`, `9-12`, `13-14`, `16-17`; or `1-8` + PP(9–13) + PP(14–18) |
-| 19–20 | 5 pools (4/3) or 4×5 → multi-round CP | `1-8` + `9-12`/`9-16` + PPs of 3–4 |
-| 24 | 6×4 pools → 2 CP rounds → six brackets of 4 (`1-4` … `21-24`) **or** 24-team Swiss, 5 rounds → placement pairs | brackets of 4, or `1-4` + pairs `5-6` … `23-24` |
-| 25+ | Mixed pool sizes (5s and 4s) → CP chains → `1-8`, `9-16`, `17-24`, … + PP for remainder | seen at 31 teams |
+| Teams | Structure (most common in production)                                                                          | Brackets / position pools                                             |
+| ----- | -------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| 4     | 1 pool of 4 (RR)                                                                                               | `1-4`, or `1-2` + `3-4` finals                                        |
+| 5     | 1 pool of 5 (RR)                                                                                               | `1-4`, or CP (2v3, 4v5) then `1-2` + `3-4`                            |
+| 6     | 1 pool of 6 (full RR, 5 games/team over 2 days) **or** 2×3 pools + CP                                          | `1-6` full placement, or `1-2`/`3-4`/`5-6`, or `1-4` + `5-6`          |
+| 7     | 1 pool of 7 (pure RR, often no bracket) **or** 4+3 pools                                                       | `1-2`, `3-4`, `5-6` placement pairs                                   |
+| 8     | 2×4 pools → full crossover CP → brackets                                                                       | `1-4` + `5-8` (or single `1-8`)                                       |
+| 9     | 5+4 pools → CP → bracket + PP                                                                                  | `1-4` + `5-6`, position pool of 3 for 7–9                             |
+| 10    | 2×5 pools → CP (3v6, 4v5, 7v10, 8v9)                                                                           | `1-4` + `5-8` + `9-10`                                                |
+| 11    | 3+4+4 pools → CP                                                                                               | `1-8`, position pool of 3                                             |
+| 12    | **4×3 pools → CP → `1-8` + position pool 9–12** (canonical, 4 events). Alt: 2×6 pools → `1-4` + `5-8` + PP     | `1-8` + PP(9,10,11,12)                                                |
+| 13–15 | 4 pools of 3/4 → CP → `1-8` + PPs for the rest                                                                 | e.g. 13t: `1-8` + PP(9–13)                                            |
+| 16    | **4×4 pools → CP bands 1–4 / 5–12 / 13–16 → `1-8` + `9-16`** (canonical nationals format, 5 events verbatim)   | `1-8` + `9-16`                                                        |
+| 17–18 | 5+4+4+4 pools → CP → `1-8` + lower brackets/PPs                                                                | e.g. `1-8`, `9-12`, `13-14`, `16-17`; or `1-8` + PP(9–13) + PP(14–18) |
+| 19–20 | 5 pools (4/3) or 4×5 → multi-round CP                                                                          | `1-8` + `9-12`/`9-16` + PPs of 3–4                                    |
+| 24    | 6×4 pools → 2 CP rounds → six brackets of 4 (`1-4` … `21-24`) **or** 24-team Swiss, 5 rounds → placement pairs | brackets of 4, or `1-4` + pairs `5-6` … `23-24`                       |
+| 25+   | Mixed pool sizes (5s and 4s) → CP chains → `1-8`, `9-16`, `17-24`, … + PP for remainder                        | seen at 31 teams                                                      |
 
 Rules of thumb:
 

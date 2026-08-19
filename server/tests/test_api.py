@@ -1442,6 +1442,7 @@ class TestTournaments(ApiBaseTestCase):
         self.assertListEqual([self.teams[0].pk], data["admin_team_ids"])
         self.assertEqual(False, data["is_staff"])
         self.assertEqual(False, data["is_tournament_admin"])
+        self.assertEqual(False, data["is_tournament_director"])
 
     def test_user_with_different_team_admin_access(self) -> None:
         c = self.client
@@ -1455,6 +1456,7 @@ class TestTournaments(ApiBaseTestCase):
         self.assertListEqual([self.teams[2].pk], data["admin_team_ids"])
         self.assertEqual(False, data["is_staff"])
         self.assertEqual(False, data["is_tournament_admin"])
+        self.assertEqual(False, data["is_tournament_director"])
 
     def test_player_with_multiple_teams_admin_access(self) -> None:
         c = self.client
@@ -1468,6 +1470,7 @@ class TestTournaments(ApiBaseTestCase):
         self.assertListEqual([self.teams[1].pk, self.teams[5].pk], data["admin_team_ids"])
         self.assertEqual(False, data["is_staff"])
         self.assertEqual(False, data["is_tournament_admin"])
+        self.assertEqual(False, data["is_tournament_director"])
 
     def test_user_without_team_admin_access(self) -> None:
         c = self.client
@@ -1481,6 +1484,7 @@ class TestTournaments(ApiBaseTestCase):
         self.assertListEqual([], data["admin_team_ids"])
         self.assertEqual(False, data["is_staff"])
         self.assertEqual(False, data["is_tournament_admin"])
+        self.assertEqual(False, data["is_tournament_director"])
 
     def test_user_with_staff_access(self) -> None:
         c = self.client
@@ -1496,6 +1500,7 @@ class TestTournaments(ApiBaseTestCase):
         self.assertListEqual([self.teams[0].pk], data["admin_team_ids"])
         self.assertEqual(True, data["is_staff"])
         self.assertEqual(False, data["is_tournament_admin"])
+        self.assertEqual(False, data["is_tournament_director"])
 
     def test_user_with_tournament_admin_access(self) -> None:
         c = self.client
@@ -1511,6 +1516,7 @@ class TestTournaments(ApiBaseTestCase):
         self.assertListEqual([self.teams[0].pk], data["admin_team_ids"])
         self.assertEqual(False, data["is_staff"])
         self.assertEqual(True, data["is_tournament_admin"])
+        self.assertEqual(False, data["is_tournament_director"])
 
     def test_valid_submit_spirit_score(self) -> None:
         valid_match = (

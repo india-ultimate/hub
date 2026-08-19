@@ -93,6 +93,7 @@ class Tournament(ExportModelOperationsMixin("tournament"), models.Model):  # typ
     use_uc_registrations = models.BooleanField(default=False)
 
     volunteers = models.ManyToManyField(User, related_name="tournament_volunteer", blank=True)
+    directors = models.ManyToManyField(User, related_name="directed_tournaments", blank=True)
 
 
 @receiver(m2m_changed, sender=Tournament.teams.through)

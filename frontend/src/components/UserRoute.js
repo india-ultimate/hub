@@ -11,7 +11,7 @@ import {
 
 import { Spinner } from "../icons";
 import { useStore } from "../store";
-import { fetchUserData } from "../utils";
+import { canManageTournaments, fetchUserData } from "../utils";
 
 const WithUserData = props => {
   const [store, { userFetchSuccess, userFetchFailure }] = useStore();
@@ -32,12 +32,13 @@ const WithUserData = props => {
   });
 
   const canView = () => {
-    if (!props.admin) {
-      console.log(props.admin);
-      return true;
-    } else {
-      return store.userFetched && store?.data?.is_staff;
+    if (props.staffOrDirector) {
+      return store.userFetched && canManageTournaments(store?.data);
     }
+    if (!props.admin) {
+      return true;
+    }
+    return store.userFetched && store?.data?.is_staff;
   };
 
   return (
@@ -76,7 +77,12 @@ const UserRoute = props => {
         {...props}
         component={null}
         element={
-          <WithUserData admin={props.admin}>{props.element}</WithUserData>
+          <WithUserData
+            admin={props.admin}
+            staffOrDirector={props.staffOrDirector}
+          >
+            {props.element}
+          </WithUserData>
         }
       />
     );
@@ -86,7 +92,10 @@ const UserRoute = props => {
         {...props}
         component={null}
         element={
-          <WithUserData admin={props.admin}>
+          <WithUserData
+            admin={props.admin}
+            staffOrDirector={props.staffOrDirector}
+          >
             <props.component />
           </WithUserData>
         }

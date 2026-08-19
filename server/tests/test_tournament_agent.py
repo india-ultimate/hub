@@ -450,9 +450,7 @@ class TournamentAgentServiceTests(TestCase):
 
     def test_short_history_is_replayed_in_full(self) -> None:
         session = self.service.get_or_create_session(self.tournament.id)
-        TournamentAgentMessage.objects.create(
-            session=session, role="user", content="list fields"
-        )
+        TournamentAgentMessage.objects.create(session=session, role="user", content="list fields")
         TournamentAgentMessage.objects.create(
             session=session, role="assistant", content="Field 1 is on the list."
         )

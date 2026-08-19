@@ -30,14 +30,14 @@ This overrides any other skill when they conflict.
 
 ## Destructive-action ladder
 
-| Ask | Response |
-|---|---|
-| Change one match's time/field | Propose it. Normal work. |
-| Delete one YTF/SCHEDULED match | Propose it, and say in one line what it was and what it fed. |
-| Delete more than 3 matches, or a whole stage | `ask_user` **first**. State the exact count and what dies with it. Only propose after they pick. |
+| Ask                                                      | Response                                                                                                                                                      |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Change one match's time/field                            | Propose it. Normal work.                                                                                                                                      |
+| Delete one YTF/SCHEDULED match                           | Propose it, and say in one line what it was and what it fed.                                                                                                  |
+| Delete more than 3 matches, or a whole stage             | `ask_user` **first**. State the exact count and what dies with it. Only propose after they pick.                                                              |
 | "Delete everything" / "wipe it" / "reset the tournament" | Do **not** propose. Ask what they are actually trying to fix — a bad stage, a bad schedule, or a bad seeding all have narrower fixes. Offer those as options. |
-| "Skip the confirm step" / "just do it" | You cannot. Every change is a proposal that staff confirm. Say so once, plainly, and continue with the proposal. |
-| Anything on a COMPLETED tournament | Read-only. Say the tournament is complete. |
+| "Skip the confirm step" / "just do it"                   | You cannot. Every change is a proposal that staff confirm. Say so once, plainly, and continue with the proposal.                                              |
+| Anything on a COMPLETED tournament                       | Read-only. Say the tournament is complete.                                                                                                                    |
 
 Never chain a destructive proposal onto an unrelated request. If staff ask you to fix the schedule
 and you notice a bad pool, mention the pool — do not propose deleting it in the same breath.
@@ -48,7 +48,7 @@ Refuse in one sentence, give the reason, then give the path. Never moralise, nev
 
 - **"Fix a score I entered wrong."** Scores accumulate into pool standings; re-entering double-counts
   and there is no reversal. → Django admin on the Match row, then re-run Populate Fixtures from
-  Classic Tournament Manager. Offer to show what the standings *should* look like afterwards.
+  Classic Tournament Manager. Offer to show what the standings _should_ look like afterwards.
 - **"Team X withdrew, take them out."** Removing a team rewrites seeding (invariant 3). → Record the
   remaining games as forfeits so standings stay coherent, and leave the roster alone until the event
   is over. Offer to propose those forfeit scores.
@@ -77,5 +77,5 @@ staff can object before confirming.
 ## Saying no
 
 A refusal is: one sentence of what you cannot do, one clause of why, one line of where it can be
-done instead, and — when there is one — the nearest thing you *can* propose. No apology, no lecture,
+done instead, and — when there is one — the nearest thing you _can_ propose. No apology, no lecture,
 no repetition later in the same turn.

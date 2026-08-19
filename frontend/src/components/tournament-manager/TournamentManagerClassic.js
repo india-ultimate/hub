@@ -45,7 +45,11 @@ import {
 } from "../../queries";
 import ScheduleSkeleton from "../../skeletons/Schedule";
 import { useStore } from "../../store";
-import { getCookie } from "../../utils";
+import {
+  canManageTournaments,
+  filterManageableTournaments,
+  getCookie
+} from "../../utils";
 import MatchHeader from "../match/MatchHeader";
 import CreateTournamentForm from "../tournament/CreateTournamentForm";
 import ReorderTeams from "../tournament/ReorderTeams";
@@ -54,6 +58,7 @@ import ScheduleTable from "../tournament/ScheduleTable";
 import UpdateSpiritScoreForm from "../tournament/UpdateSpiritScoreForm";
 import CreatedFields from "./CreatedFields";
 import CreateFieldForm from "./CreateFieldForm";
+import TournamentDirectors from "./TournamentDirectors";
 
 function getMatchCsvLabel(match) {
   if (match.pool || match.position_pool) {
@@ -292,6 +297,8 @@ const TournamentManager = props => {
 
   const teamsQuery = createQuery(() => ["teams"], fetchTeams);
   const tournamentsQuery = createQuery(() => ["tournaments"], fetchTournaments);
+  const manageableTournaments = () =>
+    filterManageableTournaments(tournamentsQuery.data, store?.data);
 
   const fieldsQuery = createQuery(
     () => ["fields", selectedTournamentID()],
@@ -571,15 +578,20 @@ const TournamentManager = props => {
   };
 
   return (
-    <Show when={store?.data?.is_staff} fallback={<p>Not Authorised!</p>}>
-      <div>
-        <h1 class="text-center text-2xl font-bold text-blue-500">
-          New Tournament
-        </h1>
-        <CreateTournamentForm />
-        {/* <CreateTournamentFromEventForm />  // Can be added only when needed  */}
-      </div>
-      <hr class="my-8 h-px border-0 bg-gray-200 dark:bg-gray-700" />
+    <Show
+      when={canManageTournaments(store?.data)}
+      fallback={<p>Not Authorised!</p>}
+    >
+      <Show when={store?.data?.is_staff}>
+        <div>
+          <h1 class="text-center text-2xl font-bold text-blue-500">
+            New Tournament
+          </h1>
+          <CreateTournamentForm />
+          {/* <CreateTournamentFromEventForm />  // Can be added only when needed  */}
+        </div>
+        <hr class="my-8 h-px border-0 bg-gray-200 dark:bg-gray-700" />
+      </Show>
       <div>
         <h1 class="mb-5 text-center text-2xl font-bold text-blue-500">
           Existing Tournaments
@@ -594,15 +606,16 @@ const TournamentManager = props => {
           }}
           class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
         >
-          <option value={0}>
-            Choose a tournament
-          </option>
-          <For each={tournamentsQuery.data}>
+          <option value={0}>Choose a tournament</option>
+          <For each={manageableTournaments()}>
             {t => <option value={t.id}>{t.event.title}</option>}
           </For>
         </select>
 
         <Show when={selectedTournamentID() > 0 && selectedTournament()}>
+          <Show when={store?.data?.is_staff}>
+            <TournamentDirectors tournamentId={selectedTournamentID()} />
+          </Show>
           <div class="relative my-5 overflow-x-auto">
             <div class="mb-4 text-xl font-bold text-blue-500">Seeding</div>
             <Switch>

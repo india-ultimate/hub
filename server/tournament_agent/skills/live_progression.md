@@ -5,11 +5,37 @@ always: false
 priority: 20
 when_status: [LIV]
 triggers:
-  [score, result, won, beat, advance, next round, fixtures, standings, who makes,
-   top 8, bracket, upset, seed swap, bye, swiss, forfeit, walkover, rank, tiebreak]
+  [
+    score,
+    result,
+    won,
+    beat,
+    advance,
+    next round,
+    fixtures,
+    standings,
+    who makes,
+    top 8,
+    bracket,
+    upset,
+    seed swap,
+    bye,
+    swiss,
+    forfeit,
+    walkover,
+    rank,
+    tiebreak
+  ]
 requires_tools:
-  [propose_match_score, get_swiss_standings, list_stages, get_standings, list_matches,
-   list_brackets, propose_generate_fixtures]
+  [
+    propose_match_score,
+    get_swiss_standings,
+    list_stages,
+    get_standings,
+    list_matches,
+    list_brackets,
+    propose_generate_fixtures
+  ]
 ---
 
 # Live progression skill
@@ -33,13 +59,13 @@ stuck with empty placeholders after its feeder completed.
 
 ## Reading the state (pick the narrow tool)
 
-| Question | Tool |
-|---|---|
-| Which stages are done, which are next | `list_stages` |
-| Pool / position-pool table | `get_standings` |
-| Swiss table, byes, current round | `get_swiss_standings` |
-| Bracket as it stands now | `list_brackets` (`current_seeding` is live, `initial_seeding` is the entry snapshot) |
-| Who plays where next | `list_matches(stage=…, status=…, day=…, team_id=…)` |
+| Question                              | Tool                                                                                 |
+| ------------------------------------- | ------------------------------------------------------------------------------------ |
+| Which stages are done, which are next | `list_stages`                                                                        |
+| Pool / position-pool table            | `get_standings`                                                                      |
+| Swiss table, byes, current round      | `get_swiss_standings`                                                                |
+| Bracket as it stands now              | `list_brackets` (`current_seeding` is live, `initial_seeding` is the entry snapshot) |
+| Who plays where next                  | `list_matches(stage=…, status=…, day=…, team_id=…)`                                  |
 
 Never answer a standings question from the chat history. Read first — a score may have landed since.
 

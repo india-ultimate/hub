@@ -510,6 +510,41 @@ const Dashboard = () => {
             </div>
           </div>
         </div>
+        <Show
+          when={
+            !store.data.is_staff &&
+            (store.data.directed_tournament_ids || []).length > 0
+          }
+        >
+          <h2 id="accordion-heading-director">
+            <button
+              type="button"
+              class="flex w-full items-center justify-between border-b border-gray-200 py-5 text-left font-medium text-gray-500 dark:border-gray-700 dark:text-gray-400"
+              data-accordion-target="#accordion-body-director"
+              aria-expanded="false"
+              aria-controls="accordion-body-director"
+            >
+              <span>Tournament director</span>
+              <AccordionDownIcon />
+            </button>
+          </h2>
+          <div
+            id="accordion-body-director"
+            class="hidden"
+            aria-labelledby="accordion-heading-director"
+          >
+            <div class="border-b border-gray-200 py-5 dark:border-gray-700">
+              <div class="w-full text-sm font-medium text-gray-900 dark:text-white">
+                <A
+                  href="/tournament-manager"
+                  class="block w-full cursor-pointer border-b border-gray-200 px-4 py-2 hover:bg-gray-100 hover:text-blue-700 focus:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 dark:border-gray-600 dark:hover:bg-gray-600 dark:hover:text-white dark:focus:text-white dark:focus:ring-gray-500"
+                >
+                  Manage Tournament
+                </A>
+              </div>
+            </div>
+          </div>
+        </Show>
         <Show when={store.data.is_staff}>
           <h2 id="accordion-heading-staff">
             <button

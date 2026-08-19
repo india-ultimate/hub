@@ -140,6 +140,55 @@ export const searchUsers = async searchText => {
   return await response.json();
 };
 
+export const fetchTournamentDirectors = async tournamentId => {
+  const response = await fetch(`/api/tournament/${tournamentId}/directors`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin"
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data?.message || JSON.stringify(data));
+  }
+  return data;
+};
+
+export const addTournamentDirector = async ({ tournamentId, userId }) => {
+  const response = await fetch(`/api/tournament/${tournamentId}/directors`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin",
+    body: JSON.stringify({ user_id: userId })
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data?.message || JSON.stringify(data));
+  }
+  return data;
+};
+
+export const removeTournamentDirector = async ({ tournamentId, userId }) => {
+  const response = await fetch(
+    `/api/tournament/${tournamentId}/directors/${userId}`,
+    {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCookie("csrftoken")
+      },
+      credentials: "same-origin"
+    }
+  );
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data?.message || JSON.stringify(data));
+  }
+  return data;
+};
+
 export const searchPlayers = async (searchText, pagination) => {
   let baseUrl = "/api/players/search";
   let params = new URLSearchParams();

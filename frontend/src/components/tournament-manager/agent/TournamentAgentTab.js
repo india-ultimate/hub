@@ -24,10 +24,13 @@ import {
   streamTournamentAgentAnswer,
   streamTournamentAgentMessage
 } from "../../../queries";
+import { useStore } from "../../../store";
+import { filterManageableTournaments } from "../../../utils";
 import StyledMarkdown from "../../StyledMarkdown";
 import ModelPicker from "./ModelPicker";
 import ProposalCard from "./ProposalCard";
-import QuestionCard, { QuestionSnapshot } from "./QuestionCard";
+import QuestionCard from "./QuestionCard";
+import QuestionSnapshot from "./QuestionSnapshot";
 import ToolEventTimeline from "./ToolEventTimeline";
 import TournamentRail from "./TournamentRail";
 
@@ -222,6 +225,7 @@ const AssistantMessage = props => (
 );
 
 const TournamentAgentTab = props => {
+  const [store] = useStore();
   const queryClient = useQueryClient();
   const [localTournamentId, setLocalTournamentId] = createSignal(
     props.tournamentId || null
@@ -246,6 +250,8 @@ const TournamentAgentTab = props => {
   });
 
   const tournamentsQuery = createQuery(() => ["tournaments"], fetchTournaments);
+  const manageableTournaments = () =>
+    filterManageableTournaments(tournamentsQuery.data, store?.data);
   const teamsQuery = createQuery(() => ["teams"], fetchTeams);
   const modelsQuery = createQuery(
     () => ["tournament-agent", "models"],
@@ -584,7 +590,7 @@ const TournamentAgentTab = props => {
             }}
           >
             <option value="">Select a tournament…</option>
-            <For each={tournamentsQuery.data || []}>
+            <For each={manageableTournaments()}>
               {t => <option value={t.id}>{t.event?.title || t.id}</option>}
             </For>
           </select>
@@ -874,10 +880,7 @@ const TournamentAgentTab = props => {
           </Show>
 
           <Show when={pendingProposals().length > 0}>
-            <hr
-              class="my-2"
-              style={{ "border-color": "var(--agent-line)" }}
-            />
+            <hr class="my-2" style={{ "border-color": "var(--agent-line)" }} />
           </Show>
 
           <TournamentRail

@@ -4,8 +4,14 @@ status: active
 always: true
 priority: 1
 requires_tools:
-  [get_tournament_overview, list_teams_seeding, list_fields, list_stages, list_matches,
-   ask_user]
+  [
+    get_tournament_overview,
+    list_teams_seeding,
+    list_fields,
+    list_stages,
+    list_matches,
+    ask_user
+  ]
 ---
 
 # Core rules
@@ -38,37 +44,37 @@ conversion you apply would put your matches out of step with every other writer.
 
 ### Structure
 
-| Tool | Effect |
-|---|---|
-| `propose_update_seeding` | Sets the tournament seeding map `{"1": team_id, …}` and resyncs every pool and Swiss snapshot. **Only works before the tournament starts.** |
-| `propose_create_pool(name, seq, seeding=[seeds])` | Creates the pool **and its round-robin matches** (unscheduled, YTF). |
-| `propose_create_swiss_round(name, seeding, num_rounds)` | Creates the Swiss group and all its round slots. |
-| `propose_create_cross_pool()` | Creates the cross-pool stage **only — no matches**. |
-| `propose_create_cross_pool_matches(seed_pairs, sequence_number=1)` | Creates the seed-pair matches, e.g. `[[1,3],[2,4],[5,12]]`. Needs the stage to exist. `sequence_number=2` for a second CP round. |
-| `propose_create_bracket(name, seq)` | Name must be a seed range string like `"1-8"`, spanning an even number of seeds. Creates every bracket match including placement games. |
-| `propose_create_position_pool(name, seq, seeding=[seeds])` | Round-robin among those seed numbers. |
-| `propose_create_field(name, address?, is_broadcasted?)` | Adds a playing field. |
-| `propose_full_setup(format, pool_defs, swiss_defs, bracket_names)` | Several stages in one Confirm. |
-| `propose_delete_stage(stage, stage_id)` | Deletes a stage **and all of its matches**. Refused if any is completed, if a bracket is already seeded from it, or — for pools and Swiss — once live. |
+| Tool                                                               | Effect                                                                                                                                                 |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `propose_update_seeding`                                           | Sets the tournament seeding map `{"1": team_id, …}` and resyncs every pool and Swiss snapshot. **Only works before the tournament starts.**            |
+| `propose_create_pool(name, seq, seeding=[seeds])`                  | Creates the pool **and its round-robin matches** (unscheduled, YTF).                                                                                   |
+| `propose_create_swiss_round(name, seeding, num_rounds)`            | Creates the Swiss group and all its round slots.                                                                                                       |
+| `propose_create_cross_pool()`                                      | Creates the cross-pool stage **only — no matches**.                                                                                                    |
+| `propose_create_cross_pool_matches(seed_pairs, sequence_number=1)` | Creates the seed-pair matches, e.g. `[[1,3],[2,4],[5,12]]`. Needs the stage to exist. `sequence_number=2` for a second CP round.                       |
+| `propose_create_bracket(name, seq)`                                | Name must be a seed range string like `"1-8"`, spanning an even number of seeds. Creates every bracket match including placement games.                |
+| `propose_create_position_pool(name, seq, seeding=[seeds])`         | Round-robin among those seed numbers.                                                                                                                  |
+| `propose_create_field(name, address?, is_broadcasted?)`            | Adds a playing field.                                                                                                                                  |
+| `propose_full_setup(format, pool_defs, swiss_defs, bracket_names)` | Several stages in one Confirm.                                                                                                                         |
+| `propose_delete_stage(stage, stage_id)`                            | Deletes a stage **and all of its matches**. Refused if any is completed, if a bracket is already seeded from it, or — for pools and Swiss — once live. |
 
 ### Running the event
 
-| Tool | Effect |
-|---|---|
-| `propose_start_tournament` | Assigns teams into pool and Swiss round-1 matches from seeding; the tournament goes LIVE. Refused if it has already started. |
+| Tool                                              | Effect                                                                                                                                                                                                                     |
+| ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `propose_start_tournament`                        | Assigns teams into pool and Swiss round-1 matches from seeding; the tournament goes LIVE. Refused if it has already started.                                                                                               |
 | `propose_match_score(match_id, s1, s2, forfeit?)` | Writes the result, completes the match, recomputes standings and seeding, applies bracket/CP seed swaps, and fills the next stage. **Runs fixture population itself** — do not follow it with `propose_generate_fixtures`. |
-| `propose_generate_fixtures` | Repair only: pairs the next Swiss round and fills placeholders when something has got out of step. Creates no matches. |
-| `propose_spirit_scores(match_id, …)` | Records spirit blocks and updates the spirit ranking. |
+| `propose_generate_fixtures`                       | Repair only: pairs the next Swiss round and fills placeholders when something has got out of step. Creates no matches.                                                                                                     |
+| `propose_spirit_scores(match_id, …)`              | Records spirit blocks and updates the spirit ranking.                                                                                                                                                                      |
 
 ### Schedule
 
-| Tool | Effect |
-|---|---|
-| `propose_recommended_schedule(…)` | Deterministic scheduler over matches that have no time or no field. One duration for all of them. |
-| `propose_bulk_schedule(assignments)` | Exact time/field/duration for many matches at once — use this whenever stages need different durations. |
-| `propose_update_match(match_id, …)` | One match's time, field or duration. |
-| `propose_shift_schedule(shift_mins, …)` | Moves a scoped set of unplayed matches by a fixed number of minutes. |
-| `propose_delete_match(match_id)` | Removes one match. Refused if completed. |
+| Tool                                    | Effect                                                                                                  |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `propose_recommended_schedule(…)`       | Deterministic scheduler over matches that have no time or no field. One duration for all of them.       |
+| `propose_bulk_schedule(assignments)`    | Exact time/field/duration for many matches at once — use this whenever stages need different durations. |
+| `propose_update_match(match_id, …)`     | One match's time, field or duration.                                                                    |
+| `propose_shift_schedule(shift_mins, …)` | Moves a scoped set of unplayed matches by a fixed number of minutes.                                    |
+| `propose_delete_match(match_id)`        | Removes one match. Refused if completed.                                                                |
 
 Scheduling never changes a match's status: status tracks whether teams are assigned, not whether a
 slot is. A pool match sits at Yet-To-Fix with a time on it until the tournament starts.
@@ -83,7 +89,7 @@ left choosing between a stale plan and a current one. Say what changed; do not t
 between two cards, and do not ask them to reject the old one first.
 
 Several proposals from the same tool in a single reply are fine and all stay live — four pools in
-one setup, for instance. Only a *later* reply replaces them.
+one setup, for instance. Only a _later_ reply replaces them.
 
 ## Verify before you report
 

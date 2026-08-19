@@ -12,6 +12,7 @@ from django.utils import timezone
 
 from server.core.models import User
 from server.tournament.models import Tournament
+from server.tournament.utils import can_manage_tournament
 from server.tournament_agent.catalog import default_model_id, is_allowed_model
 from server.tournament_agent.clients.opencode import (
     ChatCompletionResult,
@@ -78,6 +79,7 @@ MAX_NUDGE_ROUNDS = 2
 # Model-facing history only. The UI still shows every stored message; this is
 # what we replay into the next chat() call so the window and quota stay bounded.
 KEEP_RECENT_MESSAGES = 12
+MIN_RECENT_MESSAGES = 2
 HISTORY_CHAR_BUDGET = 20_000
 COMPACT_TURN_CHARS = 280
 COMPACT_DIGEST_CHARS = 8_000
@@ -116,13 +118,12 @@ def _compact_model_turns(turns: list[dict[str, Any]]) -> tuple[str, list[dict[st
         digest = (
             f"Earlier in this session ({len(older)} messages compacted). "
             "Tournament state may have changed — use tools, not this recap, "
-            "for live scores, seeding, or who is in which stage.\n"
-            + "\n".join(lines)
+            "for live scores, seeding, or who is in which stage.\n" + "\n".join(lines)
         )
         digest = _truncate_chars(digest, COMPACT_DIGEST_CHARS)
 
     recent_total = sum(len(t.get("content") or "") for t in recent)
-    while len(recent) > 2 and (len(digest) + recent_total) > HISTORY_CHAR_BUDGET:
+    while len(recent) > MIN_RECENT_MESSAGES and (len(digest) + recent_total) > HISTORY_CHAR_BUDGET:
         dropped = recent.pop(0)
         recent_total -= len(dropped.get("content") or "")
     return digest, recent
@@ -179,9 +180,9 @@ class TournamentAgentService:
     def get_or_create_session(
         self, tournament_id: int, model_id: str | None = None
     ) -> TournamentAgentSession:
-        if not self.user.is_staff:
-            raise PermissionError("Staff only")
         tournament = Tournament.objects.get(id=tournament_id)
+        if not can_manage_tournament(self.user, tournament):
+            raise PermissionError("Staff or assigned tournament director only")
         mid = model_id or settings.OPENCODE_GO_DEFAULT_MODEL or default_model_id()
         if not is_allowed_model(mid):
             raise ValueError(f"Model not allowed: {mid}")

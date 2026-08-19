@@ -7,11 +7,29 @@ priority: 30
 # turn would cost ~5k characters on turns that never mention it.
 when_status: []
 triggers:
-  [spirit, sotg, mvp, msp, most valuable, most spirited, roster, player, nominate,
-   spirit score, spirit ranking]
+  [
+    spirit,
+    sotg,
+    mvp,
+    msp,
+    most valuable,
+    most spirited,
+    roster,
+    player,
+    nominate,
+    spirit score,
+    spirit ranking
+  ]
 requires_tools:
-  [find_roster_player, get_match_spirit, list_missing_spirit_scores, get_spirit_summary,
-   propose_spirit_scores, ask_user, list_matches]
+  [
+    find_roster_player,
+    get_match_spirit,
+    list_missing_spirit_scores,
+    get_spirit_summary,
+    propose_spirit_scores,
+    ask_user,
+    list_matches
+  ]
 ---
 
 # Spirit and roster skill
@@ -30,18 +48,18 @@ name, and never repeat one back as though the system gave it to you.
 If more than one roster entry matches, you cannot tell them apart from ids. Ask:
 
 > `ask_user("Which player did you mean?", options=[{id: "812", label: "{{player:812}}"},
->            {id: "907", label: "{{player:907}}"}])`
+           {id: "907", label: "{{player:907}}"}])`
 
 ## Which block is which
 
 A match holds four spirit blocks. Getting these backwards is the easiest mistake here:
 
-| Block | Meaning |
-|---|---|
+| Block             | Meaning                              |
+| ----------------- | ------------------------------------ |
 | `team_1_received` | what team 1 **was given**, by team 2 |
 | `team_2_received` | what team 2 **was given**, by team 1 |
-| `team_1_self` | team 1 rating **itself** |
-| `team_2_self` | team 2 rating **itself** |
+| `team_1_self`     | team 1 rating **itself**             |
+| `team_2_self`     | team 2 rating **itself**             |
 
 MVP and MSP live on the **received** blocks only, and the nominated player must be on **that same
 team's** roster — `team_1_received.mvp_id` is a team 1 player, chosen by team 2. Self blocks carry
@@ -65,14 +83,14 @@ team is still not counted.
 
 ## Worked sequence
 
-Staff: *"Match 42 — Alpha gave Beta 2/2/3/2/2 and rated themselves 2/2/2/2/2, MVP for Beta was
-Priya."*
+Staff: _"Match 42 — Alpha gave Beta 2/2/3/2/2 and rated themselves 2/2/2/2/2, MVP for Beta was
+Priya."_
 
 1. `get_match_spirit(42)` — confirm which side is team 1, and what is already recorded.
 2. `find_roster_player(team_id=<Beta's id>, query="Priya")` → one id, say 812.
 3. `propose_spirit_scores(match_id=42, team_2_received={rules:2, fouls:2, fair:3, positive:2,
-   communication:2, mvp_id:812}, team_1_self={rules:2, fouls:2, fair:2, positive:2,
-   communication:2})`.
+communication:2, mvp_id:812}, team_1_self={rules:2, fouls:2, fair:2, positive:2,
+communication:2})`.
 4. In your summary: name the MVP as `{{player:812}}`, and say Beta is not yet counted towards the
    ranking because its self score is missing.
 
