@@ -531,7 +531,7 @@ const TournamentAgentTab = props => {
           signal,
           onEvent: handleEvent
         }),
-      ""
+      answerText
     );
   };
 
