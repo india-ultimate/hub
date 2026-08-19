@@ -457,7 +457,7 @@ const TournamentAgentTab = props => {
         prev.map((t, i) => (i === data.index ? { ...t, ...data } : t))
       );
     } else if (name === "proposal") {
-      setLiveProposals(prev => [data.proposal, ...prev]);
+      setLiveProposals(prev => [...prev, data.proposal]);
     } else if (name === "error") {
       setStreamError(data.message || "The agent failed");
     }
@@ -860,6 +860,13 @@ const TournamentAgentTab = props => {
                 </For>
               </div>
             </section>
+          </Show>
+
+          <Show when={pendingProposals().length > 0}>
+            <hr
+              class="my-2"
+              style={{ "border-color": "var(--agent-line)" }}
+            />
           </Show>
 
           <TournamentRail

@@ -19,7 +19,7 @@ const TOOL_TITLES = {
   propose_match_score: "Record match result",
   propose_spirit_scores: "Record spirit scores",
   propose_delete_stage: "Delete stage",
-  propose_full_setup: "Full tournament setup",
+  propose_full_setup: null,
   propose_start_tournament: "Start tournament"
 };
 
@@ -263,6 +263,46 @@ const ProposalPreview = props => {
         </p>
       </Show>
 
+      <Show when={tool() === "propose_full_setup"}>
+        <Show when={p().pool_defs?.length}>
+          <For each={p().pool_defs}>
+            {def_ => (
+              <div
+                class="rounded border p-2"
+                style={{ "border-color": "var(--agent-line)" }}
+              >
+                <Field label="Pool">{def_.name}</Field>
+                <Field label="Seeds">
+                  <SeedList seeds={def_.seeding} teamName={teamName} />
+                </Field>
+              </div>
+            )}
+          </For>
+        </Show>
+        <Show when={p().swiss_defs?.length}>
+          <For each={p().swiss_defs}>
+            {def_ => (
+              <div
+                class="rounded border p-2"
+                style={{ "border-color": "var(--agent-line)" }}
+              >
+                <Field label="Swiss">{def_.name}</Field>
+                <Field label="Rounds">{def_.num_rounds}</Field>
+                <Field label="Seeds">
+                  <SeedList seeds={def_.seeding} teamName={teamName} />
+                </Field>
+              </div>
+            )}
+          </For>
+        </Show>
+        <Show when={p().bracket_names?.length}>
+          <Field label="Brackets">{p().bracket_names.join(", ")}</Field>
+        </Show>
+        <Show when={p().format}>
+          <Field label="Format">{p().format}</Field>
+        </Show>
+      </Show>
+
       <Show when={tool() === "propose_start_tournament"}>
         <p class="text-xs" style={{ color: "var(--agent-ink)" }}>
           Assigns teams into pools and Swiss groups from the current seeding and
@@ -280,7 +320,26 @@ const ProposalCard = props => {
   const [showJson, setShowJson] = createSignal(false);
   const p = () => props.proposal;
   const locked = () => props.disabled || props.confirming || props.rejecting;
-  const title = () => TOOL_TITLES[p().tool_name] || p().tool_name;
+  const title = () => {
+    if (p().tool_name === "propose_full_setup") {
+      const payload = p().payload || {};
+      const parts = [];
+      if (payload.pool_defs?.length)
+        parts.push(
+          `${payload.pool_defs.length} pool${payload.pool_defs.length > 1 ? "s" : ""}`
+        );
+      if (payload.swiss_defs?.length)
+        parts.push(
+          `${payload.swiss_defs.length} Swiss group${payload.swiss_defs.length > 1 ? "s" : ""}`
+        );
+      if (payload.bracket_names?.length)
+        parts.push(
+          `${payload.bracket_names.length} bracket${payload.bracket_names.length > 1 ? "s" : ""}`
+        );
+      return parts.length ? `Create ${parts.join(" + ")}` : "Full tournament setup";
+    }
+    return TOOL_TITLES[p().tool_name] || p().tool_name;
+  };
   const highImpact = () => HIGH_IMPACT.has(p().tool_name);
 
   return (

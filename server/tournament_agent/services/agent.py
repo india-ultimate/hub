@@ -678,5 +678,5 @@ class TournamentAgentService:
             self._serialize_proposal(row)
             for row in session.proposals.select_related("session__tournament__event")
             .filter(status=ProposalStatus.PENDING)
-            .order_by("-created_at")
+            .order_by("created_at")
         ]
