@@ -362,11 +362,15 @@ class TournamentAgentService:
             raise OpenCodeGoError("Stream ended without a result")
         # Models that emit tool calls as text get that text stripped from the reply.
         # The raw blob was already streamed, so correct what the client is showing.
+        # But don't blank the display: if the provider stripped content to empty while
+        # the user already saw text, keep the streamed version visible during tool
+        # rounds — otherwise the UI flashes the first word then goes blank.
         raw_streamed = "".join(streamed)
-        if raw_streamed and (result.content or "") != raw_streamed:
+        final_content = result.content or ""
+        if raw_streamed and final_content != raw_streamed and final_content:
             yield {
                 "type": "text_replace",
-                "text": resolve_player_tokens(result.content or "", session.tournament),
+                "text": resolve_player_tokens(final_content, session.tournament),
             }
         return result
 
