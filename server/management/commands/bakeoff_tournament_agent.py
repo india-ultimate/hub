@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from typing import Any
 
 from django.conf import settings
-from django.core.management.base import BaseCommand, CommandError
+from django.core.management.base import BaseCommand, CommandError, CommandParser
 
 from server.core.models import User
 from server.tournament_agent.catalog import is_allowed_model
@@ -19,8 +20,8 @@ def _ensure_opencode_key_from_dotenv() -> None:
     env_path = Path(settings.BASE_DIR) / ".env"
     if not env_path.exists():
         return
-    for line in env_path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
+    for raw_line in env_path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
         if line.startswith("export "):
             line = line[len("export ") :].strip()
         if not line or line.startswith("#") or "=" not in line:
@@ -38,13 +39,11 @@ def _ensure_opencode_key_from_dotenv() -> None:
 class Command(BaseCommand):
     help = "Bake off tournament agent models on the capability/regression eval suite"
 
-    def add_arguments(self, parser) -> None:  # type: ignore[no-untyped-def]
+    def add_arguments(self, parser: CommandParser) -> None:
         parser.add_argument(
             "--models",
             type=str,
-            default=(
-                "kimi-k2.7-code,deepseek-v4-pro,glm-5.2,qwen3.7-plus,minimax-m3"
-            ),
+            default=("kimi-k2.7-code,deepseek-v4-pro,glm-5.2,qwen3.7-plus,minimax-m3"),
             help="Comma-separated model ids from the curated allowlist",
         )
         parser.add_argument(
@@ -66,12 +65,11 @@ class Command(BaseCommand):
             help="Staff user id to own sessions (defaults to first staff user)",
         )
 
-    def handle(self, *args, **options) -> None:  # type: ignore[no-untyped-def]
+    def handle(self, *args: Any, **options: Any) -> None:
         _ensure_opencode_key_from_dotenv()
         if not settings.OPENCODE_GO_API_KEY:
             raise CommandError(
-                "OPENCODE_GO_API_KEY is required for bakeoff "
-                "(export it or add it to .env)"
+                "OPENCODE_GO_API_KEY is required for bakeoff (export it or add it to .env)"
             )
 
         model_ids = [m.strip() for m in options["models"].split(",") if m.strip()]
