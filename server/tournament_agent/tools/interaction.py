@@ -28,7 +28,7 @@ def ask_user(
     prompt: str,
     selection_mode: str,
     options: list[dict[str, Any]],
-    allow_other: bool = False,
+    allow_other: bool = True,
     allow_skip: bool = False,
     context: str = "",
 ) -> dict[str, Any]:
@@ -60,7 +60,7 @@ def ask_user(
         context=context,
         selection_mode=selection_mode,
         options=clean_opts,
-        allow_other=bool(allow_other),
+        allow_other=True,
         allow_skip=bool(allow_skip),
         status=QuestionStatus.PENDING,
         created_by_message=ctx.assistant_message,

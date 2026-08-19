@@ -81,6 +81,7 @@ KEEP_RECENT_MESSAGES = 12
 HISTORY_CHAR_BUDGET = 20_000
 COMPACT_TURN_CHARS = 280
 COMPACT_DIGEST_CHARS = 8_000
+SKIP_FOLLOWUP = "Skipped. What would you like to do next?"
 
 
 def _truncate_chars(text: str, limit: int) -> str:
@@ -216,14 +217,21 @@ class TournamentAgentService:
         session.save(update_fields=["updated_at"])
 
     def history(self, session: TournamentAgentSession) -> dict[str, Any]:
+        questions_by_id = {q.id: q for q in session.questions.all()}
         messages = []
         for m in session.messages.all():
+            payload = dict(m.payload or {})
+            qid = payload.get("question_id")
+            if m.message_kind == MessageKind.QUESTION and qid is not None:
+                question = questions_by_id.get(int(qid))
+                if question:
+                    payload["question_snapshot"] = self._serialize_question(question)
             item: dict[str, Any] = {
                 "id": m.id,
                 "role": m.role,
                 "content": m.content,
                 "message_kind": m.message_kind,
-                "payload": m.payload or {},
+                "payload": payload,
                 "model_id": m.model_id,
                 "created_at": m.created_at.isoformat(),
             }
@@ -279,6 +287,8 @@ class TournamentAgentService:
         skip: bool = False,
     ) -> dict[str, Any]:
         self._record_answer(session, question_id, selected_ids, other_text=other_text, skip=skip)
+        if skip:
+            return self._skip_followup(session)
         return self._run_agent(session)
 
     def _record_answer(
@@ -304,6 +314,8 @@ class TournamentAgentService:
         if skip:
             # Staff can always cancel a pending question from the UI (not only when
             # the model set allow_skip). This dismisses stuck clarifying cards.
+            # Do not start another model turn — that is what re-asks the same
+            # options. A short assistant follow-up hands the conversation back.
             question.status = QuestionStatus.SKIPPED
             question.answer = {"skipped": True, "cancelled": True}
             question.answered_at = timezone.now()
@@ -311,7 +323,10 @@ class TournamentAgentService:
             TournamentAgentMessage.objects.create(
                 session=session,
                 role=MessageRole.USER,
-                content="User cancelled the clarifying question.",
+                content=(
+                    "Skipped this question. Do not ask it again with the same "
+                    "options. Wait for a new instruction."
+                ),
                 message_kind=MessageKind.ANSWER,
                 payload={"question_id": question.id, "skipped": True, "cancelled": True},
             )
@@ -324,13 +339,13 @@ class TournamentAgentService:
         if (
             question.selection_mode == QuestionSelectionMode.SINGLE
             and len(selected_ids) != 1
-            and not (question.allow_other and other_text and not selected_ids)
+            and not (other_text and not selected_ids)
         ):
             raise ValueError("Single select requires exactly one option")
         if (
             question.selection_mode == QuestionSelectionMode.MULTI
             and not selected_ids
-            and not (question.allow_other and other_text)
+            and not other_text
         ):
             raise ValueError("Multi select requires at least one option")
 
@@ -543,6 +558,7 @@ class TournamentAgentService:
                             assistant_msg.payload = {
                                 **(assistant_msg.payload or {}),
                                 "question_id": pause.question.id,
+                                "question_snapshot": self._serialize_question(pause.question),
                             }
                             if not assistant_msg.content:
                                 assistant_msg.content = pause.question.prompt
@@ -705,7 +721,35 @@ class TournamentAgentService:
     ) -> Iterator[dict[str, Any]]:
         """Streaming twin of `answer_question`. Raises ValueError on a bad answer."""
         self._record_answer(session, question_id, selected_ids, other_text=other_text, skip=skip)
+        if skip:
+            payload = self._skip_followup(session)
+
+            def skipped() -> Iterator[dict[str, Any]]:
+                yield {"type": "text_delta", "text": payload["response"]}
+                yield {"type": "done", "payload": payload}
+
+            return skipped()
         return self._resolved_events(self._run_agent_events(session), session)
+
+    def _skip_followup(self, session: TournamentAgentSession) -> dict[str, Any]:
+        """Close a skip without another model call, so the same question cannot loop."""
+        assistant_msg = TournamentAgentMessage.objects.create(
+            session=session,
+            role=MessageRole.ASSISTANT,
+            content=SKIP_FOLLOWUP,
+            message_kind=MessageKind.TEXT,
+            model_id=session.model_id,
+        )
+        return {
+            "response": SKIP_FOLLOWUP,
+            "pending_question": None,
+            "pending_proposals": self._pending_proposals(session),
+            "session_id": session.id,
+            "model_id": session.model_id,
+            "message_id": assistant_msg.id,
+            "tool_events": [],
+            "trace": [],
+        }
 
     def _serialize_proposal(self, row: AgentProposal) -> dict[str, Any]:
         tournament = row.session.tournament

@@ -27,7 +27,7 @@ import {
 import StyledMarkdown from "../../StyledMarkdown";
 import ModelPicker from "./ModelPicker";
 import ProposalCard from "./ProposalCard";
-import QuestionCard from "./QuestionCard";
+import QuestionCard, { QuestionSnapshot } from "./QuestionCard";
 import ToolEventTimeline from "./ToolEventTimeline";
 import TournamentRail from "./TournamentRail";
 
@@ -518,7 +518,7 @@ const TournamentAgentTab = props => {
       .filter(o => (body.selected_ids || []).includes(o.id))
       .map(o => o.label);
     const answerText = body.skip
-      ? "(cancelled)"
+      ? "(skipped)"
       : [labels.join(", "), body.other_text].filter(Boolean).join(" — ") ||
         "Answered";
 
@@ -666,17 +666,28 @@ const TournamentAgentTab = props => {
                         <Show
                           when={
                             msg.message_kind === "question" &&
-                            msg.payload?.question_id &&
-                            historyQuery.data?.pending_question?.id ===
-                              msg.payload.question_id &&
-                            !inputLocked()
+                            msg.payload?.question_id
                           }
                         >
-                          <QuestionCard
-                            question={historyQuery.data.pending_question}
-                            disabled={inputLocked()}
-                            onSubmit={handleAnswer}
-                          />
+                          <Show
+                            when={
+                              historyQuery.data?.pending_question?.id ===
+                                msg.payload.question_id && !inputLocked()
+                            }
+                            fallback={
+                              <Show when={msg.payload?.question_snapshot}>
+                                <QuestionSnapshot
+                                  question={msg.payload.question_snapshot}
+                                />
+                              </Show>
+                            }
+                          >
+                            <QuestionCard
+                              question={historyQuery.data.pending_question}
+                              disabled={inputLocked()}
+                              onSubmit={handleAnswer}
+                            />
+                          </Show>
                         </Show>
                       </AssistantMessage>
                     </Show>

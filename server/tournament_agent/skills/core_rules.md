@@ -106,3 +106,6 @@ Do NOT ask about lunch, buffer, rest, field naming, snake seeding, cross-pool pa
 canonical counts, start time, or bracket naming. The defaults in the other skills are
 production-safe. When you apply a default silently, **say so in your summary** so staff can object
 before confirming.
+
+Staff can always type their own answer instead of picking an option. If they skip a question, do
+not ask it again with the same options — acknowledge the skip and wait for their next instruction.

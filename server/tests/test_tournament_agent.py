@@ -211,6 +211,7 @@ class TournamentAgentToolTests(TestCase):
         q = cm.exception.question
         self.assertEqual(q.status, QuestionStatus.PENDING)
         self.assertEqual(len(q.options), 2)
+        self.assertTrue(q.allow_other)
 
     def test_propose_and_confirm_pool(self) -> None:
         result = propose_create_pool(self.ctx, name="A", sequence_number=1, seeding=[1, 2])
@@ -367,15 +368,85 @@ class TournamentAgentServiceTests(TestCase):
             allow_skip=False,
             status=QuestionStatus.PENDING,
         )
-        mock_result = MagicMock()
-        mock_result.content = "Okay, cancelled. Tell me when you're ready."
-        mock_result.tool_calls = []
-        with patch.object(self.service.client, "chat", return_value=mock_result):
+        with patch.object(self.service.client, "chat") as chat:
             out = self.service.answer_question(session, q.id, selected_ids=[], skip=True)
-        self.assertIn("cancelled", out["response"].lower())
+        chat.assert_not_called()
+        self.assertIn("What would you like to do next?", out["response"])
         q.refresh_from_db()
         self.assertEqual(q.status, QuestionStatus.SKIPPED)
         self.assertTrue((q.answer or {}).get("cancelled"))
+
+    def test_skip_does_not_start_another_model_turn(self) -> None:
+        session = self.service.get_or_create_session(self.tournament.id)
+        q = AgentQuestion.objects.create(
+            session=session,
+            prompt="Pools or Swiss?",
+            selection_mode="single",
+            options=[
+                {"id": "pools", "label": "Pools"},
+                {"id": "swiss", "label": "Swiss"},
+            ],
+            status=QuestionStatus.PENDING,
+        )
+        with patch.object(self.service.client, "chat") as chat:
+            out = self.service.answer_question(session, q.id, selected_ids=[], skip=True)
+        chat.assert_not_called()
+        self.assertIn("What would you like to do next?", out["response"])
+        q.refresh_from_db()
+        self.assertEqual(q.status, QuestionStatus.SKIPPED)
+        self.assertIsNone(out["pending_question"])
+        hist = self.service.history(session)
+        kinds = [m["message_kind"] for m in hist["messages"]]
+        self.assertIn("answer", kinds)
+
+    def test_typed_answer_without_selecting_an_option(self) -> None:
+        session = self.service.get_or_create_session(self.tournament.id)
+        q = AgentQuestion.objects.create(
+            session=session,
+            prompt="How many pools?",
+            selection_mode="single",
+            options=[
+                {"id": "2", "label": "2"},
+                {"id": "4", "label": "4"},
+            ],
+            allow_other=False,
+            status=QuestionStatus.PENDING,
+        )
+        mock_result = MagicMock()
+        mock_result.content = "Three pools it is."
+        mock_result.tool_calls = []
+        with patch.object(self.service.client, "chat", return_value=mock_result):
+            out = self.service.answer_question(
+                session, q.id, selected_ids=[], other_text="3 pools of 4"
+            )
+        self.assertIn("Three pools", out["response"])
+        q.refresh_from_db()
+        self.assertEqual(q.status, QuestionStatus.ANSWERED)
+        self.assertEqual((q.answer or {}).get("other_text"), "3 pools of 4")
+
+    def test_history_attaches_a_question_snapshot(self) -> None:
+        session = self.service.get_or_create_session(self.tournament.id)
+        q = AgentQuestion.objects.create(
+            session=session,
+            prompt="Pools or Swiss?",
+            selection_mode="single",
+            options=[
+                {"id": "pools", "label": "Pools"},
+                {"id": "swiss", "label": "Swiss"},
+            ],
+            status=QuestionStatus.PENDING,
+        )
+        TournamentAgentMessage.objects.create(
+            session=session,
+            role="assistant",
+            content="Pools or Swiss?",
+            message_kind="question",
+            payload={"question_id": q.id},
+        )
+        hist = self.service.history(session)
+        snap = hist["messages"][0]["payload"]["question_snapshot"]
+        self.assertEqual(snap["prompt"], "Pools or Swiss?")
+        self.assertEqual(len(snap["options"]), 2)
 
     def test_short_history_is_replayed_in_full(self) -> None:
         session = self.service.get_or_create_session(self.tournament.id)

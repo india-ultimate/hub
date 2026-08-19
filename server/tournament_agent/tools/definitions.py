@@ -252,7 +252,8 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "description": (
                 "Ask the staff user a clarifying single- or multi-choice question. "
                 "Use whenever format, duration, days, fields, or bracket size is ambiguous. "
-                "Do not guess irreversible choices."
+                "Do not guess irreversible choices. Staff can always type their own answer; "
+                "if they skip, do not ask the same question again."
             ),
             "parameters": {
                 "type": "object",

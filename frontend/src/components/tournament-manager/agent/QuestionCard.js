@@ -2,8 +2,8 @@ import { createSignal, For, Show } from "solid-js";
 
 /**
  * The agent's clarifying question, rendered on the AI surface. Single/multi
- * select options as a quiet bordered list, optional free-text "other", and
- * Submit / Skip actions. Styled with agent-surface tokens, not Flowbite.
+ * select options as a quiet bordered list, a free-text "other" on every
+ * question, and Submit / Skip actions.
  */
 const QuestionCard = props => {
   const q = () => props.question;
@@ -23,11 +23,7 @@ const QuestionCard = props => {
     }
   };
 
-  const canSubmit = () => {
-    if (selected().length > 0) return true;
-    if (q().allow_other && other().trim()) return true;
-    return false;
-  };
+  const canSubmit = () => selected().length > 0 || !!other().trim();
 
   return (
     <div
@@ -109,31 +105,29 @@ const QuestionCard = props => {
         </For>
       </div>
 
-      <Show when={q().allow_other}>
-        <div class="mb-3">
-          <label
-            for={`agent-q-other-${q().id}`}
-            class="mb-1.5 block text-xs font-medium"
-            style={{ color: "var(--agent-ink-muted)" }}
-          >
-            Other
-          </label>
-          <input
-            id={`agent-q-other-${q().id}`}
-            type="text"
-            class="block w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 disabled:opacity-50"
-            style={{
-              "border-color": "var(--agent-line-strong)",
-              "background-color": "var(--agent-canvas)",
-              color: "var(--agent-ink)"
-            }}
-            placeholder="Type another option…"
-            value={other()}
-            onInput={e => setOther(e.target.value)}
-            disabled={props.disabled}
-          />
-        </div>
-      </Show>
+      <div class="mb-3">
+        <label
+          for={`agent-q-other-${q().id}`}
+          class="mb-1.5 block text-xs font-medium"
+          style={{ color: "var(--agent-ink-muted)" }}
+        >
+          Or type your own answer
+        </label>
+        <input
+          id={`agent-q-other-${q().id}`}
+          type="text"
+          class="block w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 disabled:opacity-50"
+          style={{
+            "border-color": "var(--agent-line-strong)",
+            "background-color": "var(--agent-canvas)",
+            color: "var(--agent-ink)"
+          }}
+          placeholder="Type another option…"
+          value={other()}
+          onInput={e => setOther(e.target.value)}
+          disabled={props.disabled}
+        />
+      </div>
 
       <div class="mt-3 flex flex-wrap gap-2">
         <button
@@ -163,6 +157,78 @@ const QuestionCard = props => {
           Skip
         </button>
       </div>
+    </div>
+  );
+};
+
+/** Read-only recap of a question after it was answered or skipped. */
+export const QuestionSnapshot = props => {
+  const q = () => props.question || {};
+  const answer = () => q().answer || {};
+  const selected = () => new Set((answer().selected_ids || []).map(String));
+  const skipped = () => !!(answer().skipped || answer().cancelled);
+
+  return (
+    <div
+      class="mt-3 rounded-lg border p-4"
+      style={{
+        "border-color": "var(--agent-line)",
+        "background-color": "var(--agent-raised)"
+      }}
+    >
+      <div class="mb-2 flex items-center gap-2">
+        <span
+          class="text-[11px] font-medium uppercase tracking-wide"
+          style={{ color: "var(--agent-ink-muted)" }}
+        >
+          Question
+        </span>
+        <Show when={skipped()}>
+          <span class="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+            Skipped
+          </span>
+        </Show>
+      </div>
+      <p
+        class="mb-1 text-sm font-semibold"
+        style={{ color: "var(--agent-ink)" }}
+      >
+        {q().prompt}
+      </p>
+      <Show when={q().context}>
+        <p class="mb-2 text-xs" style={{ color: "var(--agent-ink-muted)" }}>
+          {q().context}
+        </p>
+      </Show>
+      <ul class="mt-2 space-y-1">
+        <For each={q().options || []}>
+          {opt => (
+            <li
+              class="flex items-start gap-2 text-sm"
+              style={{
+                color: selected().has(String(opt.id))
+                  ? "var(--agent-ink)"
+                  : "var(--agent-ink-muted)"
+              }}
+            >
+              <span class="mt-0.5 w-3 shrink-0 text-center text-[11px]">
+                {selected().has(String(opt.id)) ? "✓" : "•"}
+              </span>
+              <span>
+                {opt.label}
+                <Show when={opt.description}>
+                  <span class="ml-1 opacity-70">— {opt.description}</span>
+                </Show>
+              </span>
+            </li>
+          )}
+        </For>
+      </ul>
+      <Show when={answer().other_text}>
+        <p class="mt-2 text-sm" style={{ color: "var(--agent-ink)" }}>
+          Own answer: {answer().other_text}
+        </p>
+      </Show>
     </div>
   );
 };
