@@ -168,4 +168,4 @@ cython_debug/
 /secrets
 /cron/
 /.vscode
-/.DS_STORE
+.DS_Store
