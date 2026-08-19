@@ -58,7 +58,11 @@ from server.tournament_agent.privacy.mask import (
     contains_forbidden_keys,
     scrub_user_text,
 )
-from server.tournament_agent.services.agent import TournamentAgentService
+from server.tournament_agent.services.agent import (
+    KEEP_RECENT_MESSAGES,
+    TournamentAgentService,
+    _compact_model_turns,
+)
 from server.tournament_agent.services.proposals import (
     ProposalApplyError,
     apply_proposal,
@@ -372,6 +376,60 @@ class TournamentAgentServiceTests(TestCase):
         q.refresh_from_db()
         self.assertEqual(q.status, QuestionStatus.SKIPPED)
         self.assertTrue((q.answer or {}).get("cancelled"))
+
+    def test_short_history_is_replayed_in_full(self) -> None:
+        session = self.service.get_or_create_session(self.tournament.id)
+        TournamentAgentMessage.objects.create(
+            session=session, role="user", content="list fields"
+        )
+        TournamentAgentMessage.objects.create(
+            session=session, role="assistant", content="Field 1 is on the list."
+        )
+        messages = self.service._build_model_messages(session)
+        roles = [m["role"] for m in messages]
+        self.assertEqual(roles, ["system", "user", "assistant"])
+        self.assertNotIn("Earlier conversation (compacted)", messages[0]["content"])
+        self.assertEqual(messages[1]["content"], "list fields")
+        self.assertEqual(messages[2]["content"], "Field 1 is on the list.")
+
+    def test_long_history_is_compacted_for_the_model_not_the_ui(self) -> None:
+        session = self.service.get_or_create_session(self.tournament.id)
+        extra = KEEP_RECENT_MESSAGES + 4
+        for i in range(extra):
+            TournamentAgentMessage.objects.create(
+                session=session, role="user", content=f"old user {i} secret-detail-{i}"
+            )
+            TournamentAgentMessage.objects.create(
+                session=session, role="assistant", content=f"old reply {i}"
+            )
+        TournamentAgentMessage.objects.create(
+            session=session, role="user", content="schedule Saturday"
+        )
+        TournamentAgentMessage.objects.create(
+            session=session, role="assistant", content="Here is a plan."
+        )
+
+        model_msgs = self.service._build_model_messages(session)
+        self.assertEqual(model_msgs[0]["role"], "system")
+        self.assertIn("Earlier conversation (compacted)", model_msgs[0]["content"])
+        self.assertIn("old user 0", model_msgs[0]["content"])
+        # Recent turns stay as real messages; the oldest ones are digest-only.
+        recent_text = " ".join(m["content"] for m in model_msgs[1:])
+        self.assertIn("schedule Saturday", recent_text)
+        self.assertNotIn("old user 0 secret-detail-0", recent_text)
+        self.assertLessEqual(len(model_msgs) - 1, KEEP_RECENT_MESSAGES)
+
+        ui = self.service.history(session)
+        self.assertGreater(len(ui["messages"]), KEEP_RECENT_MESSAGES)
+
+    def test_compact_helper_leaves_short_transcripts_alone(self) -> None:
+        turns = [
+            {"role": "user", "content": "pools?"},
+            {"role": "assistant", "content": "two of four"},
+        ]
+        digest, recent = _compact_model_turns(turns)
+        self.assertEqual(digest, "")
+        self.assertEqual(recent, turns)
 
 
 class NewProposalToolTests(TestCase):

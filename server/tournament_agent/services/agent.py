@@ -75,6 +75,57 @@ MAX_EVENT_ARGS_CHARS = 4000
 # rounds the model is left to finish the turn however it sees fit.
 MAX_NUDGE_ROUNDS = 2
 
+# Model-facing history only. The UI still shows every stored message; this is
+# what we replay into the next chat() call so the window and quota stay bounded.
+KEEP_RECENT_MESSAGES = 12
+HISTORY_CHAR_BUDGET = 20_000
+COMPACT_TURN_CHARS = 280
+COMPACT_DIGEST_CHARS = 8_000
+
+
+def _truncate_chars(text: str, limit: int) -> str:
+    text = (text or "").strip()
+    if len(text) <= limit:
+        return text
+    return text[: max(limit - 1, 0)].rstrip() + "…"
+
+
+def _compact_model_turns(turns: list[dict[str, Any]]) -> tuple[str, list[dict[str, Any]]]:
+    """Fold older turns into a digest. Returns (digest_or_empty, recent_turns).
+
+    Live scores and roster state must still come from tools — the digest is a
+    recap of what staff asked, not a source of truth.
+    """
+    if not turns:
+        return "", []
+
+    total = sum(len(t.get("content") or "") for t in turns)
+    if len(turns) <= KEEP_RECENT_MESSAGES and total <= HISTORY_CHAR_BUDGET:
+        return "", turns
+
+    keep_n = min(KEEP_RECENT_MESSAGES, len(turns))
+    older, recent = turns[:-keep_n], turns[-keep_n:]
+    digest = ""
+    if older:
+        lines: list[str] = []
+        for turn in older:
+            speaker = "Staff" if turn.get("role") == "user" else "Agent"
+            snippet = _truncate_chars(str(turn.get("content") or ""), COMPACT_TURN_CHARS)
+            lines.append(f"{speaker}: {snippet}")
+        digest = (
+            f"Earlier in this session ({len(older)} messages compacted). "
+            "Tournament state may have changed — use tools, not this recap, "
+            "for live scores, seeding, or who is in which stage.\n"
+            + "\n".join(lines)
+        )
+        digest = _truncate_chars(digest, COMPACT_DIGEST_CHARS)
+
+    recent_total = sum(len(t.get("content") or "") for t in recent)
+    while len(recent) > 2 and (len(digest) + recent_total) > HISTORY_CHAR_BUDGET:
+        dropped = recent.pop(0)
+        recent_total -= len(dropped.get("content") or "")
+    return digest, recent
+
 
 def _tool_event_args(args: dict[str, Any]) -> dict[str, Any]:
     """Arguments as stored on the tool event; oversized payloads get truncated."""
@@ -321,8 +372,11 @@ class TournamentAgentService:
                 turns.append({"role": "assistant", "content": m.content or ""})
 
         latest_user = next((t["content"] for t in reversed(turns) if t["role"] == "user"), "")
+        digest, recent = _compact_model_turns(turns)
         system = build_system_prompt(session.tournament, latest_user)
-        return [{"role": "system", "content": system}, *turns]
+        if digest:
+            system = f"{system}\n\n## Earlier conversation (compacted)\n{digest}"
+        return [{"role": "system", "content": system}, *recent]
 
     def _chat_round(
         self,
