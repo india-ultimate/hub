@@ -68,6 +68,9 @@ class ProposalSchema(Schema):
     tool_name: str
     summary: str
     payload: dict[str, Any]
+    # Resolved names for player ids in the payload (spirit MVP/MSP). Kept off the
+    # payload itself so confirm still replays bare ids.
+    player_names: dict[str, str] = {}
     status: str
     created_at: str
 

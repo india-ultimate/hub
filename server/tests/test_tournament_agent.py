@@ -140,6 +140,23 @@ class CatalogTests(TestCase):
         self.assertEqual(recommend_balanced_default(results), "minimax-m3")
 
 
+class SchemaTests(TestCase):
+    def test_proposal_schema_keeps_player_names(self) -> None:
+        from server.tournament_agent.schema import ProposalSchema
+
+        parsed = ProposalSchema(
+            id=1,
+            tool_name="propose_spirit_scores",
+            summary="Spirit",
+            payload={"team_1_received": {"mvp_id": 12}},
+            player_names={"12": "Priya Nair"},
+            status="pending",
+            created_at="2026-08-01T00:00:00",
+        )
+        dumped = parsed.model_dump() if hasattr(parsed, "model_dump") else parsed.dict()
+        self.assertEqual(dumped["player_names"], {"12": "Priya Nair"})
+
+
 class TournamentAgentToolTests(TestCase):
     def setUp(self) -> None:
         self.user = User.objects.create(username="staff1", is_staff=True)
