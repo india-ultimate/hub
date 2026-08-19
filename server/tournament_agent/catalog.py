@@ -21,9 +21,9 @@ class AgentModel:
 
 
 # Only these appear in the UI picker. Update when Go roster / quotas change.
-# Default = best bakeoff capability × quota balance (not raw score alone).
+# Default = best bakeoff capability x quota balance (not raw score alone).
 # MiniMax M3 led the hardened suite (~96) at 3,200 req/5h; GLM scored well
-# but is ~4× more quota-constrained (880). Flash/MiMo base maximize quota.
+# but is ~4x more quota-constrained (880). Flash/MiMo base maximize quota.
 AGENT_MODELS: tuple[AgentModel, ...] = (
     AgentModel(
         id="minimax-m3",
@@ -96,7 +96,7 @@ def default_model_id() -> str:
 
 
 def value_score(suite_score: float, model_id: str) -> float:
-    """Capability × log(quota) so high score + usable limits win over peak-only models."""
+    """Capability x log(quota) so high score + usable limits win over peak-only models."""
     model = get_model(model_id)
     quota = max(int(model.req_per_5h) if model else 1, 1)
     return float(suite_score) * log10(quota + 1)

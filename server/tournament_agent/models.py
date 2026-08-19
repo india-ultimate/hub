@@ -8,7 +8,9 @@ from server.tournament_agent.catalog import default_model_id
 
 
 class TournamentAgentSession(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="tournament_agent_sessions")
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="tournament_agent_sessions"
+    )
     tournament = models.ForeignKey(
         Tournament, on_delete=models.CASCADE, related_name="agent_sessions"
     )
@@ -107,7 +109,11 @@ class AgentQuestion(models.Model):
 class ProposalStatus(models.TextChoices):
     PENDING = "pending", "Pending"
     CONFIRMED = "confirmed", "Confirmed"
+    # Staff decided. Kept distinct from EXPIRED so "how often is the agent turned
+    # down?" stays an answerable question.
     REJECTED = "rejected", "Rejected"
+    # Retired without anyone deciding: replaced by a newer plan from the same tool,
+    # or the conversation it belonged to was cleared.
     EXPIRED = "expired", "Expired"
 
 
