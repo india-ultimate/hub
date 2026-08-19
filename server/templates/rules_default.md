@@ -2,11 +2,19 @@
 
 ## Format
 
-| Stage            | Description                                                      |
-| :--------------- | :--------------------------------------------------------------- |
-| **Pool Games**   | 1-16 (4 Pools of 4). Re-seed within pools only. 75 minute games. |
-| **Cross-Pool 1** | 1-4, 5-12, 13-16. 75 minute games.                               |
-| **Bracket**      | 1-8, 9-16. Winner takes the higher seed. 100 minute games.       |
+<!-- format:auto -->
+
+The format appears here once the tournament's stages are created.
+
+<!-- /format:auto -->
+
+The table above is maintained for you and rewritten whenever the stages change — there is no need
+to edit it by hand. Anything you write outside those two comment markers is yours and is never
+touched; delete the markers if you would rather write the format yourself.
+
+Events use the same building blocks — pools, cross-pool, brackets and position pools — in whatever
+combination fits the entry list. Some events use a Swiss draw in place of pools; see "Swiss draws"
+below.
 
 ## Rules
 

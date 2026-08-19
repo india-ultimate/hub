@@ -1,7 +1,7 @@
 from typing import Any
 
 from django.db import models
-from django.db.models.signals import m2m_changed
+from django.db.models.signals import m2m_changed, post_delete, post_save
 from django.dispatch import receiver
 from django.utils.translation import gettext_lazy as _
 from django_prometheus.models import ExportModelOperationsMixin
@@ -215,6 +215,33 @@ class PositionPool(ExportModelOperationsMixin("position_pool"), models.Model):  
 
     class Meta:
         unique_together = ["name", "tournament"]
+
+
+@receiver(post_save, sender=Pool)
+@receiver(post_save, sender=SwissRound)
+@receiver(post_save, sender=CrossPool)
+@receiver(post_save, sender=Bracket)
+@receiver(post_save, sender=PositionPool)
+@receiver(post_delete, sender=Pool)
+@receiver(post_delete, sender=SwissRound)
+@receiver(post_delete, sender=CrossPool)
+@receiver(post_delete, sender=Bracket)
+@receiver(post_delete, sender=PositionPool)
+def update_rules_format_on_stage_change(sender: Any, instance: Any, **kwargs: Any) -> None:
+    """Keep the Format table in the tournament's rules describing the real stages.
+
+    A signal rather than a call inside each stage builder: the staff API, the
+    tournament agent's apply path, the admin and the shell all create stages, and
+    only this catches deletions too. `sync_rules_format` is a no-op unless the
+    rules carry the managed-block markers, so it cannot surprise anyone.
+    """
+    from server.tournament.rules import sync_rules_format
+
+    try:
+        tournament = instance.tournament
+    except Tournament.DoesNotExist:
+        return  # the tournament itself is being cascade-deleted; nothing to update
+    sync_rules_format(tournament)
 
 
 class MatchScore(ExportModelOperationsMixin("match_score"), models.Model):  # type: ignore[misc]
