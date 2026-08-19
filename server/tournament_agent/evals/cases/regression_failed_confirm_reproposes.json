@@ -1,36 +1,20 @@
 {
   "id": "regression_failed_confirm_reproposes",
   "tier": "regression",
-  "tags": [
-    "repair",
-    "confirm"
-  ],
+  "tags": ["repair", "confirm"],
   "difficulty": "hard",
   "fixture": {
     "team_count": 8,
-    "fields": [
-      "Field 1",
-      "Field 2"
-    ],
+    "fields": ["Field 1", "Field 2"],
     "start_date": "2026-08-01",
     "pools": [
       {
         "name": "A",
-        "seeding": [
-          1,
-          4,
-          5,
-          8
-        ]
+        "seeding": [1, 4, 5, 8]
       },
       {
         "name": "B",
-        "seeding": [
-          2,
-          3,
-          6,
-          7
-        ]
+        "seeding": [2, 3, 6, 7]
       }
     ],
     "end_date": "2026-08-02"
@@ -45,14 +29,10 @@
       "text": "Confirming that failed: two matches would be on the same field at the same time. Fix it."
     }
   ],
-  "gold_tools": [
-    "propose_recommended_schedule"
-  ],
+  "gold_tools": ["propose_recommended_schedule"],
   "expect_state": {
     "min_proposals": 1,
-    "proposal_tools": [
-      "propose_recommended_schedule"
-    ],
+    "proposal_tools": ["propose_recommended_schedule"],
     "must_not_ask_user": true
   },
   "budget": {

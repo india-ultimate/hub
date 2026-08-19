@@ -54,9 +54,7 @@ ALL_READS = BASE_READS | STRUCTURE_READS | STANDINGS_READS | SCHEDULE_READS | SP
 
 # --- write groups ----------------------------------------------------------
 
-FIELD_TOOLS = frozenset(
-    {"propose_create_field", "propose_update_field", "propose_delete_field"}
-)
+FIELD_TOOLS = frozenset({"propose_create_field", "propose_update_field", "propose_delete_field"})
 STAGE_TOOLS = frozenset(
     {
         "propose_pool_stage",

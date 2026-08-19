@@ -1,17 +1,11 @@
 {
   "id": "regression_stale_plan",
   "tier": "regression",
-  "tags": [
-    "state",
-    "history"
-  ],
+  "tags": ["state", "history"],
   "difficulty": "hard",
   "fixture": {
     "team_count": 8,
-    "fields": [
-      "Field 1",
-      "Field 2"
-    ]
+    "fields": ["Field 1", "Field 2"]
   },
   "user_script": [
     {
@@ -23,9 +17,7 @@
       "text": "Great. Now add a 1-4 bracket on top of those pools."
     }
   ],
-  "gold_tools": [
-    "propose_pool_stage"
-  ],
+  "gold_tools": ["propose_pool_stage"],
   "expect_state": {
     "min_proposals": 1,
     "forbidden_response_text": [

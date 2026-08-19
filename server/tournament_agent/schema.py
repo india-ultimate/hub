@@ -76,6 +76,14 @@ class ProposalSchema(Schema):
     last_error: str = ""
 
 
+class NextStepSchema(Schema):
+    """The one obvious next move, or absent when there is not one."""
+
+    label: str
+    prompt: str
+    why: str = ""
+
+
 class HistorySchema(Schema):
     session_id: int
     tournament_id: int
@@ -83,6 +91,9 @@ class HistorySchema(Schema):
     messages: list[AgentMessageSchema]
     pending_question: QuestionSchema | None
     pending_proposals: list[ProposalSchema]
+    next_step: NextStepSchema | None = None
+    # What the composer invites staff to type, for the phase they are in.
+    placeholder: str = ""
 
 
 class AgentResponseSchema(Schema):
@@ -91,6 +102,7 @@ class AgentResponseSchema(Schema):
     model_id: str
     pending_question: QuestionSchema | None = None
     pending_proposals: list[ProposalSchema] = []
+    next_step: NextStepSchema | None = None
     tool_events: list[dict[str, Any]] = []
 
 

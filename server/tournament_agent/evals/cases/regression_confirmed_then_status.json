@@ -1,17 +1,11 @@
 {
   "id": "regression_confirmed_then_status",
   "tier": "regression",
-  "tags": [
-    "state",
-    "confirm"
-  ],
+  "tags": ["state", "confirm"],
   "difficulty": "hard",
   "fixture": {
     "team_count": 8,
-    "fields": [
-      "Field 1",
-      "Field 2"
-    ]
+    "fields": ["Field 1", "Field 2"]
   },
   "user_script": [
     {
@@ -28,9 +22,7 @@
     }
   ],
   "expect_state": {
-    "must_confirm": [
-      "propose_pool_stage"
-    ],
+    "must_confirm": ["propose_pool_stage"],
     "must_not_ask_user": true,
     "max_proposals": 1,
     "forbidden_response_text": [

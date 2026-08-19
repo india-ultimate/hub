@@ -294,39 +294,15 @@ const TournamentRail = props => {
 
   const prompt = text => props.onPrompt?.(text);
 
-  /** The single most useful next move, from current state. */
+  /** The next move, derived by the server from the same phase the tool gate uses.
+   *  This used to be computed here from separately fetched queries, which meant
+   *  the rail could suggest a format on a tournament with no fields — something
+   *  the agent now declines, because stage tools are not offered in NO_FIELDS. */
   const nextStep = createMemo(() => {
-    if (!props.tournament) return null;
-    if (status() === "COM" || status() === "LIV") return null;
-    if (teamCount() === 0) return null; // teams come from registration
-    if (!hasFormat()) {
-      return {
-        label: "Recommend a format",
-        text: "Recommend pools or Swiss groups for the registered teams"
-      };
-    }
-    if (matches().length > 0 && fields().length === 0) {
-      return {
-        label: "Add a field",
-        text: "Add a field to this tournament so matches can be scheduled"
-      };
-    }
-    if (unscheduled().length > 0 && fields().length > 0) {
-      return {
-        label: `Schedule ${unscheduled().length} match${
-          unscheduled().length === 1 ? "" : "es"
-        }`,
-        text: "Recommend a schedule for the matches that aren't scheduled yet"
-      };
-    }
-    if (
-      status() === "SCH" &&
-      matches().length > 0 &&
-      unscheduled().length === 0
-    ) {
-      return { label: "Start the tournament", text: "Start the tournament" };
-    }
-    return null;
+    const step = props.nextStep;
+    return step
+      ? { label: step.label, text: step.prompt, why: step.why }
+      : null;
   });
 
   /** Stage types actually present in the schedule, for the legend. */

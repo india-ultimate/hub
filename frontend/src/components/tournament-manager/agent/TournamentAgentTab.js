@@ -761,6 +761,18 @@ const TournamentAgentTab = props => {
     }
   };
 
+  /** Server-derived next move. Deliberately hidden when anything else is
+   *  already asking for the user's attention, or when they are mid-thought. */
+  const nextStep = createMemo(() => {
+    const step = historyQuery.data?.next_step;
+    if (!step) return null;
+    if (inputLocked() || isAwaitingAgent()) return null;
+    if (draft().trim()) return null;
+    if (pendingProposals().length > 0) return null;
+    if (historyQuery.data?.pending_question) return null;
+    return step;
+  });
+
   const handleSend = async message => {
     if (inputLocked()) return;
     const text = (message ?? draft()).trim();
@@ -1074,8 +1086,38 @@ const TournamentAgentTab = props => {
                 </div>
               </Show>
 
+              <Show when={nextStep()}>
+                {step => (
+                  <div class="mb-2 flex items-center gap-2">
+                    <span
+                      class="text-[11px] font-medium uppercase tracking-wide"
+                      style={{ color: "var(--agent-ink-muted)" }}
+                    >
+                      Next
+                    </span>
+                    <button
+                      type="button"
+                      title={step().why}
+                      class="cursor-pointer rounded-full border px-3 py-1 text-xs font-medium transition-colors duration-150 hover:border-[color:var(--agent-line-strong)] focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                      style={{
+                        "border-color": "var(--agent-line)",
+                        "background-color": "var(--agent-raised)",
+                        color: "var(--agent-ink)"
+                      }}
+                      onClick={() => {
+                        setDraft(step().prompt);
+                        autosize();
+                        textareaRef?.focus();
+                      }}
+                    >
+                      {step().label}
+                    </button>
+                  </div>
+                )}
+              </Show>
+
               <form
-                class="flex items-end gap-2 rounded-xl border p-2 transition-shadow duration-150 focus-within:ring-2 focus-within:ring-blue-500/40"
+                class="flex items-end rounded-xl border p-2 transition-shadow duration-150 focus-within:ring-2 focus-within:ring-blue-500/40"
                 style={{
                   "border-color": "var(--agent-line-strong)",
                   "background-color": "var(--agent-raised)"
@@ -1092,7 +1134,10 @@ const TournamentAgentTab = props => {
                   aria-label="Message the agent"
                   class="max-h-[200px] min-h-[32px] min-w-0 flex-1 resize-none border-0 bg-transparent px-2 py-1.5 text-left text-sm focus:outline-none focus:ring-0 disabled:cursor-not-allowed disabled:opacity-50"
                   style={{ color: "var(--agent-ink)" }}
-                  placeholder="Ask for pools, a bracket, or a schedule…"
+                  placeholder={
+                    historyQuery.data?.placeholder ||
+                    "Ask for pools, a bracket, or a schedule…"
+                  }
                   value={draft()}
                   disabled={inputLocked()}
                   onInput={e => {
@@ -1186,6 +1231,7 @@ const TournamentAgentTab = props => {
             tournament={tournament()}
             teamsMap={teamsMap()}
             busy={inputLocked()}
+            nextStep={historyQuery.data?.next_step}
             onPrompt={text => handleSend(text)}
           />
         </aside>

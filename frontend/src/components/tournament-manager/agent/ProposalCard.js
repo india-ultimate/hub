@@ -85,10 +85,22 @@ const SeedList = props => (
  * disclosure for shapes without a bespoke view - staff should be able to check
  * what they are confirming without reading JSON.
  */
+/** Stages seeded straight from registration, where seed N really is that team.
+ *  Everywhere else (cross pool, brackets, position pools) a seed is a placeholder
+ *  for "whoever finishes Nth", so showing today's team name against it is wrong. */
+const REGISTRATION_SEEDED = new Set([
+  "propose_create_pool",
+  "propose_pool_stage",
+  "propose_create_swiss_round",
+  "propose_full_setup",
+  "propose_update_seeding"
+]);
+
 const ProposalPreview = props => {
   const p = () => props.proposal.payload || {};
   const tool = () => props.proposal.tool_name;
-  const teamName = seed => props.seedToTeamName?.(seed);
+  const teamName = seed =>
+    REGISTRATION_SEEDED.has(tool()) ? props.seedToTeamName?.(seed) : undefined;
   const playerNames = () => props.proposal.player_names || {};
 
   return (
@@ -98,6 +110,19 @@ const ProposalPreview = props => {
         <Field label="Seeds">
           <SeedList seeds={p().seeding} teamName={teamName} />
         </Field>
+      </Show>
+
+      <Show when={tool() === "propose_pool_stage"}>
+        <Field label="Pools">{(p().pools || []).length}</Field>
+        <div class="space-y-1">
+          <For each={p().pools || []}>
+            {pool => (
+              <Field label={`Pool ${pool.name}`}>
+                <SeedList seeds={pool.seeding} teamName={teamName} />
+              </Field>
+            )}
+          </For>
+        </div>
       </Show>
 
       <Show when={tool() === "propose_create_swiss_round"}>
@@ -220,11 +245,6 @@ const ProposalPreview = props => {
                 <span class="tabular-nums">Seed {pair[0]}</span>
                 <span style={{ color: "var(--agent-ink-muted)" }}>vs</span>
                 <span class="tabular-nums">Seed {pair[1]}</span>
-                <Show when={teamName(pair[0]) && teamName(pair[1])}>
-                  <span class="truncate opacity-70">
-                    ({teamName(pair[0])} vs {teamName(pair[1])})
-                  </span>
-                </Show>
               </div>
             )}
           </For>

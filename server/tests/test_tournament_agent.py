@@ -22,6 +22,7 @@ from django.utils.dateparse import parse_datetime
 from server.core.models import Player, Team, User
 from server.tests.base import ApiBaseTestCase, create_event
 from server.tournament.models import (
+    CrossPool,
     Match,
     Pool,
     PositionPool,
@@ -54,6 +55,11 @@ from server.tournament_agent.domain.format import (
     canonical_stage_name,
     rewrite_sequential_pool_defs,
     snake_pool_seeds,
+)
+from server.tournament_agent.domain.next_step import (
+    PLACEHOLDERS,
+    NextStep,
+    next_step_for,
 )
 from server.tournament_agent.domain.phase import Phase, phase_for
 from server.tournament_agent.domain.scheduler import recommend_schedule
@@ -2823,6 +2829,144 @@ class HardeningTests(TestCase):
         ):
             out = self.service.process_message(self.session, "set up pools")
         self.assertIn("switched off", out["response"])
+
+
+class NextStepTests(TestCase):
+    """The suggestion above the chat box: right, or absent."""
+
+    def setUp(self) -> None:
+        self.user = User.objects.create(username="next-staff", is_staff=True)
+        self.event = create_event(title="Next Open")
+        self.tournament = Tournament.objects.create(
+            event=self.event, status=Tournament.Status.SCHEDULING
+        )
+        teams = [Team.objects.create(name=f"Nx {i}", slug=f"nx-{i}") for i in range(1, 5)]
+        seeding = {str(i): t.id for i, t in enumerate(teams, start=1)}
+        self.tournament.initial_seeding = seeding
+        self.tournament.current_seeding = seeding
+        self.tournament.save()
+        self.tournament.teams.set(teams)
+        self.session = TournamentAgentSession.objects.create(
+            user=self.user, tournament=self.tournament, model_id=default_model_id()
+        )
+
+    def _step(self) -> NextStep | None:
+        snap = build_snapshot(self.session)
+        return next_step_for(snap, phase_for(snap))
+
+    def test_it_walks_the_setup_order(self) -> None:
+        step = self._step()
+        assert step is not None
+        self.assertEqual(step.label, "Add fields")
+
+        TournamentField.objects.create(tournament=self.tournament, name="F1")
+        step = self._step()
+        assert step is not None
+        self.assertEqual(step.label, "Choose a format")
+
+        build_pool(self.tournament, name="A", sequence_number=1, seeding=[1, 2, 3, 4])
+        step = self._step()
+        assert step is not None
+        # Not "schedule", and emphatically not "start": a pool with no bracket
+        # decides seeding and nothing else.
+        self.assertEqual(step.label, "Add the finals")
+
+        build_bracket(self.tournament, name="1-4", sequence_number=2)
+        step = self._step()
+        assert step is not None
+        self.assertEqual(step.label, "Schedule 10 matches")
+
+        field = TournamentField.objects.get(tournament=self.tournament)
+        slot = parse_datetime("2026-08-01T07:00:00+00:00")
+        assert slot is not None
+        for i, match in enumerate(Match.objects.filter(tournament=self.tournament)):
+            match.time = slot + timedelta(hours=i)
+            match.field = field
+            match.save(update_fields=["time", "field"])
+        step = self._step()
+        assert step is not None
+        self.assertEqual(step.label, "Start the tournament")
+
+    def test_it_says_nothing_when_staff_already_have_something_to_do(self) -> None:
+        """Two calls to action at once is worse than none."""
+        AgentProposal.objects.create(
+            session=self.session,
+            tool_name="propose_create_field",
+            summary="Create field F1",
+            payload={},
+            status=ProposalStatus.PENDING,
+        )
+        self.assertIsNone(self._step())
+
+    def test_it_says_nothing_when_the_agent_cannot_help(self) -> None:
+        # Teams arrive through registration, so pointing anywhere is a dead end.
+        self.tournament.teams.clear()
+        self.tournament.initial_seeding = {}
+        self.tournament.current_seeding = {}
+        self.tournament.save()
+        self.assertIsNone(self._step())
+
+        self.tournament.teams.set(Team.objects.filter(name__startswith="Nx "))
+        self.tournament.status = Tournament.Status.COMPLETED
+        self.tournament.save()
+        self.assertIsNone(self._step())
+
+    def test_groups_without_finals_never_suggest_starting(self) -> None:
+        """The bug: pools scheduled, no bracket, and it offered to start the event."""
+        TournamentField.objects.create(tournament=self.tournament, name="F1")
+        build_pool(self.tournament, name="A", sequence_number=1, seeding=[1, 2, 3, 4])
+        field = TournamentField.objects.get(tournament=self.tournament)
+        slot = parse_datetime("2026-08-01T07:00:00+00:00")
+        assert slot is not None
+        for i, match in enumerate(Match.objects.filter(tournament=self.tournament)):
+            match.time = slot + timedelta(hours=i)
+            match.field = field
+            match.save(update_fields=["time", "field"])
+
+        snap = build_snapshot(self.session)
+        self.assertEqual(phase_for(snap), Phase.READY)
+        step = next_step_for(snap, Phase.READY)
+        assert step is not None
+        self.assertEqual(step.label, "Add the finals")
+
+    def test_an_empty_cross_pool_is_pointed_at(self) -> None:
+        """propose_create_cross_pool makes a stage with no matches in it."""
+        TournamentField.objects.create(tournament=self.tournament, name="F1")
+        build_pool(self.tournament, name="A", sequence_number=1, seeding=[1, 2, 3, 4])
+        build_bracket(self.tournament, name="1-4", sequence_number=3)
+        CrossPool.objects.create(tournament=self.tournament)
+        step = self._step()
+        assert step is not None
+        self.assertEqual(step.label, "Add cross-pool matches")
+
+    def test_a_pending_question_suppresses_it_in_the_payload(self) -> None:
+        TournamentField.objects.create(tournament=self.tournament, name="F1")
+        service = TournamentAgentService(self.user)
+        self.assertIsNotNone(service.history(self.session)["next_step"])
+
+        AgentQuestion.objects.create(
+            session=self.session,
+            prompt="Pools or Swiss?",
+            options=[{"id": "p", "label": "Pools"}, {"id": "s", "label": "Swiss"}],
+            status=QuestionStatus.PENDING,
+        )
+        self.assertIsNone(service.history(self.session)["next_step"])
+
+    def test_the_placeholder_follows_the_phase(self) -> None:
+        """A live event must not be invited to ask about pools."""
+        service = TournamentAgentService(self.user)
+        self.assertIn("set this tournament up", service.history(self.session)["placeholder"])
+
+        TournamentField.objects.create(tournament=self.tournament, name="F1")
+        self.assertIn("pools", service.history(self.session)["placeholder"].lower())
+
+        self.tournament.status = Tournament.Status.LIVE
+        self.tournament.save(update_fields=["status"])
+        live = service.history(self.session)["placeholder"]
+        self.assertIn("score", live.lower())
+        self.assertNotIn("pool", live.lower())
+        # Every phase has one, so the box is never left with a stale hint.
+        self.assertEqual(len(PLACEHOLDERS), len(Phase))
 
 
 class PhasePolicyTests(TestCase):

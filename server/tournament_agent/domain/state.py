@@ -19,7 +19,6 @@ from typing import Any
 from server.tournament.models import Match, Tournament, TournamentField
 from server.tournament_agent.domain.stages import STAGE_FIELDS, STAGE_MODELS
 from server.tournament_agent.models import (
-    AgentProposal,
     ProposalStatus,
     TournamentAgentSession,
 )

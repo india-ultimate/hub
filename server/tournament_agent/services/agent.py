@@ -24,6 +24,7 @@ from server.tournament_agent.clients.opencode import (
     OpenCodeGoClient,
     OpenCodeGoError,
 )
+from server.tournament_agent.domain.next_step import next_step_for, placeholder_for
 from server.tournament_agent.domain.phase import Phase, phase_for, phase_line
 from server.tournament_agent.domain.state import (
     TournamentSnapshot,
@@ -368,6 +369,7 @@ class TournamentAgentService:
         pending_q = (
             session.questions.filter(status=QuestionStatus.PENDING).order_by("-created_at").first()
         )
+        composer_step, composer_placeholder = self._composer(session, pending_q is not None)
         # One pass over the whole response: assistant text and the tool events stored
         # on each message can all carry `{{player:<id>}}`.
         return resolve_player_tokens(
@@ -378,9 +380,33 @@ class TournamentAgentService:
                 "messages": messages,
                 "pending_question": self._serialize_question(pending_q) if pending_q else None,
                 "pending_proposals": self._pending_proposals(session),
+                "next_step": composer_step,
+                "placeholder": composer_placeholder,
             },
             session.tournament,
         )
+
+    def _composer(
+        self, session: TournamentAgentSession, question_pending: bool = False
+    ) -> tuple[dict[str, str] | None, str]:
+        """(next_step, placeholder) for the chat box, both from the current phase.
+
+        The same derivation the tool gate uses, so the UI can never invite staff to
+        ask for something the agent would decline.
+        """
+        snapshot = build_snapshot(session)
+        phase = phase_for(snapshot)
+        placeholder = placeholder_for(phase)
+        if question_pending:
+            return None, placeholder
+        step = next_step_for(snapshot, phase)
+        payload = {"label": step.label, "prompt": step.prompt, "why": step.why} if step else None
+        return payload, placeholder
+
+    def _next_step(
+        self, session: TournamentAgentSession, question_pending: bool = False
+    ) -> dict[str, str] | None:
+        return self._composer(session, question_pending)[0]
 
     def _serialize_question(self, q: AgentQuestion) -> dict[str, Any]:
         return {
@@ -807,6 +833,7 @@ class TournamentAgentService:
                                     "response": assistant_msg.content,
                                     "pending_question": question_payload,
                                     "pending_proposals": self._pending_proposals(session),
+                                    "next_step": None,
                                     "session_id": session.id,
                                     "model_id": session.model_id,
                                     "message_id": assistant_msg.id,
@@ -942,6 +969,7 @@ class TournamentAgentService:
                 "response": assistant_msg.content,
                 "pending_question": None,
                 "pending_proposals": self._pending_proposals(session),
+                "next_step": self._next_step(session),
                 "session_id": session.id,
                 "model_id": session.model_id,
                 "message_id": assistant_msg.id,
@@ -1009,6 +1037,7 @@ class TournamentAgentService:
                 "response": text,
                 "pending_question": None,
                 "pending_proposals": self._pending_proposals(session),
+                "next_step": self._next_step(session),
                 "session_id": session.id,
                 "model_id": session.model_id,
                 "message_id": assistant_msg.id,
