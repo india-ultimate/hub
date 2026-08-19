@@ -160,7 +160,9 @@ const TournamentManager = props => {
   const queryClient = useQueryClient();
   const [store] = useStore();
   const [selectedTournament, setSelectedTournament] = createSignal();
-  const [selectedTournamentID, setSelectedTournamentID] = createSignal(0);
+  const [selectedTournamentID, setSelectedTournamentID] = createSignal(
+    props.tournamentId || 0
+  );
   const [teams, setTeams] = createSignal([]);
   const [teamsMap, setTeamsMap] = createSignal({});
   const [enteredPoolName, setEnteredPoolName] = createSignal("");
@@ -197,6 +199,10 @@ const TournamentManager = props => {
       dt.setMinutes(dt.getMinutes() + 5);
     }
     setTimesList(newTimesList);
+  });
+
+  createEffect(() => {
+    if (props.tournamentId) setSelectedTournamentID(props.tournamentId);
   });
 
   createEffect(() => {
@@ -580,6 +586,7 @@ const TournamentManager = props => {
         </h1>
         <select
           id="tournaments"
+          value={selectedTournamentID()}
           onChange={e => {
             const id = parseInt(e.target.value);
             setSelectedTournamentID(id);
@@ -587,7 +594,7 @@ const TournamentManager = props => {
           }}
           class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
         >
-          <option value={0} selected>
+          <option value={0}>
             Choose a tournament
           </option>
           <For each={tournamentsQuery.data}>

@@ -51,6 +51,7 @@ const TournamentManager = () => {
 
       <Show when={tab() === "classic"}>
         <TournamentManagerClassic
+          tournamentId={selectedTournamentId()}
           onTournamentSelected={id => setSelectedTournamentId(id)}
         />
       </Show>
