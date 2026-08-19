@@ -7,8 +7,7 @@ from ninja import Router
 
 from server.core.models import User
 from server.tournament_agent.catalog import default_model_id, models_for_api
-from server.tournament_agent.models import AgentProposal, AgentQuestion, TournamentAgentSession
-from server.tournament_agent.proposals import ProposalApplyError, apply_proposal, reject_proposal
+from server.tournament_agent.models import AgentProposal, AgentQuestion
 from server.tournament_agent.schema import (
     AgentResponseSchema,
     AnswerQuestionSchema,
@@ -20,7 +19,12 @@ from server.tournament_agent.schema import (
     SetModelSchema,
     SuccessSchema,
 )
-from server.tournament_agent.service import TournamentAgentService
+from server.tournament_agent.services.agent import TournamentAgentService
+from server.tournament_agent.services.proposals import (
+    ProposalApplyError,
+    apply_proposal,
+    reject_proposal,
+)
 
 router = Router()
 
@@ -49,7 +53,7 @@ def _sse_body(events: Iterator[dict[str, Any]]) -> Iterator[str]:
     try:
         for event in events:
             yield _sse_frame(str(event.get("type") or "message"), event)
-    except Exception as exc:  # noqa: BLE001 — must reach the client as an error frame
+    except Exception as exc:  # — must reach the client as an error frame
         yield _sse_frame("error", {"type": "error", "message": str(exc)[:500]})
 
 
@@ -89,9 +93,7 @@ def get_history(
     try:
         session = service.get_or_create_session(tournament_id)
         return service.history(session)
-    except TournamentAgentSession.DoesNotExist:
-        return 400, {"message": "Session not found"}
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return 400, {"message": str(exc)}
 
 
@@ -111,7 +113,7 @@ def send_message(
         return service.process_message(session, data.message)
     except ValueError as exc:
         return 400, {"message": str(exc)}
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return 500, {"message": str(exc)}
 
 
@@ -126,9 +128,7 @@ def stream_message(
     service = TournamentAgentService(request.user, streaming=True)
     try:
         session = service.get_or_create_session(data.tournament_id, model_id=data.model_id)
-    except ValueError as exc:
-        return _sse_error(str(exc), 400)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return _sse_error(str(exc), 400)
     return _sse_response(service.process_message_events(session, data.message))
 
@@ -190,7 +190,7 @@ def answer_question(
         )
     except ValueError as exc:
         return 400, {"message": str(exc)}
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return 500, {"message": str(exc)}
 
 
@@ -268,5 +268,5 @@ def clear_history(
         session = service.get_or_create_session(tournament_id)
         service.clear_session(session)
         return {"message": "History cleared"}
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return 400, {"message": str(exc)}
