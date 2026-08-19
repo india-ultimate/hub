@@ -10,8 +10,11 @@ const TOOL_TITLES = {
   propose_create_bracket: "Create bracket",
   propose_create_position_pool: "Create position pool",
   propose_create_field: "Add field",
+  propose_update_field: "Update field",
+  propose_delete_field: "Delete field",
   propose_update_seeding: "Update seeding",
   propose_update_match: "Update match",
+  propose_update_match_seeds: "Update match seeds",
   propose_delete_match: "Delete match",
   propose_bulk_schedule: "Schedule matches",
   propose_recommended_schedule: "Schedule matches",
@@ -20,13 +23,15 @@ const TOOL_TITLES = {
   propose_spirit_scores: "Record spirit scores",
   propose_delete_stage: "Delete stage",
   propose_full_setup: null,
-  propose_start_tournament: "Start tournament"
+  propose_start_tournament: "Start tournament",
+  propose_generate_fixtures: "Populate fixtures"
 };
 
 /** Destructive/irreversible proposals get a heavier confirm treatment. */
 const HIGH_IMPACT = new Set([
   "propose_delete_match",
   "propose_delete_stage",
+  "propose_delete_field",
   "propose_match_score",
   "propose_start_tournament",
   "propose_update_seeding"
@@ -125,6 +130,84 @@ const ProposalPreview = props => {
         <Field label="Broadcast">{p().is_broadcasted ? "Yes" : "No"}</Field>
       </Show>
 
+      <Show when={tool() === "propose_update_field"}>
+        <Field label="Field">
+          {p().current_name ||
+            props.fieldName?.(p().field_id) ||
+            `#${p().field_id}`}
+        </Field>
+        <Show when={p().name}>
+          <Field label="New name">{p().name}</Field>
+        </Show>
+        <Show when={"address" in p()}>
+          <Field label="Address">{p().address || "—"}</Field>
+        </Show>
+        <Show when={"is_broadcasted" in p()}>
+          <Field label="Broadcast">{p().is_broadcasted ? "Yes" : "No"}</Field>
+        </Show>
+      </Show>
+
+      <Show when={tool() === "propose_delete_field"}>
+        <Field label="Field">{p().name || `#${p().field_id}`}</Field>
+        <p class="text-xs text-red-700 dark:text-red-400">
+          Matches must already be moved off this field. Deleting it cannot be
+          undone from this tab.
+        </p>
+      </Show>
+
+      <Show when={tool() === "propose_create_cross_pool"}>
+        <p class="text-xs" style={{ color: "var(--agent-ink)" }}>
+          Creates the cross-pool stage. Matches are a separate proposal.
+        </p>
+      </Show>
+
+      <Show when={tool() === "propose_update_match"}>
+        <Field label="Match">#{p().match_id}</Field>
+        <Show when={p().time}>
+          <Field label="Time">{p().time}</Field>
+        </Show>
+        <Show when={p().field_id}>
+          <Field label="Field">
+            {props.fieldName?.(p().field_id) || p().field_id}
+          </Field>
+        </Show>
+        <Show when={p().duration_mins}>
+          <Field label="Duration">{p().duration_mins} min</Field>
+        </Show>
+        <Show when={p().seed_1 != null && p().seed_2 != null}>
+          <Field label="Seeds">
+            {p().seed_1} vs {p().seed_2}
+          </Field>
+        </Show>
+      </Show>
+
+      <Show when={tool() === "propose_update_match_seeds"}>
+        <div class="space-y-1">
+          <For each={p().updates || []}>
+            {row => (
+              <div
+                class="flex items-center gap-1.5 text-xs"
+                style={{ color: "var(--agent-ink)" }}
+              >
+                <span style={{ color: "var(--agent-ink-muted)" }}>
+                  #{row.match_id}
+                </span>
+                <span class="tabular-nums">
+                  {row.seed_1} vs {row.seed_2}
+                </span>
+              </div>
+            )}
+          </For>
+        </div>
+      </Show>
+
+      <Show when={tool() === "propose_generate_fixtures"}>
+        <p class="text-xs" style={{ color: "var(--agent-ink)" }}>
+          Pairs the next Swiss round and fills bracket placeholders. Does not
+          create new matches.
+        </p>
+      </Show>
+
       <Show when={tool() === "propose_create_cross_pool_matches"}>
         <Field label="Matches">{(p().seed_pairs || []).length}</Field>
         <div class="space-y-1">
@@ -197,7 +280,9 @@ const ProposalPreview = props => {
 
       <Show when={tool() === "propose_delete_stage"}>
         <Field label="Stage">
-          {p().stage} #{p().stage_id}
+          {p().name
+            ? `${p().stage} ${p().name}`
+            : `${p().stage} #${p().stage_id}`}
         </Field>
         <p class="mt-1 text-[11px]" style={{ color: "var(--agent-ink-muted)" }}>
           Deletes the stage and every match in it.
@@ -374,12 +459,36 @@ const ProposalCard = props => {
             </span>
           </Show>
         </div>
+        <Show when={p().summary}>
+          <p class="mb-2 text-xs" style={{ color: "var(--agent-ink-muted)" }}>
+            {p().summary}
+          </p>
+        </Show>
 
         <ProposalPreview
           proposal={p()}
           seedToTeamName={props.seedToTeamName}
           fieldName={props.fieldName}
         />
+
+        <Show when={props.error}>
+          <div
+            class="mt-3 rounded-md border border-red-300 bg-red-50 px-2.5 py-2 text-xs text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300"
+            role="alert"
+          >
+            <p>{props.error}</p>
+            <Show when={props.onAskFix}>
+              <button
+                type="button"
+                class="mt-2 inline-flex cursor-pointer items-center rounded-md bg-red-800 px-2.5 py-1 text-[11px] font-medium text-white transition-colors duration-150 hover:bg-red-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-red-700 dark:hover:bg-red-600"
+                disabled={props.disabled}
+                onClick={() => props.onAskFix?.()}
+              >
+                Ask the agent to fix this
+              </button>
+            </Show>
+          </div>
+        </Show>
 
         <div class="mt-3 flex flex-wrap items-center gap-2">
           <button

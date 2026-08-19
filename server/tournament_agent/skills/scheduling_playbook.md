@@ -34,6 +34,8 @@ requires_tools:
     propose_bulk_schedule,
     propose_update_match,
     propose_create_field,
+    propose_update_field,
+    propose_delete_field,
     ask_user
   ]
 ---
@@ -72,7 +74,9 @@ comfortably, drop it when a 2-day event needs 6+ rounds in a day.
 finals day 1–2. Never more than 4 in a day.
 
 **Fields:** `Field 1..N` unless staff use venue names. 2–4 fields is typical. 4–8 matches per field
-per day is the healthy band; more than 9 on grass is an overpacked red flag.
+per day is the healthy band; more than 9 on grass is an overpacked red flag. Rename with
+`propose_update_field`; delete a spare unused field with `propose_delete_field` (refused if any
+match still sits on it).
 
 ## Multi-day packing
 
@@ -86,21 +90,28 @@ a marquee field, with the day tapering — fewer matches, later starts.
 
 ## Using the scheduler
 
-`propose_recommended_schedule` places every match that has no time or no field, applying **one
-duration to all of them**. It respects rest even before the tournament starts (it falls back to seed
-numbers when teams are not yet assigned), and it places feeding stages before the stages they feed.
+Do not schedule until `list_fields` returns at least one field and `list_stages` shows pools or
+Swiss. If fields are missing, ask and propose fields; stop. One schedule proposal per turn.
 
+`propose_recommended_schedule` places every match that has no time or no field, applying **one
+duration to all of them**. Default first pull is **07:00**. It respects rest even before the
+tournament starts (it falls back to seed numbers when teams are not yet assigned), and it will not
+start a later stage until every match of the stage that feeds it has **ended** — a semi cannot
+share a timeslot with a still-running pool, even on another field. If it cannot place every match,
+it returns an error instead of a proposal — relax duration, add a field, extend the day, or build
+the grid with one `propose_bulk_schedule`. Do not retry it two more times with slightly different
+arguments; that stacks overlapping Confirm cards.
+
+- Pass `end_date` for a multi-day event. Day 1 is pools; day 2 is cross-pool then brackets.
 - `slot_buffer_mins` defaults to 15, which gives the standard 90-minute grid for 75-minute games.
   Set it to 0 only if staff explicitly want back-to-back slots.
-- Because it is one duration per run, schedule **stage by stage** whenever durations differ:
+- Because it is one duration per run, schedule **stage by stage** whenever durations differ, but
+  put every assignment into **one** `propose_bulk_schedule` so staff see a single card:
 
-1. Pools: `propose_recommended_schedule(start_date=day1, end_date=day1, duration_mins=75,
-slot_buffer_mins=15, min_rest_mins=60, day_start_hour=7, day_end_hour=18, field_ids=[…])`.
-2. Later stages: run it again per day once the earlier matches are placed, or build the grid
-   yourself with `propose_bulk_schedule` — which you need anyway when brackets run 90 or 100
-   minutes against 75-minute pools.
-3. Fix individual slots with `propose_update_match`.
-4. **Verify with `check_schedule_conflicts`** and report what it says: field overlaps, teams playing
+1. Pools on day 1 at 75 minutes, later stages on day 2 at 90 if needed — one bulk proposal, not
+   three recommended-schedule calls.
+2. Fix individual slots with `propose_update_match`.
+3. **Verify with `check_schedule_conflicts`** and report what it says: field overlaps, teams playing
    twice at once, rest below the minimum, stages out of order, anything finishing after the window.
 
 If the scheduler reports matches it could not place, say so and offer the trade — shorter games, an

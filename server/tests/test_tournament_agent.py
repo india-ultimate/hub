@@ -7,7 +7,7 @@ import json
 import re
 from collections import defaultdict
 from collections.abc import Iterator
-from datetime import datetime
+from datetime import datetime, timedelta
 from itertools import pairwise
 from pathlib import Path
 from typing import Any, cast
@@ -43,6 +43,12 @@ from server.tournament_agent.clients.opencode import (
     OpenCodeGoError,
     StreamChunk,
 )
+from server.tournament_agent.domain.format import (
+    bracket_match_plan,
+    canonical_stage_name,
+    rewrite_sequential_pool_defs,
+    snake_pool_seeds,
+)
 from server.tournament_agent.domain.scheduler import recommend_schedule
 from server.tournament_agent.models import (
     AgentProposal,
@@ -62,6 +68,10 @@ from server.tournament_agent.services.agent import (
     KEEP_RECENT_MESSAGES,
     TournamentAgentService,
     _compact_model_turns,
+    looks_like_ack,
+    looks_like_status_check,
+    pending_proposals_prompt,
+    verification_prompt,
 )
 from server.tournament_agent.services.proposals import (
     ProposalApplyError,
@@ -76,25 +86,31 @@ from server.tournament_agent.tools import (
     ToolContext,
     ask_user,
     check_schedule_conflicts,
+    dispatch_tool,
     find_roster_player,
     get_match_spirit,
     get_spirit_summary,
     get_tournament_overview,
     list_fields,
     list_missing_spirit_scores,
+    list_proposals,
     list_stages,
     list_teams_seeding,
     propose_bulk_schedule,
+    propose_create_bracket,
     propose_create_pool,
     propose_create_position_pool,
     propose_create_swiss_round,
     propose_delete_match,
     propose_delete_stage,
+    propose_full_setup,
     propose_match_score,
+    propose_recommended_schedule,
     propose_shift_schedule,
     propose_spirit_scores,
     propose_start_tournament,
     propose_update_match,
+    propose_update_match_seeds,
 )
 
 
@@ -126,10 +142,16 @@ class MaskTests(TestCase):
 
 class CatalogTests(TestCase):
     def test_default_and_allowlist(self) -> None:
-        self.assertEqual(default_model_id(), "minimax-m3")
-        self.assertTrue(is_allowed_model("deepseek-v4-pro"))
-        self.assertTrue(is_allowed_model("qwen3.7-plus"))
+        self.assertEqual(default_model_id(), "glm-5.2")
+        self.assertTrue(is_allowed_model("glm-5.2"))
+        self.assertTrue(is_allowed_model("gpt-5.6-luna"))
         self.assertTrue(is_allowed_model("minimax-m3"))
+        self.assertTrue(is_allowed_model("hy3"))
+        luna = get_model("gpt-5.6-luna")
+        assert luna is not None
+        self.assertEqual(luna.api_style, "responses")
+        self.assertFalse(is_allowed_model("qwen3.7-plus"))
+        self.assertFalse(is_allowed_model("deepseek-v4-pro"))
         self.assertFalse(is_allowed_model("gpt-4o"))
 
     def test_value_score_prefers_quota_when_scores_close(self) -> None:
@@ -165,7 +187,9 @@ class TournamentAgentToolTests(TestCase):
     def setUp(self) -> None:
         self.user = User.objects.create(username="staff1", is_staff=True)
         self.event = create_event(title="Test Open")
-        self.tournament = Tournament.objects.create(event=self.event)
+        self.tournament = Tournament.objects.create(
+            event=self.event, status=Tournament.Status.SCHEDULING
+        )
         self.team_a = Team.objects.create(name="Alpha", slug="alpha-ta")
         self.team_b = Team.objects.create(name="Beta", slug="beta-ta")
         self.team_c = Team.objects.create(name="Gamma", slug="gamma-ta")
@@ -193,9 +217,82 @@ class TournamentAgentToolTests(TestCase):
         assert_safe_tool_payload(overview)
         seeding = list_teams_seeding(self.ctx)
         self.assertEqual(len(seeding["seeding"]), 4)
+        self.assertEqual(seeding["snake_draft"]["2_pools"]["A"], [1, 4])
+        self.assertEqual(seeding["snake_draft"]["2_pools"]["B"], [2, 3])
         assert_safe_tool_payload(seeding)
         fields = list_fields(self.ctx)
         self.assertEqual(len(fields["fields"]), 1)
+
+    def test_list_proposals_is_empty_when_nothing_is_pending(self) -> None:
+        result = list_proposals(self.ctx)
+        self.assertEqual(result["pending"], [])
+        self.assertEqual(result["count"], 0)
+        assert_safe_tool_payload(result)
+        self.assertEqual(get_tournament_overview(self.ctx)["pending_proposal_count"], 0)
+
+    def test_list_proposals_returns_pending_and_looks_up_missing_ids(self) -> None:
+        pending = AgentProposal.objects.create(
+            session=self.session,
+            tool_name="propose_delete_stage",
+            summary="Delete pool A",
+            payload={"stage": "pool", "stage_id": 1},
+            status=ProposalStatus.PENDING,
+        )
+        expired = AgentProposal.objects.create(
+            session=self.session,
+            tool_name="propose_delete_stage",
+            summary="Delete pool B",
+            payload={"stage": "pool", "stage_id": 2},
+            status=ProposalStatus.EXPIRED,
+        )
+
+        listed = list_proposals(self.ctx)
+        self.assertEqual(listed["count"], 1)
+        self.assertEqual(listed["pending"][0]["id"], pending.id)
+        self.assertEqual(get_tournament_overview(self.ctx)["pending_proposal_count"], 1)
+
+        missing = list_proposals(self.ctx, proposal_id=99999)
+        self.assertFalse(missing["lookup"]["found"])
+        self.assertEqual(missing["count"], 1)
+
+        retired = list_proposals(self.ctx, proposal_id=expired.id)
+        self.assertTrue(retired["lookup"]["found"])
+        self.assertEqual(retired["lookup"]["status"], ProposalStatus.EXPIRED)
+        self.assertIn("not pending", retired["lookup"]["message"])
+
+    def test_pending_proposals_prompt_does_not_trust_chat(self) -> None:
+        self.assertIn("None.", pending_proposals_prompt(self.session))
+        AgentProposal.objects.create(
+            session=self.session,
+            tool_name="propose_create_field",
+            summary="Create field Extra",
+            payload={"name": "Extra"},
+            status=ProposalStatus.PENDING,
+        )
+        text = pending_proposals_prompt(self.session)
+        self.assertIn("propose_create_field", text)
+        self.assertNotIn("\nNone.", text)
+        system = TournamentAgentService(self.user)._build_model_messages(self.session)[0]["content"]
+        self.assertIn("propose_create_field", system)
+        self.assertIn("database — the only source of truth", system)
+
+    def test_ack_and_status_prompts_demand_a_fresh_read(self) -> None:
+        self.assertTrue(looks_like_ack("Done"))
+        self.assertTrue(looks_like_ack("confirmed."))
+        self.assertFalse(looks_like_ack("Done with pools, now schedule Saturday"))
+        self.assertTrue(looks_like_status_check("Anything else?"))
+        self.assertIn("list_stages", verification_prompt("Done"))
+        self.assertIn("list_matches", verification_prompt("Anything else?"))
+        self.assertEqual(verification_prompt("add a 1-4 bracket"), "")
+
+        TournamentAgentMessage.objects.create(
+            session=self.session,
+            role="user",
+            content="Done",
+            payload={"masked_content": "Done"},
+        )
+        system = TournamentAgentService(self.user)._build_model_messages(self.session)[0]["content"]
+        self.assertIn("not a database write", system)
 
     def test_ask_user_pauses(self) -> None:
         with self.assertRaises(AskUserPause) as cm:
@@ -221,6 +318,84 @@ class TournamentAgentToolTests(TestCase):
         self.assertIn("pool_id", applied)
         proposal.refresh_from_db()
         self.assertEqual(proposal.status, ProposalStatus.CONFIRMED)
+        self.assertEqual(proposal.last_error, "")
+
+    def test_create_bracket_lists_the_push_in_match(self) -> None:
+        result = propose_create_bracket(self.ctx, name="1-4", sequence_number=1)
+        self.assertIn("3rd Place", result["summary"])
+        self.assertIn("3v4", result["summary"])
+        proposal = AgentProposal.objects.get(id=result["proposal_id"])
+        pairs = [
+            (row["placeholder_seed_1"], row["placeholder_seed_2"])
+            for row in proposal.payload["matches"]
+        ]
+        self.assertEqual(pairs, [(1, 4), (2, 3), (1, 2), (3, 4)])
+        applied = apply_proposal(proposal)
+        self.assertIn("bracket_id", applied)
+        names = list(
+            Match.objects.filter(bracket_id=applied["bracket_id"])
+            .order_by("sequence_number", "placeholder_seed_1")
+            .values_list("name", flat=True)
+        )
+        self.assertIn("3rd Place", names)
+
+    def test_update_match_seeds_rewrites_bracket_pairings(self) -> None:
+        applied = apply_proposal(
+            AgentProposal.objects.get(
+                id=propose_create_bracket(self.ctx, name="1-4", sequence_number=1)["proposal_id"]
+            )
+        )
+        first_round = list(
+            Match.objects.filter(bracket_id=applied["bracket_id"], sequence_number=1).order_by(
+                "placeholder_seed_1"
+            )
+        )
+        self.assertEqual(
+            [(m.placeholder_seed_1, m.placeholder_seed_2) for m in first_round],
+            [(1, 4), (2, 3)],
+        )
+        result = propose_update_match_seeds(
+            self.ctx,
+            updates=[
+                {"match_id": first_round[0].id, "seed_1": 1, "seed_2": 3},
+                {"match_id": first_round[1].id, "seed_1": 2, "seed_2": 4},
+            ],
+        )
+        apply_proposal(AgentProposal.objects.get(id=result["proposal_id"]))
+        first_round[0].refresh_from_db()
+        first_round[1].refresh_from_db()
+        self.assertEqual(
+            (first_round[0].placeholder_seed_1, first_round[0].placeholder_seed_2), (1, 3)
+        )
+        self.assertEqual(
+            (first_round[1].placeholder_seed_1, first_round[1].placeholder_seed_2), (2, 4)
+        )
+        later = {
+            (m.placeholder_seed_1, m.placeholder_seed_2)
+            for m in Match.objects.filter(bracket_id=applied["bracket_id"], sequence_number=2)
+        }
+        self.assertEqual(later, {(1, 2), (3, 4)})
+
+    def test_update_match_seeds_refuses_a_doubled_seed(self) -> None:
+        apply_proposal(
+            AgentProposal.objects.get(
+                id=propose_create_bracket(self.ctx, name="1-4", sequence_number=1)["proposal_id"]
+            )
+        )
+        match = Match.objects.get(
+            tournament=self.tournament, placeholder_seed_1=1, placeholder_seed_2=4
+        )
+        result = propose_update_match_seeds(
+            self.ctx, updates=[{"match_id": match.id, "seed_1": 1, "seed_2": 3}]
+        )
+        with self.assertRaises(ProposalApplyError) as cm:
+            apply_proposal(AgentProposal.objects.get(id=result["proposal_id"]))
+        self.assertIn("Seed 3", str(cm.exception))
+
+    def test_update_match_requires_both_seeds(self) -> None:
+        result = propose_update_match(self.ctx, match_id=1, seed_1=1)
+        self.assertIn("error", result)
+        self.assertNotIn("proposal_id", result)
 
     def test_reject_proposal(self) -> None:
         result = propose_create_pool(self.ctx, name="B", sequence_number=2, seeding=[3, 4])
@@ -243,6 +418,140 @@ class TournamentAgentToolTests(TestCase):
         field_times = {(a["field_id"], a["time"]) for a in result["assignments"]}
         self.assertEqual(len(field_times), len(result["assignments"]))
         self.assertEqual(result["meta"].get("start_date"), "2026-08-01")
+
+    def test_recommended_schedule_does_not_propose_a_partial_grid(self) -> None:
+        propose_create_pool(self.ctx, name="A", sequence_number=1, seeding=[1, 2, 3, 4])
+        apply_proposal(AgentProposal.objects.filter(session=self.session).latest("id"))
+        result = propose_recommended_schedule(
+            self.ctx,
+            start_date="2026-08-01",
+            day_start_hour=9,
+            day_end_hour=11,
+        )
+        self.assertIn("error", result)
+        self.assertNotIn("proposal_id", result)
+        self.assertGreater(result.get("unplaced", 0), 0)
+        self.assertFalse(
+            AgentProposal.objects.filter(tool_name="propose_recommended_schedule").exists()
+        )
+
+
+class SnakeAndBracketConventionTests(TestCase):
+    """India Ultimate defaults the model used to invent: snake pools, full placement brackets."""
+
+    def test_snake_two_and_four_pools(self) -> None:
+        self.assertEqual(snake_pool_seeds(8, 2), [[1, 4, 5, 8], [2, 3, 6, 7]])
+        self.assertEqual(
+            snake_pool_seeds(16, 4),
+            [
+                [1, 8, 9, 16],
+                [2, 7, 10, 15],
+                [3, 6, 11, 14],
+                [4, 5, 12, 13],
+            ],
+        )
+        self.assertEqual(
+            snake_pool_seeds(12, 4),
+            [[1, 8, 9], [2, 7, 10], [3, 6, 11], [4, 5, 12]],
+        )
+
+    def test_one_four_bracket_includes_third_place(self) -> None:
+        plan = bracket_match_plan("1-4")
+        pairs = [(row["placeholder_seed_1"], row["placeholder_seed_2"]) for row in plan]
+        self.assertEqual(pairs, [(1, 4), (2, 3), (1, 2), (3, 4)])
+        self.assertEqual(
+            [row["name"] for row in plan],
+            ["Semi Finals", "Semi Finals", "Finals", "3rd Place"],
+        )
+
+    def test_rewrite_sequential_pool_defs_to_snake(self) -> None:
+        rewritten = rewrite_sequential_pool_defs(
+            [
+                {"name": "A", "seeding": [1, 2, 3, 4]},
+                {"name": "B", "seeding": [5, 6, 7, 8]},
+            ],
+            team_count=8,
+        )
+        self.assertEqual(rewritten[0]["seeding"], [1, 4, 5, 8])
+        self.assertEqual(rewritten[1]["seeding"], [2, 3, 6, 7])
+
+
+class FormatConventionToolTests(TestCase):
+    def setUp(self) -> None:
+        self.user = User.objects.create(username="staff-format", is_staff=True)
+        self.event = create_event(title="Format Open")
+        self.tournament = Tournament.objects.create(
+            event=self.event, status=Tournament.Status.SCHEDULING
+        )
+        self.teams = [Team.objects.create(name=f"Fmt {i}", slug=f"fmt-{i}") for i in range(1, 9)]
+        self.tournament.teams.set(self.teams)
+        seeding = {str(i): team.id for i, team in enumerate(self.teams, start=1)}
+        self.tournament.initial_seeding = seeding
+        self.tournament.current_seeding = seeding
+        self.tournament.save()
+        self.session = TournamentAgentSession.objects.create(
+            user=self.user, tournament=self.tournament, model_id=default_model_id()
+        )
+        self.ctx = ToolContext(session=self.session, tournament=self.tournament)
+
+    def test_sequential_pool_seeds_are_refused(self) -> None:
+        result = propose_create_pool(self.ctx, name="A", sequence_number=1, seeding=[1, 2, 3, 4])
+        self.assertNotIn("proposal_id", result)
+        self.assertIn("snake", result["error"].lower())
+        self.assertEqual(result["snake_draft"]["A"], [1, 4, 5, 8])
+        self.assertEqual(result["snake_draft"]["B"], [2, 3, 6, 7])
+        self.assertFalse(AgentProposal.objects.filter(session=self.session).exists())
+
+    def test_snake_pool_seeds_are_accepted(self) -> None:
+        result = propose_create_pool(self.ctx, name="A", sequence_number=1, seeding=[1, 4, 5, 8])
+        self.assertIn("proposal_id", result)
+        apply_proposal(AgentProposal.objects.get(id=result["proposal_id"]))
+        pool = Pool.objects.get(tournament=self.tournament, name="A")
+        self.assertEqual(sorted(map(int, pool.initial_seeding.keys())), [1, 4, 5, 8])
+
+    def test_full_setup_rewrites_sequential_pools_to_snake(self) -> None:
+        result = propose_full_setup(
+            self.ctx,
+            format="pools",
+            pool_defs=[
+                {"name": "A", "sequence_number": 1, "seeding": [1, 2, 3, 4]},
+                {"name": "B", "sequence_number": 2, "seeding": [5, 6, 7, 8]},
+            ],
+            bracket_names=["1-4", "5-8"],
+        )
+        proposal = AgentProposal.objects.get(id=result["proposal_id"])
+        self.assertEqual(proposal.payload["pool_defs"][0]["seeding"], [1, 4, 5, 8])
+        self.assertEqual(proposal.payload["pool_defs"][1]["seeding"], [2, 3, 6, 7])
+
+    def test_pool_names_drop_the_pool_prefix(self) -> None:
+        self.assertEqual(canonical_stage_name("Pool A"), "A")
+        self.assertEqual(canonical_stage_name("Swiss B"), "B")
+        result = propose_create_pool(self.ctx, name="Pool A", sequence_number=1, seeding=[1, 4])
+        proposal = AgentProposal.objects.get(id=result["proposal_id"])
+        self.assertEqual(proposal.payload["name"], "A")
+        apply_proposal(proposal)
+        self.assertTrue(Pool.objects.filter(tournament=self.tournament, name="A").exists())
+
+        full = propose_full_setup(
+            self.ctx,
+            format="pools",
+            pool_defs=[
+                {"name": "Pool A", "sequence_number": 1, "seeding": [1, 4]},
+                {"name": "Pool B", "sequence_number": 2, "seeding": [2, 3]},
+            ],
+            bracket_names=["1-4"],
+        )
+        names = [
+            row["name"]
+            for row in AgentProposal.objects.get(id=full["proposal_id"]).payload["pool_defs"]
+        ]
+        self.assertEqual(names, ["A", "B"])
+
+    def test_seeding_read_includes_snake_tables(self) -> None:
+        seeding = list_teams_seeding(self.ctx)
+        self.assertEqual(seeding["snake_draft"]["2_pools"]["A"], [1, 4, 5, 8])
+        self.assertEqual(seeding["snake_draft"]["2_pools"]["B"], [2, 3, 6, 7])
+        assert_safe_tool_payload(seeding)
 
 
 class EvalScoringTests(TestCase):
@@ -304,30 +613,99 @@ class EvalScoringTests(TestCase):
         self.assertTrue(scored.passed)
         self.assertGreaterEqual(scored.overall, 80.0)
 
+    def test_stage_order_violations_fail_the_case(self) -> None:
+        from server.tournament_agent.evals import TrajectoryTrace, score_case
+
+        case = {
+            "id": "t",
+            "gold_tools": ["propose_recommended_schedule"],
+            "expect_state": {
+                "must_not_ask_user": True,
+                "min_proposals": 1,
+                "no_stage_order_violations": True,
+                "match_ranks": {1: 0, 2: 2},
+            },
+            "pass_threshold": 80,
+        }
+        overlapping = TrajectoryTrace(
+            tool_calls=[{"name": "propose_recommended_schedule"}],
+            proposals=[
+                {
+                    "tool_name": "propose_recommended_schedule",
+                    "payload": {
+                        "assignments": [
+                            {
+                                "match_id": 1,
+                                "time": "2026-08-01T07:00:00",
+                                "duration_mins": 75,
+                            },
+                            {
+                                "match_id": 2,
+                                "time": "2026-08-01T07:00:00",
+                                "duration_mins": 75,
+                            },
+                        ]
+                    },
+                }
+            ],
+            steps=1,
+        )
+        scored = score_case(case, overlapping, expect_met=True)
+        self.assertFalse(scored.passed)
+        self.assertTrue(any("Stage order" in note for note in scored.notes))
+
+        sequenced = TrajectoryTrace(
+            tool_calls=[{"name": "propose_recommended_schedule"}],
+            proposals=[
+                {
+                    "tool_name": "propose_recommended_schedule",
+                    "payload": {
+                        "assignments": [
+                            {
+                                "match_id": 1,
+                                "time": "2026-08-01T07:00:00",
+                                "duration_mins": 75,
+                            },
+                            {
+                                "match_id": 2,
+                                "time": "2026-08-01T08:15:00",
+                                "duration_mins": 75,
+                            },
+                        ]
+                    },
+                }
+            ],
+            steps=1,
+        )
+        scored_ok = score_case(case, sequenced, expect_met=True)
+        self.assertTrue(scored_ok.passed)
+
     def test_recommend_default_breaks_ties_by_latency(self) -> None:
         from server.tournament_agent.evals import recommend_default
 
-        # Same score: higher Go quota (minimax 3200 vs kimi 1350) wins value ranking.
+        # Same score: higher Go quota (hy3 4300 vs glm 880) wins value ranking.
         results = {
-            "kimi-k2.7-code": {
+            "glm-5.2": {
                 "suite_score": 90.0,
                 "pass_hat_k": 1.0,
                 "mean_latency_s": 8.0,
             },
-            "minimax-m3": {
+            "hy3": {
                 "suite_score": 90.0,
                 "pass_hat_k": 1.0,
                 "mean_latency_s": 20.0,
             },
         }
-        self.assertEqual(recommend_default(results), "minimax-m3")
+        self.assertEqual(recommend_default(results), "hy3")
 
 
 class TournamentAgentServiceTests(TestCase):
     def setUp(self) -> None:
         self.user = User.objects.create(username="staff2", is_staff=True)
         self.event = create_event(title="Svc Open")
-        self.tournament = Tournament.objects.create(event=self.event)
+        self.tournament = Tournament.objects.create(
+            event=self.event, status=Tournament.Status.SCHEDULING
+        )
         self.service = TournamentAgentService(self.user)
 
     def test_rejects_unknown_model(self) -> None:
@@ -502,12 +880,14 @@ class TournamentAgentServiceTests(TestCase):
 
 
 class NewProposalToolTests(TestCase):
-    """propose_create_field and propose_create_cross_pool_matches end-to-end."""
+    """Field and cross-pool proposal tools end-to-end."""
 
     def setUp(self) -> None:
         self.user = User.objects.create(username="staff3", is_staff=True)
         self.event = create_event(title="Field Open")
-        self.tournament = Tournament.objects.create(event=self.event)
+        self.tournament = Tournament.objects.create(
+            event=self.event, status=Tournament.Status.SCHEDULING
+        )
         self.teams = [
             Team.objects.create(name=f"Team NP{i}", slug=f"team-np{i}") for i in range(1, 5)
         ]
@@ -542,6 +922,96 @@ class NewProposalToolTests(TestCase):
         result = propose_create_field(self.ctx, name="field 3")
         with self.assertRaises(ProposalApplyError):
             self._apply(result)
+
+    def test_update_field_renames_and_sets_broadcast(self) -> None:
+        from server.tournament_agent.tools import propose_create_field, propose_update_field
+
+        created = self._apply(propose_create_field(self.ctx, name="Field 3"))
+        applied = self._apply(
+            propose_update_field(
+                self.ctx, field_id=created["field_id"], name="Main", is_broadcasted=True
+            )
+        )
+        field = TournamentField.objects.get(id=applied["field_id"])
+        self.assertEqual(field.name, "Main")
+        self.assertTrue(field.is_broadcasted)
+
+    def test_update_field_clears_address(self) -> None:
+        from server.tournament_agent.tools import propose_update_field
+
+        field = TournamentField.objects.create(
+            tournament=self.tournament, name="Field 3", address="KG Farms"
+        )
+        self._apply(propose_update_field(self.ctx, field_id=field.id, address=""))
+        field.refresh_from_db()
+        self.assertIsNone(field.address)
+
+    def test_update_field_duplicate_name_rejected_before_proposing(self) -> None:
+        from server.tournament_agent.tools import propose_update_field
+
+        existing = TournamentField.objects.create(tournament=self.tournament, name="Field 3")
+        TournamentField.objects.create(tournament=self.tournament, name="Field 4")
+        result = propose_update_field(self.ctx, field_id=existing.id, name="field 4")
+        self.assertIn("error", result)
+        self.assertFalse(AgentProposal.objects.filter(tool_name="propose_update_field").exists())
+
+    def test_update_field_missing_does_not_propose(self) -> None:
+        from server.tournament_agent.tools import propose_update_field
+
+        result = propose_update_field(self.ctx, field_id=99999, name="Nope")
+        self.assertIn("error", result)
+        self.assertFalse(AgentProposal.objects.filter(tool_name="propose_update_field").exists())
+
+    def test_delete_field_applies(self) -> None:
+        from server.tournament_agent.tools import propose_create_field, propose_delete_field
+
+        created = self._apply(propose_create_field(self.ctx, name="Spare"))
+        applied = self._apply(propose_delete_field(self.ctx, field_id=created["field_id"]))
+        self.assertEqual(applied["name"], "Spare")
+        self.assertFalse(TournamentField.objects.filter(id=created["field_id"]).exists())
+
+    def test_delete_field_refused_when_matches_assigned(self) -> None:
+        from server.tournament_agent.tools import (
+            propose_create_field,
+            propose_create_pool,
+            propose_delete_field,
+            propose_update_match,
+        )
+
+        field = self._apply(propose_create_field(self.ctx, name="Field 3"))
+        self._apply(propose_create_pool(self.ctx, name="A", sequence_number=1, seeding=[1, 2]))
+        match = Match.objects.get(tournament=self.tournament)
+        self._apply(propose_update_match(self.ctx, match_id=match.id, field_id=field["field_id"]))
+
+        result = propose_delete_field(self.ctx, field_id=field["field_id"])
+        self.assertIn("error", result)
+        self.assertFalse(AgentProposal.objects.filter(tool_name="propose_delete_field").exists())
+        self.assertTrue(TournamentField.objects.filter(id=field["field_id"]).exists())
+
+    def test_delete_field_refused_at_apply_if_match_added_later(self) -> None:
+        from server.tournament_agent.services.proposals import ProposalApplyError
+        from server.tournament_agent.tools import (
+            propose_create_field,
+            propose_create_pool,
+            propose_delete_field,
+            propose_update_match,
+        )
+
+        field = self._apply(propose_create_field(self.ctx, name="Field 3"))
+        result = propose_delete_field(self.ctx, field_id=field["field_id"])
+        self._apply(propose_create_pool(self.ctx, name="A", sequence_number=1, seeding=[1, 2]))
+        match = Match.objects.get(tournament=self.tournament)
+        self._apply(propose_update_match(self.ctx, match_id=match.id, field_id=field["field_id"]))
+        with self.assertRaises(ProposalApplyError):
+            self._apply(result)
+        self.assertTrue(TournamentField.objects.filter(id=field["field_id"]).exists())
+
+    def test_delete_field_dispatch_accepts_id_alias(self) -> None:
+        from server.tournament_agent.tools import propose_create_field
+
+        created = self._apply(propose_create_field(self.ctx, name="Alias"))
+        result = dispatch_tool(self.ctx, "propose_delete_field", {"id": created["field_id"]})
+        self.assertIn("proposal_id", result)
 
     def test_cross_pool_matches_require_stage(self) -> None:
         from server.tournament_agent.services.proposals import ProposalApplyError
@@ -605,7 +1075,9 @@ class ToolEventTests(TestCase):
     def setUp(self) -> None:
         self.user = User.objects.create(username="staff4", is_staff=True)
         self.event = create_event(title="Events Open")
-        self.tournament = Tournament.objects.create(event=self.event)
+        self.tournament = Tournament.objects.create(
+            event=self.event, status=Tournament.Status.SCHEDULING
+        )
         self.service = TournamentAgentService(self.user)
         self.session = self.service.get_or_create_session(self.tournament.id)
 
@@ -713,6 +1185,57 @@ class ProviderStreamParsingTests(TestCase):
         default = get_model(default_model_id())
         assert default is not None
         self.assertIn(default.api_style, {"openai", "anthropic"})
+
+    def test_responses_chat_parses_function_calls(self) -> None:
+        payload = {
+            "status": "completed",
+            "output": [
+                {
+                    "type": "function_call",
+                    "call_id": "call_1",
+                    "name": "list_fields",
+                    "arguments": "{}",
+                },
+                {
+                    "type": "message",
+                    "content": [{"type": "output_text", "text": "Checking fields"}],
+                },
+            ],
+        }
+        resp = MagicMock()
+        resp.status_code = 200
+        resp.json.return_value = payload
+        resp.text = json.dumps(payload)
+        http_client = MagicMock()
+        http_client.__enter__.return_value = http_client
+        http_client.__exit__.return_value = False
+        http_client.post.return_value = resp
+        client = self._client()
+        with patch("httpx.Client", return_value=http_client):
+            result = client.chat(
+                model_id="gpt-5.6-luna",
+                messages=[
+                    {"role": "system", "content": "You are the agent."},
+                    {"role": "user", "content": "schedule it"},
+                ],
+                tools=[
+                    {
+                        "type": "function",
+                        "function": {
+                            "name": "list_fields",
+                            "description": "List fields",
+                            "parameters": {"type": "object", "properties": {}},
+                        },
+                    }
+                ],
+            )
+        self.assertEqual(result.content, "Checking fields")
+        self.assertEqual(result.tool_calls[0]["name"], "list_fields")
+        self.assertEqual(result.tool_calls[0]["id"], "call_1")
+        url, _kwargs = http_client.post.call_args[0][0], http_client.post.call_args.kwargs
+        self.assertTrue(str(url).endswith("/responses"))
+        self.assertEqual(_kwargs["json"]["tools"][0]["name"], "list_fields")
+        self.assertIn("You are the agent.", _kwargs["json"]["instructions"])
 
     def test_openai_stream_text_and_tool_calls(self) -> None:
         # Tool call name/arguments arrive split across deltas, keyed by index.
@@ -843,7 +1366,9 @@ class AgentEventStreamTests(TestCase):
     def setUp(self) -> None:
         self.user = User.objects.create(username="staff5", is_staff=True)
         self.event = create_event(title="Streaming Open")
-        self.tournament = Tournament.objects.create(event=self.event)
+        self.tournament = Tournament.objects.create(
+            event=self.event, status=Tournament.Status.SCHEDULING
+        )
         TournamentField.objects.create(tournament=self.tournament, name="Field 1")
         self.service = TournamentAgentService(self.user)
         self.session = self.service.get_or_create_session(self.tournament.id)
@@ -909,6 +1434,40 @@ class AgentEventStreamTests(TestCase):
         # The proposal event must follow the tool_end that created it.
         types = [e["type"] for e in events]
         self.assertLess(types.index("tool_end"), types.index("proposal"))
+
+    def test_plain_text_proposal_claim_is_nudged_until_a_tool_runs(self) -> None:
+        # Models sometimes say "Proposal #N is live" without calling propose_*.
+        # One nudge used to be enough to give up; staff then had nothing to Confirm.
+        rounds = [
+            self._mock_round("Proposal #12 is live and pending staff Confirm.", []),
+            self._mock_round("Proposal #12 is live.", []),
+            self._mock_round(
+                "",
+                [
+                    {
+                        "name": "propose_create_field",
+                        "id": "tc1",
+                        "arguments": '{"name": "Field 2"}',
+                    }
+                ],
+            ),
+            self._mock_round("Proposed a new field.", []),
+        ]
+        with patch.object(self.service.client, "chat", side_effect=rounds) as chat:
+            events = list(self.service.process_message_events(self.session, "add a field"))
+
+        self.assertGreaterEqual(chat.call_count, 3)
+        nudge_seen = False
+        for call in chat.call_args_list:
+            for message in call.kwargs["messages"]:
+                if message.get("role") != "user":
+                    continue
+                if "Plain text does not create a proposal" in (message.get("content") or ""):
+                    nudge_seen = True
+        self.assertTrue(nudge_seen)
+        proposal_events = [e for e in events if e["type"] == "proposal"]
+        self.assertEqual(len(proposal_events), 1)
+        self.assertEqual(proposal_events[0]["proposal"]["tool_name"], "propose_create_field")
 
     def test_question_event_ends_the_turn(self) -> None:
         rounds = [
@@ -986,8 +1545,10 @@ class AgentEventStreamTests(TestCase):
         types = [e["type"] for e in events]
         self.assertLess(types.index("text_delta"), types.index("tool_start"))
 
-    def test_streaming_corrects_text_when_tool_calls_came_from_text(self) -> None:
-        """A raw <tool_call> blob gets streamed, then stripped - clients need the fix."""
+    def test_streaming_keeps_text_when_tool_round_content_is_empty(self) -> None:
+        # Providers often strip <tool_call> text to empty content on the tool
+        # round. Replacing the display with that would flash the blob then go
+        # blank; leave the streamed text until the next round has real copy.
         streaming_service = TournamentAgentService(self.user, streaming=True)
         session = streaming_service.get_or_create_session(self.tournament.id)
         blob = "<tool_call><name>list_fields</name><arguments>{}</arguments></tool_call>"
@@ -1018,9 +1579,8 @@ class AgentEventStreamTests(TestCase):
         ):
             events = list(streaming_service.process_message_events(session, "fields?"))
 
-        replaces = [e for e in events if e["type"] == "text_replace"]
-        self.assertTrue(replaces, "expected a text_replace to retract the streamed blob")
-        self.assertNotIn("<tool_call>", replaces[0]["text"])
+        self.assertEqual([e for e in events if e["type"] == "text_replace"], [])
+        self.assertTrue(any(e.get("text") == blob for e in events if e["type"] == "text_delta"))
 
 
 class StreamEndpointTests(ApiBaseTestCase):
@@ -1032,7 +1592,9 @@ class StreamEndpointTests(ApiBaseTestCase):
         self.user.save()
         self.client.force_login(self.user)
         self.event = create_event(title="SSE Open")
-        self.tournament = Tournament.objects.create(event=self.event)
+        self.tournament = Tournament.objects.create(
+            event=self.event, status=Tournament.Status.SCHEDULING
+        )
         TournamentField.objects.create(tournament=self.tournament, name="Field 1")
 
     def _stream_round(self, content: str, tool_calls: list[dict[str, str]]) -> Any:
@@ -1120,7 +1682,11 @@ class StreamEndpointTests(ApiBaseTestCase):
         self.assertEqual(frames[-1][0], "error")
 
     def test_user_message_is_persisted_before_streaming_starts(self) -> None:
-        rounds = [self._stream_round("Hi.", []), self._stream_round("Hi.", [])]
+        rounds = [
+            self._stream_round("Hi.", []),
+            self._stream_round("Hi.", []),
+            self._stream_round("Hi.", []),
+        ]
         with patch(
             "server.tournament_agent.clients.opencode.OpenCodeGoClient.chat_stream",
             side_effect=rounds,
@@ -1136,7 +1702,9 @@ class ProposalSafetyTests(TestCase):
     def setUp(self) -> None:
         self.user = User.objects.create(username="staff-safety", is_staff=True)
         self.event = create_event(title="Safety Open")
-        self.tournament = Tournament.objects.create(event=self.event)
+        self.tournament = Tournament.objects.create(
+            event=self.event, status=Tournament.Status.SCHEDULING
+        )
         teams = [Team.objects.create(name=f"Safety {i}", slug=f"safety-{i}") for i in range(1, 5)]
         seeding = {str(i): team.id for i, team in enumerate(teams, start=1)}
         self.tournament.initial_seeding = seeding
@@ -1263,6 +1831,61 @@ class ProposalSafetyTests(TestCase):
         match.refresh_from_db()
         self.assertIsNone(match.time)
 
+    def test_bulk_schedule_rejects_two_matches_in_the_same_slot(self) -> None:
+        self._apply(propose_create_pool(self.ctx, name="A", sequence_number=1, seeding=[1, 2, 3]))
+        matches = list(Match.objects.filter(tournament=self.tournament).order_by("id"))
+        result = propose_bulk_schedule(
+            self.ctx,
+            assignments=[
+                {
+                    "match_id": matches[0].id,
+                    "time": "2026-08-01T09:00:00",
+                    "field_id": self.field.id,
+                },
+                {
+                    "match_id": matches[1].id,
+                    "time": "2026-08-01T09:00:00",
+                    "field_id": self.field.id,
+                },
+            ],
+        )
+        proposal = AgentProposal.objects.get(id=result["proposal_id"])
+        with self.assertRaises(ProposalApplyError) as cm:
+            apply_proposal(proposal)
+        self.assertIn("same start", str(cm.exception))
+        proposal.refresh_from_db()
+        self.assertEqual(proposal.status, ProposalStatus.PENDING)
+        for match in matches:
+            match.refresh_from_db()
+            self.assertIsNone(match.time)
+
+    def test_bulk_schedule_collision_with_an_existing_slot_is_readable(self) -> None:
+        self._apply(propose_create_pool(self.ctx, name="A", sequence_number=1, seeding=[1, 2, 3]))
+        matches = list(Match.objects.filter(tournament=self.tournament).order_by("id"))
+        self._apply(
+            propose_update_match(
+                self.ctx,
+                match_id=matches[0].id,
+                time="2026-08-01T09:00:00",
+                field_id=self.field.id,
+            )
+        )
+        result = propose_bulk_schedule(
+            self.ctx,
+            assignments=[
+                {
+                    "match_id": matches[1].id,
+                    "time": "2026-08-01T09:00:00",
+                    "field_id": self.field.id,
+                }
+            ],
+        )
+        with self.assertRaises(ProposalApplyError) as cm:
+            apply_proposal(AgentProposal.objects.get(id=result["proposal_id"]))
+        self.assertIn("same field at the same time", str(cm.exception))
+        matches[1].refresh_from_db()
+        self.assertIsNone(matches[1].time)
+
     def test_missing_match_is_a_readable_error_not_a_crash(self) -> None:
         with self.assertRaises(ProposalApplyError) as cm:
             self._apply(propose_delete_match(self.ctx, match_id=99999))
@@ -1275,6 +1898,24 @@ class ProposalSafetyTests(TestCase):
             apply_proposal(proposal)
         proposal.refresh_from_db()
         self.assertEqual(proposal.status, ProposalStatus.PENDING)
+        self.assertTrue(proposal.last_error)
+
+    def test_confirm_failure_is_visible_to_the_agent(self) -> None:
+        result = propose_delete_match(self.ctx, match_id=99999)
+        proposal = AgentProposal.objects.get(id=result["proposal_id"])
+        with self.assertRaises(ProposalApplyError):
+            apply_proposal(proposal)
+        proposal.refresh_from_db()
+
+        listed = list_proposals(self.ctx)
+        pending = listed["pending"][0]
+        self.assertEqual(pending["id"], proposal.id)
+        self.assertIn("no longer exists", pending["last_error"])
+        self.assertIn("corrected payload", pending["note"])
+
+        prompt = pending_proposals_prompt(self.session)
+        self.assertIn("apply error:", prompt)
+        self.assertIn("no longer exists", prompt)
 
     def test_clear_history_expires_pending_proposals(self) -> None:
         result = propose_create_pool(self.ctx, name="A", sequence_number=1, seeding=[1, 2])
@@ -1289,7 +1930,9 @@ class SchedulerConstraintTests(TestCase):
     def setUp(self) -> None:
         self.user = User.objects.create(username="staff-sched", is_staff=True)
         self.event = create_event(title="Scheduler Open")
-        self.tournament = Tournament.objects.create(event=self.event)
+        self.tournament = Tournament.objects.create(
+            event=self.event, status=Tournament.Status.SCHEDULING
+        )
         teams = [Team.objects.create(name=f"Sch {i}", slug=f"sch-{i}") for i in range(1, 5)]
         seeding = {str(i): team.id for i, team in enumerate(teams, start=1)}
         self.tournament.initial_seeding = seeding
@@ -1316,6 +1959,11 @@ class SchedulerConstraintTests(TestCase):
         result = recommend_schedule(tournament=self.tournament, **kwargs)
         return {a["match_id"]: a for a in result["assignments"]}
 
+    def _start(self, assignment: dict[str, Any]) -> datetime:
+        start = parse_datetime(assignment["time"])
+        assert start is not None
+        return start
+
     def test_rest_is_enforced_before_the_tournament_starts(self) -> None:
         # Teams are unassigned pre-start, so rest has to fall back to seeds.
         placements = self._placements()
@@ -1323,8 +1971,7 @@ class SchedulerConstraintTests(TestCase):
 
         by_seed: dict[int, list[datetime]] = {}
         for match in Match.objects.filter(tournament=self.tournament):
-            start = parse_datetime(placements[match.id]["time"])
-            assert start is not None
+            start = self._start(placements[match.id])
             for seed in (match.placeholder_seed_1, match.placeholder_seed_2):
                 by_seed.setdefault(seed, []).append(start)
 
@@ -1339,8 +1986,7 @@ class SchedulerConstraintTests(TestCase):
             placements = self._placements(slot_buffer_mins=buffer_mins)
             self.assertTrue(placements)
             for assignment in placements.values():
-                start = parse_datetime(assignment["time"])
-                assert start is not None
+                start = self._start(assignment)
                 offset = (start - start.replace(hour=7, minute=0)).total_seconds() / 60
                 self.assertEqual(
                     offset % step, 0, f"{assignment['time']} is off the {step}-minute grid"
@@ -1355,17 +2001,62 @@ class SchedulerConstraintTests(TestCase):
     def test_feeding_stages_are_placed_before_the_stages_they_feed(self) -> None:
         build_bracket(self.tournament, name="1-4", sequence_number=1)
         placements = self._placements()
-        pool_latest = max(
-            placements[m.id]["time"]
+        pool_end = max(
+            self._start(placements[m.id])
+            + timedelta(minutes=int(placements[m.id]["duration_mins"]))
             for m in Match.objects.filter(tournament=self.tournament, pool__isnull=False)
             if m.id in placements
         )
         bracket_first = min(
-            placements[m.id]["time"]
+            self._start(placements[m.id])
             for m in Match.objects.filter(tournament=self.tournament, bracket__isnull=False)
             if m.id in placements
         )
-        self.assertLess(pool_latest, bracket_first)
+        self.assertLessEqual(pool_end, bracket_first)
+
+    def test_later_stage_waits_on_an_idle_field(self) -> None:
+        # One pool game and two fields: without the stage gate the semi would
+        # start on Field 2 while the pool is still on Field 1.
+        Match.objects.filter(tournament=self.tournament).delete()
+        Pool.objects.filter(tournament=self.tournament).delete()
+        build_pool(self.tournament, name="A", sequence_number=1, seeding=[1, 2])
+        build_bracket(self.tournament, name="1-4", sequence_number=1)
+        placements = self._placements(end_date="2026-08-01")
+        pool_end = max(
+            self._start(placements[m.id])
+            + timedelta(minutes=int(placements[m.id]["duration_mins"]))
+            for m in Match.objects.filter(tournament=self.tournament, pool__isnull=False)
+            if m.id in placements
+        )
+        bracket_first = min(
+            self._start(placements[m.id])
+            for m in Match.objects.filter(tournament=self.tournament, bracket__isnull=False)
+            if m.id in placements
+        )
+        self.assertLessEqual(pool_end, bracket_first)
+
+    def test_already_scheduled_pools_gate_later_brackets(self) -> None:
+        pool_match = (
+            Match.objects.filter(tournament=self.tournament, pool__isnull=False)
+            .order_by("id")
+            .first()
+        )
+        assert pool_match is not None
+        field = TournamentField.objects.filter(tournament=self.tournament).order_by("name").first()
+        assert field is not None
+        pool_match.time = parse_datetime("2026-08-01T07:00:00+00:00")
+        pool_match.field = field
+        pool_match.save()
+        build_bracket(self.tournament, name="1-4", sequence_number=1)
+        placements = self._placements()
+        self.assertNotIn(pool_match.id, placements)
+        bracket_first = min(
+            self._start(placements[m.id])
+            for m in Match.objects.filter(tournament=self.tournament, bracket__isnull=False)
+            if m.id in placements
+        )
+        naive = bracket_first.replace(tzinfo=None) if bracket_first.tzinfo else bracket_first
+        self.assertGreaterEqual((naive.hour, naive.minute), (8, 15))
 
 
 class LiveOpsToolTests(TestCase):
@@ -1374,7 +2065,9 @@ class LiveOpsToolTests(TestCase):
     def setUp(self) -> None:
         self.user = User.objects.create(username="staff-live", is_staff=True)
         self.event = create_event(title="Live Open")
-        self.tournament = Tournament.objects.create(event=self.event)
+        self.tournament = Tournament.objects.create(
+            event=self.event, status=Tournament.Status.SCHEDULING
+        )
         teams = [Team.objects.create(name=f"Live {i}", slug=f"live-{i}") for i in range(1, 5)]
         seeding = {str(i): team.id for i, team in enumerate(teams, start=1)}
         self.tournament.initial_seeding = seeding
@@ -1535,6 +2228,27 @@ class LiveOpsToolTests(TestCase):
         self.assertIn("Unknown stage kind", result["error"])
         self.assertFalse(AgentProposal.objects.filter(tool_name="propose_delete_stage").exists())
 
+    def test_delete_stage_dispatch_accepts_kind_and_id_aliases(self) -> None:
+        # The repair skill used to say `kind`; list_stages returns `id` not `stage_id`.
+        # Either shape must still become a confirmable proposal, or staff never see a card.
+        result = dispatch_tool(
+            self.ctx,
+            "propose_delete_stage",
+            {"kind": "pool", "id": self.pool.id, "name": "A"},
+        )
+        self.assertNotIn("error", result)
+        proposal = AgentProposal.objects.get(id=result["proposal_id"])
+        self.assertEqual(proposal.tool_name, "propose_delete_stage")
+        self.assertEqual(proposal.payload["stage"], "pool")
+        self.assertEqual(proposal.payload["stage_id"], self.pool.id)
+        self.assertEqual(proposal.payload["name"], "A")
+        self.assertIn("pool A", result["summary"])
+
+    def test_delete_stage_missing_row_does_not_propose(self) -> None:
+        result = propose_delete_stage(self.ctx, stage="pool", stage_id=99999)
+        self.assertIn("error", result)
+        self.assertFalse(AgentProposal.objects.filter(tool_name="propose_delete_stage").exists())
+
     def test_delete_stage_removes_its_matches(self) -> None:
         self._apply(propose_delete_stage(self.ctx, stage="pool", stage_id=self.pool.id))
         self.assertFalse(Match.objects.filter(tournament=self.tournament).exists())
@@ -1673,12 +2387,64 @@ class EvalFixtureTests(TestCase):
             with self.subTest(case=case["id"]):
                 tournament = _build_fixture(case, user)
                 fixture = case.get("fixture") or {}
-                if fixture.get("create_pool"):
-                    self.assertTrue(Match.objects.filter(tournament=tournament).exists())
+                if fixture.get("status") == "LIV":
+                    self.assertEqual(tournament.status, Tournament.Status.LIVE)
+                else:
+                    self.assertEqual(tournament.status, Tournament.Status.SCHEDULING)
+                if fixture.get("create_pool") or fixture.get("pools"):
+                    self.assertTrue(
+                        Match.objects.filter(tournament=tournament, pool__isnull=False).exists()
+                    )
+                if fixture.get("brackets"):
+                    self.assertTrue(
+                        Match.objects.filter(tournament=tournament, bracket__isnull=False).exists()
+                    )
                 if fixture.get("schedule"):
                     self.assertFalse(
                         Match.objects.filter(tournament=tournament, time__isnull=True).exists()
                     )
+
+    def test_stage_order_fixture_is_schedulable_without_violations(self) -> None:
+        from server.tournament_agent.domain.scheduler import recommend_schedule
+        from server.tournament_agent.domain.validate import _rank
+        from server.tournament_agent.evals import TrajectoryTrace, load_cases, score_case
+        from server.tournament_agent.evals.runner import _build_fixture
+
+        case = next(c for c in load_cases() if c["id"] == "capability_stage_order_schedule")
+        user = User.objects.create(username="eval-stage-order", is_staff=True)
+        tournament = _build_fixture(case, user)
+        result = recommend_schedule(
+            tournament=tournament,
+            start_date="2026-08-01",
+            end_date="2026-08-02",
+        )
+        self.assertEqual((result.get("meta") or {}).get("unplaced"), 0)
+        self.assertGreaterEqual(len(result["assignments"]), 20)
+        expect = {
+            **(case.get("expect_state") or {}),
+            "match_ranks": {m.id: _rank(m) for m in Match.objects.filter(tournament=tournament)},
+        }
+        scored = score_case(
+            {**case, "expect_state": expect},
+            TrajectoryTrace(
+                tool_calls=[
+                    {"name": "propose_recommended_schedule"},
+                    {"name": "check_schedule_conflicts"},
+                ],
+                proposals=[
+                    {
+                        "tool_name": "propose_recommended_schedule",
+                        "payload": {
+                            "assignments": result["assignments"],
+                            "meta": result.get("meta") or {},
+                        },
+                    }
+                ],
+                steps=3,
+            ),
+            expect_met=True,
+        )
+        self.assertTrue(scored.passed, scored.notes)
 
 
 class ToolContractTests(TestCase):
@@ -1767,8 +2533,10 @@ class ArchitectureTests(TestCase):
         for path in sorted((package / "tools").rglob("*.py")):
             text = path.read_text()
             # AgentProposal/AgentQuestion rows are the agent's own bookkeeping.
+            # Pinning proposal ids on the assistant message is the same: it does
+            # not write tournament rows.
             for line in text.splitlines():
-                if writes.search(line) and "Agent" not in line:
+                if writes.search(line) and "Agent" not in line and "assistant_message" not in line:
                     self.fail(f"{path.name} writes outside the proposal path: {line.strip()}")
 
 
@@ -1809,6 +2577,10 @@ class SkillLoaderTests(TestCase):
         self.assertIn("spirit_and_roster", names)
         self.assertLess(names.index("spirit_and_roster"), names.index("live_progression"))
 
+    def test_setup_order_is_fields_then_stages_then_schedule(self) -> None:
+        core = next(s for s in load_skills() if s.name == "core_rules")
+        self.assertIn("fields, then stages, then schedule", core.body)
+
     def test_core_rules_are_always_first(self) -> None:
         for status, text in (("DFT", "set up"), ("LIV", "score"), ("COM", "overview")):
             picked = select_skills(load_skills(), tournament_status=status, user_text=text)
@@ -1827,6 +2599,13 @@ class SkillLoaderTests(TestCase):
         self.assertIn("mid_event_repairs", names("DFT", "the seeding is wrong, fix pool A"))
         self.assertIn("safety_and_refusals", names("COM", "overview"))
 
+    def test_format_playbook_leads_with_snake_and_push_in(self) -> None:
+        playbook = next(s for s in load_skills() if s.name == "format_playbooks")
+        self.assertIn("[1,4,5,8]", playbook.body.replace(" ", ""))
+        self.assertIn("3v4", playbook.body)
+        self.assertIn("push-in", playbook.body)
+        self.assertIn("never sequential", playbook.body.lower())
+
 
 class SpiritAndRosterTests(TestCase):
     """P0c: ids cross the boundary, names never do."""
@@ -1834,7 +2613,9 @@ class SpiritAndRosterTests(TestCase):
     def setUp(self) -> None:
         self.user = User.objects.create(username="staff-spirit", is_staff=True)
         self.event = create_event(title="Spirit Open")
-        self.tournament = Tournament.objects.create(event=self.event, use_uc_registrations=False)
+        self.tournament = Tournament.objects.create(
+            event=self.event, use_uc_registrations=False, status=Tournament.Status.SCHEDULING
+        )
         self.teams = [Team.objects.create(name=f"Sp {i}", slug=f"sp-{i}") for i in range(1, 3)]
         seeding = {str(i): team.id for i, team in enumerate(self.teams, start=1)}
         self.tournament.initial_seeding = seeding
@@ -2151,7 +2932,9 @@ class ProposalSupersedeTests(TestCase):
     def setUp(self) -> None:
         self.user = User.objects.create(username="staff-sup", is_staff=True)
         self.event = create_event(title="Supersede Open")
-        self.tournament = Tournament.objects.create(event=self.event)
+        self.tournament = Tournament.objects.create(
+            event=self.event, status=Tournament.Status.SCHEDULING
+        )
         teams = [Team.objects.create(name=f"Sup {i}", slug=f"sup-{i}") for i in range(1, 5)]
         seeding = {str(i): team.id for i, team in enumerate(teams, start=1)}
         self.tournament.initial_seeding = seeding
@@ -2207,6 +2990,18 @@ class ProposalSupersedeTests(TestCase):
 
         self.assertEqual(AgentProposal.objects.filter(status=ProposalStatus.PENDING).count(), 2)
 
+    def test_proposal_ids_are_pinned_on_the_assistant_message(self) -> None:
+        ctx = self._turn()
+        first = propose_create_pool(ctx, name="A", sequence_number=1, seeding=[1, 2])
+        second = propose_create_pool(ctx, name="B", sequence_number=2, seeding=[3, 4])
+        message = ctx.assistant_message
+        assert message is not None
+        message.refresh_from_db()
+        self.assertEqual(
+            message.payload["proposal_ids"],
+            [first["proposal_id"], second["proposal_id"]],
+        )
+
     def test_different_tools_do_not_retire_each_other(self) -> None:
         propose_bulk_schedule(self._turn(), assignments=[])
         propose_create_pool(self._turn(), name="A", sequence_number=1, seeding=[1, 2])
@@ -2218,3 +3013,75 @@ class ProposalSupersedeTests(TestCase):
         propose_bulk_schedule(self._turn(), assignments=[])
         history = TournamentAgentService(self.user).history(self.session)
         self.assertEqual(len(history["pending_proposals"]), 1)
+
+    def _assignment(self, match_id: int, hour: int = 9) -> dict[str, Any]:
+        return {
+            "match_id": match_id,
+            "time": f"2026-08-01T{hour:02d}:00:00",
+            "field_id": 1,
+        }
+
+    def test_overlapping_schedule_plans_in_one_turn_keep_only_the_latest(self) -> None:
+        ctx = self._turn()
+        first = propose_bulk_schedule(
+            ctx, assignments=[self._assignment(1), self._assignment(2, 10)]
+        )
+        second = propose_bulk_schedule(
+            ctx, assignments=[self._assignment(2), self._assignment(3, 10)]
+        )
+        third = propose_bulk_schedule(
+            ctx,
+            assignments=[
+                self._assignment(1),
+                self._assignment(2, 10),
+                self._assignment(3, 11),
+            ],
+        )
+
+        pending = AgentProposal.objects.filter(status=ProposalStatus.PENDING)
+        self.assertEqual(pending.count(), 1)
+        self.assertEqual(pending.get().id, third["proposal_id"])
+        self.assertEqual(
+            AgentProposal.objects.get(id=first["proposal_id"]).status,
+            ProposalStatus.EXPIRED,
+        )
+        self.assertEqual(
+            AgentProposal.objects.get(id=second["proposal_id"]).status,
+            ProposalStatus.EXPIRED,
+        )
+
+    def test_recommended_and_bulk_for_the_same_matches_keep_the_later(self) -> None:
+        ctx = self._turn()
+        recommended = ctx.create_proposal(
+            "propose_recommended_schedule",
+            "Recommended schedule",
+            {"assignments": [self._assignment(1), self._assignment(2, 10)]},
+        )
+        bulk = propose_bulk_schedule(
+            ctx,
+            assignments=[
+                self._assignment(1),
+                self._assignment(2, 10),
+                self._assignment(3, 11),
+            ],
+        )
+
+        pending = AgentProposal.objects.filter(status=ProposalStatus.PENDING)
+        self.assertEqual(pending.count(), 1)
+        self.assertEqual(pending.get().id, bulk["proposal_id"])
+        self.assertEqual(
+            AgentProposal.objects.get(id=recommended["proposal_id"]).status,
+            ProposalStatus.EXPIRED,
+        )
+
+    def test_disjoint_schedule_plans_in_one_turn_all_survive(self) -> None:
+        ctx = self._turn()
+        propose_bulk_schedule(ctx, assignments=[self._assignment(1), self._assignment(2, 10)])
+        propose_bulk_schedule(ctx, assignments=[self._assignment(3), self._assignment(4, 10)])
+        self.assertEqual(AgentProposal.objects.filter(status=ProposalStatus.PENDING).count(), 2)
+
+    def test_recommended_schedule_does_not_propose_when_there_are_no_fields(self) -> None:
+        result = propose_recommended_schedule(self._turn(), start_date="2026-08-01")
+        self.assertIn("error", result)
+        self.assertNotIn("proposal_id", result)
+        self.assertFalse(AgentProposal.objects.exists())

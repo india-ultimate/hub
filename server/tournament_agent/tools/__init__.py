@@ -11,6 +11,7 @@ between those files should not ripple out to callers.
 
 from __future__ import annotations
 
+import inspect
 from typing import Any
 
 from server.tournament_agent.tools.context import ToolContext, ToolHandler
@@ -25,6 +26,7 @@ from server.tournament_agent.tools.mutations import (
     propose_create_pool,
     propose_create_position_pool,
     propose_create_swiss_round,
+    propose_delete_field,
     propose_delete_match,
     propose_delete_stage,
     propose_full_setup,
@@ -33,7 +35,9 @@ from server.tournament_agent.tools.mutations import (
     propose_recommended_schedule,
     propose_shift_schedule,
     propose_start_tournament,
+    propose_update_field,
     propose_update_match,
+    propose_update_match_seeds,
     propose_update_seeding,
 )
 from server.tournament_agent.tools.queries import (
@@ -52,6 +56,7 @@ from server.tournament_agent.tools.reads import (
     list_matches,
     list_pools,
     list_position_pools,
+    list_proposals,
     list_stages,
     list_swiss_rounds,
     list_teams_seeding,
@@ -75,6 +80,7 @@ HANDLERS: dict[str, ToolHandler] = {
     "list_position_pools": list_position_pools,
     "list_fields": list_fields,
     "list_matches": list_matches,
+    "list_proposals": list_proposals,
     "get_standings": get_standings,
     "get_swiss_standings": get_swiss_standings,
     "list_stages": list_stages,
@@ -90,9 +96,12 @@ HANDLERS: dict[str, ToolHandler] = {
     "propose_create_bracket": propose_create_bracket,
     "propose_create_position_pool": propose_create_position_pool,
     "propose_create_field": propose_create_field,
+    "propose_update_field": propose_update_field,
+    "propose_delete_field": propose_delete_field,
     "propose_create_cross_pool_matches": propose_create_cross_pool_matches,
     "propose_update_seeding": propose_update_seeding,
     "propose_update_match": propose_update_match,
+    "propose_update_match_seeds": propose_update_match_seeds,
     "propose_delete_match": propose_delete_match,
     "propose_bulk_schedule": propose_bulk_schedule,
     "propose_match_score": propose_match_score,
@@ -112,11 +121,35 @@ READ_ONLY_TOOLS = frozenset(
 )
 
 
+# The model copies keys from the last read. list_stages returns `id` not
+# `stage_id`, and the repair skill used to say `kind` instead of `stage`.
+# Remap those aliases so a delete-stage call still becomes a proposal.
+_ARG_ALIASES: dict[str, dict[str, str]] = {
+    "propose_delete_stage": {
+        "kind": "stage",
+        "stage_kind": "stage",
+        "id": "stage_id",
+    },
+    "propose_update_field": {"id": "field_id"},
+    "propose_delete_field": {"id": "field_id"},
+}
+
+
 def dispatch_tool(ctx: ToolContext, name: str, arguments: dict[str, Any]) -> Any:
     handler = HANDLERS.get(name)
     if handler is None:
         return {"error": f"Unknown tool: {name}"}
-    return handler(ctx, **arguments)
+    args = dict(arguments or {})
+    for src, dest in _ARG_ALIASES.get(name, {}).items():
+        if dest not in args and src in args:
+            args[dest] = args[src]
+        args.pop(src, None)
+    accepted = {
+        key
+        for key, param in inspect.signature(handler).parameters.items()
+        if key != "ctx" and param.kind != inspect.Parameter.VAR_KEYWORD
+    }
+    return handler(ctx, **{key: value for key, value in args.items() if key in accepted})
 
 
 __all__ = [
@@ -145,6 +178,7 @@ __all__ = [
     "list_missing_spirit_scores",
     "list_pools",
     "list_position_pools",
+    "list_proposals",
     "list_stages",
     "list_swiss_rounds",
     "list_teams_seeding",
@@ -157,6 +191,7 @@ __all__ = [
     "propose_create_pool",
     "propose_create_position_pool",
     "propose_create_swiss_round",
+    "propose_delete_field",
     "propose_delete_match",
     "propose_delete_stage",
     "propose_full_setup",
@@ -166,6 +201,8 @@ __all__ = [
     "propose_shift_schedule",
     "propose_spirit_scores",
     "propose_start_tournament",
+    "propose_update_field",
     "propose_update_match",
+    "propose_update_match_seeds",
     "propose_update_seeding",
 ]

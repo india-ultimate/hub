@@ -30,7 +30,7 @@ from pathlib import Path
 SKILLS_DIR = Path(__file__).resolve().parent.parent / "skills"
 
 # Skills are dense; this caps how much of the context window they can take.
-DEFAULT_BUDGET_CHARS = 24_000
+DEFAULT_BUDGET_CHARS = 32_000
 
 _LIST_RE = re.compile(r"^\[(.*)\]$")
 

@@ -29,7 +29,11 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "list_teams_seeding",
-            "description": "List teams with seed numbers.",
+            "description": (
+                "List teams with seed numbers, plus snake_draft pool assignments. "
+                "Always use snake_draft when creating pools — never sequential blocks "
+                "like 1-4 vs 5-8."
+            ),
             "parameters": _EMPTY_PARAMS,
         },
     },
@@ -144,6 +148,27 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
                 "in one call instead of listing each stage type."
             ),
             "parameters": _EMPTY_PARAMS,
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_proposals",
+            "description": (
+                "The proposals staff can actually Confirm, from the database. Chat that "
+                "mentions a proposal number is not proof it exists — call this before "
+                "telling staff one is pending. Pass proposal_id to look up a specific "
+                "number (missing, expired, confirmed, or still pending)."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "proposal_id": {
+                        "type": "integer",
+                        "description": "Look up this id even if it is not pending.",
+                    }
+                },
+            },
         },
     },
     {
@@ -284,7 +309,11 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "propose_create_pool",
-            "description": "Propose creating a pool (requires staff Confirm).",
+            "description": (
+                "Propose creating a pool (requires staff Confirm). seeding must be a "
+                "snake-draft slice from list_teams_seeding.snake_draft, never a sequential "
+                "block. Two pools of 4: A=[1,4,5,8] B=[2,3,6,7]."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -325,7 +354,13 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "propose_create_bracket",
-            "description": "Propose creating a bracket like '1-8' (requires Confirm).",
+            "description": (
+                "Propose creating a bracket like '1-4' or '1-8' (requires Confirm). "
+                "The name is a seed range; Confirm creates the full placement tree, "
+                "not just semis and a final. A 1-4 is 1v4 and 2v3 (semis), 1v2 (final), "
+                "AND 3v4 (3rd place / push-in). Do not also create a 3-4 bracket for that "
+                "game, and do not describe a 1-4 as two semis and a final."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -374,6 +409,43 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "propose_update_field",
+            "description": (
+                "Propose renaming a field or changing its address / broadcast flag "
+                "(requires Confirm). Look up field_id with list_fields first."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "field_id": {"type": "integer"},
+                    "name": {"type": "string"},
+                    "address": {"type": "string"},
+                    "is_broadcasted": {"type": "boolean"},
+                },
+                "required": ["field_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "propose_delete_field",
+            "description": (
+                "Propose deleting a playing field (requires Confirm). Refused if any "
+                "match is still assigned to it — move those matches first."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "field_id": {"type": "integer"},
+                },
+                "required": ["field_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "propose_create_cross_pool_matches",
             "description": (
                 "Propose cross pool matches as seed pairs, e.g. [[1,3],[2,4],[5,12]] "
@@ -415,7 +487,12 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "propose_update_match",
-            "description": "Propose updating a match time/field/duration (requires Confirm).",
+            "description": (
+                "Propose updating one match's time, field, duration, or placeholder "
+                "seeds (requires Confirm). To rewrite several bracket pairings at "
+                "once (3v5 and 4v6 instead of 3v6 and 4v5), use "
+                "propose_update_match_seeds."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -423,8 +500,47 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
                     "time": {"type": "string"},
                     "field_id": {"type": "integer"},
                     "duration_mins": {"type": "integer"},
+                    "seed_1": {
+                        "type": "integer",
+                        "description": "New placeholder seed for side 1. Pass with seed_2.",
+                    },
+                    "seed_2": {
+                        "type": "integer",
+                        "description": "New placeholder seed for side 2. Pass with seed_1.",
+                    },
                 },
                 "required": ["match_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "propose_update_match_seeds",
+            "description": (
+                "Propose rewriting placeholder seeds on existing matches (requires Confirm). "
+                "Use this when a bracket's default pairings should change — e.g. 1v8, 2v7, "
+                "3v5, 4v6 instead of 1v8, 2v7, 3v6, 4v5. Later-round matches keep their "
+                "seed slots (1v4, 2v3, …); only list the matches whose pairings change. "
+                "Call list_matches first. A seed may appear only once in the same round."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "updates": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "match_id": {"type": "integer"},
+                                "seed_1": {"type": "integer"},
+                                "seed_2": {"type": "integer"},
+                            },
+                            "required": ["match_id", "seed_1", "seed_2"],
+                        },
+                    }
+                },
+                "required": ["updates"],
             },
         },
     },
@@ -555,7 +671,11 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "propose_full_setup",
-            "description": "Propose a full structure setup recipe (requires Confirm).",
+            "description": (
+                "Propose a full structure setup recipe (requires Confirm). pool_defs "
+                "seeding must be snake draft. bracket_names like '1-4' include the "
+                "3rd-place / push-in match automatically."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -573,7 +693,10 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "function": {
             "name": "propose_recommended_schedule",
             "description": (
-                "Run the deterministic scheduler and propose a bulk schedule (requires Confirm)."
+                "Run the deterministic scheduler and propose a bulk schedule (requires Confirm). "
+                "Places pools/Swiss first, then cross-pool, then brackets — a semi never starts "
+                "while a pool is still on. Default first pull is 07:00. Pass end_date for a "
+                "multi-day event. After it returns, call check_schedule_conflicts."
             ),
             "parameters": {
                 "type": "object",
@@ -587,7 +710,10 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
                         "next, per field. Production norm is 15 (75-min games on 90-min slots).",
                     },
                     "min_rest_mins": {"type": "integer"},
-                    "day_start_hour": {"type": "integer"},
+                    "day_start_hour": {
+                        "type": "integer",
+                        "description": "First pull hour, wall-clock. Production default is 7.",
+                    },
                     "day_end_hour": {"type": "integer"},
                     "lunch_start_hour": {"type": "integer"},
                     "lunch_end_hour": {"type": "integer"},

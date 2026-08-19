@@ -10,6 +10,7 @@ triggers:
     setup,
     configure,
     format,
+    pool,
     pools,
     swiss,
     bracket,
@@ -20,7 +21,11 @@ triggers:
     snake,
     seeding order,
     re-seed,
-    reseed
+    reseed,
+    pairing,
+    pairings,
+    1v8,
+    3v6
   ]
 requires_tools:
   [
@@ -28,6 +33,7 @@ requires_tools:
     list_stages,
     list_pools,
     list_brackets,
+    list_matches,
     propose_update_seeding,
     propose_create_pool,
     propose_create_swiss_round,
@@ -36,111 +42,109 @@ requires_tools:
     propose_create_bracket,
     propose_create_position_pool,
     propose_full_setup,
+    propose_update_match_seeds,
     propose_start_tournament,
+    propose_create_field,
     ask_user
   ]
 ---
 
 # Format playbooks
 
-How India Ultimate tournaments are actually structured. Grounded in 76 completed hub tournaments
-(2023–2026): NCS/NOCS/NWCS nationals and regionals, sectionals, beach nationals, and open hat/club
-events, 4–31 teams.
+How India Ultimate tournaments are structured. Copy these defaults; do not invent a layout.
+
+## Snake seeding (always)
+
+Pools are snake-drafted from tournament seeds. `list_teams_seeding` returns `snake_draft` — copy
+those lists. Never sequential blocks (A=1–4, B=5–8); those are refused.
+
+| Pools  | Seeds                                                          |
+| ------ | -------------------------------------------------------------- |
+| 2 of 4 | A=`[1,4,5,8]` B=`[2,3,6,7]`                                    |
+| 4 of 4 | A=`[1,8,9,16]` B=`[2,7,10,15]` C=`[3,6,11,14]` D=`[4,5,12,13]` |
+| 4 of 3 | A=`[1,8,9]` B=`[2,7,10]` C=`[3,6,11]` D=`[4,5,12]`             |
+
+## Brackets include the push-in
+
+`propose_create_bracket("1-4")` creates **four** matches. The 3v4 game is the 3rd-place / push-in;
+it is not optional and it is not a separate bracket.
+
+| Bracket | Matches created                                              |
+| ------- | ------------------------------------------------------------ |
+| `1-4`   | 1v4, 2v3 (semis); 1v2 (final); **3v4 (3rd place / push-in)** |
+| `5-8`   | 5v8, 6v7; 5v6 (5th); 7v8 (7th)                               |
+| `1-8`   | Quarters 1v8…4v5, then the `1-4` and `5-8` trees above       |
+
+Never describe a `1-4` as "two semis and a final". Never add a `3-4` bracket to supply the push-in.
+Names are always contiguous even ranges (`"1-4"`, `"9-16"`), never "Top 8".
+
+Default first-round pairings are 1vN, 2vN-1, and so on. Staff sometimes want a different draw —
+1v8 and 2v7 kept, but 3v5 and 4v6 instead of 3v6 and 4v5. `list_matches`, then one
+`propose_update_match_seeds` that rewrites **every** pairing that changes. Later-round matches
+(1v4, 2v3, 5v8, …) stay put: those numbers are slots the winners flow into, not a replay of who
+met in the quarters. A seed may appear only once in the same round, so never change 3v6 to 3v5
+without also moving 4v5. Completed matches cannot be re-seeded.
 
 ## Pick by team count
 
-Confirm with staff only when two families are genuinely both common.
+Confirm with staff only when two families are both common.
 
-| Teams | Structure (most common in production)                                                                          | Brackets / position pools                                             |
-| ----- | -------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| 4     | 1 pool of 4 (RR)                                                                                               | `1-4`, or `1-2` + `3-4` finals                                        |
-| 5     | 1 pool of 5 (RR)                                                                                               | `1-4`, or CP (2v3, 4v5) then `1-2` + `3-4`                            |
-| 6     | 1 pool of 6 (full RR, 5 games/team over 2 days) **or** 2×3 pools + CP                                          | `1-6` full placement, or `1-2`/`3-4`/`5-6`, or `1-4` + `5-6`          |
-| 7     | 1 pool of 7 (pure RR, often no bracket) **or** 4+3 pools                                                       | `1-2`, `3-4`, `5-6` placement pairs                                   |
-| 8     | 2×4 pools → full crossover CP → brackets                                                                       | `1-4` + `5-8` (or single `1-8`)                                       |
-| 9     | 5+4 pools → CP → bracket + PP                                                                                  | `1-4` + `5-6`, position pool of 3 for 7–9                             |
-| 10    | 2×5 pools → CP (3v6, 4v5, 7v10, 8v9)                                                                           | `1-4` + `5-8` + `9-10`                                                |
-| 11    | 3+4+4 pools → CP                                                                                               | `1-8`, position pool of 3                                             |
-| 12    | **4×3 pools → CP → `1-8` + position pool 9–12** (canonical, 4 events). Alt: 2×6 pools → `1-4` + `5-8` + PP     | `1-8` + PP(9,10,11,12)                                                |
-| 13–15 | 4 pools of 3/4 → CP → `1-8` + PPs for the rest                                                                 | e.g. 13t: `1-8` + PP(9–13)                                            |
-| 16    | **4×4 pools → CP bands 1–4 / 5–12 / 13–16 → `1-8` + `9-16`** (canonical nationals format, 5 events verbatim)   | `1-8` + `9-16`                                                        |
-| 17–18 | 5+4+4+4 pools → CP → `1-8` + lower brackets/PPs                                                                | e.g. `1-8`, `9-12`, `13-14`, `16-17`; or `1-8` + PP(9–13) + PP(14–18) |
-| 19–20 | 5 pools (4/3) or 4×5 → multi-round CP                                                                          | `1-8` + `9-12`/`9-16` + PPs of 3–4                                    |
-| 24    | 6×4 pools → 2 CP rounds → six brackets of 4 (`1-4` … `21-24`) **or** 24-team Swiss, 5 rounds → placement pairs | brackets of 4, or `1-4` + pairs `5-6` … `23-24`                       |
-| 25+   | Mixed pool sizes (5s and 4s) → CP chains → `1-8`, `9-16`, `17-24`, … + PP for remainder                        | seen at 31 teams                                                      |
+| Teams | Structure                                                     | After pools                               |
+| ----- | ------------------------------------------------------------- | ----------------------------------------- |
+| 4     | 1 pool of 4                                                   | `1-4`                                     |
+| 5     | 1 pool of 5                                                   | `1-4`, or CP 2v3/4v5 then `1-2`+`3-4`     |
+| 6     | 1 pool of 6 **or** 2×3 + CP                                   | `1-4` + `5-6`, or full placement          |
+| 7     | 1 pool of 7 **or** 4+3                                        | `1-2`, `3-4`, `5-6` pairs, or `1-4`       |
+| 8     | 2×4 snake pools → CP `1v8,2v7,3v6,4v5` → `1-4` + `5-8`        | both 4-team brackets (each has a push-in) |
+| 9     | 5+4 snake → CP → `1-4` + `5-6` + PP of 3 for 7–9              |                                           |
+| 10    | 2×5 snake → CP (3v6, 4v5, 7v10, 8v9) → `1-4` + `5-8` + `9-10` |                                           |
+| 12    | **4×3 snake → CP → `1-8` + PP 9–12**                          |                                           |
+| 16    | **4×4 snake → CP bands 1–4 / 5–12 / 13–16 → `1-8` + `9-16`**  |                                           |
 
-Rules of thumb:
-
-- Prefer 4 pools once you have ≥12 teams; prefer pools of 4, using pools of 3 or 5 to absorb
-  remainders. Seed pools by snake: pool A gets 1, 8, 9, 16; B gets 2, 7, 10, 15; and so on.
-- Brackets are always contiguous seed-range names (`"1-8"`, `"9-16"`, `"5-6"`) spanning an **even**
-  number of seeds — an odd span is rejected. Sizes 2, 4 and 8 dominate. Never invent names like
-  "Top 8".
-- Position pools mop up non-power-of-2 leftovers (3–5 teams) as a round-robin, named with a single
-  letter continuing after the pools (pools A–D → PPs E, K, …). Usually the bottom band, occasionally
-  a top band of 4 instead of a bracket.
-- Swiss appears in two shapes: one whole-field group (24 teams, 5 rounds), or a split into two
-  groups of 8 by odd/even seeds (16-team beach, 4 rounds each). Swiss feeds cross-pool or placement
-  brackets exactly like pools do.
-- Series events (NCS/NOCS/NWCS) follow these formats most strictly; open and hat events vary more —
-  for a non-series event with an unusual count, ask rather than force a template.
+Prefer 4 pools at ≥12 teams; pools of 4, with 3s or 5s for remainders. Position pools mop up
+non-power-of-2 leftovers (3–5 teams). Swiss is a whole-field group or two odd/even groups of 8.
 
 ## Cross-pool pairings
 
-Cross-pool is a reseeding round between pools and brackets. Creating the stage creates **no
-matches** — propose the exact pairings separately.
+Creating the CP stage creates **no matches** — propose pairings separately, in placeholder seeds
+after the pool reseed.
 
-Production pairings, in placeholder seeds after the pool reseed:
+- **8 teams:** `1v8, 2v7, 3v6, 4v5` then `1-4` / `5-8`.
+- **12 teams:** `1v3, 2v4, 5v12, 6v11, 7v10, 8v9`.
+- **16 teams:** `1v3, 2v4`; `5v12, 6v11, 7v10, 8v9`; `13v15, 14v16`.
+- **Small (5–7):** middle only — `2v3, 4v5` at 5; seeds 1 (and often 2) skip to the final/bracket.
 
-- **16 teams (canonical, 5 nationals):** band 1–4: `1v3, 2v4`; band 5–12: `5v12, 6v11, 7v10, 8v9`;
-  band 13–16: `13v15, 14v16`. Variant: `1v2, 3v4` and `13v14, 15v16`.
-- **12 teams:** `1v3, 2v4, 5v12, 6v11, 7v10, 8v9` (some events skip the top band).
-- **8 teams:** full crossover `1v8, 2v7, 3v6, 4v5` before `1-4`/`5-8`.
-- **Small (5–7 teams):** middle crossovers only — `2v3, 4v5` at 5 teams; `3v5, 4v6` or `3v6, 4v5`
-  at 6–7. Seeds 1 and often 2 skip straight to the final or bracket.
-- **19+ teams:** chained bands over two CP rounds, e.g. `9v16, 10v15, 11v14, 12v13`, then
-  `13v20, 14v19, 15v17, 16v18` — winners move up a band before brackets.
-
-The pattern: winners of the `5v12` band enter `1-8`, losers drop to `9-16`. Middle bands get
-crossed; the very top and very bottom get short two-game bands, or none.
+Winners of the 5v12 band enter `1-8`, losers drop to `9-16`.
 
 ## Seeding and creation order
 
-- Tournament seeding is `{"1": team_id, …}` and pools and Swiss groups require it. If it is empty,
-  ask staff for the order (or derive it from the previous event in the series if they give you one)
-  and propose it first.
-- Seeding is safe to change any time **before** the tournament starts — it resyncs pool and Swiss
-  snapshots for you, so a re-seed does not mean rebuilding stages. After it starts, seeding moves
-  only through results.
-- A pool redistributes **its own** seed set by finish order: a pool holding seeds {2, 8, 10, 16}
-  gives 2 to its winner and 8 to its runner-up. Finishing first in a weak pool does not make a team
-  the 1 seed.
-- Create in this order: pools or Swiss (seq 1..n) → cross-pool → brackets (seq 1..n, top bracket
-  first) → position pools. Build everything up front; matches sit unscheduled until you place them.
+Tournament seeding is `{"1": team_id, …}`. If it is empty, ask for the order and propose it first.
+Seeding is safe to change before start — it resyncs pool and Swiss snapshots. After start, seeds
+move only through results. A pool redistributes **its own** seed set by finish order.
+
+Create: **fields first**, then snake-seeded pools or Swiss → cross-pool → brackets (top first) →
+position pools. Matches stay unscheduled until a later turn.
 
 ## Proposal sequences
 
-**"Set up our 16-team event"**
+**"Set up our 16-team event"** — fields (stop if none) → snake 4 pools from `snake_draft` plus
+`1-8`/`9-16` and the 16-team CP pairs → one schedule → start when asked.
 
-1. Read state. If seeding is empty → ask for the order → `propose_update_seeding`.
-2. `propose_full_setup` with 4 snake-seeded pools (A–D) and `bracket_names=["1-8","9-16"]`, or the
-   equivalent individual proposals.
-3. `propose_create_cross_pool`, then `propose_create_cross_pool_matches` with
-   `[[1,3],[2,4],[5,12],[6,11],[7,10],[8,9],[13,15],[14,16]]`.
-4. If staff mention more fields than exist, `propose_create_field` for each.
-5. `propose_start_tournament` when they are ready to go live.
+**"12 teams, 2 days, 4 fields, NOCS regionals"** — 4 pools of 3 (snake), CP as above, `1-8`,
+position pool E for 9–12.
 
-**"12 teams, 2 days, 4 fields, NOCS regionals"** — no question needed. 4 pools of 3, CP
-`1v3, 2v4, 5v12, 6v11, 7v10, 8v9`, bracket `1-8`, position pool E for seeds 9–12.
-
-**"Add a Top 8 after Swiss"** (20-team Swiss, final round done) — `get_standings` to confirm Swiss
-is complete, `propose_create_bracket("1-8", 1)`, ask whether they want `9-16` or position pools for
-the rest, then `propose_generate_fixtures` to fill teams. The new matches are created unscheduled.
+**"Add a Top 8 after Swiss"** — `get_standings`, `propose_create_bracket("1-8", 1)` (placement
+games included), ask about the rest, `propose_generate_fixtures`.
 
 ## Anti-patterns
 
-- A bracket size that does not match the seed band — a `1-8` when only 6 teams can reach it. Use
-  `1-4` plus pairs, or a position pool.
+- Sequential pool seeds (`[1,2,3,4]` / `[5,6,7,8]`).
+- Naming a pool `"Pool A"` — the name is `A` or `B` (one or two characters). The UI already prefixes
+  "Pool".
+- Describing or building a `1-4` as two semis and a final, or adding a `3-4` for the push-in.
+- Changing one first-round pairing (3v6 → 3v5) without rewriting the match that still holds the
+  displaced seed.
+- A bracket larger than the seeds that can reach it.
 - Creating cross-pool and expecting matches to appear.
 - Inventing bracket names, or an odd seed span.
 - Forcing a canonical template onto an open or hat event with an unusual count — ask.

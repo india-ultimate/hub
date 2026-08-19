@@ -139,8 +139,12 @@ const Section = props => {
         </Show>
         <Show when={props.pill}>
           <span
-            class="rounded px-1.5 text-[10px] font-medium"
-            style={{ color: "var(--agent-ink-muted)" }}
+            class={`rounded px-1.5 text-[10px] font-medium ${
+              props.pillClass || ""
+            }`}
+            style={
+              props.pillClass ? undefined : { color: "var(--agent-ink-muted)" }
+            }
           >
             {props.pill}
           </span>
@@ -191,7 +195,7 @@ const NotSetUp = props => (
   </div>
 );
 
-/** seed -> team name table from a stage's initial_seeding map. */
+/** seed -> team name table from a seeding map ({"1": team_id, …}). */
 const SeedTable = props => (
   <table class="w-full text-left text-[11px]">
     <tbody>
@@ -274,6 +278,10 @@ const TournamentRail = props => {
   const unscheduled = () => matches().filter(m => !m.time || !m.field);
   const teamCount = () =>
     Object.keys(props.tournament?.current_seeding || {}).length;
+  const tournamentSeeding = () =>
+    props.tournament?.current_seeding ||
+    props.tournament?.initial_seeding ||
+    {};
   const status = () => props.tournament?.status;
   const hasFormat = () => pools().length > 0 || swissRounds().length > 0;
 
@@ -387,6 +395,8 @@ const TournamentRail = props => {
           <span style={{ color: "var(--agent-line-strong)" }}> · </span>
           <span class="font-semibold">{formatLabel()}</span>
           <span style={{ color: "var(--agent-line-strong)" }}> · </span>
+          <span class="font-semibold">CP {hasCrossPool() ? "on" : "off"}</span>
+          <span style={{ color: "var(--agent-line-strong)" }}> · </span>
           <span class="font-semibold tabular-nums">{fields().length}</span>{" "}
           fields
           <span style={{ color: "var(--agent-line-strong)" }}> · </span>
@@ -423,6 +433,27 @@ const TournamentRail = props => {
               {nextStep().label}
             </ActionButton>
           </div>
+        </Show>
+      </Section>
+
+      <Section
+        title="Seeding"
+        count={teamCount() || undefined}
+        defaultOpen={teamCount() > 0}
+      >
+        <Show
+          when={teamCount() > 0}
+          fallback={
+            <NotSetUp
+              disabled={props.busy}
+              action="Set seeding"
+              onAction={() =>
+                prompt("Propose seeding for the registered teams")
+              }
+            />
+          }
+        >
+          <SeedTable seeding={tournamentSeeding()} teamsMap={props.teamsMap} />
         </Show>
       </Section>
 
@@ -496,6 +527,12 @@ const TournamentRail = props => {
 
       <Section
         title="Cross pool"
+        pill={hasCrossPool() ? "On" : "Off"}
+        pillClass={
+          hasCrossPool()
+            ? "bg-teal-50 text-teal-800 dark:bg-teal-900/40 dark:text-teal-200"
+            : "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400"
+        }
         count={hasCrossPool() ? crossPoolMatches().length : undefined}
         defaultOpen={hasCrossPool()}
       >
@@ -529,7 +566,11 @@ const TournamentRail = props => {
             <NotSetUp
               disabled={props.busy}
               action={hasFormat() ? "Draw a bracket" : undefined}
-              onAction={() => prompt("Set up a bracket for the top seeds")}
+              onAction={() =>
+                prompt(
+                  "Set up a 1-4 (or 1-8) bracket that includes the 3rd-place push-in, not just two semis and a final"
+                )
+              }
             />
           }
         >

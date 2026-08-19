@@ -4,10 +4,14 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+from django.utils.dateparse import parse_datetime
+
 from server.tournament_agent.catalog import recommend_balanced_default, value_score
+from server.tournament_agent.domain.validate import DEFAULT_MATCH_MINS
 from server.tournament_agent.privacy.mask import contains_forbidden_keys
 
 CASES_DIR = Path(__file__).parent / "cases"
@@ -161,11 +165,23 @@ def score_case(
             expect_met = False
             notes.append(f"Schedule missing start date {want}")
 
+    if expect.get("schedule_end_date"):
+        want = str(expect["schedule_end_date"])
+        if not _proposal_covers_date(trace.proposals, want):
+            expect_met = False
+            notes.append(f"Schedule missing end date {want}")
+
     if expect.get("schedule_duration_mins") is not None:
         want_d = int(expect["schedule_duration_mins"])
         if not _proposal_has_duration(trace.proposals, want_d):
             expect_met = False
             notes.append(f"Schedule duration not {want_d}")
+
+    if expect.get("no_stage_order_violations"):
+        count = _stage_order_violation_count(trace.proposals, expect.get("match_ranks") or {})
+        if count:
+            expect_met = False
+            notes.append(f"Stage order violations in schedule ({count})")
 
     if expect.get("full_setup_format"):
         want_fmt = str(expect["full_setup_format"]).lower()
@@ -264,6 +280,36 @@ def _proposal_has_duration(proposals: list[dict[str, Any]], want: int) -> bool:
             if a.get("duration_mins") == want:
                 return True
     return False
+
+
+def _stage_order_violation_count(
+    proposals: list[dict[str, Any]], match_ranks: dict[Any, int]
+) -> int:
+    """How many later-stage starts overlap an earlier stage that is still on."""
+    ranks = {int(k): int(v) for k, v in match_ranks.items()}
+    if not ranks:
+        return 0
+    rows: list[tuple[int, datetime, datetime]] = []
+    for proposal in proposals:
+        for assignment in (proposal.get("payload") or {}).get("assignments") or []:
+            match_id = assignment.get("match_id")
+            start = parse_datetime(str(assignment.get("time") or ""))
+            if match_id is None or start is None:
+                continue
+            rank = ranks.get(int(match_id))
+            if rank is None:
+                continue
+            duration = int(assignment.get("duration_mins") or DEFAULT_MATCH_MINS)
+            rows.append((rank, start, start + timedelta(minutes=duration)))
+    latest_end: dict[int, datetime] = {}
+    for rank, _start, end in rows:
+        latest_end[rank] = max(latest_end.get(rank, end), end)
+    return sum(
+        1
+        for rank, start, _end in rows
+        for earlier in range(rank)
+        if earlier in latest_end and start < latest_end[earlier]
+    )
 
 
 def _seeding_swap_ok(

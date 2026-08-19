@@ -139,6 +139,122 @@ def _parse_tool_calls_from_text(text: str) -> list[dict[str, Any]]:
     return found
 
 
+def _responses_tools(tools: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
+    converted: list[dict[str, Any]] = []
+    for tool in tools or []:
+        fn_raw = tool.get("function")
+        fn: dict[str, Any] = fn_raw if isinstance(fn_raw, dict) else tool
+        name = str(fn.get("name") or "")
+        if not name:
+            continue
+        converted.append(
+            {
+                "type": "function",
+                "name": name,
+                "description": str(fn.get("description") or ""),
+                "parameters": fn.get("parameters") or {"type": "object", "properties": {}},
+            }
+        )
+    return converted
+
+
+def _tool_call_name_and_args(tc: dict[str, Any]) -> tuple[str, str]:
+    if isinstance(tc.get("function"), dict):
+        fn = tc["function"]
+        name = str(fn.get("name") or "")
+        args = fn.get("arguments")
+    else:
+        name = str(tc.get("name") or "")
+        args = tc.get("arguments")
+    if not isinstance(args, str):
+        args = json.dumps(args or {})
+    return name, args
+
+
+def _responses_body(
+    model: AgentModel,
+    messages: list[dict[str, Any]],
+    tools: list[dict[str, Any]] | None,
+    temperature: float | None,
+    max_tokens: int,
+) -> dict[str, Any]:
+    instructions: list[str] = []
+    input_items: list[dict[str, Any]] = []
+    for msg in messages:
+        role = msg.get("role")
+        if role == "system":
+            instructions.append(str(msg.get("content") or ""))
+            continue
+        if role == "tool":
+            input_items.append(
+                {
+                    "type": "function_call_output",
+                    "call_id": str(msg.get("tool_call_id") or ""),
+                    "output": str(msg.get("content") or ""),
+                }
+            )
+            continue
+        if role == "assistant" and msg.get("tool_calls"):
+            if msg.get("content"):
+                input_items.append({"role": "assistant", "content": str(msg["content"])})
+            for tc in msg["tool_calls"]:
+                name, args = _tool_call_name_and_args(tc)
+                input_items.append(
+                    {
+                        "type": "function_call",
+                        "call_id": str(tc.get("id") or ""),
+                        "name": name,
+                        "arguments": args,
+                    }
+                )
+            continue
+        input_items.append({"role": role, "content": msg.get("content") or ""})
+
+    body: dict[str, Any] = {
+        "model": model.id,
+        "input": input_items,
+        "max_output_tokens": max_tokens,
+    }
+    if instructions:
+        body["instructions"] = "\n\n".join(instructions)
+    if temperature is not None:
+        body["temperature"] = temperature
+    converted = _responses_tools(tools)
+    if converted:
+        body["tools"] = converted
+        body["tool_choice"] = "auto"
+    return body
+
+
+def _parse_responses_result(data: dict[str, Any]) -> ChatCompletionResult:
+    tool_calls: list[dict[str, Any]] = []
+    texts: list[str] = []
+    for item in data.get("output") or []:
+        typ = item.get("type")
+        if typ == "function_call":
+            args = item.get("arguments")
+            if not isinstance(args, str):
+                args = json.dumps(args or {})
+            tool_calls.append(
+                {
+                    "id": str(item.get("call_id") or item.get("id") or ""),
+                    "name": str(item.get("name") or ""),
+                    "arguments": args,
+                }
+            )
+            continue
+        if typ == "message":
+            for part in item.get("content") or []:
+                if part.get("type") in {"output_text", "text"} and part.get("text"):
+                    texts.append(str(part["text"]))
+    return ChatCompletionResult(
+        content="\n".join(texts) or None,
+        tool_calls=[tc for tc in tool_calls if tc.get("name")],
+        raw=data,
+        finish_reason=str(data.get("status") or data.get("finish_reason") or "") or None,
+    )
+
+
 class OpenCodeGoClient:
     def __init__(
         self,
@@ -184,6 +300,8 @@ class OpenCodeGoClient:
         model, temp, tokens = self._resolve(model_id, temperature, max_tokens)
         if model.api_style == "openai":
             return self._openai_chat(model, messages, tools, temp, tokens)
+        if model.api_style == "responses":
+            return self._responses_chat(model, messages, tools, temp, tokens)
         return self._anthropic_chat(model, messages, tools, temp, tokens)
 
     def chat_stream(
@@ -199,6 +317,11 @@ class OpenCodeGoClient:
         model, temp, tokens = self._resolve(model_id, temperature, max_tokens)
         if model.api_style == "openai":
             yield from self._openai_chat_stream(model, messages, tools, temp, tokens)
+        elif model.api_style == "responses":
+            result = self._responses_chat(model, messages, tools, temp, tokens)
+            if result.content:
+                yield StreamChunk(type="text", text=result.content)
+            yield StreamChunk(type="result", result=result)
         else:
             yield from self._anthropic_chat_stream(model, messages, tools, temp, tokens)
 
@@ -286,6 +409,27 @@ class OpenCodeGoClient:
             raw=data,
             finish_reason=choice.get("finish_reason"),
         )
+
+    def _responses_chat(
+        self,
+        model: AgentModel,
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]] | None,
+        temperature: float | None,
+        max_tokens: int,
+    ) -> ChatCompletionResult:
+        # GPT-5.6 Luna (and Grok on Go) speak the OpenAI Responses API, not
+        # chat.completions. Keep the internal ChatCompletionResult contract.
+        body = _responses_body(model, messages, tools, temperature, max_tokens)
+        url = f"{self.base_url}/responses"
+        with httpx.Client(timeout=self.timeout) as client:
+            resp = client.post(url, headers=self._headers(), json=body)
+        if resp.status_code >= HTTP_ERROR_STATUS:
+            raise OpenCodeGoError(f"OpenCode Go error {resp.status_code}: {resp.text[:800]}")
+        data = resp.json()
+        if data.get("error"):
+            raise OpenCodeGoError(f"OpenCode Go API error: {data['error']}")
+        return _parse_responses_result(data)
 
     @staticmethod
     def _anthropic_body(

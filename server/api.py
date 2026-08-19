@@ -1628,6 +1628,33 @@ def update_field(
     return 200, field
 
 
+@api.delete(
+    "/tournament/field/{field_id}",
+    response={200: Response, 400: Response, 401: Response},
+)
+def delete_field(request: AuthenticatedHttpRequest, field_id: int) -> tuple[int, message_response]:
+    try:
+        field = TournamentField.objects.select_related("tournament").get(id=field_id)
+    except TournamentField.DoesNotExist:
+        return 400, {"message": "Field does not exist"}
+
+    denied = _deny_unless_manager(request.user, field.tournament)
+    if denied:
+        return denied
+
+    match_count = Match.objects.filter(field=field).count()
+    if match_count:
+        return 400, {
+            "message": (
+                f"Field '{field.name}' still has {match_count} match(es) assigned. "
+                "Move those matches to another field first, then delete."
+            )
+        }
+
+    field.delete()
+    return 200, {"message": "Success"}
+
+
 @api.get(
     "/tournament/slug/{slug}/matches", auth=None, response={200: list[MatchSchema], 400: Response}
 )

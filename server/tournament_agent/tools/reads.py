@@ -20,6 +20,8 @@ from server.tournament.models import (
     SwissRound,
     TournamentField,
 )
+from server.tournament_agent.domain.format import snake_draft_options
+from server.tournament_agent.models import AgentProposal, ProposalStatus
 from server.tournament_agent.tools.context import ToolContext, _safe, _team_map
 from server.tournament_agent.tools.queries import (
     STAGE_FIELDS,
@@ -50,6 +52,9 @@ def get_tournament_overview(ctx: ToolContext) -> dict[str, Any]:
             "unscheduled_match_count": matches.filter(
                 Q(time__isnull=True) | Q(field__isnull=True)
             ).count(),
+            "pending_proposal_count": AgentProposal.objects.filter(
+                session=ctx.session, status=ProposalStatus.PENDING
+            ).count(),
             "start_date": str(event.start_date),
             "end_date": str(event.end_date),
         }
@@ -63,7 +68,17 @@ def list_teams_seeding(ctx: ToolContext) -> dict[str, Any]:
     for seed_str, team_id in sorted((t.initial_seeding or {}).items(), key=lambda x: int(x[0])):
         tid = int(team_id)
         seeding.append({"seed": int(seed_str), "team_id": tid, "team_name": names.get(tid, "")})
-    return _safe({"seeding": seeding})
+    n = len(seeding) or t.teams.count()
+    return _safe(
+        {
+            "seeding": seeding,
+            "snake_draft": snake_draft_options(n),
+            "pool_seeding_rule": (
+                "Assign pools from snake_draft, never sequential blocks like 1-4 vs 5-8. "
+                "Two pools of 4 is A=[1,4,5,8] B=[2,3,6,7]."
+            ),
+        }
+    )
 
 
 def list_pools(ctx: ToolContext) -> dict[str, Any]:
@@ -161,7 +176,12 @@ def list_position_pools(ctx: ToolContext) -> dict[str, Any]:
 
 def list_fields(ctx: ToolContext) -> dict[str, Any]:
     fields = [
-        {"id": f.id, "name": f.name, "is_broadcasted": f.is_broadcasted}
+        {
+            "id": f.id,
+            "name": f.name,
+            "address": f.address,
+            "is_broadcasted": f.is_broadcasted,
+        }
         for f in TournamentField.objects.filter(tournament=ctx.tournament).order_by("name")
     ]
     return _safe({"fields": fields})
@@ -194,6 +214,62 @@ def list_matches(
 
     matches = [_match_row(m) for m in qs.order_by("time", "id")]
     return _safe({"matches": matches, "count": len(matches)})
+
+
+def _proposal_row(proposal: AgentProposal) -> dict[str, Any]:
+    row = {
+        "id": proposal.id,
+        "tool_name": proposal.tool_name,
+        "summary": proposal.summary,
+        "status": proposal.status,
+        "created_at": proposal.created_at.isoformat(),
+    }
+    if proposal.last_error:
+        row["last_error"] = proposal.last_error
+        row["note"] = (
+            "Staff tried to Confirm this and it failed. Call the matching "
+            "propose_* tool with a corrected payload — do not reuse this one."
+        )
+    return row
+
+
+def list_proposals(ctx: ToolContext, proposal_id: int | None = None) -> dict[str, Any]:
+    """What staff can actually Confirm. Chat that names an id is not proof it exists."""
+    pending = [
+        _proposal_row(row)
+        for row in ctx.session.proposals.filter(status=ProposalStatus.PENDING).order_by(
+            "created_at"
+        )
+    ]
+    result: dict[str, Any] = {
+        "pending": pending,
+        "count": len(pending),
+        "note": (
+            "Only these pending proposals have a Confirm button. "
+            "If this list is empty, nothing is waiting — call propose_* again."
+        ),
+    }
+    if proposal_id is not None:
+        row = ctx.session.proposals.filter(id=proposal_id).first()
+        if row is None:
+            result["lookup"] = {
+                "id": proposal_id,
+                "found": False,
+                "message": (
+                    f"No proposal #{proposal_id} on this session. Do not tell staff it "
+                    "is pending. If they still want the change, call propose_*."
+                ),
+            }
+        else:
+            lookup: dict[str, Any] = {"found": True, **_proposal_row(row)}
+            if row.status != ProposalStatus.PENDING:
+                lookup["message"] = (
+                    f"Proposal #{proposal_id} is {row.status}, not pending. "
+                    "Staff have no Confirm button for it. Propose again if the "
+                    "change is still needed."
+                )
+            result["lookup"] = lookup
+    return _safe(result)
 
 
 def list_stages(ctx: ToolContext) -> dict[str, Any]:

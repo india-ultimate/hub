@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from math import log10
 from typing import Any, Literal
 
-ApiStyle = Literal["openai", "anthropic"]
+ApiStyle = Literal["openai", "anthropic", "responses"]
 
 
 @dataclass(frozen=True)
@@ -20,60 +20,37 @@ class AgentModel:
     is_default: bool = False
 
 
-# Only these appear in the UI picker. Update when Go roster / quotas change.
-# Default = best bakeoff capability x quota balance (not raw score alone).
-# MiniMax M3 led the hardened suite (~96) at 3,200 req/5h; GLM scored well
-# but is ~4x more quota-constrained (880). Flash/MiMo base maximize quota.
+# Only these appear in the UI picker. Keep models that scored 90%+ on the
+# capability bakeoff. Default is GLM 5.2 (99.8).
 AGENT_MODELS: tuple[AgentModel, ...] = (
-    AgentModel(
-        id="minimax-m3",
-        label="MiniMax M3",
-        hint="Best balance",
-        api_style="anthropic",
-        req_per_5h=3200,
-        is_default=True,
-    ),
     AgentModel(
         id="glm-5.2",
         label="GLM 5.2",
-        hint="Strong, tight limits",
+        hint="Best on evals",
         api_style="openai",
         req_per_5h=880,
+        is_default=True,
     ),
     AgentModel(
-        id="kimi-k2.7-code",
-        label="Kimi K2.7 Code",
-        hint="Solid tools",
-        api_style="openai",
-        req_per_5h=1350,
+        id="gpt-5.6-luna",
+        label="GPT-5.6 Luna",
+        hint="Strong",
+        api_style="responses",
+        req_per_5h=2050,
     ),
     AgentModel(
-        id="deepseek-v4-pro",
-        label="DeepSeek V4 Pro",
-        hint="Strong reasoning",
-        api_style="openai",
-        req_per_5h=3450,
-    ),
-    AgentModel(
-        id="qwen3.7-plus",
-        label="Qwen3.7 Plus",
-        hint="More quota",
+        id="minimax-m3",
+        label="MiniMax M3",
+        hint="Fast",
         api_style="anthropic",
+        req_per_5h=3200,
+    ),
+    AgentModel(
+        id="hy3",
+        label="Hy3",
+        hint="High quota",
+        api_style="openai",
         req_per_5h=4300,
-    ),
-    AgentModel(
-        id="mimo-v2.5-pro",
-        label="MiMo V2.5 Pro",
-        hint="Capable mid-tier",
-        api_style="openai",
-        req_per_5h=3250,
-    ),
-    AgentModel(
-        id="deepseek-v4-flash",
-        label="DeepSeek V4 Flash",
-        hint="Highest quota",
-        api_style="openai",
-        req_per_5h=31650,
     ),
 )
 

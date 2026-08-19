@@ -136,6 +136,8 @@ class AgentProposal(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     resolved_at = models.DateTimeField(null=True, blank=True)
+    # Set when Confirm fails; staff still see the card and the agent can read why.
+    last_error = models.TextField(blank=True, default="")
 
     class Meta:
         ordering = ["-created_at"]

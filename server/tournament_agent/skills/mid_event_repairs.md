@@ -37,6 +37,8 @@ requires_tools:
     list_fields,
     list_stages,
     propose_update_match,
+    propose_update_field,
+    propose_delete_field,
     propose_bulk_schedule
   ]
 ---
@@ -90,6 +92,12 @@ the remaining fields' free slots.
   finish, shorter games, or one round cut.
 - There is no "unavailable" flag on a field. The durable fix is to leave it empty and pass
   `field_ids` explicitly when scheduling later stages.
+- Rename or retarget a field with `propose_update_field(field_id, name=…, address=…,
+is_broadcasted=…)`. `list_fields` returns `id` — pass that as `field_id`.
+- Delete a spare field with `propose_delete_field(field_id)` only when **no match** still
+  points at it. If matches are assigned, move them first (`propose_update_match` /
+  `propose_bulk_schedule`), then delete. Do not delete a field to "take it offline" while
+  games still sit on it.
 
 ## Moving one match, and swapping two
 
@@ -111,7 +119,9 @@ the remaining fields' free slots.
 
 ## Rebuilding a stage
 
-`propose_delete_stage(kind, stage_id)` removes the stage and its matches together.
+`propose_delete_stage(stage, stage_id)` removes the stage and its matches together.
+`stage` is one of `pool`, `swiss`, `cross_pool`, `bracket`, `position_pool` — the
+same `stage` / `id` pair `list_stages` returns (pass that `id` as `stage_id`).
 
 Only propose it when:
 

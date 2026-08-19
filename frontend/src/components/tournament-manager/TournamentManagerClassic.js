@@ -26,6 +26,7 @@ import {
   createPool,
   createPositionPool,
   createSwissRound,
+  deleteField,
   deleteMatch,
   fetchBrackets,
   fetchCrossPool,
@@ -193,6 +194,9 @@ const TournamentManager = props => {
   const durationList = [45, 60, 75, 90, 100];
   const [scheduleFile, setScheduleFile] = createSignal(null);
   const [uploadError, setUploadError] = createSignal("");
+
+  // Classic only lets staff set up a tournament once it is Scheduling.
+  const canEditSetup = () => selectedTournament()?.status === "SCH";
 
   onMount(() => {
     const dt = new Date(1970, 0, 1, 6, 0);
@@ -385,6 +389,18 @@ const TournamentManager = props => {
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["fields", selectedTournamentID()]
+      });
+    }
+  });
+
+  const deleteFieldMutation = createMutation({
+    mutationFn: deleteField,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["fields", selectedTournamentID()]
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["matches", selectedTournamentID()]
       });
     }
   });
@@ -619,7 +635,7 @@ const TournamentManager = props => {
           <div class="relative my-5 overflow-x-auto">
             <div class="mb-4 text-xl font-bold text-blue-500">Seeding</div>
             <Switch>
-              <Match when={selectedTournament()?.status === "SCH"}>
+              <Match when={canEditSetup()}>
                 <div class="w-full md:w-1/2">
                   <ReorderTeams
                     teams={teams()}
@@ -679,10 +695,7 @@ const TournamentManager = props => {
                 });
                 setIsStandingsEdited(false);
               }}
-              disabled={
-                selectedTournament()?.status !== "SCH" ||
-                updateSeedingMutation.isLoading
-              }
+              disabled={!canEditSetup() || updateSeedingMutation.isLoading}
               class="my-2 mb-2 mr-2 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 disabled:bg-gray-400 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
             >
               <Show
@@ -843,8 +856,7 @@ const TournamentManager = props => {
                         })
                       }
                       disabled={
-                        selectedTournament()?.status !== "SCH" ||
-                        swissRoundsQuery.data?.length > 0
+                        !canEditSetup() || swissRoundsQuery.data?.length > 0
                       }
                       class="mb-2 mr-2 mt-5 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 disabled:bg-gray-400 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
                     >
@@ -1029,7 +1041,7 @@ const TournamentManager = props => {
                         })
                       }
                       disabled={
-                        selectedTournament()?.status !== "SCH" ||
+                        !canEditSetup() ||
                         (poolsQuery.data?.length > 0 &&
                           !poolsQuery.data?.message)
                       }
@@ -1065,7 +1077,7 @@ const TournamentManager = props => {
                     tournament_id: selectedTournamentID()
                   })
                 }
-                disabled={selectedTournament()?.status !== "SCH"}
+                disabled={!canEditSetup()}
                 class="mb-2 mr-2 mt-5 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 disabled:bg-gray-400 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
               >
                 Create Cross Pool
@@ -1137,7 +1149,7 @@ const TournamentManager = props => {
                         seq_num: bracketQuery.data.length + 1
                       })
                     }
-                    disabled={selectedTournament()?.status !== "SCH"}
+                    disabled={!canEditSetup()}
                     class="mb-2 mr-2 mt-5 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 disabled:bg-gray-400 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
                   >
                     Create Bracket
@@ -1229,7 +1241,7 @@ const TournamentManager = props => {
                         seeding_list: enteredPositionPoolSeedingList()
                       })
                     }
-                    disabled={selectedTournament()?.status !== "SCH"}
+                    disabled={!canEditSetup()}
                     class="mb-2 mr-2 mt-5 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 disabled:bg-gray-400 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
                   >
                     Create Position Pool
@@ -1251,9 +1263,11 @@ const TournamentManager = props => {
                     fields={fieldsQuery.data}
                     tournamentId={selectedTournamentID()}
                     updateFieldMutation={updateFieldMutation}
+                    deleteFieldMutation={deleteFieldMutation}
                     editingDisabled={
-                      selectedTournament()?.status !== "SCH" ||
-                      updateFieldMutation.isLoading
+                      !canEditSetup() ||
+                      updateFieldMutation.isLoading ||
+                      deleteFieldMutation.isLoading
                     }
                   />
                 </Match>
@@ -1263,10 +1277,7 @@ const TournamentManager = props => {
             <CreateFieldForm
               tournamentId={selectedTournamentID()}
               createFieldMutation={createFieldMutation}
-              disabled={
-                selectedTournament()?.status !== "SCH" ||
-                createFieldMutation.isLoading
-              }
+              disabled={!canEditSetup() || createFieldMutation.isLoading}
               alreadyPresentFields={fieldsQuery.data}
             />
           </div>
@@ -1435,7 +1446,7 @@ const TournamentManager = props => {
                       body: matchFields
                     });
                   }}
-                  disabled={selectedTournament()?.status !== "SCH"}
+                  disabled={!canEditSetup()}
                   class="mb-2 mr-2 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 disabled:bg-gray-400 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
                 >
                   Add Match
@@ -2060,7 +2071,7 @@ const TournamentManager = props => {
             </For>
           </div>
           <Switch>
-            <Match when={selectedTournament()?.status === "SCH"}>
+            <Match when={canEditSetup()}>
               <button
                 type="button"
                 onClick={() =>

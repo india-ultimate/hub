@@ -48,6 +48,7 @@ name, and never repeat one back as though the system gave it to you.
 If more than one roster entry matches, you cannot tell them apart from ids. Ask:
 
 > `ask_user("Which player did you mean?", options=[{id: "812", label: "{{player:812}}"},
+
            {id: "907", label: "{{player:907}}"}])`
 
 ## Which block is which

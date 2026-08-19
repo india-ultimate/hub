@@ -15,6 +15,12 @@ import {
 import {
   clearTournamentAgentHistory,
   confirmTournamentAgentProposal,
+  fetchBrackets,
+  fetchCrossPool,
+  fetchFieldsByTournamentId,
+  fetchMatches,
+  fetchPools,
+  fetchSwissRounds,
   fetchTeams,
   fetchTournamentAgentHistory,
   fetchTournamentAgentModels,
@@ -71,30 +77,181 @@ const agentClassMap = {
   "li > p": "mb-0"
 };
 
-const STARTER_PROMPTS = [
-  {
-    title: "Set up this weekend",
-    prompt:
-      "16 mixed teams this weekend on 3 fields — set it up and schedule it"
-  },
-  {
-    title: "Recommend pools",
-    prompt: "Recommend pools for the registered teams"
-  },
-  {
-    title: "Schedule Saturday",
-    prompt: "Recommend a weekend schedule with 75 minute games"
-  },
-  {
-    title: "What's unscheduled?",
-    prompt: "Show me the matches that still have no time or field"
-  },
-  {
-    title: "Cross pool after pools",
-    prompt: "Set up the cross pool matches after pools"
-  },
-  { title: "Add a field", prompt: "Add another field to this tournament" }
-];
+const EVENT_KIND = { MXD: "mixed", OPN: "open", WMN: "women's" };
+
+const asList = data => (Array.isArray(data) ? data : []);
+
+const ymd = value => (value ? String(value).slice(0, 10) : "");
+
+const plural = (count, one, many = `${one}s`) =>
+  `${count} ${count === 1 ? one : many}`;
+
+const SCHEDULE_PLAN_TOOLS = new Set([
+  "propose_recommended_schedule",
+  "propose_bulk_schedule",
+  "propose_shift_schedule"
+]);
+
+const assignmentMatchIds = payload =>
+  new Set(
+    (payload?.assignments || [])
+      .map(row => row?.match_id)
+      .filter(id => id != null)
+  );
+
+const keepLiveProposals = (prev, incoming) => {
+  if (!SCHEDULE_PLAN_TOOLS.has(incoming.tool_name)) {
+    return [...prev, incoming];
+  }
+  const newIds = assignmentMatchIds(incoming.payload);
+  if (!newIds.size) return [...prev, incoming];
+  return [
+    ...prev.filter(proposal => {
+      if (!SCHEDULE_PLAN_TOOLS.has(proposal.tool_name)) return true;
+      const ids = assignmentMatchIds(proposal.payload);
+      for (const id of ids) {
+        if (newIds.has(id)) return false;
+      }
+      return true;
+    }),
+    incoming
+  ];
+};
+
+const confirmFixPrompt = (proposal, error) =>
+  [
+    `Staff could not Confirm proposal #${proposal.id} (${proposal.tool_name}: ${
+      proposal.summary || "untitled"
+    }).`,
+    `Apply error: ${error}`,
+    "Call list_proposals, read current tournament state, then call the matching propose_* tool with a corrected payload.",
+    "Re-proposing retires this card. Do not reuse the failed payload. Do not ask staff to reject it first."
+  ].join(" ");
+
+/**
+ * Starter chips for an empty chat. Built from this tournament so we never
+ * offer "16 mixed teams on 3 fields" when the event is 8 teams on 2.
+ */
+const buildStarterPrompts = s => {
+  const kind = EVENT_KIND[s.eventType];
+  const teamPhrase =
+    s.teamCount > 0
+      ? `the ${s.teamCount} registered${kind ? ` ${kind}` : ""} ${
+          s.teamCount === 1 ? "team" : "teams"
+        }`
+      : "the registered teams";
+  const fieldPhrase =
+    s.fieldCount > 0 ? ` on ${plural(s.fieldCount, "field")}` : "";
+  const datePhrase =
+    s.startDate && s.endDate && s.startDate !== s.endDate
+      ? ` from ${s.startDate} to ${s.endDate}`
+      : s.startDate
+      ? ` on ${s.startDate}`
+      : "";
+
+  if (s.status === "COM") {
+    return [
+      {
+        title: "Summarise the event",
+        prompt: "Summarise how this tournament was set up and how it finished"
+      }
+    ];
+  }
+
+  if (s.teamCount === 0) {
+    return [
+      {
+        title: "What's in place?",
+        prompt:
+          "Summarise this tournament: teams, stages, fields, and what's still missing"
+      }
+    ];
+  }
+
+  const items = [];
+  const live = s.status === "LIV";
+  const hasFormat = s.poolCount > 0 || s.swissCount > 0;
+
+  if (!live && !hasFormat) {
+    if (s.fieldCount === 0) {
+      items.push({
+        title: "Add fields first",
+        prompt: `This event has ${teamPhrase}${datePhrase} but no fields yet. Ask me how many fields to add (2, 3, or 4), then propose them.`
+      });
+    }
+    items.push({
+      title: `Set up ${plural(s.teamCount, "team")}`,
+      prompt:
+        s.fieldCount === 0
+          ? `Set up this tournament for ${teamPhrase}${datePhrase}. Start with fields, then the format — don't schedule yet.`
+          : `Set up this tournament for ${teamPhrase}${fieldPhrase}${datePhrase}. Recommend a format.`
+    });
+    items.push({
+      title: "Recommend a format",
+      prompt: `Recommend snake-seeded pools (or Swiss) for ${teamPhrase}`
+    });
+    return items;
+  }
+
+  if (!live && s.fieldCount === 0) {
+    items.push({
+      title: "Add a field",
+      prompt: "Add a playing field so matches can be scheduled"
+    });
+  }
+
+  if (s.unscheduledCount > 0 && s.fieldCount > 0) {
+    items.push({
+      title: `Schedule ${plural(s.unscheduledCount, "match", "matches")}`,
+      prompt: `Recommend a schedule for the ${plural(
+        s.unscheduledCount,
+        "match",
+        "matches"
+      )} that don't have a time or field yet. Use 75 minute games${datePhrase}.`
+    });
+  }
+
+  if (!live && s.poolCount > 0 && !s.hasCrossPool) {
+    items.push({
+      title: "Add cross pool",
+      prompt: "Set up the cross pool stage and its matches after pools"
+    });
+  }
+
+  if (!live && hasFormat && s.bracketCount === 0 && s.teamCount >= 4) {
+    items.push({
+      title: "Add brackets",
+      prompt:
+        "Set up 1-4 / 5-8 brackets with 3rd-place push-in games, not just semis and a final"
+    });
+  }
+
+  if (s.status === "SCH" && s.matchCount > 0 && s.unscheduledCount === 0) {
+    items.push({
+      title: "Start the tournament",
+      prompt: "Start the tournament and assign teams from seeding"
+    });
+  }
+
+  if (live) {
+    items.push({
+      title: "Who still needs a score?",
+      prompt: "Which matches still need a score?"
+    });
+    items.push({
+      title: "Show standings",
+      prompt: "Show the current standings"
+    });
+    if (s.unscheduledCount > 0) {
+      items.push({
+        title: "Unscheduled matches",
+        prompt: "Show the matches that still have no time or field"
+      });
+    }
+  }
+
+  return items.slice(0, 4);
+};
 
 /** A flying disc seen in slight perspective — the sport's mark, not a star. */
 const AgentMark = props => (
@@ -135,50 +292,115 @@ const AgentMark = props => (
   </svg>
 );
 
-const EmptyState = props => (
-  <div class="flex h-full flex-col items-center justify-center px-6 py-10">
-    <AgentMark class="mb-4 h-8 w-8" style={{ color: "var(--agent-accent)" }} />
-    <h2 class="mb-1 font-serif text-2xl" style={{ color: "var(--agent-ink)" }}>
-      What are we setting up?
-    </h2>
-    <p
-      class="mb-6 max-w-sm text-center text-sm"
-      style={{ color: "var(--agent-ink-muted)" }}
-    >
-      Ask for pools, brackets, cross pool or a schedule. Nothing changes until
-      you confirm a proposal.
-    </p>
-    <div class="grid w-full max-w-lg grid-cols-1 gap-2 sm:grid-cols-2">
-      <For each={STARTER_PROMPTS}>
-        {item => (
-          <button
-            type="button"
-            class="cursor-pointer rounded-lg border p-2.5 text-left transition-colors duration-150 hover:border-[color:var(--agent-line-strong)] focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-40"
-            style={{
-              "border-color": "var(--agent-line)",
-              "background-color": "var(--agent-raised)"
-            }}
-            disabled={props.disabled}
-            onClick={() => props.onPick(item.prompt)}
-          >
-            <div
-              class="text-xs font-medium leading-tight"
-              style={{ color: "var(--agent-ink)" }}
+const EmptyState = props => {
+  const tid = () => props.tournamentId;
+  const enabled = () => !!tid();
+  const query = (key, fn) =>
+    createQuery(
+      () => [key, tid()],
+      () => fn(tid()),
+      {
+        get enabled() {
+          return enabled();
+        }
+      }
+    );
+
+  const poolsQuery = query("pools", fetchPools);
+  const swissQuery = query("swiss-rounds", fetchSwissRounds);
+  const bracketsQuery = query("brackets", fetchBrackets);
+  const crossPoolQuery = query("cross-pool", fetchCrossPool);
+  const fieldsQuery = query("fields", fetchFieldsByTournamentId);
+  const matchesQuery = query("matches", fetchMatches);
+
+  const prompts = createMemo(() => {
+    const tournament = props.tournament;
+    const teams = tournament?.teams;
+    const teamCount =
+      Array.isArray(teams) && teams.length
+        ? teams.length
+        : Object.keys(tournament?.current_seeding || {}).length;
+    const matches = asList(matchesQuery.data);
+    return buildStarterPrompts({
+      teamCount,
+      fieldCount: asList(fieldsQuery.data).length,
+      poolCount: asList(poolsQuery.data).length,
+      swissCount: asList(swissQuery.data).length,
+      bracketCount: asList(bracketsQuery.data).length,
+      hasCrossPool: !!crossPoolQuery.data?.id,
+      matchCount: matches.length,
+      unscheduledCount: matches.filter(m => !m.time || !m.field).length,
+      status: tournament?.status,
+      eventType: tournament?.event?.type,
+      startDate: ymd(tournament?.event?.start_date),
+      endDate: ymd(tournament?.event?.end_date)
+    });
+  });
+
+  const teamCount = () => {
+    const teams = props.tournament?.teams;
+    if (Array.isArray(teams) && teams.length) return teams.length;
+    return Object.keys(props.tournament?.current_seeding || {}).length;
+  };
+
+  const hasFormat = () =>
+    asList(poolsQuery.data).length > 0 || asList(swissQuery.data).length > 0;
+
+  return (
+    <div class="flex h-full flex-col items-center justify-center px-6 py-10">
+      <AgentMark
+        class="mb-4 h-8 w-8"
+        style={{ color: "var(--agent-accent)" }}
+      />
+      <h2
+        class="mb-1 font-serif text-2xl"
+        style={{ color: "var(--agent-ink)" }}
+      >
+        {hasFormat() ? "What should we do next?" : "What are we setting up?"}
+      </h2>
+      <p
+        class="mb-6 max-w-sm text-center text-sm"
+        style={{ color: "var(--agent-ink-muted)" }}
+      >
+        {teamCount() > 0
+          ? `${plural(
+              teamCount(),
+              "team"
+            )} registered. Nothing changes until you confirm a proposal.`
+          : "Ask for pools, brackets, or a schedule. Nothing changes until you confirm a proposal."}
+      </p>
+      <div class="grid w-full max-w-lg grid-cols-1 gap-2 sm:grid-cols-2">
+        <For each={prompts()}>
+          {item => (
+            <button
+              type="button"
+              class="cursor-pointer rounded-lg border p-2.5 text-left transition-colors duration-150 hover:border-[color:var(--agent-line-strong)] focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-40"
+              style={{
+                "border-color": "var(--agent-line)",
+                "background-color": "var(--agent-raised)"
+              }}
+              disabled={props.disabled}
+              onClick={() => props.onPick(item.prompt)}
             >
-              {item.title}
-            </div>
-            <div
-              class="mt-1 line-clamp-2 text-[11px] leading-tight"
-              style={{ color: "var(--agent-ink-muted)" }}
-            >
-              {item.prompt}
-            </div>
-          </button>
-        )}
-      </For>
+              <div
+                class="text-xs font-medium leading-tight"
+                style={{ color: "var(--agent-ink)" }}
+              >
+                {item.title}
+              </div>
+              <div
+                class="mt-1 line-clamp-2 text-[11px] leading-tight"
+                style={{ color: "var(--agent-ink-muted)" }}
+              >
+                {item.prompt}
+              </div>
+            </button>
+          )}
+        </For>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const UserMessage = props => (
   <div class="flex justify-end">
@@ -237,6 +459,7 @@ const TournamentAgentTab = props => {
   const [streamingText, setStreamingText] = createSignal("");
   const [streamingTools, setStreamingTools] = createSignal([]);
   const [streamError, setStreamError] = createSignal("");
+  const [confirmErrors, setConfirmErrors] = createSignal({});
   const [confirmingClear, setConfirmingClear] = createSignal(false);
   const [liveProposals, setLiveProposals] = createSignal([]);
   let messagesContainerRef;
@@ -323,9 +546,23 @@ const TournamentAgentTab = props => {
 
   const confirmMutation = createMutation({
     mutationFn: proposalId => confirmTournamentAgentProposal(proposalId),
-    onSuccess: () => {
+    onSuccess: (_data, proposalId) => {
+      setConfirmErrors(prev => {
+        const next = { ...prev };
+        delete next[proposalId];
+        return next;
+      });
       setLiveProposals([]);
       invalidateTournamentQueries();
+      historyQuery.refetch();
+    },
+    onError: (err, proposalId) => {
+      // 400 means the plan cannot be applied. Retrying Confirm with the
+      // same payload will fail the same way — keep the card and show why.
+      setConfirmErrors(prev => ({
+        ...prev,
+        [proposalId]: err?.message || "Could not apply this proposal"
+      }));
       historyQuery.refetch();
     }
   });
@@ -372,10 +609,40 @@ const TournamentAgentTab = props => {
     ];
   };
 
-  const pendingProposals = () =>
-    liveProposals().length
-      ? liveProposals()
-      : historyQuery.data?.pending_proposals || [];
+  const pendingProposals = () => {
+    const fromHistory = historyQuery.data?.pending_proposals || [];
+    const live = liveProposals();
+    if (!live.length) return fromHistory;
+    // A new turn's live cards must not hide still-pending cards from earlier
+    // turns — staff need every Confirm in view at once.
+    const byId = new Map(fromHistory.map(p => [p.id, p]));
+    for (const p of live) byId.set(p.id, p);
+    return [...byId.values()];
+  };
+
+  const proposalIdsOnMessage = msg => {
+    const ids = [];
+    for (const event of msg.payload?.tool_events || []) {
+      if (event.proposal_id) ids.push(event.proposal_id);
+    }
+    for (const id of msg.payload?.proposal_ids || []) ids.push(id);
+    return ids;
+  };
+
+  const proposalsForMessage = msg => {
+    const ids = new Set(proposalIdsOnMessage(msg));
+    return pendingProposals().filter(p => ids.has(p.id));
+  };
+
+  const unattachedProposals = () => {
+    const attached = new Set();
+    for (const msg of displayMessages()) {
+      for (const id of proposalIdsOnMessage(msg)) attached.add(id);
+    }
+    // Live cards render on the in-flight assistant message.
+    for (const proposal of liveProposals()) attached.add(proposal.id);
+    return pendingProposals().filter(p => !attached.has(p.id));
+  };
 
   const scrollToBottom = (behavior = "smooth") => {
     requestAnimationFrame(() => {
@@ -463,7 +730,7 @@ const TournamentAgentTab = props => {
         prev.map((t, i) => (i === data.index ? { ...t, ...data } : t))
       );
     } else if (name === "proposal") {
-      setLiveProposals(prev => [...prev, data.proposal]);
+      setLiveProposals(prev => keepLiveProposals(prev, data.proposal));
     } else if (name === "error") {
       setStreamError(data.message || "The agent failed");
     }
@@ -513,6 +780,31 @@ const TournamentAgentTab = props => {
         }),
       text
     );
+  };
+
+  const proposalCardProps = proposal => {
+    const error = confirmErrors()[proposal.id] || proposal.last_error || "";
+    return {
+      proposal,
+      confirming: confirmMutation.isPending,
+      rejecting: rejectMutation.isPending,
+      disabled: inputLocked(),
+      error,
+      seedToTeamName,
+      fieldName,
+      onConfirm: () => {
+        setConfirmErrors(prev => {
+          const next = { ...prev };
+          delete next[proposal.id];
+          return next;
+        });
+        confirmMutation.mutate(proposal.id);
+      },
+      onReject: () => rejectMutation.mutate(proposal.id),
+      onAskFix: error
+        ? () => handleSend(confirmFixPrompt(proposal, error))
+        : undefined
+    };
   };
 
   const handleAnswer = async body => {
@@ -655,7 +947,12 @@ const TournamentAgentTab = props => {
             <Show
               when={displayMessages().length > 0 || isAwaitingAgent()}
               fallback={
-                <EmptyState onPick={handleSend} disabled={inputLocked()} />
+                <EmptyState
+                  tournament={tournament()}
+                  tournamentId={localTournamentId()}
+                  onPick={handleSend}
+                  disabled={inputLocked()}
+                />
               }
             >
               <div class="mx-auto max-w-3xl space-y-5">
@@ -695,6 +992,13 @@ const TournamentAgentTab = props => {
                             />
                           </Show>
                         </Show>
+                        <For each={proposalsForMessage(msg)}>
+                          {proposal => (
+                            <div class="mt-3">
+                              <ProposalCard {...proposalCardProps(proposal)} />
+                            </div>
+                          )}
+                        </For>
                       </AssistantMessage>
                     </Show>
                   )}
@@ -705,7 +1009,15 @@ const TournamentAgentTab = props => {
                     content={streamingText()}
                     toolEvents={streamingTools()}
                     streaming
-                  />
+                  >
+                    <For each={liveProposals()}>
+                      {proposal => (
+                        <div class="mt-3">
+                          <ProposalCard {...proposalCardProps(proposal)} />
+                        </div>
+                      )}
+                    </For>
+                  </AssistantMessage>
                 </Show>
 
                 <Show when={isAwaitingAgent() && !isStreamingReply()}>
@@ -724,20 +1036,17 @@ const TournamentAgentTab = props => {
                   </div>
                 </Show>
 
-                <Show when={pendingProposals().length > 0}>
-                  <div class="space-y-2 lg:hidden">
-                    <For each={pendingProposals()}>
+                <Show when={unattachedProposals().length > 0}>
+                  <div class="space-y-2">
+                    <h3
+                      class="text-xs font-semibold uppercase tracking-wide"
+                      style={{ color: "var(--agent-ink-muted)" }}
+                    >
+                      Awaiting your confirmation
+                    </h3>
+                    <For each={unattachedProposals()}>
                       {proposal => (
-                        <ProposalCard
-                          proposal={proposal}
-                          confirming={confirmMutation.isPending}
-                          rejecting={rejectMutation.isPending}
-                          disabled={inputLocked()}
-                          seedToTeamName={seedToTeamName}
-                          fieldName={fieldName}
-                          onConfirm={() => confirmMutation.mutate(proposal.id)}
-                          onReject={() => rejectMutation.mutate(proposal.id)}
-                        />
+                        <ProposalCard {...proposalCardProps(proposal)} />
                       )}
                     </For>
                   </div>
@@ -776,14 +1085,12 @@ const TournamentAgentTab = props => {
                   handleSend();
                 }}
               >
-                <label for="tournament-agent-chat" class="sr-only">
-                  Message the agent
-                </label>
                 <textarea
                   id="tournament-agent-chat"
                   ref={textareaRef}
                   rows="1"
-                  class="max-h-[200px] min-h-[24px] flex-1 resize-none border-0 bg-transparent px-1.5 py-1 text-sm focus:outline-none focus:ring-0 disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-label="Message the agent"
+                  class="max-h-[200px] min-h-[32px] min-w-0 flex-1 resize-none border-0 bg-transparent px-2 py-1.5 text-left text-sm focus:outline-none focus:ring-0 disabled:cursor-not-allowed disabled:opacity-50"
                   style={{ color: "var(--agent-ink)" }}
                   placeholder="Ask for pools, a bracket, or a schedule…"
                   value={draft()}
@@ -863,16 +1170,7 @@ const TournamentAgentTab = props => {
               <div class="space-y-2">
                 <For each={pendingProposals()}>
                   {proposal => (
-                    <ProposalCard
-                      proposal={proposal}
-                      confirming={confirmMutation.isPending}
-                      rejecting={rejectMutation.isPending}
-                      disabled={inputLocked()}
-                      seedToTeamName={seedToTeamName}
-                      fieldName={fieldName}
-                      onConfirm={() => confirmMutation.mutate(proposal.id)}
-                      onReject={() => rejectMutation.mutate(proposal.id)}
-                    />
+                    <ProposalCard {...proposalCardProps(proposal)} />
                   )}
                 </For>
               </div>

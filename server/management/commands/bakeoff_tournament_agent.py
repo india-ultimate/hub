@@ -43,7 +43,7 @@ class Command(BaseCommand):
         parser.add_argument(
             "--models",
             type=str,
-            default=("kimi-k2.7-code,deepseek-v4-pro,glm-5.2,qwen3.7-plus,minimax-m3"),
+            default=("glm-5.2,gpt-5.6-luna,minimax-m3,hy3"),
             help="Comma-separated model ids from the curated allowlist",
         )
         parser.add_argument(

@@ -14,6 +14,7 @@ const TOOL_LABELS = {
   get_standings: "Read standings",
   get_swiss_standings: "Read Swiss standings",
   list_stages: "Read stage progress",
+  list_proposals: "Read pending proposals",
   check_schedule_conflicts: "Check schedule conflicts",
   ask_user: "Ask a question",
   propose_create_pool: "Propose pool",
@@ -23,8 +24,11 @@ const TOOL_LABELS = {
   propose_create_bracket: "Propose bracket",
   propose_create_position_pool: "Propose position pool",
   propose_create_field: "Propose field",
+  propose_update_field: "Propose field update",
+  propose_delete_field: "Propose field deletion",
   propose_update_seeding: "Propose seeding change",
   propose_update_match: "Propose match change",
+  propose_update_match_seeds: "Propose match seed change",
   propose_delete_match: "Propose match deletion",
   propose_bulk_schedule: "Propose schedule",
   propose_recommended_schedule: "Propose schedule",
@@ -32,7 +36,8 @@ const TOOL_LABELS = {
   propose_shift_schedule: "Propose schedule shift",
   propose_delete_stage: "Propose stage deletion",
   propose_full_setup: "Propose full setup",
-  propose_start_tournament: "Propose tournament start"
+  propose_start_tournament: "Propose tournament start",
+  propose_generate_fixtures: "Propose fixture population"
 };
 
 const STATUS_DOT = {

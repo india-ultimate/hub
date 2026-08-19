@@ -73,6 +73,7 @@ class ProposalSchema(Schema):
     player_names: dict[str, str] = {}
     status: str
     created_at: str
+    last_error: str = ""
 
 
 class HistorySchema(Schema):

@@ -1143,6 +1143,23 @@ export const updateField = async ({ field_id, body }) => {
   return data;
 };
 
+export const deleteField = async ({ field_id }) => {
+  const response = await fetch(`/api/tournament/field/${field_id}`, {
+    method: "DELETE",
+    headers: {
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin"
+  });
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.message || JSON.stringify(data));
+  }
+
+  return data;
+};
+
 export const createPool = async ({
   tournament_id,
   seq_num,

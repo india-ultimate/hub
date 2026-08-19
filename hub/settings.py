@@ -243,7 +243,7 @@ GROQ_TOP_P = float(os.environ.get("GROQ_TOP_P", "0.8"))
 # OpenCode Go (tournament manager AI agent)
 OPENCODE_GO_API_KEY = os.environ.get("OPENCODE_GO_API_KEY", "")
 OPENCODE_GO_BASE_URL = os.environ.get("OPENCODE_GO_BASE_URL", "https://opencode.ai/zen/go/v1")
-OPENCODE_GO_DEFAULT_MODEL = os.environ.get("OPENCODE_GO_DEFAULT_MODEL", "minimax-m3")
+OPENCODE_GO_DEFAULT_MODEL = os.environ.get("OPENCODE_GO_DEFAULT_MODEL", "glm-5.2")
 OPENCODE_GO_TEMPERATURE = float(os.environ.get("OPENCODE_GO_TEMPERATURE", "0.2"))
 # Reasoning models need headroom; tool calls + reasoning can exceed 4k.
 OPENCODE_GO_MAX_TOKENS = int(os.environ.get("OPENCODE_GO_MAX_TOKENS", "8192"))

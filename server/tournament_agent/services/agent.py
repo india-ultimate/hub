@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import time
 from collections.abc import Generator, Iterator
 from typing import Any
@@ -51,17 +52,35 @@ You help staff design pools, Swiss groups, brackets, schedules, and orchestrate 
 Hard rules (non-negotiable):
 1. You MUST use tools for every staff request that needs tournament data or changes. Do not answer from memory alone.
 2. Never invent personal data. You only see allowlisted tournament ops fields (teams, seeds, matches, fields, times).
-3. Ambiguous setup requests ("set up the tournament", "configure this", "make pools or swiss") REQUIRE calling ask_user BEFORE any propose_* tool. Offer clear options (e.g. pools vs Swiss).
+3. Ambiguous setup requests ("set up the tournament", "configure this") REQUIRE calling ask_user BEFORE any propose_* tool. If there are no fields, ask how many (2 / 3 / 4) first — not format. If fields exist but the format is ambiguous, ask pools vs Swiss.
 4. Never mutate the database yourself. Use propose_* tools; staff must Confirm proposals in the UI.
-5. Schedule requests ("recommend a schedule", "schedule Saturday") REQUIRE calling propose_recommended_schedule after checking fields/matches with read tools if needed.
-6. Be concise. Use markdown in final replies only after tools have been used.
+5. Never announce that a proposal is live, pending, or numbered unless list_proposals shows it as pending, or a propose_* tool just returned proposal_id this turn. Chat history is not proof a proposal exists. If nothing is pending, call propose_* again. Confirm/Reject are UI buttons, not chat replies.
+6. Setup order is always fields, then stages, then schedule. Stop at the first missing step: do not propose pools until at least one field exists; do not propose a schedule until stages exist. One schedule proposal per turn — never stack overlapping grids.
+7. Pool seeding is always snake draft. Read list_teams_seeding.snake_draft and use those lists. Two pools of 4: A=[1,4,5,8] B=[2,3,6,7]. Never sequential blocks like A=[1,2,3,4] B=[5,6,7,8]. Pool names are one or two characters (A, B), never "Pool A".
+8. A bracket named "1-4" creates four matches: 1v4 and 2v3 (semis), 1v2 (final), and 3v4 (3rd place / push-in). Never describe it as two semis and a final, and never create a separate 3-4 bracket for that push-in. "1-8" likewise includes every placement game, not just quarters/semis/final. To change default pairings (3v5 and 4v6 instead of 3v6 and 4v5), list_matches then propose_update_match_seeds for every first-round match that changes.
+9. Schedule requests REQUIRE calling propose_recommended_schedule after checking fields and matches. Pass both days for a weekend (start_date and end_date). Do not invent times with propose_bulk_schedule unless the recommender cannot place every match. A later stage must not start until every match of the stage that feeds it has ended — never put a semi on while pools are still going. After proposing, call check_schedule_conflicts.
+10. When staff say a Confirm failed, or a pending proposal lists an apply error, you MUST call list_proposals then the matching propose_* tool with a corrected payload. Do not reuse the failed payload. Re-proposing retires the old card — do not ask them to Reject first.
+11. Be concise. Use markdown in final replies only after tools have been used.
+12. Staff saying "done", "confirmed", "ok", or "next" in chat does not apply a proposal. Call list_stages this turn before any new propose_*. If the stages you expected are missing, tell staff and re-propose them — do not continue the plan from an earlier message.
+13. "Anything else?", "is it set up?", "did that work?" require list_stages and list_matches this turn. Never describe a structure or schedule from chat history.
 
 Examples:
 - User: "Set up this tournament for me"
-  → call ask_user with selection_mode=single and options for pools vs Swiss (and optionally duration).
+  → list_fields. If none, ask_user how many fields. Propose those fields and stop. After they Confirm, propose stages. After stages exist, propose one schedule.
+- User: "two pools and a 1-4 bracket"
+  → list_teams_seeding. Use snake_draft for the pools. propose_create_bracket("1-4") — that already includes 3v4.
+- User: "in the 1-8 play 3v5 and 4v6 instead of 3v6 and 4v5"
+  → list_matches. propose_update_match_seeds for those two quarter matches in one proposal. Leave later-round slots alone.
 - User: "Recommend a schedule for Saturday starting 2026-08-01 with 75 minute games"
-  → call list_fields and/or list_matches, then propose_recommended_schedule with start_date and duration_mins=75.
-
+  → call list_fields and list_matches. If there are no fields, ask for fields first. Otherwise one propose_recommended_schedule (end_date if it is a weekend), then check_schedule_conflicts.
+- User: "you already proposed that" / "is proposal 12 waiting?"
+  → call list_proposals. If the id is missing or not pending, propose the change; do not claim staff can Confirm it.
+- User: "Confirming proposal #47 failed: two matches on the same field at the same time"
+  → list_proposals, list_matches, list_fields. Propose a corrected schedule that does not double-book a slot.
+- User: "Done" / "confirmed" / "ok" / "next"
+  → list_stages this turn. Chat is not Confirm. If the pools or brackets you just proposed are missing, say so and re-propose them. Do not add the next stage from memory.
+- User: "Anything else?" / "is it set up?"
+  → list_stages and list_matches this turn. Describe only what those tools return.
 """
 
 
@@ -69,6 +88,78 @@ def build_system_prompt(tournament: Tournament, user_text: str = "") -> str:
     """Base rules plus the skills relevant to this tournament and this turn."""
     skills = select_skills(load_skills(), tournament_status=tournament.status, user_text=user_text)
     return BASE_PROMPT + render_skills(skills)
+
+
+def pending_proposals_prompt(session: TournamentAgentSession) -> str:
+    """Pinned each turn so a hallucinated 'Proposal #N is live' cannot outrank the DB."""
+    rows = list(
+        session.proposals.filter(status=ProposalStatus.PENDING)
+        .order_by("created_at")
+        .values_list("id", "tool_name", "summary", "last_error")[:20]
+    )
+    header = (
+        "## Pending proposals (database — the only source of truth)\n"
+        "Chat that names a proposal id is not proof it exists. Call list_proposals "
+        "before telling staff one is pending. If none are listed, propose again.\n"
+        "If a row has an apply error, staff already hit Confirm and it failed. "
+        "Call the matching propose_* tool with a corrected payload — do not reuse it."
+    )
+    if not rows:
+        return header + "\nNone."
+    lines = []
+    for pid, tool, summary, last_error in rows:
+        line = f"- #{pid} {tool}: {summary}"
+        if last_error:
+            line += f"\n  apply error: {last_error}"
+        lines.append(line)
+    return f"{header}\n" + "\n".join(lines)
+
+
+_ACK_RE = re.compile(
+    r"^(done|confirmed?|ok|okay|next|continue|looks good)[.!]*$",
+    re.IGNORECASE,
+)
+_STATUS_RE = re.compile(
+    r"(anything else|is it (all )?set up|did (that|it) work|are we (done|good)|what's left|what is left)",
+    re.IGNORECASE,
+)
+_STATE_READS = frozenset(
+    {
+        "list_stages",
+        "get_tournament_overview",
+        "list_pools",
+        "list_swiss_rounds",
+        "list_matches",
+    }
+)
+
+
+def looks_like_ack(text: str) -> bool:
+    return bool(_ACK_RE.match((text or "").strip()))
+
+
+def looks_like_status_check(text: str) -> bool:
+    return bool(_STATUS_RE.search((text or "").strip()))
+
+
+def verification_prompt(user_text: str) -> str:
+    """Pinned when chat is being treated as Confirm or as a status check."""
+    if looks_like_ack(user_text):
+        return (
+            "## This turn\n"
+            "Staff said they were done/confirmed in chat. That is not a database "
+            "write. Call list_stages before proposing anything else. If the pools "
+            "or brackets you expected are missing, tell them and re-propose — do "
+            "not continue the plan from chat."
+        )
+    if looks_like_status_check(user_text):
+        return (
+            "## This turn\n"
+            "Staff asked whether setup is complete. Call list_stages and "
+            "list_matches. Describe only what those tools return. Chat history "
+            "is not the current tournament."
+        )
+    return ""
 
 
 MAX_EVENT_ARGS_CHARS = 4000
@@ -390,6 +481,10 @@ class TournamentAgentService:
         latest_user = next((t["content"] for t in reversed(turns) if t["role"] == "user"), "")
         digest, recent = _compact_model_turns(turns)
         system = build_system_prompt(session.tournament, latest_user)
+        system = f"{system}\n\n{pending_proposals_prompt(session)}"
+        verify = verification_prompt(latest_user)
+        if verify:
+            system = f"{system}\n\n{verify}"
         if digest:
             system = f"{system}\n\n## Earlier conversation (compacted)\n{digest}"
         return [{"role": "system", "content": system}, *recent]
@@ -466,6 +561,10 @@ class TournamentAgentService:
 
     def _run_agent_events(self, session: TournamentAgentSession) -> Iterator[dict[str, Any]]:
         messages = self._build_model_messages(session)
+        latest_user = next(
+            (m["content"] for m in reversed(messages) if m.get("role") == "user"),
+            "",
+        )
 
         self.last_trace = []
         pending_question = None
@@ -630,6 +729,43 @@ class TournamentAgentService:
                     # anyway is how an "what do the standings look like?" turn ends in an
                     # unwanted ask_user or proposal.
                     only_read = called_names and all(n in READ_ONLY_TOOLS for n in called_names)
+                    proposed = any(n.startswith("propose_") for n in called_names)
+                    read_state = any(n in _STATE_READS for n in called_names)
+                    if (
+                        round_i < MAX_NUDGE_ROUNDS
+                        and looks_like_ack(latest_user)
+                        and proposed
+                        and not read_state
+                    ):
+                        messages.append(
+                            {
+                                "role": "user",
+                                "content": (
+                                    "Staff saying done/confirmed in chat does not apply a "
+                                    "proposal. Call list_stages now. If the pools or brackets "
+                                    "you expected are missing, tell staff and re-propose them. "
+                                    "Do not add the next stage until list_stages shows the "
+                                    "previous one."
+                                ),
+                            }
+                        )
+                        continue
+                    if (
+                        round_i < MAX_NUDGE_ROUNDS
+                        and looks_like_status_check(latest_user)
+                        and not read_state
+                    ):
+                        messages.append(
+                            {
+                                "role": "user",
+                                "content": (
+                                    "Call list_stages and list_matches before answering. "
+                                    "Describe only what those tools return — not an earlier "
+                                    "chat message."
+                                ),
+                            }
+                        )
+                        continue
                     if round_i < MAX_NUDGE_ROUNDS and only_read:
                         messages.append(
                             {
@@ -646,16 +782,32 @@ class TournamentAgentService:
                     continue
 
                 final_text = result.content or ""
-                # If the model refused tools on the first round, nudge it once.
-                if round_i == 0 and not result.tool_calls:
+                # A turn that never calls a tool cannot create a proposal. Models
+                # sometimes narrate "Proposal #N is live" in plain text; staff then
+                # have nothing to Confirm. Keep nudging past the first refusal.
+                if not turn_tool_events and round_i < MAX_NUDGE_ROUNDS:
+                    if result.content:
+                        messages.append({"role": "assistant", "content": result.content})
                     messages.append(
                         {
                             "role": "user",
                             "content": (
-                                "You must use a tool now. "
+                                "You must use a tool now. Plain text does not create a "
+                                "proposal, and staff will not see a Confirm button. "
+                                "If there are no fields, ask how many then call "
+                                "propose_create_field and stop — do not also propose "
+                                "stages or a schedule. "
                                 "If the request is ambiguous about format, call ask_user. "
-                                "If the request is about scheduling, call propose_recommended_schedule. "
-                                "Do not answer in plain text without tools."
+                                "If they asked to add, change, or delete something, call "
+                                "the matching propose_* tool. "
+                                "If the request is about scheduling and fields and stages "
+                                "already exist, call propose_recommended_schedule once — "
+                                "never stack overlapping grids. "
+                                "If they said a Confirm failed, call list_proposals "
+                                "then the matching propose_* tool with a corrected "
+                                "payload — do not reuse the failed one. "
+                                "Never announce a proposal id unless a propose_* tool "
+                                "just returned it."
                             ),
                         }
                     )
@@ -764,6 +916,7 @@ class TournamentAgentService:
             "player_names": player_names_for_payload(row.payload, tournament),
             "status": row.status,
             "created_at": row.created_at.isoformat(),
+            "last_error": row.last_error or "",
         }
 
     def _serialize_proposal_by_id(

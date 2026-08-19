@@ -12,30 +12,44 @@ from typing import Any
 
 from django.utils import timezone
 
-from server.tournament.models import Match
+from server.tournament.models import Match, TournamentField
+from server.tournament_agent.domain.format import (
+    bracket_match_plan,
+    bracket_proposal_summary,
+    canonical_stage_name,
+    labeled_pool_defs,
+    rewrite_sequential_pool_defs,
+    sequential_pool_seed_error,
+)
 from server.tournament_agent.domain.validate import DEFAULT_MATCH_MINS
 from server.tournament_agent.tools.context import ToolContext
-from server.tournament_agent.tools.queries import STAGE_FIELDS, match_queryset
+from server.tournament_agent.tools.queries import STAGE_FIELDS, STAGE_MODELS, match_queryset
 
 
 def propose_create_pool(
     ctx: ToolContext, name: str, sequence_number: int, seeding: list[int]
 ) -> dict[str, Any]:
+    team_count = len(ctx.tournament.initial_seeding or {}) or ctx.tournament.teams.count()
+    blocked = sequential_pool_seed_error(team_count, list(seeding))
+    if blocked:
+        return blocked
+    label = canonical_stage_name(name, "A")
     return ctx.create_proposal(
         "propose_create_pool",
-        f"Create pool {name} with seeds {seeding}",
-        {"name": name, "sequence_number": sequence_number, "seeding": seeding},
+        f"Create pool {label} with seeds {seeding}",
+        {"name": label, "sequence_number": sequence_number, "seeding": seeding},
     )
 
 
 def propose_create_swiss_round(
     ctx: ToolContext, name: str, seeding: list[int], num_rounds: int, sequence_number: int = 1
 ) -> dict[str, Any]:
+    label = canonical_stage_name(name, "A")
     return ctx.create_proposal(
         "propose_create_swiss_round",
-        f"Create Swiss group {name} ({num_rounds} rounds) with seeds {seeding}",
+        f"Create Swiss group {label} ({num_rounds} rounds) with seeds {seeding}",
         {
-            "name": name,
+            "name": label,
             "seeding": seeding,
             "num_rounds": num_rounds,
             "sequence_number": sequence_number,
@@ -48,20 +62,25 @@ def propose_create_cross_pool(ctx: ToolContext) -> dict[str, Any]:
 
 
 def propose_create_bracket(ctx: ToolContext, name: str, sequence_number: int) -> dict[str, Any]:
+    try:
+        matches = bracket_match_plan(name)
+    except ValueError as exc:
+        return {"error": str(exc), "message": str(exc)}
     return ctx.create_proposal(
         "propose_create_bracket",
-        f"Create bracket {name}",
-        {"name": name, "sequence_number": sequence_number},
+        bracket_proposal_summary(name, matches),
+        {"name": name, "sequence_number": sequence_number, "matches": matches},
     )
 
 
 def propose_create_position_pool(
     ctx: ToolContext, name: str, sequence_number: int, seeding: list[int]
 ) -> dict[str, Any]:
+    label = canonical_stage_name(name, "E")
     return ctx.create_proposal(
         "propose_create_position_pool",
-        f"Create position pool {name} with seeds {seeding}",
-        {"name": name, "sequence_number": sequence_number, "seeding": seeding},
+        f"Create position pool {label} with seeds {seeding}",
+        {"name": label, "sequence_number": sequence_number, "seeding": seeding},
     )
 
 
@@ -75,6 +94,72 @@ def propose_create_field(
         "propose_create_field",
         f"Create field '{name.strip()}'",
         {"name": name.strip(), "address": address, "is_broadcasted": is_broadcasted},
+    )
+
+
+def _tournament_field(ctx: ToolContext, field_id: int) -> TournamentField | None:
+    return TournamentField.objects.filter(id=field_id, tournament=ctx.tournament).first()
+
+
+def propose_update_field(
+    ctx: ToolContext,
+    field_id: int,
+    name: str | None = None,
+    address: str | None = None,
+    is_broadcasted: bool | None = None,
+) -> dict[str, Any]:
+    field = _tournament_field(ctx, field_id)
+    if field is None:
+        return {"error": f"No field #{field_id} on this tournament."}
+    if name is None and address is None and is_broadcasted is None:
+        return {"error": "Provide at least one of name, address, or is_broadcasted."}
+
+    new_name = name.strip() if name is not None else None
+    if name is not None and not new_name:
+        return {"error": "Field name cannot be empty."}
+    if new_name and (
+        TournamentField.objects.filter(tournament=ctx.tournament, name__iexact=new_name)
+        .exclude(id=field.id)
+        .exists()
+    ):
+        return {"error": f"A field named '{new_name}' already exists in this tournament"}
+
+    bits: list[str] = []
+    payload: dict[str, Any] = {"field_id": field.id, "current_name": field.name}
+    if new_name is not None:
+        payload["name"] = new_name
+        if new_name != field.name:
+            bits.append(f"rename '{field.name}' to '{new_name}'")
+    if address is not None:
+        payload["address"] = address.strip() or None
+        bits.append(
+            f"set address to '{payload['address']}'" if payload["address"] else "clear address"
+        )
+    if is_broadcasted is not None:
+        payload["is_broadcasted"] = is_broadcasted
+        bits.append("mark as broadcast" if is_broadcasted else "unmark broadcast")
+    if not bits:
+        return {"error": "No changes from the current field."}
+
+    return ctx.create_proposal("propose_update_field", "Update field: " + "; ".join(bits), payload)
+
+
+def propose_delete_field(ctx: ToolContext, field_id: int) -> dict[str, Any]:
+    field = _tournament_field(ctx, field_id)
+    if field is None:
+        return {"error": f"No field #{field_id} on this tournament."}
+    match_count = Match.objects.filter(field=field).count()
+    if match_count:
+        return {
+            "error": (
+                f"Field '{field.name}' still has {match_count} match(es) assigned. "
+                "Move those matches to another field first, then delete."
+            )
+        }
+    return ctx.create_proposal(
+        "propose_delete_field",
+        f"Delete field '{field.name}'",
+        {"field_id": field.id, "name": field.name},
     )
 
 
@@ -104,16 +189,56 @@ def propose_update_match(
     time: str | None = None,
     field_id: int | None = None,
     duration_mins: int | None = None,
+    seed_1: int | None = None,
+    seed_2: int | None = None,
 ) -> dict[str, Any]:
+    if seed_1 is None and seed_2 is None:
+        summary = f"Update match {match_id}"
+    elif seed_1 is None or seed_2 is None:
+        return {"error": "Pass both seed_1 and seed_2 to change a pairing"}
+    elif seed_1 == seed_2:
+        return {"error": f"A team cannot play itself (seed {seed_1})"}
+    else:
+        summary = f"Update match {match_id} to {seed_1}v{seed_2}"
     return ctx.create_proposal(
         "propose_update_match",
-        f"Update match {match_id}",
+        summary,
         {
             "match_id": match_id,
             "time": time,
             "field_id": field_id,
             "duration_mins": duration_mins,
+            "seed_1": seed_1,
+            "seed_2": seed_2,
         },
+    )
+
+
+def propose_update_match_seeds(ctx: ToolContext, updates: list[dict[str, Any]]) -> dict[str, Any]:
+    """Rewrite placeholder seeds on existing matches (one Confirm for the set)."""
+    if not updates:
+        return {"error": "No seed updates given"}
+    rows: list[dict[str, int]] = []
+    labels: list[str] = []
+    seen_ids: set[int] = set()
+    for raw in updates:
+        try:
+            match_id = int(raw["match_id"])
+            seed_1 = int(raw["seed_1"])
+            seed_2 = int(raw["seed_2"])
+        except (KeyError, TypeError, ValueError):
+            return {"error": "Each update needs match_id, seed_1 and seed_2"}
+        if seed_1 == seed_2:
+            return {"error": f"A team cannot play itself (seed {seed_1})"}
+        if match_id in seen_ids:
+            return {"error": f"Match {match_id} is listed twice"}
+        seen_ids.add(match_id)
+        rows.append({"match_id": match_id, "seed_1": seed_1, "seed_2": seed_2})
+        labels.append(f"{seed_1}v{seed_2}")
+    return ctx.create_proposal(
+        "propose_update_match_seeds",
+        f"Update match seeds: {', '.join(labels)}",
+        {"updates": rows},
     )
 
 
@@ -229,17 +354,22 @@ def propose_delete_stage(ctx: ToolContext, stage: str, stage_id: int) -> dict[st
     if stage not in STAGE_FIELDS:
         # Falling back to a default field would count some other stage's matches and
         # offer staff a "and its 0 matches" summary to confirm, only for the applier
-        # to reject the kind afterwards.
+        # to reject the kind afterwards. "swiss_round" is the Match FK, not a kind.
         return {
             "error": f"Unknown stage kind: {stage}. Use one of {', '.join(sorted(STAGE_FIELDS))}."
         }
+    row = STAGE_MODELS[stage].objects.filter(id=stage_id, tournament=ctx.tournament).first()
+    if row is None:
+        return {"error": f"No {stage} #{stage_id} on this tournament."}
     match_count = Match.objects.filter(
         tournament=ctx.tournament, **{STAGE_FIELDS[stage]: stage_id}
     ).count()
+    name = getattr(row, "name", None) or ("Cross Pool" if stage == "cross_pool" else None)
+    label = f"{stage} {name}" if name else f"{stage} #{stage_id}"
     return ctx.create_proposal(
         "propose_delete_stage",
-        f"Delete {stage} #{stage_id} and its {match_count} matches",
-        {"stage": stage, "stage_id": stage_id},
+        f"Delete {label} and its {match_count} matches",
+        {"stage": stage, "stage_id": stage_id, "name": name},
     )
 
 
@@ -264,12 +394,14 @@ def propose_full_setup(
     swiss_defs: list[dict[str, Any]] | None = None,
     bracket_names: list[str] | None = None,
 ) -> dict[str, Any]:
+    team_count = len(ctx.tournament.initial_seeding or {}) or ctx.tournament.teams.count()
+    pools = labeled_pool_defs(rewrite_sequential_pool_defs(list(pool_defs or []), team_count))
     return ctx.create_proposal(
         "propose_full_setup",
         f"Full setup using format={format}",
         {
             "format": format,
-            "pool_defs": pool_defs or [],
+            "pool_defs": pools,
             "swiss_defs": swiss_defs or [],
             "bracket_names": bracket_names or [],
         },
@@ -283,7 +415,7 @@ def propose_recommended_schedule(
     duration_mins: int = 75,
     slot_buffer_mins: int = 15,
     min_rest_mins: int = 60,
-    day_start_hour: int = 9,
+    day_start_hour: int = 7,
     day_end_hour: int = 18,
     lunch_start_hour: int | None = 13,
     lunch_end_hour: int | None = 14,
@@ -305,6 +437,25 @@ def propose_recommended_schedule(
         field_ids=field_ids,
     )
     assignments = result["assignments"]
+    unplaced = int((result.get("meta") or {}).get("unplaced") or 0)
+    if not assignments:
+        return {
+            "error": result.get("notes") or "Could not place any matches",
+            "message": (
+                "No proposal created. Add fields first, or relax duration / day "
+                "window, or build an exact grid with propose_bulk_schedule."
+            ),
+        }
+    if unplaced:
+        return {
+            "error": result.get("notes") or f"{unplaced} matches could not be placed",
+            "placed": len(assignments),
+            "unplaced": unplaced,
+            "message": (
+                "No proposal created — a partial grid is not confirmable. Relax "
+                "constraints, add a field, or use propose_bulk_schedule."
+            ),
+        }
     return ctx.create_proposal(
         "propose_recommended_schedule",
         f"Recommended schedule for {len(assignments)} matches ({result.get('notes', '')})",

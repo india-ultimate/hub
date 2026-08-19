@@ -70,6 +70,65 @@ class TournamentDirectorTests(ApiBaseTestCase):
         )
         self.assertEqual(401, denied.status_code)
 
+    def test_director_can_update_and_delete_field_on_assigned_tournament(self) -> None:
+        self.client.force_login(self.director)
+        field = TournamentField.objects.create(tournament=self.tournament, name="Field D")
+        updated = self.client.put(
+            f"/api/tournament/field/{field.id}",
+            data=json.dumps(
+                {
+                    "name": "Field Main",
+                    "is_broadcasted": True,
+                    "tournament_id": self.tournament.id,
+                    "address": "KG Farms",
+                }
+            ),
+            content_type="application/json",
+        )
+        self.assertEqual(200, updated.status_code)
+        field.refresh_from_db()
+        self.assertEqual(field.name, "Field Main")
+        self.assertTrue(field.is_broadcasted)
+
+        deleted = self.client.delete(f"/api/tournament/field/{field.id}")
+        self.assertEqual(200, deleted.status_code)
+        self.assertFalse(TournamentField.objects.filter(id=field.id).exists())
+
+        other_field = TournamentField.objects.create(tournament=self.other_tournament, name="Other")
+        denied = self.client.put(
+            f"/api/tournament/field/{other_field.id}",
+            data=json.dumps(
+                {
+                    "name": "Hijack",
+                    "is_broadcasted": False,
+                    "tournament_id": self.other_tournament.id,
+                    "address": None,
+                }
+            ),
+            content_type="application/json",
+        )
+        self.assertEqual(401, denied.status_code)
+        denied_del = self.client.delete(f"/api/tournament/field/{other_field.id}")
+        self.assertEqual(401, denied_del.status_code)
+        self.assertTrue(TournamentField.objects.filter(id=other_field.id).exists())
+
+    def test_delete_field_refused_when_matches_assigned(self) -> None:
+        from server.tournament.models import Match
+
+        self.client.force_login(self.director)
+        field = TournamentField.objects.create(tournament=self.tournament, name="Busy")
+        Match.objects.create(
+            tournament=self.tournament,
+            sequence_number=1,
+            placeholder_seed_1=1,
+            placeholder_seed_2=2,
+            field=field,
+        )
+        response = self.client.delete(f"/api/tournament/field/{field.id}")
+        self.assertEqual(400, response.status_code)
+        self.assertIn("match", response.json()["message"].lower())
+        self.assertTrue(TournamentField.objects.filter(id=field.id).exists())
+
     def test_outsider_cannot_manage(self) -> None:
         self.client.force_login(self.outsider)
         response = self.client.post(

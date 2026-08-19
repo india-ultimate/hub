@@ -1,5 +1,7 @@
-import { createSignal, Show } from "solid-js";
+import { createQuery } from "@tanstack/solid-query";
+import { createEffect, createMemo, createSignal, Show } from "solid-js";
 
+import { fetchTournaments } from "../queries";
 import TournamentAgentTab from "./tournament-manager/agent/TournamentAgentTab";
 import TournamentManagerClassic from "./tournament-manager/TournamentManagerClassic";
 
@@ -10,6 +12,17 @@ import TournamentManagerClassic from "./tournament-manager/TournamentManagerClas
 const TournamentManager = () => {
   const [tab, setTab] = createSignal("classic");
   const [selectedTournamentId, setSelectedTournamentId] = createSignal(null);
+
+  const tournamentsQuery = createQuery(() => ["tournaments"], fetchTournaments);
+  const selectedTournament = createMemo(() =>
+    (tournamentsQuery.data || []).find(t => t.id === selectedTournamentId())
+  );
+  // Draft events stay on Classic only; the agent is for Scheduling and later.
+  const agentAvailable = () => selectedTournament()?.status !== "DFT";
+
+  createEffect(() => {
+    if (!agentAvailable() && tab() === "agent") setTab("classic");
+  });
 
   const tabClass = active =>
     active
@@ -24,30 +37,32 @@ const TournamentManager = () => {
           : undefined
       }
     >
-      <div class="mb-4 shrink-0 border-b border-gray-200 text-center text-sm font-medium text-gray-500 dark:border-gray-700 dark:text-gray-400">
-        <ul class="-mb-px flex flex-wrap">
-          <li class="me-2">
-            <button
-              type="button"
-              class={tabClass(tab() === "classic")}
-              aria-current={tab() === "classic" ? "page" : undefined}
-              onClick={() => setTab("classic")}
-            >
-              Classic
-            </button>
-          </li>
-          <li class="me-2">
-            <button
-              type="button"
-              class={tabClass(tab() === "agent")}
-              aria-current={tab() === "agent" ? "page" : undefined}
-              onClick={() => setTab("agent")}
-            >
-              AI Agent
-            </button>
-          </li>
-        </ul>
-      </div>
+      <Show when={agentAvailable()}>
+        <div class="mb-4 shrink-0 border-b border-gray-200 text-center text-sm font-medium text-gray-500 dark:border-gray-700 dark:text-gray-400">
+          <ul class="-mb-px flex flex-wrap">
+            <li class="me-2">
+              <button
+                type="button"
+                class={tabClass(tab() === "classic")}
+                aria-current={tab() === "classic" ? "page" : undefined}
+                onClick={() => setTab("classic")}
+              >
+                Classic
+              </button>
+            </li>
+            <li class="me-2">
+              <button
+                type="button"
+                class={tabClass(tab() === "agent")}
+                aria-current={tab() === "agent" ? "page" : undefined}
+                onClick={() => setTab("agent")}
+              >
+                AI Agent
+              </button>
+            </li>
+          </ul>
+        </div>
+      </Show>
 
       <Show when={tab() === "classic"}>
         <TournamentManagerClassic

@@ -13,6 +13,7 @@ from typing import Any
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import IntegrityError, transaction
+from django.db.models import QuerySet
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 
@@ -31,12 +32,14 @@ from server.tournament.utils import (
     build_position_pool,
     build_swiss_round,
     create_spirit_scores,
+    get_bracket_match_name,
     populate_fixtures,
     update_match_score_and_results,
     update_tournament_seeding,
     update_tournament_spirit_rankings,
 )
 from server.tournament.utils import start_tournament as begin_tournament
+from server.tournament_agent.domain.format import canonical_stage_name
 from server.tournament_agent.models import AgentProposal, ProposalStatus
 from server.tournament_agent.tools import STAGE_FIELDS, STAGE_MODELS
 
@@ -62,10 +65,21 @@ def _readable(exc: Exception) -> str:
         model = type(exc).__qualname__.removesuffix(".DoesNotExist")
         return f"{model} no longer exists — the tournament changed since this was proposed"
     if isinstance(exc, IntegrityError):
+        text = str(exc)
+        if "time" in text and "field" in text:
+            return (
+                "Two matches would occupy the same field at the same time. "
+                "Reject this and ask the agent for a grid without double-booked slots."
+            )
         return f"The database rejected the change: {exc}"
     if isinstance(exc, KeyError):
         return f"The proposal is missing {exc}"
     return str(exc)
+
+
+def _record_apply_error(proposal: AgentProposal, message: str) -> None:
+    proposal.last_error = (message or "")[:2000]
+    proposal.save(update_fields=["last_error"])
 
 
 def apply_proposal(proposal: AgentProposal) -> dict[str, Any]:
@@ -90,8 +104,10 @@ def apply_proposal(proposal: AgentProposal) -> dict[str, Any]:
             result = apply_fn(proposal.session.tournament, proposal.payload or {})
             proposal.status = ProposalStatus.CONFIRMED
             proposal.resolved_at = timezone.now()
-            proposal.save(update_fields=["status", "resolved_at"])
-    except ProposalApplyError:
+            proposal.last_error = ""
+            proposal.save(update_fields=["status", "resolved_at", "last_error"])
+    except ProposalApplyError as exc:
+        _record_apply_error(proposal, str(exc))
         raise
     except (
         ObjectDoesNotExist,
@@ -100,7 +116,9 @@ def apply_proposal(proposal: AgentProposal) -> dict[str, Any]:
         ValueError,
         KeyError,
     ) as exc:
-        raise ProposalApplyError(_readable(exc)) from exc
+        message = _readable(exc)
+        _record_apply_error(proposal, message)
+        raise ProposalApplyError(message) from exc
 
     return result
 
@@ -116,7 +134,7 @@ def reject_proposal(proposal: AgentProposal) -> None:
 def _create_pool(tournament: Tournament, payload: dict[str, Any]) -> dict[str, Any]:
     pool = build_pool(
         tournament,
-        name=str(payload["name"]),
+        name=canonical_stage_name(str(payload.get("name") or ""), "A"),
         sequence_number=int(payload["sequence_number"]),
         seeding=list(payload["seeding"]),
     )
@@ -126,7 +144,7 @@ def _create_pool(tournament: Tournament, payload: dict[str, Any]) -> dict[str, A
 def _create_swiss(tournament: Tournament, payload: dict[str, Any]) -> dict[str, Any]:
     swiss_round = build_swiss_round(
         tournament,
-        name=str(payload["name"]),
+        name=canonical_stage_name(str(payload.get("name") or ""), "A"),
         sequence_number=int(payload.get("sequence_number") or 1),
         seeding=list(payload["seeding"]),
         num_rounds=int(payload["num_rounds"]),
@@ -146,7 +164,7 @@ def _create_bracket(tournament: Tournament, payload: dict[str, Any]) -> dict[str
 def _create_position_pool(tournament: Tournament, payload: dict[str, Any]) -> dict[str, Any]:
     position_pool = build_position_pool(
         tournament,
-        name=str(payload["name"]),
+        name=canonical_stage_name(str(payload.get("name") or ""), "E"),
         sequence_number=int(payload["sequence_number"]),
         seeding=list(payload["seeding"]),
     )
@@ -174,6 +192,52 @@ def _create_field(tournament: Tournament, payload: dict[str, Any]) -> dict[str, 
     field.full_clean()
     field.save()
     return {"field_id": field.id, "name": field.name}
+
+
+def _get_field(tournament: Tournament, field_id: int) -> TournamentField:
+    field = TournamentField.objects.filter(id=field_id, tournament=tournament).first()
+    if field is None:
+        raise ProposalApplyError(f"No field #{field_id} on this tournament")
+    return field
+
+
+def _update_field(tournament: Tournament, payload: dict[str, Any]) -> dict[str, Any]:
+    field = _get_field(tournament, int(payload["field_id"]))
+    if "name" in payload:
+        name = str(payload.get("name") or "").strip()
+        if not name:
+            raise ProposalApplyError("Field name cannot be empty")
+        if (
+            TournamentField.objects.filter(tournament=tournament, name__iexact=name)
+            .exclude(id=field.id)
+            .exists()
+        ):
+            raise ProposalApplyError(f"A field named '{name}' already exists in this tournament")
+        field.name = name
+    if "address" in payload:
+        address = payload.get("address")
+        if address:
+            field.address = str(address).strip() or None
+        else:
+            field.address = None
+    if "is_broadcasted" in payload and payload["is_broadcasted"] is not None:
+        field.is_broadcasted = bool(payload["is_broadcasted"])
+    field.full_clean()
+    field.save()
+    return {"field_id": field.id, "name": field.name}
+
+
+def _delete_field(tournament: Tournament, payload: dict[str, Any]) -> dict[str, Any]:
+    field = _get_field(tournament, int(payload["field_id"]))
+    match_count = Match.objects.filter(field=field).count()
+    if match_count:
+        raise ProposalApplyError(
+            f"Field '{field.name}' still has {match_count} match(es) assigned. "
+            "Move those matches to another field first, then delete."
+        )
+    field_id, name = field.id, field.name
+    field.delete()
+    return {"field_id": field_id, "name": name}
 
 
 def _create_cross_pool_matches(tournament: Tournament, payload: dict[str, Any]) -> dict[str, Any]:
@@ -257,8 +321,135 @@ def _set_slot(
     match.save()
 
 
+def _seed_keys(seeding: Any) -> list[int]:
+    if not isinstance(seeding, dict):
+        return []
+    return [int(key) for key in seeding if str(key).isdigit()]
+
+
+def _match_name_for_seeds(match: Match, seed_1: int, seed_2: int) -> str | None:
+    lo, hi = min(seed_1, seed_2), max(seed_1, seed_2)
+    if match.pool_id and match.pool is not None:
+        return f"{match.pool.name}{lo} v {match.pool.name}{hi}"
+    if match.position_pool_id and match.position_pool is not None:
+        return f"{match.position_pool.name}{lo} v {match.position_pool.name}{hi}"
+    if match.bracket_id and match.bracket is not None:
+        keys = sorted(_seed_keys(match.bracket.initial_seeding))
+        if keys:
+            return get_bracket_match_name(keys[0], keys[-1], seed_1, seed_2) or match.name
+    return match.name
+
+
+def _seed_ceiling(tournament: Tournament, match: Match) -> int:
+    ceiling = tournament.teams.count() or 0
+    seeding = tournament.current_seeding or tournament.initial_seeding or {}
+    keys = _seed_keys(seeding)
+    if keys:
+        ceiling = max(ceiling, *keys)
+    qs = Match.objects.filter(tournament=tournament)
+    if match.bracket_id:
+        qs = qs.filter(bracket_id=match.bracket_id)
+        if match.bracket is not None:
+            keys = _seed_keys(match.bracket.initial_seeding)
+            if keys:
+                ceiling = max(ceiling, *keys)
+    elif match.pool_id:
+        qs = qs.filter(pool_id=match.pool_id)
+    elif match.cross_pool_id:
+        qs = qs.filter(cross_pool_id=match.cross_pool_id)
+    elif match.position_pool_id:
+        qs = qs.filter(position_pool_id=match.position_pool_id)
+    elif match.swiss_round_id:
+        qs = qs.filter(swiss_round_id=match.swiss_round_id)
+    for row in qs.only("placeholder_seed_1", "placeholder_seed_2"):
+        ceiling = max(ceiling, row.placeholder_seed_1, row.placeholder_seed_2)
+    return max(ceiling, 1)
+
+
+def _round_queryset(tournament: Tournament, match: Match) -> QuerySet[Match]:
+    qs = Match.objects.filter(tournament=tournament, sequence_number=match.sequence_number)
+    if match.bracket_id:
+        return qs.filter(bracket_id=match.bracket_id)
+    if match.pool_id:
+        return qs.filter(pool_id=match.pool_id)
+    if match.cross_pool_id:
+        return qs.filter(cross_pool_id=match.cross_pool_id)
+    if match.position_pool_id:
+        return qs.filter(position_pool_id=match.position_pool_id)
+    if match.swiss_round_id:
+        return qs.filter(swiss_round_id=match.swiss_round_id)
+    return qs.none()
+
+
+def _assert_round_seeds_unique(
+    tournament: Tournament, match: Match, pending: dict[int, tuple[int, int]]
+) -> None:
+    seeds: list[int] = []
+    for row in _round_queryset(tournament, match):
+        seed_1, seed_2 = pending.get(row.id, (row.placeholder_seed_1, row.placeholder_seed_2))
+        seeds.extend((seed_1, seed_2))
+    seen: set[int] = set()
+    for seed in seeds:
+        if seed in seen:
+            raise ProposalApplyError(
+                f"Seed {seed} would appear twice in the same round. "
+                "Rewrite every pairing that shares that seed in one proposal."
+            )
+        seen.add(seed)
+
+
+def _assign_teams_from_seeds(
+    match: Match, tournament: Tournament, seed_1: int, seed_2: int
+) -> None:
+    if not (match.team_1_id or match.team_2_id):
+        return
+    seeding = tournament.current_seeding or tournament.initial_seeding or {}
+    team_1 = seeding.get(str(seed_1))
+    team_2 = seeding.get(str(seed_2))
+    if team_1:
+        match.team_1_id = int(team_1)
+    if team_2:
+        match.team_2_id = int(team_2)
+
+
+def _write_match_seeds(match: Match, tournament: Tournament, seed_1: int, seed_2: int) -> None:
+    if match.status == Match.Status.COMPLETED:
+        raise ProposalApplyError(f"Match {match.id} is completed — its seeds cannot be changed")
+    if seed_1 == seed_2:
+        raise ProposalApplyError(f"A team cannot play itself (seed {seed_1})")
+    ceiling = _seed_ceiling(tournament, match)
+    for seed in (seed_1, seed_2):
+        if seed < 1 or seed > ceiling:
+            raise ProposalApplyError(f"Seed {seed} is out of range (1-{ceiling})")
+    match.placeholder_seed_1 = seed_1
+    match.placeholder_seed_2 = seed_2
+    name = _match_name_for_seeds(match, seed_1, seed_2)
+    if name:
+        match.name = name
+    _assign_teams_from_seeds(match, tournament, seed_1, seed_2)
+    match.save()
+
+
+def _load_match(tournament: Tournament, match_id: int) -> Match:
+    try:
+        return Match.objects.select_related("pool", "bracket", "position_pool").get(
+            id=match_id, tournament=tournament
+        )
+    except Match.DoesNotExist as exc:
+        raise ProposalApplyError(f"Match {match_id} no longer exists") from exc
+
+
 def _update_match(tournament: Tournament, payload: dict[str, Any]) -> dict[str, Any]:
-    match = Match.objects.get(id=payload["match_id"], tournament=tournament)
+    match = _load_match(tournament, int(payload["match_id"]))
+    seed_1 = payload.get("seed_1")
+    seed_2 = payload.get("seed_2")
+    if seed_1 is not None or seed_2 is not None:
+        if seed_1 is None or seed_2 is None:
+            raise ProposalApplyError("Pass both seed_1 and seed_2 to change a pairing")
+        pending = {match.id: (int(seed_1), int(seed_2))}
+        _assert_round_seeds_unique(tournament, match, pending)
+        _write_match_seeds(match, tournament, int(seed_1), int(seed_2))
+        match.refresh_from_db()
     _set_slot(
         tournament,
         match,
@@ -266,7 +457,33 @@ def _update_match(tournament: Tournament, payload: dict[str, Any]) -> dict[str, 
         field_id=payload.get("field_id"),
         duration_mins=payload.get("duration_mins"),
     )
-    return {"match_id": match.id}
+    return {
+        "match_id": match.id,
+        "placeholder_seed_1": match.placeholder_seed_1,
+        "placeholder_seed_2": match.placeholder_seed_2,
+    }
+
+
+def _update_match_seeds(tournament: Tournament, payload: dict[str, Any]) -> dict[str, Any]:
+    updates = list(payload.get("updates") or [])
+    if not updates:
+        raise ProposalApplyError("No seed updates given")
+    pending: dict[int, tuple[int, int]] = {}
+    matches: list[Match] = []
+    for row in updates:
+        match = _load_match(tournament, int(row["match_id"]))
+        seed_1, seed_2 = int(row["seed_1"]), int(row["seed_2"])
+        pending[match.id] = (seed_1, seed_2)
+        matches.append(match)
+    for match in matches:
+        _assert_round_seeds_unique(tournament, match, pending)
+    for match in matches:
+        seed_1, seed_2 = pending[match.id]
+        _write_match_seeds(match, tournament, seed_1, seed_2)
+    return {
+        "match_ids": [m.id for m in matches],
+        "count": len(matches),
+    }
 
 
 def _delete_match(tournament: Tournament, payload: dict[str, Any]) -> dict[str, Any]:
@@ -282,8 +499,25 @@ def _delete_match(tournament: Tournament, payload: dict[str, Any]) -> dict[str, 
 
 
 def _bulk_schedule(tournament: Tournament, payload: dict[str, Any]) -> dict[str, Any]:
+    assignments = list(payload.get("assignments") or [])
+    seen_slots: dict[tuple[str, int], Any] = {}
+    for row in assignments:
+        time = row.get("time")
+        field_id = row.get("field_id")
+        if time is None or field_id is None:
+            continue
+        key = (str(time), int(field_id))
+        prior = seen_slots.get(key)
+        if prior is not None:
+            raise ProposalApplyError(
+                f"Matches {prior} and {row.get('match_id')} are both on field "
+                f"{field_id} at {time}. One field cannot host two matches at the "
+                "same start. Reject this and ask the agent for a corrected grid."
+            )
+        seen_slots[key] = row.get("match_id")
+
     updated = []
-    for row in payload.get("assignments") or []:
+    for row in assignments:
         # `_set_slot` skips whatever is None, which is right for a partial
         # `propose_update_match` but wrong here: a row missing its slot would leave
         # the match untouched and still be reported back as scheduled.
@@ -521,7 +755,7 @@ def _full_setup(tournament: Tournament, payload: dict[str, Any]) -> dict[str, An
             _create_pool(
                 tournament,
                 {
-                    "name": pool_def.get("name") or chr(ord("A") + i),
+                    "name": canonical_stage_name(pool_def.get("name"), chr(ord("A") + i)),
                     "sequence_number": pool_def.get("sequence_number") or (i + 1),
                     "seeding": pool_def["seeding"],
                 },
@@ -532,7 +766,7 @@ def _full_setup(tournament: Tournament, payload: dict[str, Any]) -> dict[str, An
             _create_swiss(
                 tournament,
                 {
-                    "name": swiss_def.get("name") or chr(ord("A") + i),
+                    "name": canonical_stage_name(swiss_def.get("name"), chr(ord("A") + i)),
                     "sequence_number": swiss_def.get("sequence_number") or (i + 1),
                     "seeding": swiss_def["seeding"],
                     "num_rounds": swiss_def.get("num_rounds") or 3,
@@ -555,9 +789,12 @@ _APPLIERS: dict[str, Applier] = {
     "propose_create_bracket": _create_bracket,
     "propose_create_position_pool": _create_position_pool,
     "propose_create_field": _create_field,
+    "propose_update_field": _update_field,
+    "propose_delete_field": _delete_field,
     "propose_create_cross_pool_matches": _create_cross_pool_matches,
     "propose_update_seeding": _update_seeding,
     "propose_update_match": _update_match,
+    "propose_update_match_seeds": _update_match_seeds,
     "propose_delete_match": _delete_match,
     "propose_bulk_schedule": _bulk_schedule,
     # These produce the same assignment payload; recording them under their own

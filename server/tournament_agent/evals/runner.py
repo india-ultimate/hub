@@ -12,7 +12,8 @@ from django.db import transaction
 from server.core.models import Team, User
 from server.tests.base import create_event
 from server.tournament.models import Match, Tournament, TournamentField
-from server.tournament.utils import build_pool, start_tournament
+from server.tournament.utils import build_bracket, build_pool, start_tournament
+from server.tournament_agent.domain.validate import _rank
 from server.tournament_agent.evals import (
     TrajectoryTrace,
     load_cases,
@@ -49,20 +50,35 @@ def _build_fixture(case: dict[str, Any], user: User) -> Tournament:
     seeding = {str(i): team.id for i, team in enumerate(teams, start=1)}
     tournament.initial_seeding = seeding
     tournament.current_seeding = seeding
-    tournament.save(update_fields=["initial_seeding", "current_seeding"])
+    # Classic only treats Scheduling as editable. Eval sandboxes are setup
+    # tournaments, so they must not stay Draft or staff cannot click anything.
+    if fixture.get("status") != "LIV":
+        tournament.status = Tournament.Status.SCHEDULING
+    tournament.save(update_fields=["initial_seeding", "current_seeding", "status"])
+
+    start_s = fixture.get("start_date")
+    end_s = fixture.get("end_date") or start_s
+    if start_s:
+        event.start_date = datetime.date.fromisoformat(str(start_s)[:10])
+        event.end_date = datetime.date.fromisoformat(str(end_s)[:10])
+        event.save(update_fields=["start_date", "end_date"])
 
     for name in fixture.get("fields") or ["Field 1"]:
         TournamentField.objects.create(tournament=tournament, name=f"{name}-{suffix[:4]}")
 
-    if fixture.get("create_pool") and team_count >= MIN_POOL_TEAMS:
-        # The same builder the proposal apply path and the staff API use, so eval
-        # fixtures cannot drift onto a stale seeding or results shape.
+    pool_defs = list(fixture.get("pools") or [])
+    if fixture.get("create_pool") and not pool_defs and team_count >= MIN_POOL_TEAMS:
+        pool_defs = [{"name": "A", "seeding": list(range(1, team_count + 1))}]
+    for i, pool_def in enumerate(pool_defs):
         build_pool(
             tournament,
-            name="A",
-            sequence_number=1,
-            seeding=list(range(1, team_count + 1)),
+            name=str(pool_def.get("name") or chr(ord("A") + i)),
+            sequence_number=int(pool_def.get("sequence_number") or (i + 1)),
+            seeding=list(pool_def["seeding"]),
         )
+
+    for i, name in enumerate(fixture.get("brackets") or []):
+        build_bracket(tournament, name=str(name), sequence_number=i + 1)
 
     if fixture.get("status") == "LIV":
         start_tournament(tournament)
@@ -223,6 +239,15 @@ def run_case(case: dict[str, Any], model_id: str, user: User) -> dict[str, Any]:
                 trace.tool_calls.append({"name": name})
         if trace.asked_user and not any(t.get("name") == "ask_user" for t in trace.tool_calls):
             trace.tool_calls.append({"name": "ask_user"})
+
+        if expect.get("no_stage_order_violations"):
+            expect = {
+                **expect,
+                "match_ranks": {
+                    m.id: _rank(m) for m in Match.objects.filter(tournament=tournament)
+                },
+            }
+            case = {**case, "expect_state": expect}
 
         expect_met = True
         if expect.get("must_ask_user") and not trace.asked_user:
