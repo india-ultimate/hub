@@ -2,52 +2,95 @@
 
 from __future__ import annotations
 
+import inspect
 import json
+import re
+from collections import defaultdict
 from collections.abc import Iterator
+from datetime import datetime
+from itertools import pairwise
+from pathlib import Path
 from typing import Any, cast
 from unittest.mock import MagicMock, patch
 
 from django.http import StreamingHttpResponse
 from django.test import TestCase
+from django.utils.dateparse import parse_datetime
 
-from server.core.models import Team, User
+from server.core.models import Player, Team, User
 from server.tests.base import ApiBaseTestCase, create_event
-from server.tournament.models import Tournament, TournamentField
+from server.tournament.models import (
+    Match,
+    Pool,
+    PositionPool,
+    Registration,
+    SpiritScore,
+    SwissRound,
+    Tournament,
+    TournamentField,
+)
+from server.tournament.utils import build_bracket, build_pool
+from server.tournament.utils import start_tournament as begin_tournament
 from server.tournament_agent.catalog import (
     AGENT_MODELS,
     default_model_id,
     get_model,
     is_allowed_model,
 )
-from server.tournament_agent.mask import (
-    assert_safe_tool_payload,
-    contains_forbidden_keys,
-    scrub_user_text,
-)
-from server.tournament_agent.models import (
-    AgentProposal,
-    AgentQuestion,
-    ProposalStatus,
-    QuestionStatus,
-    TournamentAgentSession,
-)
-from server.tournament_agent.proposals import apply_proposal, reject_proposal
-from server.tournament_agent.provider import (
+from server.tournament_agent.clients.opencode import (
     ChatCompletionResult,
     OpenCodeGoClient,
     OpenCodeGoError,
     StreamChunk,
 )
-from server.tournament_agent.scheduler import recommend_schedule
-from server.tournament_agent.service import TournamentAgentService
+from server.tournament_agent.domain.scheduler import recommend_schedule
+from server.tournament_agent.models import (
+    AgentProposal,
+    AgentQuestion,
+    ProposalStatus,
+    QuestionStatus,
+    TournamentAgentMessage,
+    TournamentAgentSession,
+)
+from server.tournament_agent.privacy.display import TokenTextStream, resolve_player_tokens
+from server.tournament_agent.privacy.mask import (
+    assert_safe_tool_payload,
+    contains_forbidden_keys,
+    scrub_user_text,
+)
+from server.tournament_agent.services.agent import TournamentAgentService
+from server.tournament_agent.services.proposals import (
+    ProposalApplyError,
+    apply_proposal,
+    reject_proposal,
+)
+from server.tournament_agent.services.skills import SKILLS_DIR, load_skills, select_skills
 from server.tournament_agent.tools import (
+    HANDLERS,
+    TOOL_DEFINITIONS,
     AskUserPause,
     ToolContext,
     ask_user,
+    check_schedule_conflicts,
+    find_roster_player,
+    get_match_spirit,
+    get_spirit_summary,
     get_tournament_overview,
     list_fields,
+    list_missing_spirit_scores,
+    list_stages,
     list_teams_seeding,
+    propose_bulk_schedule,
     propose_create_pool,
+    propose_create_position_pool,
+    propose_create_swiss_round,
+    propose_delete_match,
+    propose_delete_stage,
+    propose_match_score,
+    propose_shift_schedule,
+    propose_spirit_scores,
+    propose_start_tournament,
+    propose_update_match,
 )
 
 
@@ -149,9 +192,7 @@ class TournamentAgentToolTests(TestCase):
         self.assertEqual(len(q.options), 2)
 
     def test_propose_and_confirm_pool(self) -> None:
-        result = propose_create_pool(
-            self.ctx, name="A", sequence_number=1, seeding=[1, 2]
-        )
+        result = propose_create_pool(self.ctx, name="A", sequence_number=1, seeding=[1, 2])
         proposal = AgentProposal.objects.get(id=result["proposal_id"])
         self.assertEqual(proposal.status, ProposalStatus.PENDING)
         applied = apply_proposal(proposal)
@@ -160,9 +201,7 @@ class TournamentAgentToolTests(TestCase):
         self.assertEqual(proposal.status, ProposalStatus.CONFIRMED)
 
     def test_reject_proposal(self) -> None:
-        result = propose_create_pool(
-            self.ctx, name="B", sequence_number=2, seeding=[3, 4]
-        )
+        result = propose_create_pool(self.ctx, name="B", sequence_number=2, seeding=[3, 4])
         proposal = AgentProposal.objects.get(id=result["proposal_id"])
         reject_proposal(proposal)
         proposal.refresh_from_db()
@@ -311,9 +350,7 @@ class TournamentAgentServiceTests(TestCase):
         mock_result.content = "Okay, cancelled. Tell me when you're ready."
         mock_result.tool_calls = []
         with patch.object(self.service.client, "chat", return_value=mock_result):
-            out = self.service.answer_question(
-                session, q.id, selected_ids=[], skip=True
-            )
+            out = self.service.answer_question(session, q.id, selected_ids=[], skip=True)
         self.assertIn("cancelled", out["response"].lower())
         q.refresh_from_db()
         self.assertEqual(q.status, QuestionStatus.SKIPPED)
@@ -354,7 +391,7 @@ class NewProposalToolTests(TestCase):
         self.assertEqual(field.tournament_id, self.tournament.id)
 
     def test_create_field_duplicate_name_rejected(self) -> None:
-        from server.tournament_agent.proposals import ProposalApplyError
+        from server.tournament_agent.services.proposals import ProposalApplyError
         from server.tournament_agent.tools import propose_create_field
 
         TournamentField.objects.create(tournament=self.tournament, name="Field 3")
@@ -363,7 +400,7 @@ class NewProposalToolTests(TestCase):
             self._apply(result)
 
     def test_cross_pool_matches_require_stage(self) -> None:
-        from server.tournament_agent.proposals import ProposalApplyError
+        from server.tournament_agent.services.proposals import ProposalApplyError
         from server.tournament_agent.tools import propose_create_cross_pool_matches
 
         result = propose_create_cross_pool_matches(self.ctx, seed_pairs=[[1, 3]])
@@ -393,7 +430,7 @@ class NewProposalToolTests(TestCase):
         self.assertEqual((first.placeholder_seed_1, first.placeholder_seed_2), (1, 3))
 
     def test_cross_pool_duplicate_pair_rejected(self) -> None:
-        from server.tournament_agent.proposals import ProposalApplyError
+        from server.tournament_agent.services.proposals import ProposalApplyError
         from server.tournament_agent.tools import (
             propose_create_cross_pool,
             propose_create_cross_pool_matches,
@@ -406,7 +443,7 @@ class NewProposalToolTests(TestCase):
             self._apply(result)
 
     def test_cross_pool_seed_out_of_range_rejected(self) -> None:
-        from server.tournament_agent.proposals import ProposalApplyError
+        from server.tournament_agent.services.proposals import ProposalApplyError
         from server.tournament_agent.tools import (
             propose_create_cross_pool,
             propose_create_cross_pool_matches,
@@ -550,7 +587,9 @@ class ProviderStreamParsingTests(TestCase):
         client = self._client()
         with patch("httpx.Client.stream", return_value=_sse_response(lines)):
             chunks = list(
-                client.chat_stream(model_id=_model_id_for_style("openai"), messages=[{"role": "user"}])
+                client.chat_stream(
+                    model_id=_model_id_for_style("openai"), messages=[{"role": "user"}]
+                )
             )
 
         texts = [c.text for c in chunks if c.type == "text"]
@@ -579,7 +618,9 @@ class ProviderStreamParsingTests(TestCase):
         client = self._client()
         with patch("httpx.Client.stream", return_value=_sse_response(lines)):
             chunks = list(
-                client.chat_stream(model_id=_model_id_for_style("openai"), messages=[{"role": "user"}])
+                client.chat_stream(
+                    model_id=_model_id_for_style("openai"), messages=[{"role": "user"}]
+                )
             )
         texts = [c.text for c in chunks if c.type == "text"]
         self.assertEqual(texts, ["ok"])
@@ -587,9 +628,15 @@ class ProviderStreamParsingTests(TestCase):
     def test_openai_stream_raises_on_error_payload(self) -> None:
         lines = ['data: {"error":{"message":"rate limited"}}']
         client = self._client()
-        with patch("httpx.Client.stream", return_value=_sse_response(lines)):
-            with self.assertRaises(OpenCodeGoError):
-                list(client.chat_stream(model_id=_model_id_for_style("openai"), messages=[{"role": "user"}]))
+        with (
+            patch("httpx.Client.stream", return_value=_sse_response(lines)),
+            self.assertRaises(OpenCodeGoError),
+        ):
+            list(
+                client.chat_stream(
+                    model_id=_model_id_for_style("openai"), messages=[{"role": "user"}]
+                )
+            )
 
     def test_openai_stream_raises_on_http_error(self) -> None:
         resp = MagicMock()
@@ -600,15 +647,20 @@ class ProviderStreamParsingTests(TestCase):
         ctx.__enter__ = MagicMock(return_value=resp)
         ctx.__exit__ = MagicMock(return_value=False)
         client = self._client()
-        with patch("httpx.Client.stream", return_value=ctx):
-            with self.assertRaises(OpenCodeGoError) as caught:
-                list(client.chat_stream(model_id=_model_id_for_style("openai"), messages=[{"role": "user"}]))
+        with (
+            patch("httpx.Client.stream", return_value=ctx),
+            self.assertRaises(OpenCodeGoError) as caught,
+        ):
+            list(
+                client.chat_stream(
+                    model_id=_model_id_for_style("openai"), messages=[{"role": "user"}]
+                )
+            )
         self.assertIn("429", str(caught.exception))
 
     def test_anthropic_stream_text_and_tool_use(self) -> None:
         lines = [
-            'data: {"type":"content_block_start","index":0,'
-            '"content_block":{"type":"text"}}',
+            'data: {"type":"content_block_start","index":0,"content_block":{"type":"text"}}',
             'data: {"type":"content_block_delta","index":0,'
             '"delta":{"type":"text_delta","text":"Making "}}',
             'data: {"type":"content_block_delta","index":0,'
@@ -625,7 +677,9 @@ class ProviderStreamParsingTests(TestCase):
         client = self._client()
         with patch("httpx.Client.stream", return_value=_sse_response(lines)):
             chunks = list(
-                client.chat_stream(model_id=_model_id_for_style("anthropic"), messages=[{"role": "user"}])
+                client.chat_stream(
+                    model_id=_model_id_for_style("anthropic"), messages=[{"role": "user"}]
+                )
             )
 
         texts = [c.text for c in chunks if c.type == "text"]
@@ -872,9 +926,7 @@ class StreamEndpointTests(ApiBaseTestCase):
     def _post_stream(self, message: str) -> tuple[Any, list[tuple[str, dict[str, Any]]]]:
         response = self.client.post(
             "/api/tournament-agent/stream_message",
-            data=json.dumps(
-                {"tournament_id": self.tournament.id, "message": message}
-            ),
+            data=json.dumps({"tournament_id": self.tournament.id, "message": message}),
             content_type="application/json",
         )
         chunks = cast(Iterator[bytes], cast(StreamingHttpResponse, response).streaming_content)
@@ -887,7 +939,8 @@ class StreamEndpointTests(ApiBaseTestCase):
             self._stream_round("You have 1 field.", []),
         ]
         with patch(
-            "server.tournament_agent.provider.OpenCodeGoClient.chat_stream", side_effect=rounds
+            "server.tournament_agent.clients.opencode.OpenCodeGoClient.chat_stream",
+            side_effect=rounds,
         ):
             response, frames = self._post_stream("show fields")
 
@@ -906,7 +959,7 @@ class StreamEndpointTests(ApiBaseTestCase):
     def test_stream_reports_mid_turn_failure_as_error_frame(self) -> None:
         # Headers are already sent, so this cannot become a 500.
         with patch(
-            "server.tournament_agent.provider.OpenCodeGoClient.chat_stream",
+            "server.tournament_agent.clients.opencode.OpenCodeGoClient.chat_stream",
             side_effect=RuntimeError("provider exploded"),
         ):
             response, frames = self._post_stream("show fields")
@@ -925,10 +978,1099 @@ class StreamEndpointTests(ApiBaseTestCase):
     def test_user_message_is_persisted_before_streaming_starts(self) -> None:
         rounds = [self._stream_round("Hi.", []), self._stream_round("Hi.", [])]
         with patch(
-            "server.tournament_agent.provider.OpenCodeGoClient.chat_stream", side_effect=rounds
+            "server.tournament_agent.clients.opencode.OpenCodeGoClient.chat_stream",
+            side_effect=rounds,
         ):
             self._post_stream("remember this")
-        session = TournamentAgentSession.objects.get(
-            user=self.user, tournament=self.tournament
-        )
+        session = TournamentAgentSession.objects.get(user=self.user, tournament=self.tournament)
         self.assertTrue(session.messages.filter(role="user", content="remember this").exists())
+
+
+class ProposalSafetyTests(TestCase):
+    """Regression tests for the corruption paths fixed in the P0a hardening pass."""
+
+    def setUp(self) -> None:
+        self.user = User.objects.create(username="staff-safety", is_staff=True)
+        self.event = create_event(title="Safety Open")
+        self.tournament = Tournament.objects.create(event=self.event)
+        teams = [Team.objects.create(name=f"Safety {i}", slug=f"safety-{i}") for i in range(1, 5)]
+        seeding = {str(i): team.id for i, team in enumerate(teams, start=1)}
+        self.tournament.initial_seeding = seeding
+        self.tournament.current_seeding = seeding
+        self.tournament.save()
+        self.tournament.teams.set(teams)
+        self.field = TournamentField.objects.create(tournament=self.tournament, name="Field 1")
+        self.session = TournamentAgentSession.objects.create(
+            user=self.user, tournament=self.tournament, model_id=default_model_id()
+        )
+        self.ctx = ToolContext(session=self.session, tournament=self.tournament)
+
+    def _apply(self, result: dict[str, Any]) -> dict[str, Any]:
+        return apply_proposal(AgentProposal.objects.get(id=result["proposal_id"]))
+
+    def _completed_match(self) -> Match:
+        self._apply(propose_create_pool(self.ctx, name="A", sequence_number=1, seeding=[1, 2]))
+        match = Match.objects.get(tournament=self.tournament)
+        match.status = Match.Status.COMPLETED
+        match.save()
+        return match
+
+    def test_swiss_group_starts_on_round_one(self) -> None:
+        # current_round=0 would make populate_fixtures skip the group forever.
+        self._apply(
+            propose_create_swiss_round(
+                self.ctx, name="A", seeding=[1, 2, 3, 4], num_rounds=2, sequence_number=1
+            )
+        )
+        self.assertEqual(SwissRound.objects.get(tournament=self.tournament).current_round, 1)
+
+    def test_position_pool_results_start_empty(self) -> None:
+        # Seed-keyed rows here collide with the team-keyed rows populate_fixtures
+        # writes, which then blows up ranking on the first score.
+        self._apply(
+            propose_create_position_pool(self.ctx, name="E", sequence_number=1, seeding=[3, 4])
+        )
+        self.assertEqual(PositionPool.objects.get(tournament=self.tournament).results, {})
+
+    def test_start_tournament_refuses_when_already_live(self) -> None:
+        self._apply(propose_create_pool(self.ctx, name="A", sequence_number=1, seeding=[1, 2]))
+        self._apply(propose_start_tournament(self.ctx))
+        match = Match.objects.get(tournament=self.tournament)
+        match.status = Match.Status.COMPLETED
+        match.save()
+
+        with self.assertRaises(ProposalApplyError):
+            self._apply(propose_start_tournament(self.ctx))
+
+        match.refresh_from_db()
+        self.assertEqual(match.status, Match.Status.COMPLETED)
+
+    def test_completed_match_cannot_be_rescheduled(self) -> None:
+        match = self._completed_match()
+        with self.assertRaises(ProposalApplyError):
+            self._apply(
+                propose_update_match(self.ctx, match_id=match.id, time="2026-08-01T09:00:00")
+            )
+        match.refresh_from_db()
+        self.assertEqual(match.status, Match.Status.COMPLETED)
+        self.assertIsNone(match.time)
+
+    def test_completed_match_cannot_be_deleted(self) -> None:
+        match = self._completed_match()
+        with self.assertRaises(ProposalApplyError):
+            self._apply(propose_delete_match(self.ctx, match_id=match.id))
+        self.assertTrue(Match.objects.filter(id=match.id).exists())
+
+    def test_scheduling_does_not_change_match_status(self) -> None:
+        # Status tracks team assignment; marking a match Scheduled here would hide
+        # it from populate_fixtures, which only fills Yet-To-Fix matches.
+        self._apply(propose_create_pool(self.ctx, name="A", sequence_number=1, seeding=[1, 2]))
+        match = Match.objects.get(tournament=self.tournament)
+        self._apply(
+            propose_update_match(
+                self.ctx,
+                match_id=match.id,
+                time="2026-08-01T09:00:00",
+                field_id=self.field.id,
+            )
+        )
+        match.refresh_from_db()
+        self.assertEqual(match.status, Match.Status.YET_TO_FIX)
+        self.assertIsNotNone(match.time)
+
+    def test_bulk_schedule_rolls_back_entirely_on_failure(self) -> None:
+        self._apply(propose_create_pool(self.ctx, name="A", sequence_number=1, seeding=[1, 2, 3]))
+        matches = list(Match.objects.filter(tournament=self.tournament).order_by("id"))
+        self.assertEqual(len(matches), 3)
+
+        with self.assertRaises(ProposalApplyError):
+            self._apply(
+                propose_bulk_schedule(
+                    self.ctx,
+                    assignments=[
+                        {
+                            "match_id": matches[0].id,
+                            "time": "2026-08-01T09:00:00",
+                            "field_id": self.field.id,
+                        },
+                        {"match_id": matches[1].id, "time": "2026-08-01T10:30:00", "field_id": 0},
+                    ],
+                )
+            )
+
+        matches[0].refresh_from_db()
+        self.assertIsNone(matches[0].time)
+
+    def test_bulk_schedule_row_without_a_slot_fails_loudly(self) -> None:
+        # `_set_slot` skips whatever is None, so a row missing its field would leave
+        # the match untouched and still come back reported as scheduled.
+        self._apply(propose_create_pool(self.ctx, name="A", sequence_number=1, seeding=[1, 2, 3]))
+        match = Match.objects.filter(tournament=self.tournament).order_by("id").first()
+        assert match is not None
+
+        with self.assertRaises(ProposalApplyError) as cm:
+            self._apply(
+                propose_bulk_schedule(
+                    self.ctx,
+                    assignments=[{"match_id": match.id, "time": "2026-08-01T09:00:00"}],
+                )
+            )
+        self.assertIn("missing field_id", str(cm.exception))
+        match.refresh_from_db()
+        self.assertIsNone(match.time)
+
+    def test_missing_match_is_a_readable_error_not_a_crash(self) -> None:
+        with self.assertRaises(ProposalApplyError) as cm:
+            self._apply(propose_delete_match(self.ctx, match_id=99999))
+        self.assertIn("no longer exists", str(cm.exception))
+
+    def test_failed_apply_leaves_proposal_pending(self) -> None:
+        result = propose_delete_match(self.ctx, match_id=99999)
+        proposal = AgentProposal.objects.get(id=result["proposal_id"])
+        with self.assertRaises(ProposalApplyError):
+            apply_proposal(proposal)
+        proposal.refresh_from_db()
+        self.assertEqual(proposal.status, ProposalStatus.PENDING)
+
+    def test_clear_history_expires_pending_proposals(self) -> None:
+        result = propose_create_pool(self.ctx, name="A", sequence_number=1, seeding=[1, 2])
+        service = TournamentAgentService(self.user)
+        service.clear_session(self.session)
+        proposal = AgentProposal.objects.get(id=result["proposal_id"])
+        self.assertEqual(proposal.status, ProposalStatus.EXPIRED)
+        self.assertEqual(service.history(self.session)["pending_proposals"], [])
+
+
+class SchedulerConstraintTests(TestCase):
+    def setUp(self) -> None:
+        self.user = User.objects.create(username="staff-sched", is_staff=True)
+        self.event = create_event(title="Scheduler Open")
+        self.tournament = Tournament.objects.create(event=self.event)
+        teams = [Team.objects.create(name=f"Sch {i}", slug=f"sch-{i}") for i in range(1, 5)]
+        seeding = {str(i): team.id for i, team in enumerate(teams, start=1)}
+        self.tournament.initial_seeding = seeding
+        self.tournament.current_seeding = seeding
+        self.tournament.save()
+        self.tournament.teams.set(teams)
+        for name in ("Field 1", "Field 2"):
+            TournamentField.objects.create(tournament=self.tournament, name=name)
+        build_pool(self.tournament, name="A", sequence_number=1, seeding=[1, 2, 3, 4])
+
+    def _placements(self, **overrides: Any) -> dict[int, dict[str, Any]]:
+        kwargs: dict[str, Any] = {
+            "start_date": "2026-08-01",
+            "end_date": "2026-08-02",
+            "duration_mins": 75,
+            "slot_buffer_mins": 15,
+            "min_rest_mins": 60,
+            "day_start_hour": 7,
+            "day_end_hour": 19,
+            "lunch_start_hour": None,
+            "lunch_end_hour": None,
+        }
+        kwargs.update(overrides)
+        result = recommend_schedule(tournament=self.tournament, **kwargs)
+        return {a["match_id"]: a for a in result["assignments"]}
+
+    def test_rest_is_enforced_before_the_tournament_starts(self) -> None:
+        # Teams are unassigned pre-start, so rest has to fall back to seeds.
+        placements = self._placements()
+        self.assertEqual(len(placements), 6)
+
+        by_seed: dict[int, list[datetime]] = {}
+        for match in Match.objects.filter(tournament=self.tournament):
+            start = parse_datetime(placements[match.id]["time"])
+            assert start is not None
+            for seed in (match.placeholder_seed_1, match.placeholder_seed_2):
+                by_seed.setdefault(seed, []).append(start)
+
+        for seed, starts in by_seed.items():
+            ordered = sorted(starts)
+            for earlier, later in pairwise(ordered):
+                gap = (later - earlier).total_seconds() / 60
+                self.assertGreaterEqual(gap, 75 + 60, f"seed {seed} plays without enough rest")
+
+    def test_slot_buffer_sets_the_start_time_grid(self) -> None:
+        for buffer_mins, step in ((15, 90), (0, 75)):
+            placements = self._placements(slot_buffer_mins=buffer_mins)
+            self.assertTrue(placements)
+            for assignment in placements.values():
+                start = parse_datetime(assignment["time"])
+                assert start is not None
+                offset = (start - start.replace(hour=7, minute=0)).total_seconds() / 60
+                self.assertEqual(
+                    offset % step, 0, f"{assignment['time']} is off the {step}-minute grid"
+                )
+
+    def test_matches_missing_only_a_field_are_still_placed(self) -> None:
+        matches = list(Match.objects.filter(tournament=self.tournament).order_by("id"))
+        matches[0].time = parse_datetime("2026-07-01T09:00:00+00:00")
+        matches[0].save()
+        self.assertIn(matches[0].id, self._placements())
+
+    def test_feeding_stages_are_placed_before_the_stages_they_feed(self) -> None:
+        build_bracket(self.tournament, name="1-4", sequence_number=1)
+        placements = self._placements()
+        pool_latest = max(
+            placements[m.id]["time"]
+            for m in Match.objects.filter(tournament=self.tournament, pool__isnull=False)
+            if m.id in placements
+        )
+        bracket_first = min(
+            placements[m.id]["time"]
+            for m in Match.objects.filter(tournament=self.tournament, bracket__isnull=False)
+            if m.id in placements
+        )
+        self.assertLess(pool_latest, bracket_first)
+
+
+class LiveOpsToolTests(TestCase):
+    """P0b: score entry, schedule repair, stage rebuild, and the reads behind them."""
+
+    def setUp(self) -> None:
+        self.user = User.objects.create(username="staff-live", is_staff=True)
+        self.event = create_event(title="Live Open")
+        self.tournament = Tournament.objects.create(event=self.event)
+        teams = [Team.objects.create(name=f"Live {i}", slug=f"live-{i}") for i in range(1, 5)]
+        seeding = {str(i): team.id for i, team in enumerate(teams, start=1)}
+        self.tournament.initial_seeding = seeding
+        self.tournament.current_seeding = seeding
+        self.tournament.save()
+        self.tournament.teams.set(teams)
+        self.tournament.refresh_from_db()
+        self.field = TournamentField.objects.create(tournament=self.tournament, name="Field 1")
+        self.pool = build_pool(self.tournament, name="A", sequence_number=1, seeding=[1, 2, 3, 4])
+        self.session = TournamentAgentSession.objects.create(
+            user=self.user, tournament=self.tournament, model_id=default_model_id()
+        )
+        self.ctx = ToolContext(session=self.session, tournament=self.tournament)
+
+    def _apply(self, result: dict[str, Any]) -> dict[str, Any]:
+        return apply_proposal(AgentProposal.objects.get(id=result["proposal_id"]))
+
+    def _go_live(self) -> None:
+        self._apply(propose_start_tournament(self.ctx))
+        self.tournament.refresh_from_db()
+
+    def test_score_completes_match_and_updates_standings(self) -> None:
+        self._go_live()
+        match = Match.objects.filter(tournament=self.tournament).order_by("id").first()
+        assert match is not None
+        self._apply(
+            propose_match_score(self.ctx, match_id=match.id, score_team_1=15, score_team_2=9)
+        )
+        match.refresh_from_db()
+        self.pool.refresh_from_db()
+        self.assertEqual(match.status, Match.Status.COMPLETED)
+        self.assertEqual((match.score_team_1, match.score_team_2), (15, 9))
+        winner = self.pool.results[str(match.team_1_id)]
+        self.assertEqual(winner["wins"], 1)
+        self.assertEqual(winner["GF"], 15)
+
+    def test_score_refused_before_teams_are_assigned(self) -> None:
+        match = Match.objects.filter(tournament=self.tournament).order_by("id").first()
+        assert match is not None
+        with self.assertRaises(ProposalApplyError) as cm:
+            self._apply(
+                propose_match_score(self.ctx, match_id=match.id, score_team_1=15, score_team_2=9)
+            )
+        self.assertIn("no teams assigned", str(cm.exception))
+
+    def test_second_score_refused_so_standings_cannot_double_count(self) -> None:
+        self._go_live()
+        match = Match.objects.filter(tournament=self.tournament).order_by("id").first()
+        assert match is not None
+        self._apply(
+            propose_match_score(self.ctx, match_id=match.id, score_team_1=15, score_team_2=9)
+        )
+        with self.assertRaises(ProposalApplyError) as cm:
+            self._apply(
+                propose_match_score(self.ctx, match_id=match.id, score_team_1=10, score_team_2=8)
+            )
+        self.assertIn("double-count", str(cm.exception))
+        self.pool.refresh_from_db()
+        self.assertEqual(self.pool.results[str(match.team_1_id)]["GF"], 15)
+
+    def test_negative_score_is_rejected(self) -> None:
+        self._go_live()
+        match = Match.objects.filter(tournament=self.tournament).order_by("id").first()
+        assert match is not None
+        with self.assertRaises(ProposalApplyError):
+            self._apply(
+                propose_match_score(self.ctx, match_id=match.id, score_team_1=-1, score_team_2=9)
+            )
+
+    def test_forfeit_must_be_a_shutout(self) -> None:
+        # The flag is shown to staff and stated in the tool description; if the
+        # applier ignored it, a played 15-9 would be confirmable as a forfeit.
+        self._go_live()
+        match = Match.objects.filter(tournament=self.tournament).order_by("id").first()
+        assert match is not None
+        with self.assertRaises(ProposalApplyError) as cm:
+            self._apply(
+                propose_match_score(
+                    self.ctx, match_id=match.id, score_team_1=15, score_team_2=9, forfeit=True
+                )
+            )
+        self.assertIn("one side must be 0", str(cm.exception))
+        match.refresh_from_db()
+        self.assertNotEqual(match.status, Match.Status.COMPLETED)
+
+    def test_forfeit_applies_as_a_normal_result(self) -> None:
+        self._go_live()
+        match = Match.objects.filter(tournament=self.tournament).order_by("id").first()
+        assert match is not None
+        self._apply(
+            propose_match_score(
+                self.ctx, match_id=match.id, score_team_1=15, score_team_2=0, forfeit=True
+            )
+        )
+        match.refresh_from_db()
+        self.assertEqual(match.status, Match.Status.COMPLETED)
+        self.pool.refresh_from_db()
+        self.assertEqual(self.pool.results[str(match.team_1_id)]["wins"], 1)
+
+    def _schedule_all(self) -> list[Match]:
+        matches = list(Match.objects.filter(tournament=self.tournament).order_by("id"))
+        for i, match in enumerate(matches):
+            match.time = parse_datetime(f"2026-08-01T{7 + i:02d}:00:00+00:00")
+            match.field = self.field
+            match.save()
+        return matches
+
+    def test_shift_moves_unplayed_matches_and_skips_completed(self) -> None:
+        self._go_live()
+        matches = self._schedule_all()
+        matches[0].status = Match.Status.COMPLETED
+        matches[0].save()
+
+        self._apply(propose_shift_schedule(self.ctx, shift_mins=45))
+
+        matches[0].refresh_from_db()
+        matches[1].refresh_from_db()
+        self.assertEqual(matches[0].time, parse_datetime("2026-08-01T07:00:00+00:00"))
+        self.assertEqual(matches[1].time, parse_datetime("2026-08-01T08:45:00+00:00"))
+
+    def test_shift_refuses_to_land_on_an_occupied_slot(self) -> None:
+        self._go_live()
+        matches = self._schedule_all()
+        # Only the first match moves, straight onto the second match's slot.
+        result = propose_shift_schedule(self.ctx, shift_mins=60, match_ids=[matches[0].id])
+        self.assertIn("error", result)
+        self.assertIn("on top of", result["error"])
+
+    def test_shift_refuses_to_land_part_way_inside_another_match(self) -> None:
+        # A slot is a window, not an instant: 07:45 is not 08:00, but a 75-minute
+        # match starting there still runs straight through the 08:00 one.
+        self._go_live()
+        matches = self._schedule_all()
+        result = propose_shift_schedule(self.ctx, shift_mins=45, match_ids=[matches[0].id])
+        self.assertIn("error", result)
+        self.assertIn("on top of", result["error"])
+
+    def test_skipped_completed_count_respects_the_shift_scope(self) -> None:
+        # A shift scoped to one field must not report the completed matches sitting
+        # on every other field as "left alone".
+        self._go_live()
+        matches = self._schedule_all()
+        other_field = TournamentField.objects.create(tournament=self.tournament, name="Field 2")
+        matches[0].status = Match.Status.COMPLETED
+        matches[0].field = other_field
+        matches[0].save()
+
+        result = propose_shift_schedule(self.ctx, shift_mins=45, field_id=self.field.id)
+        payload = AgentProposal.objects.get(id=result["proposal_id"]).payload
+        self.assertEqual(payload["meta"]["skipped_completed"], 0)
+        self.assertNotIn("left alone", result["summary"])
+
+    def test_delete_stage_rejects_an_unknown_kind_before_proposing(self) -> None:
+        # "swiss_round" is the Match field name, not the stage kind. Falling back to
+        # pool would count the wrong matches and hand staff a harmless-looking plan.
+        result = propose_delete_stage(self.ctx, stage="swiss_round", stage_id=self.pool.id)
+        self.assertIn("error", result)
+        self.assertIn("Unknown stage kind", result["error"])
+        self.assertFalse(AgentProposal.objects.filter(tool_name="propose_delete_stage").exists())
+
+    def test_delete_stage_removes_its_matches(self) -> None:
+        self._apply(propose_delete_stage(self.ctx, stage="pool", stage_id=self.pool.id))
+        self.assertFalse(Match.objects.filter(tournament=self.tournament).exists())
+        self.assertFalse(Pool.objects.filter(id=self.pool.id).exists())
+
+    def test_delete_stage_refused_when_a_match_is_completed(self) -> None:
+        self._go_live()
+        match = Match.objects.filter(tournament=self.tournament).order_by("id").first()
+        assert match is not None
+        self._apply(
+            propose_match_score(self.ctx, match_id=match.id, score_team_1=15, score_team_2=9)
+        )
+        with self.assertRaises(ProposalApplyError) as cm:
+            self._apply(propose_delete_stage(self.ctx, stage="pool", stage_id=self.pool.id))
+        self.assertIn("completed matches", str(cm.exception))
+
+    def test_delete_pool_refused_once_live(self) -> None:
+        self._go_live()
+        with self.assertRaises(ProposalApplyError) as cm:
+            self._apply(propose_delete_stage(self.ctx, stage="pool", stage_id=self.pool.id))
+        self.assertIn("once the tournament has started", str(cm.exception))
+
+    def test_list_stages_reports_completion(self) -> None:
+        self._go_live()
+        stages = list_stages(self.ctx)["stages"]
+        self.assertEqual(len(stages), 1)
+        self.assertEqual(stages[0]["stage"], "pool")
+        self.assertEqual(stages[0]["match_count"], 6)
+        self.assertFalse(stages[0]["is_complete"])
+        self.assertEqual(stages[0]["unscheduled_count"], 6)
+
+    def test_list_stages_cost_does_not_grow_with_the_stage_count(self) -> None:
+        # The agent is told to call this first on most turns. One grouped pass over
+        # the matches plus one query per stage model — not four aggregates per stage.
+        self._go_live()
+        build_bracket(self.tournament, name="1-4", sequence_number=2)
+        with self.assertNumQueries(6):
+            stages = list_stages(self.ctx)["stages"]
+        self.assertEqual({s["stage"] for s in stages}, {"pool", "bracket"})
+
+    def test_conflicts_flags_overlapping_matches_on_one_field(self) -> None:
+        # unique_together already blocks an identical (field, time); the real
+        # failure is a second match starting inside the first one's 75 minutes.
+        self._go_live()
+        matches = list(Match.objects.filter(tournament=self.tournament).order_by("id"))
+        matches[0].time = parse_datetime("2026-08-01T07:00:00+00:00")
+        matches[0].field = self.field
+        matches[0].save()
+        matches[1].time = parse_datetime("2026-08-01T07:30:00+00:00")
+        matches[1].field = self.field
+        matches[1].save()
+
+        report = check_schedule_conflicts(self.ctx)
+        self.assertFalse(report["ok"])
+        self.assertTrue(report["field_overlaps"])
+        self.assertTrue(report["team_overlaps"])
+
+    def test_conflicts_flags_rest_below_the_minimum(self) -> None:
+        self._go_live()
+        matches = list(Match.objects.filter(tournament=self.tournament).order_by("id"))
+        matches[0].time = parse_datetime("2026-08-01T07:00:00+00:00")
+        matches[0].field = self.field
+        matches[0].save()
+        # 08:15 end + 15 minutes only.
+        matches[1].time = parse_datetime("2026-08-01T08:30:00+00:00")
+        matches[1].field = self.field
+        matches[1].save()
+
+        report = check_schedule_conflicts(self.ctx)
+        self.assertTrue(report["rest_violations"])
+        self.assertEqual(report["rest_violations"][0]["gap_mins"], 15)
+
+    def test_conflicts_flags_matches_running_past_the_day_window(self) -> None:
+        self._go_live()
+        match = Match.objects.filter(tournament=self.tournament).order_by("id").first()
+        assert match is not None
+        # Ends exactly at 19:00 — on the hour, so an hour-only check would miss it.
+        match.time = parse_datetime("2026-08-01T17:45:00+00:00")
+        match.field = self.field
+        match.save()
+        report = check_schedule_conflicts(self.ctx, day_end_hour=18)
+        self.assertEqual(len(report["outside_day_window"]), 1)
+
+    def test_conflicts_clean_schedule_passes(self) -> None:
+        self._go_live()
+        matches = list(Match.objects.filter(tournament=self.tournament).order_by("id"))
+        for i, match in enumerate(matches):
+            match.time = parse_datetime(f"2026-08-01T{7 + i * 3:02d}:00:00+00:00")
+            match.field = self.field
+            match.save()
+        report = check_schedule_conflicts(self.ctx)
+        self.assertEqual(report["field_overlaps"], [])
+        self.assertEqual(report["rest_violations"], [])
+
+    def test_a_team_is_one_subject_whether_it_is_named_or_seeded(self) -> None:
+        # Part-way live: the pool match carries team ids, the bracket match still
+        # carries seeds. Tracking those separately means no rest is enforced between
+        # them and the per-day count is split across two labels.
+        self._go_live()
+        bracket = build_bracket(self.tournament, name="1-4", sequence_number=2)
+        pool_match = Match.objects.filter(tournament=self.tournament, pool=self.pool).first()
+        bracket_match = Match.objects.filter(tournament=self.tournament, bracket=bracket).first()
+        assert pool_match is not None and bracket_match is not None
+        team_id = pool_match.team_1_id
+        assert team_id is not None
+        team_name = Team.objects.get(id=team_id).name
+        bracket_match.placeholder_seed_1 = next(
+            int(seed) for seed, tid in self.tournament.current_seeding.items() if tid == team_id
+        )
+        bracket_match.save()
+
+        pool_match.time = parse_datetime("2026-08-01T09:00:00+00:00")
+        pool_match.field = self.field
+        pool_match.save()
+        # Starts 15 minutes after the pool match ends — well under the 60 min minimum.
+        bracket_match.time = parse_datetime("2026-08-01T10:30:00+00:00")
+        bracket_match.field = self.field
+        bracket_match.save()
+
+        report = check_schedule_conflicts(self.ctx)
+        gaps = [v["gap_mins"] for v in report["rest_violations"] if v["team"] == team_name]
+        self.assertEqual(gaps, [15], "rest must carry across the seed -> team boundary")
+        counts = {row["team"]: row["count"] for row in report["matches_per_team_per_day"]}
+        self.assertEqual(counts.get(team_name), 2, "the team must be counted once, not twice")
+
+
+class EvalFixtureTests(TestCase):
+    def test_every_case_fixture_builds(self) -> None:
+        # The fixtures only run under the bakeoff command, so a break in them
+        # surfaces at the worst moment otherwise.
+        from server.tournament_agent.evals import load_cases
+        from server.tournament_agent.evals.runner import _build_fixture
+
+        user = User.objects.create(username="eval-fixture", is_staff=True)
+        for case in load_cases():
+            with self.subTest(case=case["id"]):
+                tournament = _build_fixture(case, user)
+                fixture = case.get("fixture") or {}
+                if fixture.get("create_pool"):
+                    self.assertTrue(Match.objects.filter(tournament=tournament).exists())
+                if fixture.get("schedule"):
+                    self.assertFalse(
+                        Match.objects.filter(tournament=tournament, time__isnull=True).exists()
+                    )
+
+
+class ToolContractTests(TestCase):
+    """The declared schema is what the model actually sees — drift is invisible."""
+
+    def test_every_declared_tool_matches_its_handler_signature(self) -> None:
+        # A parameter the handler grew but the schema never declared gets stripped or
+        # rejected by providers that validate arguments, so the tool silently ignores
+        # the filter the skills told the model to pass.
+        for definition in TOOL_DEFINITIONS:
+            fn = definition["function"]
+            name = fn["name"]
+            handler = HANDLERS.get(name)
+            assert handler is not None, f"{name} is declared but has no handler"
+            declared = set((fn.get("parameters") or {}).get("properties") or {})
+            accepted = set(inspect.signature(handler).parameters) - {"ctx"}
+            self.assertEqual(declared, accepted, f"{name} schema and signature disagree")
+
+    def test_every_handler_is_declared(self) -> None:
+        declared = {d["function"]["name"] for d in TOOL_DEFINITIONS}
+        self.assertEqual(declared, set(HANDLERS), "a handler the model is never told about")
+
+
+class ArchitectureTests(TestCase):
+    """Keep the package layout from rotting back into a flat pile of modules.
+
+    The layering is documented in `server/tournament_agent/__init__.py`; this is
+    what stops it from being merely aspirational.
+    """
+
+    # Shared roots: leaf-ish modules anything may depend on.
+    SHARED = frozenset({"models", "catalog", "schema"})
+    # Each layer may import the ones after it, never the ones before.
+    CHAIN = ["api", "services", "tools", "domain"]
+    # Imported by the chain, importing nothing from the package back.
+    LEAVES = frozenset({"clients", "privacy"})
+
+    def _layer_imports(self) -> dict[str, set[str]]:
+        package = Path(__file__).resolve().parent.parent / "tournament_agent"
+        found: dict[str, set[str]] = defaultdict(set)
+        for path in sorted(package.rglob("*.py")):
+            if "__pycache__" in str(path):
+                continue
+            rel = path.relative_to(package).as_posix()
+            layer = rel.split("/")[0].removesuffix(".py")
+            for ref in re.findall(r"server\.tournament_agent\.(\w+)", path.read_text()):
+                if ref != layer:
+                    found[layer].add(ref)
+        return found
+
+    def test_no_layer_imports_one_above_it(self) -> None:
+        imports = self._layer_imports()
+        for layer, targets in imports.items():
+            if layer in ("evals", "__init__"):
+                continue  # evals consumes the package; __init__ only documents it
+            for target in targets - self.SHARED:
+                if layer in self.CHAIN and target in self.CHAIN:
+                    self.assertLess(
+                        self.CHAIN.index(layer),
+                        self.CHAIN.index(target),
+                        f"{layer} imports {target}, which is above it in the chain",
+                    )
+                else:
+                    self.assertIn(
+                        target,
+                        set(self.CHAIN) | self.LEAVES,
+                        f"{layer} imports unknown layer {target}",
+                    )
+
+    def test_leaves_import_nothing_from_the_package(self) -> None:
+        # clients/ is the whole network surface and privacy/ is the whole personal
+        # data boundary; both stay reviewable only while nothing drags them inward.
+        imports = self._layer_imports()
+        for leaf in self.LEAVES:
+            self.assertEqual(
+                imports.get(leaf, set()) - self.SHARED - {leaf},
+                set(),
+                f"{leaf}/ must not depend on the rest of the package",
+            )
+
+    def test_only_the_apply_path_writes_tournament_rows(self) -> None:
+        # Tools propose; `services.proposals` is the one module that applies. A tool
+        # that wrote directly would bypass the human Confirm entirely.
+        package = Path(__file__).resolve().parent.parent / "tournament_agent"
+        writes = re.compile(r"\.objects\.(create|update|delete)\(|\.save\(|\.delete\(")
+        for path in sorted((package / "tools").rglob("*.py")):
+            text = path.read_text()
+            # AgentProposal/AgentQuestion rows are the agent's own bookkeeping.
+            for line in text.splitlines():
+                if writes.search(line) and "Agent" not in line:
+                    self.fail(f"{path.name} writes outside the proposal path: {line.strip()}")
+
+
+class SkillLoaderTests(TestCase):
+    def test_the_markdown_is_actually_found(self) -> None:
+        # SKILLS_DIR is resolved relative to this module's location, so moving the
+        # loader silently empties it — and every other test here iterates the result,
+        # which makes them pass vacuously. Assert the directory resolves first.
+        self.assertTrue(SKILLS_DIR.is_dir(), f"skills directory missing: {SKILLS_DIR}")
+        names = {s.name for s in load_skills()}
+        self.assertIn("core_rules", names)
+        self.assertGreaterEqual(len(names), 5)
+
+    def test_every_skill_only_names_tools_that_exist(self) -> None:
+        # A skill naming a tool that does not exist teaches the model to hallucinate it.
+        for skill in load_skills():
+            missing = [t for t in skill.requires_tools if t not in HANDLERS]
+            self.assertEqual(missing, [], f"{skill.name} requires missing tools: {missing}")
+
+    def test_draft_skills_are_never_loaded(self) -> None:
+        self.assertEqual([s for s in load_skills() if s.status == "draft"], [])
+
+    def test_front_matter_parses_multiline_lists(self) -> None:
+        live = next(s for s in load_skills() if s.name == "live_progression")
+        self.assertIn("forfeit", live.triggers)
+        self.assertIn("tiebreak", live.triggers)
+        self.assertEqual(live.when_status, ["LIV"])
+        self.assertFalse(live.always)
+
+    def test_trigger_matches_outrank_status_matches(self) -> None:
+        # When the budget bites, what gets dropped must be the skill the turn did
+        # not ask for — so a word the staff member typed beats a status match.
+        skills = load_skills()
+        picked = select_skills(
+            skills, tournament_status="LIV", user_text="record spirit for match 42"
+        )
+        names = [s.name for s in picked]
+        self.assertIn("spirit_and_roster", names)
+        self.assertLess(names.index("spirit_and_roster"), names.index("live_progression"))
+
+    def test_core_rules_are_always_first(self) -> None:
+        for status, text in (("DFT", "set up"), ("LIV", "score"), ("COM", "overview")):
+            picked = select_skills(load_skills(), tournament_status=status, user_text=text)
+            self.assertEqual(picked[0].name, "core_rules")
+
+    def test_selection_follows_status_and_triggers(self) -> None:
+        skills = load_skills()
+        names = lambda status, text: [  # noqa: E731
+            s.name for s in select_skills(skills, tournament_status=status, user_text=text)
+        ]
+        self.assertNotIn("live_progression", names("DFT", "set up our 16 team event"))
+        self.assertIn("format_playbooks", names("DFT", "set up our 16 team event"))
+        self.assertIn("scheduling_playbook", names("SCH", "recommend a schedule"))
+        self.assertIn("live_progression", names("LIV", "record a score"))
+        # A repair word pulls the repair skill in even before the tournament starts.
+        self.assertIn("mid_event_repairs", names("DFT", "the seeding is wrong, fix pool A"))
+        self.assertIn("safety_and_refusals", names("COM", "overview"))
+
+
+class SpiritAndRosterTests(TestCase):
+    """P0c: ids cross the boundary, names never do."""
+
+    def setUp(self) -> None:
+        self.user = User.objects.create(username="staff-spirit", is_staff=True)
+        self.event = create_event(title="Spirit Open")
+        self.tournament = Tournament.objects.create(event=self.event, use_uc_registrations=False)
+        self.teams = [Team.objects.create(name=f"Sp {i}", slug=f"sp-{i}") for i in range(1, 3)]
+        seeding = {str(i): team.id for i, team in enumerate(self.teams, start=1)}
+        self.tournament.initial_seeding = seeding
+        self.tournament.current_seeding = seeding
+        self.tournament.save()
+        self.tournament.teams.set(self.teams)
+        self.tournament.refresh_from_db()
+        TournamentField.objects.create(tournament=self.tournament, name="Field 1")
+        build_pool(self.tournament, name="A", sequence_number=1, seeding=[1, 2])
+        begin_tournament(self.tournament)
+        self.match = Match.objects.get(tournament=self.tournament)
+
+        self.players = {}
+        for team, (first, last) in zip(
+            self.teams, [("Priya", "Nair"), ("Rahul", "Rao")], strict=True
+        ):
+            user = User.objects.create(username=f"p{team.id}", first_name=first, last_name=last)
+            player = Player.objects.create(user=user, date_of_birth="1995-01-01", match_up="F")
+            Registration.objects.create(
+                event=self.event, team=team, player=player, role=Registration.Role.CAPTAIN
+            )
+            self.players[team.id] = player
+
+        self.session = TournamentAgentSession.objects.create(
+            user=self.user, tournament=self.tournament, model_id=default_model_id()
+        )
+        self.ctx = ToolContext(session=self.session, tournament=self.tournament)
+
+    def _team_player(self, team_number: int) -> Player:
+        """The player on one side of self.match; both sides are assigned at start."""
+        team_id = self.match.team_1_id if team_number == 1 else self.match.team_2_id
+        assert team_id is not None
+        return self.players[team_id]
+
+    def _spirit(self, attr: str) -> Any:
+        score = getattr(self.match, attr)
+        assert score is not None, f"{attr} was not recorded"
+        return score
+
+    def _apply(self, result: dict[str, Any]) -> dict[str, Any]:
+        return apply_proposal(AgentProposal.objects.get(id=result["proposal_id"]))
+
+    def _block(self, **overrides: Any) -> dict[str, Any]:
+        return {"rules": 2, "fouls": 2, "fair": 2, "positive": 2, "communication": 2, **overrides}
+
+    def test_roster_lookup_returns_ids_and_never_names(self) -> None:
+        team = self.teams[0]
+        result = find_roster_player(self.ctx, team_id=team.id, query="Priya")
+        self.assertEqual(result["count"], 1)
+        self.assertEqual(result["matches"][0]["player_id"], self.players[team.id].id)
+        blob = json.dumps(result)
+        self.assertNotIn("Priya", blob)
+        self.assertNotIn("Nair", blob)
+
+    def test_roster_lookup_scoped_to_the_team(self) -> None:
+        # Rahul is on team 2, so a team 1 lookup must not find him.
+        self.assertEqual(
+            find_roster_player(self.ctx, team_id=self.teams[0].id, query="Rahul")["count"], 0
+        )
+
+    def test_roster_lookup_does_not_return_gender(self) -> None:
+        # match_up is a gender attribute of an identified person, and the
+        # disambiguation path is ask_user with {{player:<id>}} labels, not gender.
+        result = find_roster_player(self.ctx, team_id=self.teams[0].id, query="Priya")
+        self.assertNotIn("match_up", result["matches"][0])
+        with self.assertRaises(ValueError):
+            assert_safe_tool_payload({"matches": [{"player_id": 1, "match_up": "F"}]})
+
+    def test_spirit_scores_recorded_for_both_sides(self) -> None:
+        mvp = self._team_player(1).id
+        self._apply(
+            propose_spirit_scores(
+                self.ctx,
+                match_id=self.match.id,
+                team_1_received=self._block(mvp_id=mvp),
+                team_1_self=self._block(),
+            )
+        )
+        self.match.refresh_from_db()
+        self.assertIsNotNone(self.match.spirit_score_team_1)
+        self.assertEqual(self._spirit("spirit_score_team_1").total, 10)
+        self.assertEqual(self._spirit("spirit_score_team_1").mvp_v2_id, mvp)
+        self.assertIsNotNone(self.match.self_spirit_score_team_1)
+
+    def test_partial_entry_is_reported_as_not_counted(self) -> None:
+        result = self._apply(
+            propose_spirit_scores(self.ctx, match_id=self.match.id, team_1_received=self._block())
+        )
+        # Only the received block exists, so the ranking cannot count team 1 yet.
+        self.assertEqual(result["counted_towards_ranking"], [])
+
+    def test_re_entry_updates_the_existing_row_and_orphans_nothing(self) -> None:
+        # A captain's submission already points at a SpiritScore row. Pointing the
+        # match at a fresh one would drop that FK and leave the old row behind.
+        mvp = self._team_player(1).id
+        self._apply(
+            propose_spirit_scores(
+                self.ctx, match_id=self.match.id, team_1_received=self._block(mvp_id=mvp)
+            )
+        )
+        self.match.refresh_from_db()
+        original_id = self.match.spirit_score_team_1_id
+        before = SpiritScore.objects.count()
+
+        self._apply(
+            propose_spirit_scores(
+                self.ctx, match_id=self.match.id, team_1_received=self._block(rules=4)
+            )
+        )
+        self.match.refresh_from_db()
+        self.assertEqual(self.match.spirit_score_team_1_id, original_id)
+        self.assertEqual(SpiritScore.objects.count(), before)
+        self.assertEqual(self._spirit("spirit_score_team_1").rules, 4)
+        self.assertEqual(self._spirit("spirit_score_team_1").total, 12)
+        # The correction dropped the MVP, so the row must not keep the old one.
+        self.assertIsNone(self._spirit("spirit_score_team_1").mvp_v2_id)
+
+    def test_component_above_four_is_rejected(self) -> None:
+        with self.assertRaises(ProposalApplyError) as cm:
+            self._apply(
+                propose_spirit_scores(
+                    self.ctx, match_id=self.match.id, team_1_received=self._block(rules=9)
+                )
+            )
+        self.assertIn("between 0 and 4", str(cm.exception))
+        self.match.refresh_from_db()
+        self.assertIsNone(self.match.spirit_score_team_1)
+
+    def test_mvp_from_the_wrong_team_is_rejected(self) -> None:
+        other_team_player = self._team_player(2).id
+        with self.assertRaises(ProposalApplyError) as cm:
+            self._apply(
+                propose_spirit_scores(
+                    self.ctx,
+                    match_id=self.match.id,
+                    team_1_received=self._block(mvp_id=other_team_player),
+                )
+            )
+        self.assertIn("not on that team's roster", str(cm.exception))
+
+    def test_mvp_on_a_self_block_is_rejected(self) -> None:
+        with self.assertRaises(ProposalApplyError) as cm:
+            self._apply(
+                propose_spirit_scores(
+                    self.ctx,
+                    match_id=self.match.id,
+                    team_1_self=self._block(mvp_id=self._team_player(1).id),
+                )
+            )
+        self.assertIn("MVP/MSP go on the received block", str(cm.exception))
+
+    def test_missing_spirit_list_and_summary(self) -> None:
+        self.match.status = Match.Status.COMPLETED
+        self.match.save()
+        missing = list_missing_spirit_scores(self.ctx)
+        self.assertEqual(missing["count"], 1)
+        self.assertEqual(len(missing["matches"][0]["missing"]), 4)
+
+        self._apply(
+            propose_spirit_scores(
+                self.ctx,
+                match_id=self.match.id,
+                team_1_received=self._block(),
+                team_1_self=self._block(),
+                team_2_received=self._block(),
+                team_2_self=self._block(),
+            )
+        )
+        self.assertEqual(list_missing_spirit_scores(self.ctx)["count"], 0)
+        # The applier writes through its own instance, so re-read before asserting.
+        self.tournament.refresh_from_db()
+        summary = get_spirit_summary(ToolContext(session=self.session, tournament=self.tournament))[
+            "spirit_ranking"
+        ]
+        self.assertEqual(len(summary), 2)
+        self.assertTrue(all(row["team_name"] for row in summary))
+
+    def test_match_spirit_read_exposes_ids_only(self) -> None:
+        self._apply(
+            propose_spirit_scores(
+                self.ctx,
+                match_id=self.match.id,
+                team_1_received=self._block(mvp_id=self._team_player(1).id),
+            )
+        )
+        read = get_match_spirit(self.ctx, match_id=self.match.id)
+        self.assertEqual(read["team_1_received"]["mvp_player_id"], self._team_player(1).id)
+        self.assertNotIn("comments", json.dumps(read))
+
+    def test_uc_registration_tournaments_are_refused(self) -> None:
+        self.tournament.use_uc_registrations = True
+        self.tournament.save()
+        ctx = ToolContext(session=self.session, tournament=self.tournament)
+        self.assertIn("error", find_roster_player(ctx, team_id=self.teams[0].id, query="Priya"))
+        with self.assertRaises(ProposalApplyError):
+            self._apply(
+                propose_spirit_scores(ctx, match_id=self.match.id, team_1_received=self._block())
+            )
+
+    # --- {{player:<id>}} resolution, on the way out only ---
+
+    def _token(self, player_id: int) -> str:
+        return f"{{{{player:{player_id}}}}}"
+
+    def test_history_resolves_tokens_in_assistant_text(self) -> None:
+        player = self.players[self.teams[0].id]
+        TournamentAgentMessage.objects.create(
+            session=self.session,
+            role="assistant",
+            content=f"MVP was {self._token(player.id)}, well played.",
+            message_kind="TXT",
+        )
+        history = TournamentAgentService(self.user).history(self.session)
+        text = history["messages"][-1]["content"]
+        self.assertEqual(text, "MVP was Priya Nair, well played.")
+
+    def test_stored_message_keeps_the_raw_token_for_the_model(self) -> None:
+        # History is replayed into model context. If resolution wrote through to the
+        # stored row, the name would travel straight back to the provider.
+        player = self.players[self.teams[0].id]
+        TournamentAgentMessage.objects.create(
+            session=self.session,
+            role="assistant",
+            content=f"MVP was {self._token(player.id)}",
+            message_kind="TXT",
+        )
+        TournamentAgentService(self.user).history(self.session)
+
+        stored = TournamentAgentMessage.objects.filter(session=self.session).last()
+        assert stored is not None
+        self.assertIn(self._token(player.id), stored.content)
+        self.assertNotIn("Priya", stored.content)
+
+    def test_question_options_and_proposal_summary_resolve(self) -> None:
+        player = self.players[self.teams[0].id]
+        AgentQuestion.objects.create(
+            session=self.session,
+            prompt="Which player did you mean?",
+            options=[{"id": str(player.id), "label": self._token(player.id)}],
+            selection_mode="single",
+            status=QuestionStatus.PENDING,
+        )
+        AgentProposal.objects.create(
+            session=self.session,
+            tool_name="propose_spirit_scores",
+            summary=f"Spirit for match 7, MVP {self._token(player.id)}",
+            payload={"match_id": 7, "team_1_received": {"mvp_id": player.id}},
+            status=ProposalStatus.PENDING,
+        )
+        history = TournamentAgentService(self.user).history(self.session)
+
+        self.assertEqual(history["pending_question"]["options"][0]["label"], "Priya Nair")
+        proposal = history["pending_proposals"][0]
+        self.assertIn("MVP Priya Nair", proposal["summary"])
+        # The payload keeps the bare id; the name travels beside it.
+        self.assertEqual(proposal["payload"]["team_1_received"]["mvp_id"], player.id)
+        self.assertEqual(proposal["player_names"], {str(player.id): "Priya Nair"})
+
+    def test_a_player_outside_this_event_is_not_resolved(self) -> None:
+        # Otherwise a hallucinated id reads an arbitrary name out of the Player table.
+        outsider = Player.objects.create(
+            user=User.objects.create(username="outsider", first_name="Someone", last_name="Else"),
+            date_of_birth="1990-01-01",
+            match_up="M",
+        )
+        resolved = resolve_player_tokens(self._token(outsider.id), self.tournament)
+        self.assertEqual(resolved, f"Player {outsider.id}")
+
+    def test_a_token_split_across_stream_chunks_still_resolves(self) -> None:
+        player = self.players[self.teams[0].id]
+        stream = TokenTextStream(self.tournament)
+        out = "".join(
+            [
+                stream.feed("MVP was {{play"),
+                stream.feed(f"er:{player.id}"),
+                stream.feed("}} today"),
+                stream.flush(),
+            ]
+        )
+        self.assertEqual(out, "MVP was Priya Nair today")
+
+    def test_text_without_tokens_costs_no_queries(self) -> None:
+        with self.assertNumQueries(0):
+            self.assertEqual(
+                resolve_player_tokens({"a": ["no tokens here"]}, self.tournament),
+                {"a": ["no tokens here"]},
+            )
+
+
+class MaskPolicyTests(TestCase):
+    def test_ids_are_allowed_through(self) -> None:
+        assert_safe_tool_payload({"player_id": 7, "mvp_player_id": 12, "team_id": 3})
+
+    def test_names_and_contact_details_are_blocked(self) -> None:
+        for payload in (
+            {"full_name": "x"},
+            {"player_name": "x"},
+            {"email": "a@b.com"},
+            {"comments": "free text"},
+            {"date_of_birth": "1995-01-01"},
+        ):
+            with self.assertRaises(ValueError):
+                assert_safe_tool_payload(payload)
+
+    def test_person_fields_must_be_bare_ids(self) -> None:
+        with self.assertRaises(ValueError) as cm:
+            assert_safe_tool_payload({"mvp": {"id": 12, "name": "x"}})
+        self.assertIn("must be ids", str(cm.exception))
+
+
+class ProposalSupersedeTests(TestCase):
+    """Re-proposing the same tool must retire the earlier plan."""
+
+    def setUp(self) -> None:
+        self.user = User.objects.create(username="staff-sup", is_staff=True)
+        self.event = create_event(title="Supersede Open")
+        self.tournament = Tournament.objects.create(event=self.event)
+        teams = [Team.objects.create(name=f"Sup {i}", slug=f"sup-{i}") for i in range(1, 5)]
+        seeding = {str(i): team.id for i, team in enumerate(teams, start=1)}
+        self.tournament.initial_seeding = seeding
+        self.tournament.current_seeding = seeding
+        self.tournament.save()
+        self.tournament.teams.set(teams)
+        self.tournament.refresh_from_db()
+        self.session = TournamentAgentSession.objects.create(
+            user=self.user, tournament=self.tournament, model_id=default_model_id()
+        )
+
+    def _turn(self) -> ToolContext:
+        """A fresh turn — proposals within one turn share an assistant message."""
+        message = TournamentAgentMessage.objects.create(
+            session=self.session, role="assistant", content=""
+        )
+        return ToolContext(
+            session=self.session, tournament=self.tournament, assistant_message=message
+        )
+
+    def test_same_tool_in_a_later_turn_retires_the_earlier_plan(self) -> None:
+        first = propose_bulk_schedule(self._turn(), assignments=[])["proposal_id"]
+        propose_bulk_schedule(self._turn(), assignments=[])
+
+        retired = AgentProposal.objects.get(id=first)
+        self.assertEqual(retired.status, ProposalStatus.EXPIRED)
+        self.assertIsNotNone(retired.resolved_at)
+        pending = AgentProposal.objects.filter(status=ProposalStatus.PENDING)
+        self.assertEqual(pending.count(), 1)
+
+    def test_replacing_a_plan_is_not_recorded_as_staff_rejecting_it(self) -> None:
+        # REJECTED is the one status that means a person decided. Auto-retirement
+        # borrowing it would make the agent look turned down when nobody was asked.
+        propose_bulk_schedule(self._turn(), assignments=[])
+        propose_bulk_schedule(self._turn(), assignments=[])
+
+        self.assertFalse(AgentProposal.objects.filter(status=ProposalStatus.REJECTED).exists())
+
+    def test_a_retired_proposal_cannot_be_confirmed(self) -> None:
+        first = propose_bulk_schedule(self._turn(), assignments=[])["proposal_id"]
+        propose_bulk_schedule(self._turn(), assignments=[])
+
+        with self.assertRaises(ProposalApplyError) as cm:
+            apply_proposal(AgentProposal.objects.get(id=first))
+        self.assertIn("no longer current", str(cm.exception))
+
+    def test_several_proposals_from_one_tool_in_one_turn_all_survive(self) -> None:
+        # A 16-team setup proposes four pools in a single turn; retiring by tool
+        # name alone would leave only the last one confirmable.
+        ctx = self._turn()
+        for i, seeds in enumerate([[1, 2], [3, 4]], start=1):
+            propose_create_pool(ctx, name=chr(ord("A") + i - 1), sequence_number=i, seeding=seeds)
+
+        self.assertEqual(AgentProposal.objects.filter(status=ProposalStatus.PENDING).count(), 2)
+
+    def test_different_tools_do_not_retire_each_other(self) -> None:
+        propose_bulk_schedule(self._turn(), assignments=[])
+        propose_create_pool(self._turn(), name="A", sequence_number=1, seeding=[1, 2])
+
+        self.assertEqual(AgentProposal.objects.filter(status=ProposalStatus.PENDING).count(), 2)
+
+    def test_retired_proposals_leave_the_pending_list(self) -> None:
+        propose_bulk_schedule(self._turn(), assignments=[])
+        propose_bulk_schedule(self._turn(), assignments=[])
+        history = TournamentAgentService(self.user).history(self.session)
+        self.assertEqual(len(history["pending_proposals"]), 1)

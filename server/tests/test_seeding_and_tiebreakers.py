@@ -205,7 +205,7 @@ class AgentSeedingProposalTests(ApiBaseTestCase):
     def test_agent_proposal_apply_goes_through_guard(self) -> None:
         from server.core.models import User
         from server.tournament_agent.models import TournamentAgentSession
-        from server.tournament_agent.proposals import ProposalApplyError, apply_proposal
+        from server.tournament_agent.services.proposals import ProposalApplyError, apply_proposal
         from server.tournament_agent.tools import ToolContext, propose_update_seeding
 
         staff = User.objects.create(username="agent-staff", is_staff=True)
