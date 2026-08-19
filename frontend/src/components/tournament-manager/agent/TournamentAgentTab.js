@@ -1,13 +1,23 @@
-import { createMutation, createQuery, useQueryClient } from "@tanstack/solid-query";
-import { createEffect, createMemo, createSignal, For, onCleanup, Show } from "solid-js";
+import {
+  createMutation,
+  createQuery,
+  useQueryClient
+} from "@tanstack/solid-query";
+import {
+  createEffect,
+  createMemo,
+  createSignal,
+  For,
+  onCleanup,
+  Show
+} from "solid-js";
 
-import { Spinner } from "../../../icons";
 import {
   clearTournamentAgentHistory,
   confirmTournamentAgentProposal,
+  fetchTeams,
   fetchTournamentAgentHistory,
   fetchTournamentAgentModels,
-  fetchTeams,
   fetchTournaments,
   rejectTournamentAgentProposal,
   setTournamentAgentModel,
@@ -92,7 +102,14 @@ const AgentMark = props => (
     aria-hidden="true"
     xmlns="http://www.w3.org/2000/svg"
   >
-    <ellipse cx="12" cy="12" rx="9.5" ry="5.5" fill="currentColor" opacity="0.16" />
+    <ellipse
+      cx="12"
+      cy="12"
+      rx="9.5"
+      ry="5.5"
+      fill="currentColor"
+      opacity="0.16"
+    />
     <ellipse
       cx="12"
       cy="12"
@@ -118,10 +135,7 @@ const AgentMark = props => (
 const EmptyState = props => (
   <div class="flex h-full flex-col items-center justify-center px-6 py-10">
     <AgentMark class="mb-4 h-8 w-8" style={{ color: "var(--agent-accent)" }} />
-    <h2
-      class="mb-1 font-serif text-2xl"
-      style={{ color: "var(--agent-ink)" }}
-    >
+    <h2 class="mb-1 font-serif text-2xl" style={{ color: "var(--agent-ink)" }}>
       What are we setting up?
     </h2>
     <p
@@ -359,7 +373,8 @@ const TournamentAgentTab = props => {
 
   const scrollToBottom = (behavior = "smooth") => {
     requestAnimationFrame(() => {
-      if (messagesEndRef) messagesEndRef.scrollIntoView({ behavior, block: "end" });
+      if (messagesEndRef)
+        messagesEndRef.scrollIntoView({ behavior, block: "end" });
     });
   };
 
@@ -824,7 +839,7 @@ const TournamentAgentTab = props => {
                 style={{ color: "var(--agent-ink-muted)" }}
               >
                 Awaiting your confirmation
-                <span class="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-blue-600 px-1 text-[10px] font-semibold text-white">
+                <span class="min-w-4 inline-flex h-4 items-center justify-center rounded-full bg-blue-600 px-1 text-[10px] font-semibold text-white">
                   {pendingProposals().length}
                 </span>
               </h3>

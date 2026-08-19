@@ -56,7 +56,8 @@ const STAGE = {
 
 const stageOf = m => {
   if (m.pool) return { ...STAGE.pool, code: `Pool ${m.pool.name}` };
-  if (m.swiss_round) return { ...STAGE.swiss, code: `Swiss ${m.swiss_round.name}` };
+  if (m.swiss_round)
+    return { ...STAGE.swiss, code: `Swiss ${m.swiss_round.name}` };
   if (m.cross_pool) return { ...STAGE.cross, code: "Cross pool" };
   if (m.bracket) return { ...STAGE.bracket, code: `Bracket ${m.bracket.name}` };
   if (m.position_pool)
@@ -78,7 +79,11 @@ const Arrow = () => (
     stroke-width="2"
     viewBox="0 0 12 12"
   >
-    <path stroke-linecap="round" stroke-linejoin="round" d="M2 6h8M6.5 2.5 10 6l-3.5 3.5" />
+    <path
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      d="M2 6h8M6.5 2.5 10 6l-3.5 3.5"
+    />
   </svg>
 );
 
@@ -200,7 +205,8 @@ const SeedTable = props => (
               {seed}
             </td>
             <td class="truncate py-0.5" style={{ color: "var(--agent-ink)" }}>
-              {props.teamsMap?.[props.seeding[seed]] || `Team ${props.seeding[seed]}`}
+              {props.teamsMap?.[props.seeding[seed]] ||
+                `Team ${props.seeding[seed]}`}
             </td>
           </tr>
         )}
@@ -213,8 +219,7 @@ const SeedTable = props => (
 const MatchCell = props => {
   const st = () => stageOf(props.m);
   const cls = () =>
-    "block truncate rounded px-1 py-0.5 text-[10px] " +
-    (st()?.chip || "");
+    "block truncate rounded px-1 py-0.5 text-[10px] " + (st()?.chip || "");
   const title = () =>
     `${st() ? st().code + " · " : ""}${props.m.name}` +
     (props.m.field?.name ? ` · ${props.m.field.name}` : "");
@@ -271,7 +276,6 @@ const TournamentRail = props => {
     Object.keys(props.tournament?.current_seeding || {}).length;
   const status = () => props.tournament?.status;
   const hasFormat = () => pools().length > 0 || swissRounds().length > 0;
-  const canConfigure = () => status() === "DFT" || status() === "SCH";
 
   const formatLabel = () => {
     if (swissRounds().length) return `${swissRounds().length} swiss`;
@@ -307,7 +311,11 @@ const TournamentRail = props => {
         text: "Recommend a schedule for the matches that aren't scheduled yet"
       };
     }
-    if (status() === "SCH" && matches().length > 0 && unscheduled().length === 0) {
+    if (
+      status() === "SCH" &&
+      matches().length > 0 &&
+      unscheduled().length === 0
+    ) {
       return { label: "Start the tournament", text: "Start the tournament" };
     }
     return null;
@@ -344,7 +352,9 @@ const TournamentRail = props => {
       .sort()
       .map(day => {
         const dayMatches = byDay[day];
-        const times = [...new Set(dayMatches.map(m => wallClock(m.time)))].sort();
+        const times = [
+          ...new Set(dayMatches.map(m => wallClock(m.time)))
+        ].sort();
         const cellAt = (time, fieldId) =>
           dayMatches.find(
             m => wallClock(m.time) === time && m.field?.id === fieldId
@@ -377,9 +387,13 @@ const TournamentRail = props => {
           <span style={{ color: "var(--agent-line-strong)" }}> · </span>
           <span class="font-semibold">{formatLabel()}</span>
           <span style={{ color: "var(--agent-line-strong)" }}> · </span>
-          <span class="font-semibold tabular-nums">{fields().length}</span> fields
+          <span class="font-semibold tabular-nums">{fields().length}</span>{" "}
+          fields
           <span style={{ color: "var(--agent-line-strong)" }}> · </span>
-          <span class="font-semibold tabular-nums">{matches().length}</span> matches
+          <span class="font-semibold tabular-nums">
+            {matches().length}
+          </span>{" "}
+          matches
         </div>
 
         <Show when={unscheduled().length > 0}>
@@ -402,7 +416,10 @@ const TournamentRail = props => {
             >
               Next step
             </div>
-            <ActionButton disabled={props.busy} onClick={() => prompt(nextStep().text)}>
+            <ActionButton
+              disabled={props.busy}
+              onClick={() => prompt(nextStep().text)}
+            >
               {nextStep().label}
             </ActionButton>
           </div>
@@ -411,7 +428,9 @@ const TournamentRail = props => {
 
       <Section
         title="Initial stage"
-        pill={hasFormat() ? (swissRounds().length ? "Swiss" : "Pools") : undefined}
+        pill={
+          hasFormat() ? (swissRounds().length ? "Swiss" : "Pools") : undefined
+        }
         flag={!hasFormat() && teamCount() > 0}
       >
         <Show
@@ -421,7 +440,9 @@ const TournamentRail = props => {
               disabled={props.busy}
               action={teamCount() > 0 ? "Recommend a format" : undefined}
               onAction={() =>
-                prompt("Recommend pools or Swiss groups for the registered teams")
+                prompt(
+                  "Recommend pools or Swiss groups for the registered teams"
+                )
               }
             />
           }
@@ -437,7 +458,10 @@ const TournamentRail = props => {
                     >
                       Pool {pool.name}
                     </div>
-                    <SeedTable seeding={pool.initial_seeding} teamsMap={props.teamsMap} />
+                    <SeedTable
+                      seeding={pool.initial_seeding}
+                      teamsMap={props.teamsMap}
+                    />
                   </div>
                 )}
               </For>
@@ -459,7 +483,10 @@ const TournamentRail = props => {
                       · round {round.current_round}/{round.num_rounds}
                     </span>
                   </div>
-                  <SeedTable seeding={round.initial_seeding} teamsMap={props.teamsMap} />
+                  <SeedTable
+                    seeding={round.initial_seeding}
+                    teamsMap={props.teamsMap}
+                  />
                 </div>
               )}
             </For>
@@ -478,7 +505,9 @@ const TournamentRail = props => {
             <NotSetUp
               disabled={props.busy}
               action={pools().length > 1 ? "Set up cross pool" : undefined}
-              onAction={() => prompt("Set up the cross pool matches after pools")}
+              onAction={() =>
+                prompt("Set up the cross pool matches after pools")
+              }
             />
           }
         >
@@ -515,7 +544,10 @@ const TournamentRail = props => {
                     Bracket {b.name}
                   </div>
                   <Show when={b.initial_seeding}>
-                    <SeedTable seeding={b.initial_seeding} teamsMap={props.teamsMap} />
+                    <SeedTable
+                      seeding={b.initial_seeding}
+                      teamsMap={props.teamsMap}
+                    />
                   </Show>
                 </div>
               )}
@@ -535,7 +567,9 @@ const TournamentRail = props => {
             <NotSetUp
               disabled={props.busy}
               action={hasFormat() ? "Add position pools" : undefined}
-              onAction={() => prompt("Set up position pools for final rankings")}
+              onAction={() =>
+                prompt("Set up position pools for final rankings")
+              }
             />
           }
         >
@@ -550,7 +584,10 @@ const TournamentRail = props => {
                     Position pool {pp.name}
                   </div>
                   <Show when={pp.initial_seeding}>
-                    <SeedTable seeding={pp.initial_seeding} teamsMap={props.teamsMap} />
+                    <SeedTable
+                      seeding={pp.initial_seeding}
+                      teamsMap={props.teamsMap}
+                    />
                   </Show>
                 </div>
               )}
@@ -606,7 +643,9 @@ const TournamentRail = props => {
               <ActionButton
                 disabled={props.busy}
                 onClick={() =>
-                  prompt("Recommend a schedule for the matches that aren't scheduled yet")
+                  prompt(
+                    "Recommend a schedule for the matches that aren't scheduled yet"
+                  )
                 }
               >
                 Schedule them
@@ -619,7 +658,10 @@ const TournamentRail = props => {
           when={scheduled().length > 0}
           fallback={
             <Show when={unscheduled().length === 0}>
-              <p class="text-xs italic" style={{ color: "var(--agent-ink-muted)" }}>
+              <p
+                class="text-xs italic"
+                style={{ color: "var(--agent-ink-muted)" }}
+              >
                 Nothing to schedule yet.
               </p>
             </Show>
@@ -630,7 +672,10 @@ const TournamentRail = props => {
               <div class="flex flex-wrap gap-x-3 gap-y-1">
                 <For each={scheduleStages()}>
                   {s => (
-                    <span class="flex items-center gap-1 text-[10px]" style={{ color: "var(--agent-ink-muted)" }}>
+                    <span
+                      class="flex items-center gap-1 text-[10px]"
+                      style={{ color: "var(--agent-ink-muted)" }}
+                    >
                       <span class={`h-2 w-2 rounded-full ${s.dot}`} />
                       {s.label}
                     </span>
@@ -682,12 +727,18 @@ const TournamentRail = props => {
                                 {f => (
                                   <td
                                     class="border-t px-1 py-1 align-top"
-                                    style={{ "border-color": "var(--agent-line)" }}
+                                    style={{
+                                      "border-color": "var(--agent-line)"
+                                    }}
                                   >
                                     <Show
                                       when={day.cellAt(time, f.id)}
                                       fallback={
-                                        <span style={{ color: "var(--agent-line-strong)" }}>
+                                        <span
+                                          style={{
+                                            color: "var(--agent-line-strong)"
+                                          }}
+                                        >
                                           ·
                                         </span>
                                       }
@@ -715,7 +766,10 @@ const TournamentRail = props => {
           <Show
             when={pools().length > 0}
             fallback={
-              <p class="text-xs italic" style={{ color: "var(--agent-ink-muted)" }}>
+              <p
+                class="text-xs italic"
+                style={{ color: "var(--agent-ink-muted)" }}
+              >
                 No pool standings yet.
               </p>
             }
@@ -744,7 +798,10 @@ const TournamentRail = props => {
                             >
                               {res.rank}
                             </td>
-                            <td class="truncate py-0.5" style={{ color: "var(--agent-ink)" }}>
+                            <td
+                              class="truncate py-0.5"
+                              style={{ color: "var(--agent-ink)" }}
+                            >
                               {props.teamsMap?.[teamId] || `Team ${teamId}`}
                             </td>
                             <td

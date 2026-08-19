@@ -12,7 +12,9 @@ const TOOL_LABELS = {
   list_fields: "Read fields",
   list_matches: "Read matches",
   get_standings: "Read standings",
-  get_schedule_grid: "Read schedule grid",
+  get_swiss_standings: "Read Swiss standings",
+  list_stages: "Read stage progress",
+  check_schedule_conflicts: "Check schedule conflicts",
   ask_user: "Ask a question",
   propose_create_pool: "Propose pool",
   propose_create_swiss_round: "Propose Swiss round",
@@ -26,6 +28,9 @@ const TOOL_LABELS = {
   propose_delete_match: "Propose match deletion",
   propose_bulk_schedule: "Propose schedule",
   propose_recommended_schedule: "Propose schedule",
+  propose_match_score: "Propose match result",
+  propose_shift_schedule: "Propose schedule shift",
+  propose_delete_stage: "Propose stage deletion",
   propose_full_setup: "Propose full setup",
   propose_start_tournament: "Propose tournament start"
 };
@@ -115,8 +120,7 @@ const ToolEventRow = props => {
         <span
           class="min-w-0 flex-1 truncate text-xs"
           style={{
-            color:
-              status() === "error" ? undefined : "var(--agent-ink-muted)"
+            color: status() === "error" ? undefined : "var(--agent-ink-muted)"
           }}
           classList={{ "text-red-600 dark:text-red-400": status() === "error" }}
         >
@@ -137,13 +141,19 @@ const ToolEventRow = props => {
           class="ml-3.5 mt-1 space-y-1 border-l pl-3"
           style={{ "border-color": "var(--agent-line-strong)" }}
         >
-          <p class="font-mono text-[10px]" style={{ color: "var(--agent-ink-muted)" }}>
+          <p
+            class="font-mono text-[10px]"
+            style={{ color: "var(--agent-ink-muted)" }}
+          >
             {event().name}
           </p>
           <Show
             when={args()}
             fallback={
-              <p class="text-xs italic" style={{ color: "var(--agent-ink-muted)" }}>
+              <p
+                class="text-xs italic"
+                style={{ color: "var(--agent-ink-muted)" }}
+              >
                 No arguments
               </p>
             }
@@ -166,7 +176,8 @@ const ToolEventTimeline = props => {
   const [open, setOpen] = createSignal(props.defaultOpen ?? false);
   const events = () => props.events || [];
   const errorCount = () => events().filter(e => e.status === "error").length;
-  const runningCount = () => events().filter(e => e.status === "running").length;
+  const runningCount = () =>
+    events().filter(e => e.status === "running").length;
 
   const headline = () => {
     const n = events().length;
