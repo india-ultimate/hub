@@ -1,11 +1,12 @@
+"""Per-tournament directors, so managing an event does not need staff access."""
+
 from django.conf import settings
 from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
     dependencies = [
-        migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-        ("server", "0139_backfill_tournament_format"),
+        ("server", "0138_tournament_agent"),
     ]
 
     operations = [

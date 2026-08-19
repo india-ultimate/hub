@@ -61,7 +61,7 @@ def strip_format_block(apps: Any, schema_editor: Any) -> None:
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("server", "0138_tournament_agent_models"),
+        ("server", "0139_tournament_directors"),
     ]
 
     operations = [
