@@ -15,6 +15,11 @@ from server.tournament.utils import get_bracket_match_name, validate_bracket_nam
 # sequential but also the only even split of four teams into pairs. Guard the
 # sizes that actually get invented wrongly: 3+ seed blocks like 1-4 vs 5-8.
 _SEQUENTIAL_BLOCK_MIN = 3
+# A run of one seed is trivially contiguous and tells us nothing.
+_MIN_CONTIGUOUS_SEEDS = 2
+# Below this, a contiguous pool is only suspicious when equal-sized pools of that
+# size tile the whole field — otherwise it is a leftover, not a sequential split.
+_ALWAYS_SUSPICIOUS_POOL_SIZE = 4
 # Pool / Swiss / position-pool `name` is a CharField(max_length=2). The model
 # likes to send "Pool A"; the UI then renders "Pool Pool A".
 _STAGE_NAME_MAX = 2
@@ -22,7 +27,7 @@ _STAGE_NAME_PREFIXES = ("position pool ", "pool ", "swiss ", "group ")
 
 
 def canonical_stage_name(name: str | None, fallback: str = "A") -> str:
-    """Collapse 'Pool A' / 'Swiss B' to the 1–2 character label the column stores."""
+    """Collapse 'Pool A' / 'Swiss B' to the 1-2 character label the column stores."""
     raw = (name or "").strip()
     lowered = raw.lower()
     for prefix in _STAGE_NAME_PREFIXES:
@@ -73,7 +78,7 @@ def snake_draft_options(team_count: int) -> dict[str, dict[str, list[int]]]:
 
 
 def _is_contiguous(seeds: list[int]) -> bool:
-    if len(seeds) < 2:
+    if len(seeds) < _MIN_CONTIGUOUS_SEEDS:
         return False
     ordered = sorted(int(s) for s in seeds)
     return ordered == list(range(ordered[0], ordered[-1] + 1))
@@ -83,7 +88,7 @@ def sequential_pool_seed_error(team_count: int, seeds: list[int]) -> dict[str, A
     """Refuse 1-4 / 5-8 style blocks. Return None when the list is already a snake slice.
 
     A 3-seed pool on a 4-team event is a leftover, not a sequential split, so it is
-    allowed. Equal-sized chunks that tile the field (2×4, 2×3, 4×4) are not.
+    allowed. Equal-sized chunks that tile the field (2x4, 2x3, 4x4) are not.
     """
     values = [int(s) for s in seeds]
     if team_count <= len(values) or len(values) < _SEQUENTIAL_BLOCK_MIN:
@@ -92,7 +97,7 @@ def sequential_pool_seed_error(team_count: int, seeds: list[int]) -> dict[str, A
         return None
     pool_count = max(2, (team_count + len(values) - 1) // len(values))
     tiles_the_field = pool_count * len(values) == team_count
-    if len(values) < 4 and not tiles_the_field:
+    if len(values) < _ALWAYS_SUSPICIOUS_POOL_SIZE and not tiles_the_field:
         return None
     snake = labeled_snake_pools(team_count, pool_count)
     rendered = ", ".join(f"{name}={list_}" for name, list_ in snake.items())
@@ -129,12 +134,10 @@ def rewrite_sequential_pool_defs(
 
 
 def labeled_pool_defs(pool_defs: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Force every pool def onto a 1–2 character name, even when seeds were already snake."""
+    """Force every pool def onto a 1-2 character name, even when seeds were already snake."""
     labeled = []
     for i, row in enumerate(pool_defs or []):
-        labeled.append(
-            {**row, "name": canonical_stage_name(row.get("name"), chr(ord("A") + i))}
-        )
+        labeled.append({**row, "name": canonical_stage_name(row.get("name"), chr(ord("A") + i))})
     return labeled
 
 

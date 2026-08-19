@@ -93,7 +93,9 @@ a marquee field, with the day tapering — fewer matches, later starts.
 Do not schedule until `list_fields` returns at least one field and `list_stages` shows pools or
 Swiss. If fields are missing, ask and propose fields; stop. One schedule proposal per turn.
 
-`propose_recommended_schedule` places every match that has no time or no field, applying **one
+`propose_recommended_schedule` is the default for placing a grid — reach for it first, and use
+`propose_bulk_schedule` only when the recommender cannot place everything or when stages genuinely
+need different durations. It places every match that has no time or no field, applying **one
 duration to all of them**. Default first pull is **07:00**. It respects rest even before the
 tournament starts (it falls back to seed numbers when teams are not yet assigned), and it will not
 start a later stage until every match of the stage that feeds it has **ended** — a semi cannot
@@ -109,7 +111,8 @@ arguments; that stacks overlapping Confirm cards.
   put every assignment into **one** `propose_bulk_schedule` so staff see a single card:
 
 1. Pools on day 1 at 75 minutes, later stages on day 2 at 90 if needed — one bulk proposal, not
-   three recommended-schedule calls.
+   three recommended-schedule calls. This is the multi-duration case only; a single uniform
+   duration is still one `propose_recommended_schedule`.
 2. Fix individual slots with `propose_update_match`.
 3. **Verify with `check_schedule_conflicts`** and report what it says: field overlaps, teams playing
    twice at once, rest below the minimum, stages out of order, anything finishing after the window.

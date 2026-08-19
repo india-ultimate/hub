@@ -3,7 +3,7 @@ name: live_progression
 status: active
 always: false
 priority: 20
-when_status: [LIV]
+when_phase: [live]
 triggers:
   [
     score,

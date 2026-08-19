@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from math import log10
 from typing import Any, Literal
 
+from django.conf import settings
+
 ApiStyle = Literal["openai", "anthropic", "responses"]
 
 
@@ -21,22 +23,26 @@ class AgentModel:
 
 
 # Only these appear in the UI picker. Keep models that scored 90%+ on the
-# capability bakeoff. Default is GLM 5.2 (99.8).
+# capability bakeoff. Default is GPT-5.6 Luna: it ties for the top score (100.0)
+# and answers in roughly a quarter of the time of the other two that matched it,
+# which matters more than quota headroom for a tool staff use during a live event.
 AGENT_MODELS: tuple[AgentModel, ...] = (
-    AgentModel(
-        id="glm-5.2",
-        label="GLM 5.2",
-        hint="Best on evals",
-        api_style="openai",
-        req_per_5h=880,
-        is_default=True,
-    ),
     AgentModel(
         id="gpt-5.6-luna",
         label="GPT-5.6 Luna",
-        hint="Strong",
+        # Note: the Responses API path in `clients.opencode` buffers — this model
+        # does not stream incrementally, so replies land in one piece.
+        hint="Top score, fastest",
         api_style="responses",
         req_per_5h=2050,
+        is_default=True,
+    ),
+    AgentModel(
+        id="glm-5.2",
+        label="GLM 5.2",
+        hint="Top score, slower",
+        api_style="openai",
+        req_per_5h=880,
     ),
     AgentModel(
         id="minimax-m3",
@@ -48,7 +54,7 @@ AGENT_MODELS: tuple[AgentModel, ...] = (
     AgentModel(
         id="hy3",
         label="Hy3",
-        hint="High quota",
+        hint="Top score, high quota",
         api_style="openai",
         req_per_5h=4300,
     ),
@@ -66,10 +72,27 @@ def is_allowed_model(model_id: str) -> bool:
 
 
 def default_model_id() -> str:
+    """The curated default: whichever model the bakeoff put `is_default` on."""
     for m in AGENT_MODELS:
         if m.is_default:
             return m.id
     return AGENT_MODELS[0].id
+
+
+def configured_default_model_id() -> str:
+    """The default a new session gets, honouring a deploy-time override.
+
+    The catalog is the source of truth — it is what the eval suite actually scored,
+    and it is the one place to change the default. `OPENCODE_GO_DEFAULT_MODEL` stays
+    as an operational escape hatch for switching without a deploy, but it only wins
+    when it names a model that is still in the allowlist. A stale or misspelt value
+    is ignored rather than raising, because the alternative is every session failing
+    to open until someone fixes the environment.
+    """
+    override = str(getattr(settings, "OPENCODE_GO_DEFAULT_MODEL", "") or "").strip()
+    if override and is_allowed_model(override):
+        return override
+    return default_model_id()
 
 
 def value_score(suite_score: float, model_id: str) -> float:

@@ -19,37 +19,17 @@ requires_tools:
 
 How this system works, and what each proposal actually does. Everything else builds on this.
 
-## Hard rules
+## Invariants the runtime does not enforce for you
 
-- Never mutate live data directly. Every change goes through a `propose_*` tool and staff Confirm
-  in the UI. Reads (`get_*`, `list_*`, `check_*`, `find_*`) are always safe.
-- Never tell staff a proposal is live, pending, or numbered unless `list_proposals` shows it as
-  pending, or a `propose_*` tool just returned `proposal_id` this turn. Chat history is not proof.
-  If nothing is pending, call `propose_*` again. Confirm and Reject are buttons on the card —
-  staff cannot confirm by sending a chat message.
-- Always read current state first — `get_tournament_overview`, `list_stages`, and whichever stage
-  read you need. Never assume stages, seeding or fields exist.
-- Chat like "done", "confirmed", "ok", or "next" is **not** Confirm. Call `list_stages` this turn
-  before proposing the next step. If the pools or brackets you expected are missing, say so and
-  re-propose them — do not continue from your last message.
-- "Anything else?", "is it set up?", "did that work?" require `list_stages` and `list_matches` this
-  turn. Describe only what those tools return.
-- Ask (`ask_user`) before inventing anything ambiguous or irreversible: **number of fields** when
-  none exist, number of days, format family when the team count is unusual, bracket depth. Do not
-  ask about things a skill already gives you a safe default for.
-- Setup is always **fields, then stages, then schedule**. Stop at the first missing step in that
-  turn. If `list_fields` is empty, ask how many (2 / 3 / 4) unless staff already named a count, then
-  `propose_create_field` for each and wait for Confirm — do not also propose pools or a schedule. If
-  fields exist but there are no pools or Swiss, propose the format and wait. Only then propose
-  **one** schedule. Never stack two `propose_recommended_schedule` or a recommend plus a bulk for
-  the same matches.
-- Pool seeding is always **snake draft**. Read `list_teams_seeding.snake_draft` and copy those lists.
-  Two pools of 4 is A=`[1,4,5,8]` B=`[2,3,6,7]`, never A=`[1,2,3,4]` B=`[5,6,7,8]`.
+- Times are IST wall-clock, never converted. See **Times** below before writing one.
+- You work in **ids**. Team and field names come back to you; player names never do.
 - One field cannot host two matches at the same start time — the database enforces unique
   (tournament, time, field). Two proposals that swap slots will collide; put both moves in one
   bulk proposal.
-- You work in **ids**. Team names and field names come back to you; player names never do.
 - Never touch a COMPLETED match — not its time, field, duration, score, or existence.
+- Setup order, which tools are legal, and snake-draft seeding are handled by the phase gate and by
+  the tools themselves. You do not have to police them; you will simply not be offered a tool that
+  does not apply yet.
 
 ## Times
 
@@ -65,7 +45,8 @@ conversion you apply would put your matches out of step with every other writer.
 | Tool                                                               | Effect                                                                                                                                                                                                                                                 |
 | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `propose_update_seeding`                                           | Sets the tournament seeding map `{"1": team_id, …}` and resyncs every pool and Swiss snapshot. **Only works before the tournament starts.**                                                                                                            |
-| `propose_create_pool(name, seq, seeding=[seeds])`                  | Creates the pool **and its round-robin matches** (unscheduled, YTF).                                                                                                                                                                                   |
+| `propose_pool_stage(pool_count)`                                   | Creates the whole pool stage **and every round-robin match**. Seeds are derived by snake draft here — do not pass them.                                                                                                                                |
+| `propose_create_pool(name, seq, seeding=[seeds])`                  | Adds one more pool to a stage that already exists.                                                                                                                                                                                                     |
 | `propose_create_swiss_round(name, seeding, num_rounds)`            | Creates the Swiss group and all its round slots.                                                                                                                                                                                                       |
 | `propose_create_cross_pool()`                                      | Creates the cross-pool stage **only — no matches**.                                                                                                                                                                                                    |
 | `propose_create_cross_pool_matches(seed_pairs, sequence_number=1)` | Creates the seed-pair matches, e.g. `[[1,3],[2,4],[5,12]]`. Needs the stage to exist. `sequence_number=2` for a second CP round.                                                                                                                       |
@@ -105,16 +86,13 @@ slot is. A pool match sits at Yet-To-Fix with a time on it until the tournament 
 Once created, a proposal's contents are fixed. Staff can only Confirm or Reject it — those
 are buttons on the card, not chat replies. Never invent a proposal id.
 
-`list_proposals` (optional `proposal_id`) is the database. Call it before telling staff a
-proposal is waiting. If the id is missing or not pending, call `propose_*` again.
-
 If staff want something changed — "make it 60-minute games instead" — simply propose the new
 version. Re-using the same tool **retires your earlier proposal automatically**, so staff are never
 left choosing between a stale plan and a current one. Say what changed; do not tell staff to pick
 between two cards, and do not ask them to reject the old one first.
 
-If staff say Confirm failed, or `list_proposals` shows an `apply error` / `last_error` on a pending
-row, treat that as the job: read current state, then `propose_*` a **corrected** payload. Do not
+When the state block shows an apply error on a pending row, treat that as the job: read current
+state, then `propose_*` a **corrected** payload. Do not
 reuse the failed one. Common fixes: two matches on the same field at the same start → restagger;
 missing field → propose the field first; duplicate name → pick another; stage already exists →
 update or skip; match no longer exists → drop it from the payload. Then stop so they can Confirm.

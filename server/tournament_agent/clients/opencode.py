@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import time
 from collections.abc import Iterator
 from dataclasses import dataclass
 from typing import Any
@@ -24,6 +25,27 @@ class ChatCompletionResult:
     raw: dict[str, Any]
     finish_reason: str | None = None
 
+    @property
+    def tokens(self) -> tuple[int, int]:
+        """(input, output) as the provider reported them; (0, 0) when it did not.
+
+        chat.completions says prompt/completion, Anthropic and the Responses API
+        both say input/output. Read off `raw` so every construction site gets this
+        without having to remember to fill it in.
+        """
+        usage = self.raw.get("usage") or {}
+        if not isinstance(usage, dict):
+            return 0, 0
+
+        def read(*names: str) -> int:
+            for name in names:
+                value = usage.get(name)
+                if isinstance(value, int):
+                    return value
+            return 0
+
+        return read("prompt_tokens", "input_tokens"), read("completion_tokens", "output_tokens")
+
 
 @dataclass
 class StreamChunk:
@@ -39,7 +61,68 @@ class StreamChunk:
 
 
 class OpenCodeGoError(Exception):
-    pass
+    def __init__(self, message: str, status: int | None = None, retryable: bool = False) -> None:
+        super().__init__(message)
+        self.status = status
+        # Worth another attempt: rate limiting, a gateway hiccup, a dropped
+        # connection. A 400 never is — the request itself is what it dislikes.
+        self.retryable = retryable
+
+
+TOO_MANY_REQUESTS = 429
+SERVER_ERROR = 500
+# Three attempts covers the single-blip case without making staff wait through a
+# real outage: with the backoff below, the worst case adds two seconds.
+MAX_ATTEMPTS = 3
+RETRY_BACKOFF_SECONDS = (0.5, 1.5)
+
+
+def _transport_error(exc: Exception, timeout: float) -> OpenCodeGoError:
+    """A timeout or a dropped connection. Always worth one more attempt."""
+    if isinstance(exc, httpx.TimeoutException):
+        return OpenCodeGoError(f"OpenCode Go timed out after {timeout}s", retryable=True)
+    return OpenCodeGoError(f"OpenCode Go connection failed: {exc}", retryable=True)
+
+
+def _status_error(status: int, body: str) -> OpenCodeGoError:
+    return OpenCodeGoError(
+        f"OpenCode Go error {status}: {body[:800]}",
+        status=status,
+        retryable=status == TOO_MANY_REQUESTS or status >= SERVER_ERROR,
+    )
+
+
+# "auto" lets the model answer in prose when a tool was needed; "required" makes it
+# pick one. Not every model behind the gateway accepts the forced form — this used
+# to be hardcoded to "auto" because it returned 400 for Kimi and DeepSeek, neither
+# of which is in the allowlist any more.
+TOOL_CHOICE_AUTO = "auto"
+TOOL_CHOICE_REQUIRED = "required"
+
+# Models observed rejecting a forced choice, learned at runtime rather than
+# declared: the first 400 downgrades that model for the life of the process, so a
+# gateway that starts supporting it needs no code change, and one that never did
+# costs a single wasted request.
+_NO_FORCED_TOOLS: set[str] = set()
+
+
+def forced_tools_disabled_for(model_id: str) -> bool:
+    return model_id in _NO_FORCED_TOOLS
+
+
+def _effective_tool_choice(model: AgentModel, requested: str, tools: Any) -> str:
+    if not tools or requested == TOOL_CHOICE_AUTO:
+        return TOOL_CHOICE_AUTO
+    if model.id in _NO_FORCED_TOOLS:
+        return TOOL_CHOICE_AUTO
+    if not bool(int(os.environ.get("OPENCODE_GO_FORCE_TOOLS", "1"))):
+        return TOOL_CHOICE_AUTO
+    return requested
+
+
+def _looks_like_tool_choice_rejection(exc: OpenCodeGoError) -> bool:
+    """A 400 on a request that forced a tool. Treated as "this model won't do that"."""
+    return exc.status == HTTP_ERROR_STATUS
 
 
 def to_openai_messages(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -177,6 +260,7 @@ def _responses_body(
     tools: list[dict[str, Any]] | None,
     temperature: float | None,
     max_tokens: int,
+    tool_choice: str = TOOL_CHOICE_AUTO,
 ) -> dict[str, Any]:
     instructions: list[str] = []
     input_items: list[dict[str, Any]] = []
@@ -222,7 +306,7 @@ def _responses_body(
     converted = _responses_tools(tools)
     if converted:
         body["tools"] = converted
-        body["tool_choice"] = "auto"
+        body["tool_choice"] = tool_choice
     return body
 
 
@@ -288,6 +372,41 @@ class OpenCodeGoClient:
         tokens = max_tokens if max_tokens is not None else settings.OPENCODE_GO_MAX_TOKENS
         return model, temp, tokens
 
+    def _dispatch_chat(
+        self,
+        model: AgentModel,
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]] | None,
+        temp: float | None,
+        tokens: int,
+        tool_choice: str,
+    ) -> ChatCompletionResult:
+        try:
+            if model.api_style == "openai":
+                return self._openai_chat(model, messages, tools, temp, tokens, tool_choice)
+            if model.api_style == "responses":
+                return self._responses_chat(model, messages, tools, temp, tokens, tool_choice)
+            return self._anthropic_chat(model, messages, tools, temp, tokens, tool_choice)
+        except httpx.HTTPError as exc:
+            raise _transport_error(exc, self.timeout) from exc
+
+    def _recover(
+        self, exc: OpenCodeGoError, model: AgentModel, choice: str, attempt: int
+    ) -> str | None:
+        """The choice to retry with, or None when this error ends the turn.
+
+        Two recoverable situations share one loop: a model that will not accept a
+        forced tool (downgrade it, permanently), and a gateway that hiccuped
+        (wait, try the same request again).
+        """
+        if choice != TOOL_CHOICE_AUTO and _looks_like_tool_choice_rejection(exc):
+            _NO_FORCED_TOOLS.add(model.id)
+            return TOOL_CHOICE_AUTO
+        if exc.retryable and attempt + 1 < MAX_ATTEMPTS:
+            time.sleep(RETRY_BACKOFF_SECONDS[min(attempt, len(RETRY_BACKOFF_SECONDS) - 1)])
+            return choice
+        return None
+
     def chat(
         self,
         *,
@@ -296,13 +415,19 @@ class OpenCodeGoClient:
         tools: list[dict[str, Any]] | None = None,
         temperature: float | None = None,
         max_tokens: int | None = None,
+        tool_choice: str = TOOL_CHOICE_AUTO,
     ) -> ChatCompletionResult:
         model, temp, tokens = self._resolve(model_id, temperature, max_tokens)
-        if model.api_style == "openai":
-            return self._openai_chat(model, messages, tools, temp, tokens)
-        if model.api_style == "responses":
-            return self._responses_chat(model, messages, tools, temp, tokens)
-        return self._anthropic_chat(model, messages, tools, temp, tokens)
+        choice = _effective_tool_choice(model, tool_choice, tools)
+        for attempt in range(MAX_ATTEMPTS):
+            try:
+                return self._dispatch_chat(model, messages, tools, temp, tokens, choice)
+            except OpenCodeGoError as exc:
+                recovered = self._recover(exc, model, choice, attempt)
+                if recovered is None:
+                    raise
+                choice = recovered
+        raise OpenCodeGoError("Exhausted retries without a result")
 
     def chat_stream(
         self,
@@ -312,18 +437,54 @@ class OpenCodeGoClient:
         tools: list[dict[str, Any]] | None = None,
         temperature: float | None = None,
         max_tokens: int | None = None,
+        tool_choice: str = TOOL_CHOICE_AUTO,
     ) -> Iterator[StreamChunk]:
         """Same contract as `chat`, but yields text deltas before the result."""
         model, temp, tokens = self._resolve(model_id, temperature, max_tokens)
-        if model.api_style == "openai":
-            yield from self._openai_chat_stream(model, messages, tools, temp, tokens)
-        elif model.api_style == "responses":
-            result = self._responses_chat(model, messages, tools, temp, tokens)
-            if result.content:
-                yield StreamChunk(type="text", text=result.content)
-            yield StreamChunk(type="result", result=result)
-        else:
-            yield from self._anthropic_chat_stream(model, messages, tools, temp, tokens)
+        choice = _effective_tool_choice(model, tool_choice, tools)
+        for attempt in range(MAX_ATTEMPTS):
+            emitted = False
+            try:
+                for chunk in self._stream_once(model, messages, tools, temp, tokens, choice):
+                    emitted = True
+                    yield chunk
+                return
+            except OpenCodeGoError as exc:
+                # Only safe to retry while nothing has reached the browser. The
+                # status check happens before the first chunk, so the common
+                # failures land here with nothing emitted.
+                if emitted:
+                    raise
+                recovered = self._recover(exc, model, choice, attempt)
+                if recovered is None:
+                    raise
+                choice = recovered
+
+    def _stream_once(
+        self,
+        model: AgentModel,
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]] | None,
+        temp: float | None,
+        tokens: int,
+        tool_choice: str,
+    ) -> Iterator[StreamChunk]:
+        try:
+            if model.api_style == "openai":
+                yield from self._openai_chat_stream(
+                    model, messages, tools, temp, tokens, tool_choice
+                )
+            elif model.api_style == "responses":
+                result = self._responses_chat(model, messages, tools, temp, tokens, tool_choice)
+                if result.content:
+                    yield StreamChunk(type="text", text=result.content)
+                yield StreamChunk(type="result", result=result)
+            else:
+                yield from self._anthropic_chat_stream(
+                    model, messages, tools, temp, tokens, tool_choice
+                )
+        except httpx.HTTPError as exc:
+            raise _transport_error(exc, self.timeout) from exc
 
     def _headers(self) -> dict[str, str]:
         return {
@@ -352,7 +513,7 @@ class OpenCodeGoClient:
     def _raise_for_stream_status(resp: httpx.Response) -> None:
         if resp.status_code >= HTTP_ERROR_STATUS:
             body = resp.read().decode(resp.encoding or "utf-8", errors="replace")
-            raise OpenCodeGoError(f"OpenCode Go error {resp.status_code}: {body[:800]}")
+            raise _status_error(resp.status_code, body)
 
     @staticmethod
     def _openai_body(
@@ -361,6 +522,7 @@ class OpenCodeGoClient:
         tools: list[dict[str, Any]] | None,
         temperature: float | None,
         max_tokens: int,
+        tool_choice: str = TOOL_CHOICE_AUTO,
     ) -> dict[str, Any]:
         body: dict[str, Any] = {
             "model": model.id,
@@ -371,9 +533,7 @@ class OpenCodeGoClient:
             body["temperature"] = temperature
         if tools:
             body["tools"] = tools
-            # Only "auto" is reliably supported across Go models with tools;
-            # "required" / forced-function returns 400 for Kimi and DeepSeek.
-            body["tool_choice"] = "auto"
+            body["tool_choice"] = tool_choice
         return body
 
     def _openai_chat(
@@ -383,14 +543,15 @@ class OpenCodeGoClient:
         tools: list[dict[str, Any]] | None,
         temperature: float | None,
         max_tokens: int,
+        tool_choice: str = TOOL_CHOICE_AUTO,
     ) -> ChatCompletionResult:
-        body = self._openai_body(model, messages, tools, temperature, max_tokens)
+        body = self._openai_body(model, messages, tools, temperature, max_tokens, tool_choice)
 
         url = f"{self.base_url}/chat/completions"
         with httpx.Client(timeout=self.timeout) as client:
             resp = client.post(url, headers=self._headers(), json=body)
         if resp.status_code >= HTTP_ERROR_STATUS:
-            raise OpenCodeGoError(f"OpenCode Go error {resp.status_code}: {resp.text[:800]}")
+            raise _status_error(resp.status_code, resp.text)
         data = resp.json()
         if data.get("error"):
             raise OpenCodeGoError(f"OpenCode Go API error: {data['error']}")
@@ -417,15 +578,16 @@ class OpenCodeGoClient:
         tools: list[dict[str, Any]] | None,
         temperature: float | None,
         max_tokens: int,
+        tool_choice: str = TOOL_CHOICE_AUTO,
     ) -> ChatCompletionResult:
         # GPT-5.6 Luna (and Grok on Go) speak the OpenAI Responses API, not
         # chat.completions. Keep the internal ChatCompletionResult contract.
-        body = _responses_body(model, messages, tools, temperature, max_tokens)
+        body = _responses_body(model, messages, tools, temperature, max_tokens, tool_choice)
         url = f"{self.base_url}/responses"
         with httpx.Client(timeout=self.timeout) as client:
             resp = client.post(url, headers=self._headers(), json=body)
         if resp.status_code >= HTTP_ERROR_STATUS:
-            raise OpenCodeGoError(f"OpenCode Go error {resp.status_code}: {resp.text[:800]}")
+            raise _status_error(resp.status_code, resp.text)
         data = resp.json()
         if data.get("error"):
             raise OpenCodeGoError(f"OpenCode Go API error: {data['error']}")
@@ -438,6 +600,7 @@ class OpenCodeGoClient:
         tools: list[dict[str, Any]] | None,
         temperature: float | None,
         max_tokens: int,
+        tool_choice: str = TOOL_CHOICE_AUTO,
     ) -> dict[str, Any]:
         system_parts: list[str] = []
         anth_messages: list[dict[str, Any]] = []
@@ -510,6 +673,8 @@ class OpenCodeGoClient:
                 for t in tools
                 if t.get("type") == "function" and t.get("function")
             ]
+            # Anthropic spells "pick something" as {"type": "any"}.
+            body["tool_choice"] = {"type": "any" if tool_choice == TOOL_CHOICE_REQUIRED else "auto"}
         return body
 
     def _anthropic_headers(self) -> dict[str, str]:
@@ -528,14 +693,15 @@ class OpenCodeGoClient:
         tools: list[dict[str, Any]] | None,
         temperature: float | None,
         max_tokens: int,
+        tool_choice: str = TOOL_CHOICE_AUTO,
     ) -> ChatCompletionResult:
-        body = self._anthropic_body(model, messages, tools, temperature, max_tokens)
+        body = self._anthropic_body(model, messages, tools, temperature, max_tokens, tool_choice)
         url = f"{self.base_url}/messages"
         headers = self._anthropic_headers()
         with httpx.Client(timeout=self.timeout) as client:
             resp = client.post(url, headers=headers, json=body)
         if resp.status_code >= HTTP_ERROR_STATUS:
-            raise OpenCodeGoError(f"OpenCode Go error {resp.status_code}: {resp.text[:800]}")
+            raise _status_error(resp.status_code, resp.text)
         data = resp.json()
         content_blocks = data.get("content") or []
         text_parts: list[str] = []
@@ -570,8 +736,9 @@ class OpenCodeGoClient:
         tools: list[dict[str, Any]] | None,
         temperature: float | None,
         max_tokens: int,
+        tool_choice: str = TOOL_CHOICE_AUTO,
     ) -> Iterator[StreamChunk]:
-        body = self._openai_body(model, messages, tools, temperature, max_tokens)
+        body = self._openai_body(model, messages, tools, temperature, max_tokens, tool_choice)
         body["stream"] = True
 
         url = f"{self.base_url}/chat/completions"
@@ -638,8 +805,9 @@ class OpenCodeGoClient:
         tools: list[dict[str, Any]] | None,
         temperature: float | None,
         max_tokens: int,
+        tool_choice: str = TOOL_CHOICE_AUTO,
     ) -> Iterator[StreamChunk]:
-        body = self._anthropic_body(model, messages, tools, temperature, max_tokens)
+        body = self._anthropic_body(model, messages, tools, temperature, max_tokens, tool_choice)
         body["stream"] = True
 
         url = f"{self.base_url}/messages"

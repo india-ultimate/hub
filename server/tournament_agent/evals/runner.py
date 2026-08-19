@@ -19,7 +19,9 @@ from server.tournament_agent.evals import (
     load_cases,
     score_case,
 )
+from server.tournament_agent.models import AgentProposal
 from server.tournament_agent.services.agent import TournamentAgentService
+from server.tournament_agent.services.proposals import ProposalApplyError, apply_proposal
 
 MIN_POOL_TEAMS = 2
 # Score at or above which a single case counts as passed.
@@ -206,6 +208,25 @@ def run_case(case: dict[str, Any], model_id: str, user: User) -> dict[str, Any]:
                     transaction.set_rollback(True)
                     return result
                 out = service.answer_question(session, q["id"], selected_ids=selected)
+            elif step["type"] == "confirm":
+                # Staff pressing Confirm on the card. Without this the harness could
+                # only ever exercise turns where nothing had actually been applied,
+                # which is the one situation the agent used to get wrong.
+                pending = service.history(session).get("pending_proposals") or []
+                wanted = step.get("tool_name")
+                target = next(
+                    (p for p in pending if not wanted or p.get("tool_name") == wanted),
+                    None,
+                )
+                if target is None:
+                    trace.notes.append(f"confirm step found no pending {wanted or 'proposal'}")
+                    break
+                try:
+                    apply_proposal(AgentProposal.objects.get(id=target["id"]))
+                    trace.confirmed.append(str(target.get("tool_name") or ""))
+                except ProposalApplyError as exc:
+                    trace.notes.append(f"confirm failed: {exc}")
+                continue
             else:
                 continue
 
@@ -248,6 +269,12 @@ def run_case(case: dict[str, Any], model_id: str, user: User) -> dict[str, Any]:
                 },
             }
             case = {**case, "expect_state": expect}
+
+        reply = (out.get("response") or "").lower()
+        trace.response = reply
+        for banned in expect.get("forbidden_response_text") or []:
+            if str(banned).lower() in reply:
+                trace.notes.append(f"reply claimed: {banned!r}")
 
         expect_met = True
         if expect.get("must_ask_user") and not trace.asked_user:

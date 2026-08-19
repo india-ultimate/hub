@@ -9,7 +9,8 @@ Each of those files starts with a YAML-ish front-matter block:
     name: live_progression
     status: active            # `draft` files are never loaded
     always: false             # true -> always in the prompt
-    when_status: [LIV]        # Tournament.Status values this applies to
+    when_phase: [live]        # Phase values this applies to (preferred)
+    when_status: [LIV]        # Tournament.Status values, for skills with no phase
     triggers: [score, advance]
     requires_tools: [propose_match_score]
     priority: 20              # lower loads first when the budget is tight
@@ -43,6 +44,7 @@ class Skill:
     always: bool = False
     priority: int = 50
     when_status: list[str] = field(default_factory=list)
+    when_phase: list[str] = field(default_factory=list)
     triggers: list[str] = field(default_factory=list)
     requires_tools: list[str] = field(default_factory=list)
 
@@ -109,13 +111,18 @@ def select_skills(
     *,
     tournament_status: str,
     user_text: str = "",
+    phase: str = "",
     budget_chars: int = DEFAULT_BUDGET_CHARS,
 ) -> list[Skill]:
     """Pick the skills relevant to this turn, most relevant first.
 
     Ordering matters as much as selection: when the budget bites, what gets dropped
     should be the skill the turn did not ask for. A skill the staff member's own
-    words invoked outranks one pulled in by tournament status alone.
+    words invoked outranks one pulled in by phase or status alone.
+
+    `when_phase` is preferred over `when_status` because status is too coarse to be
+    useful: every scheduling turn is SCH, so a skill keyed on it ships on turns that
+    never needed it. A skill with neither still loads on its triggers.
     """
     text = user_text.lower()
 
@@ -124,6 +131,8 @@ def select_skills(
             return 0
         if any(trigger.lower() in text for trigger in skill.triggers):
             return 1
+        if skill.when_phase:
+            return 2 if phase and phase in skill.when_phase else None
         if skill.when_status and tournament_status in skill.when_status:
             return 2
         return None

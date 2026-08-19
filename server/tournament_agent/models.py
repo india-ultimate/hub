@@ -144,3 +144,45 @@ class AgentProposal(models.Model):
 
     def __str__(self) -> str:
         return f"AgentProposal {self.id} ({self.tool_name}/{self.status})"
+
+
+class TurnOutcome(models.TextChoices):
+    REPLIED = "replied", "Replied"
+    ASKED = "asked", "Asked a question"
+    ERROR = "error", "Error"
+
+
+class AgentTurn(models.Model):
+    """One staff message and everything the agent did about it.
+
+    `TournamentAgentService.last_trace` used to hold this and was thrown away when
+    the response ended, which made "why did it propose that?" unanswerable the
+    morning after a live event. This is the row you read instead — and the one that
+    makes token spend per tournament a query rather than an estimate.
+    """
+
+    session = models.ForeignKey(
+        TournamentAgentSession, on_delete=models.CASCADE, related_name="turns"
+    )
+    phase = models.CharField(max_length=32, blank=True, default="")
+    model_id = models.CharField(max_length=64, blank=True, default="")
+    rounds = models.PositiveSmallIntegerField(default=0)
+    tokens_in = models.PositiveIntegerField(default=0)
+    tokens_out = models.PositiveIntegerField(default=0)
+    latency_ms = models.PositiveIntegerField(default=0)
+    tool_names = models.JSONField(default=list, blank=True)
+    proposal_ids = models.JSONField(default=list, blank=True)
+    outcome = models.CharField(
+        max_length=16, choices=TurnOutcome.choices, default=TurnOutcome.REPLIED
+    )
+    error = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["session", "created_at"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"AgentTurn {self.id} ({self.outcome}, {self.rounds} rounds)"

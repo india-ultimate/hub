@@ -1,41 +1,18 @@
-"""Stage maps and match-row shaping, shared by the read tools and the proposal tools.
+"""Match-row shaping, shared by the read tools and the proposal tools.
 
-`STAGE_FIELDS` is the one list of stage kinds in the package: the tool schemas
-advertise it, the reads bucket matches by it, and `services.proposals` applies
-against it, so the kinds the model may name and the kinds that can be applied
-cannot drift apart.
+`STAGE_FIELDS` and `STAGE_MODELS` moved down to `domain.stages` once the snapshot
+needed them too — `domain` may not import `tools`. They are re-exported here so
+everything that already reads them from this module keeps working.
 """
 
 from __future__ import annotations
 
 from typing import Any
 
-from server.tournament.models import (
-    Bracket,
-    CrossPool,
-    Match,
-    Pool,
-    PositionPool,
-    SwissRound,
-    Tournament,
-)
+from server.tournament.models import Match, Tournament
+from server.tournament_agent.domain.stages import STAGE_FIELDS, STAGE_MODELS
 
-# Stage kind -> the Match FK naming it, and the model behind it.
-STAGE_FIELDS = {
-    "pool": "pool",
-    "swiss": "swiss_round",
-    "cross_pool": "cross_pool",
-    "bracket": "bracket",
-    "position_pool": "position_pool",
-}
-
-STAGE_MODELS: dict[str, Any] = {
-    "pool": Pool,
-    "swiss": SwissRound,
-    "cross_pool": CrossPool,
-    "bracket": Bracket,
-    "position_pool": PositionPool,
-}
+__all__ = ["STAGE_FIELDS", "STAGE_MODELS", "match_queryset"]
 
 
 def _match_stage(m: Match) -> str | None:

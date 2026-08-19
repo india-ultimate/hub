@@ -1,0 +1,39 @@
+{
+  "id": "regression_phase_gate_schedule",
+  "tier": "regression",
+  "tags": [
+    "phase",
+    "schedule"
+  ],
+  "difficulty": "medium",
+  "fixture": {
+    "team_count": 8,
+    "fields": [
+      "Field 1",
+      "Field 2"
+    ],
+    "start_date": "2026-08-01"
+  },
+  "user_script": [
+    {
+      "type": "message",
+      "text": "Schedule the whole tournament on 2026-08-01 with 75 minute games."
+    }
+  ],
+  "forbidden_tools": [
+    "propose_recommended_schedule",
+    "propose_bulk_schedule"
+  ],
+  "expect_state": {
+    "forbidden_response_text": [
+      "schedule is ready",
+      "i have scheduled"
+    ]
+  },
+  "budget": {
+    "max_steps": 6,
+    "soft_tool_calls": 8
+  },
+  "pass_threshold": 80,
+  "_why": "There are no stages, so there are no matches to place. Scheduling tools are not on the menu in NO_STAGES; this fails loudly if that gate regresses."
+}

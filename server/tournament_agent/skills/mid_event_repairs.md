@@ -3,7 +3,7 @@ name: mid_event_repairs
 status: active
 always: false
 priority: 25
-when_status: [SCH, LIV]
+when_phase: [live]
 triggers:
   [
     delay,

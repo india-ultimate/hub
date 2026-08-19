@@ -40,12 +40,37 @@ from server.tournament.utils import (
 )
 from server.tournament.utils import start_tournament as begin_tournament
 from server.tournament_agent.domain.format import canonical_stage_name
-from server.tournament_agent.models import AgentProposal, ProposalStatus
+from server.tournament_agent.models import (
+    AgentProposal,
+    MessageKind,
+    MessageRole,
+    ProposalStatus,
+    TournamentAgentMessage,
+)
 from server.tournament_agent.tools import STAGE_FIELDS, STAGE_MODELS
 
 
 class ProposalApplyError(Exception):
     pass
+
+
+class _AlreadyResolved(Exception):  # noqa: N818 — a race, not an apply failure
+    """Another Confirm got to this row first. Distinct so it never sets last_error."""
+
+
+# Confirm and Reject happen outside the turn loop, so without this the agent never
+# learns what became of a plan it made: `pending` rows drop off the state block on
+# Confirm and nothing takes their place. Recorded as a message so the outcome keeps
+# its position in the conversation, and surfaced again in the snapshot's
+# "Applied this session" list.
+def _record_outcome(proposal: AgentProposal, text: str, outcome: str) -> None:
+    TournamentAgentMessage.objects.create(
+        session=proposal.session,
+        role=MessageRole.SYSTEM,
+        content=text,
+        message_kind=MessageKind.PROPOSAL_REF,
+        payload={"proposal_id": proposal.id, "outcome": outcome},
+    )
 
 
 def _parse_time(value: str | None) -> datetime | None:
@@ -82,16 +107,22 @@ def _record_apply_error(proposal: AgentProposal, message: str) -> None:
     proposal.save(update_fields=["last_error"])
 
 
-def apply_proposal(proposal: AgentProposal) -> dict[str, Any]:
-    if proposal.status == ProposalStatus.EXPIRED:
+def _not_pending_message(status: str) -> str:
+    if status == ProposalStatus.EXPIRED:
         # Two ways to get here — a newer plan from the same tool replaced this one,
         # or the conversation was cleared. Say what to do rather than just the status.
-        raise ProposalApplyError(
+        return (
             "This plan is no longer current — it was replaced by a newer one, or the "
             "conversation was cleared. Ask the agent again to get a fresh proposal."
         )
+    if status == ProposalStatus.CONFIRMED:
+        return "This proposal has already been applied."
+    return f"Proposal is {status}, not pending"
+
+
+def apply_proposal(proposal: AgentProposal) -> dict[str, Any]:
     if proposal.status != ProposalStatus.PENDING:
-        raise ProposalApplyError(f"Proposal is {proposal.status}, not pending")
+        raise ProposalApplyError(_not_pending_message(proposal.status))
 
     apply_fn = _APPLIERS.get(proposal.tool_name)
     if apply_fn is None:
@@ -101,13 +132,34 @@ def apply_proposal(proposal: AgentProposal) -> dict[str, Any]:
         # Every applier below writes more than one row; without this a failure
         # part-way leaves the tournament half-changed and the proposal pending.
         with transaction.atomic():
-            result = apply_fn(proposal.session.tournament, proposal.payload or {})
-            proposal.status = ProposalStatus.CONFIRMED
-            proposal.resolved_at = timezone.now()
-            proposal.last_error = ""
-            proposal.save(update_fields=["status", "resolved_at", "last_error"])
+            # Two Confirms on the same card — a double click, or two directors on
+            # one tournament — would otherwise both read PENDING and both apply.
+            # No-op on SQLite, a real row lock on Postgres.
+            locked = (
+                AgentProposal.objects.select_for_update()
+                .select_related("session__tournament")
+                .get(id=proposal.id)
+            )
+            if locked.status != ProposalStatus.PENDING:
+                raise _AlreadyResolved(_not_pending_message(locked.status))
+            result = apply_fn(locked.session.tournament, locked.payload or {})
+            locked.status = ProposalStatus.CONFIRMED
+            locked.resolved_at = timezone.now()
+            locked.last_error = ""
+            locked.save(update_fields=["status", "resolved_at", "last_error"])
+    except _AlreadyResolved as exc:
+        # Not an apply failure: nothing was attempted, so last_error stays as it was.
+        proposal.refresh_from_db()
+        raise ProposalApplyError(str(exc)) from exc
     except ProposalApplyError as exc:
         _record_apply_error(proposal, str(exc))
+        _record_outcome(
+            proposal,
+            f"Proposal #{proposal.id} ({proposal.tool_name}) was confirmed by staff but "
+            f"failed to apply: {exc}. Re-propose with a corrected payload — do not "
+            "reuse the failed one.",
+            "failed",
+        )
         raise
     except (
         ObjectDoesNotExist,
@@ -118,17 +170,37 @@ def apply_proposal(proposal: AgentProposal) -> dict[str, Any]:
     ) as exc:
         message = _readable(exc)
         _record_apply_error(proposal, message)
+        _record_outcome(
+            proposal,
+            f"Proposal #{proposal.id} ({proposal.tool_name}) was confirmed by staff but "
+            f"failed to apply: {message}. Re-propose with a corrected payload — do not "
+            "reuse the failed one.",
+            "failed",
+        )
         raise ProposalApplyError(message) from exc
 
+    proposal.refresh_from_db()
+    _record_outcome(
+        proposal,
+        f"Proposal #{proposal.id} ({proposal.tool_name}) was confirmed by staff and "
+        f"applied: {proposal.summary}",
+        "confirmed",
+    )
     return result
 
 
 def reject_proposal(proposal: AgentProposal) -> None:
     if proposal.status != ProposalStatus.PENDING:
-        raise ProposalApplyError(f"Proposal is {proposal.status}, not pending")
+        raise ProposalApplyError(_not_pending_message(proposal.status))
     proposal.status = ProposalStatus.REJECTED
     proposal.resolved_at = timezone.now()
     proposal.save(update_fields=["status", "resolved_at"])
+    _record_outcome(
+        proposal,
+        f"Proposal #{proposal.id} ({proposal.tool_name}) was rejected by staff and will "
+        f"not be applied: {proposal.summary}",
+        "rejected",
+    )
 
 
 def _create_pool(tournament: Tournament, payload: dict[str, Any]) -> dict[str, Any]:
@@ -139,6 +211,22 @@ def _create_pool(tournament: Tournament, payload: dict[str, Any]) -> dict[str, A
         seeding=list(payload["seeding"]),
     )
     return {"pool_id": pool.id, "name": pool.name}
+
+
+def _create_pool_stage(tournament: Tournament, payload: dict[str, Any]) -> dict[str, Any]:
+    """Build every pool of the stage in one go, in the order they were proposed."""
+    created = []
+    for row in payload.get("pools") or []:
+        pool = build_pool(
+            tournament,
+            name=canonical_stage_name(str(row.get("name") or ""), "A"),
+            sequence_number=int(row["sequence_number"]),
+            seeding=list(row["seeding"]),
+        )
+        created.append({"pool_id": pool.id, "name": pool.name})
+    if not created:
+        raise ProposalApplyError("The proposal listed no pools")
+    return {"pools": created}
 
 
 def _create_swiss(tournament: Tournament, payload: dict[str, Any]) -> dict[str, Any]:
@@ -784,6 +872,7 @@ Applier = Callable[[Tournament, dict[str, Any]], dict[str, Any]]
 
 _APPLIERS: dict[str, Applier] = {
     "propose_create_pool": _create_pool,
+    "propose_pool_stage": _create_pool_stage,
     "propose_create_swiss_round": _create_swiss,
     "propose_create_cross_pool": _create_cross_pool,
     "propose_create_bracket": _create_bracket,

@@ -8,15 +8,17 @@ Three root modules are shared, and anything may import them:
 
 The rest is a one-way chain — each may import the next, never the reverse:
 
-    api.py        ->  services/  ->  tools/  ->  domain/
+    api.py    ->  services/  ->  policy.py  ->  tools/  ->  domain/
 
     api.py                  the Ninja router; HTTP and SSE framing, nothing else
     services/               orchestration, and the only place anything is written
       agent.py                the turn loop: prompt, tool rounds, streaming events
       proposals.py            applying a proposal once staff hit Confirm
       skills.py               choosing which skill markdown goes in the prompt
+    policy.py               which tools each phase may use, advertised and enforced
     tools/                  the surface the model is given — reads, proposals, ask_user
-    domain/                 scheduling and schedule validation, deterministic code
+    domain/                 stage kinds, tournament state, phases, scheduling —
+                            deterministic code that answers from the database
 
 Two leaves sit off to the side, imported but importing nothing back:
 

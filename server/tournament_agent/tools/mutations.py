@@ -18,12 +18,52 @@ from server.tournament_agent.domain.format import (
     bracket_proposal_summary,
     canonical_stage_name,
     labeled_pool_defs,
+    labeled_snake_pools,
     rewrite_sequential_pool_defs,
     sequential_pool_seed_error,
 )
 from server.tournament_agent.domain.validate import DEFAULT_MATCH_MINS
 from server.tournament_agent.tools.context import ToolContext
 from server.tournament_agent.tools.queries import STAGE_FIELDS, STAGE_MODELS, match_queryset
+
+MIN_POOLS = 2
+MIN_TEAMS_PER_POOL = 2
+
+
+def propose_pool_stage(ctx: ToolContext, pool_count: int) -> dict[str, Any]:
+    """Propose the whole pool stage. Seeds are derived here, never by the model.
+
+    `propose_create_pool` still exists for adding one pool to an event that already
+    has some, but the setup path does not offer it: a seed list the model wrote is a
+    seed list that can be wrong, and the snake for N teams in M pools is arithmetic.
+    """
+    team_count = len(ctx.tournament.initial_seeding or {}) or ctx.tournament.teams.count()
+    if team_count < MIN_POOLS * MIN_TEAMS_PER_POOL:
+        message = f"{team_count} teams is too few to split into pools."
+        return {"error": message, "message": message}
+    try:
+        count = int(pool_count)
+    except (TypeError, ValueError):
+        count = 0
+    max_pools = team_count // MIN_TEAMS_PER_POOL
+    if not MIN_POOLS <= count <= max_pools:
+        message = (
+            f"pool_count must be between {MIN_POOLS} and {max_pools} for "
+            f"{team_count} teams. Ask staff which they want."
+        )
+        return {"error": message, "message": message}
+
+    snake = labeled_snake_pools(team_count, count)
+    pools = [
+        {"name": label, "sequence_number": i, "seeding": seeds}
+        for i, (label, seeds) in enumerate(snake.items(), start=1)
+    ]
+    rendered = ", ".join(f"{row['name']}={row['seeding']}" for row in pools)
+    return ctx.create_proposal(
+        "propose_pool_stage",
+        f"Create {count} pools by snake draft: {rendered}",
+        {"pools": pools},
+    )
 
 
 def propose_create_pool(

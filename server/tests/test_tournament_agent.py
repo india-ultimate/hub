@@ -13,6 +13,8 @@ from pathlib import Path
 from typing import Any, cast
 from unittest.mock import MagicMock, patch
 
+import httpx
+from django.conf import settings
 from django.http import StreamingHttpResponse
 from django.test import TestCase
 from django.utils.dateparse import parse_datetime
@@ -33,15 +35,19 @@ from server.tournament.utils import build_bracket, build_pool
 from server.tournament.utils import start_tournament as begin_tournament
 from server.tournament_agent.catalog import (
     AGENT_MODELS,
+    configured_default_model_id,
     default_model_id,
     get_model,
     is_allowed_model,
 )
 from server.tournament_agent.clients.opencode import (
+    _NO_FORCED_TOOLS,
+    HTTP_ERROR_STATUS,
     ChatCompletionResult,
     OpenCodeGoClient,
     OpenCodeGoError,
     StreamChunk,
+    forced_tools_disabled_for,
 )
 from server.tournament_agent.domain.format import (
     bracket_match_plan,
@@ -49,14 +55,25 @@ from server.tournament_agent.domain.format import (
     rewrite_sequential_pool_defs,
     snake_pool_seeds,
 )
+from server.tournament_agent.domain.phase import Phase, phase_for
 from server.tournament_agent.domain.scheduler import recommend_schedule
+from server.tournament_agent.domain.state import build_snapshot, render_state
 from server.tournament_agent.models import (
     AgentProposal,
     AgentQuestion,
+    AgentTurn,
     ProposalStatus,
     QuestionStatus,
     TournamentAgentMessage,
     TournamentAgentSession,
+    TurnOutcome,
+)
+from server.tournament_agent.policy import (
+    _unknown_tools,
+    _unreachable_tools,
+    phase_rejection,
+    tool_definitions_for,
+    tools_for,
 )
 from server.tournament_agent.privacy.display import TokenTextStream, resolve_player_tokens
 from server.tournament_agent.privacy.mask import (
@@ -68,10 +85,8 @@ from server.tournament_agent.services.agent import (
     KEEP_RECENT_MESSAGES,
     TournamentAgentService,
     _compact_model_turns,
-    looks_like_ack,
-    looks_like_status_check,
-    pending_proposals_prompt,
-    verification_prompt,
+    round_tokens,
+    strip_phantom_proposal_ids,
 )
 from server.tournament_agent.services.proposals import (
     ProposalApplyError,
@@ -105,6 +120,7 @@ from server.tournament_agent.tools import (
     propose_delete_stage,
     propose_full_setup,
     propose_match_score,
+    propose_pool_stage,
     propose_recommended_schedule,
     propose_shift_schedule,
     propose_spirit_scores,
@@ -112,6 +128,14 @@ from server.tournament_agent.tools import (
     propose_update_match,
     propose_update_match_seeds,
 )
+
+
+def model_messages(
+    service: TournamentAgentService, session: TournamentAgentSession
+) -> list[dict[str, Any]]:
+    """What the turn would replay to the model, for the session as it stands."""
+    snapshot = build_snapshot(session)
+    return service._build_model_messages(session, snapshot, phase_for(snapshot))
 
 
 class MaskTests(TestCase):
@@ -141,8 +165,21 @@ class MaskTests(TestCase):
 
 
 class CatalogTests(TestCase):
+    def test_the_catalog_owns_the_default_not_the_environment(self) -> None:
+        """One place to change the default, and a bad override cannot break login."""
+        self.assertEqual(configured_default_model_id(), default_model_id())
+
+        # An allowlisted override is an operational escape hatch and does win.
+        with patch.object(settings, "OPENCODE_GO_DEFAULT_MODEL", "hy3"):
+            self.assertEqual(configured_default_model_id(), "hy3")
+
+        # A stale or misspelt one is ignored — it used to raise on every new session.
+        for bad in ("", "   ", "glm-4", "deepseek-v4-pro"):
+            with patch.object(settings, "OPENCODE_GO_DEFAULT_MODEL", bad):
+                self.assertEqual(configured_default_model_id(), default_model_id())
+
     def test_default_and_allowlist(self) -> None:
-        self.assertEqual(default_model_id(), "glm-5.2")
+        self.assertEqual(default_model_id(), "gpt-5.6-luna")
         self.assertTrue(is_allowed_model("glm-5.2"))
         self.assertTrue(is_allowed_model("gpt-5.6-luna"))
         self.assertTrue(is_allowed_model("minimax-m3"))
@@ -260,8 +297,22 @@ class TournamentAgentToolTests(TestCase):
         self.assertEqual(retired["lookup"]["status"], ProposalStatus.EXPIRED)
         self.assertIn("not pending", retired["lookup"]["message"])
 
-    def test_pending_proposals_prompt_does_not_trust_chat(self) -> None:
-        self.assertIn("None.", pending_proposals_prompt(self.session))
+    def _system_prompt(self) -> str:
+        return model_messages(TournamentAgentService(self.user), self.session)[0]["content"]
+
+    def test_state_block_does_not_pin_the_event_window(self) -> None:
+        """It read as a constraint: models stalled asking which date to believe."""
+        state = render_state(build_snapshot(self.session))
+        self.assertNotIn(str(self.event.start_date), state)
+        self.assertIn("does not override what staff are asking", state)
+
+    def test_state_block_reports_what_the_database_holds(self) -> None:
+        system = self._system_prompt()
+        self.assertIn("Pending proposals: none.", system)
+        self.assertIn("Applied this session: nothing yet.", system)
+        self.assertIn("Stages: none yet.", system)
+        self.assertIn("Field 1", system)
+
         AgentProposal.objects.create(
             session=self.session,
             tool_name="propose_create_field",
@@ -269,30 +320,74 @@ class TournamentAgentToolTests(TestCase):
             payload={"name": "Extra"},
             status=ProposalStatus.PENDING,
         )
-        text = pending_proposals_prompt(self.session)
-        self.assertIn("propose_create_field", text)
-        self.assertNotIn("\nNone.", text)
-        system = TournamentAgentService(self.user)._build_model_messages(self.session)[0]["content"]
+        system = self._system_prompt()
         self.assertIn("propose_create_field", system)
-        self.assertIn("database — the only source of truth", system)
+        self.assertNotIn("Pending proposals: none.", system)
+        self.assertIn("has not happened", system)
 
-    def test_ack_and_status_prompts_demand_a_fresh_read(self) -> None:
-        self.assertTrue(looks_like_ack("Done"))
-        self.assertTrue(looks_like_ack("confirmed."))
-        self.assertFalse(looks_like_ack("Done with pools, now schedule Saturday"))
-        self.assertTrue(looks_like_status_check("Anything else?"))
-        self.assertIn("list_stages", verification_prompt("Done"))
-        self.assertIn("list_matches", verification_prompt("Anything else?"))
-        self.assertEqual(verification_prompt("add a 1-4 bracket"), "")
+    def test_state_block_shows_applied_proposals_and_apply_errors(self) -> None:
+        AgentProposal.objects.create(
+            session=self.session,
+            tool_name="propose_create_pool",
+            summary="Create pool A with seeds [1, 2]",
+            payload={},
+            status=ProposalStatus.CONFIRMED,
+        )
+        AgentProposal.objects.create(
+            session=self.session,
+            tool_name="propose_bulk_schedule",
+            summary="Schedule 4 matches",
+            payload={},
+            status=ProposalStatus.PENDING,
+            last_error="Two matches would occupy the same field at the same time.",
+        )
+        system = self._system_prompt()
+        self.assertIn("Applied this session", system)
+        self.assertIn("Create pool A", system)
+        self.assertIn("APPLY FAILED", system)
+        self.assertIn("do not reuse this one", system)
 
+    def test_history_replays_what_the_tools_returned(self) -> None:
+        """The fix for a turn believing its own summary of a change it never made."""
         TournamentAgentMessage.objects.create(
             session=self.session,
             role="user",
-            content="Done",
-            payload={"masked_content": "Done"},
+            content="set up two pools",
+            payload={"masked_content": "set up two pools"},
         )
-        system = TournamentAgentService(self.user)._build_model_messages(self.session)[0]["content"]
-        self.assertIn("not a database write", system)
+        TournamentAgentMessage.objects.create(
+            session=self.session,
+            role="assistant",
+            content="I've created pools A and B.",
+            payload={
+                "tool_events": [
+                    {"name": "list_fields", "status": "ok", "summary": "1 fields"},
+                    {
+                        "name": "ask_user",
+                        "status": "question",
+                        "summary": "How many fields?",
+                    },
+                ]
+            },
+        )
+        messages = model_messages(TournamentAgentService(self.user), self.session)
+        assistant = next(m for m in messages if m["role"] == "assistant")
+        self.assertIn("I've created pools A and B.", assistant["content"])
+        # The claim now travels with the evidence that contradicts it.
+        self.assertIn("tools this turn", assistant["content"])
+        self.assertIn("ask_user[question]", assistant["content"])
+        self.assertNotIn("propose_create_pool", assistant["content"])
+
+    def test_confirm_outcomes_reach_the_model_as_history(self) -> None:
+        TournamentAgentMessage.objects.create(
+            session=self.session,
+            role="system",
+            content="Proposal #7 was confirmed and applied: Create pool A.",
+        )
+        messages = model_messages(TournamentAgentService(self.user), self.session)
+        self.assertTrue(
+            any("confirmed and applied" in (m.get("content") or "") for m in messages[1:])
+        )
 
     def test_ask_user_pauses(self) -> None:
         with self.assertRaises(AskUserPause) as cm:
@@ -832,7 +927,7 @@ class TournamentAgentServiceTests(TestCase):
         TournamentAgentMessage.objects.create(
             session=session, role="assistant", content="Field 1 is on the list."
         )
-        messages = self.service._build_model_messages(session)
+        messages = model_messages(self.service, session)
         roles = [m["role"] for m in messages]
         self.assertEqual(roles, ["system", "user", "assistant"])
         self.assertNotIn("Earlier conversation (compacted)", messages[0]["content"])
@@ -856,7 +951,7 @@ class TournamentAgentServiceTests(TestCase):
             session=session, role="assistant", content="Here is a plan."
         )
 
-        model_msgs = self.service._build_model_messages(session)
+        model_msgs = model_messages(self.service, session)
         self.assertEqual(model_msgs[0]["role"], "system")
         self.assertIn("Earlier conversation (compacted)", model_msgs[0]["content"])
         self.assertIn("old user 0", model_msgs[0]["content"])
@@ -1078,6 +1173,7 @@ class ToolEventTests(TestCase):
         self.tournament = Tournament.objects.create(
             event=self.event, status=Tournament.Status.SCHEDULING
         )
+        TournamentField.objects.create(tournament=self.tournament, name="Field 1")
         self.service = TournamentAgentService(self.user)
         self.session = self.service.get_or_create_session(self.tournament.id)
 
@@ -1132,23 +1228,16 @@ class ToolEventTests(TestCase):
         self.assertIn("didn't work", out["response"])
 
     def test_proposal_events_tagged(self) -> None:
-        args = '{"name": "A", "sequence_number": 1, "seeding": [1, 2]}'
-        team_a = Team.objects.create(name="Evt A", slug="evt-a")
-        team_b = Team.objects.create(name="Evt B", slug="evt-b")
-        self.tournament.teams.set([team_a, team_b])
-        self.tournament.initial_seeding = {"1": team_a.id, "2": team_b.id}
-        self.tournament.current_seeding = {"1": team_a.id, "2": team_b.id}
-        self.tournament.save()
-
+        args = '{"name": "Field 2"}'
         rounds = [
             self._mock_round(
                 "",
-                [{"name": "propose_create_pool", "id": "tc1", "arguments": args}],
+                [{"name": "propose_create_field", "id": "tc1", "arguments": args}],
             ),
-            self._mock_round("Proposed pool A for you to confirm.", []),
+            self._mock_round("Proposed Field 2 for you to confirm.", []),
         ]
         with patch.object(self.service.client, "chat", side_effect=rounds):
-            out = self.service.process_message(self.session, "create pool A with seeds 1,2")
+            out = self.service.process_message(self.session, "add a second field")
 
         event = out["tool_events"][0]
         self.assertEqual(event["status"], "proposal")
@@ -1180,11 +1269,23 @@ class ProviderStreamParsingTests(TestCase):
     def _client(self) -> OpenCodeGoClient:
         return OpenCodeGoClient(api_key="test-key", base_url="https://example.invalid/v1")
 
-    def test_default_model_is_covered_by_a_stream_parser(self) -> None:
-        # The default model drives which parser production actually exercises.
+    # Styles that deliver text incrementally. `responses` does not: `chat_stream`
+    # blocks on the full reply and emits it as a single chunk.
+    INCREMENTAL_STYLES = frozenset({"openai", "anthropic"})
+    # A default on a buffered style is a trade, not an accident — staff see a
+    # spinner then the whole reply. Recorded here so changing the default to some
+    # other non-streaming model fails until someone decides that on purpose.
+    ACCEPTED_BUFFERED_DEFAULT = "gpt-5.6-luna"
+
+    def test_default_model_stream_behaviour_is_deliberate(self) -> None:
         default = get_model(default_model_id())
         assert default is not None
-        self.assertIn(default.api_style, {"openai", "anthropic"})
+        if default.api_style not in self.INCREMENTAL_STYLES:
+            self.assertEqual(
+                default.id,
+                self.ACCEPTED_BUFFERED_DEFAULT,
+                f"{default.id} does not stream incrementally; make that choice explicit here",
+            )
 
     def test_responses_chat_parses_function_calls(self) -> None:
         payload = {
@@ -1913,9 +2014,9 @@ class ProposalSafetyTests(TestCase):
         self.assertIn("no longer exists", pending["last_error"])
         self.assertIn("corrected payload", pending["note"])
 
-        prompt = pending_proposals_prompt(self.session)
-        self.assertIn("apply error:", prompt)
-        self.assertIn("no longer exists", prompt)
+        state = render_state(build_snapshot(self.session))
+        self.assertIn("APPLY FAILED", state)
+        self.assertIn("no longer exists", state)
 
     def test_clear_history_expires_pending_proposals(self) -> None:
         result = propose_create_pool(self.ctx, name="A", sequence_number=1, seeding=[1, 2])
@@ -2468,6 +2569,508 @@ class ToolContractTests(TestCase):
         self.assertEqual(declared, set(HANDLERS), "a handler the model is never told about")
 
 
+class ToolChoiceTests(TestCase):
+    """Round 0 has to produce a tool call — but not at the cost of the turn."""
+
+    TOOLS = [
+        {
+            "type": "function",
+            "function": {
+                "name": "list_fields",
+                "description": "List fields",
+                "parameters": {"type": "object", "properties": {}},
+            },
+        }
+    ]
+
+    def setUp(self) -> None:
+        _NO_FORCED_TOOLS.clear()
+        self.user = User.objects.create(username="choice-staff", is_staff=True)
+        self.event = create_event(title="Choice Open")
+        self.tournament = Tournament.objects.create(
+            event=self.event, status=Tournament.Status.SCHEDULING
+        )
+        TournamentField.objects.create(tournament=self.tournament, name="Field 1")
+        self.service = TournamentAgentService(self.user)
+        self.session = self.service.get_or_create_session(self.tournament.id)
+
+    def tearDown(self) -> None:
+        _NO_FORCED_TOOLS.clear()
+
+    def _client(self) -> OpenCodeGoClient:
+        return OpenCodeGoClient(api_key="test-key", base_url="https://example.invalid/v1")
+
+    def _http(self, *responses: MagicMock) -> MagicMock:
+        http_client = MagicMock()
+        http_client.__enter__.return_value = http_client
+        http_client.__exit__.return_value = False
+        http_client.post.side_effect = list(responses)
+        return http_client
+
+    def _ok(self) -> MagicMock:
+        payload = {"choices": [{"message": {"content": "hi", "tool_calls": []}}]}
+        resp = MagicMock()
+        resp.status_code = 200
+        resp.json.return_value = payload
+        resp.text = json.dumps(payload)
+        return resp
+
+    def _rejected(self) -> MagicMock:
+        resp = MagicMock()
+        resp.status_code = 400
+        resp.text = '{"error":"tool_choice \'required\' is not supported"}'
+        return resp
+
+    def test_each_api_style_spells_the_forced_choice_its_own_way(self) -> None:
+        model = get_model("glm-5.2")
+        assert model is not None
+        body = OpenCodeGoClient._openai_body(model, [], self.TOOLS, None, 100, "required")
+        self.assertEqual(body["tool_choice"], "required")
+
+        anthropic = get_model("minimax-m3")
+        assert anthropic is not None
+        body = OpenCodeGoClient._anthropic_body(anthropic, [], self.TOOLS, None, 100, "required")
+        self.assertEqual(body["tool_choice"], {"type": "any"})
+        body = OpenCodeGoClient._anthropic_body(anthropic, [], self.TOOLS, None, 100, "auto")
+        self.assertEqual(body["tool_choice"], {"type": "auto"})
+
+    def test_a_refusal_downgrades_the_model_instead_of_failing_the_turn(self) -> None:
+        client = self._client()
+        http = self._http(self._rejected(), self._ok())
+        with patch("httpx.Client", return_value=http):
+            result = client.chat(
+                model_id="glm-5.2",
+                messages=[{"role": "user", "content": "hi"}],
+                tools=self.TOOLS,
+                tool_choice="required",
+            )
+        self.assertEqual(result.content, "hi")
+        self.assertEqual(http.post.call_count, 2)
+        self.assertEqual(http.post.call_args_list[0].kwargs["json"]["tool_choice"], "required")
+        self.assertEqual(http.post.call_args_list[1].kwargs["json"]["tool_choice"], "auto")
+        # Learned once, not re-tried on every later turn.
+        self.assertTrue(forced_tools_disabled_for("glm-5.2"))
+
+        http = self._http(self._ok())
+        with patch("httpx.Client", return_value=http):
+            client.chat(
+                model_id="glm-5.2",
+                messages=[{"role": "user", "content": "hi"}],
+                tools=self.TOOLS,
+                tool_choice="required",
+            )
+        self.assertEqual(http.post.call_count, 1)
+        self.assertEqual(http.post.call_args_list[0].kwargs["json"]["tool_choice"], "auto")
+
+    def test_a_real_error_still_surfaces(self) -> None:
+        client = self._client()
+        http = self._http(self._rejected(), self._rejected())
+        with patch("httpx.Client", return_value=http), self.assertRaises(OpenCodeGoError):
+            client.chat(
+                model_id="glm-5.2",
+                messages=[{"role": "user", "content": "hi"}],
+                tools=self.TOOLS,
+                tool_choice="required",
+            )
+
+    def test_the_turn_forces_round_zero_and_frees_the_rest(self) -> None:
+        calls: list[str] = []
+
+        def fake_chat(**kwargs: Any) -> MagicMock:
+            calls.append(kwargs["tool_choice"])
+            result = MagicMock()
+            if len(calls) == 1:
+                result.content = ""
+                result.tool_calls = [{"name": "list_fields", "id": "tc1", "arguments": "{}"}]
+                result.finish_reason = "tool_calls"
+            else:
+                result.content = "Field 1 is the only field."
+                result.tool_calls = []
+                result.finish_reason = "stop"
+            return result
+
+        with patch.object(self.service.client, "chat", side_effect=fake_chat):
+            self.service.process_message(self.session, "what fields are there?")
+
+        self.assertEqual(calls[0], "required")
+        self.assertTrue(all(c == "auto" for c in calls[1:]))
+
+
+class HardeningTests(TestCase):
+    """What separates a demo from something staff depend on during a live event."""
+
+    def setUp(self) -> None:
+        _NO_FORCED_TOOLS.clear()
+        self.user = User.objects.create(username="hard-staff", is_staff=True)
+        self.event = create_event(title="Hardening Open")
+        self.tournament = Tournament.objects.create(
+            event=self.event, status=Tournament.Status.SCHEDULING
+        )
+        TournamentField.objects.create(tournament=self.tournament, name="Field 1")
+        self.service = TournamentAgentService(self.user)
+        self.session = self.service.get_or_create_session(self.tournament.id)
+
+    def tearDown(self) -> None:
+        _NO_FORCED_TOOLS.clear()
+
+    def _client(self) -> OpenCodeGoClient:
+        return OpenCodeGoClient(api_key="test-key", base_url="https://example.invalid/v1")
+
+    def _resp(self, status: int, body: str = "{}") -> MagicMock:
+        resp = MagicMock()
+        resp.status_code = status
+        resp.text = body
+        resp.json.return_value = json.loads(body) if status < HTTP_ERROR_STATUS else {}
+        return resp
+
+    def _http(self, *responses: Any) -> MagicMock:
+        http = MagicMock()
+        http.__enter__.return_value = http
+        http.__exit__.return_value = False
+        http.post.side_effect = list(responses)
+        return http
+
+    def test_a_gateway_hiccup_is_retried_not_shown_to_staff(self) -> None:
+        ok = '{"choices": [{"message": {"content": "hi", "tool_calls": []}}]}'
+        http = self._http(self._resp(503, "bad gateway"), self._resp(200, ok))
+        with patch("httpx.Client", return_value=http), patch("time.sleep"):
+            result = self._client().chat(
+                model_id="glm-5.2", messages=[{"role": "user", "content": "hi"}]
+            )
+        self.assertEqual(result.content, "hi")
+        self.assertEqual(http.post.call_count, 2)
+
+    def test_a_timeout_is_retried(self) -> None:
+        ok = '{"choices": [{"message": {"content": "hi", "tool_calls": []}}]}'
+        http = self._http(httpx.ConnectTimeout("too slow"), self._resp(200, ok))
+        with patch("httpx.Client", return_value=http), patch("time.sleep"):
+            result = self._client().chat(
+                model_id="glm-5.2", messages=[{"role": "user", "content": "hi"}]
+            )
+        self.assertEqual(result.content, "hi")
+
+    def test_a_bad_request_is_not_retried(self) -> None:
+        http = self._http(self._resp(400, "malformed"))
+        with (
+            patch("httpx.Client", return_value=http),
+            patch("time.sleep"),
+            self.assertRaises(OpenCodeGoError),
+        ):
+            self._client().chat(model_id="glm-5.2", messages=[{"role": "user", "content": "hi"}])
+        self.assertEqual(http.post.call_count, 1)
+
+    def test_token_usage_is_read_from_whichever_vocabulary_arrived(self) -> None:
+        openai_style = ChatCompletionResult(
+            content="x", tool_calls=[], raw={"usage": {"prompt_tokens": 10, "completion_tokens": 4}}
+        )
+        self.assertEqual(openai_style.tokens, (10, 4))
+        anthropic_style = ChatCompletionResult(
+            content="x", tool_calls=[], raw={"usage": {"input_tokens": 7, "output_tokens": 2}}
+        )
+        self.assertEqual(anthropic_style.tokens, (7, 2))
+        # A provider that reports nothing must not break the turn.
+        self.assertEqual(ChatCompletionResult(content="x", tool_calls=[], raw={}).tokens, (0, 0))
+        self.assertEqual(round_tokens(MagicMock()), (0, 0))
+
+    def test_every_turn_leaves_a_row_you_can_read_tomorrow(self) -> None:
+        rounds = [
+            self._round("", [{"name": "list_fields", "id": "tc1", "arguments": "{}"}]),
+            self._round("There is one field.", []),
+        ]
+        with patch.object(self.service.client, "chat", side_effect=rounds):
+            self.service.process_message(self.session, "what fields are there?")
+
+        turn = AgentTurn.objects.get(session=self.session)
+        self.assertEqual(turn.outcome, TurnOutcome.REPLIED)
+        self.assertEqual(turn.phase, Phase.NO_STAGES.value)
+        self.assertEqual(turn.rounds, 2)
+        self.assertEqual(turn.tool_names, ["list_fields"])
+        self.assertEqual(turn.model_id, self.session.model_id)
+        self.assertGreaterEqual(turn.latency_ms, 0)
+
+    def _round(self, content: str, tool_calls: list[dict[str, str]]) -> MagicMock:
+        result = MagicMock()
+        result.content = content
+        result.tool_calls = tool_calls
+        result.finish_reason = "tool_calls" if tool_calls else "stop"
+        result.tokens = (100, 20)
+        return result
+
+    def test_tokens_are_totalled_across_the_rounds_of_a_turn(self) -> None:
+        rounds = [
+            self._round("", [{"name": "list_fields", "id": "tc1", "arguments": "{}"}]),
+            self._round("Done.", []),
+        ]
+        with patch.object(self.service.client, "chat", side_effect=rounds):
+            self.service.process_message(self.session, "fields?")
+        turn = AgentTurn.objects.get(session=self.session)
+        self.assertEqual((turn.tokens_in, turn.tokens_out), (200, 40))
+
+    def test_a_spent_session_stops_before_it_calls_the_model(self) -> None:
+        AgentTurn.objects.create(
+            session=self.session,
+            tokens_in=settings.TOURNAMENT_AGENT_MAX_SESSION_TOKENS,
+            tokens_out=0,
+        )
+        with patch.object(self.service.client, "chat", side_effect=AssertionError("called")):
+            out = self.service.process_message(self.session, "set up pools")
+        self.assertIn("token budget", out["response"])
+
+    def test_the_kill_switch_closes_the_turn(self) -> None:
+        with (
+            patch.object(settings, "TOURNAMENT_AGENT_ENABLED", False),
+            patch.object(self.service.client, "chat", side_effect=AssertionError("called")),
+        ):
+            out = self.service.process_message(self.session, "set up pools")
+        self.assertIn("switched off", out["response"])
+
+
+class PhasePolicyTests(TestCase):
+    """Setup order used to be prompt rule 6. It is a state machine now."""
+
+    def setUp(self) -> None:
+        self.user = User.objects.create(username="phase-staff", is_staff=True)
+        self.event = create_event(title="Phase Open")
+        self.tournament = Tournament.objects.create(
+            event=self.event, status=Tournament.Status.SCHEDULING
+        )
+        teams = [Team.objects.create(name=f"Ph {i}", slug=f"ph-{i}") for i in range(1, 5)]
+        seeding = {str(i): team.id for i, team in enumerate(teams, start=1)}
+        self.tournament.initial_seeding = seeding
+        self.tournament.current_seeding = seeding
+        self.tournament.save()
+        self.tournament.teams.set(teams)
+        self.session = TournamentAgentSession.objects.create(
+            user=self.user, tournament=self.tournament, model_id=default_model_id()
+        )
+
+    def _phase(self) -> Phase:
+        return phase_for(build_snapshot(self.session))
+
+    def test_phase_walks_the_setup_order(self) -> None:
+        self.assertEqual(self._phase(), Phase.NO_FIELDS)
+
+        TournamentField.objects.create(tournament=self.tournament, name="Field 1")
+        self.assertEqual(self._phase(), Phase.NO_STAGES)
+
+        build_pool(self.tournament, name="A", sequence_number=1, seeding=[1, 2, 3, 4])
+        self.assertEqual(self._phase(), Phase.NO_SCHEDULE)
+
+        field = TournamentField.objects.get(tournament=self.tournament)
+        slot = parse_datetime("2026-08-01T07:00:00+00:00")
+        assert slot is not None
+        for i, match in enumerate(Match.objects.filter(tournament=self.tournament)):
+            match.time = slot + timedelta(hours=i)
+            match.field = field
+            match.save(update_fields=["time", "field"])
+        self.assertEqual(self._phase(), Phase.READY)
+
+        begin_tournament(self.tournament)
+        self.assertEqual(self._phase(), Phase.LIVE)
+
+        self.tournament.status = Tournament.Status.COMPLETED
+        self.tournament.save(update_fields=["status"])
+        self.assertEqual(self._phase(), Phase.COMPLETE)
+
+    def test_menu_matches_the_phase(self) -> None:
+        # Nothing to schedule before a stage exists, and nothing to build before a
+        # field does. These were rules 6 and 9.
+        self.assertNotIn("propose_create_pool", tools_for(Phase.NO_FIELDS))
+        self.assertNotIn("propose_recommended_schedule", tools_for(Phase.NO_FIELDS))
+        self.assertIn("propose_create_field", tools_for(Phase.NO_FIELDS))
+
+        # Setup builds the stage through the derived-seed tool; the free-form
+        # single-pool tool is withheld until a stage already exists.
+        self.assertIn("propose_pool_stage", tools_for(Phase.NO_STAGES))
+        self.assertNotIn("propose_create_pool", tools_for(Phase.NO_STAGES))
+        self.assertIn("propose_create_pool", tools_for(Phase.NO_SCHEDULE))
+        self.assertIn("propose_update_seeding", tools_for(Phase.NO_STAGES))
+        self.assertIn("propose_full_setup", tools_for(Phase.NO_STAGES))
+        self.assertNotIn("propose_recommended_schedule", tools_for(Phase.NO_STAGES))
+
+        self.assertIn("propose_recommended_schedule", tools_for(Phase.NO_SCHEDULE))
+        self.assertNotIn("propose_start_tournament", tools_for(Phase.NO_SCHEDULE))
+        self.assertIn("propose_start_tournament", tools_for(Phase.READY))
+
+        # A live event is repaired one match at a time — never by re-running the
+        # whole scheduler over it.
+        self.assertNotIn("propose_recommended_schedule", tools_for(Phase.LIVE))
+        self.assertIn("propose_shift_schedule", tools_for(Phase.LIVE))
+        self.assertIn("propose_match_score", tools_for(Phase.LIVE))
+        self.assertNotIn("propose_create_pool", tools_for(Phase.LIVE))
+
+        self.assertFalse({t for t in tools_for(Phase.COMPLETE) if t.startswith("propose_")})
+
+    def test_gating_cuts_the_schemas_actually_sent(self) -> None:
+        everything = len(TOOL_DEFINITIONS)
+        for phase in Phase:
+            self.assertLessEqual(len(tool_definitions_for(phase)), everything)
+        self.assertLess(len(tool_definitions_for(Phase.NO_FIELDS)), everything // 2)
+
+    def test_blocked_call_says_what_to_do_instead(self) -> None:
+        rejection = phase_rejection(Phase.NO_FIELDS, "propose_recommended_schedule")
+        assert rejection is not None
+        self.assertIn("not available right now", rejection["message"])
+        self.assertIn("propose_create_field", rejection["message"])
+        self.assertEqual(rejection["phase"], Phase.NO_FIELDS.value)
+
+        self.assertIsNone(phase_rejection(Phase.NO_FIELDS, "propose_create_field"))
+        # Unknown names fall through to the dispatcher's own "Unknown tool" answer.
+        self.assertIsNone(phase_rejection(Phase.NO_FIELDS, "propose_teleport"))
+
+    def test_every_tool_has_a_phase_and_every_phase_names_real_tools(self) -> None:
+        self.assertEqual(_unreachable_tools(), set(), "tool no phase can reach")
+        self.assertEqual(_unknown_tools(), set(), "phase names a tool that does not exist")
+
+
+class DerivedParameterTests(TestCase):
+    """A seed list the model wrote is a seed list that can be wrong."""
+
+    def setUp(self) -> None:
+        self.user = User.objects.create(username="derive-staff", is_staff=True)
+        self.event = create_event(title="Derive Open")
+        self.tournament = Tournament.objects.create(
+            event=self.event, status=Tournament.Status.SCHEDULING
+        )
+        teams = [Team.objects.create(name=f"Dv {i}", slug=f"dv-{i}") for i in range(1, 9)]
+        seeding = {str(i): team.id for i, team in enumerate(teams, start=1)}
+        self.tournament.initial_seeding = seeding
+        self.tournament.current_seeding = seeding
+        self.tournament.save()
+        self.tournament.teams.set(teams)
+        TournamentField.objects.create(tournament=self.tournament, name="Field 1")
+        self.session = TournamentAgentSession.objects.create(
+            user=self.user, tournament=self.tournament, model_id=default_model_id()
+        )
+        self.ctx = ToolContext(session=self.session, tournament=self.tournament)
+
+    def test_the_stage_tool_derives_the_snake(self) -> None:
+        result = propose_pool_stage(self.ctx, pool_count=2)
+        proposal = AgentProposal.objects.get(id=result["proposal_id"])
+        pools = proposal.payload["pools"]
+        self.assertEqual([p["name"] for p in pools], ["A", "B"])
+        self.assertEqual(pools[0]["seeding"], [1, 4, 5, 8])
+        self.assertEqual(pools[1]["seeding"], [2, 3, 6, 7])
+        self.assertIn("snake draft", proposal.summary)
+
+    def test_it_refuses_a_pool_count_that_cannot_work(self) -> None:
+        for bad in (0, 1, 5):
+            result = propose_pool_stage(self.ctx, pool_count=bad)
+            self.assertIn("error", result, f"pool_count={bad} should be refused")
+            self.assertIn("between 2 and 4", result["message"])
+        # A model that sends a word instead of a number gets the same answer.
+        worded = propose_pool_stage(self.ctx, pool_count="many")  # type: ignore[arg-type]
+        self.assertIn("between 2 and 4", worded["message"])
+
+    def test_applying_the_stage_builds_every_pool(self) -> None:
+        result = propose_pool_stage(self.ctx, pool_count=2)
+        proposal = AgentProposal.objects.get(id=result["proposal_id"])
+        applied = apply_proposal(proposal)
+        self.assertEqual(len(applied["pools"]), 2)
+        built = Pool.objects.filter(tournament=self.tournament).order_by("sequence_number")
+        self.assertEqual([p.name for p in built], ["A", "B"])
+        self.assertEqual(sorted(int(s) for s in built[0].initial_seeding), [1, 4, 5, 8])
+
+    def test_phantom_proposal_ids_lose_their_number(self) -> None:
+        self.assertEqual(
+            strip_phantom_proposal_ids("Proposal #47 is ready to confirm.", set()),
+            "the proposal above is ready to confirm.",
+        )
+        # Ids the turn can actually account for are left alone.
+        self.assertEqual(
+            strip_phantom_proposal_ids("Proposal #12 is ready.", {12}),
+            "Proposal #12 is ready.",
+        )
+        self.assertEqual(strip_phantom_proposal_ids("", {1}), "")
+
+    def test_the_guard_does_not_maul_ordinary_numbers(self) -> None:
+        """A bare #4 is nearly always a seed or a table cell, not a proposal."""
+        for text in (
+            "Pool A takes seeds #1, #4, #5 and #8.",
+            "| **A** (#61) | 1, 4, 5, 8 |",
+            "Match #3 is on Field 2.",
+        ):
+            self.assertEqual(strip_phantom_proposal_ids(text, set()), text)
+
+
+class ProposalOutcomeTests(TestCase):
+    """What staff decided on a card has to get back to the model somehow."""
+
+    def setUp(self) -> None:
+        self.user = User.objects.create(username="outcome-staff", is_staff=True)
+        self.event = create_event(title="Outcome Open")
+        self.tournament = Tournament.objects.create(
+            event=self.event, status=Tournament.Status.SCHEDULING
+        )
+        teams = [Team.objects.create(name=f"Oc {i}", slug=f"oc-{i}") for i in range(1, 3)]
+        seeding = {str(i): team.id for i, team in enumerate(teams, start=1)}
+        self.tournament.initial_seeding = seeding
+        self.tournament.current_seeding = seeding
+        self.tournament.save()
+        self.tournament.teams.set(teams)
+        TournamentField.objects.create(tournament=self.tournament, name="Field 1")
+        self.session = TournamentAgentSession.objects.create(
+            user=self.user, tournament=self.tournament, model_id=default_model_id()
+        )
+        self.ctx = ToolContext(session=self.session, tournament=self.tournament)
+
+    def _proposal(self) -> AgentProposal:
+        result = propose_create_pool(self.ctx, name="A", sequence_number=1, seeding=[1, 2])
+        return AgentProposal.objects.get(id=result["proposal_id"])
+
+    def test_confirm_is_recorded_where_the_next_turn_will_read_it(self) -> None:
+        proposal = self._proposal()
+        apply_proposal(proposal)
+
+        note = self.session.messages.filter(role="system").latest("created_at")
+        self.assertIn(f"#{proposal.id}", note.content)
+        self.assertIn("confirmed by staff and applied", note.content)
+        self.assertEqual(note.payload["outcome"], "confirmed")
+
+        state = render_state(build_snapshot(self.session))
+        self.assertIn("Applied this session", state)
+        self.assertIn("Create pool A", state)
+
+        # Staff already see the outcome on the card; the chat does not repeat it.
+        ui = TournamentAgentService(self.user).history(self.session)
+        self.assertFalse([m for m in ui["messages"] if m["role"] == "system"])
+
+    def test_reject_is_recorded_too(self) -> None:
+        proposal = self._proposal()
+        reject_proposal(proposal)
+        note = self.session.messages.filter(role="system").latest("created_at")
+        self.assertIn("rejected by staff", note.content)
+        self.assertEqual(note.payload["outcome"], "rejected")
+
+    def test_confirming_twice_applies_once(self) -> None:
+        proposal = self._proposal()
+        apply_proposal(proposal)
+        self.assertEqual(Pool.objects.filter(tournament=self.tournament).count(), 1)
+
+        with self.assertRaises(ProposalApplyError) as cm:
+            apply_proposal(proposal)
+        self.assertIn("already been applied", str(cm.exception))
+        self.assertEqual(Pool.objects.filter(tournament=self.tournament).count(), 1)
+        # A second Confirm is not an apply failure, so it must not leave one behind.
+        proposal.refresh_from_db()
+        self.assertEqual(proposal.last_error, "")
+
+    def test_failed_apply_tells_the_agent_to_re_propose(self) -> None:
+        proposal = self._proposal()
+        proposal.payload = {"name": "A", "sequence_number": 1, "seeding": [1, 999]}
+        proposal.save(update_fields=["payload"])
+        with self.assertRaises(ProposalApplyError):
+            apply_proposal(proposal)
+
+        note = self.session.messages.filter(role="system").latest("created_at")
+        self.assertIn("failed to apply", note.content)
+        self.assertIn("do not reuse", note.content)
+        self.assertEqual(note.payload["outcome"], "failed")
+        proposal.refresh_from_db()
+        self.assertEqual(proposal.status, ProposalStatus.PENDING)
+        self.assertTrue(proposal.last_error)
+
+
 class ArchitectureTests(TestCase):
     """Keep the package layout from rotting back into a flat pile of modules.
 
@@ -2478,7 +3081,7 @@ class ArchitectureTests(TestCase):
     # Shared roots: leaf-ish modules anything may depend on.
     SHARED = frozenset({"models", "catalog", "schema"})
     # Each layer may import the ones after it, never the ones before.
-    CHAIN = ["api", "services", "tools", "domain"]
+    CHAIN = ["api", "services", "policy", "tools", "domain"]
     # Imported by the chain, importing nothing from the package back.
     LEAVES = frozenset({"clients", "privacy"})
 
@@ -2563,23 +3166,29 @@ class SkillLoaderTests(TestCase):
         live = next(s for s in load_skills() if s.name == "live_progression")
         self.assertIn("forfeit", live.triggers)
         self.assertIn("tiebreak", live.triggers)
-        self.assertEqual(live.when_status, ["LIV"])
+        self.assertEqual(live.when_phase, ["live"])
         self.assertFalse(live.always)
 
-    def test_trigger_matches_outrank_status_matches(self) -> None:
+    def test_trigger_matches_outrank_phase_matches(self) -> None:
         # When the budget bites, what gets dropped must be the skill the turn did
-        # not ask for — so a word the staff member typed beats a status match.
+        # not ask for — so a word the staff member typed beats a phase match.
         skills = load_skills()
         picked = select_skills(
-            skills, tournament_status="LIV", user_text="record spirit for match 42"
+            skills,
+            tournament_status="LIV",
+            user_text="record spirit for match 42",
+            phase="live",
         )
         names = [s.name for s in picked]
         self.assertIn("spirit_and_roster", names)
         self.assertLess(names.index("spirit_and_roster"), names.index("live_progression"))
 
-    def test_setup_order_is_fields_then_stages_then_schedule(self) -> None:
+    def test_setup_order_is_enforced_not_merely_written_down(self) -> None:
+        """It used to be a sentence in core_rules; it is the phase machine now."""
         core = next(s for s in load_skills() if s.name == "core_rules")
-        self.assertIn("fields, then stages, then schedule", core.body)
+        self.assertNotIn("fields, then stages, then schedule", core.body)
+        self.assertNotIn("propose_recommended_schedule", tools_for(Phase.NO_STAGES))
+        self.assertNotIn("propose_pool_stage", tools_for(Phase.NO_FIELDS))
 
     def test_core_rules_are_always_first(self) -> None:
         for status, text in (("DFT", "set up"), ("LIV", "score"), ("COM", "overview")):
@@ -2598,6 +3207,30 @@ class SkillLoaderTests(TestCase):
         # A repair word pulls the repair skill in even before the tournament starts.
         self.assertIn("mid_event_repairs", names("DFT", "the seeding is wrong, fix pool A"))
         self.assertIn("safety_and_refusals", names("COM", "overview"))
+
+    def test_phase_beats_status_for_what_ships_every_turn(self) -> None:
+        """Status is too coarse: every setup turn is SCH, so keying on it ships
+        the repair playbook to turns that never mentioned a repair."""
+        skills = load_skills()
+        setup_turn = [
+            s.name
+            for s in select_skills(
+                skills, tournament_status="SCH", user_text="add a field", phase="no_stages"
+            )
+        ]
+        self.assertNotIn("mid_event_repairs", setup_turn)
+        self.assertNotIn("live_progression", setup_turn)
+        # ...but the words staff actually type still pull it in.
+        repair_turn = [
+            s.name
+            for s in select_skills(
+                skills,
+                tournament_status="SCH",
+                user_text="move match 12, the field is waterlogged",
+                phase="no_stages",
+            )
+        ]
+        self.assertIn("mid_event_repairs", repair_turn)
 
     def test_format_playbook_leads_with_snake_and_push_in(self) -> None:
         playbook = next(s for s in load_skills() if s.name == "format_playbooks")

@@ -308,11 +308,32 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "propose_pool_stage",
+            "description": (
+                "Propose the pool stage for a tournament that has none. Give the number "
+                "of pools; the seeds are worked out here by snake draft, so do not pass "
+                "them. This is the tool for 'set up pools'."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "pool_count": {
+                        "type": "integer",
+                        "description": "How many pools to split the field into.",
+                    },
+                },
+                "required": ["pool_count"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "propose_create_pool",
             "description": (
-                "Propose creating a pool (requires staff Confirm). seeding must be a "
-                "snake-draft slice from list_teams_seeding.snake_draft, never a sequential "
-                "block. Two pools of 4: A=[1,4,5,8] B=[2,3,6,7]."
+                "Add one more pool to a tournament that already has a pool stage. "
+                "To create the stage itself use propose_pool_stage. seeding must be a "
+                "snake-draft slice from list_teams_seeding.snake_draft."
             ),
             "parameters": {
                 "type": "object",

@@ -2,6 +2,7 @@ import json
 from collections.abc import Iterator
 from typing import Any
 
+from django.conf import settings
 from django.http import HttpRequest, StreamingHttpResponse
 from ninja import Router
 
@@ -39,6 +40,8 @@ class AuthenticatedHttpRequest(HttpRequest):
 
 
 def _agent_user_or_401(request: AuthenticatedHttpRequest) -> dict[str, str] | None:
+    if not settings.TOURNAMENT_AGENT_ENABLED:
+        return {"message": "The tournament agent is currently switched off."}
     if not can_access_tournament_agent(request.user):
         return {"message": "Staff or assigned tournament director only"}
     return None
@@ -47,6 +50,8 @@ def _agent_user_or_401(request: AuthenticatedHttpRequest) -> dict[str, str] | No
 def _manage_session_or_401(
     request: AuthenticatedHttpRequest, session: TournamentAgentSession
 ) -> dict[str, str] | None:
+    if not settings.TOURNAMENT_AGENT_ENABLED:
+        return {"message": "The tournament agent is currently switched off."}
     if not can_manage_tournament(request.user, session.tournament):
         return {"message": "Staff or assigned tournament director only"}
     return None

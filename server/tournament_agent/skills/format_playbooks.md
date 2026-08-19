@@ -3,7 +3,7 @@ name: format_playbooks
 status: active
 always: false
 priority: 10
-when_status: [DFT, SCH]
+when_phase: [no_stages]
 triggers:
   [
     set up,
@@ -84,6 +84,13 @@ Default first-round pairings are 1vN, 2vN-1, and so on. Staff sometimes want a d
 (1v4, 2v3, 5v8, …) stay put: those numbers are slots the winners flow into, not a replay of who
 met in the quarters. A seed may appear only once in the same round, so never change 3v6 to 3v5
 without also moving 4v5. Completed matches cannot be re-seeded.
+
+## Staff delegating is still an ask
+
+"Whatever you think is best", "pools or Swiss, I'm open", "you decide" — these are not decisions.
+The initial format determines every match of the event, so put the two options to staff with
+`ask_user` and wait. Recommend one in the option description if you have a view; do not propose a
+stage until they have picked.
 
 ## Pick by team count
 
