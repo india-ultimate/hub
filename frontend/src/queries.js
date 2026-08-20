@@ -140,6 +140,55 @@ export const searchUsers = async searchText => {
   return await response.json();
 };
 
+export const fetchTournamentDirectors = async tournamentId => {
+  const response = await fetch(`/api/tournament/${tournamentId}/directors`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin"
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data?.message || JSON.stringify(data));
+  }
+  return data;
+};
+
+export const addTournamentDirector = async ({ tournamentId, userId }) => {
+  const response = await fetch(`/api/tournament/${tournamentId}/directors`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin",
+    body: JSON.stringify({ user_id: userId })
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data?.message || JSON.stringify(data));
+  }
+  return data;
+};
+
+export const removeTournamentDirector = async ({ tournamentId, userId }) => {
+  const response = await fetch(
+    `/api/tournament/${tournamentId}/directors/${userId}`,
+    {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCookie("csrftoken")
+      },
+      credentials: "same-origin"
+    }
+  );
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data?.message || JSON.stringify(data));
+  }
+  return data;
+};
+
 export const searchPlayers = async (searchText, pagination) => {
   let baseUrl = "/api/players/search";
   let params = new URLSearchParams();
@@ -1084,6 +1133,23 @@ export const updateField = async ({ field_id, body }) => {
     },
     credentials: "same-origin",
     body: JSON.stringify(body)
+  });
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.message || JSON.stringify(data));
+  }
+
+  return data;
+};
+
+export const deleteField = async ({ field_id }) => {
+  const response = await fetch(`/api/tournament/field/${field_id}`, {
+    method: "DELETE",
+    headers: {
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin"
   });
   const data = await response.json();
 
@@ -2255,4 +2321,241 @@ export const fetchMyFormResponses = async slug => {
     return [];
   }
   return await response.json();
+};
+
+// Tournament Agent API
+export const fetchTournamentAgentModels = async () => {
+  const response = await fetch("/api/tournament-agent/models", {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin"
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data?.message || "Failed to fetch models");
+  }
+  return data;
+};
+
+export const fetchTournamentAgentHistory = async tournamentId => {
+  const response = await fetch(
+    `/api/tournament-agent/history?tournament_id=${tournamentId}`,
+    {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin"
+    }
+  );
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data?.message || "Failed to fetch agent history");
+  }
+  return data;
+};
+
+export const sendTournamentAgentMessage = async ({
+  tournament_id,
+  message,
+  model_id
+}) => {
+  const response = await fetch("/api/tournament-agent/send_message", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin",
+    body: JSON.stringify({ tournament_id, message, model_id })
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data?.message || "Failed to send message");
+  }
+  return data;
+};
+
+/**
+ * Consume a Server-Sent Events response body, invoking onEvent per frame.
+ *
+ * EventSource is not usable here: it is GET-only and cannot send the CSRF
+ * header, so we read the fetch body and parse the frames ourselves.
+ */
+const consumeSSE = async (response, onEvent) => {
+  if (!response.body) {
+    throw new Error("Streaming is not supported by this browser");
+  }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  const dispatch = frame => {
+    let name = "message";
+    const dataLines = [];
+    for (const line of frame.split("\n")) {
+      if (line.startsWith("event:")) name = line.slice(6).trim();
+      else if (line.startsWith("data:")) dataLines.push(line.slice(5).trim());
+    }
+    if (!dataLines.length) return;
+    try {
+      onEvent({ name, data: JSON.parse(dataLines.join("\n")) });
+    } catch (e) {
+      // A malformed frame should not tear down the rest of the turn.
+    }
+  };
+
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    // Frames are separated by a blank line; the tail may be a partial frame.
+    const frames = buffer.split("\n\n");
+    buffer = frames.pop() ?? "";
+    frames.forEach(dispatch);
+  }
+  if (buffer.trim()) dispatch(buffer);
+};
+
+const streamAgentRequest = async (url, body, { signal, onEvent }) => {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin",
+    body: JSON.stringify(body),
+    signal
+  });
+  if (!response.ok) {
+    // Failures before the turn starts are real status codes carrying one frame.
+    let message = `Request failed (${response.status})`;
+    try {
+      const text = await response.text();
+      const match = text.match(/data: (.+)/);
+      if (match) message = JSON.parse(match[1]).message || message;
+    } catch (e) {
+      // fall through to the generic message
+    }
+    throw new Error(message);
+  }
+  await consumeSSE(response, onEvent);
+};
+
+export const streamTournamentAgentMessage = ({
+  tournament_id,
+  message,
+  model_id,
+  signal,
+  onEvent
+}) =>
+  streamAgentRequest(
+    "/api/tournament-agent/stream_message",
+    { tournament_id, message, model_id },
+    { signal, onEvent }
+  );
+
+export const streamTournamentAgentAnswer = ({
+  questionId,
+  body,
+  signal,
+  onEvent
+}) =>
+  streamAgentRequest(
+    `/api/tournament-agent/questions/${questionId}/answer_stream`,
+    body,
+    { signal, onEvent }
+  );
+
+export const answerTournamentAgentQuestion = async (questionId, body) => {
+  const response = await fetch(
+    `/api/tournament-agent/questions/${questionId}/answer`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCookie("csrftoken")
+      },
+      credentials: "same-origin",
+      body: JSON.stringify(body)
+    }
+  );
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data?.message || "Failed to answer question");
+  }
+  return data;
+};
+
+export const confirmTournamentAgentProposal = async proposalId => {
+  const response = await fetch(
+    `/api/tournament-agent/proposals/${proposalId}/confirm`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCookie("csrftoken")
+      },
+      credentials: "same-origin"
+    }
+  );
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data?.message || "Failed to confirm proposal");
+  }
+  return data;
+};
+
+export const rejectTournamentAgentProposal = async proposalId => {
+  const response = await fetch(
+    `/api/tournament-agent/proposals/${proposalId}/reject`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCookie("csrftoken")
+      },
+      credentials: "same-origin"
+    }
+  );
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data?.message || "Failed to reject proposal");
+  }
+  return data;
+};
+
+export const setTournamentAgentModel = async ({ tournament_id, model_id }) => {
+  const response = await fetch("/api/tournament-agent/set_model", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin",
+    body: JSON.stringify({ tournament_id, model_id })
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data?.message || "Failed to set model");
+  }
+  return data;
+};
+
+export const clearTournamentAgentHistory = async tournamentId => {
+  const response = await fetch(
+    `/api/tournament-agent/clear_history?tournament_id=${tournamentId}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCookie("csrftoken")
+      },
+      credentials: "same-origin"
+    }
+  );
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data?.message || "Failed to clear history");
+  }
+  return data;
 };
