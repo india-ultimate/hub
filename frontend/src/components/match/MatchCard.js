@@ -126,6 +126,7 @@ const TournamentMatch = props => {
       userAccessQuery.data &&
       (userAccessQuery.data.is_staff ||
         userAccessQuery.data.is_tournament_admin ||
+        userAccessQuery.data.is_tournament_director ||
         userAccessQuery.data.is_tournament_volunteer)
     );
   };
