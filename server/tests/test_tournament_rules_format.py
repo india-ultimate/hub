@@ -123,7 +123,9 @@ class RulesFormatTests(TestCase):
 
         rules = self._rules()
         self.assertIn(STAFF_NOTE, rules)
-        self.assertIn("### All games are played by WFDF 2021 rules", rules)
+        # A structural heading, not a rules detail: this test is about the markers,
+        # and should not need editing every time the WFDF ruleset is updated.
+        self.assertIn("### Game Time, Time Outs, Scores", rules)
         self.assertIn("**Pool A**", rules)
 
     def test_rules_without_markers_are_left_completely_alone(self) -> None:
