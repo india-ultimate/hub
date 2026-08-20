@@ -2,11 +2,19 @@
 
 ## Format
 
-| Stage            | Description                                                      |
-| :--------------- | :--------------------------------------------------------------- |
-| **Pool Games**   | 1-16 (4 Pools of 4). Re-seed within pools only. 75 minute games. |
-| **Cross-Pool 1** | 1-4, 5-12, 13-16. 75 minute games.                               |
-| **Bracket**      | 1-8, 9-16. Winner takes the higher seed. 100 minute games.       |
+<!-- format:auto -->
+
+The format appears here once the tournament's stages are created.
+
+<!-- /format:auto -->
+
+The table above is maintained for you and rewritten whenever the stages change — there is no need
+to edit it by hand. Anything you write outside those two comment markers is yours and is never
+touched; delete the markers if you would rather write the format yourself.
+
+Events use the same building blocks — pools, cross-pool, brackets and position pools — in whatever
+combination fits the entry list. Some events use a Swiss draw in place of pools; see "Swiss draws"
+below.
 
 ## Rules
 
@@ -88,3 +96,68 @@ Re-seeding within a pool means that, if a pool initially contains seeds 1, 3, 6,
 - Points scored counting all pool games
 - Longest throw (one player per team)
 - When more than 2 Teams are tied, we will use this same system for all Teams involved (eg 1.Games won between tied teams, 2...); removing Teams immediately that come out on top/bottom and starting again till we have a clear Ranking of relevant Teams
+
+### Position pools
+
+A position pool is a round-robin played among a band of seeds that is not large enough for a
+bracket (for example seeds 9-12). It uses exactly the same re-seeding and tie-breaking rules as a
+pool: the teams redistribute that band's own seeds by finish order.
+
+### Cross-pool and bracket progression
+
+In a cross-pool or bracket game, **the winner takes the higher (lower-numbered) seed**. If the
+higher seed wins, nothing changes. If the lower seed wins, the two teams swap seeds — no other
+team's seed is affected.
+
+Cross-pool games are played in bands. A team that wins its band game moves up into the higher
+bracket, and the team that loses it drops into the lower one.
+
+### Swiss draws
+
+Some events use a Swiss draw instead of pools. In a Swiss draw every team plays a fixed number of
+rounds and is paired against a new opponent each round.
+
+- **Round 1** pairs the top seed against the bottom seed, the second seed against the second from
+  bottom, and so on.
+- **Every round after that** is paired on current standings: teams are ordered by points, and each
+  team is matched against the closest-ranked available team it has not already played. Rematches
+  are only used if no other complete pairing is possible.
+- **Points** are 2 for a win and 1 for a draw.
+- **If the number of teams is odd**, one team sits out each round. The bye goes to the
+  lowest-ranked team that has not already had one, and is recorded as a win with 15 points scored.
+  No team receives more than one bye before every team has had one.
+- When all rounds are complete, the teams redistribute the group's own seeds by final standing,
+  exactly as a pool does at its re-seed.
+
+### Tie-breaking in a Swiss draw (in order)
+
+Teams level on points are separated by:
+
+- Games won counting only games between the tied teams
+- Strength of opponents faced (the total points won by the teams they have played — higher is
+  stronger)
+- Points difference counting all games in the draw
+
+As with pools, when more than two teams are tied we apply the same system to all of them, removing
+teams as they separate out and starting again until the remaining teams are ranked.
+
+### Forfeits
+
+If a team does not take the field for a scheduled game, the game is recorded as a **15-0 win** to
+the team that was ready to play. A forfeit counts as a normal result for standings, re-seeding and
+tie-breaking. A team that withdraws part-way through the event forfeits each of its remaining
+games; it is not removed from the draw, so that every other team's schedule and seeding stay intact.
+
+### Spirit scores
+
+Both teams score each other after every game, using the five WFDF categories — Rules Knowledge and
+Use, Fouls and Body Contact, Fair-Mindedness, Positive Attitude and Self-Control, and
+Communication. Each category is scored **0 to 4**, giving a total out of 20. Each team also scores
+**itself** on the same five categories.
+
+Teams may additionally nominate an MVP (Most Valuable Player) and an MSP (Most Spirited Player)
+from the team they played.
+
+A team's tournament spirit score is the average of the scores it received. A game only counts
+towards that average once **both** the score that team received and its own self-score have been
+submitted, so please submit both promptly.

@@ -1,7 +1,7 @@
 import datetime
 import random
 import string
-from typing import Any
+from typing import Any, TypeVar
 
 from django.test import TestCase
 from django.utils.timezone import now
@@ -20,6 +20,20 @@ from server.tournament.models import (
     Tournament,
     UCRegistration,
 )
+
+T = TypeVar("T")
+
+
+def not_none(value: T | None, message: str = "expected a value, got None") -> T:
+    """Assert a value is present and hand it back with the `None` narrowed away.
+
+    `assertIsNotNone` checks the same thing but tells mypy nothing, so callers
+    then have to use the value as an Optional. Returning it is what lets the
+    check and the narrowing be the same line.
+    """
+    if value is None:
+        raise AssertionError(message)
+    return value
 
 
 def fake_id(n: int) -> str:
