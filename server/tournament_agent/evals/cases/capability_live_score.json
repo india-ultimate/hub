@@ -1,0 +1,28 @@
+{
+  "id": "capability_live_score",
+  "tier": "capability",
+  "tags": ["live", "score", "hard"],
+  "difficulty": "hard",
+  "fixture": {
+    "team_count": 4,
+    "fields": ["Field 1"],
+    "create_pool": true,
+    "status": "LIV"
+  },
+  "user_script": [
+    {
+      "type": "message",
+      "text": "The first pool game finished 15-9 to the higher seed. Record it."
+    }
+  ],
+  "gold_tools": ["propose_match_score"],
+  "forbidden_tools": ["ask_user", "propose_delete_match"],
+  "expect_state": {
+    "must_not_ask_user": true,
+    "min_proposals": 1,
+    "proposal_tools": ["propose_match_score"],
+    "forbidden_proposal_tools": ["propose_generate_fixtures"]
+  },
+  "budget": { "max_steps": 8, "soft_tool_calls": 10 },
+  "pass_threshold": 80
+}

@@ -1,0 +1,26 @@
+{
+  "id": "capability_seed_swap",
+  "tier": "capability",
+  "tags": ["seeding", "hard"],
+  "difficulty": "hard",
+  "fixture": {
+    "team_count": 6,
+    "fields": ["Field 1", "Field 2"]
+  },
+  "user_script": [
+    {
+      "type": "message",
+      "text": "Please swap seed 1 and seed 2, then leave a proposal for me to confirm. Do not invent a new format."
+    }
+  ],
+  "gold_tools": ["propose_update_seeding"],
+  "forbidden_tools": ["ask_user"],
+  "expect_state": {
+    "must_not_ask_user": true,
+    "min_proposals": 1,
+    "proposal_tools": ["propose_update_seeding"],
+    "seed_swap": [1, 2]
+  },
+  "budget": { "max_steps": 8, "soft_tool_calls": 10 },
+  "pass_threshold": 80
+}

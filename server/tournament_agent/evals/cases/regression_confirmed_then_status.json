@@ -1,0 +1,40 @@
+{
+  "id": "regression_confirmed_then_status",
+  "tier": "regression",
+  "tags": ["state", "confirm"],
+  "difficulty": "hard",
+  "fixture": {
+    "team_count": 8,
+    "fields": ["Field 1", "Field 2"]
+  },
+  "user_script": [
+    {
+      "type": "message",
+      "text": "Set up two pools for this tournament."
+    },
+    {
+      "type": "confirm",
+      "tool_name": "propose_pool_stage"
+    },
+    {
+      "type": "message",
+      "text": "Is the pool stage set up now?"
+    }
+  ],
+  "expect_state": {
+    "must_confirm": ["propose_pool_stage"],
+    "must_not_ask_user": true,
+    "max_proposals": 1,
+    "forbidden_response_text": [
+      "no pools",
+      "not been created",
+      "nothing has been set up"
+    ]
+  },
+  "budget": {
+    "max_steps": 8,
+    "soft_tool_calls": 10
+  },
+  "pass_threshold": 80,
+  "_why": "The mirror of the stale-plan case: this one WAS applied, out of band. The agent has to know that without being told, and must not re-propose it."
+}

@@ -1,0 +1,15 @@
+{
+  "id": "regression_overview",
+  "tier": "regression",
+  "tags": ["read"],
+  "fixture": {
+    "team_count": 4,
+    "fields": ["Field 1", "Field 2"]
+  },
+  "user_script": [
+    { "type": "message", "text": "Give me an overview of this tournament" }
+  ],
+  "gold_tools": ["get_tournament_overview"],
+  "expect_state": { "must_ask_user": false },
+  "budget": { "max_steps": 6 }
+}

@@ -1,0 +1,37 @@
+{
+  "id": "capability_stage_order_schedule",
+  "tier": "capability",
+  "tags": ["schedule", "hard", "stage-order"],
+  "difficulty": "hard",
+  "fixture": {
+    "team_count": 8,
+    "fields": ["Field 1", "Field 2"],
+    "start_date": "2026-08-01",
+    "end_date": "2026-08-02",
+    "pools": [
+      { "name": "A", "seeding": [1, 4, 5, 8] },
+      { "name": "B", "seeding": [2, 3, 6, 7] }
+    ],
+    "brackets": ["1-4", "5-8"]
+  },
+  "user_script": [
+    {
+      "type": "message",
+      "text": "Schedule this tournament Saturday 2026-08-01 and Sunday 2026-08-02 with 75 minute games. Pools must finish before any semi or final starts — do not put bracket games on while pool games are still going, even on another field."
+    }
+  ],
+  "gold_tools": ["propose_recommended_schedule", "check_schedule_conflicts"],
+  "forbidden_tools": ["ask_user"],
+  "expect_state": {
+    "must_not_ask_user": true,
+    "min_proposals": 1,
+    "proposal_tools": ["propose_recommended_schedule"],
+    "schedule_start_date": "2026-08-01",
+    "schedule_end_date": "2026-08-02",
+    "schedule_duration_mins": 75,
+    "min_schedule_assignments": 20,
+    "no_stage_order_violations": true
+  },
+  "budget": { "max_steps": 10, "soft_tool_calls": 14 },
+  "pass_threshold": 80
+}

@@ -1,0 +1,23 @@
+{
+  "id": "capability_standings_readonly",
+  "tier": "capability",
+  "tags": ["read", "analysis", "no-overask", "hard"],
+  "difficulty": "hard",
+  "fixture": {
+    "team_count": 4,
+    "fields": ["Field 1"],
+    "create_pool": true,
+    "status": "LIV"
+  },
+  "user_script": [
+    { "type": "message", "text": "Where do the pool standings sit right now?" }
+  ],
+  "gold_tools": ["get_standings"],
+  "forbidden_tools": ["ask_user", "propose_recommended_schedule"],
+  "expect_state": {
+    "must_not_ask_user": true,
+    "max_proposals": 0
+  },
+  "budget": { "max_steps": 6, "soft_tool_calls": 8 },
+  "pass_threshold": 80
+}

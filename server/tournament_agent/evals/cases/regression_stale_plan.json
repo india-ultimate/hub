@@ -1,0 +1,36 @@
+{
+  "id": "regression_stale_plan",
+  "tier": "regression",
+  "tags": ["state", "history"],
+  "difficulty": "hard",
+  "fixture": {
+    "team_count": 8,
+    "fields": ["Field 1", "Field 2"]
+  },
+  "user_script": [
+    {
+      "type": "message",
+      "text": "Set up two pools for this tournament."
+    },
+    {
+      "type": "message",
+      "text": "Great. Now add a 1-4 bracket on top of those pools."
+    }
+  ],
+  "gold_tools": ["propose_pool_stage"],
+  "expect_state": {
+    "min_proposals": 1,
+    "forbidden_response_text": [
+      "pools are now set up",
+      "pools have been created",
+      "i have created the pools",
+      "the pools are in place"
+    ]
+  },
+  "budget": {
+    "max_steps": 8,
+    "soft_tool_calls": 12
+  },
+  "pass_threshold": 80,
+  "_why": "Nobody pressed Confirm, so the pools do not exist. The agent used to read its own previous message and build on a stage that was never applied."
+}
