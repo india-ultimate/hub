@@ -35,9 +35,13 @@ How this system works, and what each proposal actually does. Everything else bui
 
 Times are stored in UTC and read back as UTC, in ISO 8601: `2026-07-18T07:00:00+00:00`.
 
-You may pass either form. An offset is honoured as given. A naive string like
-`2026-07-18T07:00:00` is taken to be UTC, because that is the server's own time zone — it is not
-interpreted as local time anywhere.
+You may pass either form. A naive string like `2026-07-18T07:00:00` is taken to be UTC, and
+`+00:00` or `Z` mean the same thing. Any other offset is **refused**: times here are wall-clock, so
+an offset would shift the match away from the time everyone else is reading.
+
+A time you write goes through the same conversion the classic tournament manager
+uses when a staff member picks one by hand, so a match you schedule and a match
+they reschedule land on the same instant.
 
 The rule that matters: never shift a time you have read. Read a match at `07:00:00+00:00` and write
 it back as `07:00:00+00:00`. Do not convert it to a local zone first, and do not "correct" a time

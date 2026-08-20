@@ -7,6 +7,8 @@ from typing import Any, cast
 
 from django.db import transaction
 from django.db.models import Q
+from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 
 from server.core.models import Player, Team, UCPerson, User
 from server.series.models import SeriesRegistration
@@ -2136,6 +2138,37 @@ def validate_new_pool(
         valid_pool = False
 
     return valid_pool, errors
+
+
+def as_match_time(value: datetime.datetime) -> datetime.datetime:
+    """Put a match time into the one frame the whole product reads it in.
+
+    Match times are wall-clock: the digits a staff member types are the digits
+    everyone sees, wherever they are. That is why every screen formats them with
+    `timeZone: "UTC"` — the zone is a container, not a conversion.
+
+    So a naive value is labelled with the project's time zone and left otherwise
+    alone, and an offset that would move the digits is refused rather than
+    silently shifting the match. `<input type="datetime-local">` cannot express
+    one, so accepting one from anywhere else would be the one way two writers
+    could disagree about the same wall-clock time.
+    """
+    if timezone.is_naive(value):
+        return timezone.make_aware(value)
+    if value.utcoffset() != datetime.timedelta(0):
+        raise ValueError(
+            f"Match times are wall-clock and stored as UTC; {value.isoformat()} "
+            "carries an offset that would shift it. Send the time without one."
+        )
+    return value
+
+
+def parse_match_time(value: str) -> datetime.datetime:
+    """`as_match_time` for the ISO strings the API and the agent exchange."""
+    parsed = parse_datetime(value)
+    if parsed is None:
+        raise ValueError(f"Invalid datetime: {value}")
+    return as_match_time(parsed)
 
 
 def validate_bracket_name(

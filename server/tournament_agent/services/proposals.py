@@ -15,7 +15,6 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import QuerySet
 from django.utils import timezone
-from django.utils.dateparse import parse_datetime
 
 from server.tournament.models import (
     Bracket,
@@ -33,6 +32,7 @@ from server.tournament.utils import (
     build_swiss_round,
     create_spirit_scores,
     get_bracket_match_name,
+    parse_match_time,
     populate_fixtures,
     update_match_score_and_results,
     update_tournament_seeding,
@@ -74,14 +74,18 @@ def _record_outcome(proposal: AgentProposal, text: str, outcome: str) -> None:
 
 
 def _parse_time(value: str | None) -> datetime | None:
+    """Times go through the same helper the classic manager uses.
+
+    A match scheduled by the agent and the same match rescheduled by hand have to
+    end up on the same instant, so there is one interpretation of a time string
+    and both callers share it.
+    """
     if not value:
         return None
-    dt = parse_datetime(value)
-    if dt is None:
-        raise ProposalApplyError(f"Invalid datetime: {value}")
-    if timezone.is_naive(dt):
-        dt = timezone.make_aware(dt)
-    return dt
+    try:
+        return parse_match_time(value)
+    except ValueError as exc:
+        raise ProposalApplyError(str(exc)) from exc
 
 
 def _readable(exc: Exception) -> str:
