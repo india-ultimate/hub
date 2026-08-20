@@ -348,6 +348,12 @@ class UserSchema(ModelSchema):
     def resolve_is_staff(user: User) -> bool:
         return user.is_staff
 
+    directed_tournament_ids: list[int]
+
+    @staticmethod
+    def resolve_directed_tournament_ids(user: User) -> list[int]:
+        return list(user.directed_tournaments.values_list("id", flat=True))
+
     player: PlayerSchema | None
 
     @staticmethod
@@ -486,6 +492,7 @@ class RegistrationWardSchema(UserWardFormSchema, PlayerFormSchema, GuardianshipF
 class UserAccessSchema(Schema):
     is_staff: bool
     is_tournament_admin: bool
+    is_tournament_director: bool
     playing_team_id: int
     admin_team_ids: list[int]
     is_tournament_volunteer: bool
