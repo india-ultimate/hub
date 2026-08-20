@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import json
 import os
+import queue
 import re
+import threading
 import time
 from collections.abc import Iterator
 from dataclasses import dataclass
@@ -53,6 +55,8 @@ class StreamChunk:
 
     `type="text"` carries an incremental delta; exactly one `type="result"`
     chunk is emitted last, carrying the assembled ChatCompletionResult.
+    `type="ping"` means only that the provider has gone quiet — see
+    `_with_idle_pings`.
     """
 
     type: str
@@ -74,6 +78,8 @@ SERVER_ERROR = 500
 # Three attempts covers the single-blip case without making staff wait through a
 # real outage: with the backoff below, the worst case adds two seconds.
 MAX_ATTEMPTS = 3
+# Well inside the 60s that Fly's proxy allows a connection to stay silent.
+IDLE_PING_SECONDS = 10.0
 RETRY_BACKOFF_SECONDS = (0.5, 1.5)
 
 
@@ -339,6 +345,46 @@ def _parse_responses_result(data: dict[str, Any]) -> ChatCompletionResult:
     )
 
 
+def _with_idle_pings(chunks: Iterator[StreamChunk], interval: float) -> Iterator[StreamChunk]:
+    """Pass `chunks` through, injecting a `ping` whenever the provider goes quiet.
+
+    A reasoning model can spend well over a minute before its first token, and
+    every hop in front of us gives up on a silent connection long before that —
+    Fly's proxy at 60s. Something has to come down the wire in the meantime.
+
+    The read runs on a helper thread so this generator can wake up on a timer
+    instead of blocking on the socket. That thread deliberately touches nothing
+    but httpx: the ORM, and so the caller's connection and transaction, stay on
+    the caller's thread. The queue is unbounded so that a consumer who walks away
+    lets the thread drain and exit rather than wedging it on a full queue.
+    """
+    out: queue.Queue[tuple[str, Any]] = queue.Queue()
+
+    def read() -> None:
+        try:
+            for chunk in chunks:
+                out.put(("chunk", chunk))
+        except BaseException as exc:  # — re-raised on the consumer's thread
+            out.put(("error", exc))
+        finally:
+            out.put(("end", None))
+
+    thread = threading.Thread(target=read, name="opencode-stream", daemon=True)
+    thread.start()
+    while True:
+        try:
+            kind, item = out.get(timeout=interval)
+        except queue.Empty:
+            yield StreamChunk(type="ping")
+            continue
+        if kind == "chunk":
+            yield item
+        elif kind == "error":
+            raise item
+        else:
+            return
+
+
 class OpenCodeGoClient:
     def __init__(
         self,
@@ -445,7 +491,13 @@ class OpenCodeGoClient:
         for attempt in range(MAX_ATTEMPTS):
             emitted = False
             try:
-                for chunk in self._stream_once(model, messages, tools, temp, tokens, choice):
+                stream = self._stream_once(model, messages, tools, temp, tokens, choice)
+                for chunk in _with_idle_pings(stream, IDLE_PING_SECONDS):
+                    # A ping is not the provider answering, so it must not make the
+                    # attempt look committed — a failure after one is still retryable.
+                    if chunk.type == "ping":
+                        yield chunk
+                        continue
                     emitted = True
                     yield chunk
                 return

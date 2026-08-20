@@ -5,6 +5,7 @@ from __future__ import annotations
 import inspect
 import json
 import re
+import threading
 from collections import defaultdict
 from collections.abc import Iterator
 from datetime import datetime, timedelta
@@ -48,6 +49,7 @@ from server.tournament_agent.clients.opencode import (
     OpenCodeGoClient,
     OpenCodeGoError,
     StreamChunk,
+    _with_idle_pings,
     forced_tools_disabled_for,
 )
 from server.tournament_agent.domain.format import (
@@ -1737,14 +1739,18 @@ class StreamEndpointTests(ApiBaseTestCase):
         return frames
 
     def _post_stream(self, message: str) -> tuple[Any, list[tuple[str, dict[str, Any]]]]:
+        response, _ = self._post_stream_raw(message)
+        return response, self._parse_sse(self._last_body)
+
+    def _post_stream_raw(self, message: str) -> tuple[Any, str]:
         response = self.client.post(
             "/api/tournament-agent/stream_message",
             data=json.dumps({"tournament_id": self.tournament.id, "message": message}),
             content_type="application/json",
         )
         chunks = cast(Iterator[bytes], cast(StreamingHttpResponse, response).streaming_content)
-        body = b"".join(chunks).decode()
-        return response, self._parse_sse(body)
+        self._last_body = b"".join(chunks).decode()
+        return response, self._last_body
 
     def test_stream_emits_framed_events_and_done(self) -> None:
         rounds = [
@@ -1758,7 +1764,7 @@ class StreamEndpointTests(ApiBaseTestCase):
             response, frames = self._post_stream("show fields")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response["Content-Type"], "text/event-stream")
+        self.assertEqual(response["Content-Type"], "text/event-stream; charset=utf-8")
         # Without this nginx buffers the whole turn and streaming does nothing.
         self.assertEqual(response["X-Accel-Buffering"], "no")
 
@@ -1780,6 +1786,66 @@ class StreamEndpointTests(ApiBaseTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(frames[-1][0], "error")
         self.assertIn("provider exploded", frames[-1][1]["message"])
+
+    def test_provider_silence_becomes_a_keepalive_comment(self) -> None:
+        """Fly's proxy drops a connection idle for 60s; a thinking model outlasts that."""
+
+        def slow_first_token(**kwargs: Any) -> Any:
+            """Two ping intervals pass before the model says anything."""
+            yield StreamChunk(type="ping")
+            yield StreamChunk(type="ping")
+            yield StreamChunk(
+                type="result",
+                result=ChatCompletionResult(
+                    content=None,
+                    tool_calls=[{"name": "list_fields", "id": "tc1", "arguments": "{}"}],
+                    raw={},
+                    finish_reason="tool_calls",
+                ),
+            )
+
+        with patch(
+            "server.tournament_agent.clients.opencode.OpenCodeGoClient.chat_stream",
+            side_effect=[slow_first_token(), self._stream_round("One field.", [])],
+        ):
+            response, body = self._post_stream_raw("show fields")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(body.count(": ping\n\n"), 2)
+        # A comment, not a frame: the browser must never see a heartbeat as data.
+        self.assertNotIn("heartbeat", body)
+        frames = self._parse_sse(body)
+        self.assertEqual(frames[-1][0], "done")
+
+    def test_idle_pings_are_injected_when_the_provider_goes_quiet(self) -> None:
+        """The wrapper must emit on a timer, not only when the upstream speaks."""
+        released = threading.Event()
+
+        def slow_stream() -> Any:
+            released.wait(timeout=5)
+            yield StreamChunk(
+                type="result",
+                result=ChatCompletionResult(
+                    content="done", tool_calls=[], raw={}, finish_reason="stop"
+                ),
+            )
+
+        pings_before_release = 3
+        chunks = []
+        for chunk in _with_idle_pings(slow_stream(), 0.05):
+            chunks.append(chunk)
+            if len(chunks) == pings_before_release:
+                released.set()
+        self.assertTrue(all(c.type == "ping" for c in chunks[:pings_before_release]))
+        self.assertEqual(chunks[-1].type, "result")
+
+    def test_idle_ping_wrapper_reraises_on_the_consumer_thread(self) -> None:
+        def boom() -> Any:
+            yield StreamChunk(type="ping")
+            raise RuntimeError("provider exploded")
+
+        with self.assertRaisesMessage(RuntimeError, "provider exploded"):
+            list(_with_idle_pings(boom(), 0.05))
 
     def test_stream_requires_staff(self) -> None:
         self.user.is_staff = False

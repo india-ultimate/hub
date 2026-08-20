@@ -1,4 +1,5 @@
 import json
+import logging
 from collections.abc import Iterator
 from typing import Any
 
@@ -31,6 +32,8 @@ from server.tournament_agent.services.proposals import (
     apply_proposal,
     reject_proposal,
 )
+
+logger = logging.getLogger(__name__)
 
 router = Router()
 
@@ -66,17 +69,31 @@ def _sse_body(events: Iterator[dict[str, Any]]) -> Iterator[str]:
 
     Headers are already sent once streaming starts, so a failure mid-turn cannot
     become an HTTP error status - it is delivered as a terminal `error` frame.
+
+    `heartbeat` events become SSE comments rather than frames: they exist to keep
+    the connection warm while the model thinks, and the client should never have
+    to know about them. Without them Fly's proxy drops the connection after 60s
+    of silence, which a reasoning model's first token can easily outlast.
     """
     yield ": open\n\n"
     try:
         for event in events:
+            if event.get("type") == "heartbeat":
+                yield ": ping\n\n"
+                continue
             yield _sse_frame(str(event.get("type") or "message"), event)
     except Exception as exc:  # — must reach the client as an error frame
+        # Past the headers there is no status code left to fail with, so this is
+        # the only way the client hears about it — and, since the exception never
+        # reaches Django's handler, the only way Sentry does either.
+        logger.exception("Tournament agent turn failed")
         yield _sse_frame("error", {"type": "error", "message": str(exc)[:500]})
 
 
 def _sse_response(events: Iterator[dict[str, Any]]) -> StreamingHttpResponse:
-    response = StreamingHttpResponse(_sse_body(events), content_type="text/event-stream")
+    response = StreamingHttpResponse(
+        _sse_body(events), content_type="text/event-stream; charset=utf-8"
+    )
     response["Cache-Control"] = "no-cache, no-transform"
     # Defeats nginx proxy_buffering even where the location block is missed.
     response["X-Accel-Buffering"] = "no"

@@ -603,6 +603,10 @@ class TournamentAgentService:
                 ready = text_stream.feed(chunk.text)
                 if ready:
                     yield {"type": "text_delta", "text": ready}
+            elif chunk.type == "ping":
+                # Keeps the connection alive while the model thinks; the API layer
+                # turns this into an SSE comment, so the browser never sees it.
+                yield {"type": "heartbeat"}
             elif chunk.type == "result":
                 result = chunk.result
         tail = text_stream.flush()
