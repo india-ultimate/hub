@@ -53,7 +53,7 @@ class TournamentMinSchema(ModelSchema):
 
     class Config:
         model = Tournament
-        model_exclude = ["volunteers"]
+        model_exclude = ["volunteers", "directors"]
 
 
 class TournamentSchema(ModelSchema):
@@ -84,11 +84,15 @@ class TournamentSchema(ModelSchema):
 
     class Config:
         model = Tournament
-        model_fields = "__all__"
+        model_exclude = ["volunteers", "directors"]
 
 
 class TournamentCreateFromEventSchema(Schema):
     event_id: int
+
+
+class TournamentDirectorAddSchema(Schema):
+    user_id: int
 
 
 class TournamentCreateSchema(Schema):
