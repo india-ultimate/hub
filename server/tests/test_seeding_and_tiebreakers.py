@@ -7,6 +7,7 @@ from server.tests.base import ApiBaseTestCase
 from server.tournament.models import Bracket, Match, Pool, PositionPool, SwissRound
 from server.tournament.utils import (
     apply_bye,
+    build_pool,
     get_new_pool_results,
     recompute_swiss_ranks,
     sort_swiss_tied_teams,
@@ -494,6 +495,12 @@ class BracketNameValidationTests(ApiBaseTestCase):
         self.assertFalse(ok)
         self.assertIn("longer than", (error or {}).get("message", ""))
         self.assertTrue(validate_bracket_name(self.tournament, "1-128")[0])
+
+    def test_duplicate_seeds_are_refused(self) -> None:
+        """A repeated seed would collapse into one dict key and lose a team."""
+        with self.assertRaisesMessage(ValueError, "2 is repeated"):
+            build_pool(self.tournament, name="A", sequence_number=1, seeding=[1, 2, 2, 3])
+        self.assertEqual(Pool.objects.filter(tournament=self.tournament).count(), 0)
 
     def test_validate_bracket_name_unit(self) -> None:
         self.assertTrue(validate_bracket_name(self.tournament, "1-8")[0])
