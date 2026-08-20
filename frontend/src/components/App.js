@@ -36,9 +36,7 @@ const Teams = lazy(() => import("./Teams"));
 const ViewTeam = lazy(() => import("./teams/View"));
 const EditTeam = lazy(() => import("./teams/Edit"));
 const CreateTeam = lazy(() => import("./teams/Create"));
-const TournamentManagerClassic = lazy(() =>
-  import("./tournament-manager/TournamentManagerClassic")
-);
+const TournamentManager = lazy(() => import("./TournamentManager"));
 const Tournaments = lazy(() => import("./Tournaments"));
 const Tournament = lazy(() => import("./Tournament"));
 const TeamRegistration = lazy(() => import("./TeamRegistration"));
@@ -274,7 +272,7 @@ export default function App() {
                   />
                   <UserRoute
                     path="/tournament-manager"
-                    component={TournamentManagerClassic}
+                    component={TournamentManager}
                     staffOrDirector={true}
                   />
                   {/* <UserRoute

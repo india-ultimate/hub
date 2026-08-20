@@ -2293,6 +2293,24 @@ export const fetchFormResponses = async slug => {
   return await response.json();
 };
 
+export const downloadFormResponsesCsv = async slug => {
+  const response = await fetch(`/api/forms/${slug}/responses/csv`, {
+    method: "GET",
+    credentials: "same-origin"
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data?.message || "Failed to download responses");
+  }
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${slug}-responses.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
 export const fetchMyFormResponses = async slug => {
   const response = await fetch(`/api/forms/${slug}/my-responses`, {
     method: "GET",
@@ -2394,6 +2412,9 @@ const consumeSSE = async (response, onEvent) => {
     buffer = frames.pop() ?? "";
     frames.forEach(dispatch);
   }
+  // Flush: a multi-byte character split across the last two chunks is still
+  // held inside the decoder, and player names and em dashes are full of them.
+  buffer += decoder.decode();
   if (buffer.trim()) dispatch(buffer);
 };
 
