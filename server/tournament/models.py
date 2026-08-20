@@ -93,6 +93,7 @@ class Tournament(ExportModelOperationsMixin("tournament"), models.Model):  # typ
     use_uc_registrations = models.BooleanField(default=False)
 
     volunteers = models.ManyToManyField(User, related_name="tournament_volunteer", blank=True)
+    directors = models.ManyToManyField(User, related_name="directed_tournaments", blank=True)
 
 
 @receiver(m2m_changed, sender=Tournament.teams.through)
@@ -217,6 +218,11 @@ class PositionPool(ExportModelOperationsMixin("position_pool"), models.Model):  
         unique_together = ["name", "tournament"]
 
 
+# Every field the rendered Format table reads. A save limited to anything else
+# cannot change it. `num_rounds` is Swiss-only and the rest are shared.
+FORMAT_TABLE_FIELDS = frozenset({"name", "initial_seeding", "sequence_number", "num_rounds"})
+
+
 @receiver(post_save, sender=Pool)
 @receiver(post_save, sender=SwissRound)
 @receiver(post_save, sender=CrossPool)
@@ -234,8 +240,17 @@ def update_rules_format_on_stage_change(sender: Any, instance: Any, **kwargs: An
     tournament agent's apply path, the admin and the shell all create stages, and
     only this catches deletions too. `sync_rules_format` is a no-op unless the
     rules carry the managed-block markers, so it cannot surprise anyone.
+
+    Scoring saves a stage on every submitted result, and rendering the table to
+    discover it has not changed costs a query per stage type. Where the caller
+    said which fields it touched, that is enough to skip: the table is built from
+    names, seedings and ordering, so a write to `results` cannot affect it.
     """
     from server.tournament.rules import sync_rules_format
+
+    update_fields = kwargs.get("update_fields")
+    if update_fields is not None and not (set(update_fields) & FORMAT_TABLE_FIELDS):
+        return
 
     try:
         tournament = instance.tournament
