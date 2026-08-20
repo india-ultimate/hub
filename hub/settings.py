@@ -15,7 +15,6 @@ from pathlib import Path
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
@@ -216,6 +215,29 @@ GROQ_MODEL = os.environ.get("GROQ_MODEL", "llama-3.1-8b-instant")
 GROQ_TEMPERATURE = float(os.environ.get("GROQ_TEMPERATURE", "0.2"))
 GROQ_MAX_TOKENS = int(os.environ.get("GROQ_MAX_TOKENS", "4096"))
 GROQ_TOP_P = float(os.environ.get("GROQ_TOP_P", "0.8"))
+
+# OpenCode Go (tournament manager AI agent)
+OPENCODE_GO_API_KEY = os.environ.get("OPENCODE_GO_API_KEY", "")
+OPENCODE_GO_BASE_URL = os.environ.get("OPENCODE_GO_BASE_URL", "https://opencode.ai/zen/go/v1")
+# Optional override for the catalog's default (see tournament_agent/catalog.py,
+# which is where the default actually lives). Empty means "use the catalog"; a
+# value not in the allowlist is ignored rather than breaking every new session.
+OPENCODE_GO_DEFAULT_MODEL = os.environ.get("OPENCODE_GO_DEFAULT_MODEL", "")
+OPENCODE_GO_TEMPERATURE = float(os.environ.get("OPENCODE_GO_TEMPERATURE", "0.2"))
+# Reasoning models need headroom; tool calls + reasoning can exceed 4k.
+OPENCODE_GO_MAX_TOKENS = int(os.environ.get("OPENCODE_GO_MAX_TOKENS", "8192"))
+
+# Tournament agent guardrails. The kill switch is deliberately an env var: turning
+# the agent off during a live event should not need a deploy.
+TOURNAMENT_AGENT_ENABLED = bool(int(os.environ.get("TOURNAMENT_AGENT_ENABLED", "1")))
+# Roughly 40 full turns at the current per-turn cost before staff are asked to
+# clear the conversation, and a day's budget per person on top.
+TOURNAMENT_AGENT_MAX_SESSION_TOKENS = int(
+    os.environ.get("TOURNAMENT_AGENT_MAX_SESSION_TOKENS", "400000")
+)
+TOURNAMENT_AGENT_MAX_DAILY_TOKENS = int(
+    os.environ.get("TOURNAMENT_AGENT_MAX_DAILY_TOKENS", "2000000")
+)
 
 # Cloudinary settings
 CLOUDINARY_CLOUD_NAME = os.environ.get("CLOUDINARY_CLOUD_NAME", "india-ultimate")
