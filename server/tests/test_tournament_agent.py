@@ -16,8 +16,9 @@ from unittest.mock import MagicMock, patch
 
 import httpx
 from django.conf import settings
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.http import StreamingHttpResponse
-from django.test import TestCase
+from django.test import Client, TestCase
 from django.utils.dateparse import parse_datetime
 
 from server.core.models import Player, Team, User
@@ -33,7 +34,7 @@ from server.tournament.models import (
     Tournament,
     TournamentField,
 )
-from server.tournament.utils import build_bracket, build_pool
+from server.tournament.utils import build_bracket, build_pool, parse_match_time
 from server.tournament.utils import start_tournament as begin_tournament
 from server.tournament_agent.catalog import (
     AGENT_MODELS,
@@ -2256,6 +2257,122 @@ class SchedulerConstraintTests(TestCase):
         )
         naive = bracket_first.replace(tzinfo=None) if bracket_first.tzinfo else bracket_first
         self.assertGreaterEqual((naive.hour, naive.minute), (8, 15))
+
+
+class MatchTimeParityTests(TestCase):
+    """The agent and the classic manager must write a match time identically.
+
+    They reach the field by different routes -- the manager posts the raw value of
+    an `<input type="datetime-local">`, the agent's scheduler emits ISO with an
+    offset -- so nothing but a test stops the two drifting apart.
+    """
+
+    def setUp(self) -> None:
+        self.user = User.objects.create(username="staff-time", is_staff=True)
+        self.client = Client()
+        self.client.force_login(self.user)
+        self.event = create_event(title="Time Parity")
+        self.tournament = Tournament.objects.create(
+            event=self.event, status=Tournament.Status.SCHEDULING
+        )
+        teams = [Team.objects.create(name=f"T{i}", slug=f"tp-{i}") for i in range(1, 5)]
+        seeding = {str(i): team.id for i, team in enumerate(teams, start=1)}
+        self.tournament.initial_seeding = seeding
+        self.tournament.current_seeding = seeding
+        self.tournament.save()
+        self.tournament.teams.set(teams)
+        TournamentField.objects.create(tournament=self.tournament, name="Field 1")
+        build_pool(self.tournament, name="A", sequence_number=1, seeding=[1, 2, 3, 4])
+        self.session = TournamentAgentSession.objects.create(
+            user=self.user, tournament=self.tournament, model_id=default_model_id()
+        )
+        self.ctx = ToolContext(session=self.session, tournament=self.tournament)
+
+    def _match(self) -> Match:
+        return not_none(Match.objects.filter(tournament=self.tournament).order_by("id").first())
+
+    def test_agent_and_classic_ui_store_the_same_instant(self) -> None:
+        # What the browser posts for 7am on the 18th: no seconds, no offset.
+        response = self.client.post(
+            f"/api/match/{self._match().id}/update",
+            {"time": "2026-07-18T07:00"},
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        via_ui = not_none(self._match().time)
+
+        # What the agent's scheduler emits for the same slot.
+        apply_proposal(
+            AgentProposal.objects.get(
+                id=propose_update_match(
+                    self.ctx, match_id=self._match().id, time="2026-07-18T07:00:00+00:00"
+                )["proposal_id"]
+            )
+        )
+        via_agent = not_none(self._match().time)
+
+        self.assertEqual(via_ui, via_agent)
+
+    def test_every_accepted_form_is_the_same_instant(self) -> None:
+        wall_clock = parse_match_time("2026-07-18T07:00")
+        for form in ("2026-07-18T07:00:00", "2026-07-18T07:00:00+00:00", "2026-07-18T07:00:00Z"):
+            self.assertEqual(wall_clock, parse_match_time(form), form)
+
+    def test_an_offset_that_would_shift_the_match_is_refused(self) -> None:
+        """`datetime-local` cannot send one, so nothing else may either."""
+        with self.assertRaisesMessage(ValueError, "carries an offset that would shift it"):
+            parse_match_time("2026-07-18T07:00:00+05:30")
+
+    def test_the_agent_cannot_apply_a_shifting_offset(self) -> None:
+        proposal = AgentProposal.objects.get(
+            id=propose_update_match(
+                self.ctx, match_id=self._match().id, time="2026-07-18T07:00:00+05:30"
+            )["proposal_id"]
+        )
+        with self.assertRaises(ProposalApplyError):
+            apply_proposal(proposal)
+        self.assertIsNone(self._match().time)
+
+    def test_csv_import_stores_the_same_instant_as_the_other_writers(self) -> None:
+        """The spreadsheet importer is the fourth writer and must not drift either."""
+        bracket = build_bracket(self.tournament, name="1-4", sequence_number=2)
+        seeded = not_none(
+            Match.objects.filter(
+                tournament=self.tournament, bracket=bracket, placeholder_seed_1=1
+            ).first()
+        )
+        csv = (
+            "Date,Start Time,End Time,Field 1\r\n"
+            f"18/07/2026,07:00:00,08:15:00,{seeded.placeholder_seed_1} vs "
+            f"{seeded.placeholder_seed_2}\r\n"
+        )
+        response = self.client.post(
+            f"/api/tournament/{self.tournament.id}/update-schedule",
+            {
+                "schedule_file": SimpleUploadedFile(
+                    "schedule.csv", csv.encode(), content_type="text/csv"
+                )
+            },
+        )
+        self.assertEqual(response.status_code, 200, response.content)
+        seeded.refresh_from_db()
+        self.assertEqual(seeded.time, parse_match_time("2026-07-18T07:00"))
+
+    def test_an_unparseable_time_is_refused_by_both(self) -> None:
+        response = self.client.post(
+            f"/api/match/{self._match().id}/update",
+            {"time": "next tuesday"},
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 400)
+
+        proposal = AgentProposal.objects.get(
+            id=propose_update_match(self.ctx, match_id=self._match().id, time="next tuesday")[
+                "proposal_id"
+            ]
+        )
+        with self.assertRaises(ProposalApplyError):
+            apply_proposal(proposal)
 
 
 class LiveOpsToolTests(TestCase):

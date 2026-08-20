@@ -159,6 +159,7 @@ from server.tournament.schema import (
     UCRegistrationSchema,
 )
 from server.tournament.utils import (
+    as_match_time,
     build_bracket,
     build_pool,
     build_position_pool,
@@ -169,6 +170,7 @@ from server.tournament.utils import (
     get_bracket_match_name,
     get_default_rules,
     is_submitted_scores_equal,
+    parse_match_time,
     populate_fixtures,
     rerun_swiss_round,
     update_match_score_and_results,
@@ -2324,10 +2326,10 @@ def create_match(
     if denied:
         return denied
 
-    ind_tz = datetime.timezone(datetime.timedelta(hours=5, minutes=30), name="IND")
-    match_datetime = datetime.datetime.strptime(match_details.time, "%Y-%m-%dT%H:%M").astimezone(
-        ind_tz
-    )
+    try:
+        match_datetime = parse_match_time(match_details.time)
+    except ValueError as exc:
+        return 400, {"message": str(exc)}
 
     try:
         field = TournamentField.objects.get(id=match_details.field_id, tournament=tournament)
@@ -2561,12 +2563,11 @@ def update_match(
         return denied
 
     if match_details.time:
-        ind_tz = datetime.timezone(datetime.timedelta(hours=5, minutes=30), name="IND")
-        match_datetime = datetime.datetime.strptime(
-            match_details.time, "%Y-%m-%dT%H:%M"
-        ).astimezone(ind_tz)
-
-        match.time = match_datetime
+        try:
+            match.time = parse_match_time(match_details.time)
+        except ValueError as exc:
+            # Previously an unhandled strptime failure, i.e. a 500.
+            return 400, {"message": str(exc)}
 
     if match_details.field_id:
         try:
@@ -3060,16 +3061,22 @@ def update_tournament_schedule(
 
                 # Convert date and times to datetime objects
                 if start_time:
-                    ind_tz = datetime.timezone(datetime.timedelta(hours=5, minutes=30), name="IND")
-                    start_datetime = datetime.datetime.strptime(
-                        f"{date_str} {start_time}", "%d/%m/%Y %H:%M:%S"
-                    ).astimezone(ind_tz)
+                    # Same conversion the manager and the agent use, so a schedule
+                    # imported from a spreadsheet reads back identically to one
+                    # typed in by hand. The dd/mm/yyyy layout is this endpoint's own.
+                    start_datetime = as_match_time(
+                        datetime.datetime.strptime(  # noqa: DTZ007 — as_match_time attaches it
+                            f"{date_str} {start_time}", "%d/%m/%Y %H:%M:%S"
+                        )
+                    )
 
                     # Calculate duration in minutes
                     if end_time:
-                        end_datetime = datetime.datetime.strptime(
-                            f"{date_str} {end_time}", "%d/%m/%Y %H:%M:%S"
-                        ).astimezone(ind_tz)
+                        end_datetime = as_match_time(
+                            datetime.datetime.strptime(  # noqa: DTZ007 — as_match_time attaches it
+                                f"{date_str} {end_time}", "%d/%m/%Y %H:%M:%S"
+                            )
+                        )
                         duration = int((end_datetime - start_datetime).total_seconds() / 60)
                     else:
                         duration = 75  # Default duration
