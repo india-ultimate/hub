@@ -5,8 +5,8 @@
 
 app = "upai-hub"
 primary_region = "ams"
-kill_signal = "SIGINT"
-kill_timeout = "5s"
+kill_signal = "SIGTERM"
+kill_timeout = "30s"
 swap_size_mb = 512
 
 [experimental]

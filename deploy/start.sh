@@ -22,4 +22,8 @@ tmux new-session -d -s hub-worker "python manage.py run_task_worker --sleep-seco
 
 # Start the server using gunicorn
 export PATH="$HOME/.local/bin:$PATH"
-gunicorn -w 2 hub.wsgi
+# Threaded workers: an agent turn holds its connection open for the whole turn, and
+# with 2 sync workers a single stream would eat half the server. The default 30s
+# timeout also kills turns long before the model is done, so raise it past the
+# provider's own 120s ceiling.
+gunicorn -w 2 -k gthread --threads 6 --timeout 300 --graceful-timeout 25 hub.wsgi
