@@ -17,6 +17,16 @@ export const getCookie = name => {
   return cookies[name];
 };
 
+export const canManageTournaments = user =>
+  Boolean(user?.is_staff || (user?.directed_tournament_ids || []).length);
+
+export const filterManageableTournaments = (tournaments, user) => {
+  if (!user) return [];
+  if (user.is_staff) return tournaments || [];
+  const ids = new Set(user.directed_tournament_ids || []);
+  return (tournaments || []).filter(t => ids.has(t.id));
+};
+
 export const fetchUserData = (successCallback, failureCallback) => {
   return fetch("/api/me", {
     method: "GET",

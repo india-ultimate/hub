@@ -275,7 +275,7 @@ export default function App() {
                   <UserRoute
                     path="/tournament-manager"
                     component={TournamentManagerClassic}
-                    admin={true}
+                    staffOrDirector={true}
                   />
                   {/* <UserRoute
                     path="/tournament/:tournamentSlug/match/:matchId/edit-stats"
