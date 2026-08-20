@@ -62,6 +62,12 @@ from server.tournament.models import (  # noqa: F401
     TournamentField,
     UCRegistration,
 )
+from server.tournament_agent.models import (  # noqa: F401
+    AgentProposal,
+    AgentQuestion,
+    TournamentAgentMessage,
+    TournamentAgentSession,
+)
 from server.transaction.models import (  # noqa: F401
     ManualTransaction,
     PhonePeTransaction,
