@@ -124,6 +124,7 @@ const CreatedFields = props => {
   const [editingField, setEditingField] = createSignal();
   const [editStatus, setEditStatus] = createSignal("");
   const [secsLeftToClose, setSecsLeftToClose] = createSignal(closeDelaySec);
+  const [deleteError, setDeleteError] = createSignal("");
 
   // Directly using props.fields breaks the dialog's focus
   // when focus comes back to the page,
@@ -177,6 +178,25 @@ const CreatedFields = props => {
     });
   }
 
+  function handleDeleteClick(field) {
+    setDeleteError("");
+    if (
+      !window.confirm(
+        `Delete field "${field.name}"? Matches must already be moved off it.`
+      )
+    ) {
+      return;
+    }
+    props.deleteFieldMutation.mutate(
+      { field_id: field.id },
+      {
+        onError: error => {
+          setDeleteError(error.message);
+        }
+      }
+    );
+  }
+
   // the modal is closed with a delay once the mutation completes
   createEffect(function onMutationComplete() {
     if (props.updateFieldMutation.isSuccess) {
@@ -198,14 +218,24 @@ const CreatedFields = props => {
             <div class="relative overflow-x-auto rounded-md">
               <div class="flex w-full items-center justify-between bg-gray-300 p-4 text-left text-lg font-semibold text-gray-900 rtl:text-right dark:bg-gray-700 dark:text-white">
                 <span>{field.name}</span>
-                <button
-                  type="button"
-                  class="rounded-lg bg-yellow-400 px-4 py-1.5 text-sm font-medium text-white hover:bg-yellow-500 focus:outline-none focus:ring-4 focus:ring-yellow-300 disabled:bg-gray-400 dark:text-gray-800 dark:focus:ring-yellow-500 disabled:dark:bg-gray-400"
-                  onClick={() => handleEditClick(field)}
-                  disabled={props.editingDisabled}
-                >
-                  Edit
-                </button>
+                <div class="flex items-center gap-2">
+                  <button
+                    type="button"
+                    class="rounded-lg bg-yellow-400 px-4 py-1.5 text-sm font-medium text-white hover:bg-yellow-500 focus:outline-none focus:ring-4 focus:ring-yellow-300 disabled:bg-gray-400 dark:text-gray-800 dark:focus:ring-yellow-500 disabled:dark:bg-gray-400"
+                    onClick={() => handleEditClick(field)}
+                    disabled={props.editingDisabled}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    class="rounded-lg bg-red-700 px-4 py-1.5 text-sm font-medium text-white hover:bg-red-800 focus:outline-none focus:ring-4 focus:ring-red-300 disabled:bg-gray-400 dark:bg-red-600 dark:hover:bg-red-700 dark:focus:ring-red-800 disabled:dark:bg-gray-400"
+                    onClick={() => handleDeleteClick(field)}
+                    disabled={props.editingDisabled}
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
               <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
                 <tbody>
@@ -238,6 +268,11 @@ const CreatedFields = props => {
           </div>
         )}
       </For>
+      <Show when={deleteError()}>
+        <p class="col-span-3 text-sm text-red-700 dark:text-red-400">
+          {deleteError()}
+        </p>
+      </Show>
       <Modal
         ref={modalRef}
         close={handleEditClose}

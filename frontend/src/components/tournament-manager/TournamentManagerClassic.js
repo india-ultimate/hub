@@ -26,6 +26,7 @@ import {
   createPool,
   createPositionPool,
   createSwissRound,
+  deleteField,
   deleteMatch,
   fetchBrackets,
   fetchCrossPool,
@@ -42,18 +43,23 @@ import {
   updateField,
   updateMatch,
   updateSeeding
-} from "../queries";
-import ScheduleSkeleton from "../skeletons/Schedule";
-import { useStore } from "../store";
-import { getCookie } from "../utils";
-import MatchHeader from "./match/MatchHeader";
-import CreateTournamentForm from "./tournament/CreateTournamentForm";
-import ReorderTeams from "./tournament/ReorderTeams";
-import RulesMarkdownEditor from "./tournament/RulesMarkdownEditor";
-import ScheduleTable from "./tournament/ScheduleTable";
-import UpdateSpiritScoreForm from "./tournament/UpdateSpiritScoreForm";
-import CreatedFields from "./tournament-manager/CreatedFields";
-import CreateFieldForm from "./tournament-manager/CreateFieldForm";
+} from "../../queries";
+import ScheduleSkeleton from "../../skeletons/Schedule";
+import { useStore } from "../../store";
+import {
+  canManageTournaments,
+  filterManageableTournaments,
+  getCookie
+} from "../../utils";
+import MatchHeader from "../match/MatchHeader";
+import CreateTournamentForm from "../tournament/CreateTournamentForm";
+import ReorderTeams from "../tournament/ReorderTeams";
+import RulesMarkdownEditor from "../tournament/RulesMarkdownEditor";
+import ScheduleTable from "../tournament/ScheduleTable";
+import UpdateSpiritScoreForm from "../tournament/UpdateSpiritScoreForm";
+import CreatedFields from "./CreatedFields";
+import CreateFieldForm from "./CreateFieldForm";
+import TournamentDirectors from "./TournamentDirectors";
 
 function getMatchCsvLabel(match) {
   if (match.pool || match.position_pool) {
@@ -156,11 +162,13 @@ function downloadScheduleCsv(matches, fields, tournamentName) {
   URL.revokeObjectURL(url);
 }
 
-const TournamentManager = () => {
+const TournamentManager = props => {
   const queryClient = useQueryClient();
   const [store] = useStore();
   const [selectedTournament, setSelectedTournament] = createSignal();
-  const [selectedTournamentID, setSelectedTournamentID] = createSignal(0);
+  const [selectedTournamentID, setSelectedTournamentID] = createSignal(
+    props.tournamentId || 0
+  );
   const [teams, setTeams] = createSignal([]);
   const [teamsMap, setTeamsMap] = createSignal({});
   const [enteredPoolName, setEnteredPoolName] = createSignal("");
@@ -187,6 +195,9 @@ const TournamentManager = () => {
   const [scheduleFile, setScheduleFile] = createSignal(null);
   const [uploadError, setUploadError] = createSignal("");
 
+  // Classic only lets staff set up a tournament once it is Scheduling.
+  const canEditSetup = () => selectedTournament()?.status === "SCH";
+
   onMount(() => {
     const dt = new Date(1970, 0, 1, 6, 0);
     let newTimesList = [];
@@ -197,6 +208,10 @@ const TournamentManager = () => {
       dt.setMinutes(dt.getMinutes() + 5);
     }
     setTimesList(newTimesList);
+  });
+
+  createEffect(() => {
+    if (props.tournamentId) setSelectedTournamentID(props.tournamentId);
   });
 
   createEffect(() => {
@@ -286,6 +301,8 @@ const TournamentManager = () => {
 
   const teamsQuery = createQuery(() => ["teams"], fetchTeams);
   const tournamentsQuery = createQuery(() => ["tournaments"], fetchTournaments);
+  const manageableTournaments = () =>
+    filterManageableTournaments(tournamentsQuery.data, store?.data);
 
   const fieldsQuery = createQuery(
     () => ["fields", selectedTournamentID()],
@@ -372,6 +389,18 @@ const TournamentManager = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["fields", selectedTournamentID()]
+      });
+    }
+  });
+
+  const deleteFieldMutation = createMutation({
+    mutationFn: deleteField,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["fields", selectedTournamentID()]
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["matches", selectedTournamentID()]
       });
     }
   });
@@ -565,37 +594,48 @@ const TournamentManager = () => {
   };
 
   return (
-    <Show when={store?.data?.is_staff} fallback={<p>Not Authorised!</p>}>
-      <div>
-        <h1 class="text-center text-2xl font-bold text-blue-500">
-          New Tournament
-        </h1>
-        <CreateTournamentForm />
-        {/* <CreateTournamentFromEventForm />  // Can be added only when needed  */}
-      </div>
-      <hr class="my-8 h-px border-0 bg-gray-200 dark:bg-gray-700" />
+    <Show
+      when={canManageTournaments(store?.data)}
+      fallback={<p>Not Authorised!</p>}
+    >
+      <Show when={store?.data?.is_staff}>
+        <div>
+          <h1 class="text-center text-2xl font-bold text-blue-500">
+            New Tournament
+          </h1>
+          <CreateTournamentForm />
+          {/* <CreateTournamentFromEventForm />  // Can be added only when needed  */}
+        </div>
+        <hr class="my-8 h-px border-0 bg-gray-200 dark:bg-gray-700" />
+      </Show>
       <div>
         <h1 class="mb-5 text-center text-2xl font-bold text-blue-500">
           Existing Tournaments
         </h1>
         <select
           id="tournaments"
-          onChange={e => setSelectedTournamentID(parseInt(e.target.value))}
+          value={selectedTournamentID()}
+          onChange={e => {
+            const id = parseInt(e.target.value);
+            setSelectedTournamentID(id);
+            props.onTournamentSelected?.(id || null);
+          }}
           class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
         >
-          <option value={0} selected>
-            Choose a tournament
-          </option>
-          <For each={tournamentsQuery.data}>
+          <option value={0}>Choose a tournament</option>
+          <For each={manageableTournaments()}>
             {t => <option value={t.id}>{t.event.title}</option>}
           </For>
         </select>
 
         <Show when={selectedTournamentID() > 0 && selectedTournament()}>
+          <Show when={store?.data?.is_staff}>
+            <TournamentDirectors tournamentId={selectedTournamentID()} />
+          </Show>
           <div class="relative my-5 overflow-x-auto">
             <div class="mb-4 text-xl font-bold text-blue-500">Seeding</div>
             <Switch>
-              <Match when={selectedTournament()?.status === "SCH"}>
+              <Match when={canEditSetup()}>
                 <div class="w-full md:w-1/2">
                   <ReorderTeams
                     teams={teams()}
@@ -655,10 +695,7 @@ const TournamentManager = () => {
                 });
                 setIsStandingsEdited(false);
               }}
-              disabled={
-                selectedTournament()?.status !== "SCH" ||
-                updateSeedingMutation.isLoading
-              }
+              disabled={!canEditSetup() || updateSeedingMutation.isLoading}
               class="my-2 mb-2 mr-2 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 disabled:bg-gray-400 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
             >
               <Show
@@ -819,8 +856,7 @@ const TournamentManager = () => {
                         })
                       }
                       disabled={
-                        selectedTournament()?.status !== "SCH" ||
-                        swissRoundsQuery.data?.length > 0
+                        !canEditSetup() || swissRoundsQuery.data?.length > 0
                       }
                       class="mb-2 mr-2 mt-5 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 disabled:bg-gray-400 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
                     >
@@ -1005,7 +1041,7 @@ const TournamentManager = () => {
                         })
                       }
                       disabled={
-                        selectedTournament()?.status !== "SCH" ||
+                        !canEditSetup() ||
                         (poolsQuery.data?.length > 0 &&
                           !poolsQuery.data?.message)
                       }
@@ -1041,7 +1077,7 @@ const TournamentManager = () => {
                     tournament_id: selectedTournamentID()
                   })
                 }
-                disabled={selectedTournament()?.status !== "SCH"}
+                disabled={!canEditSetup()}
                 class="mb-2 mr-2 mt-5 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 disabled:bg-gray-400 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
               >
                 Create Cross Pool
@@ -1113,7 +1149,7 @@ const TournamentManager = () => {
                         seq_num: bracketQuery.data.length + 1
                       })
                     }
-                    disabled={selectedTournament()?.status !== "SCH"}
+                    disabled={!canEditSetup()}
                     class="mb-2 mr-2 mt-5 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 disabled:bg-gray-400 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
                   >
                     Create Bracket
@@ -1205,7 +1241,7 @@ const TournamentManager = () => {
                         seeding_list: enteredPositionPoolSeedingList()
                       })
                     }
-                    disabled={selectedTournament()?.status !== "SCH"}
+                    disabled={!canEditSetup()}
                     class="mb-2 mr-2 mt-5 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 disabled:bg-gray-400 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
                   >
                     Create Position Pool
@@ -1227,9 +1263,11 @@ const TournamentManager = () => {
                     fields={fieldsQuery.data}
                     tournamentId={selectedTournamentID()}
                     updateFieldMutation={updateFieldMutation}
+                    deleteFieldMutation={deleteFieldMutation}
                     editingDisabled={
-                      selectedTournament()?.status !== "SCH" ||
-                      updateFieldMutation.isLoading
+                      !canEditSetup() ||
+                      updateFieldMutation.isLoading ||
+                      deleteFieldMutation.isLoading
                     }
                   />
                 </Match>
@@ -1239,10 +1277,7 @@ const TournamentManager = () => {
             <CreateFieldForm
               tournamentId={selectedTournamentID()}
               createFieldMutation={createFieldMutation}
-              disabled={
-                selectedTournament()?.status !== "SCH" ||
-                createFieldMutation.isLoading
-              }
+              disabled={!canEditSetup() || createFieldMutation.isLoading}
               alreadyPresentFields={fieldsQuery.data}
             />
           </div>
@@ -1411,7 +1446,7 @@ const TournamentManager = () => {
                       body: matchFields
                     });
                   }}
-                  disabled={selectedTournament()?.status !== "SCH"}
+                  disabled={!canEditSetup()}
                   class="mb-2 mr-2 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 disabled:bg-gray-400 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
                 >
                   Add Match
@@ -2036,7 +2071,7 @@ const TournamentManager = () => {
             </For>
           </div>
           <Switch>
-            <Match when={selectedTournament()?.status === "SCH"}>
+            <Match when={canEditSetup()}>
               <button
                 type="button"
                 onClick={() =>
