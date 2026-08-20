@@ -1,0 +1,26 @@
+{
+  "id": "capability_impossible_constraints",
+  "tier": "capability",
+  "tags": ["ask_user", "hard", "adversarial"],
+  "difficulty": "hard",
+  "fixture": {
+    "team_count": 8,
+    "fields": ["Field 1"],
+    "create_pool": true
+  },
+  "user_script": [
+    {
+      "type": "message",
+      "text": "Schedule all pool games tomorrow in a single 45-minute window on the one field, using 90-minute game slots and at least 60 minutes rest between games for every team."
+    }
+  ],
+  "gold_tools": ["ask_user"],
+  "forbidden_tools": [],
+  "expect_state": {
+    "must_ask_user": true,
+    "ask_before_propose": true,
+    "min_proposals": 0
+  },
+  "budget": { "max_steps": 8, "soft_tool_calls": 10 },
+  "pass_threshold": 80
+}

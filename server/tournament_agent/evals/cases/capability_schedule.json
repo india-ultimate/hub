@@ -1,0 +1,30 @@
+{
+  "id": "capability_schedule",
+  "tier": "capability",
+  "tags": ["schedule", "hard"],
+  "difficulty": "hard",
+  "fixture": {
+    "team_count": 4,
+    "fields": ["Field 1", "Field 2"],
+    "create_pool": true
+  },
+  "user_script": [
+    {
+      "type": "message",
+      "text": "We need games on Saturday 2026-08-01. Aim for about 75 minute slots and leave reasonable rest between a team's games."
+    }
+  ],
+  "gold_tools": ["propose_recommended_schedule"],
+  "forbidden_tools": ["ask_user"],
+  "expect_state": {
+    "must_ask_user": false,
+    "must_not_ask_user": true,
+    "min_proposals": 1,
+    "proposal_tools": ["propose_recommended_schedule"],
+    "schedule_start_date": "2026-08-01",
+    "schedule_duration_mins": 75,
+    "min_schedule_assignments": 4
+  },
+  "budget": { "max_steps": 10, "soft_tool_calls": 12 },
+  "pass_threshold": 80
+}

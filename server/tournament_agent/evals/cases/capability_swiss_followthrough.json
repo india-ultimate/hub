@@ -1,0 +1,27 @@
+{
+  "id": "capability_swiss_followthrough",
+  "tier": "capability",
+  "tags": ["ask_user", "swiss", "hard"],
+  "difficulty": "hard",
+  "fixture": {
+    "team_count": 8,
+    "fields": ["Field 1", "Field 2", "Field 3"]
+  },
+  "user_script": [
+    {
+      "type": "message",
+      "text": "Configure the initial stage however you think is best — pools or Swiss. I'm open either way."
+    },
+    { "type": "answer", "selected_ids": ["swiss"] }
+  ],
+  "gold_tools": ["ask_user"],
+  "expect_state": {
+    "must_ask_user": true,
+    "ask_before_propose": true,
+    "min_proposals": 1,
+    "full_setup_format": "swiss",
+    "forbidden_proposal_tools": ["propose_create_pool"]
+  },
+  "budget": { "max_steps": 10, "soft_tool_calls": 14 },
+  "pass_threshold": 80
+}

@@ -1,0 +1,28 @@
+{
+  "id": "capability_weather_delay",
+  "tier": "capability",
+  "tags": ["repair", "live", "hard"],
+  "difficulty": "hard",
+  "fixture": {
+    "team_count": 4,
+    "fields": ["Field 1", "Field 2"],
+    "create_pool": true,
+    "status": "LIV",
+    "schedule": true
+  },
+  "user_script": [
+    {
+      "type": "message",
+      "text": "Lightning hold. Push every game that hasn't started yet back by 45 minutes."
+    }
+  ],
+  "gold_tools": ["propose_shift_schedule"],
+  "forbidden_tools": ["ask_user"],
+  "expect_state": {
+    "must_not_ask_user": true,
+    "min_proposals": 1,
+    "proposal_tools": ["propose_shift_schedule"]
+  },
+  "budget": { "max_steps": 8, "soft_tool_calls": 12 },
+  "pass_threshold": 80
+}

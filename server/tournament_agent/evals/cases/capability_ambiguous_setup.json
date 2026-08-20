@@ -1,0 +1,25 @@
+{
+  "id": "capability_ambiguous_setup",
+  "tier": "capability",
+  "tags": ["ask_user", "setup", "hard"],
+  "difficulty": "hard",
+  "fixture": {
+    "team_count": 8,
+    "fields": ["Field 1", "Field 2", "Field 3"]
+  },
+  "user_script": [
+    {
+      "type": "message",
+      "text": "Set up this tournament for me. I'm not sure whether pools or Swiss is better."
+    },
+    { "type": "answer", "selected_ids": ["pools"] }
+  ],
+  "gold_tools": ["ask_user"],
+  "forbidden_tools": [],
+  "expect_state": {
+    "must_ask_user": true,
+    "ask_before_propose": true
+  },
+  "budget": { "max_steps": 8, "soft_tool_calls": 12 },
+  "pass_threshold": 80
+}
