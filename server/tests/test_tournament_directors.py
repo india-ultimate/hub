@@ -208,3 +208,21 @@ class TournamentDirectorTests(ApiBaseTestCase):
             content_type="application/json",
         )
         self.assertEqual(401, response.status_code)
+
+    def test_director_can_use_agent_only_on_assigned_tournament(self) -> None:
+        self.client.force_login(self.director)
+        models = self.client.get("/api/tournament-agent/models")
+        self.assertEqual(200, models.status_code)
+
+        history = self.client.get(
+            f"/api/tournament-agent/history?tournament_id={self.tournament.id}"
+        )
+        self.assertEqual(200, history.status_code)
+
+        spoof = self.client.get(
+            f"/api/tournament-agent/history?tournament_id={self.other_tournament.id}"
+        )
+        self.assertEqual(401, spoof.status_code)
+
+        self.client.force_login(self.outsider)
+        self.assertEqual(401, self.client.get("/api/tournament-agent/models").status_code)
