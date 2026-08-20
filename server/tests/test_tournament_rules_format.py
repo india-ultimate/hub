@@ -10,7 +10,7 @@ from django.utils.dateparse import parse_datetime
 
 import server.tournament.rules as rules_module
 from server.core.models import Team
-from server.tests.base import create_event
+from server.tests.base import create_event, not_none
 from server.tournament.models import CrossPool, Match, Tournament, TournamentField
 from server.tournament.rules import (
     EMPTY_FORMAT,
@@ -187,8 +187,7 @@ class LegacyFormatUpgradeTests(TestCase):
     """`upgrade_legacy_format_block` — the backfill's decision, as a pure function."""
 
     def test_the_shipped_default_is_taken_over(self) -> None:
-        upgraded = upgrade_legacy_format_block(LEGACY_RULES)
-        assert upgraded is not None
+        upgraded = not_none(upgrade_legacy_format_block(LEGACY_RULES))
         self.assertIn(FORMAT_BLOCK_START, upgraded)
         self.assertIn(FORMAT_BLOCK_END, upgraded)
         self.assertNotIn("4 Pools of 4", upgraded)
@@ -229,8 +228,7 @@ class LegacyFormatUpgradeTests(TestCase):
         with_prose = LEGACY_RULES.replace(
             LEGACY_TABLE, f"Read this first.\n\n{LEGACY_TABLE}\n\nAnd this after."
         )
-        upgraded = upgrade_legacy_format_block(with_prose)
-        assert upgraded is not None
+        upgraded = not_none(upgrade_legacy_format_block(with_prose))
         self.assertIn("Read this first.", upgraded)
         self.assertIn("And this after.", upgraded)
         self.assertIn(FORMAT_BLOCK_START, upgraded)
@@ -243,13 +241,13 @@ class LegacyFormatUpgradeTests(TestCase):
     def test_a_trailing_newline_is_preserved_either_way(self) -> None:
         with_newline = upgrade_legacy_format_block(LEGACY_RULES)
         without = upgrade_legacy_format_block(LEGACY_RULES.rstrip("\n"))
-        assert with_newline is not None and without is not None
+        with_newline = not_none(with_newline)
+        without = not_none(without)
         self.assertTrue(with_newline.endswith("\n"))
         self.assertFalse(without.endswith("\n"))
 
     def test_upgrading_is_idempotent(self) -> None:
-        once = upgrade_legacy_format_block(LEGACY_RULES)
-        assert once is not None
+        once = not_none(upgrade_legacy_format_block(LEGACY_RULES))
         self.assertIsNone(upgrade_legacy_format_block(once))
 
 

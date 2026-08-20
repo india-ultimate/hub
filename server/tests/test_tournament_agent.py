@@ -21,7 +21,7 @@ from django.test import TestCase
 from django.utils.dateparse import parse_datetime
 
 from server.core.models import Player, Team, User
-from server.tests.base import ApiBaseTestCase, create_event
+from server.tests.base import ApiBaseTestCase, create_event, not_none
 from server.tournament.models import (
     CrossPool,
     Match,
@@ -192,8 +192,7 @@ class CatalogTests(TestCase):
         self.assertTrue(is_allowed_model("gpt-5.6-luna"))
         self.assertTrue(is_allowed_model("minimax-m3"))
         self.assertTrue(is_allowed_model("hy3"))
-        luna = get_model("gpt-5.6-luna")
-        assert luna is not None
+        luna = not_none(get_model("gpt-5.6-luna"))
         self.assertEqual(luna.api_style, "responses")
         self.assertFalse(is_allowed_model("qwen3.7-plus"))
         self.assertFalse(is_allowed_model("deepseek-v4-pro"))
@@ -1140,8 +1139,7 @@ class NewProposalToolTests(TestCase):
 
         matches = Match.objects.filter(cross_pool=cross_pool).order_by("id")
         self.assertEqual(matches.count(), 2)
-        first = matches.first()
-        assert first is not None
+        first = not_none(matches.first())
         self.assertEqual(first.name, "Cross Pool")
         self.assertEqual(first.status, Match.Status.YET_TO_FIX)
         self.assertEqual((first.placeholder_seed_1, first.placeholder_seed_2), (1, 3))
@@ -1286,8 +1284,7 @@ class ProviderStreamParsingTests(TestCase):
     ACCEPTED_BUFFERED_DEFAULT = "gpt-5.6-luna"
 
     def test_default_model_stream_behaviour_is_deliberate(self) -> None:
-        default = get_model(default_model_id())
-        assert default is not None
+        default = not_none(get_model(default_model_id()))
         if default.api_style not in self.INCREMENTAL_STYLES:
             self.assertEqual(
                 default.id,
@@ -1373,7 +1370,7 @@ class ProviderStreamParsingTests(TestCase):
 
         result = chunks[-1].result
         self.assertIsNotNone(result)
-        assert result is not None
+        result = not_none(result)
         self.assertEqual(result.content, "Checking pools")
         self.assertEqual(result.finish_reason, "tool_calls")
         self.assertEqual(len(result.tool_calls), 1)
@@ -1460,8 +1457,7 @@ class ProviderStreamParsingTests(TestCase):
 
         texts = [c.text for c in chunks if c.type == "text"]
         self.assertEqual(texts, ["Making ", "a pool"])
-        result = chunks[-1].result
-        assert result is not None
+        result = not_none(chunks[-1].result)
         self.assertEqual(result.content, "Making a pool")
         self.assertEqual(result.finish_reason, "tool_use")
         self.assertEqual(len(result.tool_calls), 1)
@@ -1990,8 +1986,7 @@ class ProposalSafetyTests(TestCase):
         # `_set_slot` skips whatever is None, so a row missing its field would leave
         # the match untouched and still come back reported as scheduled.
         self._apply(propose_create_pool(self.ctx, name="A", sequence_number=1, seeding=[1, 2, 3]))
-        match = Match.objects.filter(tournament=self.tournament).order_by("id").first()
-        assert match is not None
+        match = not_none(Match.objects.filter(tournament=self.tournament).order_by("id").first())
 
         with self.assertRaises(ProposalApplyError) as cm:
             self._apply(
@@ -2133,8 +2128,7 @@ class SchedulerConstraintTests(TestCase):
         return {a["match_id"]: a for a in result["assignments"]}
 
     def _start(self, assignment: dict[str, Any]) -> datetime:
-        start = parse_datetime(assignment["time"])
-        assert start is not None
+        start = not_none(parse_datetime(assignment["time"]))
         return start
 
     def test_rest_is_enforced_before_the_tournament_starts(self) -> None:
@@ -2214,9 +2208,10 @@ class SchedulerConstraintTests(TestCase):
             .order_by("id")
             .first()
         )
-        assert pool_match is not None
-        field = TournamentField.objects.filter(tournament=self.tournament).order_by("name").first()
-        assert field is not None
+        pool_match = not_none(pool_match)
+        field = not_none(
+            TournamentField.objects.filter(tournament=self.tournament).order_by("name").first()
+        )
         pool_match.time = parse_datetime("2026-08-01T07:00:00+00:00")
         pool_match.field = field
         pool_match.save()
@@ -2264,8 +2259,7 @@ class LiveOpsToolTests(TestCase):
 
     def test_score_completes_match_and_updates_standings(self) -> None:
         self._go_live()
-        match = Match.objects.filter(tournament=self.tournament).order_by("id").first()
-        assert match is not None
+        match = not_none(Match.objects.filter(tournament=self.tournament).order_by("id").first())
         self._apply(
             propose_match_score(self.ctx, match_id=match.id, score_team_1=15, score_team_2=9)
         )
@@ -2278,8 +2272,7 @@ class LiveOpsToolTests(TestCase):
         self.assertEqual(winner["GF"], 15)
 
     def test_score_refused_before_teams_are_assigned(self) -> None:
-        match = Match.objects.filter(tournament=self.tournament).order_by("id").first()
-        assert match is not None
+        match = not_none(Match.objects.filter(tournament=self.tournament).order_by("id").first())
         with self.assertRaises(ProposalApplyError) as cm:
             self._apply(
                 propose_match_score(self.ctx, match_id=match.id, score_team_1=15, score_team_2=9)
@@ -2288,8 +2281,7 @@ class LiveOpsToolTests(TestCase):
 
     def test_second_score_refused_so_standings_cannot_double_count(self) -> None:
         self._go_live()
-        match = Match.objects.filter(tournament=self.tournament).order_by("id").first()
-        assert match is not None
+        match = not_none(Match.objects.filter(tournament=self.tournament).order_by("id").first())
         self._apply(
             propose_match_score(self.ctx, match_id=match.id, score_team_1=15, score_team_2=9)
         )
@@ -2303,8 +2295,7 @@ class LiveOpsToolTests(TestCase):
 
     def test_negative_score_is_rejected(self) -> None:
         self._go_live()
-        match = Match.objects.filter(tournament=self.tournament).order_by("id").first()
-        assert match is not None
+        match = not_none(Match.objects.filter(tournament=self.tournament).order_by("id").first())
         with self.assertRaises(ProposalApplyError):
             self._apply(
                 propose_match_score(self.ctx, match_id=match.id, score_team_1=-1, score_team_2=9)
@@ -2314,8 +2305,7 @@ class LiveOpsToolTests(TestCase):
         # The flag is shown to staff and stated in the tool description; if the
         # applier ignored it, a played 15-9 would be confirmable as a forfeit.
         self._go_live()
-        match = Match.objects.filter(tournament=self.tournament).order_by("id").first()
-        assert match is not None
+        match = not_none(Match.objects.filter(tournament=self.tournament).order_by("id").first())
         with self.assertRaises(ProposalApplyError) as cm:
             self._apply(
                 propose_match_score(
@@ -2328,8 +2318,7 @@ class LiveOpsToolTests(TestCase):
 
     def test_forfeit_applies_as_a_normal_result(self) -> None:
         self._go_live()
-        match = Match.objects.filter(tournament=self.tournament).order_by("id").first()
-        assert match is not None
+        match = not_none(Match.objects.filter(tournament=self.tournament).order_by("id").first())
         self._apply(
             propose_match_score(
                 self.ctx, match_id=match.id, score_team_1=15, score_team_2=0, forfeit=True
@@ -2429,8 +2418,7 @@ class LiveOpsToolTests(TestCase):
 
     def test_delete_stage_refused_when_a_match_is_completed(self) -> None:
         self._go_live()
-        match = Match.objects.filter(tournament=self.tournament).order_by("id").first()
-        assert match is not None
+        match = not_none(Match.objects.filter(tournament=self.tournament).order_by("id").first())
         self._apply(
             propose_match_score(self.ctx, match_id=match.id, score_team_1=15, score_team_2=9)
         )
@@ -2496,8 +2484,7 @@ class LiveOpsToolTests(TestCase):
 
     def test_conflicts_flags_matches_running_past_the_day_window(self) -> None:
         self._go_live()
-        match = Match.objects.filter(tournament=self.tournament).order_by("id").first()
-        assert match is not None
+        match = not_none(Match.objects.filter(tournament=self.tournament).order_by("id").first())
         # Ends exactly at 19:00 — on the hour, so an hour-only check would miss it.
         match.time = parse_datetime("2026-08-01T17:45:00+00:00")
         match.field = self.field
@@ -2524,9 +2511,9 @@ class LiveOpsToolTests(TestCase):
         bracket = build_bracket(self.tournament, name="1-4", sequence_number=2)
         pool_match = Match.objects.filter(tournament=self.tournament, pool=self.pool).first()
         bracket_match = Match.objects.filter(tournament=self.tournament, bracket=bracket).first()
-        assert pool_match is not None and bracket_match is not None
-        team_id = pool_match.team_1_id
-        assert team_id is not None
+        pool_match = not_none(pool_match)
+        bracket_match = not_none(bracket_match)
+        team_id = not_none(pool_match.team_1_id)
         team_name = Team.objects.get(id=team_id).name
         bracket_match.placeholder_seed_1 = next(
             int(seed) for seed, tid in self.tournament.current_seeding.items() if tid == team_id
@@ -2630,8 +2617,7 @@ class ToolContractTests(TestCase):
         for definition in TOOL_DEFINITIONS:
             fn = definition["function"]
             name = fn["name"]
-            handler = HANDLERS.get(name)
-            assert handler is not None, f"{name} is declared but has no handler"
+            handler = not_none(HANDLERS.get(name), f"{name} is declared but has no handler")
             declared = set((fn.get("parameters") or {}).get("properties") or {})
             accepted = set(inspect.signature(handler).parameters) - {"ctx"}
             self.assertEqual(declared, accepted, f"{name} schema and signature disagree")
@@ -2694,13 +2680,11 @@ class ToolChoiceTests(TestCase):
         return resp
 
     def test_each_api_style_spells_the_forced_choice_its_own_way(self) -> None:
-        model = get_model("glm-5.2")
-        assert model is not None
+        model = not_none(get_model("glm-5.2"))
         body = OpenCodeGoClient._openai_body(model, [], self.TOOLS, None, 100, "required")
         self.assertEqual(body["tool_choice"], "required")
 
-        anthropic = get_model("minimax-m3")
-        assert anthropic is not None
+        anthropic = not_none(get_model("minimax-m3"))
         body = OpenCodeGoClient._anthropic_body(anthropic, [], self.TOOLS, None, 100, "required")
         self.assertEqual(body["tool_choice"], {"type": "any"})
         body = OpenCodeGoClient._anthropic_body(anthropic, [], self.TOOLS, None, 100, "auto")
@@ -2921,36 +2905,30 @@ class NextStepTests(TestCase):
         return next_step_for(snap, phase_for(snap))
 
     def test_it_walks_the_setup_order(self) -> None:
-        step = self._step()
-        assert step is not None
+        step = not_none(self._step())
         self.assertEqual(step.label, "Add fields")
 
         TournamentField.objects.create(tournament=self.tournament, name="F1")
-        step = self._step()
-        assert step is not None
+        step = not_none(self._step())
         self.assertEqual(step.label, "Choose a format")
 
         build_pool(self.tournament, name="A", sequence_number=1, seeding=[1, 2, 3, 4])
-        step = self._step()
-        assert step is not None
+        step = not_none(self._step())
         # Not "schedule", and emphatically not "start": a pool with no bracket
         # decides seeding and nothing else.
         self.assertEqual(step.label, "Add the finals")
 
         build_bracket(self.tournament, name="1-4", sequence_number=2)
-        step = self._step()
-        assert step is not None
+        step = not_none(self._step())
         self.assertEqual(step.label, "Schedule 10 matches")
 
         field = TournamentField.objects.get(tournament=self.tournament)
-        slot = parse_datetime("2026-08-01T07:00:00+00:00")
-        assert slot is not None
+        slot = not_none(parse_datetime("2026-08-01T07:00:00+00:00"))
         for i, match in enumerate(Match.objects.filter(tournament=self.tournament)):
             match.time = slot + timedelta(hours=i)
             match.field = field
             match.save(update_fields=["time", "field"])
-        step = self._step()
-        assert step is not None
+        step = not_none(self._step())
         self.assertEqual(step.label, "Start the tournament")
 
     def test_it_says_nothing_when_staff_already_have_something_to_do(self) -> None:
@@ -2982,8 +2960,7 @@ class NextStepTests(TestCase):
         TournamentField.objects.create(tournament=self.tournament, name="F1")
         build_pool(self.tournament, name="A", sequence_number=1, seeding=[1, 2, 3, 4])
         field = TournamentField.objects.get(tournament=self.tournament)
-        slot = parse_datetime("2026-08-01T07:00:00+00:00")
-        assert slot is not None
+        slot = not_none(parse_datetime("2026-08-01T07:00:00+00:00"))
         for i, match in enumerate(Match.objects.filter(tournament=self.tournament)):
             match.time = slot + timedelta(hours=i)
             match.field = field
@@ -2991,8 +2968,7 @@ class NextStepTests(TestCase):
 
         snap = build_snapshot(self.session)
         self.assertEqual(phase_for(snap), Phase.READY)
-        step = next_step_for(snap, Phase.READY)
-        assert step is not None
+        step = not_none(next_step_for(snap, Phase.READY))
         self.assertEqual(step.label, "Add the finals")
 
     def test_an_empty_cross_pool_is_pointed_at(self) -> None:
@@ -3001,8 +2977,7 @@ class NextStepTests(TestCase):
         build_pool(self.tournament, name="A", sequence_number=1, seeding=[1, 2, 3, 4])
         build_bracket(self.tournament, name="1-4", sequence_number=3)
         CrossPool.objects.create(tournament=self.tournament)
-        step = self._step()
-        assert step is not None
+        step = not_none(self._step())
         self.assertEqual(step.label, "Add cross-pool matches")
 
     def test_a_pending_question_suppresses_it_in_the_payload(self) -> None:
@@ -3067,8 +3042,7 @@ class PhasePolicyTests(TestCase):
         self.assertEqual(self._phase(), Phase.NO_SCHEDULE)
 
         field = TournamentField.objects.get(tournament=self.tournament)
-        slot = parse_datetime("2026-08-01T07:00:00+00:00")
-        assert slot is not None
+        slot = not_none(parse_datetime("2026-08-01T07:00:00+00:00"))
         for i, match in enumerate(Match.objects.filter(tournament=self.tournament)):
             match.time = slot + timedelta(hours=i)
             match.field = field
@@ -3118,8 +3092,7 @@ class PhasePolicyTests(TestCase):
         self.assertLess(len(tool_definitions_for(Phase.NO_FIELDS)), everything // 2)
 
     def test_blocked_call_says_what_to_do_instead(self) -> None:
-        rejection = phase_rejection(Phase.NO_FIELDS, "propose_recommended_schedule")
-        assert rejection is not None
+        rejection = not_none(phase_rejection(Phase.NO_FIELDS, "propose_recommended_schedule"))
         self.assertIn("not available right now", rejection["message"])
         self.assertIn("propose_create_field", rejection["message"])
         self.assertEqual(rejection["phase"], Phase.NO_FIELDS.value)
@@ -3489,14 +3462,12 @@ class SpiritAndRosterTests(TestCase):
 
     def _team_player(self, team_number: int) -> Player:
         """The player on one side of self.match; both sides are assigned at start."""
-        team_id = self.match.team_1_id if team_number == 1 else self.match.team_2_id
-        assert team_id is not None
+        team_id = not_none(self.match.team_1_id if team_number == 1 else self.match.team_2_id)
         return self.players[team_id]
 
     def _spirit(self, attr: str) -> Any:
-        score = getattr(self.match, attr)
-        assert score is not None, f"{attr} was not recorded"
-        return score
+        score: Any = getattr(self.match, attr)
+        return not_none(score, f"{attr} was not recorded")
 
     def _apply(self, result: dict[str, Any]) -> dict[str, Any]:
         return apply_proposal(AgentProposal.objects.get(id=result["proposal_id"]))
@@ -3687,8 +3658,7 @@ class SpiritAndRosterTests(TestCase):
         )
         TournamentAgentService(self.user).history(self.session)
 
-        stored = TournamentAgentMessage.objects.filter(session=self.session).last()
-        assert stored is not None
+        stored = not_none(TournamentAgentMessage.objects.filter(session=self.session).last())
         self.assertIn(self._token(player.id), stored.content)
         self.assertNotIn("Priya", stored.content)
 
@@ -3837,8 +3807,7 @@ class ProposalSupersedeTests(TestCase):
         ctx = self._turn()
         first = propose_create_pool(ctx, name="A", sequence_number=1, seeding=[1, 2])
         second = propose_create_pool(ctx, name="B", sequence_number=2, seeding=[3, 4])
-        message = ctx.assistant_message
-        assert message is not None
+        message = not_none(ctx.assistant_message)
         message.refresh_from_db()
         self.assertEqual(
             message.payload["proposal_ids"],
