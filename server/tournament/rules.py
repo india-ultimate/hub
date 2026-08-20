@@ -64,7 +64,7 @@ def _rows(tournament: Tournament) -> list[tuple[str, str, str]]:
         rounds = "round" if swiss.num_rounds == 1 else "rounds"
         rows.append((f"Swiss {swiss.name}", _seed_range(seeds), f"{swiss.num_rounds} {rounds}"))
 
-    for _cross in CrossPool.objects.filter(tournament=tournament):
+    for _cross in CrossPool.objects.filter(tournament=tournament).order_by("id"):
         rows.append(("Cross-Pool", "—", "Winner takes the higher seed"))
 
     for bracket in Bracket.objects.filter(tournament=tournament).order_by("sequence_number"):

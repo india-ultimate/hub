@@ -394,6 +394,30 @@ class RulesFormatEdgeCaseTests(RulesFormatTests):
         self.assertNotIn(" teams.", table)
         self.assertIn("Stages are listed in the order they are played.", table)
 
+    def test_a_results_only_save_does_not_re_render_the_table(self) -> None:
+        """Scoring saves a stage per result; the table cannot have changed."""
+        pool = build_pool(self.tournament, name="A", sequence_number=1, seeding=[1, 2, 3, 4])
+
+        rendered = 0
+        real = rules_module.render_format_table
+
+        def counting(tournament: Tournament) -> str:
+            nonlocal rendered
+            rendered += 1
+            return real(tournament)
+
+        with patch.object(rules_module, "render_format_table", counting):
+            pool.results = {"1": {"rank": 1}}
+            pool.save(update_fields=["results"])
+        self.assertEqual(rendered, 0)
+
+        # A field the table is built from still syncs.
+        with patch.object(rules_module, "render_format_table", counting):
+            pool.name = "B"
+            pool.save(update_fields=["name"])
+        self.assertEqual(rendered, 1)
+        self.assertIn("Pool B", self._block())
+
     # --- one stage, one write ---
 
     def _rules_writes(self, fn: Callable[[], object]) -> int:
