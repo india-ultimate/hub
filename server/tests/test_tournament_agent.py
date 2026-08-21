@@ -17,6 +17,7 @@ from unittest.mock import MagicMock, patch
 import httpx
 from django.conf import settings
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.db import DatabaseError
 from django.http import StreamingHttpResponse
 from django.test import Client, TestCase
 from django.utils.dateparse import parse_datetime
@@ -71,6 +72,7 @@ from server.tournament_agent.models import (
     AgentProposal,
     AgentQuestion,
     AgentTurn,
+    MessageRole,
     ProposalStatus,
     QuestionStatus,
     TournamentAgentMessage,
@@ -94,6 +96,7 @@ from server.tournament_agent.services.agent import (
     KEEP_RECENT_MESSAGES,
     TournamentAgentService,
     _compact_model_turns,
+    budget_refusal,
     round_tokens,
     strip_phantom_proposal_ids,
 )
@@ -3019,6 +3022,67 @@ class HardeningTests(TestCase):
         with patch.object(self.service.client, "chat", side_effect=AssertionError("called")):
             out = self.service.process_message(self.session, "set up pools")
         self.assertIn("token budget", out["response"])
+
+    def test_clearing_history_frees_a_spent_session(self) -> None:
+        """The refusal tells staff to clear the history, so clearing has to work.
+
+        The turn rows stay for audit; what resets is what the budget counts.
+        """
+        AgentTurn.objects.create(
+            session=self.session,
+            tokens_in=settings.TOURNAMENT_AGENT_MAX_SESSION_TOKENS,
+            tokens_out=0,
+        )
+        self.assertIn("token budget", budget_refusal(self.session))
+
+        self.service.clear_session(self.session)
+        self.session.refresh_from_db()
+
+        self.assertEqual(budget_refusal(self.session), "")
+        self.assertEqual(AgentTurn.objects.filter(session=self.session).count(), 1)
+
+    def test_spend_after_a_clear_counts_again(self) -> None:
+        self.service.clear_session(self.session)
+        self.session.refresh_from_db()
+        AgentTurn.objects.create(
+            session=self.session,
+            tokens_in=settings.TOURNAMENT_AGENT_MAX_SESSION_TOKENS,
+            tokens_out=0,
+        )
+        self.assertIn("token budget", budget_refusal(self.session))
+
+    def test_clearing_does_not_reset_the_daily_budget(self) -> None:
+        """The per-day cap is a spend guard, so clearing must not be a way round it."""
+        AgentTurn.objects.create(
+            session=self.session,
+            tokens_in=settings.TOURNAMENT_AGENT_MAX_DAILY_TOKENS,
+            tokens_out=0,
+        )
+        self.service.clear_session(self.session)
+        self.session.refresh_from_db()
+        self.assertIn("today's agent token budget", budget_refusal(self.session))
+
+    def test_a_failed_clear_leaves_the_conversation_intact(self) -> None:
+        """Half a clear would be this same bug again: history gone, budget charged."""
+        AgentTurn.objects.create(
+            session=self.session,
+            tokens_in=settings.TOURNAMENT_AGENT_MAX_SESSION_TOKENS,
+            tokens_out=0,
+        )
+        TournamentAgentMessage.objects.create(
+            session=self.session, role=MessageRole.USER, content="set up pools"
+        )
+
+        with (
+            patch.object(TournamentAgentSession, "save", side_effect=DatabaseError("boom")),
+            self.assertRaises(DatabaseError),
+        ):
+            self.service.clear_session(self.session)
+
+        self.session.refresh_from_db()
+        self.assertEqual(self.session.messages.count(), 1)
+        self.assertIsNone(self.session.history_cleared_at)
+        self.assertIn("token budget", budget_refusal(self.session))
 
     def test_the_kill_switch_closes_the_turn(self) -> None:
         with (
