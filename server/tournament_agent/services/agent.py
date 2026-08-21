@@ -10,6 +10,7 @@ from datetime import timedelta
 from typing import Any
 
 from django.conf import settings
+from django.db import transaction
 from django.db.models import Sum
 from django.utils import timezone
 
@@ -134,9 +135,13 @@ def budget_refusal(session: TournamentAgentSession) -> str:
     if not settings.TOURNAMENT_AGENT_ENABLED:
         return "The tournament agent is currently switched off."
 
-    spent = AgentTurn.objects.filter(session=session).aggregate(
-        total=Sum("tokens_in") + Sum("tokens_out")
-    )["total"]
+    # Only this conversation: turns from before a clear are kept for audit, but
+    # charging them to the new conversation left the session permanently refused,
+    # with a message telling staff to clear a history they had just cleared.
+    turns = AgentTurn.objects.filter(session=session)
+    if session.history_cleared_at:
+        turns = turns.filter(created_at__gte=session.history_cleared_at)
+    spent = turns.aggregate(total=Sum("tokens_in") + Sum("tokens_out"))["total"]
     if (spent or 0) >= settings.TOURNAMENT_AGENT_MAX_SESSION_TOKENS:
         return BUDGET_MESSAGE
 
@@ -332,16 +337,22 @@ class TournamentAgentService:
         return session
 
     def clear_session(self, session: TournamentAgentSession) -> None:
-        session.messages.all().delete()
-        session.questions.all().delete()
-        # Confirmed/rejected proposals stay for audit, but pending ones belong to a
-        # conversation that no longer exists — leaving them would keep offering
-        # staff a Confirm button for a plan they can no longer read.
-        session.proposals.filter(status=ProposalStatus.PENDING).update(
-            status=ProposalStatus.EXPIRED, resolved_at=timezone.now()
-        )
-        session.updated_at = timezone.now()
-        session.save(update_fields=["updated_at"])
+        # All of it or none of it. Half a clear is the bug this timestamp exists to
+        # fix, wearing a different hat: the messages would be gone while the budget
+        # still counted them, and the refusal would still be telling staff to clear.
+        cleared_at = timezone.now()
+        with transaction.atomic():
+            session.messages.all().delete()
+            session.questions.all().delete()
+            # Confirmed/rejected proposals stay for audit, but pending ones belong to
+            # a conversation that no longer exists — leaving them would keep offering
+            # staff a Confirm button for a plan they can no longer read.
+            session.proposals.filter(status=ProposalStatus.PENDING).update(
+                status=ProposalStatus.EXPIRED, resolved_at=cleared_at
+            )
+            session.history_cleared_at = cleared_at
+            session.updated_at = cleared_at
+            session.save(update_fields=["history_cleared_at", "updated_at"])
 
     def history(self, session: TournamentAgentSession) -> dict[str, Any]:
         questions_by_id = {q.id: q for q in session.questions.all()}

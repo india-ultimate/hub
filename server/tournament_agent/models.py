@@ -17,6 +17,10 @@ class TournamentAgentSession(models.Model):
     model_id = models.CharField(max_length=64, default=default_model_id)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    # When staff last cleared the conversation. The session token budget is
+    # measured from here, so clearing actually does what its button says; the
+    # AgentTurn rows themselves stay, because they are the audit trail.
+    history_cleared_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         indexes = [
