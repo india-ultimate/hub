@@ -21,6 +21,16 @@ export const documentClassMap = {
   "tbody td": "px-6 py-4 font-medium"
 };
 
+/**
+ * solid-markdown has no rehype-raw, so raw HTML is escaped and a comment renders
+ * as visible text. Dropping comments is safer than parsing HTML we then show on
+ * a public page. Text-level, so comments inside code fences go too.
+ */
+export const stripHtmlComments = markdown =>
+  typeof markdown === "string"
+    ? markdown.replace(/<!--[\s\S]*?-->/g, "")
+    : markdown;
+
 const TailwindMarkdown = props => {
   let divRef;
   const classMap = () => props.classMap || documentClassMap;
@@ -47,7 +57,10 @@ const TailwindMarkdown = props => {
 
   return (
     <div ref={divRef}>
-      <SolidMarkdown remarkPlugins={[remarkGfm]} children={props.markdown} />
+      <SolidMarkdown
+        remarkPlugins={[remarkGfm]}
+        children={stripHtmlComments(props.markdown)}
+      />
     </div>
   );
 };

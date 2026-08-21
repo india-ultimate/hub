@@ -545,3 +545,14 @@ class RulesFormatEdgeCaseTests(RulesFormatTests):
         build_bracket(self.tournament, name="1-4", sequence_number=2)
 
         self.assertEqual(self._rules(), "Ours now.")
+
+
+NOTE = "The table above is maintained for you"
+
+
+class FormatNoteVisibilityTests(TestCase):
+    def test_the_shipped_default_hides_the_editing_note(self) -> None:
+        rules = get_default_rules()
+        start = rules.index(NOTE)
+        commented = rules.rfind("<!--", 0, start) > rules.rfind("-->", 0, start)
+        self.assertTrue(commented, "the editing note must not be published")
