@@ -24,7 +24,7 @@ swap_size_mb = 512
 
 [[vm]]
   cpu_kind = "shared"
-  cpus = 2
+  cpus = 4
   memory = "1gb"
 
 [[services]]
