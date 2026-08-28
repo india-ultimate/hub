@@ -1,0 +1,51 @@
+---
+name: Autoscale Guard
+# Warns when the shared-CPU burst balance is draining. It does not remediate: Fly
+# Scale only opens a PR, so a human still merges it and runs Fly Deploy. Backtested
+# on the 2026-08-28 incident the warning lands ~5h before the first 504.
+#
+# Scheduled workflows only run on the default branch, so this is inert until merged.
+on:
+  # The signal is a 2-hour window, so polling faster buys nothing.
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: fly-autoscale-guard
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Check burst balance
+    runs-on: ubuntu-latest
+    outputs:
+      escalate: ${{ steps.check.outputs.escalate }}
+      reason: ${{ steps.check.outputs.reason }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read cpu_balance
+        id: check
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: python3 scripts/check-scale.py
+
+      - name: Summary
+        env:
+          REASON: ${{ steps.check.outputs.reason }}
+        run: |
+          echo "Autoscale guard: $REASON" >> "$GITHUB_STEP_SUMMARY"
+
+  escalate:
+    name: Open a tournament-profile PR
+    needs: check
+    if: ${{ needs.check.outputs.escalate == 'true' }}
+    permissions:
+      contents: write
+      pull-requests: write
+    uses: ./.github/workflows/scale.yml
+    with:
+      profile: tournament
+      reason: ${{ needs.check.outputs.reason }}
+    secrets: inherit
