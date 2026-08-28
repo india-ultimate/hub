@@ -24,7 +24,7 @@ swap_size_mb = 512
 
 [[vm]]
   cpu_kind = "shared"
-  cpus = 4
+  cpus = 8
   memory = "1gb"
 
 [[services]]
@@ -42,8 +42,8 @@ swap_size_mb = 512
     handlers = ["tls", "http"]
   [services.concurrency]
     type = "connections"
-    hard_limit = 200
-    soft_limit = 150
+    hard_limit = 
+    soft_limit = 
 
   [[services.tcp_checks]]
     interval = "15s"
