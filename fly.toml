@@ -21,11 +21,14 @@ swap_size_mb = 512
 [env]
   PORT = "8000"
   DJANGO_SETTINGS_MODULE = "hub.production"
+  # Set by scripts/apply-profile.py; workers x threads must track the limits below.
+  GUNICORN_WORKERS = "6"
+  GUNICORN_THREADS = "6"
 
 [[vm]]
   cpu_kind = "shared"
   cpus = 4
-  memory = "1gb"
+  memory = "2gb"
 
 [[services]]
   protocol = "tcp"
@@ -42,8 +45,8 @@ swap_size_mb = 512
     handlers = ["tls", "http"]
   [services.concurrency]
     type = "connections"
-    hard_limit = 200
-    soft_limit = 150
+    hard_limit = 72
+    soft_limit = 36
 
   [[services.tcp_checks]]
     interval = "15s"
