@@ -1,70 +1,124 @@
 ---
 name: Fly Scale
+# Applies a scaling profile from deploy/profiles.json and opens a PR against main.
+# Never deploys: merging the PR and running Fly Deploy are both human steps.
 on:
   workflow_dispatch:
     inputs:
-      cpu:
+      profile:
         type: choice
-        description: CPU Size
+        description: Scaling profile (see deploy/profiles.json)
+        required: true
+        default: baseline
         options:
-          - 2
-          - 4
-          - 8
-      gunicorn:
-        type: choice
-        description: Gunicorn servers
-        options:
-          - 4
-          - 8
-          - 12
-      hardLimit:
-        type: choice
-        description: Hard limit on connections
-        options:
-          - 100
-          - 200
-          - 400
-      softLimit:
-        type: choice
-        description: Soft limit on connections
-        options:
-          - 75
-          - 150
-          - 300
+          - baseline
+          - tournament
+          - peak
+  workflow_call:
+    inputs:
+      profile:
+        type: string
+        required: true
+      reason:
+        type: string
+        required: false
+        default: Requested manually
+    secrets:
+      ZULIP_API_KEY:
+        required: false
+
+concurrency:
+  group: fly-scale
+  cancel-in-progress: false
+
 jobs:
   scale:
-    name: Scale up or down hub
+    name: Open scaling PR
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      TARGET_BRANCH: main
+      # Job level, so the step's `if` can read it.
+      ZULIP_API_KEY: ${{ secrets.ZULIP_API_KEY }}
     steps:
-      - uses: actions/checkout@v3
-      - name: Replace cpu size
-        uses: jacobtomlinson/gha-find-replace@v3
+      - uses: actions/checkout@v4
         with:
-          find: "cpus = [0-9]+"
-          replace: "cpus = ${{github.event.inputs.cpu}}"
-          include: "fly.toml"
-      - name: Replace gunicorn servers
-        uses: jacobtomlinson/gha-find-replace@v3
-        with:
-          find: "-w [0-9]+"
-          replace: "-w ${{github.event.inputs.gunicorn}}"
-          include: "deploy/start.sh"
-      - name: Replace hard limit
-        uses: jacobtomlinson/gha-find-replace@v3
-        with:
-          find: "hard_limit = [0-9]+"
-          replace: "hard_limit = ${{github.event.inputs.hardLimit}}"
-          include: "fly.toml"
-      - name: Replace soft limit
-        uses: jacobtomlinson/gha-find-replace@v3
-        with:
-          find: "soft_limit = [0-9]+"
-          replace: "soft_limit = ${{github.event.inputs.softLimit}}"
-          include: "fly.toml"
-      - name: Get current unix timestamp
-        id: timestamp
-        uses: release-kit/unix-timestamp@v1
-      - uses: EndBug/add-and-commit@v9
-        with:
-          new_branch: fly-scale-${{steps.timestamp.outputs.timestamp}}
-          message: "vm: Scale"
+          ref: main
+
+      - name: Apply profile
+        env:
+          PROFILE: ${{ inputs.profile }}
+        run: |
+          python3 scripts/apply-profile.py "$PROFILE" | tee scale-summary.txt
+
+      - name: Detect change
+        id: change
+        env:
+          PROFILE: ${{ inputs.profile }}
+        run: |
+          if git diff --quiet -- fly.toml; then
+            echo "main is already on the $PROFILE profile; nothing to open."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open the PR
+        id: pr
+        if: ${{ steps.change.outputs.changed == 'true' }}
+        env:
+          PROFILE: ${{ inputs.profile }}
+          REASON: ${{ inputs.reason || 'Requested manually' }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="fly-scale/$PROFILE-$(date -u +%Y%m%d-%H%M%S)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add fly.toml
+          git commit -m "deploy: Scale to the $PROFILE profile"
+          git push origin "$BRANCH"
+          BODY="Why: $REASON
+
+          $(cat scale-summary.txt)
+
+          Nothing is deployed yet. Merge this, then run the Fly Deploy workflow."
+          PR_URL=$(gh pr create --base "$TARGET_BRANCH" --head "$BRANCH" \
+            --title "deploy: Scale to the $PROFILE profile" --body "$BODY")
+          echo "url=$PR_URL" >> "$GITHUB_OUTPUT"
+          echo "Opened $PR_URL"
+
+      - name: Notify Zulip
+        if: ${{ steps.change.outputs.changed == 'true' && env.ZULIP_API_KEY != '' }}
+        continue-on-error: true
+        env:
+          PROFILE: ${{ inputs.profile }}
+          REASON: ${{ inputs.reason || 'Requested manually' }}
+          PR_URL: ${{ steps.pr.outputs.url }}
+        run: |
+          MESSAGE="Scaling PR opened: **$PROFILE**
+
+          $REASON
+
+          Not deployed yet -- merge and run Fly Deploy. [Review the PR]($PR_URL)"
+          curl -s -X POST "https://upai.zulipchat.com/api/v1/messages" \
+            -u "github-bot@upai.zulipchat.com:$ZULIP_API_KEY" \
+            -d "type=stream" \
+            -d "to=tech%20backend" \
+            -d "subject=Scaling" \
+            --data-urlencode "content=$MESSAGE"
+
+      - name: Summary
+        if: ${{ always() }}
+        run: |
+          {
+            echo "### Fly scale"
+            echo
+            cat scale-summary.txt 2>/dev/null || echo "profile was not applied"
+            echo
+            echo "- changed: ${{ steps.change.outputs.changed }}"
+            echo "- PR: ${{ steps.pr.outputs.url || 'none opened' }}"
+            echo "- deployed: no (merge the PR, then run Fly Deploy)"
+          } >> "$GITHUB_STEP_SUMMARY"
