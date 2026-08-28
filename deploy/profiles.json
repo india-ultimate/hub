@@ -1,0 +1,32 @@
+{
+  "baseline": {
+    "description": "Everyday traffic. Shared CPU, bursts to 4 cores for spikes.",
+    "cpu_kind": "shared",
+    "cpus": 4,
+    "memory": "2gb",
+    "workers": 6,
+    "threads": 6,
+    "soft_limit": 36,
+    "hard_limit": 72
+  },
+  "tournament": {
+    "description": "Tournament days. Dedicated CPU, so the burst balance cannot run out.",
+    "cpu_kind": "performance",
+    "cpus": 1,
+    "memory": "2gb",
+    "workers": 2,
+    "threads": 12,
+    "soft_limit": 24,
+    "hard_limit": 48
+  },
+  "peak": {
+    "description": "Finals or anything unusual. Twice the tournament headroom.",
+    "cpu_kind": "performance",
+    "cpus": 2,
+    "memory": "4gb",
+    "workers": 4,
+    "threads": 8,
+    "soft_limit": 32,
+    "hard_limit": 64
+  }
+}

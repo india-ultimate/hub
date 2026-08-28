@@ -26,4 +26,6 @@ export PATH="$HOME/.local/bin:$PATH"
 # with 2 sync workers a single stream would eat half the server. The default 30s
 # timeout also kills turns long before the model is done, so raise it past the
 # provider's own 120s ceiling.
-gunicorn -w 4 -k gthread --threads 6 --timeout 300 --graceful-timeout 25 hub.wsgi
+# Counts come from fly.toml [env], set by scripts/apply-profile.py.
+gunicorn -w "${GUNICORN_WORKERS:-6}" -k gthread --threads "${GUNICORN_THREADS:-6}" \
+  --timeout 300 --graceful-timeout 25 hub.wsgi
