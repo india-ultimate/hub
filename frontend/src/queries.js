@@ -1,4 +1,4 @@
-import { getCookie } from "./utils";
+import { getCookie, hasAuthHint } from "./utils";
 
 export const fetchContributors = async () => {
   const repoResp = await fetch(
@@ -699,6 +699,16 @@ export const fetchTournamentTeamPointsBySlugV2 = async (
 };
 
 export const fetchUserAccessByTournamentSlug = async tournament_slug => {
+  if (!hasAuthHint()) {
+    return {
+      is_staff: false,
+      is_tournament_admin: false,
+      is_tournament_director: false,
+      is_tournament_volunteer: false,
+      playing_team_id: null,
+      admin_team_ids: []
+    };
+  }
   const response = await fetch(
     `/api/me/access?tournament_slug=${tournament_slug}`,
     {
@@ -711,6 +721,9 @@ export const fetchUserAccessByTournamentSlug = async tournament_slug => {
 };
 
 export const fetchUser = async () => {
+  if (!hasAuthHint()) {
+    throw new Error("Not authenticated");
+  }
   const response = await fetch("/api/me", {
     method: "GET",
     headers: { "Content-Type": "application/json" },
@@ -726,6 +739,10 @@ export const fetchUser = async () => {
 };
 
 export const fetchUserRegistrations = async () => {
+  // Same empty list the API returns for a user with no player profile.
+  if (!hasAuthHint()) {
+    return [];
+  }
   const response = await fetch("/api/me/registrations", {
     method: "GET",
     headers: { "Content-Type": "application/json" },
@@ -2101,6 +2118,10 @@ export const clearChatHistory = async () => {
 };
 
 export const fetchMembershipStatus = async () => {
+  // Same shape the API returns for a user with no membership.
+  if (!hasAuthHint()) {
+    return { has_membership: false, is_active: false };
+  }
   const response = await fetch("/api/me/membership", {
     method: "GET",
     headers: { "Content-Type": "application/json" },
