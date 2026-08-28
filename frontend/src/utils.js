@@ -17,6 +17,10 @@ export const getCookie = name => {
   return cookies[name];
 };
 
+// Mirror of the HttpOnly session cookie, set by AuthHintCookieMiddleware, so the
+// SPA can tell it is signed out without taking a 401. A hint, not an auth check.
+export const hasAuthHint = () => getCookie("hub_auth") === "1";
+
 export const canManageTournaments = user =>
   Boolean(user?.is_staff || (user?.directed_tournament_ids || []).length);
 
@@ -28,6 +32,10 @@ export const filterManageableTournaments = (tournaments, user) => {
 };
 
 export const fetchUserData = (successCallback, failureCallback) => {
+  if (!hasAuthHint()) {
+    failureCallback();
+    return Promise.resolve();
+  }
   return fetch("/api/me", {
     method: "GET",
     headers: { "Content-Type": "application/json" },
