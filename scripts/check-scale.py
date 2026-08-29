@@ -6,18 +6,22 @@ deploy dips bottomed lower (9,983 and 15,332) than the level the real incident s
 at for six hours. Duration can: deploys recovered within 90 minutes, the incident
 never did. Hence the sustained-window test rather than a threshold.
 
-Writes `escalate=true|false` to $GITHUB_OUTPUT. Needs FLY_API_TOKEN.
+Writes `escalate=true|false` to $GITHUB_OUTPUT. Needs FLY_METRICS_TOKEN, which
+must be org-scoped; the app-scoped FLY_API_TOKEN is accepted but gets a 403.
 """
 
 import json
 import os
+import re
 import sys
+import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
 from typing import Any
 
-import tomllib
+HTTP_FORBIDDEN = 403
+MAX_ERROR_BODY = 2048
 
 ROOT = Path(__file__).parent.parent
 ORG = os.environ.get("FLY_ORG", "upai")
@@ -31,13 +35,48 @@ FLOOR = int(os.environ.get("BALANCE_FLOOR", "5000"))
 FLOOR_WINDOW = os.environ.get("FLOOR_WINDOW", "15m")
 
 
+def http_error_message(code: int, body: bytes) -> str:
+    """A deploy token authenticates but is app-scoped, so org metrics give 403.
+    A bad token gives 401."""
+    hint = ""
+    if code == HTTP_FORBIDDEN:
+        hint = (
+            f" A deploy token cannot read org metrics -- set FLY_METRICS_TOKEN to"
+            f" a read-only org token (fly tokens create readonly -o {ORG})."
+        )
+    message = f"error: metrics API returned {code}.{hint}"
+    detail = body.decode(errors="replace").strip()
+    return f"{message} {detail}" if detail else message
+
+
+def decide(kind: str, peak: float | None, trough: float | None) -> tuple[bool, str]:
+    """Escalate only on a drain that has not recovered for the whole window; a
+    deploy dip always does."""
+    if kind != "shared":
+        return False, f"already on a {kind} profile, nothing to escalate to"
+    if peak is None or trough is None:
+        # Usually a stopped or just-replaced Machine.
+        return False, "no cpu_balance samples returned"
+    if peak < SUSTAINED_CEILING:
+        return True, (
+            f"balance has not recovered above {SUSTAINED_CEILING} in "
+            f"{SUSTAINED_WINDOW} (peak {peak:.0f})"
+        )
+    if trough < FLOOR:
+        return True, f"balance fell below the {FLOOR} floor (min {trough:.0f})"
+    return False, f"healthy: {SUSTAINED_WINDOW} peak {peak:.0f}, {FLOOR_WINDOW} min {trough:.0f}"
+
+
 def _query(promql: str, token: str) -> float | None:
     url = f"https://api.fly.io/prometheus/{ORG}/api/v1/query"
     body = urllib.parse.urlencode({"query": promql}).encode()
     # Macaroon tokens are rejected under the Bearer scheme.
     request = urllib.request.Request(url, data=body, headers={"Authorization": f"FlyV1 {token}"})
-    with urllib.request.urlopen(request, timeout=30) as response:  # noqa: S310
-        payload: dict[str, Any] = json.load(response)
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:  # noqa: S310
+            payload: dict[str, Any] = json.load(response)
+    except urllib.error.HTTPError as exc:
+        sys.exit(http_error_message(exc.code, exc.read(MAX_ERROR_BODY)))
     if payload.get("status") != "success":
         sys.exit(f"error: Prometheus query failed: {json.dumps(payload)[:300]}")
     results: list[dict[str, Any]] = payload["data"]["result"]
@@ -47,10 +86,12 @@ def _query(promql: str, token: str) -> float | None:
 
 
 def _current_cpu_kind() -> str:
-    with (ROOT / "fly.toml").open("rb") as handle:
-        data = tomllib.load(handle)
-    kind: str = data["vm"][0]["cpu_kind"]
-    return kind
+    # Not tomllib: this runs on a bare runner with no install, and the repo
+    # supports Python 3.10, where tomllib does not exist.
+    match = re.search(r'^\s*cpu_kind\s*=\s*"([^"]+)"', (ROOT / "fly.toml").read_text(), re.M)
+    if match is None:
+        sys.exit("error: no cpu_kind found in fly.toml")
+    return match.group(1)
 
 
 def _emit(escalate: bool, reason: str) -> None:
@@ -63,38 +104,21 @@ def _emit(escalate: bool, reason: str) -> None:
 
 
 def main() -> None:
-    token = os.environ.get("FLY_API_TOKEN")
+    # Prefer a metrics-scoped token; FLY_API_TOKEN is the app-scoped deploy token.
+    token = os.environ.get("FLY_METRICS_TOKEN") or os.environ.get("FLY_API_TOKEN")
     if not token:
-        sys.exit("error: FLY_API_TOKEN is not set")
+        sys.exit("error: neither FLY_METRICS_TOKEN nor FLY_API_TOKEN is set")
 
     kind = _current_cpu_kind()
     if kind != "shared":
-        _emit(False, f"already on a {kind} profile, nothing to escalate to")
+        _emit(*decide(kind, None, None))
         return
 
     metric = f'fly_instance_cpu_balance{{app="{APP}"}}'
     peak = _query(f"max_over_time({metric}[{SUSTAINED_WINDOW}])", token)
     trough = _query(f"min_over_time({metric}[{FLOOR_WINDOW}])", token)
 
-    if peak is None or trough is None:
-        # Usually a stopped or just-replaced Machine. A real drain will still be
-        # there in 30 min.
-        _emit(False, "no cpu_balance samples returned")
-        return
-
-    if peak < SUSTAINED_CEILING:
-        _emit(
-            True,
-            f"balance has not recovered above {SUSTAINED_CEILING} in "
-            f"{SUSTAINED_WINDOW} (peak {peak:.0f})",
-        )
-    elif trough < FLOOR:
-        _emit(True, f"balance fell below the {FLOOR} floor (min {trough:.0f})")
-    else:
-        _emit(
-            False,
-            f"healthy: {SUSTAINED_WINDOW} peak {peak:.0f}, {FLOOR_WINDOW} min {trough:.0f}",
-        )
+    _emit(*decide(kind, peak, trough))
 
 
 if __name__ == "__main__":
