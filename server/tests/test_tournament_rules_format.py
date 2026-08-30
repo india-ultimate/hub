@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import tempfile
 from collections.abc import Callable
+from io import StringIO
+from pathlib import Path
 from unittest.mock import patch
 
+from django.core.management import call_command
 from django.test import TestCase
 from django.utils.dateparse import parse_datetime
 
@@ -545,3 +549,72 @@ class RulesFormatEdgeCaseTests(RulesFormatTests):
         build_bracket(self.tournament, name="1-4", sequence_number=2)
 
         self.assertEqual(self._rules(), "Ours now.")
+
+
+NOTE = "The table above is maintained for you"
+
+
+class FormatNoteVisibilityTests(TestCase):
+    def test_the_shipped_default_hides_the_editing_note(self) -> None:
+        rules = get_default_rules()
+        start = rules.index(NOTE)
+        commented = rules.rfind("<!--", 0, start) > rules.rfind("-->", 0, start)
+        self.assertTrue(commented, "the editing note must not be published")
+
+
+class ReplaceInRulesCommandTests(TestCase):
+    def setUp(self) -> None:
+        self.tournament = Tournament.objects.create(event=create_event(title="Replace Open"))
+        self.tournament.rules = "# Rules\n\nold text\n\nOurs.\n"
+        self.tournament.save()
+
+    def _run(self, **kwargs: object) -> str:
+        out = StringIO()
+        call_command("replace_in_rules", stdout=out, **kwargs)
+        return out.getvalue()
+
+    def _rules(self) -> str:
+        self.tournament.refresh_from_db()
+        return self.tournament.rules or ""
+
+    def test_it_replaces_and_leaves_the_rest(self) -> None:
+        self._run(find="old text", replace="new text")
+        self.assertIn("new text", self._rules())
+        self.assertIn("Ours.", self._rules())
+
+    def test_omitting_replace_deletes(self) -> None:
+        self._run(find="old text")
+        self.assertNotIn("old text", self._rules())
+
+    def test_dry_run_saves_nothing(self) -> None:
+        output = self._run(find="old text", replace="new", dry_run=True)
+        self.assertIn("would change", output)
+        self.assertIn("old text", self._rules())
+
+    def test_text_that_is_absent_is_left_alone(self) -> None:
+        self._run(find="not present", replace="x")
+        self.assertEqual(self._rules(), "# Rules\n\nold text\n\nOurs.\n")
+
+    def test_it_can_target_one_tournament(self) -> None:
+        other = Tournament.objects.create(event=create_event(title="Other Open"))
+        other.rules = "old text"
+        other.save()
+
+        self._run(find="old text", replace="new", tournaments=[self.tournament.id])
+
+        other.refresh_from_db()
+        self.assertEqual(other.rules, "old text")
+        self.assertIn("new", self._rules())
+
+    def test_multi_line_text_comes_from_files(self) -> None:
+        """How the Format note gets hidden: multi-line find and replace."""
+        self.tournament.rules = f"# Rules\n\n{NOTE} and so on.\n"
+        self.tournament.save()
+        directory = Path(tempfile.mkdtemp())
+        find, replace = directory / "find.txt", directory / "replace.txt"
+        find.write_text(f"{NOTE} and so on.")
+        replace.write_text(f"<!--\n{NOTE} and so on.\n-->")
+
+        self._run(find_file=str(find), replace_file=str(replace))
+
+        self.assertIn(f"<!--\n{NOTE}", self._rules())
