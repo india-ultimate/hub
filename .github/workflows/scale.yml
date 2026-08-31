@@ -73,7 +73,9 @@ jobs:
           REASON: ${{ inputs.reason || 'Requested manually' }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          BRANCH="fly-scale/$PROFILE-$(date -u +%Y%m%d-%H%M%S)"
+          # Hyphen, not a slash: refs/heads/fly-scale already exists as a branch,
+          # so anything under fly-scale/ is rejected as a directory file conflict.
+          BRANCH="fly-scale-$PROFILE-$(date -u +%Y%m%d-%H%M%S)"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -b "$BRANCH"
