@@ -454,9 +454,9 @@ const Tournament = () => {
                             </A>
                           </td>
                           <td class="py-4 pl-2 pr-6">
-                            {spirit.points}
+                            {spirit.points?.toFixed(2)}
                             <Show when={spirit.self_points}>
-                              ({spirit.self_points})
+                              ({spirit.self_points?.toFixed(2)})
                             </Show>
                           </td>
                         </tr>
