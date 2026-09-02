@@ -1770,17 +1770,16 @@ def update_tournament_spirit_rankings(tournament: Tournament) -> None:
 
                 matches_count += 1
 
+        # Rounded by rank_spirit_scores, after ranking.
         spirit_ranking.append(
             {
                 "team_id": team.id,
-                "points": round(points / matches_count, ndigits=1) if matches_count > 0 else points,
-                "self_points": round(self_points / matches_count, ndigits=1)
-                if matches_count > 0
-                else self_points,
+                "points": points / matches_count if matches_count > 0 else points,
+                "self_points": self_points / matches_count if matches_count > 0 else self_points,
             }
         )
 
-    tournament.spirit_ranking = rank_spirit_scores(spirit_ranking)
+    tournament.spirit_ranking = rank_spirit_scores(spirit_ranking, tournament.current_seeding)
     tournament.save()
 
 
@@ -1992,15 +1991,35 @@ def create_bracket_sequence_matches(
         )
 
 
-def rank_spirit_scores(scores: list[dict[str, int | float]]) -> list[dict[str, int | float]]:
-    spirit_points = sorted({r["points"] for r in scores}, reverse=True)
+def rank_spirit_scores(
+    scores: list[dict[str, int | float]],
+    final_standings: dict[str, int] | None = None,
+) -> list[dict[str, int | float]]:
+    """Rank by average spirit score, ties broken by final placement.
 
-    # Assign the ranks to teams based on points - use the same rank for teams
-    # with same number of points.
-    for score in scores:
-        score["rank"] = spirit_points.index(score["points"]) + 1
+    final_standings is current_seeding, {position: team_id}. Unplaced teams sort last.
+    """
+    placement: dict[int, int] = {
+        int(team_id): int(position) for position, team_id in (final_standings or {}).items()
+    }
+    unplaced = len(placement) + 1
 
-    return sorted(scores, key=lambda x: x["rank"])
+    def rank_key(score: dict[str, int | float]) -> tuple[float, int]:
+        # Six decimals so float noise cannot pre-empt the placement tie-break.
+        return (
+            -round(float(score["points"]), 6),
+            placement.get(int(score["team_id"]), unplaced),
+        )
+
+    ranked = sorted(scores, key=rank_key)
+    for position, score in enumerate(ranked, start=1):
+        score["rank"] = position
+        score["points"] = round(float(score["points"]), 2)
+        # Migration 0039 predates self_points.
+        if "self_points" in score:
+            score["self_points"] = round(float(score["self_points"]), 2)
+
+    return ranked
 
 
 def update_for_pool_or_position_pool(match: Match, pool: Pool | PositionPool) -> None:

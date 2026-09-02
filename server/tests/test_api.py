@@ -1591,19 +1591,19 @@ class TestTournaments(ApiBaseTestCase):
         self.assertEqual(3, match["self_spirit_score_team_2"]["rules"])
         self.assertEqual(2, match["self_spirit_score_team_2"]["fouls"])
 
+        # Level teams are separated by final placement, so ranks are sequential.
         expected_tournament_spirit_ranking = [
             {"team_id": 2, "points": 11.0, "self_points": 11.0, "rank": 1},
             {"team_id": 1, "points": 9.0, "self_points": 10.0, "rank": 2},
             {"team_id": 3, "points": 0.0, "self_points": 0.0, "rank": 3},
-            {"team_id": 4, "points": 0.0, "self_points": 0.0, "rank": 3},
-            {"team_id": 5, "points": 0.0, "self_points": 0.0, "rank": 3},
-            {"team_id": 6, "points": 0.0, "self_points": 0.0, "rank": 3},
-            {"team_id": 7, "points": 0.0, "self_points": 0.0, "rank": 3},
-            {"team_id": 8, "points": 0.0, "self_points": 0.0, "rank": 3},
+            {"team_id": 4, "points": 0.0, "self_points": 0.0, "rank": 4},
+            {"team_id": 5, "points": 0.0, "self_points": 0.0, "rank": 5},
+            {"team_id": 6, "points": 0.0, "self_points": 0.0, "rank": 6},
+            {"team_id": 7, "points": 0.0, "self_points": 0.0, "rank": 7},
+            {"team_id": 8, "points": 0.0, "self_points": 0.0, "rank": 8},
         ]
 
         self.tournament.refresh_from_db()
-        print(self.tournament.spirit_ranking)
         self.assertEqual(expected_tournament_spirit_ranking, self.tournament.spirit_ranking)
 
     def test_invalid_submit_spirit_score(self) -> None:
