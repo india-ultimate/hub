@@ -28,7 +28,9 @@ jobs:
       - name: Read cpu_balance
         id: check
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          # Must be org-scoped. FLY_API_TOKEN is the app-scoped deploy token and
+          # the org metrics endpoint answers it with a 403.
+          FLY_METRICS_TOKEN: ${{ secrets.FLY_METRICS_TOKEN }}
         run: python3 scripts/check-scale.py
 
       - name: Summary
