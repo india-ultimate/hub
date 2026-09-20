@@ -16,6 +16,11 @@ swap_size_mb = 512
 # the mounted volume.
 MB_DB_FILE = "/data/metabase.db"
 
+# Metabase builds its OAuth discovery URLs from this. Without it, it guesses
+# http:// from the request behind Fly's proxy and the MCP client refuses the
+# mismatch against the https:// it connected to.
+MB_SITE_URL = "https://upai-hub-metabase.fly.dev"
+
 [[vm]]
   cpu_kind = "shared"
   cpus = 1
