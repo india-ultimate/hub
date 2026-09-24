@@ -704,6 +704,8 @@ class TestIntegration(BaseCase):
         self.open(f"{APP_URL}/merge-accounts/{kept_row.claim_token}")
         self.assert_text("These accounts were merged.", "p#merge-finished")
         self.assert_text("Merged into yours")
+        self.open(f"{APP_URL}/merge-accounts")
+        self.assert_text("Merged", f"tr#merge-list-row-{kept_row.claim_token}")
         self.delete_all_cookies()
         gone_row = done.members.get(merged_into_id=merged_keeper.id)
         self.open(f"{APP_URL}/merge-accounts/{gone_row.claim_token}")
@@ -721,6 +723,9 @@ class TestIntegration(BaseCase):
         self.open(f"{APP_URL}/merge-accounts/{own_row.claim_token}")
         self.assert_element_not_present("p#merge-finished")
         self.assert_text("Account deleted")
+        # The list says what the group page says: nothing was merged here.
+        self.open(f"{APP_URL}/merge-accounts")
+        self.assert_text("Sorted out", f"tr#merge-list-row-{own_row.claim_token}")
 
         # 5c. Anonymous — no membership at all, so no rows either way — still
         # learns whether a merge happened: "were merged" for the group that
