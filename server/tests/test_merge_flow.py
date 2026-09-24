@@ -1407,6 +1407,23 @@ class TestRequestingAMerge(MergeFlowTestCase):
         cluster = DuplicateCluster.objects.get()
         self.assertTrue(cluster.members.filter(user=self.old).exists())
 
+    def test_an_account_absorbed_while_we_waited_is_not_grouped(self) -> None:
+        """The other account is found before the lock is taken, and a merge
+        can absorb it while we wait, so it is read again once we have the
+        lock. A stale instance with no row behind it stands in for that: a
+        group built on it would point at an account that is gone."""
+        stale = User.objects.get(pk=self.old.pk)
+        self.old.delete()
+
+        with (
+            mock.patch("server.duplicates.flow.find_login_user", return_value=stale),
+            self.assertRaises(FlowError) as refused,
+        ):
+            flow.request_merge(self.me, "me.old@example.com", "")
+
+        self.assertEqual(refused.exception.status, 404)
+        self.assertEqual(DuplicateCluster.objects.count(), 0)
+
     def test_an_existing_shared_group_is_reused(self) -> None:
         self.start("me.old@example.com")
         self.start("me.old@example.com")
@@ -1760,3 +1777,68 @@ class TestAliasSignIn(MergeFlowTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["email"], "first@x.com")
         self.assertEqual(User.objects.count(), users)
+
+
+@skipUnless(connection.vendor == "postgresql", "SQLite has no row locks to race on")
+class TestRacingTwoRequestsOnPostgres(TransactionTestCase):
+    """Two people asking to merge each other at the same moment.
+
+    Each request used to lock its own keeper and nothing else, and then
+    take a key-share lock on the other account by writing its group row.
+    Two of them, in opposite orders, is either a group each - neither
+    waited for the other, so neither saw the other's - or, as it falls out
+    at this pause point, Postgres killing one of them for deadlock.
+    Locking both accounts in pk order makes the second wait, and then find
+    the group the first made.
+    """
+
+    def test_asking_at_the_same_moment_makes_one_group_not_two(self) -> None:
+        first, second = (
+            User.objects.create(username=address, email=address)
+            for address in ("first@x.com", "second@x.com")
+        )
+        holding, go = threading.Event(), threading.Event()
+        real = log  # patching flow.log below leaves this name the real one
+        results: dict[str, object] = {}
+
+        def paused(*args: Any, **kwargs: Any) -> Any:
+            """The first request stops here, holding its locks and its open
+            transaction, so the second has something to wait for."""
+            if threading.current_thread().name == "first":
+                holding.set()
+                go.wait(10)
+            return real(*args, **kwargs)
+
+        def run(name: str, keeper: User, email: str) -> None:
+            try:
+                results[name] = flow.request_merge(keeper, email, "").cluster_id
+            except Exception as error:  # — recorded for the assertion
+                results[name] = f"{type(error).__name__}: {str(error).splitlines()[0]}"
+            finally:
+                connections.close_all()
+
+        threads = [
+            threading.Thread(target=run, args=("first", first, second.email), name="first"),
+            threading.Thread(target=run, args=("second", second, first.email), name="second"),
+        ]
+        with mock.patch("server.duplicates.flow.log", side_effect=paused):
+            threads[0].start()
+            self.assertTrue(holding.wait(10))
+            threads[1].start()
+            with connection.cursor() as cursor:
+                for _ in range(200):
+                    # Waiting locks in this test database only, as above.
+                    cursor.execute(
+                        "SELECT count(*) FROM pg_locks WHERE NOT granted AND pid IN "
+                        "(SELECT pid FROM pg_stat_activity WHERE datname = current_database()) "
+                        "AND pid <> pg_backend_pid()"
+                    )
+                    if cursor.fetchone()[0]:
+                        break
+                    time.sleep(0.05)
+            go.set()
+            for thread in threads:
+                thread.join(20)
+
+        self.assertEqual(results["first"], results["second"])
+        self.assertEqual(DuplicateCluster.objects.count(), 1)

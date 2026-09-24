@@ -270,9 +270,23 @@ def request_merge(keeper: User, email: str, note: str) -> ClusterMember:
 
     with transaction.atomic():
         # So two requests at once cannot both count below a limit, or both
-        # miss a shared group the other is about to create. A no-op on
-        # SQLite; production is Postgres.
-        User.objects.select_for_update().filter(pk=keeper.pk).first()
+        # miss a shared group the other is about to create. Both accounts,
+        # not just the keeper: otherwise these two people asking about each
+        # other at the same moment each lock their own row, block on
+        # nothing, and open a group apiece for the same pair. In pk order,
+        # as _lock and merge_accounts take them. A no-op on SQLite;
+        # production is Postgres.
+        list(
+            User.objects.select_for_update()
+            .filter(pk__in=sorted({keeper.pk, other.pk}))
+            .order_by("pk")
+        )
+        # Read again now the lock is held, before anything is counted or
+        # decided: a merge that absorbed this account while we waited left
+        # nothing to start a group with.
+        other = User.objects.filter(pk=other.pk).first()
+        if other is None:
+            raise FlowError("We couldn't find an account with that email address.", 404)
 
         shared = (
             ClusterMember.objects.filter(
