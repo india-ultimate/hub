@@ -65,6 +65,28 @@ class TestPlayerTeamsFollowRosters(TestCase):
 
         self.assertEqual(self.teams_of_player(), [])
 
+    def test_leaving_the_series_roster_takes_the_team_off(self) -> None:
+        registration = SeriesRegistration.objects.create(
+            series=self.series, player=self.player, team=self.team
+        )
+
+        registration.delete()
+
+        self.assertEqual(self.teams_of_player(), [])
+
+    def test_a_roster_removal_also_drops_a_matching_import_link(self) -> None:
+        """Accepted, not an oversight: nothing records whether a link came from
+        a roster or from the Ultimate Central import, and a provenance column
+        is more than this field is worth. 677 pairs on production are both."""
+        self.player.teams.add(self.team)
+        registration = Registration.objects.create(
+            event=self.event, player=self.player, team=self.team
+        )
+
+        registration.delete()
+
+        self.assertEqual(self.teams_of_player(), [])
+
     def test_the_team_stays_while_another_roster_still_holds_them(self) -> None:
         """A season roster and an event roster reach the same team. Leaving one
         says nothing about the other."""
@@ -133,8 +155,9 @@ class TestPlayerTeamsFollowRosters(TestCase):
         self.assertEqual(self.teams_of_player(), [])
 
     def test_deleting_an_account_leaves_its_team_mates_alone(self) -> None:
-        """The roster rows and the links both go down with the player, and the
-        unlinking has to survive being run in the middle of that cascade."""
+        """Django takes the deleted player's own links down with them. What has
+        to hold is that the unlinking, running in the middle of that cascade,
+        keeps to the player being deleted and leaves the rest of the team."""
         team_mate = create_player(
             User.objects.create(username="mate@example.com", email="mate@example.com")
         )
