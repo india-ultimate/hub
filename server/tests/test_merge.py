@@ -6,6 +6,7 @@ from unittest import mock
 
 from django.apps import apps
 from django.core import mail
+from django.db import IntegrityError
 from django.db.models import ProtectedError
 from django.db.models.query import QuerySet
 from django.test import TestCase, override_settings
@@ -219,6 +220,27 @@ class TestMergeMechanics(MergeTestCase):
         # The row that lost is recoverable rather than merely gone.
         models = {row["model"] for row in AccountMerge.objects.get().snapshot}
         self.assertIn("server.registration", models)
+
+    def test_an_integrity_error_that_is_not_a_collision_is_raised(self) -> None:
+        """Every IntegrityError used to be read as the expected uniqueness
+        clash, so a constraint or trigger this does not understand deleted
+        the row instead of stopping the merge."""
+        Membership.objects.create(
+            player=self.duplicate_player,
+            membership_number="ONLY",
+            start_date=datetime.date(2026, 1, 1),
+            end_date=datetime.date(2026, 12, 31),
+            is_active=True,
+        )
+
+        with (
+            mock.patch.object(Membership, "save", side_effect=IntegrityError("a trigger")),
+            self.assertRaises(IntegrityError),
+        ):
+            merge_accounts(self.primary, [self.duplicate], dry_run=False)
+
+        self.assertEqual(Membership.objects.count(), 1)
+        self.assertTrue(User.objects.filter(pk=self.duplicate.pk).exists())
 
     def test_the_snapshot_says_whose_the_destroyed_row_was(self) -> None:
         """The row is repointed in memory before the save that fails, and

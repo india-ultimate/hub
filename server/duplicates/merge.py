@@ -428,12 +428,17 @@ def _move_rows(
             moved += 1
             continue
         except IntegrityError:
-            pass
+            # The only failure understood here is a clash with a row the
+            # primary already holds. Anything else - a different constraint,
+            # a trigger, a clash no row can be named for - would otherwise
+            # fall through to the casualty path below, which deletes a row.
+            theirs = _conflicting_row(rel, row, target)
+            if theirs is None:
+                raise
 
         # The primary already holds one. Keep whichever the model says is
         # better, rather than the primary's by default.
-        theirs = _conflicting_row(rel, row, target)
-        if rank is not None and theirs is not None and rank(row) > rank(theirs):
+        if rank is not None and rank(row) > rank(theirs):
             # theirs was never repointed, so it archives as it stands.
             casualties.append(theirs)
             if record is not None:
