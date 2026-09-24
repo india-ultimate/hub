@@ -1039,23 +1039,31 @@ Available Tools:
         """Get detailed information about a specific team."""
         try:
             team = Team.objects.get(id=team_id)
-            return {
-                "name": team.name,
-                "category": team.get_category_display(),
-                "state": team.get_state_ut_display() if team.state_ut else None,
-                "city": team.city,
-                # Counted from rosters rather than `team.players`, which since
-                # rosters started feeding it holds everyone ever associated with
-                # the team, coaches and managers included. Asked "how many
-                # players does this team have", that reads like a squad size and
-                # is not one.
-                "player_count": Registration.objects.filter(team=team, is_playing=True)
-                .values("player")
-                .distinct()
-                .count(),
-            }
         except Team.DoesNotExist:
             return None
+
+        # Their latest roster, minus the people who run the team rather than
+        # play for it. `team.players` cannot answer this: now that rosters feed
+        # it, it holds everyone ever associated with the team in any season, and
+        # asked "how many players does this team have" that reads like a squad
+        # size without being one. Roles, not `is_playing`, say who is staff --
+        # `is_playing` defaults to true and the roster endpoint ignores a false.
+        roster = Registration.objects.filter(team=team).exclude(
+            role__in=(
+                Registration.Role.COACH,
+                Registration.Role.ASSISTANT_COACH,
+                Registration.Role.MANAGER,
+            )
+        )
+        latest_event = roster.order_by("-event__start_date").values_list("event_id", flat=True)
+
+        return {
+            "name": team.name,
+            "category": team.get_category_display(),
+            "state": team.get_state_ut_display() if team.state_ut else None,
+            "city": team.city,
+            "player_count": roster.filter(event_id=latest_event[0]).count() if latest_event else 0,
+        }
 
     def get_player_accreditation(self, player_id: int) -> dict[str, Any] | None:
         """Get wfdf accreditation information for a specific player."""
