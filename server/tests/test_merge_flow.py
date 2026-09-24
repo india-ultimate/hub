@@ -1162,6 +1162,21 @@ class TestRacingAMergeOnPostgres(TransactionTestCase):
             self.race(lambda: flow.merge_pair(self.g2, self.k2, self.x.pk, actor=self.k2))
         )
 
+    def test_a_request_by_the_absorbed_account(self) -> None:
+        """X, still signed in, asks to merge an account into itself. The
+        request waits for X's lock while the merge deletes X, and then used
+        to write a group row for X that failed its foreign key at COMMIT."""
+        results = self.race(lambda: flow.request_merge(self.x, "k2@x.com", ""))
+        self.assertEqual(
+            results,
+            {
+                "merge": "ok",
+                "other": "FlowError: This account was just merged into another. "
+                "Sign in again and try once more.",
+            },
+        )
+        self.assertFalse(DuplicateCluster.objects.filter(origin="requested").exists())
+
     def group(self, *members: tuple[User, User | None]) -> DuplicateCluster:
         """A group of (account, the keeper it is verified for, or None)."""
         cluster = DuplicateCluster.objects.create()
@@ -1500,6 +1515,24 @@ class TestRequestingAMerge(MergeFlowTestCase):
             flow.request_merge(self.me, "me.old@example.com", "")
 
         self.assertEqual(refused.exception.status, 404)
+        self.assertEqual(DuplicateCluster.objects.count(), 0)
+
+    def test_a_keeper_absorbed_while_we_waited_is_refused(self) -> None:
+        """The keeper is the signed-in account, loaded before the lock, and
+        a merge elsewhere can absorb it while we wait, just like the other
+        account. A stale instance with no row behind it stands in for that:
+        a group row pointing at it failed its foreign key at COMMIT, a 500.
+        Through the endpoint, so the refusal's status is one it may send."""
+
+        def absorbed_first(keeper: User, email: str, note: str) -> ClusterMember:
+            User.objects.filter(pk=keeper.pk).delete()
+            return flow.request_merge(keeper, email, note)
+
+        with mock.patch("server.duplicates.api.request_merge", side_effect=absorbed_first):
+            response = self.start("me.old@example.com")
+
+        self.assertEqual(response.status_code, 403)
+        self.assertIn("Sign in again", response.json()["message"])
         self.assertEqual(DuplicateCluster.objects.count(), 0)
 
     def test_an_existing_shared_group_is_reused(self) -> None:

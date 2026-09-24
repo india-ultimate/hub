@@ -236,7 +236,15 @@ def my_groups(request: AuthenticatedHttpRequest) -> tuple[int, list[dict[str, ob
     return 200, [group for _, _, group in ranked]
 
 
-@router.post("", response={200: RequestedSchema, 400: message_response, 404: message_response})
+@router.post(
+    "",
+    response={
+        200: RequestedSchema,
+        400: message_response,
+        403: message_response,
+        404: message_response,
+    },
+)
 def start_merge(
     request: AuthenticatedHttpRequest, payload: RequestMergeSchema
 ) -> tuple[int, dict[str, str]]:
