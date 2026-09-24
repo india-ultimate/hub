@@ -1,7 +1,7 @@
 import csv
 from typing import Any
 
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 from django.db.models import CharField, Q, QuerySet, Sum, Value
 from django.db.models.functions import Concat
@@ -10,12 +10,15 @@ from django.template.response import TemplateResponse
 from django.utils.html import format_html
 
 from server.announcements.models import Announcement
-from server.core.models import (
-    Accreditation,
-    Guardianship,
-    Player,
-    Team,
-    User,
+from server.core.models import Accreditation, Guardianship, Player, Team, User
+from server.duplicates.flow import FlowError, approve_staff, reject_staff
+from server.duplicates.merge import MergeBlockedError, MergeFieldError, MergeIncompleteError
+from server.duplicates.models import (
+    AccountMerge,
+    ClusterEvent,
+    ClusterMember,
+    DuplicateCluster,
+    EmailAlias,
 )
 from server.election.models import (
     Candidate,
@@ -30,7 +33,7 @@ from server.forms.models import Form, FormResponse
 from server.membership.models import Membership
 from server.season.models import Season
 from server.series.models import Series, SeriesRegistration, SeriesRosterInvitation
-from server.servicerequests.models import ServiceRequest
+from server.servicerequests.models import ServiceRequest, ServiceRequestType
 from server.task.manager import TaskManager
 from server.task.models import Task
 from server.tournament.models import (
@@ -718,10 +721,37 @@ class ServiceRequestAdmin(admin.ModelAdmin[ServiceRequest]):
     list_filter = ["type", "status", "created_at"]
     date_hierarchy = "created_at"
     filter_horizontal = ("service_players",)
+    actions = ["approve_and_merge", "reject_merge"]
 
     @admin.display(description="User", ordering="user__first_name")
     def get_user(self, obj: ServiceRequest) -> str:
         return obj.user.get_full_name()
+
+    # "change", not the default "view": an approval deletes an account.
+    @admin.action(description="Merge requests: approve and merge", permissions=["change"])
+    def approve_and_merge(self, request: HttpRequest, queryset: QuerySet[ServiceRequest]) -> None:
+        for item in queryset.filter(type=ServiceRequestType.REQUEST_ACCOUNT_MERGE):
+            try:
+                approve_staff(item, request.user)  # type: ignore[arg-type]
+            except (FlowError, MergeBlockedError, MergeFieldError, MergeIncompleteError) as error:
+                reason = (
+                    ", ".join(error.args[0]) if isinstance(error, MergeBlockedError) else str(error)
+                )
+                self.message_user(
+                    request, f"Request {item.pk} not merged: {reason}", messages.ERROR
+                )
+            else:
+                self.message_user(request, f"Request {item.pk} merged")
+
+    @admin.action(description="Merge requests: reject", permissions=["change"])
+    def reject_merge(self, request: HttpRequest, queryset: QuerySet[ServiceRequest]) -> None:
+        for item in queryset.filter(type=ServiceRequestType.REQUEST_ACCOUNT_MERGE):
+            try:
+                reject_staff(item, request.user)  # type: ignore[arg-type]
+            except FlowError as error:
+                self.message_user(request, f"Request {item.pk}: {error}", messages.ERROR)
+            else:
+                self.message_user(request, f"Request {item.pk} rejected")
 
 
 @admin.register(Announcement)
@@ -904,6 +934,67 @@ class TaskAdmin(admin.ModelAdmin[Task]):
                     self.message_user(request, f"Failed to queue test email: {e}", level="error")
 
         return super().changelist_view(request, extra_context)
+
+
+class ReadOnly:
+    """History: nothing here is added, edited or deleted by hand."""
+
+    def has_add_permission(self, request: HttpRequest, obj: Any = None) -> bool:
+        return False
+
+    def has_change_permission(self, request: HttpRequest, obj: Any = None) -> bool:
+        return False
+
+    def has_delete_permission(self, request: HttpRequest, obj: Any = None) -> bool:
+        return False
+
+
+@admin.register(AccountMerge)
+class AccountMergeAdmin(ReadOnly, admin.ModelAdmin[AccountMerge]):
+    list_display = ["id", "created_at", "primary_email", "cluster", "actor_email", "matched_by"]
+    list_filter = ["created_at"]
+    search_fields = ["primary_email", "duplicate_emails"]
+    date_hierarchy = "created_at"
+
+
+class ClusterMemberInline(ReadOnly, admin.TabularInline[ClusterMember, DuplicateCluster]):
+    model = ClusterMember
+    extra = 0
+    fields = (
+        "account_email",
+        "state",
+        "proof",
+        "verified_by_id",
+        "merged_into_id",
+        "merge",
+        "staff_request",
+    )
+    readonly_fields = fields
+
+
+class ClusterEventInline(ReadOnly, admin.TabularInline[ClusterEvent, DuplicateCluster]):
+    model = ClusterEvent
+    extra = 0
+    ordering = ["-at"]
+    fields = ("at", "kind", "member", "actor_email", "detail")
+    readonly_fields = fields
+
+
+@admin.register(DuplicateCluster)
+class DuplicateClusterAdmin(ReadOnly, admin.ModelAdmin[DuplicateCluster]):
+    list_display = ["id", "status", "origin", "matched_by", "created_at", "resolved_at"]
+    list_filter = ["status", "origin"]
+    inlines = [ClusterMemberInline, ClusterEventInline]
+
+
+@admin.register(EmailAlias)
+class EmailAliasAdmin(ReadOnly, admin.ModelAdmin[EmailAlias]):
+    """Where an address a merge absorbed signs in now."""
+
+    list_display = ["email", "user", "created_at"]
+    search_fields = ["email", "user__email", "user__username"]
+    list_select_related = ["user"]
+    date_hierarchy = "created_at"
 
 
 @admin.register(Form)
