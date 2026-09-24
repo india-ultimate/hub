@@ -87,6 +87,10 @@ class MyGroupSchema(Schema):
     # A merge happened in this group. A Resolved group may have closed
     # because its other account was deleted or merged elsewhere instead.
     anything_merged: bool
+    # The group is still open but your link to it has expired, so you can
+    # no longer act in it; asking again for the address starts a new one.
+    # Never true of a finished group, whose links a dismissal also expires.
+    expired: bool
     # When the group started (DuplicateCluster.created_at).
     started_at: datetime
     # One other member's address, to label the row. Masked the same way
