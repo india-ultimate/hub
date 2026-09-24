@@ -13,19 +13,30 @@ const fetchCluster = async token => {
   return response.json();
 };
 
+const TRY_AGAIN = "Something went wrong. Please try again.";
+
+// A 4xx carries a message written for people; a 5xx page, a proxy error or
+// a dropped connection does not, and its parser error would mean nothing.
 const post = async (path, body) => {
-  const response = await fetch(path, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-CSRFToken": getCookie("csrftoken")
-    },
-    credentials: "same-origin",
-    body: body ? JSON.stringify(body) : undefined
-  });
-  const data = await response.json();
+  let response;
+  try {
+    response = await fetch(path, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCookie("csrftoken")
+      },
+      credentials: "same-origin",
+      body: body ? JSON.stringify(body) : undefined
+    });
+  } catch {
+    throw new Error(TRY_AGAIN);
+  }
+  const data = await response.json().catch(() => null);
   if (!response.ok) {
-    const error = new Error(data?.message || "Something went wrong");
+    const error = new Error(
+      (response.status < 500 && data?.message) || TRY_AGAIN
+    );
     error.reason = data?.reason;
     throw error;
   }
