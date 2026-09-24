@@ -38,6 +38,7 @@ from server.duplicates.flow import (
     dismiss,
     merge_pair,
     reject_staff,
+    request_staff,
     verify_same_inbox,
 )
 from server.duplicates.history import log
@@ -1274,6 +1275,16 @@ class TestStaffReview(RowActions):
         self.assertEqual(self.request().status, ServiceRequestStatus.PENDING)
         self.assertTrue(User.objects.filter(id=self.second.id).exists())
 
+    def test_the_admin_action_approves_and_merges(self) -> None:
+        self.ask()
+        self.client.force_login(self.staff())
+        response = self.client.post(
+            "/admin/server/servicerequest/",
+            {"action": "approve_and_merge", "_selected_action": [self.request().pk]},
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(self.request().status, ServiceRequestStatus.APPROVED)
+
 
 class TestRequestingAMerge(MergeFlowTestCase):
     def setUp(self) -> None:
@@ -1507,6 +1518,88 @@ class TestBlockedMerge(MergeFlowTestCase):
         self.assertEqual(asked.status_code, 200)
         row = ClusterMember.objects.get(cluster=self.cluster, user=self.second)
         self.assertEqual(row.state, ClusterMember.State.PENDING_STAFF)
+
+
+ADMIN_STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+}
+
+
+@override_settings(STORAGES=ADMIN_STORAGES)
+class TestMergeAdminPages(MergeFlowTestCase):
+    """The admin pages with a real history in them, not an empty group."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.staff = User.objects.create_superuser("admin@x.com", "admin@x.com", "pw")
+        # A real code, issued and checked through flow.send_code/verify_code
+        # - the only path that both verifies the row and logs CODE_VERIFIED
+        # (flow._mark_verified) - not confirmed()'s raw row update, so the
+        # group page's timeline is real history, not a planted event.
+        flow.send_code(self.cluster, self.first, self.second.id)
+        match = re.search(r"\b(\d{6})\b", str(mail.outbox[-1].body))
+        if match is None:
+            raise AssertionError("no code found in the last email")
+        flow.verify_code(self.cluster, self.first, self.second.id, match.group(1))
+        with self.captureOnCommitCallbacks(execute=True):
+            merge_pair(self.cluster, self.first, self.second.id, actor=self.first)
+        self.client.force_login(self.staff)
+
+    def test_the_group_page_shows_its_rows_and_timeline(self) -> None:
+        page = self.client.get(f"/admin/server/duplicatecluster/{self.cluster.pk}/change/")
+        self.assertEqual(page.status_code, 200)
+        html = page.content.decode()
+        # Choice fields render their display label in the admin, not the
+        # raw stored value - so this asserts what actually renders.
+        for text in ("second@x.com", "A code sent to it", "Merged", "Code Verified", "Closed"):
+            self.assertIn(text, html)
+
+    def test_the_merge_page_shows_its_record(self) -> None:
+        merge = AccountMerge.objects.get(cluster=self.cluster)
+        page = self.client.get(f"/admin/server/accountmerge/{merge.pk}/change/")
+        self.assertEqual(page.status_code, 200)
+        self.assertIn("second@x.com", page.content.decode())
+
+    def test_aliases_can_be_looked_up_but_not_edited(self) -> None:
+        page = self.client.get("/admin/server/emailalias/?q=second")
+        self.assertEqual(page.status_code, 200)
+        self.assertIn("second@x.com", page.content.decode())
+        alias = EmailAlias.objects.get(email="second@x.com")
+        self.assertEqual(self.client.get("/admin/server/emailalias/add/").status_code, 403)
+        self.assertEqual(
+            self.client.get(f"/admin/server/emailalias/{alias.pk}/delete/").status_code, 403
+        )
+
+
+@override_settings(STORAGES=ADMIN_STORAGES)
+class TestMergeRequestAdminActions(MergeFlowTestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        with self.captureOnCommitCallbacks(execute=True):
+            self.request = request_staff(self.cluster, self.first, self.second.id, "lost inbox")
+
+    def test_rejecting_through_the_admin(self) -> None:
+        staff = User.objects.create_superuser("admin@x.com", "admin@x.com", "pw")
+        self.client.force_login(staff)
+        with self.captureOnCommitCallbacks(execute=True):
+            self.client.post(
+                "/admin/server/servicerequest/",
+                {"action": "reject_merge", "_selected_action": [self.request.pk]},
+                follow=True,
+            )
+        self.request.refresh_from_db()
+        self.assertEqual(self.request.status, ServiceRequestStatus.REJECTED)
+        row = ClusterMember.objects.get(cluster=self.cluster, user=self.second)
+        self.assertEqual(row.state, ClusterMember.State.REJECTED)
+
+    def test_view_only_staff_are_not_offered_the_actions(self) -> None:
+        viewer = User.objects.create(username="view@x.com", email="view@x.com", is_staff=True)
+        viewer.user_permissions.add(Permission.objects.get(codename="view_servicerequest"))
+        self.client.force_login(viewer)
+        html = self.client.get("/admin/server/servicerequest/").content.decode()
+        self.assertNotIn("approve_and_merge", html)
+        self.assertNotIn("reject_merge", html)
 
 
 class TestAliasSignIn(MergeFlowTestCase):

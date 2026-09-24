@@ -8,7 +8,7 @@ from django.apps import apps
 from django.core import mail
 from django.db.models import ProtectedError
 from django.db.models.query import QuerySet
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.utils.timezone import now
 
 from server.chat.models import ChatSession
@@ -1159,3 +1159,37 @@ class TestGroupHistory(MergeTestCase):
         event = self.cluster.events.get(kind=ClusterEvent.Kind.CODE_SENT)
         self.assertEqual(event.actor_id, absorbed_id)
         self.assertEqual(event.actor_email, "dup@x.com")
+
+
+@override_settings(
+    STORAGES={
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    }
+)
+class TestMergeAdmin(TestCase):
+    # Admin templates resolve static files through the manifest storage, and no manifest
+    # exists in tests because collectstatic never runs — so only these tests use the plain
+    # StaticFilesStorage backend to avoid ValueError: Missing staticfiles manifest entry.
+
+    def setUp(self) -> None:
+        self.staff = User.objects.create_superuser("admin@x.com", "admin@x.com", "pw")
+        self.client.force_login(self.staff)
+        self.cluster = DuplicateCluster.objects.create()
+
+    def test_merges_and_groups_can_be_read(self) -> None:
+        for path in (
+            "/admin/server/accountmerge/",
+            "/admin/server/duplicatecluster/",
+            f"/admin/server/duplicatecluster/{self.cluster.pk}/change/",
+        ):
+            self.assertEqual(self.client.get(path).status_code, 200, path)
+
+    def test_nothing_can_be_added_or_deleted(self) -> None:
+        self.assertEqual(self.client.get("/admin/server/accountmerge/add/").status_code, 403)
+        self.assertEqual(
+            self.client.get(
+                f"/admin/server/duplicatecluster/{self.cluster.pk}/delete/"
+            ).status_code,
+            403,
+        )
