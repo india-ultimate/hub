@@ -81,7 +81,7 @@ const Player = props => {
                   <For each={props.player?.teams}>
                     {team => (
                       <a
-                        href={`https://indiaultimate.org/en_in/t/${team.ultimate_central_slug}`}
+                        href={`/team/${team.slug}`}
                         class="mr-2 inline-flex items-center justify-center rounded border border-blue-400 bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-800 hover:bg-blue-200 dark:bg-gray-700 dark:text-blue-400"
                       >
                         {team.name}
