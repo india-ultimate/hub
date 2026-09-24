@@ -712,6 +712,16 @@ export default function MergeAccounts() {
             </div>
           </Show>
         </Show>
+
+        <Show when={signedIn() && !finished() && data().can_act}>
+          <p
+            id="merge-help-note"
+            class="mt-4 border-t border-gray-200 pt-4 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400"
+          >
+            Asking for help sends the request to our Ops team, who will approve
+            or reject it.
+          </p>
+        </Show>
       </Show>
 
       <Show when={notice()}>

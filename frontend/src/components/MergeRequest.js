@@ -8,7 +8,6 @@ export default function MergeRequest() {
   const [store] = useStore();
   const navigate = useNavigate();
   const [email, setEmail] = createSignal("");
-  const [note, setNote] = createSignal("");
   const [error, setError] = createSignal();
   const [busy, setBusy] = createSignal(false);
 
@@ -26,7 +25,9 @@ export default function MergeRequest() {
           "X-CSRFToken": getCookie("csrftoken")
         },
         credentials: "same-origin",
-        body: JSON.stringify({ email: email(), note: note() })
+        // The reason is asked for later, in the merge page's help dialog, and
+        // only by the people who need it - so nothing to say here.
+        body: JSON.stringify({ email: email(), note: "" })
       });
       const data = await response.json();
       if (!response.ok) {
@@ -51,15 +52,20 @@ export default function MergeRequest() {
         class="mb-4 rounded-lg border border-blue-300 bg-blue-50 p-3 text-sm text-blue-900 dark:border-blue-700 dark:bg-blue-900 dark:text-blue-100"
       >
         <p class="font-semibold">
-          You&apos;re signed in as {keeper()}. This is the account you&apos;ll
+          You&apos;re signed in as {keeper()} — this is the account you&apos;ll
           keep.
         </p>
-        <p>
-          Everything from the other account — memberships, registrations,
-          payments, teams — moves across, except where your account already has
-          one, and the other account is then deleted. This cannot be undone. To
-          keep the other account instead, sign in to it and start from there.
-        </p>
+        <ul class="mt-2 list-disc space-y-1 pl-5">
+          <li>
+            Memberships, registrations, payments and teams move across to it.
+          </li>
+          <li>Anything this account already has stays as it is.</li>
+          <li>The other account is then deleted. This cannot be undone.</li>
+          <li>
+            To keep the other account instead, sign in to it and start from
+            there.
+          </li>
+        </ul>
       </div>
       <form onSubmit={submit} class="space-y-3">
         <label class="block text-sm text-gray-900 dark:text-white">
@@ -68,25 +74,16 @@ export default function MergeRequest() {
             id="merge-request-email"
             type="email"
             required
-            class="mt-1 block w-full rounded border border-gray-300 p-2 dark:border-gray-600 dark:bg-gray-700"
+            class="mt-1 block min-h-[44px] w-full rounded border border-gray-300 p-2 focus:border-blue-600 focus:ring-blue-600 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
             value={email()}
             onInput={e => setEmail(e.currentTarget.value)}
-          />
-        </label>
-        <label class="block text-sm text-gray-900 dark:text-white">
-          Anything our team should know (optional)
-          <textarea
-            id="merge-request-note"
-            class="mt-1 block w-full rounded border border-gray-300 p-2 dark:border-gray-600 dark:bg-gray-700"
-            value={note()}
-            onInput={e => setNote(e.currentTarget.value)}
           />
         </label>
         <button
           id="merge-request-submit"
           type="submit"
           disabled={busy()}
-          class="rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white disabled:opacity-50"
+          class="min-h-[44px] rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 disabled:opacity-50 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
         >
           Continue
         </button>
