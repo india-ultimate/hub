@@ -1,4 +1,4 @@
-import { useNavigate } from "@solidjs/router";
+import { A, useNavigate } from "@solidjs/router";
 import { For, Match, Show, Switch } from "solid-js";
 
 import { genderChoices, occupationChoices, stateChoices } from "../constants";
@@ -80,12 +80,12 @@ const Player = props => {
                 <Match when={props.player?.teams}>
                   <For each={props.player?.teams}>
                     {team => (
-                      <a
+                      <A
                         href={`/team/${team.slug}`}
                         class="mr-2 inline-flex items-center justify-center rounded border border-blue-400 bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-800 hover:bg-blue-200 dark:bg-gray-700 dark:text-blue-400"
                       >
                         {team.name}
-                      </a>
+                      </A>
                     )}
                   </For>
                 </Match>
