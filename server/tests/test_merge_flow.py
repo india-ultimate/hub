@@ -1068,13 +1068,14 @@ class TestRacingAMergeOnPostgres(TransactionTestCase):
                 proof=ClusterMember.Proof.EMAIL_CODE,
             )
 
-    def race(self, other: Callable[[], object]) -> dict[str, str]:
-        """Run the merge until it holds both accounts, start `other`, wait
-        until Postgres says it is blocked, then let the merge finish."""
+    def race(self, other: Callable[[], object], at: str = "_release_keeper") -> dict[str, str]:
+        """Run the merge until it holds both accounts and reaches `at`,
+        start `other`, wait until Postgres says it is blocked, then let the
+        merge finish."""
         from server.duplicates import merge
 
         holding, go = threading.Event(), threading.Event()
-        real = merge._release_keeper
+        real = getattr(merge, at)
         results: dict[str, str] = {}
 
         def paused(*args: Any) -> None:
@@ -1100,7 +1101,7 @@ class TestRacingAMergeOnPostgres(TransactionTestCase):
             threading.Thread(target=run, args=("other", other), name="other"),
         ]
         with (
-            mock.patch("server.duplicates.merge._release_keeper", side_effect=paused),
+            mock.patch(f"server.duplicates.merge.{at}", side_effect=paused),
             mock.patch("server.duplicates.flow.send_code_email"),
             mock.patch("server.duplicates.flow.notify_kept"),
             mock.patch("server.duplicates.flow.notify_merged"),
@@ -1144,6 +1145,47 @@ class TestRacingAMergeOnPostgres(TransactionTestCase):
         self.assert_merged_elsewhere(
             self.race(lambda: flow.merge_pair(self.g2, self.k2, self.x.pk, actor=self.k2))
         )
+
+    def group(self, *members: tuple[User, User | None]) -> DuplicateCluster:
+        """A group of (account, the keeper it is verified for, or None)."""
+        cluster = DuplicateCluster.objects.create()
+        for user, keeper in members:
+            row = ClusterMember.of(cluster, user)
+            if keeper is not None:
+                row.state = ClusterMember.State.VERIFIED
+                row.verified_by_id = keeper.pk
+                row.verified_at = now()
+                row.proof = ClusterMember.Proof.EMAIL_CODE
+            row.save()
+        return cluster
+
+    # The merge used to lock the absorbed account's rows in other groups in
+    # two passes, neither in pk order: first the rows it had verified, then
+    # its own. Paused between the two, it holds the first and anyone taking
+    # the same group's rows in another order deadlocks with it.
+
+    def test_a_dismissal_of_another_group_the_account_is_in(self) -> None:
+        y = self.account("y@x.com")
+        self.g2.members.create(user=y, account_id=y.pk, account_email=y.email)
+        ClusterMember.objects.filter(cluster=self.g2, user=y).update(
+            state=ClusterMember.State.VERIFIED, verified_by_id=self.x.pk, verified_at=now()
+        )
+        results = self.race(lambda: flow.dismiss(self.g2, self.k2), at="_settle_group_rows")
+        self.assertEqual(results, {"merge": "ok", "other": "ok"})
+        self.assertFalse(User.objects.filter(pk=self.x.pk).exists())
+        self.g2.refresh_from_db()
+        self.assertEqual(self.g2.status, DuplicateCluster.Status.DISMISSED)
+
+    def test_two_merges_of_accounts_that_verified_each_other(self) -> None:
+        z = self.account("z@x.com")
+        self.group((self.x, None), (z, self.x))
+        self.group((self.x, z), (z, None))
+        mine = self.group((self.k2, None), (z, self.k2))
+        results = self.race(
+            lambda: flow.merge_pair(mine, self.k2, z.pk, actor=self.k2), at="_settle_group_rows"
+        )
+        self.assertEqual(results, {"merge": "ok", "other": "ok"})
+        self.assertFalse(User.objects.filter(pk__in=[self.x.pk, z.pk]).exists())
 
 
 class TestSameInbox(MergeFlowTestCase):

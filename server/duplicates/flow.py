@@ -56,17 +56,23 @@ def _lock(cluster: DuplicateCluster, *user_ids: int | None) -> DuplicateCluster:
     or a staff rejection over an account already merged.
 
     The order: the group, then accounts in pk order (as merge_accounts takes
-    them), then group rows. Anything written for a keeper locks that keeper,
-    so a merge absorbing them elsewhere either sees it and undoes it, or
-    runs first and leaves them nothing to write it for.
+    them), then rows, all in one statement in pk order: the group's own,
+    and every row a merge of these accounts would rewrite in other groups
+    (ClusterMember.lock). Nothing after this waits for a row it has not
+    already got, and merge_accounts asks again for a subset of them.
+    Anything written for a keeper locks that keeper, so a merge absorbing
+    them elsewhere either sees it and undoes it, or runs first and leaves
+    them nothing to write it for.
 
     A merge breaks that order for the other groups its accounts are in: it
     already holds the accounts when it rewrites their rows there, writes
-    their merged-elsewhere events and closes them. Two things keep that from
-    deadlocking against someone holding one of those groups while they wait
-    for the same account:
+    their merged-elsewhere events and closes them. Three things keep that
+    from deadlocking against someone holding one of those groups:
     - Rows are locked last, after accounts, so nobody waiting for an account
       holds a row the merge needs.
+    - Every row is taken in the one pk-ordered statement, by the merge and
+      by anyone else, so two of them wanting the same rows cannot each
+      hold one the other is waiting for.
     - The group itself is locked FOR NO KEY UPDATE (no_key=True). The events'
       foreign key to the group is checked at COMMIT with FOR KEY SHARE,
       because Django makes Postgres foreign keys DEFERRABLE INITIALLY
@@ -81,6 +87,7 @@ def _lock(cluster: DuplicateCluster, *user_ids: int | None) -> DuplicateCluster:
     accounts = sorted({pk for pk in user_ids if pk is not None})
     if accounts:
         list(User.objects.select_for_update().filter(pk__in=accounts).order_by("pk"))
+    ClusterMember.lock(accounts, locked)
     return locked
 
 
