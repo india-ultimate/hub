@@ -74,12 +74,24 @@ def build_messages(cluster: DuplicateCluster) -> list[EmailMultiAlternatives]:
 
 
 def notify(cluster: DuplicateCluster) -> int:
-    """Queue the cluster's emails and mark it notified."""
+    """Queue the cluster's emails and mark it notified. 0 if there is
+    nothing to send, or if the group is no longer waiting to be notified."""
     messages = build_messages(cluster)
     if not messages:
         return 0
 
     with transaction.atomic():
+        # unnotified() reads the status outside this transaction, so two
+        # workers can both hold the same group as Detected. Read it again
+        # under a lock: without this both queue every address the same email
+        # and both write an Emailed event.
+        # no_key=True for the reason flow._lock gives at length: the events'
+        # foreign key to the group is deferred and checked at COMMIT with FOR
+        # KEY SHARE, which FOR UPDATE would block. A no-op on SQLite;
+        # production is Postgres.
+        locked = DuplicateCluster.objects.select_for_update(no_key=True).get(pk=cluster.pk)
+        if locked.status != DuplicateCluster.Status.DETECTED:
+            return 0
         queue_emails(messages)
         timestamp = now()
         cluster.members.filter(user__email__contains="@").update(notified_at=timestamp)

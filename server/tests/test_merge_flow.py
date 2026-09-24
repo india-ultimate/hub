@@ -704,6 +704,19 @@ class TestTimeline(MergeFlowTestCase):
         notify(self.cluster)
         self.assertTrue(self.cluster.events.filter(kind=ClusterEvent.Kind.EMAILED).exists())
 
+    def test_a_group_another_worker_emailed_is_not_emailed_again(self) -> None:
+        # unnotified() reads the status outside notify's transaction, so two
+        # workers can both hold this group as Detected. `stale` is the second
+        # one's copy, read before the first ran. It must queue nothing.
+        stale = DuplicateCluster.objects.get(pk=self.cluster.pk)
+        self.assertEqual(notify(self.cluster), 2)
+        sent = Task.objects.filter(type=Task.TaskType.SEND_EMAIL).count()
+
+        self.assertEqual(notify(stale), 0)
+
+        self.assertEqual(Task.objects.filter(type=Task.TaskType.SEND_EMAIL).count(), sent)
+        self.assertEqual(self.cluster.events.filter(kind=ClusterEvent.Kind.EMAILED).count(), 1)
+
     def test_a_group_with_history_cannot_be_deleted(self) -> None:
         with self.assertRaises(ProtectedError):
             self.cluster.delete()
