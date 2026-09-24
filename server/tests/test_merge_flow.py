@@ -630,6 +630,22 @@ class TestMergedElsewhere(MergeFlowTestCase):
         groups = self.client.get(f"{BASE}/mine").json()
         self.assertEqual([g["status"] for g in groups], ["Resolved"])
 
+    def test_mine_says_whether_anything_merged(self) -> None:
+        """Both groups end Resolved, but only the one the merge happened in
+        merged anything; the other closed because its account went."""
+        self.client.force_login(self.first)
+        self.confirmed(self.first, self.second)
+        self.confirm(self.token, self.second.id)
+        merged = self.client.get(f"{BASE}/mine").json()
+        self.assertEqual(
+            [(g["status"], g["anything_merged"]) for g in merged], [("Resolved", True)]
+        )
+        self.client.force_login(self.third)
+        closed = self.client.get(f"{BASE}/mine").json()
+        self.assertEqual(
+            [(g["status"], g["anything_merged"]) for g in closed], [("Resolved", False)]
+        )
+
     def test_a_group_with_two_accounts_left_stays_open(self) -> None:
         ClusterMember.of(self.other, self.make_account("fourth@x.com")).save()
         self.client.force_login(self.first)

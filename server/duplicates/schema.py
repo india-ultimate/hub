@@ -84,6 +84,9 @@ class MyGroupSchema(Schema):
     # Accounts in the group besides yours that could still be merged.
     waiting: int
     status: str
+    # A merge happened in this group. A Resolved group may have closed
+    # because its other account was deleted or merged elsewhere instead.
+    anything_merged: bool
     # When the group started (DuplicateCluster.created_at).
     started_at: datetime
     # One other member's address, to label the row. Masked the same way
