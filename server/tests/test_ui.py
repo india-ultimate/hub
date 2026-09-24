@@ -336,7 +336,9 @@ class TestIntegration(BaseCase):
     # alias sign-in through /otp-login; the kept and merged emails; the
     # `mine` endpoint, the login redirect, or the "merged" headline (Task 3);
     # the confirm dialog appearing before any merge, with or without a
-    # conflicting field to choose (redesign).
+    # conflicting field to choose; the code dialog sending the code as it
+    # opens, keeping its own errors and closing once the code is right
+    # (redesign).
     def test_merging_three_accounts_end_to_end(self) -> None:
         keeper = make_player("rahul.sharma.demo@gmail.com", city="Chennai")
         # Gmail ignores dots: the same inbox, so signing in proves it.
@@ -382,11 +384,14 @@ class TestIntegration(BaseCase):
         group.refresh_from_db()
         self.assertTrue(group.is_open)  # the third account is still to come
 
-        # A code, and a second ask inside the minute is refused.
+        # A code, sent by opening the dialog that asks for it. A second ask
+        # inside the minute is refused, in the dialog rather than behind it.
         self.click(f"button#merge-send-code-{c.pk}")
+        self.assert_element(f"input#merge-code-{c.pk}")  # the dialog is open
         self.assert_element("p#merge-notice")
+        self.click(f"button#merge-code-cancel-{c.pk}")
         self.click(f"button#merge-send-code-{c.pk}")
-        self.assert_text("Wait a minute", "p#merge-error")
+        self.assert_text("Wait a minute", f"p#merge-code-error-{c.pk}")
         self.assertEqual(
             ClusterEvent.objects.filter(member=c, kind=ClusterEvent.Kind.CODE_SENT).count(), 1
         )
@@ -400,12 +405,15 @@ class TestIntegration(BaseCase):
         wrong = f"{(int(code) + 1) % 10**6:06d}"
         self.type(f"input#merge-code-{c.pk}", wrong)
         self.click(f"button#merge-verify-{c.pk}")
-        self.assert_text("isn't right", "p#merge-error")
+        self.assert_text("isn't right", f"p#merge-code-error-{c.pk}")
         c.refresh_from_db()
         self.assertEqual(c.code_attempts, 1)
 
+        # The right code confirms the row and closes the dialog behind it.
         self.type(f"input#merge-code-{c.pk}", code)
         self.click(f"button#merge-verify-{c.pk}")
+        self.assert_attribute(f"span#merge-state-{c.pk}", "data-state", "verified")
+        self.assert_element_not_visible(f"input#merge-code-{c.pk}")
 
         # The confirm dialog shows the conflict; the accounts disagree about
         # the city, and the keeper's is preselected.
@@ -694,7 +702,8 @@ class TestIntegration(BaseCase):
     # Breaks if: the admin actions' registration; approve_staff or
     # reject_staff; the approval signal's skip for REQUEST_ACCOUNT_MERGE; the
     # staff emails; the read-only inlines; the rejected state being
-    # actionable again.
+    # actionable again; the help dialog collecting the reason and closing
+    # once it is sent (redesign).
     def test_our_team_approves_one_and_rejects_another(self) -> None:
         k1 = make_player("anil@x.com", first="Anil", last="Das")
         o1 = make_player("anil.d@y.com", first="Anil", last="Das")
@@ -710,13 +719,15 @@ class TestIntegration(BaseCase):
         ga, gb = groups[k1.id], groups[k2.id]
         row1, row2 = ga.members.get(user=o1), gb.members.get(user=o2)
 
-        # A member asks our team, through the page.
+        # A member asks our team, through the page's help dialog.
         self.sign_in_as(k1)
         self.open(f"{APP_URL}/merge-accounts/{ga.members.get(user=k1).claim_token}")
+        self.assert_element_not_visible(f"textarea#merge-staff-note-{row1.pk}")
         self.click(f"button#merge-staff-open-{row1.pk}")
         self.type(f"textarea#merge-staff-note-{row1.pk}", "I lost that inbox when I left college")
         self.click(f"button#merge-staff-send-{row1.pk}")
         self.assert_attribute(f"span#merge-state-{row1.pk}", "data-state", "pending-staff")
+        self.assert_element_not_visible(f"textarea#merge-staff-note-{row1.pk}")  # dialog closed
         self.assert_element_not_present(f"button#merge-staff-open-{row1.pk}")
         row1.refresh_from_db()
         first_request = row1.staff_request
