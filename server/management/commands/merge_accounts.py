@@ -44,8 +44,7 @@ def _uc_id(user: User) -> str:
 class Command(BaseCommand):
     help = (
         "Merge accounts into the first one given. Reports unless --apply. "
-        "The merged accounts' addresses do not become ways to sign in to the "
-        "kept one: nothing here proves who reads those inboxes now."
+        "The merged accounts' addresses then sign in to the kept one."
     )
 
     def add_arguments(self, parser: CommandParser) -> None:

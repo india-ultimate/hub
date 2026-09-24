@@ -1279,21 +1279,25 @@ class TestStaffReview(RowActions):
         self.assertEqual(merge.record["proof"]["method"], ClusterMember.Proof.STAFF)
         self.assertEqual(self.request().status, ServiceRequestStatus.APPROVED)
 
-    def test_approving_gives_the_absorbed_address_no_way_in(self) -> None:
-        """Staff are asked because the keeper cannot reach that inbox, so it
-        may be recycled, or someone else's. Made an alias, it would sign
-        whoever holds it now in to the keeper's account. The merge record
-        still says the address was absorbed."""
+    def test_approving_makes_the_absorbed_address_sign_in_to_the_keeper(self) -> None:
+        """Staff confirming the two accounts are one person is enough: both
+        logins reach the kept account, even though the keeper said they
+        cannot read that inbox (the owner's accepted cost, see
+        merge_accounts). Without the alias, signing in with it would make
+        a fresh empty account, the duplicate just removed."""
         self.ask()
         with self.captureOnCommitCallbacks(execute=True):
             approve_staff(self.request(), self.staff())
-        self.assertFalse(EmailAlias.objects.filter(email="second@x.com").exists())
-        self.assertIsNone(find_login_user("second@x.com"))
-        self.assertEqual(AccountMerge.objects.get().duplicate_emails, ["second@x.com"])
-        # Nor does the notice to that inbox say it does.
+        merge = AccountMerge.objects.get()
+        self.assertEqual(
+            EmailAlias.objects.get(email="second@x.com").user_id, merge.primary_user_id
+        )
+        self.assertEqual(find_login_user("second@x.com"), merge.primary_user)
+        self.assertEqual(merge.duplicate_emails, ["second@x.com"])
+        # And the notice to that inbox says so.
         notice = " ".join(Task.objects.get(data__subject=MERGED_SUBJECT).data["body"].split())
         self.assertIn("approved by our team", notice)
-        self.assertNotIn("signs you in", notice)
+        self.assertIn("this address now signs you in", notice)
 
     def test_approving_a_closed_request_merges_nothing(self) -> None:
         self.ask()
@@ -1848,10 +1852,10 @@ class TestMergeRequestAdminActions(MergeFlowTestCase):
         row = ClusterMember.objects.get(cluster=self.cluster, user=self.second)
         self.assertEqual(row.state, ClusterMember.State.REJECTED)
 
-    def test_an_address_held_elsewhere_stays_with_its_holder(self) -> None:
-        """A staff approval makes no alias (nobody proved that inbox), so an
-        address another account signs in with is no reason to refuse it,
-        and that account keeps it."""
+    def test_an_address_held_elsewhere_is_a_message_not_a_500(self) -> None:
+        """A staff approval aliases the absorbed address like any merge, so
+        one another live account already signs in with must refuse it
+        cleanly, and that account keeps it."""
         bystander = self.make_account("bystander@x.com")
         EmailAlias.objects.create(email="second@x.com", user=bystander)
         staff = User.objects.create_superuser("admin@x.com", "admin@x.com", "pw")
@@ -1863,10 +1867,12 @@ class TestMergeRequestAdminActions(MergeFlowTestCase):
             follow=True,
         )
 
-        self.assertContains(response, f"Request {self.request.pk} merged")
+        self.assertContains(response, f"Request {self.request.pk} not merged")
+        self.assertContains(response, "second@x.com")
         self.request.refresh_from_db()
-        self.assertEqual(self.request.status, ServiceRequestStatus.APPROVED)
-        self.assertFalse(User.objects.filter(id=self.second.id).exists())
+        self.assertEqual(self.request.status, ServiceRequestStatus.PENDING)
+        self.assertTrue(User.objects.filter(id=self.second.id).exists())
+        self.assertFalse(AccountMerge.objects.exists())
         self.assertEqual(EmailAlias.objects.get(email="second@x.com").user_id, bystander.id)
 
     def test_view_only_staff_are_not_offered_the_actions(self) -> None:
