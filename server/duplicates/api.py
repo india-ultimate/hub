@@ -23,7 +23,7 @@ from server.duplicates.merge import (
     MergeIncompleteError,
     resolvable_fields,
 )
-from server.duplicates.models import ClusterEvent, ClusterMember, DuplicateCluster
+from server.duplicates.models import AliasHeldError, ClusterEvent, ClusterMember, DuplicateCluster
 from server.duplicates.schema import (
     GroupSchema,
     MergeConfirmSchema,
@@ -288,6 +288,10 @@ def confirm_merge(
         return 400, {"message": str(invalid)}
     except MergeIncompleteError:
         return 400, {"message": "We could not merge these safely, so nothing was changed"}
+    except AliasHeldError as held:
+        return 400, {
+            "message": f"{held.args[0]} already signs another account in, so nothing was changed"
+        }
     return 200, {
         "primary_user_id": request.user.id,
         "merged_user_ids": [payload.absorb_user_id],
