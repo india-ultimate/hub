@@ -42,6 +42,10 @@ from server.duplicates.models import (
 )
 from server.duplicates.staff import close_request
 
+# Per M2M field name: what the absorbed row is linked to, and the primary
+# keys the survivor was already linked to. See `outbound_m2m_snapshot`.
+OutboundM2M = dict[str, tuple[list[Model], set[Any]]]
+
 # Which row survives when both accounts hold one the merge cannot duplicate,
 # whether that is a one-to-one or a unique_together. Higher sorts better; the
 # loser is kept in the audit snapshot. A model with no entry here keeps the
@@ -504,23 +508,55 @@ def _resolve_one_to_ones(
     return casualties
 
 
-def _move_outbound_m2m(source: Model, target: Model, record: MergeRecord | None = None) -> None:
+def outbound_m2m_snapshot(source: Model, target: Model) -> OutboundM2M:
+    """Both sides of every M2M the source owns, read before the relation walk.
+
+    The walk deletes rows that lose a unique clash, and a deleted roster row
+    now takes the matching `Player.teams` link with it (the receivers in
+    server/tournament/models.py). Read after the walk instead, the source is
+    missing whatever it destroyed and the target has lost its own, so a person
+    who showed a team before the merge would not show it after -- and because
+    the link never reaches `_move_outbound_m2m`, nothing would record that.
+    """
+    return {
+        m2m.name: (
+            list(getattr(source, m2m.name).all()),
+            set(getattr(target, m2m.name).values_list("pk", flat=True)),
+        )
+        for m2m in source._meta.local_many_to_many
+    }
+
+
+def _move_outbound_m2m(
+    source: Model,
+    target: Model,
+    record: MergeRecord | None = None,
+    snapshot: OutboundM2M | None = None,
+) -> None:
     """M2M owned by the row being deleted, which the delete would drop.
 
     Player.teams is the one that matters: the through rows go with the row,
     and by the time the snapshot is taken they are already cascaded away, so
     a move that is not recorded here leaves no trace anywhere.
+
+    Pass `snapshot` from before the relation walk wherever the walk can delete
+    a row that owns one of these links; see `outbound_m2m_snapshot`.
     """
     label = source._meta.label
-    for m2m in source._meta.local_many_to_many:
-        related = list(getattr(source, m2m.name).all())
+    if snapshot is None:
+        snapshot = outbound_m2m_snapshot(source, target)
+    for name, (related, held) in snapshot.items():
+        manager = getattr(target, name)
+        # What the target itself held. Re-added because the walk can delete a
+        # row of the target's whose loss takes one of these links with it.
+        if held:
+            manager.add(*held)
         if not related:
             continue
-        held = set(getattr(target, m2m.name).values_list("pk", flat=True))
-        getattr(target, m2m.name).add(*related)
+        manager.add(*related)
         if record is not None:
             for other in related:
-                record.linked(label, m2m.name, other.pk, source.pk, target.pk, other.pk in held)
+                record.linked(label, name, other.pk, source.pk, target.pk, other.pk in held)
 
 
 def _fill_blanks(
@@ -791,12 +827,17 @@ def merge_accounts(
                 primary_player = duplicate_player
                 continue
 
+            # Read before anything below can delete a row: a roster row that
+            # loses a unique clash takes the player's link to that team with
+            # it, on whichever side lost, and the walk would then have nothing
+            # left to hand over.
+            teams_held = outbound_m2m_snapshot(duplicate_player, primary_player)
             casualties += _resolve_one_to_ones(primary_player, duplicate_player, record)
             for rel in inbound_relations(Player):
                 moved, lost = _move_rows(rel, duplicate_player, primary_player, record)
                 casualties += lost
                 plan.record(relation_label(rel), moved, len(lost))
-            _move_outbound_m2m(duplicate_player, primary_player, record)
+            _move_outbound_m2m(duplicate_player, primary_player, record, teams_held)
             # Checked here rather than after the merge: once the row is gone
             # so is anything the walk failed to move, and the cascade would
             # have taken it silently.
