@@ -182,6 +182,16 @@ class TestMergeMechanics(MergeTestCase):
         self.assertEqual(player.pk, self.duplicate_player.pk)
         self.assertEqual(PlayerWrapped.objects.filter(player=player).count(), 1)
 
+    def test_the_moved_player_is_counted_in_the_plan(self) -> None:
+        """The dedicated Player phase moves the profile itself, which the
+        relation walk that fills the plan never sees. The command and the
+        API count from the plan, and reported nothing moved."""
+        self.primary_player.delete()
+
+        plan = merge_accounts(self.primary, [self.duplicate], dry_run=False)
+
+        self.assertEqual({move.label: move.moved for move in plan.moves}["server.Player.user"], 1)
+
     def test_the_better_membership_survives(self) -> None:
         Membership.objects.create(
             player=self.primary_player,

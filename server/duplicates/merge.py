@@ -749,6 +749,11 @@ def merge_accounts(
                 record.moved(
                     Player._meta.label, duplicate_player.pk, "user", duplicate.pk, primary.pk
                 )
+                # In the plan as well as the record: the plan is what the
+                # command and the API count rows from, and the generic walk
+                # never sees this one, so it reported nothing moved for a
+                # merge that had just reassigned a whole profile.
+                plan.record(f"{Player._meta.label}.user", 1, 0)
                 duplicate_player.user = primary
                 duplicate_player.save(update_fields=["user"])
                 primary_player = duplicate_player
