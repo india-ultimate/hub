@@ -4,33 +4,47 @@ from django.db.backends.base.schema import BaseDatabaseSchemaEditor
 
 
 def align_usernames(apps: Apps, schema_editor: BaseDatabaseSchemaEditor) -> None:
-    """Make username the casefolded email, which is what creates it already.
+    """Lowercase and strip usernames that are their own address spelled
+    differently, which is what creates a username already.
 
-    Sign in looks username up exactly, so the few rows that drifted from
-    their address, or kept their capitals, have to be brought in line. A
-    username whose target another account already holds is left alone: that
-    pair is a duplicate, and the merge flow is what resolves it.
+    The Hub's sign in (/api/login, /api/otp-login) lowercases and strips
+    what it is given before looking the username up exactly, so a username
+    like "Rahul@X.com" or " rahul@x.com" can never be matched there. Only
+    those are renamed: a username whose stripped, lowercased form is the
+    account's stripped, lowercased address (or, with no address, its own).
 
-    Repeated until nothing moves, because one pass is order dependent: a row
-    whose target is held by a row not reached yet is skipped, and that target
-    is free once the other row is renamed. Each pass aligns at least one more
-    account, so this ends.
+    A username that is a genuinely different address or handle is left
+    alone, even where the account's address has drifted from it. Renaming
+    it would take away the way in it still is - the old address, or a
+    staff handle for password sign in - and the next sign in with it would
+    quietly make a new, empty account. Those are duplicates, and the merge
+    flow resolves them with proof of who holds which inbox. A username whose
+    target another account already holds is left alone for the same reason.
+
+    One pass is enough: a target is only ever held by a username that is
+    already its own lowercase form, and that account never moves.
+
+    Each rename is printed as old -> new, so the deploy log is the record
+    of what changed. The reverse is a no-op: it cannot restore the old
+    spellings, which are kept nowhere but that log, and the Hub's sign in
+    could not match them anyway. Django's own admin sign in is the one
+    place a username is taken as typed; there the new spelling is the one
+    to type.
     """
     User = apps.get_model("server", "User")  # noqa: N806
     taken = set(User.objects.values_list("username", flat=True))
 
-    moved = True
-    while moved:
-        moved = False
-        for user in list(User.objects.only("id", "username", "email")):
-            target = (user.email or user.username).strip().lower()
-            if not target or target == user.username or target in taken:
-                continue
-            taken.discard(user.username)
-            taken.add(target)
-            user.username = target
-            user.save(update_fields=["username"])
-            moved = True
+    for user in User.objects.only("id", "username", "email").order_by("pk"):
+        target = (user.email or user.username).strip().lower()
+        if not target or target == user.username or target in taken:
+            continue
+        if user.username.strip().lower() != target:
+            continue
+        taken.discard(user.username)
+        taken.add(target)
+        print(f"  0142: user {user.pk} username {user.username!r} -> {target!r}")
+        user.username = target
+        user.save(update_fields=["username"])
 
 
 class Migration(migrations.Migration):

@@ -78,29 +78,35 @@ class TestAlignUsernamesMigration(TestCase):
         self.migrate()
         self.assertEqual(User.objects.get().username, "rahul@example.com")
 
-    def test_it_aligns_a_username_that_drifted_from_its_address(self) -> None:
-        # register_ward left these behind when an email arrived later.
-        user = User.objects.create(username="jane-doe", email="jane@example.com")
+    def test_it_strips_surrounding_whitespace(self) -> None:
+        User.objects.create(username=" rahul@example.com ", email="rahul@example.com")
         self.migrate()
-        user.refresh_from_db()
-        self.assertEqual(user.username, "jane@example.com")
-        self.assertEqual(resolve_login_user("jane@example.com"), user)
-        self.assertEqual(User.objects.count(), 1)
+        self.assertEqual(User.objects.get().username, "rahul@example.com")
 
-    def test_it_frees_a_username_the_first_pass_was_blocked_on(self) -> None:
-        """B wants an address A is sitting on, and A is about to move off it.
-        One pass in pk order skipped B for good."""
-        blocked = User.objects.create(username="jane-slug", email="jane@example.com")
+    def test_it_leaves_a_real_identity_change_alone(self) -> None:
+        """A username that is a different address or a handle is still the
+        way in to that account. Renamed, the next sign in with it would make
+        a new, empty account; the merge flow is what joins these."""
+        moved = User.objects.create(username="old@example.com", email="new@example.com")
+        slug = User.objects.create(username="jane-doe", email="jane@example.com")
+        self.migrate()
+        moved.refresh_from_db()
+        slug.refresh_from_db()
+        self.assertEqual(moved.username, "old@example.com")
+        self.assertEqual(slug.username, "jane-doe")
+        self.assertEqual(resolve_login_user("old@example.com"), moved)
+        self.assertEqual(User.objects.count(), 2)
+
+    def test_a_blocked_rename_stays_blocked(self) -> None:
+        """The target's holder is itself an identity change, so it does not
+        move, and the case variant waiting on it is never unblocked."""
+        blocked = User.objects.create(username="Jane@Example.com", email="jane@example.com")
         holder = User.objects.create(username="jane@example.com", email="holder@example.com")
-
         self.migrate()
-
         blocked.refresh_from_db()
         holder.refresh_from_db()
-        self.assertEqual(holder.username, "holder@example.com")
-        self.assertEqual(blocked.username, "jane@example.com")
-        self.assertEqual(resolve_login_user("jane@example.com"), blocked)
-        self.assertEqual(User.objects.count(), 2)
+        self.assertEqual(blocked.username, "Jane@Example.com")
+        self.assertEqual(holder.username, "jane@example.com")
 
     def test_it_leaves_an_account_with_no_email_alone(self) -> None:
         User.objects.create(username="jane-doe", email="")
