@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+  <body style="font-family: Arial, Helvetica, sans-serif; color: #222; line-height: 1.6;">
+    <p>Hi,</p>
+    {% if kind == "requested-keeper" %}
+      <p>We've sent <strong>{{ other_email }}</strong> to our team to review.
+        We'll email you when it's decided.</p>
+    {% elif kind == "requested-other" %}
+      <p>Someone signed in as <strong>{{ keeper_email }}</strong> asked our team
+        to merge this India Ultimate Hub account into theirs. If that isn't you,
+        sign in and tell us these aren't the same person.</p>
+    {% elif kind == "rejected" %}
+      <p>Our team couldn't confirm that <strong>{{ other_email }}</strong> is
+        yours, so it was not merged. You can still confirm it with a code, or
+        leave it.</p>
+    {% endif %}
+    <p>See where your accounts stand: <a href="{{ group_url }}">{{ group_url }}</a></p>
+  </body>
+</html>
