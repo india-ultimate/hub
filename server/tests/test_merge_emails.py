@@ -89,6 +89,14 @@ class TestDuplicateAccountEmail(MergeFlowTestCase):
 
 
 class TestMergedNotice(MergeFlowTestCase):
+    def test_the_absorbed_address_is_told(self) -> None:
+        self.client.force_login(self.first)
+        self.confirmed(self.first, self.second)
+        self.confirm(self.token, self.second.id)
+
+        notices = Task.objects.filter(data__subject=MERGED_SUBJECT)
+        self.assertEqual([task.data["to"] for task in notices], [["second@x.com"]])
+
     def test_the_notice_masks_the_surviving_address(self) -> None:
         self.assertEqual(notify_merged("rahul.sharma@gmail.com", ["old@x.com"]), 1)
         body = Task.objects.get(data__subject=MERGED_SUBJECT).data["body"]
