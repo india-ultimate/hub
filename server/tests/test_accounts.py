@@ -7,6 +7,7 @@ from django.test.utils import CaptureQueriesContext
 
 from server.core.accounts import find_login_user, resolve_login_user
 from server.core.models import User
+from server.duplicates.models import EmailAlias
 
 
 class TestFindLoginUser(TestCase):
@@ -38,6 +39,12 @@ class TestResolveLoginUser(TestCase):
         User.objects.create(username="ra.hul@gmail.com", email="ra.hul@gmail.com")
         self.assertEqual(resolve_login_user("rahul@gmail.com").username, "rahul@gmail.com")
         self.assertEqual(User.objects.count(), 2)
+
+    def test_an_absorbed_address_still_resolves_through_its_alias(self) -> None:
+        keep = User.objects.create(username="new@example.com", email="new@example.com")
+        EmailAlias.objects.create(email="old@example.com", user=keep)
+        self.assertEqual(resolve_login_user("Old@Example.com"), keep)
+        self.assertEqual(User.objects.count(), 1)
 
     def test_a_duplicate_is_reached_by_its_own_username(self) -> None:
         # Two accounts can share an address but never a username, so each

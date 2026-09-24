@@ -7,6 +7,7 @@ from django.core.files.base import ContentFile
 from django.core.management.base import BaseCommand, CommandParser
 from django.utils.text import slugify
 
+from server.core.accounts import find_login_user
 from server.core.models import (
     Accreditation,
     Guardianship,
@@ -24,6 +25,25 @@ RELATIONS = {t.label: str(t) for t in Guardianship.Relation}
 ACCREDITATIONS = {t.label: str(t) for t in Accreditation.AccreditationLevel}
 VACCINATIONS = {t.label: str(t) for t in Vaccination.VaccinationName}
 DATE_FORMAT = "%Y-%m-%d"
+
+
+def _account(address: str, values: dict[str, str]) -> User:
+    """The account a row's address signs in to, updated with the row, or a
+    new one for it.
+
+    Found the way sign in finds it, so an address a merge absorbed lands on
+    the account that absorbed it rather than on a new one that would capture
+    its sign in. Found through that alias, the account keeps its own email:
+    same-inbox proof trusts User.email, and the alias is not that address.
+    """
+    user = find_login_user(address)
+    if user is None:
+        return User.objects.create(username=address, **values)
+    for key, value in values.items():
+        if key != "email" or user.username == address:
+            setattr(user, key, value)
+    user.save()
+    return user
 
 
 class Command(BaseCommand):
@@ -55,7 +75,7 @@ class Command(BaseCommand):
                     "email": email,
                     "phone": row["phone"].strip(),
                 }
-                user, created = User.objects.update_or_create(username=email, defaults=user_data)
+                user = _account(email, user_data)
 
                 date_of_birth = row["date_of_birth"]
 
@@ -126,13 +146,7 @@ class Command(BaseCommand):
                         "email": guardian_email,
                         "phone": row["guardian.phone"],
                     }
-                    guardian_user, created = User.objects.get_or_create(
-                        username=guardian_email, defaults=guardian_data
-                    )
-                    if not created:
-                        for key, value in guardian_data.items():
-                            setattr(guardian_user, key, value)
-                        guardian_user.save()
+                    guardian_user = _account(guardian_email, guardian_data)
 
                     relation = RELATIONS.get(row["guardian.relation"], None)
                     guardianship_data = {"relation": relation, "user": guardian_user}

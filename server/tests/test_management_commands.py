@@ -1,4 +1,6 @@
 import datetime
+import tempfile
+from io import StringIO
 from pathlib import Path
 
 from django.contrib.auth import get_user_model
@@ -6,13 +8,8 @@ from django.core.management import call_command
 from django.test import TestCase
 from django.utils.timezone import now, utc
 
-from server.core.models import (
-    Accreditation,
-    Guardianship,
-    Player,
-    Team,
-    Vaccination,
-)
+from server.core.models import Accreditation, Guardianship, Player, Team, Vaccination
+from server.duplicates.models import EmailAlias
 from server.membership.models import Membership
 from server.season.models import Season
 from server.series.models import Series, SeriesRegistration
@@ -58,12 +55,21 @@ class TestInvalidateMemberships(TestCase):
 
 class MergeUsersCommandTestCase(TestCase):
     def setUp(self) -> None:
-        # Create test users and data
+        # Create test users and data. Named alike: two nameless accounts are
+        # refused as no evidence of being one person, admin or not.
         self.user1 = User.objects.create(
-            username="user1@example.com", email="user1@example.com", phone="1234567890"
+            username="user1@example.com",
+            email="user1@example.com",
+            phone="1234567890",
+            first_name="Rahul",
+            last_name="Sharma",
         )
         self.user2 = User.objects.create(
-            username="user2@example.com", email="user2@example.com", phone="9876543210"
+            username="user2@example.com",
+            email="user2@example.com",
+            phone="9876543210",
+            first_name="Rahul",
+            last_name="Sharma",
         )
         self.player1 = Player.objects.create(
             user=self.user1, date_of_birth=datetime.date(2000, 1, 1), ultimate_central_id=None
@@ -118,7 +124,7 @@ class MergeUsersCommandTestCase(TestCase):
         usernames = ["user1@example.com", "user2@example.com"]
 
         # Call the command
-        call_command("merge_accounts", *usernames)
+        call_command("merge_accounts", *usernames, apply=True)
 
         # Check the database state after the merge
         user = User.objects.get()
@@ -185,6 +191,47 @@ class TestImportPlayers(TestCase):
             path = self.cert_dir / name
             path.unlink(missing_ok=True)
         self.cert_dir.rmdir()
+
+
+class TestImportingAnAbsorbedAddress(TestCase):
+    """A row whose address a merge absorbed belongs to the account that
+    absorbed it: no new account, and that account keeps its own address."""
+
+    HEADER = (
+        "first_name,last_name,email,uc.email,phone,date_of_birth,gender,other_gender,city,"
+        "state_ut,not_in_india,occupation,educational_institution,guardian.first_name,"
+        "guardian.last_name,guardian.email,guardian.phone,guardian.relation"
+    )
+
+    def setUp(self) -> None:
+        self.owner = get_user_model().objects.create(
+            username="owner@x.com", email="owner@x.com", first_name="Old", last_name="Owner"
+        )
+        EmailAlias.objects.create(email="gone@x.com", user=self.owner)
+
+    def run_import(self, row: str) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "players.csv"
+            path.write_text(f"{self.HEADER}\n{row}\n")
+            call_command("import_players", path, "--date-format", "%d-%m-%Y", stdout=StringIO())
+
+    def test_a_player_row_lands_on_the_account(self) -> None:
+        users = get_user_model().objects.count()
+        self.run_import("Old,Owner,gone@x.com,,+91999,01-01-2001,Male,,Pune,,N,,,,,,,")
+        self.assertEqual(get_user_model().objects.count(), users)
+        self.assertEqual(Player.objects.get().user, self.owner)
+        self.owner.refresh_from_db()
+        self.assertEqual(self.owner.email, "owner@x.com")
+
+    def test_a_guardian_row_lands_on_the_account(self) -> None:
+        minor = (now() - datetime.timedelta(days=15 * 365)).strftime("%d-%m-%Y")
+        self.run_import(
+            f"Kid,Owner,kid@x.com,,,{minor},Male,,Pune,,N,,,Old,Owner,gone@x.com,+91999,Mother"
+        )
+        self.assertEqual(Guardianship.objects.get().user, self.owner)
+        self.assertEqual(get_user_model().objects.count(), 2)
+        self.owner.refresh_from_db()
+        self.assertEqual(self.owner.email, "owner@x.com")
 
 
 class TestActivateMemberships(TestCase):

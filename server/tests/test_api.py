@@ -2,6 +2,7 @@ import datetime
 import json
 import uuid
 from pathlib import Path
+from typing import Any
 from unittest import mock
 
 from django.core import mail
@@ -17,12 +18,9 @@ from server.constants import (
     EVENT_MEMBERSHIP_AMOUNT,
     SPONSORED_ANNUAL_MEMBERSHIP_AMOUNT,
 )
-from server.core.models import (
-    Guardianship,
-    Player,
-    UCPerson,
-    User,
-)
+from server.core.accounts import find_login_user
+from server.core.models import Guardianship, Player, UCPerson, User
+from server.duplicates.models import EmailAlias
 from server.membership.models import Membership
 from server.tests.base import ApiBaseTestCase, create_pool, fake_id, fake_order, start_tournament
 from server.tests.test_membership import MembershipStatusTestCase
@@ -332,6 +330,113 @@ class TestRegistration(ApiBaseTestCase):
         self.assertEqual(guardian_user.phone, data["guardian_phone"])
         self.assertEqual(guardian_user.first_name, data["guardian_first_name"])
         self.assertEqual(guardian_user.last_name, data["guardian_last_name"])
+
+
+class TestRegisteringAnAbsorbedAddress(ApiBaseTestCase):
+    """An address a merge absorbed signs in to the account that absorbed it.
+    Registering someone with it must find that account, not make a new one
+    that would capture the address's sign in from then on."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.owner = User.objects.create(
+            username="owner@x.com", email="owner@x.com", first_name="Old", last_name="Owner"
+        )
+        EmailAlias.objects.create(email="gone@x.com", user=self.owner)
+        self.client.force_login(self.user)
+        self.minor = str((now() - datetime.timedelta(days=15 * 365)).date())
+        self.player_fields = {
+            "phone": "+1234567890",
+            "gender": "F",
+            "match_up": "F",
+            "city": "Bangalore",
+            "first_name": "Nora",
+            "last_name": "Quinn",
+        }
+
+    def post(self, path: str, data: dict[str, str]) -> Any:
+        return self.client.post(path, data=data, content_type="application/json")
+
+    def test_registering_others_finds_the_account(self) -> None:
+        users = User.objects.count()
+        response = self.post(
+            "/api/registration/others",
+            {**self.player_fields, "email": " Gone@x.com ", "date_of_birth": "1990-01-01"},
+        )
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertEqual(response.json()["user"], self.owner.id)
+        self.assertEqual(User.objects.count(), users)
+        self.assertEqual(find_login_user("gone@x.com"), self.owner)
+
+    def test_registering_a_ward_finds_the_account(self) -> None:
+        users = User.objects.count()
+        response = self.post(
+            "/api/registration/ward",
+            {
+                **self.player_fields,
+                "email": "gone@x.com",
+                "date_of_birth": self.minor,
+                "relation": "MO",
+            },
+        )
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertEqual(response.json()["user"], self.owner.id)
+        self.assertEqual(response.json()["guardian"], self.user.id)
+        self.assertEqual(User.objects.count(), users)
+
+    def test_registering_a_guardian_finds_the_account(self) -> None:
+        self.user.player_profile.delete()
+        users = User.objects.count()
+        response = self.post(
+            "/api/registration/guardian",
+            {
+                **self.player_fields,
+                "date_of_birth": self.minor,
+                "guardian_first_name": "Mora",
+                "guardian_last_name": "Saiyyan",
+                "guardian_email": "gone@x.com",
+                "guardian_phone": "+123321456654",
+                "relation": "MO",
+            },
+        )
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertEqual(response.json()["guardian"], self.owner.id)
+        self.assertEqual(User.objects.count(), users)
+
+    def test_your_own_old_address_is_you_on_the_ward_form(self) -> None:
+        EmailAlias.objects.create(email="mine.old@x.com", user=self.user)
+        self.user.player_profile.delete()
+        response = self.post(
+            "/api/registration/ward",
+            {
+                **self.player_fields,
+                "email": "mine.old@x.com",
+                "date_of_birth": self.minor,
+                "relation": "MO",
+            },
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("players form", response.json()["message"])
+        self.assertFalse(Guardianship.objects.filter(user=self.user).exists())
+
+    def test_your_own_old_address_is_you_on_the_guardian_form(self) -> None:
+        EmailAlias.objects.create(email="mine.old@x.com", user=self.user)
+        self.user.player_profile.delete()
+        response = self.post(
+            "/api/registration/guardian",
+            {
+                **self.player_fields,
+                "date_of_birth": self.minor,
+                "guardian_first_name": "John",
+                "guardian_last_name": "Williamson",
+                "guardian_email": "mine.old@x.com",
+                "guardian_phone": "+123321456654",
+                "relation": "MO",
+            },
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("guardians form", response.json()["message"])
+        self.assertFalse(Guardianship.objects.filter(user=self.user).exists())
 
 
 class TestPlayers(ApiBaseTestCase):

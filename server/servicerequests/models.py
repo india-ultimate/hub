@@ -41,6 +41,10 @@ def handle_service_request_status_change(
     When a service request status changes to approved or rejected,
     send email notification to the user and handle sponsored membership approval.
     """
+    # A merge request sends its own emails, and its status changes in bulk.
+    if instance.type == ServiceRequestType.REQUEST_ACCOUNT_MERGE:
+        return
+
     # Only process if this is an update (not creation) and status is APPROVED or REJECTED
     if not created and instance.status in [
         ServiceRequestStatus.APPROVED,
