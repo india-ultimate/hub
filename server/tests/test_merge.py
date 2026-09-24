@@ -34,6 +34,7 @@ from server.duplicates.merge import (
 )
 from server.duplicates.models import (
     AccountMerge,
+    AliasHeldError,
     ClusterEvent,
     ClusterMember,
     DuplicateCluster,
@@ -345,6 +346,32 @@ class TestMergeMechanics(MergeTestCase):
         merge_accounts(self.primary, [self.duplicate], dry_run=False)
         alias = EmailAlias.objects.get(email="dup@x.com")
         self.assertEqual(alias.user, self.primary)
+
+    def test_the_aliases_of_an_absorbed_account_come_with_it(self) -> None:
+        # Everything the duplicate signs in with: an address it absorbed in
+        # an earlier merge, and its own. Neither belongs to anyone else.
+        EmailAlias.objects.create(email="older@x.com", user=self.duplicate)
+        EmailAlias.objects.create(email="dup@x.com", user=self.duplicate)
+
+        merge_accounts(self.primary, [self.duplicate], dry_run=False)
+
+        self.assertEqual(
+            set(EmailAlias.objects.values_list("email", "user")),
+            {("older@x.com", self.primary.pk), ("dup@x.com", self.primary.pk)},
+        )
+
+    def test_an_address_another_account_signs_in_with_is_not_taken(self) -> None:
+        """remember used update_or_create, so an address already pointing at
+        a live account was handed to the primary and that account lost a
+        working way in. Naming it in the record gives nothing back."""
+        other = self.make_user("other@x.com")
+        EmailAlias.objects.create(email="dup@x.com", user=other)
+
+        with self.assertRaises(AliasHeldError):
+            merge_accounts(self.primary, [self.duplicate], dry_run=False)
+
+        self.assertEqual(EmailAlias.objects.get(email="dup@x.com").user, other)
+        self.assertTrue(User.objects.filter(pk=self.duplicate.pk).exists())
 
     def test_the_snapshot_keeps_no_password(self) -> None:
         """Deleting the account has to take its credential with it, and the
@@ -844,12 +871,11 @@ class TestTheRecord(MergeTestCase):
         self.assertIn(("server.Registration", "unique-clash"), reasons)
         self.assertIn(absorbed_id, [row["pk"] for row in deleted])
 
-    def test_an_address_taken_off_another_account_is_recorded(self) -> None:
-        """An absorbed address can already be somebody else's alias, and
-        repointing it takes away their way of signing in. Whether that should
-        be allowed is another question; it may not happen unnoticed."""
-        other = self.make_user("other@x.com")
-        EmailAlias.objects.create(email="dup@x.com", user=other)
+    def test_an_address_the_primary_already_had_is_recorded_as_found(self) -> None:
+        """replaced_user_id used to be how an address taken off somebody
+        else was noticed. That is refused outright now, so what is left for
+        it to say is which addresses this merge did not itself add."""
+        EmailAlias.objects.create(email="dup@x.com", user=self.primary)
 
         merge_accounts(self.primary, [self.duplicate], dry_run=False)
 
@@ -859,7 +885,7 @@ class TestTheRecord(MergeTestCase):
             if entry["email"] == "dup@x.com"
         )
         self.assertEqual(alias["user_id"], self.primary.id)
-        self.assertEqual(alias["replaced_user_id"], other.id)
+        self.assertEqual(alias["replaced_user_id"], self.primary.id)
 
     def test_a_blank_answer_cannot_erase_a_recovered_detail(self) -> None:
         """The merge recovers state_ut from the duplicate; a blank arriving
