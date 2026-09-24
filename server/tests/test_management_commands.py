@@ -306,6 +306,7 @@ class TestAddToSeriesRoster(TestCase):
         self.assertEqual(n_players, Player.objects.count())
         self.assertEqual(n_players, Membership.objects.count())
         self.assertEqual(n_players, SeriesRegistration.objects.count())
+        self.assertEqual(n_players, self.team.players.count())
 
     def tearDown(self) -> None:
         # Clean up test data
@@ -380,6 +381,7 @@ class TestAddToEventRoster(TestCase):
         self.assertEqual(n_players, Membership.objects.count())
         self.assertEqual(n_players, SeriesRegistration.objects.count())
         self.assertEqual(n_players, Registration.objects.count())
+        self.assertEqual(n_players, self.team.players.count())
 
     def tearDown(self) -> None:
         # Clean up test data
