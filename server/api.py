@@ -309,8 +309,9 @@ def search_users(request: AuthenticatedHttpRequest, text: str = "") -> QuerySet[
 def list_players(
     request: AuthenticatedHttpRequest, full_schema: bool = False
 ) -> list[PlayerTinySchema | PlayerSchema]:
-    # Both schemas nest every team, and this list is not paginated.
-    players = Player.objects.prefetch_related("teams__admins")
+    # This list is not paginated, and both schemas read a player's name, email,
+    # phone, membership and teams -- five queries each over every player there is.
+    players = Player.objects.select_related("user", "membership").prefetch_related("teams")
     is_staff = request.user.is_staff
     if is_staff and full_schema:
         return [PlayerSchema.from_orm(p) for p in players]

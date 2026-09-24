@@ -246,7 +246,7 @@ class PlayerSchema(ModelSchema):
         except Guardianship.DoesNotExist:
             return None
 
-    teams: list[TeamSchema]
+    teams: list[TeamMinSchema]
 
     uc_person: PersonTinySchema | None
 
@@ -294,7 +294,7 @@ class PlayerTinySchema(ModelSchema):
 
     is_minor: bool
 
-    teams: list[TeamSchema]
+    teams: list[TeamMinSchema]
 
     class Config:
         model = Player
