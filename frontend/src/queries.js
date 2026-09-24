@@ -757,6 +757,14 @@ export const fetchUserRegistrations = async () => {
   return data;
 };
 
+export const fetchMine = async () => {
+  const response = await fetch("/api/merge-accounts/mine", {
+    credentials: "same-origin"
+  });
+  if (!response.ok) throw new Error("Something went wrong");
+  return response.json();
+};
+
 // Mutations ----------------
 
 export const createTournament = async formData => {

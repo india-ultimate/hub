@@ -4,16 +4,14 @@ import { createQuery } from "@tanstack/solid-query";
 import { initFlowbite } from "flowbite";
 import { Icon } from "solid-heroicons";
 import { camera, star } from "solid-heroicons/solid";
-import {
-  createEffect,
-  createResource,
-  createSignal,
-  For,
-  Show
-} from "solid-js";
+import { createEffect, createSignal, For, Show } from "solid-js";
 
 import { AccordionDownIcon } from "../icons";
-import { fetchUserRegistrations, uploadProfilePicture } from "../queries";
+import {
+  fetchMine,
+  fetchUserRegistrations,
+  uploadProfilePicture
+} from "../queries";
 import { useStore } from "../store";
 import { registerPasskey, showPlayerStatus } from "../utils";
 import { getCookie } from "../utils";
@@ -300,16 +298,16 @@ const Dashboard = () => {
     console.log(success(), error());
   });
 
-  const [mergeGroups] = createResource(async () => {
-    const response = await fetch("/api/merge-accounts/mine", {
-      credentials: "same-origin"
-    });
-    return response.ok ? response.json() : [];
-  });
+  // Same key and fetcher as the merge list page, so a mutation there
+  // invalidating ["merge-accounts-mine"] refreshes this notice too.
+  const mergeGroupsQuery = createQuery(
+    () => ["merge-accounts-mine"],
+    fetchMine
+  );
   // /mine now returns history too (for the merge list page); the Dashboard
   // still only nags about groups still open.
   const openMergeGroups = () =>
-    (mergeGroups() || []).filter(
+    (mergeGroupsQuery.data || []).filter(
       group => group.status === "Detected" || group.status === "Notified"
     );
 

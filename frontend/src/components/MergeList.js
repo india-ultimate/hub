@@ -2,13 +2,7 @@ import { A } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
 import { For, Show } from "solid-js";
 
-const fetchMine = async () => {
-  const response = await fetch("/api/merge-accounts/mine", {
-    credentials: "same-origin"
-  });
-  if (!response.ok) throw new Error("Something went wrong");
-  return response.json();
-};
+import { fetchMine } from "../queries";
 
 const BADGE_COLOURS = {
   green: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",

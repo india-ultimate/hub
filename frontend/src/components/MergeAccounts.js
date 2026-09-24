@@ -1,5 +1,5 @@
 import { A, useParams, useSearchParams } from "@solidjs/router";
-import { createQuery } from "@tanstack/solid-query";
+import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createSignal, For, Index, Show } from "solid-js";
 
 import { getCookie } from "../utils";
@@ -504,6 +504,7 @@ function Row(props) {
 
 export default function MergeAccounts() {
   const params = useParams();
+  const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const [error, setError] = createSignal();
   const [notice, setNotice] = createSignal();
@@ -536,6 +537,12 @@ export default function MergeAccounts() {
       );
       if (result?.message) setNotice(result.message);
       await query.refetch();
+      // Every action here can change what the merge list (and the
+      // Dashboard notice, which shares this key) should show for this
+      // group - confirm, dismiss, verify and staff all change status or
+      // who's left to act. Invalidate here, once, rather than in each
+      // caller.
+      queryClient.invalidateQueries({ queryKey: ["merge-accounts-mine"] });
     } catch (e) {
       if (!silent) setError(e.message);
       failure = e;
