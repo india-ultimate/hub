@@ -2,6 +2,8 @@
 
 from typing import Any
 
+from django.db import IntegrityError, transaction
+
 from server.core.models import User
 from server.duplicates.identity import normalize_email
 from server.duplicates.models import EmailAlias
@@ -38,4 +40,18 @@ def resolve_login_user(email: str, **defaults: Any) -> User:
     if found is not None:
         return found
     address = email.strip().lower()
-    return User.objects.create(username=address, email=address, **defaults)
+    try:
+        # Inside its own savepoint: a loser here has to leave the caller's
+        # transaction usable, since this runs mid-request.
+        with transaction.atomic():
+            return User.objects.create(username=address, email=address, **defaults)
+    except IntegrityError:
+        # Two requests for an address neither of them found can both get
+        # here; the unique username lets exactly one insert through. The
+        # loser wants the winner's account, not an error - that is what the
+        # get_or_create this replaced did, and the lookup above is why it
+        # cannot simply come back.
+        raced = find_login_user(email)
+        if raced is None:
+            raise
+        return raced
