@@ -1044,7 +1044,15 @@ Available Tools:
                 "category": team.get_category_display(),
                 "state": team.get_state_ut_display() if team.state_ut else None,
                 "city": team.city,
-                "player_count": team.players.count(),
+                # Counted from rosters rather than `team.players`, which since
+                # rosters started feeding it holds everyone ever associated with
+                # the team, coaches and managers included. Asked "how many
+                # players does this team have", that reads like a squad size and
+                # is not one.
+                "player_count": Registration.objects.filter(team=team, is_playing=True)
+                .values("player")
+                .distinct()
+                .count(),
             }
         except Team.DoesNotExist:
             return None
