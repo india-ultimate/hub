@@ -24,7 +24,7 @@ from server.duplicates.emails import (
 )
 from server.duplicates.history import log
 from server.duplicates.identity import normalize_email
-from server.duplicates.merge import MergePlan, merge_accounts
+from server.duplicates.merge import INBOX_PROOFS, MergePlan, merge_accounts
 from server.duplicates.models import ClusterEvent, ClusterMember, DuplicateCluster
 from server.duplicates.staff import close_request
 from server.servicerequests.models import ServiceRequest, ServiceRequestStatus, ServiceRequestType
@@ -490,6 +490,11 @@ def merge_pair(
         method = str(proof["method"])
         transaction.on_commit(lambda: notify_kept(keeper_row, absorbed_email, method))
         transaction.on_commit(
-            lambda: notify_merged(keeper.email, [absorbed_email], PROOF_WORDS.get(method, ""))
+            lambda: notify_merged(
+                keeper.email,
+                [absorbed_email],
+                PROOF_WORDS.get(method, ""),
+                signs_in=method in INBOX_PROOFS,
+            )
         )
     return plan

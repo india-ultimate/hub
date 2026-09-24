@@ -112,15 +112,18 @@ def unnotified(limit: int | None = None) -> list[DuplicateCluster]:
 MERGED_SUBJECT = "Your India Ultimate Hub account was merged"
 
 
-def notify_merged(primary_email: str, absorbed: list[str], method: str = "") -> int:
+def notify_merged(
+    primary_email: str, absorbed: list[str], method: str = "", *, signs_in: bool = False
+) -> int:
     """Tell the absorbed addresses, so a merge nobody intended is visible.
 
     Confirming a merge only proves the person holds the account they signed
-    in to, so this is how the other account's owner finds out.
+    in to, so this is how the other account's owner finds out. signs_in:
+    the merge made these addresses a way in to the kept account.
     """
     html = render_to_string(
         "duplicate_accounts_merged_email.html",
-        {"primary_email": mask_email(primary_email), "method": method},
+        {"primary_email": mask_email(primary_email), "method": method, "signs_in": signs_in},
     )
     messages = []
     for address in absorbed:

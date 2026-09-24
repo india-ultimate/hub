@@ -97,6 +97,13 @@ class TestMergedNotice(MergeFlowTestCase):
         notices = Task.objects.filter(data__subject=MERGED_SUBJECT)
         self.assertEqual([task.data["to"] for task in notices], [["second@x.com"]])
 
+    def test_a_code_proved_merge_says_the_address_signs_in(self) -> None:
+        self.client.force_login(self.first)
+        self.confirmed(self.first, self.second)
+        self.confirm(self.token, self.second.id)
+        body = " ".join(Task.objects.get(data__subject=MERGED_SUBJECT).data["body"].split())
+        self.assertIn("this address now signs you in", body)
+
     def test_the_notice_masks_the_surviving_address(self) -> None:
         self.assertEqual(notify_merged("rahul.sharma@gmail.com", ["old@x.com"]), 1)
         body = Task.objects.get(data__subject=MERGED_SUBJECT).data["body"]

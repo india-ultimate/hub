@@ -106,6 +106,10 @@ PLAYER_FILLABLE = (
 # Never worth keeping once the account is gone, and the snapshot outlives it.
 SNAPSHOT_REDACTED = ("password",)
 
+# Proofs that the keeper reads the absorbed inbox. Only these make its
+# address a way to sign in to the keeper; see merge_accounts.
+INBOX_PROOFS = (ClusterMember.Proof.EMAIL_CODE, ClusterMember.Proof.SAME_INBOX)
+
 
 def _snapshot(rows: list[Model]) -> list[dict[str, Any]]:
     """Serialize the rows a merge destroys, minus anything that is a secret."""
@@ -824,8 +828,16 @@ def merge_accounts(
 
         # Before the record is written, so that an address taken off another
         # account is in it. Afterwards would be too late to say so.
-        for address, held_by in EmailAlias.remember(emails, primary):
-            record.aliased(address, primary.pk, held_by)
+        #
+        # Only an inbox the keeper proved they read becomes a way in. Staff
+        # approve a merge because the keeper cannot reach the other inbox,
+        # and the merge_accounts command proves nothing about it either:
+        # that address may be recycled, or someone else's, and an alias
+        # would sign whoever holds it now in to the primary. It is still
+        # absorbed; duplicate_emails below says so.
+        if record.proof.get("method") in INBOX_PROOFS:
+            for address, held_by in EmailAlias.remember(emails, primary):
+                record.aliased(address, primary.pk, held_by)
 
         # These two deletes are the last thing that happens and cannot fail
         # independently of the rest, so they are recorded here where the
