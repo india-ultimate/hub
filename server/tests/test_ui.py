@@ -492,7 +492,9 @@ class TestIntegration(BaseCase):
         print("Successfully refused a group that is not one person!")
 
     # Breaks if: `find_login_user`, the self-address check, or
-    # `MAX_OPEN_REQUESTS`; `/merge-accounts/mine` or the Dashboard notice.
+    # `MAX_OPEN_REQUESTS`; `/merge-accounts/mine` or the Dashboard notice; or
+    # the list's cached query surviving a dismiss instead of being
+    # invalidated, which would leave the back link showing a stale status.
     def test_starting_a_merge_request(self) -> None:
         keep, absorb = create_duplicate_accounts()
 
@@ -550,14 +552,23 @@ class TestIntegration(BaseCase):
         self.click("div#merge-groups-notice a")
         self.assert_element("table#merge-list-table")
         self.assert_element(f"tr#merge-list-row-{token}")
+        self.assert_text("Ready to review", f"tr#merge-list-row-{token}")
         self.click(f"tr#merge-list-row-{token} a")
         self.assert_element("table#merge-table")
         self.assert_text(absorb.email, "table#merge-table")
 
-        # The back link returns a signed-in member to their list, row intact.
+        # Cancelling changes what the list should show for this group. The
+        # list's query is cached for a minute; the actions on this page must
+        # invalidate it, not just refetch their own.
+        self.click("button#merge-dismiss-button")
+        self.click("button#merge-dismiss-confirm")
+        self.assert_element("p#merge-finished")
+
+        # The back link is an SPA link, not a reload - it must show the new
+        # state itself, not whatever the list last cached.
         self.click("a#merge-back-to-list")
         self.assert_element("table#merge-list-table")
-        self.assert_element(f"tr#merge-list-row-{token}")
+        self.assert_text("Closed", f"tr#merge-list-row-{token}")
 
     # Breaks if: `_visible_rows` or the masking in `_serialize`; `can_act`,
     # Row.actionable() or expiry gating; the wrong-account message (Task 3);
