@@ -164,10 +164,16 @@ def link_player_to_team(sender: Any, instance: Any, created: bool, **kwargs: Any
     a player's whole `teams` set itself, so repointing a registration onto the
     survivor needs nothing here.
 
-    Only on create. `calculate_player_points` re-saves every registration nightly
-    and none of those saves can change who is on which team.
+    Only on create, which holds because no path changes an existing row's player
+    or team: the API has no such endpoint, and the admin makes both read-only
+    once the row exists. Every other save -- a role, `is_playing`, the nightly
+    points -- leaves who is on which team alone.
+
+    `raw` is a fixture being loaded. It arrives with the rows in whatever order
+    the dump happened to take, so the player may not exist yet, and `loaddata`
+    carries its own `Player.teams` anyway.
     """
-    if created:
+    if created and not kwargs.get("raw"):
         instance.player.teams.add(instance.team_id)
 
 
@@ -182,8 +188,14 @@ def unlink_player_from_team(sender: Any, instance: Any, **kwargs: Any) -> None:
 
     This fires for cascades too, which is the point: deleting an event, a team or
     an account leaves no roster row behind to justify the link. It writes through
-    the join table rather than `player.teams` because during a cascade the player
-    is on its way out and need not be fetched.
+    the join table rather than `player.teams` to save fetching a player that, in
+    a cascade, is on its way out anyway.
+
+    It cannot tell a link a roster made from one the Ultimate Central import left
+    behind, so taking the last roster row off a team also drops a coinciding
+    import link -- 677 pairs on production are both. Accepted rather than carry a
+    provenance column for a field this soft: the import is switched off, and
+    linking an Ultimate Central profile again restores them.
     """
     pair = {"player_id": instance.player_id, "team_id": instance.team_id}
     if Registration.objects.filter(**pair).exists():
