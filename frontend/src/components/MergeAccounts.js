@@ -1,6 +1,6 @@
 import { useParams, useSearchParams } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
-import { createSignal, For, Show } from "solid-js";
+import { createSignal, For, Index, Show } from "solid-js";
 
 import { getCookie } from "../utils";
 import Modal from "./Modal";
@@ -80,24 +80,42 @@ const conflictsBetween = members => {
   return found.sort((a, b) => a.field.localeCompare(b.field));
 };
 
-const STATE_WORDS = {
-  open: "Not confirmed",
-  verified: "Confirmed",
-  "pending-staff": "With our team",
-  rejected: "Our team couldn't confirm it",
-  merged: "Merged",
-  "merged-elsewhere": "Merged elsewhere",
-  gone: "Account deleted"
+const BADGE_COLOURS = {
+  gray: "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300",
+  green: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
+  blue: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
+  yellow:
+    "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300",
+  red: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
 };
 
-const stateWords = row => {
-  if (row.is_yours) return "You keep this one";
-  if (row.state === "merged" && row.merged_into_you) return "Merged into yours";
-  return STATE_WORDS[row.state] || row.state;
+const STATE_BADGES = {
+  open: ["Not confirmed", "gray"],
+  verified: ["Ready to merge", "blue"],
+  "pending-staff": ["With our team", "yellow"],
+  rejected: ["Our team couldn't confirm it", "red"],
+  merged: ["Merged", "green"],
+  "merged-elsewhere": ["Merged elsewhere", "gray"],
+  gone: ["Account deleted", "gray"]
 };
 
-const since = row =>
-  row.since ? new Date(row.since).toLocaleDateString() : "";
+// Every badge carries words of its own: colour alone never says what a row
+// is, for anyone who can't tell these colours apart.
+const stateBadge = row => {
+  if (row.is_yours) return ["You keep this one", "green"];
+  if (row.state === "merged" && row.merged_into_you)
+    return ["Merged into yours", "green"];
+  return STATE_BADGES[row.state] || [row.state, "gray"];
+};
+
+const PRIMARY_BUTTON =
+  "inline-flex min-h-[44px] items-center rounded-lg bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 disabled:opacity-50 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800";
+
+const SECONDARY_BUTTON =
+  "inline-flex min-h-[44px] items-center rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus:ring-4 focus:ring-blue-300 disabled:opacity-50 dark:border-gray-500 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 dark:hover:text-white dark:focus:ring-gray-600";
+
+const TEXT_INPUT =
+  "mt-1 block w-full rounded border border-gray-300 p-2 text-sm focus:border-blue-600 focus:ring-blue-600 dark:border-gray-600 dark:bg-gray-700 dark:text-white";
 
 // Why a row confirmed itself (spec §3): a row can turn Confirmed on page
 // load just by sharing an inbox with the keeper, which is correct but
@@ -114,11 +132,11 @@ const proofReason = row =>
 function Row(props) {
   const [code, setCode] = createSignal("");
   const [note, setNote] = createSignal("");
-  const [asking, setAsking] = createSignal(false);
   const [picked, setPicked] = createSignal({});
   const [blocked, setBlocked] = createSignal(false);
+  // One dialog is open at a time, so one error signal serves all three.
   const [modalError, setModalError] = createSignal("");
-  let modalRef;
+  let confirmRef, codeRef, helpRef;
 
   const row = () => props.row;
   const canAct = () => props.canAct && !row().is_yours;
@@ -145,12 +163,40 @@ function Row(props) {
         .filter(([, value]) => !isBlank(value))
     );
 
-  const act = (path, body) =>
-    props.act(path, { user_id: row().user_id, ...body });
+  const act = (path, body, options) =>
+    props.act(path, { user_id: row().user_id, ...body }, options);
 
   const openConfirm = () => {
     setModalError("");
-    modalRef.showModal();
+    confirmRef.showModal();
+  };
+
+  // Opening the dialog is what sends the code: the dialog exists to collect
+  // the code, and asking for one nobody sent would be a dead end.
+  const openCode = async () => {
+    setModalError("");
+    codeRef.showModal();
+    const failure = await act("code", {}, { silent: true });
+    if (failure) setModalError(failure.message);
+  };
+
+  const doVerify = async () => {
+    setModalError("");
+    const failure = await act("verify", { code: code() }, { silent: true });
+    if (failure) setModalError(failure.message);
+    else codeRef.close();
+  };
+
+  const openHelp = () => {
+    setModalError("");
+    helpRef.showModal();
+  };
+
+  const doHelp = async () => {
+    setModalError("");
+    const failure = await act("staff", { note: note() }, { silent: true });
+    if (failure) setModalError(failure.message);
+    else helpRef.close();
   };
 
   // Always confirms through the dialog, even with nothing to pick between
@@ -165,7 +211,7 @@ function Row(props) {
       { silent: true }
     );
     if (!failure) {
-      modalRef.close();
+      confirmRef.close();
       return;
     }
     if (failure.reason === "blocked") setBlocked(true);
@@ -174,7 +220,7 @@ function Row(props) {
 
   return (
     <tr id={`merge-row-${row().row_id}`} class="border-b dark:border-gray-700">
-      <td class="py-3 pr-3 font-mono text-sm text-gray-900 dark:text-white">
+      <td class="break-all py-3 pr-3 font-mono text-sm text-gray-900 dark:text-white">
         {row().email}
         <Show when={row().last_seen}>
           <span class="block text-xs text-gray-500 dark:text-gray-400">
@@ -182,104 +228,169 @@ function Row(props) {
           </span>
         </Show>
       </td>
-      <td class="py-3 pr-3 text-sm">
-        <span id={`merge-state-${row().row_id}`} data-state={row().state}>
-          {stateWords(row())}
+      <td class="py-3 pr-3 align-top text-sm">
+        <span
+          id={`merge-state-${row().row_id}`}
+          data-state={row().state}
+          class={`inline-flex items-center rounded px-2.5 py-0.5 text-xs font-medium ${
+            BADGE_COLOURS[stateBadge(row())[1]]
+          }`}
+        >
+          {stateBadge(row())[0]}
+          <Show when={proofReason(row())}>
+            <span
+              id={`merge-proof-${row().row_id}`}
+              class="ml-1 font-normal opacity-75"
+            >
+              · {proofReason(row())}
+            </span>
+          </Show>
         </span>
-        <Show when={proofReason(row())}>
-          <span
-            id={`merge-proof-${row().row_id}`}
-            class="block text-xs text-gray-500 dark:text-gray-400"
-          >
-            {proofReason(row())}
-          </span>
-        </Show>
-        <Show when={since(row())}>
-          <span class="block text-xs text-gray-500 dark:text-gray-400">
-            {since(row())}
-          </span>
-        </Show>
-
-        <Show when={actionable()}>
-          <div class="mt-2 space-y-2">
+      </td>
+      <td class="py-3 align-top">
+        <div class="flex flex-wrap gap-2">
+          <Show when={actionable()}>
             <button
               id={`merge-send-code-${row().row_id}`}
               disabled={props.busy}
-              onClick={() => act("code")}
-              class="inline-flex min-h-[44px] items-center rounded bg-blue-700 px-3 py-1 text-xs text-white disabled:opacity-50"
+              onClick={openCode}
+              class={PRIMARY_BUTTON}
             >
-              Send code
+              Send code to email
             </button>
-            <div class="flex items-end gap-2">
-              <label class="block text-xs text-gray-700 dark:text-gray-300">
-                6-digit code
-                <input
-                  id={`merge-code-${row().row_id}`}
-                  inputmode="numeric"
-                  placeholder="6-digit code"
-                  class="mt-1 w-32 rounded border border-gray-300 p-1 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                  value={code()}
-                  onInput={e => setCode(e.currentTarget.value)}
-                />
-              </label>
+            <Show when={row().state !== "pending-staff"}>
+              <button
+                id={`merge-staff-open-${row().row_id}`}
+                onClick={openHelp}
+                class={SECONDARY_BUTTON}
+              >
+                Request help
+              </button>
+            </Show>
+          </Show>
+          <Show when={canAct() && row().verified_for_you}>
+            <button
+              id={`merge-confirm-${row().row_id}`}
+              disabled={props.busy}
+              onClick={openConfirm}
+              aria-label={`Merge ${row().email} into your account`}
+              class={PRIMARY_BUTTON}
+            >
+              Merge
+            </button>
+          </Show>
+        </div>
+
+        <Show when={actionable()}>
+          <Modal
+            ref={codeRef}
+            title="Confirm this email"
+            close={() => codeRef.close()}
+          >
+            <Show
+              when={!modalError()}
+              fallback={
+                <p
+                  id={`merge-code-error-${row().row_id}`}
+                  role="alert"
+                  class="text-sm text-red-600 dark:text-red-400"
+                >
+                  {modalError()}
+                </p>
+              }
+            >
+              <p class="text-sm text-gray-700 dark:text-gray-300">
+                We&apos;ve sent a 6-digit code to{" "}
+                <span class="break-all font-medium">{row().email}</span>.
+              </p>
+            </Show>
+            <label class="mt-3 block text-sm text-gray-700 dark:text-gray-300">
+              6-digit code
+              <input
+                id={`merge-code-${row().row_id}`}
+                inputmode="numeric"
+                autocomplete="one-time-code"
+                class={TEXT_INPUT}
+                value={code()}
+                onInput={e => setCode(e.currentTarget.value)}
+              />
+            </label>
+            <div class="mt-4 flex justify-end gap-2">
+              <button
+                id={`merge-code-cancel-${row().row_id}`}
+                type="button"
+                onClick={() => codeRef.close()}
+                class={SECONDARY_BUTTON}
+              >
+                Cancel
+              </button>
               <button
                 id={`merge-verify-${row().row_id}`}
+                type="button"
                 disabled={props.busy || !code().trim()}
-                onClick={() => act("verify", { code: code() })}
-                class="inline-flex min-h-[44px] items-center rounded border border-blue-700 px-3 py-1 text-xs text-blue-700 disabled:opacity-50 dark:text-blue-300"
+                onClick={doVerify}
+                class={PRIMARY_BUTTON}
               >
                 Confirm
               </button>
             </div>
-            <Show when={row().state !== "pending-staff"}>
-              <button
-                id={`merge-staff-open-${row().row_id}`}
-                onClick={() => setAsking(!asking())}
-                class="inline-flex min-h-[44px] items-center text-xs text-gray-600 underline dark:text-gray-300"
+          </Modal>
+
+          <Modal
+            ref={helpRef}
+            title="Ask our team for help"
+            close={() => helpRef.close()}
+          >
+            <label class="block text-sm text-gray-700 dark:text-gray-300">
+              Why can&apos;t you reach this inbox?
+              <textarea
+                id={`merge-staff-note-${row().row_id}`}
+                rows="3"
+                class={TEXT_INPUT}
+                value={note()}
+                onInput={e => setNote(e.currentTarget.value)}
+              />
+            </label>
+            <Show when={modalError()}>
+              <p
+                id={`merge-staff-error-${row().row_id}`}
+                role="alert"
+                class="mt-2 text-sm text-red-600 dark:text-red-400"
               >
-                I can&apos;t reach this inbox
-              </button>
-              <Show when={asking()}>
-                <label class="block text-xs text-gray-700 dark:text-gray-300">
-                  Why can&apos;t you reach it?
-                  <textarea
-                    id={`merge-staff-note-${row().row_id}`}
-                    class="mt-1 block w-full rounded border border-gray-300 p-1 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                    value={note()}
-                    onInput={e => setNote(e.currentTarget.value)}
-                  />
-                </label>
-                <button
-                  id={`merge-staff-send-${row().row_id}`}
-                  disabled={props.busy}
-                  onClick={() => act("staff", { note: note() })}
-                  class="inline-flex min-h-[44px] items-center rounded bg-gray-700 px-3 py-1 text-xs text-white disabled:opacity-50"
-                >
-                  Ask our team
-                </button>
-              </Show>
+                {modalError()}
+              </p>
             </Show>
-          </div>
+            <div class="mt-4 flex justify-end gap-2">
+              <button
+                id={`merge-staff-cancel-${row().row_id}`}
+                type="button"
+                onClick={() => helpRef.close()}
+                class={SECONDARY_BUTTON}
+              >
+                Cancel
+              </button>
+              <button
+                id={`merge-staff-send-${row().row_id}`}
+                type="button"
+                disabled={props.busy}
+                onClick={doHelp}
+                class={PRIMARY_BUTTON}
+              >
+                Ask our team
+              </button>
+            </div>
+          </Modal>
         </Show>
 
         <Show when={canAct() && row().verified_for_you}>
-          <button
-            id={`merge-confirm-${row().row_id}`}
-            disabled={props.busy}
-            onClick={openConfirm}
-            aria-label={`Merge ${row().email} into your account`}
-            class="mt-2 inline-flex min-h-[44px] items-center rounded bg-green-700 px-3 py-1 text-xs text-white focus:outline-none focus:ring-4 focus:ring-green-300 disabled:opacity-50 dark:focus:ring-green-800"
-          >
-            Merge
-          </button>
           <Modal
-            ref={modalRef}
+            ref={confirmRef}
             title="Confirm merge"
-            close={() => modalRef.close()}
+            close={() => confirmRef.close()}
           >
             <p class="text-sm text-gray-700 dark:text-gray-300">
-              Merging <span class="font-medium">{row().email}</span> into your
-              account.
+              Merging <span class="break-all font-medium">{row().email}</span>{" "}
+              into your account.
             </p>
             <Show when={conflicts().length > 0}>
               <div class="mt-3">
@@ -342,8 +453,8 @@ function Row(props) {
               <button
                 id={`merge-modal-cancel-${row().row_id}`}
                 type="button"
-                onClick={() => modalRef.close()}
-                class="min-h-[44px] rounded-lg border border-gray-200 bg-white px-5 text-sm font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:border-gray-500 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 dark:hover:text-white dark:focus:ring-gray-600"
+                onClick={() => confirmRef.close()}
+                class={SECONDARY_BUTTON}
               >
                 Cancel
               </button>
@@ -370,7 +481,8 @@ function Row(props) {
               Tell our team why these are both yours
               <textarea
                 id={`merge-blocked-note-${row().row_id}`}
-                class="mt-1 block w-full rounded border border-gray-300 p-1 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                rows="3"
+                class={TEXT_INPUT}
                 value={note()}
                 onInput={e => setNote(e.currentTarget.value)}
               />
@@ -379,7 +491,7 @@ function Row(props) {
               id={`merge-blocked-send-${row().row_id}`}
               disabled={props.busy}
               onClick={() => act("staff", { note: note() })}
-              class="inline-flex min-h-[44px] items-center rounded bg-gray-700 px-3 py-1 text-xs text-white disabled:opacity-50"
+              class={PRIMARY_BUTTON}
             >
               Ask our team to review
             </button>
@@ -540,20 +652,24 @@ export default function MergeAccounts() {
               <tr class="border-b text-xs uppercase text-gray-500 dark:border-gray-700">
                 <th class="py-2 pr-3">Account</th>
                 <th class="py-2 pr-3">Status</th>
+                <th class="py-2">Actions</th>
               </tr>
             </thead>
             <tbody>
-              <For each={data().rows}>
+              {/* Index, not For: a refetch hands back fresh row objects,
+                  and For would rebuild each <tr> and slam any dialog the
+                  person has open. Index keeps the row and updates it. */}
+              <Index each={data().rows}>
                 {row => (
                   <Row
-                    row={row}
+                    row={row()}
                     you={you()}
                     canAct={data().can_act}
                     busy={busy()}
                     act={act}
                   />
                 )}
-              </For>
+              </Index>
             </tbody>
           </table>
         </Show>
