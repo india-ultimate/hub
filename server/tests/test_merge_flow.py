@@ -1118,18 +1118,43 @@ class TestRacingAMergeOnPostgres(TransactionTestCase):
 
 
 class TestSameInbox(MergeFlowTestCase):
-    def test_an_account_on_the_keeper_s_inbox_is_confirmed_on_sight(self) -> None:
-        keeper = self.make_account("ra.hul@gmail.com")
-        twin = self.make_account("rahul@gmail.com")
+    def pair(self, kept: str, other: str) -> tuple[DuplicateCluster, User, ClusterMember]:
+        """A group of two accounts on these addresses. The addresses are set
+        after creation, so they can be blank or hold no @ at all."""
+        n = User.objects.count()
+        keeper, twin = self.make_account(f"keeper-{n}"), self.make_account(f"twin-{n}")
+        User.objects.filter(pk=keeper.pk).update(email=kept)
+        User.objects.filter(pk=twin.pk).update(email=other)
+        keeper.refresh_from_db()
+        twin.refresh_from_db()
         cluster = DuplicateCluster.objects.create()
         ClusterMember.of(cluster, keeper).save()
-        ClusterMember.of(cluster, twin).save()
+        row = ClusterMember.of(cluster, twin)
+        row.save()
+        return cluster, keeper, row
+
+    def test_an_account_on_the_keeper_s_inbox_is_confirmed_on_sight(self) -> None:
+        cluster, keeper, row = self.pair("ra.hul@gmail.com", "rahul@gmail.com")
 
         verify_same_inbox(cluster, keeper)
 
-        row = ClusterMember.objects.get(cluster=cluster, user=twin)
+        row.refresh_from_db()
         self.assertEqual(row.state, ClusterMember.State.VERIFIED)
         self.assertEqual(row.proof, ClusterMember.Proof.SAME_INBOX)
+
+    def test_an_address_that_cannot_receive_mail_never_matches_another(self) -> None:
+        # register_ward and import_players leave an account with no address,
+        # or a name slug where one should be, and normalize_email folds two
+        # of those equal. Equal is not proof that anyone holds an inbox.
+        for address in ["", "rahul-sharma"]:
+            with self.subTest(address=address):
+                cluster, keeper, row = self.pair(address, address)
+
+                verify_same_inbox(cluster, keeper)
+
+                row.refresh_from_db()
+                self.assertEqual(row.state, ClusterMember.State.OPEN)
+                self.assertEqual(row.proof, "")
 
 
 class TestStaffReview(RowActions):
