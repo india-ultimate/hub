@@ -46,6 +46,7 @@ from server.core.models import (
     User,
     Vaccination,
 )
+from server.duplicates.api import router as merge_router
 from server.election.api import router as election_router
 from server.flarum.utils import (
     create_flarum_user,
@@ -212,6 +213,7 @@ api.add_router("/series/", series_router)
 api.add_router("/transactions", transaction_router)
 api.add_router("/forms", forms_router)
 api.add_router("/ticket", ticket_api)
+api.add_router("/merge-accounts", merge_router)
 api.add_router("/election", election_router)
 api.add_router("/chat", chat_router)
 api.add_router("/tournament-agent", tournament_agent_router)
