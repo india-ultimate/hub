@@ -540,10 +540,13 @@ class TestIntegration(BaseCase):
         self.assert_text("You already have 3 merge requests open", "p#merge-request-error")
         self.assertEqual(DuplicateCluster.objects.count(), groups)
 
-        # The Dashboard lists the open groups and links to each.
+        # The Dashboard's notice now opens the list page, which links to each
+        # group; the group page itself is one hop further than it was.
         self.open(f"{APP_URL}/dashboard")
         self.assert_element("div#merge-groups-notice")
         self.click("div#merge-groups-notice a")
+        self.assert_element("table#merge-list-table")
+        self.click("table#merge-list-table a[href^='/merge-accounts/']")
         self.assert_element("table#merge-table")
 
     # Breaks if: `_visible_rows` or the masking in `_serialize`; `can_act`,
