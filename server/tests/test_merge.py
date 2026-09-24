@@ -48,6 +48,9 @@ from server.tournament.models import MatchScore, Registration, Tournament
 from server.transaction.models import ManualTransaction, PhonePeTransaction
 from server.wrapped.models import PlayerWrapped
 
+# As a merge proved by a code: only then is the absorbed address an alias.
+INBOX_PROVED = {"method": ClusterMember.Proof.EMAIL_CODE}
+
 
 def row_counts() -> dict[str, int]:
     return {model._meta.label: model._default_manager.count() for model in apps.get_models()}
@@ -126,7 +129,7 @@ class TestMergeKeepsEveryRow(MergeTestCase):
         self.populate(self.duplicate, self.duplicate_player, "b")
         before = row_counts()
 
-        merge_accounts(self.primary, [self.duplicate], dry_run=False)
+        merge_accounts(self.primary, [self.duplicate], dry_run=False, proof=INBOX_PROVED)
 
         after = row_counts()
         # One account and its player are gone; the merge records itself.
@@ -353,9 +356,16 @@ class TestMergeMechanics(MergeTestCase):
         self.assertEqual(self.primary.password, changed_hash)
 
     def test_the_absorbed_address_becomes_an_alias(self) -> None:
-        merge_accounts(self.primary, [self.duplicate], dry_run=False)
+        merge_accounts(self.primary, [self.duplicate], dry_run=False, proof=INBOX_PROVED)
         alias = EmailAlias.objects.get(email="dup@x.com")
         self.assertEqual(alias.user, self.primary)
+
+    def test_without_proof_of_the_inbox_the_address_is_no_way_in(self) -> None:
+        """The merge_accounts command proves nothing about the absorbed
+        inbox: whoever holds it now must not sign in to the primary."""
+        merge_accounts(self.primary, [self.duplicate], dry_run=False)
+        self.assertFalse(EmailAlias.objects.filter(email="dup@x.com").exists())
+        self.assertEqual(AccountMerge.objects.get().duplicate_emails, ["dup@x.com"])
 
     def test_the_aliases_of_an_absorbed_account_come_with_it(self) -> None:
         # Everything the duplicate signs in with: an address it absorbed in
@@ -378,7 +388,7 @@ class TestMergeMechanics(MergeTestCase):
         EmailAlias.objects.create(email="dup@x.com", user=other)
 
         with self.assertRaises(AliasHeldError):
-            merge_accounts(self.primary, [self.duplicate], dry_run=False)
+            merge_accounts(self.primary, [self.duplicate], dry_run=False, proof=INBOX_PROVED)
 
         self.assertEqual(EmailAlias.objects.get(email="dup@x.com").user, other)
         self.assertTrue(User.objects.filter(pk=self.duplicate.pk).exists())
@@ -762,7 +772,7 @@ class TestTheAddressIsNotCopied(MergeTestCase):
         resolves on username. The address becomes an alias instead."""
         blank = User.objects.create(username="blank-slug", email="")
 
-        merge_accounts(blank, [self.duplicate], dry_run=False)
+        merge_accounts(blank, [self.duplicate], dry_run=False, proof=INBOX_PROVED)
 
         blank.refresh_from_db()
         self.assertEqual(blank.email, "")
@@ -773,7 +783,7 @@ class TestTheAddressIsNotCopied(MergeTestCase):
         from server.core.accounts import resolve_login_user
 
         blank = User.objects.create(username="blank-slug2", email="")
-        merge_accounts(blank, [self.duplicate], dry_run=False)
+        merge_accounts(blank, [self.duplicate], dry_run=False, proof=INBOX_PROVED)
 
         self.assertEqual(resolve_login_user("dup@x.com").id, blank.id)
 
@@ -939,7 +949,7 @@ class TestTheRecord(MergeTestCase):
         it to say is which addresses this merge did not itself add."""
         EmailAlias.objects.create(email="dup@x.com", user=self.primary)
 
-        merge_accounts(self.primary, [self.duplicate], dry_run=False)
+        merge_accounts(self.primary, [self.duplicate], dry_run=False, proof=INBOX_PROVED)
 
         alias = next(
             entry
