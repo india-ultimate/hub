@@ -1452,6 +1452,21 @@ class TestRequestingAMerge(MergeFlowTestCase):
         fourth = self.make_account("o9@x.com")
         self.assertEqual(self.start(fourth.email).status_code, 400)
 
+    def test_over_the_limit_a_real_address_and_an_unknown_one_look_the_same(self) -> None:
+        """The endpoint says whether an account exists, which is accepted
+        only because it is rate limited. Once over the limit, answering an
+        unknown address differently from a real one made the lookup free."""
+        for n in range(3):
+            self.assertEqual(self.start(self.make_account(f"o{n}@x.com").email).status_code, 200)
+        self.make_account("real@x.com")
+        answers = {
+            (response.status_code, response.content)
+            for response in map(self.start, ("real@x.com", "nobody@x.com", "no-at-sign"))
+        }
+        self.assertEqual(len(answers), 1, answers)
+        self.assertEqual(next(iter(answers))[0], 400)
+        self.assertEqual(DuplicateCluster.objects.count(), 3)
+
     def test_a_worker_cannot_fold_two_children_together(self) -> None:
         """Codes alone would allow it: one adult reads every +tag inbox."""
         worker = self.make_account("worker@gmail.com", first="Anita")
