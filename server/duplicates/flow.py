@@ -255,17 +255,13 @@ MAX_REQUESTS_PER_DAY = 5
 def request_merge(keeper: User, email: str, note: str) -> ClusterMember:
     """Start a group for the keeper and one other account. Returns the
     keeper's row, whose link is the group's page."""
-    # Before resolving, because sign in resolves a username exactly and an
-    # account registered without an address has a name slug for one
-    # (register_ward, import_players). Typing a stranger's name would
-    # otherwise make the caller a member of that stranger's group. Refused
-    # in the same words as an unknown address, so this stays a non-oracle.
-    if "@" not in email.strip():
-        raise FlowError("We couldn't find an account with that email address.", 404)
-    other = find_login_user(email)
-    if other is None:
-        raise FlowError("We couldn't find an account with that email address.", 404)
-    if other.pk == keeper.pk:
+    # An address with no @ is never looked up, because sign in resolves a
+    # username exactly and an account registered without an address has a
+    # name slug for one (register_ward, import_players). Typing a stranger's
+    # name would otherwise make the caller a member of that stranger's
+    # group. It is refused in the same words as an unknown address.
+    other = find_login_user(email) if "@" in email.strip() else None
+    if other is not None and other.pk == keeper.pk:
         raise FlowError("That address already belongs to this account.")
 
     with transaction.atomic():
@@ -278,18 +274,21 @@ def request_merge(keeper: User, email: str, note: str) -> ClusterMember:
         # production is Postgres.
         list(
             User.objects.select_for_update()
-            .filter(pk__in=sorted({keeper.pk, other.pk}))
+            .filter(pk__in=sorted({keeper.pk, other.pk} if other else {keeper.pk}))
             .order_by("pk")
         )
         # Read again now the lock is held, before anything is counted or
         # decided: a merge that absorbed this account while we waited left
         # nothing to start a group with.
-        other = User.objects.filter(pk=other.pk).first()
-        if other is None:
-            raise FlowError("We couldn't find an account with that email address.", 404)
+        if other is not None:
+            other = User.objects.filter(pk=other.pk).first()
 
+        # A group the caller is already in: they see its address on their
+        # list, so handing it back tells them nothing new.
         shared = (
-            ClusterMember.objects.filter(
+            None
+            if other is None
+            else ClusterMember.objects.filter(
                 user=keeper,
                 cluster__status__in=DuplicateCluster.OPEN_STATUSES,
                 cluster__members__user=other,
@@ -300,6 +299,11 @@ def request_merge(keeper: User, email: str, note: str) -> ClusterMember:
         if shared is not None:
             return shared
 
+        # The limits come before saying whether the address was found. This
+        # endpoint tells anyone signed in whether an account exists, which
+        # is accepted only because it is rate limited; refused for being
+        # unknown first, an over-limit caller could still ask about any
+        # address, free, for as long as they liked.
         open_requests = DuplicateCluster.objects.filter(
             origin=DuplicateCluster.Origin.REQUESTED,
             requested_by_id=keeper.pk,
@@ -319,6 +323,8 @@ def request_merge(keeper: User, email: str, note: str) -> ClusterMember:
             raise FlowError(
                 f"You've started {MAX_REQUESTS_PER_DAY} merge requests today. Try again tomorrow."
             )
+        if other is None:
+            raise FlowError("We couldn't find an account with that email address.", 404)
 
         # Notified straight away: detection's email run only picks up Detected
         # groups, and this one must never get that email.
