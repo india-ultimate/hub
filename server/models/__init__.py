@@ -42,8 +42,15 @@ from server.series.models import (  # noqa: F401
     SeriesRegistration,
     SeriesRosterInvitation,
 )
+from server.servicerequests.models import (  # noqa: F401
+    ServiceRequest,
+)
 from server.task.models import (  # noqa: F401
     Task,
+)
+from server.ticket.models import (  # noqa: F401
+    Ticket,
+    TicketMessage,
 )
 from server.tournament.models import (  # noqa: F401
     Bracket,
@@ -72,4 +79,7 @@ from server.transaction.models import (  # noqa: F401
     ManualTransaction,
     PhonePeTransaction,
     RazorpayTransaction,
+)
+from server.wrapped.models import (  # noqa: F401
+    PlayerWrapped,
 )
