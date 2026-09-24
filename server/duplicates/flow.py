@@ -285,8 +285,14 @@ def request_merge(keeper: User, email: str, note: str) -> ClusterMember:
             .order_by("pk")
         )
         # Read again now the lock is held, before anything is counted or
-        # decided: a merge that absorbed this account while we waited left
-        # nothing to start a group with.
+        # decided: a merge that absorbed either account while we waited left
+        # nothing to start a group with. The keeper too: it was loaded with
+        # the session, and a row for it would fail its foreign key at COMMIT.
+        if not User.objects.filter(pk=keeper.pk).exists():
+            raise FlowError(
+                "This account was just merged into another. Sign in again and try once more.",
+                403,
+            )
         if other is not None:
             other = User.objects.filter(pk=other.pk).first()
 
