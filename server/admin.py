@@ -15,6 +15,7 @@ from server.duplicates.flow import FlowError, approve_staff, reject_staff
 from server.duplicates.merge import MergeBlockedError, MergeFieldError, MergeIncompleteError
 from server.duplicates.models import (
     AccountMerge,
+    AliasHeldError,
     ClusterEvent,
     ClusterMember,
     DuplicateCluster,
@@ -733,10 +734,19 @@ class ServiceRequestAdmin(admin.ModelAdmin[ServiceRequest]):
         for item in queryset.filter(type=ServiceRequestType.REQUEST_ACCOUNT_MERGE):
             try:
                 approve_staff(item, request.user)  # type: ignore[arg-type]
-            except (FlowError, MergeBlockedError, MergeFieldError, MergeIncompleteError) as error:
-                reason = (
-                    ", ".join(error.args[0]) if isinstance(error, MergeBlockedError) else str(error)
-                )
+            except (
+                FlowError,
+                MergeBlockedError,
+                MergeFieldError,
+                MergeIncompleteError,
+                AliasHeldError,
+            ) as error:
+                if isinstance(error, MergeBlockedError):
+                    reason = ", ".join(error.args[0])
+                elif isinstance(error, AliasHeldError):
+                    reason = f"{error.args[0]} already signs another account in"
+                else:
+                    reason = str(error)
                 self.message_user(
                     request, f"Request {item.pk} not merged: {reason}", messages.ERROR
                 )

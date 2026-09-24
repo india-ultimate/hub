@@ -501,6 +501,22 @@ class TestConfirmMergeEdges(MergeFlowTestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(User.objects.filter(id=self.second.id).count(), 1)
 
+    def test_an_address_held_elsewhere_is_a_message_not_a_500(self) -> None:
+        """second@x.com already signs a live third account in - a race the
+        merge cannot resolve for itself, so it must refuse rather than take
+        away that account's way in."""
+        bystander = self.make_account("bystander@x.com")
+        EmailAlias.objects.create(email="second@x.com", user=bystander)
+        self.confirmed(self.first, self.second)
+
+        response = self.confirm(self.token, self.second.id)
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("second@x.com", response.json()["message"])
+        self.assertIn("nothing was changed", response.json()["message"])
+        self.assertTrue(User.objects.filter(id=self.second.id).exists())
+        self.assertEqual(EmailAlias.objects.get(email="second@x.com").user_id, bystander.id)
+
 
 class TestDismiss(MergeFlowTestCase):
     def setUp(self) -> None:
@@ -1697,6 +1713,25 @@ class TestMergeRequestAdminActions(MergeFlowTestCase):
         self.assertEqual(self.request.status, ServiceRequestStatus.REJECTED)
         row = ClusterMember.objects.get(cluster=self.cluster, user=self.second)
         self.assertEqual(row.state, ClusterMember.State.REJECTED)
+
+    def test_an_address_held_elsewhere_is_a_message_not_a_500(self) -> None:
+        bystander = self.make_account("bystander@x.com")
+        EmailAlias.objects.create(email="second@x.com", user=bystander)
+        staff = User.objects.create_superuser("admin@x.com", "admin@x.com", "pw")
+        self.client.force_login(staff)
+
+        response = self.client.post(
+            "/admin/server/servicerequest/",
+            {"action": "approve_and_merge", "_selected_action": [self.request.pk]},
+            follow=True,
+        )
+
+        self.assertContains(response, f"Request {self.request.pk} not merged")
+        self.assertContains(response, "second@x.com")
+        self.request.refresh_from_db()
+        self.assertEqual(self.request.status, ServiceRequestStatus.PENDING)
+        self.assertTrue(User.objects.filter(id=self.second.id).exists())
+        self.assertEqual(EmailAlias.objects.get(email="second@x.com").user_id, bystander.id)
 
     def test_view_only_staff_are_not_offered_the_actions(self) -> None:
         viewer = User.objects.create(username="view@x.com", email="view@x.com", is_staff=True)
