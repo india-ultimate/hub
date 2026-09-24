@@ -34,6 +34,7 @@ from ninja.security import django_auth
 
 from server.announcements.api import router as announcements_router
 from server.chat.api import router as chat_router
+from server.core.accounts import resolve_login_user
 from server.core.models import (
     Accreditation,
     CollegeId,
@@ -576,9 +577,7 @@ def otp_login(
     actual_otp = totp.generate_otp(credentials.otp_ts)
 
     if actual_otp == credentials.otp:
-        user, created = User.objects.get_or_create(
-            email=credentials.email, username=credentials.email
-        )
+        user = resolve_login_user(credentials.email)
         request.user = user
         login(request, user)
 
@@ -757,14 +756,11 @@ def do_register(
 def register_others(
     request: AuthenticatedHttpRequest, registration: RegistrationOthersSchema
 ) -> tuple[int, Player | message_response]:
-    user, created = User.objects.get_or_create(
-        username=registration.email.strip().lower(),  # type: ignore[attr-defined]
-        defaults={
-            "email": registration.email.strip().lower(),  # type: ignore[attr-defined]
-            "phone": registration.phone,  # type: ignore[attr-defined]
-            "first_name": registration.first_name,  # type: ignore[attr-defined]
-            "last_name": registration.last_name,  # type: ignore[attr-defined]
-        },
+    user = resolve_login_user(
+        registration.email,  # type: ignore[attr-defined]
+        phone=registration.phone,  # type: ignore[attr-defined]
+        first_name=registration.first_name,  # type: ignore[attr-defined]
+        last_name=registration.last_name,  # type: ignore[attr-defined]
     )
     return do_register(user, registration)
 
@@ -780,14 +776,11 @@ def register_ward(
 
     if email is None:
         email = slugify(f"{registration.first_name} {registration.last_name}")  # type: ignore[attr-defined]
-    user, created = User.objects.get_or_create(
-        username=email,
-        defaults={
-            "email": email,
-            "phone": registration.phone,  # type: ignore[attr-defined]
-            "first_name": registration.first_name,  # type: ignore[attr-defined]
-            "last_name": registration.last_name,  # type: ignore[attr-defined]
-        },
+    user = resolve_login_user(
+        email,
+        phone=registration.phone,  # type: ignore[attr-defined]
+        first_name=registration.first_name,  # type: ignore[attr-defined]
+        last_name=registration.last_name,  # type: ignore[attr-defined]
     )
     return do_register(user, registration, guardian=request.user)
 
@@ -800,14 +793,11 @@ def register_guardian(
     if request.user.email == email:
         return 400, {"message": "Use the guardians form instead of the players form"}
 
-    user, _ = User.objects.get_or_create(
-        username=email,
-        defaults={
-            "email": email,
-            "phone": registration.guardian_phone,
-            "first_name": registration.guardian_first_name,
-            "last_name": registration.guardian_last_name,
-        },
+    user = resolve_login_user(
+        email,
+        phone=registration.guardian_phone,
+        first_name=registration.guardian_first_name,
+        last_name=registration.guardian_last_name,
     )
     return do_register(request.user, registration, guardian=user)
 
