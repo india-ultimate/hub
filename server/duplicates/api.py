@@ -105,19 +105,19 @@ def _serialize(link: ClusterMember, viewer: User | None) -> dict[str, object]:
     requested = cluster.origin == DuplicateCluster.Origin.REQUESTED
 
     def shows_address(row: ClusterMember) -> bool:
-        """Spec §4. In a group detection built, any signed-in member sees
-        every row's address: two masked Gmail addresses can read
-        identically, and telling the accounts apart is the whole point.
+        """A signed-in viewer sees every row's address, on a requested
+        group the same as a detection found. A signed-out link holder
+        still sees every address masked, exactly as before.
 
-        A requested group is not that. The requester chose the other member
-        by typing an address, `request_merge` resolves it through
-        `EmailAlias`, and the account's own address is then one they never
-        typed — so reading it back would turn any absorbed address into a
-        lookup for the current one. There the address opens up on proof,
-        like the profile: their own row, an account merged into theirs, or
-        one they confirmed with a code sent to it.
+        Accepted cost: on a requested group, the other row's address may
+        be one the requester typed that a merge later absorbed into
+        someone's current address. A signed-in viewer now reads back that
+        current address, not the string they typed. That is a deliberate
+        choice by the owner, not an oversight — the requester typed the
+        address themselves, and masking it back to them as ***@*** reads
+        as a bug, not as privacy.
         """
-        return (viewer_id is not None and not requested) or detailed(row)
+        return viewer_id is not None
 
     shown = _visible_rows(cluster, rows, mine)
     live_users = [row.user for row in shown if row.user is not None and detailed(row)]
