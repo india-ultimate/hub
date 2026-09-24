@@ -116,6 +116,53 @@ class TestRegistration(ApiBaseTestCase):
                 self.assertEqual(value, response_data[key])
         self.assertEqual(self.user.id, response_data["user"])
 
+    def test_a_player_cannot_make_themselves_sponsored(self) -> None:
+        """sponsored decides the membership fee and is an admin decision.
+        It must not be settable by the person who would pay it."""
+        self.assertFalse(self.player.sponsored)
+
+        response = self.client.put(
+            "/api/registration",
+            data={
+                "player_id": self.player.id,
+                "phone": "+1234567890",
+                "date_of_birth": "1990-01-01",
+                "gender": "F",
+                "match_up": "F",
+                "city": "Bangalore",
+                "first_name": "Nora",
+                "last_name": "Quinn",
+                "sponsored": True,
+            },
+            content_type="application/json",
+        )
+
+        self.assertEqual(200, response.status_code)
+        self.player.refresh_from_db()
+        self.assertFalse(self.player.sponsored, "a player set their own fee discount")
+
+    def test_a_player_cannot_mark_themselves_imported(self) -> None:
+        self.assertFalse(self.player.imported_data)
+
+        self.client.put(
+            "/api/registration",
+            data={
+                "player_id": self.player.id,
+                "phone": "+1234567890",
+                "date_of_birth": "1990-01-01",
+                "gender": "F",
+                "match_up": "F",
+                "city": "Bangalore",
+                "first_name": "Nora",
+                "last_name": "Quinn",
+                "imported_data": True,
+            },
+            content_type="application/json",
+        )
+
+        self.player.refresh_from_db()
+        self.assertFalse(self.player.imported_data)
+
     def test_register_others(self) -> None:
         c = self.client
         self.user.player_profile.delete()

@@ -404,7 +404,17 @@ class UserWardFormSchema(ModelSchema):
 class PlayerFormSchema(ModelSchema):
     class Config:
         model = Player
-        model_exclude = ["user", "teams", "id", "ultimate_central_id"]
+        # sponsored decides what a membership costs and imported_data says
+        # where a row came from. Both are administrative and neither may be
+        # set by the person registering, so they are not input fields at all.
+        model_exclude = [
+            "user",
+            "teams",
+            "id",
+            "ultimate_central_id",
+            "sponsored",
+            "imported_data",
+        ]
         model_fields_optional = "__all__"
 
 
