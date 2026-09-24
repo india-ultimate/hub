@@ -530,6 +530,14 @@ class TestIntegration(BaseCase):
         group = DuplicateCluster.objects.get(requested_by_id=keep.id)
         self.assertEqual(group.origin, DuplicateCluster.Origin.REQUESTED)
         self.assertEqual(set(group.members.values_list("user_id", flat=True)), {keep.id, absorb.id})
+        token = group.members.get(user=keep).claim_token
+
+        # The Dashboard cached an empty merge list a moment ago, and the list
+        # is cached for a minute. Walk there by SPA link, as a person does -
+        # a reload would refetch everything and hide a missed invalidation.
+        self.click("a#merge-back-to-list")
+        self.assert_element("table#merge-list-table")
+        self.assert_element(f"tr#merge-list-row-{token}")
         print("Successfully started a merge from the Dashboard!")
 
         # Three open requests is the most; a fourth is refused and makes nothing.
@@ -546,7 +554,6 @@ class TestIntegration(BaseCase):
         # group; the group page itself is one hop further than it was. Pick
         # this group's own row by token, so the click is proven to land on
         # this group and not merely on some row.
-        token = group.members.get(user=keep).claim_token
         self.open(f"{APP_URL}/dashboard")
         self.assert_element("div#merge-groups-notice")
         self.click("div#merge-groups-notice a")
