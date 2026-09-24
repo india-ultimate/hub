@@ -16,6 +16,7 @@ from django.core.management import call_command
 from django.db import connection, connections
 from django.db.models import F, ProtectedError
 from django.test import TestCase, TransactionTestCase, override_settings
+from django.test.utils import CaptureQueriesContext
 from django.utils.timezone import now
 
 from server.api import get_email_hash
@@ -608,7 +609,10 @@ class TestMergedElsewhere(MergeFlowTestCase):
         self.assertEqual(self.other.status, DuplicateCluster.Status.RESOLVED)
         self.assertTrue(self.other.events.filter(kind=ClusterEvent.Kind.CLOSED).exists())
         self.client.force_login(self.third)
-        self.assertEqual(self.client.get(f"{BASE}/mine").json(), [])
+        # /mine now shows history too, so the closed group still turns up -
+        # closed for lack of two live accounts, not because of a merge.
+        groups = self.client.get(f"{BASE}/mine").json()
+        self.assertEqual([g["status"] for g in groups], ["Resolved"])
 
     def test_a_group_with_two_accounts_left_stays_open(self) -> None:
         ClusterMember.of(self.other, self.make_account("fourth@x.com")).save()
@@ -1477,6 +1481,57 @@ class TestRequestingAMerge(MergeFlowTestCase):
         groups = self.client.get(f"{BASE}/mine").json()
         self.assertEqual([g["token"] for g in groups], [token])
         self.assertEqual(groups[0]["waiting"], 1)
+
+    def test_mine_labels_the_row_with_the_group_s_status_and_other_side(self) -> None:
+        self.start("me.old@example.com")
+        group = self.client.get(f"{BASE}/mine").json()[0]
+        self.assertEqual(group["status"], DuplicateCluster.Status.NOTIFIED)
+        self.assertTrue(group["started_at"])
+        self.assertEqual(group["other_email"], "me.old@example.com")
+        self.assertEqual(group["other_count"], 1)
+
+    def test_mine_includes_a_dismissed_group_as_history(self) -> None:
+        token = self.start("me.old@example.com").json()["token"]
+        self.client.post(f"{BASE}/{token}/dismiss")
+        groups = self.client.get(f"{BASE}/mine").json()
+        self.assertEqual([g["status"] for g in groups], [DuplicateCluster.Status.DISMISSED])
+        # Dismissed hides the other side even from a member (spec §5, the
+        # same rule _visible_rows applies on the group page itself) - the
+        # list can say a group was dismissed without naming who it was with.
+        self.assertIsNone(groups[0]["other_email"])
+        self.assertEqual(groups[0]["other_count"], 0)
+
+    def test_mine_puts_live_groups_before_history(self) -> None:
+        old_token = self.start("me.old@example.com").json()["token"]
+        self.client.post(f"{BASE}/{old_token}/dismiss")
+        self.make_account("third@x.com")
+        live_token = self.start("third@x.com").json()["token"]
+        groups = self.client.get(f"{BASE}/mine").json()
+        self.assertEqual([g["token"] for g in groups], [live_token, old_token])
+
+    def test_mine_orders_most_recent_first_within_a_tier(self) -> None:
+        first_token = self.start("me.old@example.com").json()["token"]
+        self.make_account("third@x.com")
+        second_token = self.start("third@x.com").json()["token"]
+        first_cluster = DuplicateCluster.objects.get(members__claim_token=first_token)
+        first_cluster.created_at = now() - datetime.timedelta(days=1)
+        first_cluster.save(update_fields=["created_at"])
+        groups = self.client.get(f"{BASE}/mine").json()
+        self.assertEqual([g["token"] for g in groups], [second_token, first_token])
+
+    def test_mine_does_not_grow_its_query_count_with_more_groups(self) -> None:
+        self.start("me.old@example.com")
+        with CaptureQueriesContext(connection) as one_group:
+            self.client.get(f"{BASE}/mine")
+
+        self.make_account("third@x.com")
+        self.start("third@x.com")
+        self.make_account("fourth@x.com")
+        self.start("fourth@x.com")
+        with CaptureQueriesContext(connection) as three_groups:
+            self.client.get(f"{BASE}/mine")
+
+        self.assertEqual(len(three_groups.captured_queries), len(one_group.captured_queries))
 
     def test_detection_leaves_a_requested_pair_alone(self) -> None:
         self.start("me.old@example.com")
