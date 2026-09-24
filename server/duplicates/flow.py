@@ -141,6 +141,15 @@ def verify_same_inbox(cluster: DuplicateCluster, keeper: User) -> None:
         if mine is None or not cluster.is_open or mine.is_expired:
             return
         kept = normalize_email(keeper.email)
+        # Signing in proves an inbox only if there is one to prove. An account
+        # can hold a blank address or a name slug (register_ward,
+        # import_players), and two of those normalise equal, so a name+dob
+        # group of them would confirm itself and merge with no code and no
+        # staff. Same test request_merge and build_messages use: no @, no
+        # address. Guarding the keeper covers both sides — anything equal to
+        # an address with an @ has one too.
+        if "@" not in kept:
+            return
         rows = (
             _rows(cluster)
             .exclude(pk=mine.pk)
