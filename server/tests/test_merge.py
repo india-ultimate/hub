@@ -232,6 +232,21 @@ class TestMergeMechanics(MergeTestCase):
         models = {row["model"] for row in AccountMerge.objects.get().snapshot}
         self.assertIn("server.registration", models)
 
+    def test_a_collision_does_not_cost_the_survivor_a_team(self) -> None:
+        """Deleting the losing roster row unlinks that player from the team,
+        so read after the walk the absorbed player no longer offers it and the
+        survivor no longer holds its own. Both people are one person: the
+        survivor keeps every team either of them showed."""
+        a = Team.objects.create(name="A")
+        b = Team.objects.create(name="B")
+        Registration.objects.create(event=self.event, player=self.primary_player, team=a)
+        Registration.objects.create(event=self.event, player=self.duplicate_player, team=b)
+
+        merge_accounts(self.primary, [self.duplicate], dry_run=False)
+
+        names = {team.name for team in self.primary_player.teams.all()}
+        self.assertTrue({"A", "B"} <= names, names)
+
     def test_an_integrity_error_that_is_not_a_collision_is_raised(self) -> None:
         """Every IntegrityError used to be read as the expected uniqueness
         clash, so a constraint or trigger this does not understand deleted
