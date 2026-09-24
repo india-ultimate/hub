@@ -12,6 +12,7 @@ from server.core.models import Player, User
 
 class ServiceRequestType(models.TextChoices):
     REQUEST_SPONSORED_MEMBERSHIP = "REQUEST_SPONSORED_MEMBERSHIP", "Request Sponsored Membership"
+    REQUEST_ACCOUNT_MERGE = "REQUEST_ACCOUNT_MERGE", "Merge accounts"
 
 
 class ServiceRequestStatus(models.TextChoices):

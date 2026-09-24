@@ -18,6 +18,13 @@ from server.core.models import (  # noqa: F401
     User,
     Vaccination,
 )
+from server.duplicates.models import (  # noqa: F401
+    AccountMerge,
+    ClusterEvent,
+    ClusterMember,
+    DuplicateCluster,
+    EmailAlias,
+)
 from server.election.models import (  # noqa: F401
     Candidate,
     Election,
