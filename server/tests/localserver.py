@@ -17,6 +17,9 @@ PORT = 9981
 WEBPACK_SERVER_PORT = 9982
 HTTP_SUCCESS = 200
 
+DJANGO_URL = f"http://localhost:{PORT}"
+APP_URL = f"http://localhost:{WEBPACK_SERVER_PORT}"
+
 
 def set_up_django() -> None:
     os.environ["DJANGO_SETTINGS_MODULE"] = "hub.test_settings"

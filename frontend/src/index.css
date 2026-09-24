@@ -282,12 +282,20 @@ dialog[open]::backdrop {
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  dialog,
+  dialog[open],
+  dialog[open]::backdrop {
+    animation: none;
+  }
+}
+
 @keyframes backdrop-fade-in {
   from {
     background-color: rgb(55 65 81 / 0);
   }
 
-  tp {
+  to {
     background-color: rgb(55 65 81 / 0.9);
   }
 }

@@ -4,7 +4,13 @@ import { createQuery } from "@tanstack/solid-query";
 import { initFlowbite } from "flowbite";
 import { Icon } from "solid-heroicons";
 import { camera, star } from "solid-heroicons/solid";
-import { createEffect, createSignal, For, Show } from "solid-js";
+import {
+  createEffect,
+  createResource,
+  createSignal,
+  For,
+  Show
+} from "solid-js";
 
 import { AccordionDownIcon } from "../icons";
 import { fetchUserRegistrations, uploadProfilePicture } from "../queries";
@@ -195,6 +201,13 @@ const Actions = props => {
       >
         Forms
       </A>
+      <A
+        href="/merge-accounts/new"
+        id="merge-request-link"
+        class="block w-full cursor-pointer border-b border-gray-200 px-4 py-2 hover:bg-gray-100 hover:text-blue-700 focus:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 dark:border-gray-600 dark:hover:bg-gray-600 dark:hover:text-white dark:focus:text-white dark:focus:ring-gray-500"
+      >
+        Merge a duplicate account into this one
+      </A>
       <button
         disabled={!supported()}
         onClick={onCreatePasskeyClick}
@@ -287,6 +300,13 @@ const Dashboard = () => {
     console.log(success(), error());
   });
 
+  const [mergeGroups] = createResource(async () => {
+    const response = await fetch("/api/merge-accounts/mine", {
+      credentials: "same-origin"
+    });
+    return response.ok ? response.json() : [];
+  });
+
   const logout = async () => {
     const response = await fetch("/api/logout", {
       method: "POST",
@@ -309,6 +329,24 @@ const Dashboard = () => {
       <h1 class="mb-4 text-2xl font-bold text-blue-600 md:text-4xl">
         Welcome <span>{store?.data?.full_name || store?.data?.username}</span>!
       </h1>
+      <Show when={mergeGroups()?.length > 0}>
+        <div
+          id="merge-groups-notice"
+          class="mb-4 rounded-lg border border-blue-300 bg-blue-50 p-3 text-sm text-blue-900 dark:border-blue-700 dark:bg-blue-900 dark:text-blue-100"
+        >
+          You have accounts waiting to be merged —{" "}
+          <For each={mergeGroups()}>
+            {(group, index) => (
+              <>
+                {index() > 0 ? ", " : ""}
+                <A href={`/merge-accounts/${group.token}`} class="underline">
+                  see where they stand
+                </A>
+              </>
+            )}
+          </For>
+        </div>
+      </Show>
       <div
         id="accordion-flush"
         data-accordion="collapse"
