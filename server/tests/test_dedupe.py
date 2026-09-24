@@ -1,5 +1,10 @@
+import csv
+import tempfile
 from datetime import date, datetime
+from io import StringIO
+from pathlib import Path
 
+from django.core.management import call_command
 from django.test import SimpleTestCase, TestCase
 from django.utils.timezone import now
 
@@ -450,3 +455,40 @@ class TestFindClusters(TestCase):
         self.make_player("a@x.com")
         self.make_player("b@x.com")
         self.assertNotIn(RULE_FUZZY_NAME_DOB, find_clusters()[0].rules)
+
+
+class TestFindDuplicateAccountsCommand(TestFindClusters):
+    def test_reports_nothing_when_there_are_no_duplicates(self) -> None:
+        self.make_player("only@x.com")
+        out = StringIO()
+        call_command("find_duplicate_accounts", stdout=out)
+        self.assertIn("No duplicate accounts found", out.getvalue())
+
+    def test_summarises_and_writes_a_row_per_account(self) -> None:
+        self.make_player("a@x.com")
+        self.make_player("b@x.com")
+        self.make_player("c@x.com", first="Arjun", last="Menon", dob="1990-01-01")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "duplicates.csv"
+            out = StringIO()
+            call_command("find_duplicate_accounts", csv=str(path), stdout=out)
+
+            self.assertIn("Clusters:              1", out.getvalue())
+            self.assertIn("Would be merged away:  1", out.getvalue())
+            rows = list(csv.DictReader(path.read_text().splitlines()))
+
+        self.assertEqual(len(rows), 2)
+        self.assertEqual({r["email"] for r in rows}, {"a@x.com", "b@x.com"})
+        self.assertIn(RULE_NAME_DOB, rows[0]["rules"].split())
+
+    def test_reports_the_reason_a_cluster_is_blocked(self) -> None:
+        parent = self.make_player("parent@x.com")
+        child = self.make_player("child@x.com")
+        Guardianship.objects.create(
+            user=parent.user, player=child, relation=Guardianship.Relation.FA
+        )
+        out = StringIO()
+        call_command("find_duplicate_accounts", stdout=out)
+        self.assertIn("Blocked clusters:      1", out.getvalue())
+        self.assertIn(f"blocked by {BLOCK_GUARDIANSHIP}: 1", out.getvalue())

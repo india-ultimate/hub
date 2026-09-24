@@ -2,8 +2,11 @@
 
 import datetime
 import secrets
+from typing import Any
 
 from django.db import models
+from django.db.models.signals import pre_delete
+from django.dispatch import receiver
 from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 from django_prometheus.models import ExportModelOperationsMixin
@@ -239,3 +242,15 @@ class ClusterEvent(ExportModelOperationsMixin("cluster_event"), models.Model):  
 
     class Meta:
         ordering = ["at", "id"]
+
+
+@receiver(pre_delete, sender=User)
+def record_deleted_account(sender: Any, instance: User, **kwargs: Any) -> None:
+    """An account deleted by hand, not merged. A merge clears its rows' user
+    before deleting the account, so this only sees deletions outside one."""
+    from server.duplicates.history import log
+
+    for row in ClusterMember.objects.filter(
+        user=instance, state__in=ClusterMember.MERGEABLE
+    ).select_related("cluster"):
+        log(row.cluster, ClusterEvent.Kind.ACCOUNT_DELETED, member=row)
