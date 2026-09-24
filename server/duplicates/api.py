@@ -79,6 +79,14 @@ def _visible_rows(
     return rows
 
 
+def _anything_merged(rows: list[ClusterMember]) -> bool:
+    """Whether a merge ever happened in this group, regardless of what the
+    viewer can see: a finished group with no visible rows still needs to
+    say this much honestly, and one a deletion or a merge elsewhere closed
+    must not read as merged (spec §13)."""
+    return any(row.state == ClusterMember.State.MERGED for row in rows)
+
+
 def _serialize(link: ClusterMember, viewer: User | None) -> dict[str, object]:
     cluster = link.cluster
     mine = membership(cluster, viewer)
@@ -141,10 +149,7 @@ def _serialize(link: ClusterMember, viewer: User | None) -> dict[str, object]:
         "is_requester": is_requester,
         "cancelled_by_you": cancelled_by_you,
         "can_act": mine is not None and cluster.is_open and not mine.is_expired,
-        # Whether a merge ever happened in this group, regardless of what
-        # the viewer can see — a finished group with no visible rows still
-        # needs to say this much honestly (spec §13).
-        "anything_merged": any(row.state == ClusterMember.State.MERGED for row in rows),
+        "anything_merged": _anything_merged(rows),
         "rows": [
             {
                 "row_id": row.pk,
@@ -219,6 +224,7 @@ def my_groups(request: AuthenticatedHttpRequest) -> tuple[int, list[dict[str, ob
                     "origin": cluster.origin,
                     "waiting": sum(1 for _ in mergeable_others),
                     "status": cluster.status,
+                    "anything_merged": _anything_merged(members),
                     "started_at": cluster.created_at,
                     "other_email": other.account_email if other is not None else None,
                     "other_count": len(visible),
