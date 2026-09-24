@@ -1084,10 +1084,15 @@ class TestRacingAMergeOnPostgres(TransactionTestCase):
                 proof=ClusterMember.Proof.EMAIL_CODE,
             )
 
-    def race(self, other: Callable[[], object], at: str = "_release_keeper") -> dict[str, str]:
-        """Run the merge until it holds both accounts and reaches `at`,
-        start `other`, wait until Postgres says it is blocked, then let the
-        merge finish."""
+    def race(
+        self,
+        other: Callable[[], object],
+        at: str = "_release_keeper",
+        merge_x: Callable[[], object] | None = None,
+    ) -> dict[str, str]:
+        """Run the merge (by default, of X into K1) until it holds its
+        accounts and reaches `at`, start `other`, wait until Postgres says it
+        is blocked, then let the merge finish."""
         from server.duplicates import merge
 
         holding, go = threading.Event(), threading.Event()
@@ -1109,8 +1114,10 @@ class TestRacingAMergeOnPostgres(TransactionTestCase):
             finally:
                 connections.close_all()
 
-        def merge_x() -> None:
-            flow.merge_pair(self.g1, self.k1, self.x.pk, actor=self.k1)
+        if merge_x is None:
+
+            def merge_x() -> None:
+                flow.merge_pair(self.g1, self.k1, self.x.pk, actor=self.k1)
 
         threads = [
             threading.Thread(target=run, args=("merge", merge_x), name="merge"),
@@ -1176,6 +1183,33 @@ class TestRacingAMergeOnPostgres(TransactionTestCase):
             },
         )
         self.assertFalse(DuplicateCluster.objects.filter(origin="requested").exists())
+
+    def test_a_staff_approval_while_the_approver_is_locked_elsewhere(self) -> None:
+        """The approval writes AccountMerge.merged_by, a foreign key to the
+        approver checked at COMMIT with FOR KEY SHARE. A code sent in another
+        group to the approver's account locks it (lower pk, so first) and
+        then waits for the keeper, which the approval holds: a deadlock
+        unless the approval takes the approver in its own pk-ordered lock."""
+        staff = User.objects.create_superuser("s@x.com", "s@x.com", "pw")
+        keeper, y = self.account("k3@x.com"), self.account("y@x.com")
+        mine = self.group((keeper, None), (y, None))
+        request = ServiceRequest.objects.create(
+            user=keeper, type=ServiceRequestType.REQUEST_ACCOUNT_MERGE, message="lost it"
+        )
+        ClusterMember.objects.filter(cluster=mine, user=y).update(
+            state=ClusterMember.State.PENDING_STAFF, staff_request=request
+        )
+        elsewhere = self.group((keeper, None), (staff, None))
+        self.assertLess(staff.pk, keeper.pk)  # so send_code takes the approver first
+
+        results = self.race(
+            lambda: flow.send_code(elsewhere, keeper, staff.pk),
+            merge_x=lambda: flow.approve_staff(request, staff),
+        )
+
+        self.assertEqual(results, {"merge": "ok", "other": "ok"})
+        self.assertFalse(User.objects.filter(pk=y.pk).exists())
+        self.assertEqual(AccountMerge.objects.get().merged_by, staff)
 
     def group(self, *members: tuple[User, User | None]) -> DuplicateCluster:
         """A group of (account, the keeper it is verified for, or None)."""
