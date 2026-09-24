@@ -604,6 +604,58 @@ class TestMergeRefuses(MergeTestCase):
         self.assertEqual(row_counts(), before)
 
 
+class TestTheLockedRowsDecideTheMerge(MergeTestCase):
+    """The accounts are re-read under the lock, and every later decision is
+    made on those rows.
+
+    A request loads the accounts, waits for the lock, and by the time it has
+    one the rows can have moved on. Deciding on what it loaded first is how
+    a merge once wrote a stale password back over a newer one.
+
+    Whether the lock itself waits is a Postgres question these tests cannot
+    ask. What they do ask is what the merge reads once it has it, which is
+    where the data loss came from.
+    """
+
+    def stale(self, user: User) -> User:
+        """The account as a request loaded it, before the rows below it
+        change. select_for_update returns the newer row; this one does not."""
+        return User.objects.get(pk=user.pk)
+
+    def test_a_field_filled_in_since_the_request_loaded_it_survives(self) -> None:
+        User.objects.filter(pk=self.primary.pk).update(phone="")
+        stale = self.stale(self.primary)
+        User.objects.filter(pk=self.primary.pk).update(phone="+919000000001")
+        User.objects.filter(pk=self.duplicate.pk).update(phone="+919000000002")
+        self.duplicate.refresh_from_db()
+
+        merge_accounts(stale, [self.duplicate], dry_run=False)
+
+        self.primary.refresh_from_db()
+        self.assertEqual(self.primary.phone, "+919000000001")
+
+    def test_a_field_emptied_since_the_request_loaded_it_is_not_put_back(self) -> None:
+        User.objects.filter(pk=self.primary.pk).update(phone="")
+        User.objects.filter(pk=self.duplicate.pk).update(phone="+919000000002")
+        stale = self.stale(self.duplicate)
+        User.objects.filter(pk=self.duplicate.pk).update(phone="")
+
+        merge_accounts(self.primary, [stale], dry_run=False)
+
+        self.primary.refresh_from_db()
+        self.assertEqual(self.primary.phone, "")
+
+    def test_a_name_changed_since_the_request_loaded_it_blocks_the_merge(self) -> None:
+        stale = self.stale(self.primary)
+        User.objects.filter(pk=self.primary.pk).update(first_name="Kavya", last_name="Iyer")
+
+        with self.assertRaises(MergeBlockedError) as caught:
+            merge_accounts(stale, [self.duplicate], dry_run=False)
+
+        self.assertIn("name-mismatch", caught.exception.args[0])
+        self.assertTrue(User.objects.filter(pk=self.duplicate.pk).exists())
+
+
 class TestCollisionsKeepTheBetterRow(MergeTestCase):
     """A unique_together clash used to keep the primary's row whatever it held."""
 
