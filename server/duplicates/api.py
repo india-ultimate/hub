@@ -179,19 +179,54 @@ def _viewer(request: HttpRequest) -> User | None:
 
 @router.get("/mine", response={200: list[MyGroupSchema]})
 def my_groups(request: AuthenticatedHttpRequest) -> tuple[int, list[dict[str, object]]]:
-    rows = ClusterMember.objects.filter(
-        user=request.user, cluster__status__in=DuplicateCluster.OPEN_STATUSES
-    ).select_related("cluster")
-    return 200, [
-        {
-            "token": row.claim_token,
-            "origin": row.cluster.origin,
-            "waiting": row.cluster.members.exclude(user=request.user)
-            .filter(user__isnull=False, state__in=ClusterMember.MERGEABLE)
-            .count(),
-        }
-        for row in rows
-    ]
+    """Every group the caller belongs to, live ones first then most recent.
+    History (merged, dismissed) is included too - the list is what backs
+    the merge list page, not just the Dashboard's nag.
+
+    Two queries however many groups the caller is in: one for their own
+    rows, one (via prefetch_related) for every group's other members.
+    """
+    rows = (
+        ClusterMember.objects.filter(user=request.user)
+        .select_related("cluster")
+        .prefetch_related("cluster__members")
+    )
+    # (closed-before-open, oldest-first) so a plain sort on the pair puts
+    # live groups first and, within each, the most recent first.
+    ranked: list[tuple[bool, float, dict[str, object]]] = []
+    for row in rows:
+        cluster = row.cluster
+        members = list(cluster.members.all())
+        # Same rule _serialize applies for a member viewing their own group
+        # (spec §5): a dismissed group shows nothing of the other side, even
+        # to a member, so the list can't either.
+        visible = sorted(
+            (m for m in _visible_rows(cluster, members, row) if m.pk != row.pk),
+            key=lambda m: m.pk,
+        )
+        other = visible[0] if visible else None
+        mergeable_others = (
+            m
+            for m in members
+            if m.pk != row.pk and m.user_id is not None and m.state in ClusterMember.MERGEABLE
+        )
+        ranked.append(
+            (
+                cluster.status not in DuplicateCluster.OPEN_STATUSES,
+                -cluster.created_at.timestamp(),
+                {
+                    "token": row.claim_token,
+                    "origin": cluster.origin,
+                    "waiting": sum(1 for _ in mergeable_others),
+                    "status": cluster.status,
+                    "started_at": cluster.created_at,
+                    "other_email": other.account_email if other is not None else None,
+                    "other_count": len(visible),
+                },
+            )
+        )
+    ranked.sort(key=lambda item: item[:2])
+    return 200, [group for _, _, group in ranked]
 
 
 @router.post("", response={200: RequestedSchema, 400: message_response, 404: message_response})

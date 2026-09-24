@@ -83,3 +83,14 @@ class MyGroupSchema(Schema):
     origin: str
     # Accounts in the group besides yours that could still be merged.
     waiting: int
+    status: str
+    # When the group started (DuplicateCluster.created_at).
+    started_at: datetime
+    # One other member's address, to label the row. Masked the same way
+    # _serialize's shows_address would - which for this authenticated
+    # endpoint means never, and hidden entirely where a dismissed group
+    # would hide it from a member too (see _visible_rows, spec §5).
+    other_email: str | None
+    # How many other members the group has (0 when other_email is None).
+    # More than 1 means other_email is only one of them.
+    other_count: int
