@@ -517,8 +517,22 @@ class SeriesRosterInvitationAdmin(admin.ModelAdmin[SeriesRosterInvitation]):
         return obj.team.name
 
 
+class RosterRowAdmin:
+    """Who a roster row is for, once it exists, is not an edit.
+
+    A player's teams follow their roster rows, and the receivers that keep them
+    in step (server/tournament/models.py) read the row as it was created. Moving
+    a row to another player or team behind their back would leave the old team
+    on one profile and the new team off the other. Deleting the row and adding
+    the right one does the same job and keeps both profiles honest.
+    """
+
+    def get_readonly_fields(self, request: HttpRequest, obj: Any = None) -> tuple[str, ...]:
+        return ("player", "team") if obj is not None else ()
+
+
 @admin.register(SeriesRegistration)
-class SeriesRegistrationAdmin(admin.ModelAdmin[SeriesRegistration]):
+class SeriesRegistrationAdmin(RosterRowAdmin, admin.ModelAdmin[SeriesRegistration]):
     search_fields = [
         "team__name",
         "player__user__first_name",
@@ -542,7 +556,7 @@ class SeriesRegistrationAdmin(admin.ModelAdmin[SeriesRegistration]):
 
 
 @admin.register(Registration)
-class RegistrationAdmin(admin.ModelAdmin[Registration]):
+class RegistrationAdmin(RosterRowAdmin, admin.ModelAdmin[Registration]):
     search_fields = [
         "team__name",
         "player__user__first_name",
