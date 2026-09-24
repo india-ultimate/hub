@@ -1,4 +1,4 @@
-import { useParams, useSearchParams } from "@solidjs/router";
+import { A, useParams, useSearchParams } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
 import { createSignal, For, Index, Show } from "solid-js";
 
@@ -573,6 +573,19 @@ export default function MergeAccounts() {
       </Show>
 
       <Show when={query.isSuccess}>
+        {/* signed_in_as is only set when the viewer is both signed in and a
+            member of this group (see _serialize) - a link-holder with no
+            session, or someone signed into an unrelated account, has no
+            list of their own to go back to. */}
+        <Show when={signedIn()}>
+          <A
+            id="merge-back-to-list"
+            href="/merge-accounts"
+            class="mb-4 inline-flex min-h-[44px] items-center text-sm font-medium text-blue-700 hover:text-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-300 dark:text-blue-400 dark:hover:text-blue-300 dark:focus:ring-blue-800"
+          >
+            Back to your merges
+          </A>
+        </Show>
         <Show when={!finished()}>
           <p id="merge-intro" class="mb-4 text-gray-700 dark:text-gray-300">
             {data().is_requester
