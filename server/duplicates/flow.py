@@ -44,7 +44,9 @@ def membership(cluster: DuplicateCluster, user: User | None) -> ClusterMember | 
     return cluster.members.filter(user=user).first()
 
 
-def _lock(cluster: DuplicateCluster, *user_ids: int | None) -> DuplicateCluster:
+def _lock(
+    cluster: DuplicateCluster, *user_ids: int | None, approver: int | None = None
+) -> DuplicateCluster:
     """The group as it is now, locked with these accounts until the caller's
     transaction ends. Call it first, inside transaction.atomic(), and read
     the rows you will change only after it, through _rows, require_keeper or
@@ -80,13 +82,25 @@ def _lock(cluster: DuplicateCluster, *user_ids: int | None) -> DuplicateCluster:
       commit. FOR NO KEY UPDATE still keeps every other _lock out.
     Closing another group never waits for it either; see close_emptied.
 
+    `approver` is the staff member approving a merge: AccountMerge.merged_by
+    points at them, and that foreign key is checked at COMMIT with FOR KEY
+    SHARE. Unlocked, that check waited for anyone holding their account
+    FOR UPDATE, who might be waiting for ours: a deadlock. So they are
+    locked here, in pk order with the rest, but FOR NO KEY UPDATE: nobody
+    deletes them, it still keeps every other _lock on them out, and it
+    lets other transactions' foreign key checks on them through, where
+    FOR UPDATE would make those wait on this merge and could deadlock the
+    same way. Their rows in other groups are not the merge's to rewrite.
+
     A no-op on SQLite, so the SQLite suite cannot show any of this;
     TestRacingAMergeOnPostgres does, when the suite is pointed at Postgres.
     """
     locked = DuplicateCluster.objects.select_for_update(no_key=True).get(pk=cluster.pk)
     accounts = sorted({pk for pk in user_ids if pk is not None})
-    if accounts:
-        list(User.objects.select_for_update().filter(pk__in=accounts).order_by("pk"))
+    # One at a time, so each can take its own strength, in pk order across
+    # them all, so the order still holds.
+    for pk in sorted({pk for pk in (*accounts, approver) if pk is not None}):
+        list(User.objects.select_for_update(no_key=pk not in accounts).filter(pk=pk))
     ClusterMember.lock(accounts, locked)
     return locked
 
@@ -390,12 +404,17 @@ def request_staff(
     return request
 
 
-def _staff_row(request: ServiceRequest) -> ClusterMember:
-    """The row a staff request is for, read again under _lock with its group
-    and both accounts. Only inside a transaction."""
+def _staff_row(request: ServiceRequest, approver: User | None = None) -> ClusterMember:
+    """The row a staff request is for, read again under _lock with its group,
+    both accounts and the approver, if any. Only inside a transaction."""
     row = ClusterMember.objects.filter(staff_request=request).select_related("cluster").first()
     if row is not None:
-        cluster = _lock(row.cluster, request.user_id, row.user_id)
+        cluster = _lock(
+            row.cluster,
+            request.user_id,
+            row.user_id,
+            approver=approver.pk if approver is not None else None,
+        )
         row = _rows(cluster).filter(pk=row.pk, staff_request=request).first()
         request.refresh_from_db(fields=["status"])
     if (
@@ -415,7 +434,7 @@ def approve_staff(request: ServiceRequest, staff: User) -> MergePlan:
             "You asked for this merge, so someone else on the team must approve it", 403
         )
     with transaction.atomic():
-        row = _staff_row(request)
+        row = _staff_row(request, staff)
         assert row.user_id is not None  # noqa: S101 — PENDING_STAFF rows are live
         plan = merge_pair(
             row.cluster, request.user, row.user_id, actor=staff, staff_request=request
