@@ -1,4 +1,5 @@
 import { useNavigate } from "@solidjs/router";
+import { useQueryClient } from "@tanstack/solid-query";
 import { createSignal, Show } from "solid-js";
 
 import { useStore } from "../store";
@@ -7,6 +8,7 @@ import { getCookie } from "../utils";
 export default function MergeRequest() {
   const [store] = useStore();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [email, setEmail] = createSignal("");
   const [error, setError] = createSignal();
   const [busy, setBusy] = createSignal(false);
@@ -34,6 +36,9 @@ export default function MergeRequest() {
         setError(data?.message || "Something went wrong");
         return;
       }
+      // The list and the Dashboard notice cache this for a minute; without
+      // this the request just made is missing from both.
+      queryClient.invalidateQueries({ queryKey: ["merge-accounts-mine"] });
       navigate(`/merge-accounts/${data.token}`);
     } catch {
       setError("Something went wrong. Please try again.");
