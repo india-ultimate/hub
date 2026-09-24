@@ -22,8 +22,12 @@ const STATUS_BADGES = {
 
 // A group resolves when a deletion or a merge elsewhere leaves nothing to
 // do, too - so only say "Merged" when something did, as the group page does.
+// An open group past its link's expiry can't be acted on; asking again
+// for the same address starts a fresh one.
 const statusBadge = group =>
-  group.status === "Resolved" && !group.anything_merged
+  group.expired
+    ? ["Link expired", "gray"]
+    : group.status === "Resolved" && !group.anything_merged
     ? ["Sorted out", "gray"]
     : STATUS_BADGES[group.status] || [group.status, "gray"];
 
@@ -156,6 +160,17 @@ export default function MergeList() {
                         >
                           {text}
                         </span>
+                        <Show when={group.expired}>
+                          {/* Above the row's full-size link, or it can't
+                              be clicked. */}
+                          <A
+                            id={`merge-list-start-again-${group.token}`}
+                            href="/merge-accounts/new"
+                            class="relative z-10 flex min-h-[44px] items-center text-blue-700 underline hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                          >
+                            Start again
+                          </A>
+                        </Show>
                       </td>
                       <td
                         aria-hidden="true"

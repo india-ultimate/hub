@@ -733,7 +733,14 @@ export default function MergeAccounts() {
 
         <Show when={signedIn() && !finished() && !data().can_act}>
           <p class="text-sm text-gray-500 dark:text-gray-400">
-            This link has expired. You can still see where things stand.
+            This link has expired. You can still see where things stand.{" "}
+            <A
+              id="merge-start-again"
+              href="/merge-accounts/new"
+              class="text-blue-700 underline hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+            >
+              Start again
+            </A>
           </p>
         </Show>
 

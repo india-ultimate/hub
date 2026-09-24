@@ -541,8 +541,10 @@ class TestIntegration(BaseCase):
         print("Successfully started a merge from the Dashboard!")
 
         # Three open requests is the most; a fourth is refused and makes nothing.
-        for n in (1, 2):
+        extras = [
             request_merge(keep, make_player(f"extra{n}@x.com", first=f"Extra{n}").email, "")
+            for n in (1, 2)
+        ]
         groups = DuplicateCluster.objects.count()
         self.open(f"{APP_URL}/merge-accounts/new")
         self.type("input#merge-request-email", make_player("fourth@x.com", first="Fourth").email)
@@ -576,6 +578,21 @@ class TestIntegration(BaseCase):
         self.click("a#merge-back-to-list")
         self.assert_element("table#merge-list-table")
         self.assert_text("Closed", f"tr#merge-list-row-{token}")
+
+        # A group whose link has expired waits on nobody: the Dashboard stops
+        # counting it, and the list says so and points at starting again -
+        # a link that must sit above the row's own link to be clickable.
+        expired, live = extras
+        ClusterMember.objects.filter(pk=expired.pk).update(
+            expires_at=now() - datetime.timedelta(days=1)
+        )
+        self.open(f"{APP_URL}/dashboard")
+        self.assert_text("1 account waiting", "div#merge-groups-notice")
+        self.click("div#merge-groups-notice a")
+        self.assert_text("Link expired", f"tr#merge-list-row-{expired.claim_token}")
+        self.assert_text("Ready to review", f"tr#merge-list-row-{live.claim_token}")
+        self.click(f"a#merge-list-start-again-{expired.claim_token}")
+        self.assert_element("input#merge-request-email")
 
     # Breaks if: `_visible_rows` or the masking in `_serialize`; `can_act`,
     # Row.actionable() or expiry gating; the wrong-account message (Task 3);
