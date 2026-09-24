@@ -20,7 +20,12 @@ const STATUS_BADGES = {
   Dismissed: ["Closed", "gray"]
 };
 
-const statusBadge = status => STATUS_BADGES[status] || [status, "gray"];
+// A group resolves when a deletion or a merge elsewhere leaves nothing to
+// do, too - so only say "Merged" when something did, as the group page does.
+const statusBadge = group =>
+  group.status === "Resolved" && !group.anything_merged
+    ? ["Sorted out", "gray"]
+    : STATUS_BADGES[group.status] || [group.status, "gray"];
 
 const RELATIVE_TIME = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
 const DIVISIONS = [
@@ -120,7 +125,7 @@ export default function MergeList() {
             <tbody>
               <For each={groups()}>
                 {group => {
-                  const [text, colour] = statusBadge(group.status);
+                  const [text, colour] = statusBadge(group);
                   return (
                     <tr
                       id={`merge-list-row-${group.token}`}
