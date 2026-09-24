@@ -225,6 +225,7 @@ def my_groups(request: AuthenticatedHttpRequest) -> tuple[int, list[dict[str, ob
                     "waiting": sum(1 for _ in mergeable_others),
                     "status": cluster.status,
                     "anything_merged": _anything_merged(members),
+                    "expired": cluster.is_open and row.is_expired,
                     "started_at": cluster.created_at,
                     "other_email": other.account_email if other is not None else None,
                     "other_count": len(visible),

@@ -291,12 +291,15 @@ def request_merge(keeper: User, email: str, note: str) -> ClusterMember:
             other = User.objects.filter(pk=other.pk).first()
 
         # A group the caller is already in: they see its address on their
-        # list, so handing it back tells them nothing new.
+        # list, so handing it back tells them nothing new. Not one whose
+        # link has expired: nobody can act in it, so it would be a dead end,
+        # and asking again is how they start afresh.
         shared = (
             None
             if other is None
             else ClusterMember.objects.filter(
                 user=keeper,
+                expires_at__gt=now(),
                 cluster__status__in=DuplicateCluster.OPEN_STATUSES,
                 cluster__members__user=other,
             )

@@ -1503,6 +1503,34 @@ class TestRequestingAMerge(MergeFlowTestCase):
         self.start("me.old@example.com")
         self.assertEqual(DuplicateCluster.objects.count(), 1)
 
+    def expire(self, token: str) -> None:
+        ClusterMember.objects.filter(claim_token=token).update(
+            expires_at=now() - datetime.timedelta(minutes=1)
+        )
+
+    def test_asking_again_after_the_link_expired_starts_afresh(self) -> None:
+        """An expired group lets nobody act, so handing it back again was a
+        dead end."""
+        old = self.start("me.old@example.com").json()["token"]
+        self.expire(old)
+        response = self.start("me.old@example.com")
+        self.assertEqual(response.status_code, 200)
+        self.assertNotEqual(response.json()["token"], old)
+        self.assertEqual(DuplicateCluster.objects.count(), 2)
+
+    def test_mine_says_which_open_groups_have_expired(self) -> None:
+        stale = self.start("me.old@example.com").json()["token"]
+        self.expire(stale)
+        self.make_account("third@x.com")
+        live = self.start("third@x.com").json()["token"]
+        self.make_account("fourth@x.com")
+        dismissed = self.start("fourth@x.com").json()["token"]
+        # Dismissing expires every link, but the group is finished, not
+        # stuck: expired is only ever said of an open one.
+        self.client.post(f"{BASE}/{dismissed}/dismiss")
+        groups = {g["token"]: g["expired"] for g in self.client.get(f"{BASE}/mine").json()}
+        self.assertEqual(groups, {stale: True, live: False, dismissed: False})
+
     def test_a_fourth_open_request_is_refused(self) -> None:
         for n in range(3):
             other = self.make_account(f"o{n}@x.com")
