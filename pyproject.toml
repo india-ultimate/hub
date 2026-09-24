@@ -108,6 +108,16 @@ ignore = [
 
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "hub.test_settings"
+# SeleniumBase starts Firefox in permanent private browsing, where the page's
+# cookies live in the private jar but WebDriver's cookie commands read and
+# write the normal one: add_cookie stores a cookie the page never sends, and
+# delete_all_cookies clears nothing. Chrome has no such split. Turning the
+# disk cache off keeps the other half of private browsing, so a session still
+# writes next to nothing. Ignored by every browser but Firefox.
+addopts = """\
+--firefox-pref=browser.privatebrowsing.autostart:false,\
+browser.cache.disk.enable:false\
+"""
 
 [tool.mypy]
 scripts_are_modules = true
