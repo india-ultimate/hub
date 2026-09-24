@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <body style="font-family: Arial, Helvetica, sans-serif; color: #222; line-height: 1.6;">
+    <p>Hi {{ first_name|default:"there" }},</p>
+
+    <p>We think these India Ultimate Hub accounts all belong to you. They share
+      {{ matched_on }}:</p>
+
+    <ul>
+      {% for account in accounts %}
+        <li>
+          <strong>{{ account.email }}</strong>
+          {% if account.is_you %} &mdash; this one{% endif %}
+          {% if account.last_login %}
+            &mdash; last signed in {{ account.last_login|date:"M Y" }}
+          {% else %}
+            &mdash; never signed in
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+
+    <p>If these are all yours, open the link below and sign in to the one you
+      want to keep. For each other account we'll email it a short code to
+      confirm it's yours; if you can no longer reach one of those inboxes, you
+      can ask our team instead.</p>
+
+    <p><a href="{{ claim_url }}">{{ claim_url }}</a></p>
+
+    <p>The same link lets you see where all your accounts stand at any time.
+      If these aren't all the same person, open it and tell us.</p>
+
+    <p style="color: #666; font-size: 13px;">
+      You will be asked to sign in first. Nothing changes until you confirm.
+      You have {{ valid_days }} days to confirm and merge. After that the link
+      still shows where your accounts stand, but you won't be able to merge
+      from it.
+    </p>
+  </body>
+</html>

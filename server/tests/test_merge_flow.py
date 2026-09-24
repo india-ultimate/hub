@@ -2,7 +2,7 @@ import datetime
 import json
 from typing import Any
 
-from django.db.models import F
+from django.db.models import F, ProtectedError
 from django.test import TestCase
 from django.utils.timezone import now
 
@@ -13,6 +13,7 @@ from server.duplicates.clusters import (
 )
 from server.duplicates.codes import RESEND_AFTER
 from server.duplicates.detect import find_clusters
+from server.duplicates.emails import notify
 from server.duplicates.models import (
     ClusterEvent,
     ClusterMember,
@@ -110,3 +111,27 @@ class TestClusterCreation(MergeFlowTestCase):
     def test_a_detected_group_says_so(self) -> None:
         self.assertEqual(self.cluster.origin, DuplicateCluster.Origin.DETECTED)
         self.assertIsNone(self.cluster.requested_by_id)
+
+
+class TestTimeline(MergeFlowTestCase):
+    def test_detection_is_the_first_event(self) -> None:
+        kinds = list(self.cluster.events.values_list("kind", flat=True))
+        self.assertEqual(kinds, [ClusterEvent.Kind.DETECTED])
+
+    def test_emailing_the_group_is_an_event(self) -> None:
+        notify(self.cluster)
+        self.assertTrue(self.cluster.events.filter(kind=ClusterEvent.Kind.EMAILED).exists())
+
+    def test_a_group_with_history_cannot_be_deleted(self) -> None:
+        with self.assertRaises(ProtectedError):
+            self.cluster.delete()
+
+    def test_an_account_deleted_outside_a_merge_is_an_event(self) -> None:
+        second_id = self.second.id
+        self.second.delete()
+        row = ClusterMember.objects.get(cluster=self.cluster, account_id=second_id)
+        self.assertIsNone(row.user_id)
+        self.assertTrue(row.is_gone)
+        self.assertTrue(
+            self.cluster.events.filter(kind=ClusterEvent.Kind.ACCOUNT_DELETED, member=row).exists()
+        )
