@@ -541,16 +541,28 @@ class TestIntegration(BaseCase):
         self.assertEqual(DuplicateCluster.objects.count(), groups)
 
         # The Dashboard's notice now opens the list page, which links to each
-        # group; the group page itself is one hop further than it was.
+        # group; the group page itself is one hop further than it was. Pick
+        # this group's own row by token, so the click is proven to land on
+        # this group and not merely on some row.
+        token = group.members.get(user=keep).claim_token
         self.open(f"{APP_URL}/dashboard")
         self.assert_element("div#merge-groups-notice")
         self.click("div#merge-groups-notice a")
         self.assert_element("table#merge-list-table")
-        self.click("table#merge-list-table a[href^='/merge-accounts/']")
+        self.assert_element(f"tr#merge-list-row-{token}")
+        self.click(f"tr#merge-list-row-{token} a")
         self.assert_element("table#merge-table")
+        self.assert_text(absorb.email, "table#merge-table")
+
+        # The back link returns a signed-in member to their list, row intact.
+        self.click("a#merge-back-to-list")
+        self.assert_element("table#merge-list-table")
+        self.assert_element(f"tr#merge-list-row-{token}")
 
     # Breaks if: `_visible_rows` or the masking in `_serialize`; `can_act`,
     # Row.actionable() or expiry gating; the wrong-account message (Task 3);
+    # the back link showing for anyone but a signed-in member of the group
+    # (it keys off `signed_in_as`, not merely being signed in somewhere);
     # the emailed link opening the wrong account's own row once its owner is
     # signed in (step 1b, using the actual link build_messages sent them);
     # a page load that writes state. It does NOT cover build_messages
@@ -611,6 +623,8 @@ class TestIntegration(BaseCase):
         self.assert_element("table#merge-table")
         self.assert_text_not_visible(keeper.email)
         self.assert_element_not_present("button[id^=merge-send-code-]")
+        # No session, so no list of their own to link back to.
+        self.assert_element_not_present("a#merge-back-to-list")
         self.assertEqual(states(), before)
 
         # 1b. The same emailed link works end to end for its owner: signed
@@ -636,6 +650,7 @@ class TestIntegration(BaseCase):
         # Where a help request goes is said on the page, not only in the mail.
         self.assert_text("Ops team", "p#merge-help-note")
         self.assert_text("These aren't the same person", "button#merge-dismiss-button")
+        self.assert_element("a#merge-back-to-list")
         self.assertEqual(states(), before)
 
         # 3. Signed in to an account outside the group: told so, no actions.
@@ -644,6 +659,8 @@ class TestIntegration(BaseCase):
         self.assert_text(outsider.email, "div#merge-wrong-account")
         self.assert_element_not_present("div#merge-sign-in-prompt")
         self.assert_element_not_present("button[id^=merge-send-code-]")
+        # Signed in, but to the wrong account: still not a member here.
+        self.assert_element_not_present("a#merge-back-to-list")
         self.click("button#merge-sign-out")
         self.assert_element("button#email-otp-tab")  # the login page, not a loop
         self.assertEqual(states(), before)
