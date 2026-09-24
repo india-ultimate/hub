@@ -52,6 +52,10 @@ class AccountMerge(ExportModelOperationsMixin("account_merge"), models.Model):  
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
 
+class AliasHeldError(Exception):
+    """The address is already another account's way of signing in."""
+
+
 class EmailAlias(ExportModelOperationsMixin("email_alias"), models.Model):  # type: ignore[misc]
     """An address absorbed by a merge, so its owner can still sign in."""
 
@@ -63,10 +67,16 @@ class EmailAlias(ExportModelOperationsMixin("email_alias"), models.Model):  # ty
     def remember(cls, emails: list[str], user: User) -> list[tuple[str, int | None]]:
         """Point these addresses at user, and say what each one pointed at.
 
-        An address can already be somebody else's alias, and repointing it
-        takes away a working way for them to sign in. That is not decided
-        here, but it is never allowed to happen unrecorded, so the previous
-        owner is returned for the merge record.
+        An address already pointing at a different account is refused. Sign
+        in resolves through here, so repointing it takes away that account's
+        working way in, and no merge asked for that: by the time a merge
+        calls this it has moved every alias of the accounts it is absorbing
+        onto user, and proved nothing still points at one, so anyone else
+        left holding this address is a live third party.
+
+        What each address pointed at beforehand is still returned, for the
+        merge record: an alias user already held is not news, but it is the
+        difference between an address this merge added and one it found.
         """
         from server.duplicates.identity import normalize_email
 
@@ -83,6 +93,8 @@ class EmailAlias(ExportModelOperationsMixin("email_alias"), models.Model):  # ty
                 held_by = (
                     cls.objects.filter(email=normalized).values_list("user_id", flat=True).first()
                 )
+                if held_by not in (None, user.pk):
+                    raise AliasHeldError(normalized)
                 cls.objects.update_or_create(email=normalized, defaults={"user": user})
                 written.append((normalized, held_by))
         return written
