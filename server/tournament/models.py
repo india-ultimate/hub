@@ -153,6 +153,46 @@ class Registration(ExportModelOperationsMixin("registration"), models.Model):  #
         unique_together = ("event", "player")
 
 
+@receiver(post_save, sender=Registration)
+@receiver(post_save, sender=SeriesRegistration)
+def link_player_to_team(sender: Any, instance: Any, created: bool, **kwargs: Any) -> None:
+    """Put a team on a player's profile when they are rostered onto it.
+
+    A signal rather than a call in each roster path: players are rostered by the
+    roster endpoint, by the series invitation flow, by the payment webhook, by two
+    CSV commands and by the admin, and only this catches all six. The merge moves
+    a player's whole `teams` set itself, so repointing a registration onto the
+    survivor needs nothing here.
+
+    Only on create. `calculate_player_points` re-saves every registration nightly
+    and none of those saves can change who is on which team.
+    """
+    if created:
+        instance.player.teams.add(instance.team_id)
+
+
+@receiver(post_delete, sender=Registration)
+@receiver(post_delete, sender=SeriesRegistration)
+def unlink_player_from_team(sender: Any, instance: Any, **kwargs: Any) -> None:
+    """Take the team off again once nothing rosters the player onto it.
+
+    A player can reach one team through several registrations -- a series roster
+    and an event roster, or two events in a season -- so the link only goes when
+    the last of them does.
+
+    This fires for cascades too, which is the point: deleting an event, a team or
+    an account leaves no roster row behind to justify the link. It writes through
+    the join table rather than `player.teams` because during a cascade the player
+    is on its way out and need not be fetched.
+    """
+    pair = {"player_id": instance.player_id, "team_id": instance.team_id}
+    if Registration.objects.filter(**pair).exists():
+        return
+    if SeriesRegistration.objects.filter(**pair).exists():
+        return
+    Player.teams.through.objects.filter(**pair).delete()
+
+
 class UCRegistration(ExportModelOperationsMixin("uc_registration"), models.Model):  # type: ignore[misc]
     event = models.ForeignKey(Event, on_delete=models.CASCADE)
     team = models.ForeignKey(Team, on_delete=models.CASCADE)
