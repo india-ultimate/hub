@@ -305,10 +305,13 @@ const Dashboard = () => {
     fetchMine
   );
   // /mine now returns history too (for the merge list page); the Dashboard
-  // still only nags about groups still open.
+  // still only nags about groups still open, and not about one whose link
+  // has expired - nothing on it can be done.
   const openMergeGroups = () =>
     (mergeGroupsQuery.data || []).filter(
-      group => group.status === "Detected" || group.status === "Notified"
+      group =>
+        !group.expired &&
+        (group.status === "Detected" || group.status === "Notified")
     );
 
   const logout = async () => {
