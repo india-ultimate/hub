@@ -1,4 +1,5 @@
 from importlib import import_module
+from unittest import mock
 
 from django.apps import apps
 from django.db import connection
@@ -44,6 +45,18 @@ class TestResolveLoginUser(TestCase):
         keep = User.objects.create(username="new@example.com", email="new@example.com")
         EmailAlias.objects.create(email="old@example.com", user=keep)
         self.assertEqual(resolve_login_user("Old@Example.com"), keep)
+        self.assertEqual(User.objects.count(), 1)
+
+    def test_an_account_created_between_the_lookup_and_the_insert(self) -> None:
+        """Two requests for an address neither of them found both reach the
+        insert, and only one can hold the username. The loser used to raise
+        IntegrityError at whoever was signing in."""
+        winner = User.objects.create(username="race@example.com", email="race@example.com")
+        with mock.patch(
+            "server.core.accounts.find_login_user", side_effect=[None, winner]
+        ) as lookup:
+            self.assertEqual(resolve_login_user("race@example.com"), winner)
+        self.assertEqual(lookup.call_count, 2)
         self.assertEqual(User.objects.count(), 1)
 
     def test_a_duplicate_is_reached_by_its_own_username(self) -> None:
