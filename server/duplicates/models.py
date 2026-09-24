@@ -2,9 +2,11 @@
 
 import datetime
 import secrets
+from collections.abc import Iterable
 from typing import Any
 
 from django.db import models
+from django.db.models import Q
 from django.db.models.signals import pre_delete
 from django.dispatch import receiver
 from django.utils.timezone import now
@@ -205,6 +207,26 @@ class ClusterMember(ExportModelOperationsMixin("cluster_member"), models.Model):
     def of(cls, cluster: DuplicateCluster, user: User) -> "ClusterMember":
         """An unsaved row for `user`, with its identity frozen as it is now."""
         return cls(cluster=cluster, user=user, account_id=user.pk, account_email=user.email)
+
+    @classmethod
+    def lock(cls, user_ids: Iterable[int], cluster: DuplicateCluster | None = None) -> None:
+        """Lock, in one statement in pk order, every row a merge of these
+        accounts rewrites - their own rows, and the rows they verified or
+        asked our team about, in any group - and `cluster`'s rows.
+
+        One statement, so a row is never held while another is waited for
+        out of order: two callers wanting overlapping rows take them in the
+        same order, and the second simply waits. Taken in pieces, a merge
+        deadlocked with a dismissal of, or a merge in, another group the
+        same account was in (TestRacingAMergeOnPostgres). A no-op on SQLite.
+        """
+        ids = list(user_ids)
+        rows = Q(user__in=ids) | Q(verified_by_id__in=ids) | Q(staff_request__user__in=ids)
+        if cluster is not None:
+            rows |= Q(cluster=cluster)
+        # of=("self",): Postgres cannot lock the nullable side of an outer
+        # join, and staff_request__user makes one.
+        list(cls.objects.select_for_update(of=("self",)).filter(rows).order_by("pk"))
 
     @property
     def is_expired(self) -> bool:

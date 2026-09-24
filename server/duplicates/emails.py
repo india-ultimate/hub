@@ -93,6 +93,9 @@ def notify(cluster: DuplicateCluster) -> int:
         if locked.status != DuplicateCluster.Status.DETECTED:
             return 0
         queue_emails(messages)
+        # Rows in the one pk-ordered statement a merge elsewhere uses, not
+        # in whatever order the update below meets them.
+        ClusterMember.lock((), locked)
         timestamp = now()
         cluster.members.filter(user__email__contains="@").update(notified_at=timestamp)
         cluster.status = DuplicateCluster.Status.NOTIFIED

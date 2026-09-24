@@ -721,6 +721,14 @@ def merge_accounts(
         # took no lock at all. Ordered by pk so two of them cannot deadlock.
         # A no-op on SQLite, which is why no test can prove it works; the
         # test suite is SQLite and production is Postgres.
+        #
+        # Plain FOR UPDATE, not the no_key=True the groups get: the
+        # duplicates are deleted below, and a delete needs FOR UPDATE, so a
+        # weaker lock here would only have to be upgraded later, after
+        # letting another transaction's foreign key check onto an account
+        # that is about to go. It is also the lock _lock and request_merge
+        # take on the same accounts. The groups are locked FOR NO KEY UPDATE
+        # because nobody deletes one.
         locked = {
             user.pk: user
             for user in User.objects.select_for_update()
@@ -737,6 +745,10 @@ def merge_accounts(
         if primary.pk not in locked or not duplicates:
             raise MergeBlockedError(["nothing-to-merge"])
         primary = locked[primary.pk]
+        # Every group row _release_keeper and _settle_group_rows rewrite,
+        # in one pk-ordered statement before either reads one; see
+        # ClusterMember.lock. Through merge_pair these are already held.
+        ClusterMember.lock(locked.keys())
 
         # Asked again of the locked rows: the first answer was about the
         # accounts as the request found them, and a name or a guardian
