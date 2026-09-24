@@ -508,6 +508,9 @@ class TestIntegration(BaseCase):
         self.click("h2#accordion-heading-actions")
         self.click("a#merge-request-link")
         self.assert_element("div#merge-request-keeper")
+        # Nothing to say here: the reason is asked for on the merge page, and
+        # only of the people who can't reach an inbox.
+        self.assert_element_absent("textarea#merge-request-note")
         self.type("input#merge-request-email", "nobody@x.com")
         self.click("button#merge-request-submit")
         self.assert_text("couldn't find an account", "p#merge-request-error")
@@ -627,6 +630,8 @@ class TestIntegration(BaseCase):
         self.assert_text(other.email, f"tr#merge-row-{theirs.pk}")
         self.assert_element(f"button#merge-send-code-{theirs.pk}")
         self.assert_element(f"button#merge-staff-open-{theirs.pk}")
+        # Where a help request goes is said on the page, not only in the mail.
+        self.assert_text("Ops team", "p#merge-help-note")
         self.assert_text("These aren't the same person", "button#merge-dismiss-button")
         self.assertEqual(states(), before)
 
