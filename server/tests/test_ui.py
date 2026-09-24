@@ -898,6 +898,23 @@ class TestIntegration(BaseCase):
         cancelled = second.cluster
         self.assertTrue(cancelled.events.filter(kind=ClusterEvent.Kind.CANCELLED).exists())
         self.assertFalse(cancelled.events.filter(kind=ClusterEvent.Kind.DISMISSED).exists())
+
+        # The other owner says no while the keeper has the page open. Send
+        # code is refused, and the dialog keeps its error until the keeper
+        # closes it; then the page shows where things stand, not the same
+        # button again. Refresh only on success and the button stays;
+        # refresh while the dialog is open and the error goes with it.
+        ravi = make_player("ravi@w.com", first="Ravi", last="Iyer")
+        third_request = request_merge(keeper, ravi.email, "")
+        ravis = third_request.cluster.members.get(user=ravi)
+        self.open(f"{APP_URL}/merge-accounts/{third_request.claim_token}")
+        self.assert_element(f"button#merge-send-code-{ravis.pk}")
+        dismiss(third_request.cluster, ravi)
+        self.click(f"button#merge-send-code-{ravis.pk}")
+        self.assert_text("already been sorted out", f"p#merge-code-error-{ravis.pk}")
+        self.click(f"button#merge-code-cancel-{ravis.pk}")
+        self.assert_element("p#merge-finished")
+        self.assert_element_absent(f"button#merge-send-code-{ravis.pk}")
         print("The other owner said no, and a request was cancelled!")
 
     # Breaks if: the blocked-merge review (Task 2) — the `blocked` signal from

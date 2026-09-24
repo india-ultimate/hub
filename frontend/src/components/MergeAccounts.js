@@ -148,6 +148,20 @@ function Row(props) {
   // One dialog is open at a time, so one error signal serves all three.
   const [modalError, setModalError] = createSignal("");
   let confirmRef, codeRef, helpRef;
+  // Set when a dialog's action was refused: the page is refreshed once the
+  // person has read the error and closed the dialog, however they close it.
+  let stale = false;
+  const failed = failure => {
+    stale = true;
+    setModalError(failure.message);
+  };
+  const dialog = assign => element => {
+    assign(element);
+    element.addEventListener("close", () => {
+      if (stale) props.refresh();
+      stale = false;
+    });
+  };
 
   const row = () => props.row;
   const canAct = () => props.canAct && !row().is_yours;
@@ -188,13 +202,13 @@ function Row(props) {
     setModalError("");
     codeRef.showModal();
     const failure = await act("code", {}, { silent: true });
-    if (failure) setModalError(failure.message);
+    if (failure) failed(failure);
   };
 
   const doVerify = async () => {
     setModalError("");
     const failure = await act("verify", { code: code() }, { silent: true });
-    if (failure) setModalError(failure.message);
+    if (failure) failed(failure);
     else codeRef.close();
   };
 
@@ -206,7 +220,7 @@ function Row(props) {
   const doHelp = async () => {
     setModalError("");
     const failure = await act("staff", { note: note() }, { silent: true });
-    if (failure) setModalError(failure.message);
+    if (failure) failed(failure);
     else helpRef.close();
   };
 
@@ -226,7 +240,7 @@ function Row(props) {
       return;
     }
     if (failure.reason === "blocked") setBlocked(true);
-    setModalError(failure.message);
+    failed(failure);
   };
 
   return (
@@ -294,7 +308,7 @@ function Row(props) {
 
         <Show when={actionable()}>
           <Modal
-            ref={codeRef}
+            ref={dialog(el => (codeRef = el))}
             title="Confirm this email"
             close={() => codeRef.close()}
           >
@@ -348,7 +362,7 @@ function Row(props) {
           </Modal>
 
           <Modal
-            ref={helpRef}
+            ref={dialog(el => (helpRef = el))}
             title="Ask our team for help"
             close={() => helpRef.close()}
           >
@@ -395,7 +409,7 @@ function Row(props) {
 
         <Show when={canAct() && row().verified_for_you}>
           <Modal
-            ref={confirmRef}
+            ref={dialog(el => (confirmRef = el))}
             title="Confirm merge"
             close={() => confirmRef.close()}
           >
@@ -536,6 +550,20 @@ export default function MergeAccounts() {
   const finished = () =>
     data()?.status === "Resolved" || data()?.status === "Dismissed";
 
+  const refresh = async () => {
+    await query.refetch();
+    // Every action here can change what the merge list (and the Dashboard
+    // notice, which shares this key) should show for this group - confirm,
+    // dismiss, verify and staff all change status or who's left to act.
+    // Invalidate here, once, rather than in each caller.
+    queryClient.invalidateQueries({ queryKey: ["merge-accounts-mine"] });
+  };
+
+  // A refusal usually means the group moved on without us (merged
+  // elsewhere, closed, expired), so refresh after one too, or the page
+  // keeps offering buttons that will fail. A silent failure belongs to a
+  // dialog, and refreshing could unmount it along with its error, so the
+  // dialog refreshes once it closes instead.
   const act = async (action, body, { silent } = {}) => {
     setBusy(true);
     setError();
@@ -547,16 +575,13 @@ export default function MergeAccounts() {
         body
       );
       if (result?.message) setNotice(result.message);
-      await query.refetch();
-      // Every action here can change what the merge list (and the
-      // Dashboard notice, which shares this key) should show for this
-      // group - confirm, dismiss, verify and staff all change status or
-      // who's left to act. Invalidate here, once, rather than in each
-      // caller.
-      queryClient.invalidateQueries({ queryKey: ["merge-accounts-mine"] });
+      await refresh();
     } catch (e) {
-      if (!silent) setError(e.message);
       failure = e;
+      if (!silent) {
+        setError(e.message);
+        await refresh();
+      }
     }
     setBusy(false);
     return failure;
@@ -698,6 +723,7 @@ export default function MergeAccounts() {
                     canAct={data().can_act}
                     busy={busy()}
                     act={act}
+                    refresh={refresh}
                   />
                 )}
               </Index>
