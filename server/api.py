@@ -782,6 +782,9 @@ def register_ward(
         first_name=registration.first_name,  # type: ignore[attr-defined]
         last_name=registration.last_name,  # type: ignore[attr-defined]
     )
+    # An address the guardian's own account absorbed in a merge is them.
+    if user.pk == request.user.pk:
+        return 400, {"message": "Use the players form instead of the guardians form"}
     return do_register(user, registration, guardian=request.user)
 
 
@@ -799,6 +802,9 @@ def register_guardian(
         first_name=registration.guardian_first_name,
         last_name=registration.guardian_last_name,
     )
+    # An address the player's own account absorbed in a merge is them.
+    if user.pk == request.user.pk:
+        return 400, {"message": "Use the guardians form instead of the players form"}
     return do_register(request.user, registration, guardian=user)
 
 
