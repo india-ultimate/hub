@@ -706,7 +706,6 @@ def merge_accounts(
     if dry_run:
         return build_plan(primary, duplicates)
 
-    plan = MergePlan(primary.id, [user.id for user in duplicates])
     record = MergeRecord()
 
     with transaction.atomic():
@@ -718,11 +717,32 @@ def merge_accounts(
         # took no lock at all. Ordered by pk so two of them cannot deadlock.
         # A no-op on SQLite, which is why no test can prove it works; the
         # test suite is SQLite and production is Postgres.
-        list(
-            User.objects.select_for_update()
+        locked = {
+            user.pk: user
+            for user in User.objects.select_for_update()
             .filter(pk__in=[primary.pk, *(user.pk for user in duplicates)])
             .order_by("pk")
-        )
+        }
+        # The accounts as they are now, not as the request loaded them. A
+        # field filled in since would still look blank to _fill_blanks,
+        # which would then write the duplicate's value over the newer one,
+        # and the plan, the record and the snapshot would all describe
+        # accounts that had moved on. An account another merge absorbed
+        # while we waited for the lock is simply no longer there.
+        duplicates = [user for pk, user in locked.items() if pk != primary.pk]
+        if primary.pk not in locked or not duplicates:
+            raise MergeBlockedError(["nothing-to-merge"])
+        primary = locked[primary.pk]
+
+        # Asked again of the locked rows: the first answer was about the
+        # accounts as the request found them, and a name or a guardian
+        # changed since then blocks this merge just as much as one that was
+        # there all along. Nothing below may decide on pre-lock data.
+        blockers = check_blockers(primary, duplicates)
+        if blockers:
+            raise MergeBlockedError(blockers)
+
+        plan = MergePlan(primary.id, [user.id for user in duplicates])
 
         for duplicate in duplicates:
             _release_keeper(duplicate, actor)
