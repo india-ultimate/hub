@@ -18,6 +18,7 @@ const Dashboard = lazy(() => import("./Dashboard"));
 const Home = lazy(() => import("./Home"));
 const Login = lazy(() => import("./Login"));
 const MergeAccounts = lazy(() => import("./MergeAccounts"));
+const MergeList = lazy(() => import("./MergeList"));
 const MergeRequest = lazy(() => import("./MergeRequest"));
 const Registration = lazy(() => import("./Registration"));
 const Help = lazy(() => import("./Help"));
@@ -131,6 +132,7 @@ export default function App() {
                   <UserRoute path="/forum" component={Forum} />
                   {/* Login related routes */}
                   <Route path="/login" component={Login} />
+                  <UserRoute path="/merge-accounts" component={MergeList} />
                   <UserRoute
                     path="/merge-accounts/new"
                     component={MergeRequest}

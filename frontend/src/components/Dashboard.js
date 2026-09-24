@@ -306,6 +306,12 @@ const Dashboard = () => {
     });
     return response.ok ? response.json() : [];
   });
+  // /mine now returns history too (for the merge list page); the Dashboard
+  // still only nags about groups still open.
+  const openMergeGroups = () =>
+    (mergeGroups() || []).filter(
+      group => group.status === "Detected" || group.status === "Notified"
+    );
 
   const logout = async () => {
     const response = await fetch("/api/logout", {
@@ -329,22 +335,16 @@ const Dashboard = () => {
       <h1 class="mb-4 text-2xl font-bold text-blue-600 md:text-4xl">
         Welcome <span>{store?.data?.full_name || store?.data?.username}</span>!
       </h1>
-      <Show when={mergeGroups()?.length > 0}>
+      <Show when={openMergeGroups().length > 0}>
         <div
           id="merge-groups-notice"
           class="mb-4 rounded-lg border border-blue-300 bg-blue-50 p-3 text-sm text-blue-900 dark:border-blue-700 dark:bg-blue-900 dark:text-blue-100"
         >
-          You have accounts waiting to be merged —{" "}
-          <For each={mergeGroups()}>
-            {(group, index) => (
-              <>
-                {index() > 0 ? ", " : ""}
-                <A href={`/merge-accounts/${group.token}`} class="underline">
-                  see where they stand
-                </A>
-              </>
-            )}
-          </For>
+          <A href="/merge-accounts" class="underline">
+            {openMergeGroups().length}{" "}
+            {openMergeGroups().length === 1 ? "account" : "accounts"} waiting to
+            be merged — review {openMergeGroups().length === 1 ? "it" : "them"}
+          </A>
         </div>
       </Show>
       <div
