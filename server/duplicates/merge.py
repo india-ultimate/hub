@@ -106,10 +106,6 @@ PLAYER_FILLABLE = (
 # Never worth keeping once the account is gone, and the snapshot outlives it.
 SNAPSHOT_REDACTED = ("password",)
 
-# Proofs that the keeper reads the absorbed inbox. Only these make its
-# address a way to sign in to the keeper; see merge_accounts.
-INBOX_PROOFS = (ClusterMember.Proof.EMAIL_CODE, ClusterMember.Proof.SAME_INBOX)
-
 
 def _snapshot(rows: list[Model]) -> list[dict[str, Any]]:
     """Serialize the rows a merge destroys, minus anything that is a secret."""
@@ -841,15 +837,23 @@ def merge_accounts(
         # Before the record is written, so that an address taken off another
         # account is in it. Afterwards would be too late to say so.
         #
-        # Only an inbox the keeper proved they read becomes a way in. Staff
-        # approve a merge because the keeper cannot reach the other inbox,
-        # and the merge_accounts command proves nothing about it either:
-        # that address may be recycled, or someone else's, and an alias
-        # would sign whoever holds it now in to the primary. It is still
-        # absorbed; duplicate_emails below says so.
-        if record.proof.get("method") in INBOX_PROOFS:
-            for address, held_by in EmailAlias.remember(emails, primary):
-                record.aliased(address, primary.pk, held_by)
+        # Every absorbed address becomes a way in to the primary, whatever
+        # proved the merge: a code, the same inbox, a staff approval or an
+        # admin running the merge_accounts command. A merge says the two
+        # accounts are one person, so both logins must reach the one
+        # account. Without the alias, signing in with the absorbed address
+        # makes resolve_login_user create a fresh empty account, the very
+        # duplicate this merge removed.
+        #
+        # Accepted cost: signing in with an address means reading a code
+        # sent to it, so an alias lets whoever reads that inbox into the
+        # primary. A staff approval is asked for because the keeper cannot
+        # read it. If it is a recycled mailbox (a reissued college or work
+        # address), whoever holds it now can sign in as the keeper. That is
+        # a deliberate choice by the owner, not an oversight: it is rare,
+        # and staff can catch it by asking why the inbox is unreachable.
+        for address, held_by in EmailAlias.remember(emails, primary):
+            record.aliased(address, primary.pk, held_by)
 
         # These two deletes are the last thing that happens and cannot fail
         # independently of the rest, so they are recorded here where the

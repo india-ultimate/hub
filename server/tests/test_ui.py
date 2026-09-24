@@ -842,12 +842,19 @@ class TestIntegration(BaseCase):
         self.assert_element_not_present("input[name=_save]")
         self.open(f"{DJANGO_URL}/admin/server/accountmerge/{merge.pk}/change/")
         self.assert_text(o1.email)
-        # Staff approve precisely when the keeper can't reach that inbox, so
-        # the merge makes no alias of it: whoever reads it now must not sign
-        # in to the keeper's account.
+        # A staff-approved merge aliases the absorbed address like any other
+        # (the owner's call, see merge_accounts), so it signs in to the keeper.
         self.open(f"{DJANGO_URL}/admin/server/emailalias/?q={o1.email}")
-        self.assert_text("0 email alias")
-        self.assertFalse(EmailAlias.objects.filter(email=o1.email).exists())
+        self.assert_text(o1.email)
+        self.assertEqual(EmailAlias.objects.get(email=o1.email).user_id, k1.id)
+        users = User.objects.count()
+        self.delete_all_cookies()
+        self.open(DJANGO_URL)
+        self.open(f"{APP_URL}/login")
+        self.sign_in_with_otp(o1.email)
+        self.assert_element("h2#accordion-heading-actions")
+        self.assertEqual(User.objects.count(), users)
+        self.assertFalse(User.objects.filter(username=o1.email).exists())
 
         # Back as the second keeper: rejected, and a code can be tried again.
         self.sign_in_as(k2)
