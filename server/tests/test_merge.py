@@ -1065,6 +1065,19 @@ class TestMergePlan(MergeTestCase):
 
         self.assertEqual(Accreditation.objects.get().wfdf_id, 123)
 
+    def test_a_profile_handed_over_whole_is_planned_as_one_move(self) -> None:
+        self.primary_player.delete()
+        team = Team.objects.create(name="T")
+        Registration.objects.create(
+            event=self.event, team=team, player=self.duplicate_player, is_playing=True
+        )
+
+        plan = merge_accounts(self.primary, [self.duplicate])
+
+        labels = {move.label: move.moved for move in plan.moves}
+        self.assertEqual(labels["server.Player.user"], 1)
+        self.assertNotIn("server.Registration.player", labels)
+
     def test_the_plan_says_nothing_clashes_when_nothing_does(self) -> None:
         team = Team.objects.create(name="T")
         Registration.objects.create(
