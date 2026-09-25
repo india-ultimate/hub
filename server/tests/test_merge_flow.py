@@ -1693,30 +1693,27 @@ class TestRequestingAMerge(MergeFlowTestCase):
         theirs = ClusterMember.objects.get(user=self.old).claim_token
         self.assertFalse(self.client.get(f"{BASE}/{theirs}").json()["is_requester"])
 
-    def test_a_signed_in_requester_now_sees_where_an_old_address_lives(self) -> None:
-        """The requester picks the other member by typing an address, and an
-        address that was absorbed resolves to an account whose own address
-        they never typed. The owner chose to show it anyway (spec §4): a
-        signed-in viewer sees every row's address on a requested group the
-        same as a detected one, so the requester reads back the account's
-        current address, not the "gone@x.com" they typed. Accepted cost,
-        not an oversight — masking a string they just typed reads as a bug."""
+    def test_a_requester_reads_back_the_address_they_typed(self) -> None:
         EmailAlias.objects.create(email="gone@x.com", user=self.old)
         token = self.start("gone@x.com").json()["token"]
         rows = {row["user_id"]: row for row in self.client.get(f"{BASE}/{token}").json()["rows"]}
-        self.assertEqual(rows[self.old.id]["email"], "me.old@example.com")
-        # Their own row is still their own address (spec §4).
+        self.assertEqual(rows[self.old.id]["email"], "gone@x.com")
         self.assertEqual(rows[self.me.id]["email"], "me@gmail.com")
 
+    def test_the_named_account_sees_its_own_address(self) -> None:
+        EmailAlias.objects.create(email="gone@x.com", user=self.old)
+        self.start("gone@x.com")
+        self.client.force_login(self.old)
+        token = ClusterMember.objects.get(user=self.old).claim_token
+        rows = {row["user_id"]: row for row in self.client.get(f"{BASE}/{token}").json()["rows"]}
+        self.assertEqual(rows[self.old.id]["email"], "me.old@example.com")
+
     def test_a_signed_out_link_holder_still_sees_it_masked(self) -> None:
-        """The tradeoff above is for a signed-in viewer only: a link holder
-        with no account in this group at all still can't read where an old
-        address lives now."""
         EmailAlias.objects.create(email="gone@x.com", user=self.old)
         token = self.start("gone@x.com").json()["token"]
         self.client.logout()
         rows = {row["user_id"]: row for row in self.client.get(f"{BASE}/{token}").json()["rows"]}
-        self.assertEqual(rows[self.old.id]["email"], mask_email("me.old@example.com"))
+        self.assertEqual(rows[self.old.id]["email"], mask_email("gone@x.com"))
 
     def test_a_team_email_does_not_show_where_an_old_address_lives_now(self) -> None:
         """Typed through an alias, the other account's address is not the one

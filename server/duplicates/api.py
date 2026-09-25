@@ -113,19 +113,14 @@ def _serialize(link: ClusterMember, viewer: User | None) -> dict[str, object]:
     requested = cluster.origin == DuplicateCluster.Origin.REQUESTED
 
     def shows_address(row: ClusterMember) -> bool:
-        """A signed-in viewer sees every row's address, on a requested
-        group the same as a detection found. A signed-out link holder
-        still sees every address masked, exactly as before.
-
-        Accepted cost: on a requested group, the other row's address may
-        be one the requester typed that a merge later absorbed into
-        someone's current address. A signed-in viewer now reads back that
-        current address, not the string they typed. That is a deliberate
-        choice by the owner, not an oversight — the requester typed the
-        address themselves, and masking it back to them as ***@*** reads
-        as a bug, not as privacy.
-        """
+        """A signed-in member sees every address; a link holder sees them masked."""
         return viewer_id is not None
+
+    def address(row: ClusterMember) -> str:
+        """Your own row shows your address now; others show what was recorded or typed."""
+        if row.user is not None and row.user_id == viewer_id:
+            return row.user.email
+        return row.account_email
 
     shown = _visible_rows(cluster, rows, mine)
     live_users = [row.user for row in shown if row.user is not None and detailed(row)]
@@ -154,7 +149,7 @@ def _serialize(link: ClusterMember, viewer: User | None) -> dict[str, object]:
             {
                 "row_id": row.pk,
                 "user_id": row.user_id,
-                "email": row.account_email if shows_address(row) else mask_email(row.account_email),
+                "email": address(row) if shows_address(row) else mask_email(row.account_email),
                 "state": _row_state(row),
                 "since": since.get(row.pk),
                 "is_yours": viewer_id is not None and row.user_id == viewer_id,
