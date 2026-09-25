@@ -737,10 +737,6 @@ def merge_accounts(
     if not duplicates:
         raise MergeBlockedError(["nothing-to-merge"])
 
-    blockers = check_blockers(primary, duplicates)
-    if blockers:
-        raise MergeBlockedError(blockers)
-
     if dry_run:
         return build_plan(primary, duplicates)
 
@@ -783,14 +779,6 @@ def merge_accounts(
         # in one pk-ordered statement before either reads one; see
         # ClusterMember.lock. Through merge_pair these are already held.
         ClusterMember.lock(locked.keys())
-
-        # Asked again of the locked rows: the first answer was about the
-        # accounts as the request found them, and a name or a guardian
-        # changed since then blocks this merge just as much as one that was
-        # there all along. Nothing below may decide on pre-lock data.
-        blockers = check_blockers(primary, duplicates)
-        if blockers:
-            raise MergeBlockedError(blockers)
 
         plan = MergePlan(primary.id, [user.id for user in duplicates])
 

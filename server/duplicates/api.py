@@ -287,14 +287,8 @@ def confirm_merge(
         )
     except FlowError as refused:
         return refused.status, {"message": str(refused)}
-    except MergeBlockedError as blocked:
-        reasons = ", ".join(blocked.args[0])
-        return 400, {
-            "message": f"These look like different people ({reasons}). "
-            "If they really are both yours, ask our team to review.",
-            # The page offers that review on this row only when told why.
-            "reason": "blocked",
-        }
+    except MergeBlockedError:
+        return 400, {"message": "That account has already been sorted out"}
     except MergeFieldError as invalid:
         return 400, {"message": str(invalid)}
     except MergeIncompleteError:
