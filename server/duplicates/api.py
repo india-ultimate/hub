@@ -217,6 +217,7 @@ def my_groups(request: AuthenticatedHttpRequest) -> tuple[int, list[dict[str, ob
                 {
                     "token": row.claim_token,
                     "origin": cluster.origin,
+                    "is_requester": cluster.requested_by_id == request.user.pk,
                     "waiting": sum(1 for _ in mergeable_others),
                     "status": cluster.status,
                     "anything_merged": _anything_merged(members),

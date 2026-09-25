@@ -81,6 +81,7 @@ class RequestedSchema(Schema):
 class MyGroupSchema(Schema):
     token: str
     origin: str
+    is_requester: bool
     # Accounts in the group besides yours that could still be merged.
     waiting: int
     status: str

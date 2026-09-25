@@ -1732,6 +1732,12 @@ class TestRequestingAMerge(MergeFlowTestCase):
         self.assertIn("reviewing", to_me)
         self.assertNotIn("me.old@example.com", to_me)
 
+    def test_mine_says_who_asked(self) -> None:
+        self.start("me.old@example.com")
+        self.assertTrue(self.client.get(f"{BASE}/mine").json()[0]["is_requester"])
+        self.client.force_login(self.old)
+        self.assertFalse(self.client.get(f"{BASE}/mine").json()[0]["is_requester"])
+
     def test_mine_lists_open_groups_for_the_dashboard(self) -> None:
         token = self.start("me.old@example.com").json()["token"]
         groups = self.client.get(f"{BASE}/mine").json()
