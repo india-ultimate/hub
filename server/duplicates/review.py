@@ -4,11 +4,30 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from server.core.models import Player, User
+from server.duplicates.detect import (
+    BLOCK_DIFFERENT_GENDER,
+    BLOCK_DIFFERENT_GUARDIANS,
+    BLOCK_DIFFERENT_WARDS,
+    BLOCK_GUARDIANSHIP,
+    BLOCK_NAME_MISMATCH,
+)
 from server.duplicates.identity import normalize_name
 
 IDENTITY = frozenset(
     {"Name", "Date of birth", "Gender", "City", "Has a player profile", "Ultimate Central id"}
 )
+
+BLOCKER_WORDING = {
+    BLOCK_GUARDIANSHIP: "One account is the other's parent or guardian",
+    BLOCK_DIFFERENT_WARDS: "They look like two children of the same guardian",
+    BLOCK_DIFFERENT_GUARDIANS: "They have different guardians",
+    BLOCK_NAME_MISMATCH: "The names do not match",
+    BLOCK_DIFFERENT_GENDER: "The recorded gender is different",
+}
+
+
+def in_words(blockers: list[str]) -> list[str]:
+    return [BLOCKER_WORDING.get(blocker, blocker) for blocker in blockers]
 
 
 @dataclass(frozen=True)

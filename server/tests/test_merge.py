@@ -9,9 +9,10 @@ from django.core import mail
 from django.db import IntegrityError
 from django.db.models import ProtectedError
 from django.db.models.query import QuerySet
-from django.test import TestCase, override_settings
+from django.test import SimpleTestCase, TestCase, override_settings
 from django.utils.timezone import now
 
+from server.admin import _describe
 from server.chat.models import ChatSession
 from server.core.models import (
     Accreditation,
@@ -28,6 +29,7 @@ from server.duplicates.merge import (
     MergeBlockedError,
     MergeFieldError,
     MergeIncompleteError,
+    RelationMove,
     build_plan,
     find_references,
     merge_accounts,
@@ -1287,4 +1289,16 @@ class TestMergeAdmin(TestCase):
                 f"/admin/server/duplicatecluster/{self.cluster.pk}/delete/"
             ).status_code,
             403,
+        )
+
+
+class TestDescribingAMove(SimpleTestCase):
+    def test_the_field_is_named_and_both_sides_of_a_clash(self) -> None:
+        line = _describe(
+            RelationMove(label="server.Guardianship.player", moved=1, collided=2, primary_loses=1)
+        )
+        self.assertEqual(
+            line,
+            "Guardianship.player: 1 moved; 2 clashed, deleting 1 of the other account's rows"
+            " and 1 of the kept account's",
         )

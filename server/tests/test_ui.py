@@ -814,6 +814,10 @@ class TestIntegration(BaseCase):
         self.click(f"input[name=_selected_action][value='{first_request.pk}']")
         self.select_option_by_value("select[name=action]", "approve_and_merge")
         self.click("button[name=index]")
+        self.assert_text("Approve this merge?")
+        self.assert_text("Date of birth")
+        self.assertTrue(User.objects.filter(id=o1.id).exists())
+        self.click("input[value='Approve and merge']")
         # The admin's own message confirms the action ran and its redirect
         # finished, before this checks the database it wrote to directly.
         self.assert_text(f"Request {first_request.pk} merged")

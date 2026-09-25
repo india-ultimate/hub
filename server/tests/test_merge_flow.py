@@ -52,6 +52,7 @@ from server.duplicates.models import (
     DuplicateCluster,
     EmailAlias,
 )
+from server.duplicates.staff import close_request
 from server.schema import UserFormSchema
 from server.servicerequests.models import ServiceRequest, ServiceRequestStatus, ServiceRequestType
 from server.task.models import Task
@@ -1453,7 +1454,11 @@ class TestStaffReview(RowActions):
         self.client.force_login(clerk)
         self.client.post(
             "/admin/server/servicerequest/",
-            {"action": "approve_and_merge", "_selected_action": [self.request().pk]},
+            {
+                "action": "approve_and_merge",
+                "_selected_action": [self.request().pk],
+                "merge_confirmed": "yes",
+            },
         )
         self.assertEqual(self.request().status, ServiceRequestStatus.PENDING)
 
@@ -1461,7 +1466,11 @@ class TestStaffReview(RowActions):
         self.client.force_login(User.objects.get(pk=clerk.pk))
         self.client.post(
             "/admin/server/servicerequest/",
-            {"action": "approve_and_merge", "_selected_action": [self.request().pk]},
+            {
+                "action": "approve_and_merge",
+                "_selected_action": [self.request().pk],
+                "merge_confirmed": "yes",
+            },
         )
         self.assertEqual(self.request().status, ServiceRequestStatus.APPROVED)
 
@@ -1470,7 +1479,11 @@ class TestStaffReview(RowActions):
         self.client.force_login(self.staff())
         response = self.client.post(
             "/admin/server/servicerequest/",
-            {"action": "approve_and_merge", "_selected_action": [self.request().pk]},
+            {
+                "action": "approve_and_merge",
+                "_selected_action": [self.request().pk],
+                "merge_confirmed": "yes",
+            },
         )
         self.assertEqual(response.status_code, 302)
         self.assertEqual(self.request().status, ServiceRequestStatus.APPROVED)
@@ -1892,11 +1905,7 @@ class TestMergeRequestAdminActions(MergeFlowTestCase):
         staff = User.objects.create_superuser("admin@x.com", "admin@x.com", "pw")
         self.client.force_login(staff)
 
-        response = self.client.post(
-            "/admin/server/servicerequest/",
-            {"action": "approve_and_merge", "_selected_action": [self.request.pk]},
-            follow=True,
-        )
+        response = self.review(merge_confirmed="yes")
 
         self.assertContains(response, f"Request {self.request.pk} not merged")
         self.assertContains(response, "second@x.com")
@@ -1905,6 +1914,55 @@ class TestMergeRequestAdminActions(MergeFlowTestCase):
         self.assertTrue(User.objects.filter(id=self.second.id).exists())
         self.assertFalse(AccountMerge.objects.exists())
         self.assertEqual(EmailAlias.objects.get(email="second@x.com").user_id, bystander.id)
+
+    def review(self, as_user: User | None = None, **extra: str) -> Any:
+        if as_user is None:
+            as_user, _ = User.objects.get_or_create(
+                username="reviewer@x.com", defaults={"is_staff": True, "is_superuser": True}
+            )
+        self.client.force_login(as_user)
+        return self.client.post(
+            "/admin/server/servicerequest/",
+            {"action": "approve_and_merge", "_selected_action": [self.request.pk], **extra},
+            follow=True,
+        )
+
+    def test_approving_shows_both_accounts_first(self) -> None:
+        page = self.review()
+        self.assertContains(page, "Approve this merge?")
+        self.assertContains(page, "Date of birth")
+        self.assertContains(page, "cannot be undone")
+        self.assertTrue(User.objects.filter(id=self.second.id).exists())
+
+        self.assertContains(self.review(merge_confirmed="yes"), f"Request {self.request.pk} merged")
+        self.assertFalse(User.objects.filter(id=self.second.id).exists())
+
+    def test_the_page_says_what_our_records_say(self) -> None:
+        Guardianship.objects.create(
+            user=self.first, player=self.second.player_profile, relation=Guardianship.Relation.FA
+        )
+        self.assertContains(self.review(), "parent or guardian")
+
+    def test_one_request_at_a_time(self) -> None:
+        extra = ServiceRequest.objects.create(
+            user=self.first, type=ServiceRequestType.REQUEST_ACCOUNT_MERGE, message="x"
+        )
+        self.client.force_login(User.objects.create_superuser("r@x.com", "r@x.com", "pw"))
+        page = self.client.post(
+            "/admin/server/servicerequest/",
+            {"action": "approve_and_merge", "_selected_action": [self.request.pk, extra.pk]},
+            follow=True,
+        )
+        self.assertContains(page, "one at a time")
+
+    def test_the_requester_cannot_review_their_own(self) -> None:
+        User.objects.filter(pk=self.first.pk).update(is_staff=True, is_superuser=True)
+        page = self.review(as_user=User.objects.get(pk=self.first.pk))
+        self.assertContains(page, "someone else must approve it")
+
+    def test_a_closed_request_gets_no_page(self) -> None:
+        close_request(self.request, "dismissed")
+        self.assertContains(self.review(), "already closed")
 
     def test_view_only_staff_are_not_offered_the_actions(self) -> None:
         viewer = User.objects.create(username="view@x.com", email="view@x.com", is_staff=True)
