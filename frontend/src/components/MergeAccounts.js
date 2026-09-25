@@ -325,8 +325,8 @@ function Row(props) {
               }
             >
               <p class="text-sm text-gray-700 dark:text-gray-300">
-                We&apos;ve sent a 6-digit code to{" "}
-                <span class="break-all font-medium">{row().email}</span>.
+                We&apos;ve sent a 6-digit code to the address we have for that
+                account.
               </p>
             </Show>
             <label class="mt-3 block text-sm text-gray-700 dark:text-gray-300">
