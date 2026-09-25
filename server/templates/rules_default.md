@@ -8,9 +8,11 @@ The format appears here once the tournament's stages are created.
 
 <!-- /format:auto -->
 
+<!--
 The table above is maintained for you and rewritten whenever the stages change — there is no need
 to edit it by hand. Anything you write outside those two comment markers is yours and is never
 touched; delete the markers if you would rather write the format yourself.
+-->
 
 Events with a different number of teams use the same building blocks — pools, cross-pool, brackets
 and position pools — in whatever combination fits the entry list. Some events use a Swiss draw in

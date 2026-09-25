@@ -21,6 +21,22 @@ export const documentClassMap = {
   "tbody td": "px-6 py-4 font-medium"
 };
 
+/**
+ * Drop HTML comments: solid-markdown runs without rehype-raw, so raw HTML is
+ * escaped and a comment would render as visible text. Node-level, so comments
+ * inside code fences and inline code are kept.
+ */
+export const remarkDropHtmlComments = () => tree => {
+  const isComment = node =>
+    node.type === "html" && /^<!--[\s\S]*-->$/.test(node.value.trim());
+  const walk = node => {
+    if (!node.children) return;
+    node.children = node.children.filter(child => !isComment(child));
+    node.children.forEach(walk);
+  };
+  walk(tree);
+};
+
 const TailwindMarkdown = props => {
   let divRef;
   const classMap = () => props.classMap || documentClassMap;
@@ -47,7 +63,10 @@ const TailwindMarkdown = props => {
 
   return (
     <div ref={divRef}>
-      <SolidMarkdown remarkPlugins={[remarkGfm]} children={props.markdown} />
+      <SolidMarkdown
+        remarkPlugins={[remarkGfm, remarkDropHtmlComments]}
+        children={props.markdown}
+      />
     </div>
   );
 };
