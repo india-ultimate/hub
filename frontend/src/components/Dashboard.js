@@ -311,8 +311,11 @@ const Dashboard = () => {
     (mergeGroupsQuery.data || []).filter(
       group =>
         !group.expired &&
+        group.waiting > 0 &&
         (group.status === "Detected" || group.status === "Notified")
     );
+  const waitingAccounts = () =>
+    openMergeGroups().reduce((total, group) => total + group.waiting, 0);
 
   const logout = async () => {
     const response = await fetch("/api/logout", {
@@ -342,9 +345,9 @@ const Dashboard = () => {
           class="mb-4 rounded-lg border border-blue-300 bg-blue-50 p-3 text-sm text-blue-900 dark:border-blue-700 dark:bg-blue-900 dark:text-blue-100"
         >
           <A href="/merge-accounts" class="underline">
-            {openMergeGroups().length}{" "}
-            {openMergeGroups().length === 1 ? "account" : "accounts"} waiting to
-            be merged — review {openMergeGroups().length === 1 ? "it" : "them"}
+            {waitingAccounts()}{" "}
+            {waitingAccounts() === 1 ? "account" : "accounts"} waiting to be
+            merged — review {waitingAccounts() === 1 ? "it" : "them"}
           </A>
         </div>
       </Show>
