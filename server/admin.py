@@ -742,8 +742,10 @@ class ServiceRequestAdmin(admin.ModelAdmin[ServiceRequest]):
     def get_user(self, obj: ServiceRequest) -> str:
         return obj.user.get_full_name()
 
-    # "change", not the default "view": an approval deletes an account.
-    @admin.action(description="Merge requests: approve and merge", permissions=["change"])
+    def has_merge_permission(self, request: HttpRequest) -> bool:
+        return self.has_change_permission(request) and request.user.has_perm("server.delete_user")
+
+    @admin.action(description="Merge requests: approve and merge", permissions=["merge"])
     def approve_and_merge(self, request: HttpRequest, queryset: QuerySet[ServiceRequest]) -> None:
         for item in queryset.filter(type=ServiceRequestType.REQUEST_ACCOUNT_MERGE):
             try:
