@@ -4,6 +4,7 @@ from django.core.management.base import BaseCommand, CommandError, CommandParser
 from prettytable import PrettyTable
 
 from server.core.models import User
+from server.duplicates import review
 from server.duplicates.merge import MergeBlockedError, merge_accounts
 
 MIN_ACCOUNTS = 2
@@ -15,30 +16,13 @@ def compare(primary: User, duplicates: list[User]) -> None:
     table = PrettyTable()
     table.field_names = ["", *[user.username for user in accounts]]
     table.align[""] = "l"
-
-    rows = {
-        "Keeping": ["yes" if user == primary else "" for user in accounts],
-        "Last login": [str(user.last_login or "never") for user in accounts],
-        "Player": ["yes" if hasattr(user, "player_profile") else "" for user in accounts],
-        "Membership": [_membership(user) for user in accounts],
-        "UC id": [_uc_id(user) for user in accounts],
-    }
-    for label, values in rows.items():
-        table.add_row([label, *values])
+    table.add_row(["Keeping", *["yes" if user == primary else "" for user in accounts]])
+    lines = review.compare(primary, duplicates)
+    for line in lines:
+        table.add_row([f"{line.label} *" if line.differs else line.label, *line.values])
     print(table)
-
-
-def _membership(user: User) -> str:
-    player = getattr(user, "player_profile", None)
-    membership = getattr(player, "membership", None) if player else None
-    if membership is None:
-        return ""
-    return f"{membership.start_date}..{membership.end_date}" if membership.is_active else "expired"
-
-
-def _uc_id(user: User) -> str:
-    player = getattr(user, "player_profile", None)
-    return str(player.ultimate_central_id or "") if player else ""
+    if any(line.differs for line in lines):
+        print("* the accounts disagree about who this is")
 
 
 class Command(BaseCommand):

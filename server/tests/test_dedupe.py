@@ -31,6 +31,7 @@ from server.duplicates.identity import (
     normalize_name,
     normalize_phone,
 )
+from server.duplicates.review import Line
 
 
 class TestNormalizeEmail(SimpleTestCase):
@@ -507,3 +508,20 @@ class TestUnreachableClusters(TestFindClusters):
         self.make_player("rahul@x.com")
 
         self.assertEqual(len(create_clusters(find_clusters())), 1)
+
+
+class TestReviewLine(SimpleTestCase):
+    def test_a_blank_is_unknown_not_different(self) -> None:
+        self.assertFalse(Line("City", ["Pune", ""]).differs)
+
+    def test_two_values_disagreeing_is_marked(self) -> None:
+        self.assertTrue(Line("City", ["Pune", "Delhi"]).differs)
+
+    def test_a_missing_profile_is_marked(self) -> None:
+        self.assertTrue(Line("Has a player profile", ["yes", ""]).differs)
+
+    def test_names_are_compared_normalised(self) -> None:
+        self.assertFalse(Line("Name", ["Rahul  Sharma", "sharma rahul"]).differs)
+
+    def test_rows_that_always_differ_are_not_marked(self) -> None:
+        self.assertFalse(Line("Email", ["a@x.com", "b@x.com"]).differs)
