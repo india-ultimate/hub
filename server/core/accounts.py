@@ -6,7 +6,16 @@ from django.db import IntegrityError, transaction
 
 from server.core.models import User
 from server.duplicates.identity import normalize_email
-from server.duplicates.models import EmailAlias
+from server.duplicates.models import AccountMerge, EmailAlias
+
+
+def find_user(user_id: int) -> User | None:
+    """The account an id signs in to: itself, or the one a merge folded it into."""
+    if user := User.objects.filter(id=user_id).first():
+        return user
+    # primary_user is repointed when a keeper is merged later, so it is the survivor.
+    merges = AccountMerge.objects.select_related("primary_user").iterator()
+    return next((m.primary_user for m in merges if user_id in m.duplicate_user_ids), None)
 
 
 def find_login_user(email: str) -> User | None:
