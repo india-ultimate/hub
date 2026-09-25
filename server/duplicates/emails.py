@@ -1,5 +1,7 @@
 """The email that opens the duplicate-account flow."""
 
+import datetime
+
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.db import transaction
@@ -98,6 +100,7 @@ def notify(cluster: DuplicateCluster) -> int:
         ClusterMember.lock((), locked)
         timestamp = now()
         cluster.members.filter(user__email__contains="@").update(notified_at=timestamp)
+        cluster.members.update(expires_at=timestamp + datetime.timedelta(days=CLAIM_TOKEN_DAYS))
         cluster.status = DuplicateCluster.Status.NOTIFIED
         cluster.notified_at = timestamp
         cluster.save(update_fields=["status", "notified_at"])
