@@ -289,6 +289,14 @@ class TestAddToSeriesRoster(TestCase):
         )
         self.team = Team.objects.create(name="Team A")
 
+    def test_a_sheet_without_the_column_keeps_sponsorship(self) -> None:
+        call_command("import_players", self.fixture, "--date-format", "%d-%m-%Y")
+        Player.objects.all().update(sponsored=True)
+
+        call_command("import_players", self.fixture, "--date-format", "%d-%m-%Y")
+
+        self.assertFalse(Player.objects.filter(sponsored=False).exists())
+
     def test_add_to_series_roster(self) -> None:
         call_command("import_players", self.fixture, "--date-format", "%d-%m-%Y")
         call_command("activate_memberships", self.fixture)
