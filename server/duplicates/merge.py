@@ -662,6 +662,7 @@ def build_plan(primary: User, duplicates: list[User]) -> MergePlan:
                 collided += 1
                 if rank is not None and rank(row) > rank(theirs):
                     primary_loses += 1
+                    moved += 1
             plan.record(relation_label(rel), moved, collided, primary_loses)
     return plan
 

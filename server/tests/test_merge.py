@@ -1029,6 +1029,7 @@ class TestMergePlan(MergeTestCase):
         self.assertEqual(move.collided, 1)
         # The duplicate's row is playing, so the primary's is the one dropped.
         self.assertEqual(move.primary_loses, 1)
+        self.assertEqual(move.moved, 1)
 
     def test_a_tie_keeps_the_keeper_s_row_as_planned(self) -> None:
         for player in (self.primary_player, self.duplicate_player):
