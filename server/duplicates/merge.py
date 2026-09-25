@@ -373,10 +373,7 @@ def _breaks_uniqueness(rel: ForeignObjectRel) -> bool:
     field_name = rel.field.name
     if getattr(rel.field, "unique", False):
         return True
-    meta = rel.field.model._meta
-    if any(field_name in combo for combo in meta.unique_together):
-        return True
-    return any(field_name in (getattr(c, "fields", None) or []) for c in meta.constraints)
+    return any(field_name in combo for combo in rel.field.model._meta.unique_together)
 
 
 def _move_rows(
