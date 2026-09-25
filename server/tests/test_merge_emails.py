@@ -1,8 +1,11 @@
+import datetime
 from io import StringIO
 from unittest.mock import patch
 
 from django.core.management import call_command
+from django.utils.timezone import now
 
+from server.constants import CLAIM_TOKEN_DAYS
 from server.core.models import User
 from server.duplicates.emails import MERGED_SUBJECT, build_messages, notify, notify_merged
 from server.duplicates.models import ClusterMember, DuplicateCluster
@@ -61,6 +64,15 @@ class TestDuplicateAccountEmail(MergeFlowTestCase):
         self.cluster.refresh_from_db()
         self.assertEqual(self.cluster.status, DuplicateCluster.Status.NOTIFIED)
         self.assertIsNotNone(self.cluster.notified_at)
+
+    def test_the_deadline_runs_from_the_email(self) -> None:
+        self.cluster.members.update(expires_at=now() - datetime.timedelta(days=10))
+
+        notify(self.cluster)
+
+        soonest = now() + datetime.timedelta(days=CLAIM_TOKEN_DAYS - 1)
+        for member in self.cluster.members.all():
+            self.assertGreater(member.expires_at, soonest)
 
     def test_the_command_only_notifies_once(self) -> None:
         out = StringIO()
