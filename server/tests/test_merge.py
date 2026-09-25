@@ -1030,6 +1030,25 @@ class TestMergePlan(MergeTestCase):
         # The duplicate's row is playing, so the primary's is the one dropped.
         self.assertEqual(move.primary_loses, 1)
 
+    def test_a_tie_keeps_the_keeper_s_row_as_planned(self) -> None:
+        for player in (self.primary_player, self.duplicate_player):
+            Membership.objects.create(
+                player=player,
+                membership_number=f"MEM-{player.pk}",
+                start_date=datetime.date(2026, 1, 1),
+                end_date=datetime.date(2026, 12, 31),
+                is_active=True,
+            )
+        plan = merge_accounts(self.primary, [self.duplicate])
+        move = next(m for m in plan.moves if m.label == "server.Membership.player")
+        self.assertEqual(move.primary_loses, 0)
+
+        merge_accounts(self.primary, [self.duplicate], dry_run=False)
+
+        self.assertEqual(
+            Membership.objects.get().membership_number, f"MEM-{self.primary_player.pk}"
+        )
+
     def test_the_plan_says_nothing_clashes_when_nothing_does(self) -> None:
         team = Team.objects.create(name="T")
         Registration.objects.create(
