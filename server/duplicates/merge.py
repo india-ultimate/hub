@@ -64,8 +64,8 @@ COMMENTARY_FIELDS = (
 
 ROW_PREFERENCE = {
     "server.Membership": lambda row: (row.is_active, row.end_date),
-    "server.Accreditation": lambda row: (row.is_valid, row.date),
-    "server.Vaccination": lambda row: (row.is_vaccinated,),
+    "server.Accreditation": lambda row: (row.is_valid, row.date, row.wfdf_id is not None),
+    "server.Vaccination": lambda row: (row.is_vaccinated, bool(row.certificate)),
     "server.CollegeId": lambda row: (row.expiry,),
     # A used verification records that this person has already voted. Losing
     # it to an unused one would let the merged account vote a second time.

@@ -1049,6 +1049,21 @@ class TestMergePlan(MergeTestCase):
             Membership.objects.get().membership_number, f"MEM-{self.primary_player.pk}"
         )
 
+    def test_a_tie_keeps_the_accreditation_with_a_wfdf_id(self) -> None:
+        for player, wfdf_id in ((self.primary_player, None), (self.duplicate_player, 123)):
+            Accreditation.objects.create(
+                player=player,
+                wfdf_id=wfdf_id,
+                is_valid=True,
+                level="STD",
+                date=datetime.date(2026, 1, 1),
+                certificate="cert.pdf",
+            )
+
+        merge_accounts(self.primary, [self.duplicate], dry_run=False)
+
+        self.assertEqual(Accreditation.objects.get().wfdf_id, 123)
+
     def test_the_plan_says_nothing_clashes_when_nothing_does(self) -> None:
         team = Team.objects.create(name="T")
         Registration.objects.create(
