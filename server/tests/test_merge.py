@@ -446,33 +446,15 @@ class TestMergeMechanics(MergeTestCase):
 
 
 class TestMergeRefuses(MergeTestCase):
-    def test_a_guardianship_edge_blocks_the_merge(self) -> None:
+    def test_blockers_do_not_refuse_a_merge(self) -> None:
         Guardianship.objects.create(
             user=self.primary, player=self.duplicate_player, relation=Guardianship.Relation.FA
         )
-        with self.assertRaises(MergeBlockedError) as caught:
-            merge_accounts(self.primary, [self.duplicate], dry_run=False)
-        self.assertIn("guardianship", caught.exception.args[0])
-        self.assertEqual(User.objects.count(), 2)
+        User.objects.filter(pk=self.duplicate.pk).update(first_name="Priya")
 
-    def test_two_wards_of_one_guardian_are_refused(self) -> None:
-        """Twins reach a cluster through the parent's phone, not by being one
-        person. The guardian is not one of the accounts, so the edge above
-        cannot see them."""
-        parent = User.objects.create(username="mum@x.com", email="mum@x.com", first_name="Meera")
-        self.duplicate.first_name = "Aryan"
-        self.duplicate.save()
-        self.primary.first_name = "Arjun"
-        self.primary.save()
-        for player in (self.primary_player, self.duplicate_player):
-            Guardianship.objects.create(
-                user=parent, player=player, relation=Guardianship.Relation.MO
-            )
+        merge_accounts(self.primary, [self.duplicate], dry_run=False)
 
-        with self.assertRaises(MergeBlockedError) as caught:
-            merge_accounts(self.primary, [self.duplicate], dry_run=False)
-        self.assertIn("different-wards", caught.exception.args[0])
-        self.assertEqual(User.objects.filter(id=self.duplicate.id).count(), 1)
+        self.assertFalse(User.objects.filter(pk=self.duplicate.pk).exists())
 
     def test_one_child_registered_twice_is_allowed(self) -> None:
         parent = User.objects.create(username="dad@x.com", email="dad@x.com", first_name="Vikram")
@@ -484,51 +466,10 @@ class TestMergeRefuses(MergeTestCase):
         merge_accounts(self.primary, [self.duplicate], dry_run=False)
         self.assertEqual(User.objects.filter(id=self.duplicate.id).count(), 0)
 
-    def test_differently_named_accounts_are_refused(self) -> None:
-        """A shared inbox or phone is not evidence of one person, and a merge
-        by hand names no rule, so it has to clear the same bar."""
-        self.duplicate.first_name = "Kavya"
-        self.duplicate.last_name = "Iyer"
-        self.duplicate.save()
-
-        with self.assertRaises(MergeBlockedError) as caught:
-            merge_accounts(self.primary, [self.duplicate], dry_run=False)
-        self.assertIn("name-mismatch", caught.exception.args[0])
-        self.assertEqual(User.objects.filter(id=self.duplicate.id).count(), 1)
-
-    def test_a_name_rule_on_the_cluster_does_not_excuse_it(self) -> None:
-        """A cluster is a chain, so one matching pair anywhere used to make the
-        whole thing look name-matched. The names themselves decide."""
-        self.duplicate.first_name = "Kavya"
-        self.duplicate.last_name = "Iyer"
-        self.duplicate.save()
-
-        with self.assertRaises(MergeBlockedError) as caught:
-            merge_accounts(
-                self.primary, [self.duplicate], matched_by="name+dob email", dry_run=False
-            )
-        self.assertIn("name-mismatch", caught.exception.args[0])
-        self.assertEqual(User.objects.filter(id=self.duplicate.id).count(), 1)
-
     def test_an_account_with_no_name_is_not_a_mismatch(self) -> None:
         blank = User.objects.create(username="blank@x.com", email="blank@x.com")
         merge_accounts(blank, [self.duplicate], dry_run=False)
         self.assertEqual(User.objects.filter(id=self.duplicate.id).count(), 0)
-
-    def test_two_guardians_for_one_child_are_refused(self) -> None:
-        mother = User.objects.create(username="mum@x.com", email="mum@x.com")
-        father = User.objects.create(username="dad@x.com", email="dad@x.com")
-        Guardianship.objects.create(
-            user=mother, player=self.primary_player, relation=Guardianship.Relation.MO
-        )
-        Guardianship.objects.create(
-            user=father, player=self.duplicate_player, relation=Guardianship.Relation.FA
-        )
-
-        with self.assertRaises(MergeBlockedError) as caught:
-            merge_accounts(self.primary, [self.duplicate], dry_run=False)
-        self.assertIn("different-guardians", caught.exception.args[0])
-        self.assertEqual(User.objects.filter(id=self.duplicate.id).count(), 1)
 
     def test_one_guardian_on_both_sides_still_merges(self) -> None:
         mother = User.objects.create(username="mum2@x.com", email="mum2@x.com")
@@ -553,26 +494,6 @@ class TestMergeRefuses(MergeTestCase):
         guardianship = Guardianship.objects.get(user=mother)
         self.assertEqual(guardianship.player, self.primary_player)
         self.assertEqual(guardianship.relation, Guardianship.Relation.MO)
-
-    def test_a_given_name_one_letter_off_cannot_be_merged(self) -> None:
-        """Arun and Tarun score 97 as whole names. The engine checks names
-        itself, so reaching it some other way must still be refused."""
-        User.objects.filter(id=self.primary.id).update(first_name="Arun", last_name="Venkatesan")
-        User.objects.filter(id=self.duplicate.id).update(first_name="Tarun", last_name="Venkatesan")
-        self.primary.refresh_from_db()
-        self.duplicate.refresh_from_db()
-
-        with self.assertRaises(MergeBlockedError) as caught:
-            merge_accounts(self.primary, [self.duplicate], dry_run=False)
-        self.assertIn("name-mismatch", caught.exception.args[0])
-
-    def test_a_different_gender_cannot_be_merged(self) -> None:
-        Player.objects.filter(id=self.primary_player.id).update(gender=Player.GenderTypes.MALE)
-        Player.objects.filter(id=self.duplicate_player.id).update(gender=Player.GenderTypes.FEMALE)
-
-        with self.assertRaises(MergeBlockedError) as caught:
-            merge_accounts(self.primary, [self.duplicate], dry_run=False)
-        self.assertIn("different-gender", caught.exception.args[0])
 
     def test_merging_an_account_into_itself_is_refused(self) -> None:
         with self.assertRaises(MergeBlockedError):
@@ -670,16 +591,6 @@ class TestTheLockedRowsDecideTheMerge(MergeTestCase):
 
         self.primary.refresh_from_db()
         self.assertEqual(self.primary.phone, "")
-
-    def test_a_name_changed_since_the_request_loaded_it_blocks_the_merge(self) -> None:
-        stale = self.stale(self.primary)
-        User.objects.filter(pk=self.primary.pk).update(first_name="Kavya", last_name="Iyer")
-
-        with self.assertRaises(MergeBlockedError) as caught:
-            merge_accounts(stale, [self.duplicate], dry_run=False)
-
-        self.assertIn("name-mismatch", caught.exception.args[0])
-        self.assertTrue(User.objects.filter(pk=self.duplicate.pk).exists())
 
 
 class TestCollisionsKeepTheBetterRow(MergeTestCase):

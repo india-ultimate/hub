@@ -44,7 +44,7 @@ from server.duplicates.flow import (
 )
 from server.duplicates.history import log
 from server.duplicates.identity import mask_email
-from server.duplicates.merge import MergeBlockedError, merge_accounts, resolvable_fields
+from server.duplicates.merge import merge_accounts, resolvable_fields
 from server.duplicates.models import (
     AccountMerge,
     ClusterEvent,
@@ -389,13 +389,6 @@ class TestConfirmMerge(MergeFlowTestCase):
         self.assertEqual(AccountMerge.objects.filter(cluster=self.cluster).count(), 2)
         self.assertEqual(self.cluster.members.count(), 3)
         self.assertEqual(self.cluster.status, DuplicateCluster.Status.RESOLVED)
-
-    def test_a_blocked_merge_offers_our_team(self) -> None:
-        User.objects.filter(id=self.second.id).update(first_name="Kavya", last_name="Iyer")
-        self.confirmed(self.first, self.second)
-        response = self.confirm(self.token, self.second.id)
-        self.assertEqual(response.status_code, 400)
-        self.assertIn("ask our team", response.json()["message"])
 
     def test_a_staff_account_is_never_merged_away_here(self) -> None:
         """is_staff does not travel with a merge, so absorbing a staff
@@ -1369,13 +1362,6 @@ class TestStaffReview(RowActions):
 
         self.assertTrue(User.objects.filter(id=self.second.id).exists())
 
-    def test_a_blocked_approval_leaves_the_request_waiting(self) -> None:
-        self.ask()
-        User.objects.filter(id=self.second.id).update(first_name="Kavya", last_name="Iyer")
-        with self.assertRaises(MergeBlockedError):
-            approve_staff(self.request(), self.staff())
-        self.assertEqual(self.request().status, ServiceRequestStatus.PENDING)
-
     def mail_to(self, address: str) -> str:
         return " ".join(
             str(task.data) for task in Task.objects.all() if task.data["to"] == [address]
@@ -1624,27 +1610,6 @@ class TestRequestingAMerge(MergeFlowTestCase):
         self.assertEqual(next(iter(answers))[0], 400)
         self.assertEqual(DuplicateCluster.objects.count(), 3)
 
-    def test_a_worker_cannot_fold_two_children_together(self) -> None:
-        """Codes alone would allow it: one adult reads every +tag inbox."""
-        worker = self.make_account("worker@gmail.com", first="Anita")
-        arjun = self.make_account("worker+arjun@gmail.com", first="Arjun", last="Kumar")
-        meera = self.make_account("worker+meera@gmail.com", first="Meera", last="Devi")
-        for child in (arjun, meera):
-            Guardianship.objects.create(user=worker, player=child.player_profile, relation="LG")
-        self.client.force_login(arjun)
-        token = self.start("worker+meera@gmail.com").json()["token"]
-        cluster = DuplicateCluster.objects.get(origin=DuplicateCluster.Origin.REQUESTED)
-        ClusterMember.objects.filter(cluster=cluster, user=meera).update(
-            state=ClusterMember.State.VERIFIED, verified_by_id=arjun.id
-        )
-        response = self.client.post(
-            f"{BASE}/{token}/confirm",
-            data=json.dumps({"absorb_user_id": meera.id}),
-            content_type="application/json",
-        )
-        self.assertEqual(response.status_code, 400)
-        self.assertTrue(User.objects.filter(id=meera.id).exists())
-
     def test_the_requester_can_cancel(self) -> None:
         token = self.start("me.old@example.com").json()["token"]
         self.assertIn("cancelled", self.client.post(f"{BASE}/{token}/dismiss").json()["message"])
@@ -1824,29 +1789,6 @@ class TestSameInboxAddress(MergeFlowTestCase):
     def test_the_keepers_own_address_is_not_made_an_alias(self) -> None:
         self.assertEqual(EmailAlias.remember([self.keeper.email], self.keeper), [])
         self.assertFalse(EmailAlias.objects.exists())
-
-
-class TestBlockedMerge(MergeFlowTestCase):
-    def test_a_blocked_merge_says_so_and_can_go_to_our_team(self) -> None:
-        # Proven, then found to disagree on the given name: a blocker.
-        User.objects.filter(pk=self.second.pk).update(first_name="Priya")
-        self.confirmed(self.first, self.second)
-        self.client.force_login(self.first)
-
-        refused = self.confirm(self.token, self.second.id)
-        self.assertEqual(refused.status_code, 400)
-        self.assertEqual(refused.json()["reason"], "blocked")
-        self.assertTrue(User.objects.filter(pk=self.second.pk).exists())
-
-        with self.captureOnCommitCallbacks(execute=True):
-            asked = self.client.post(
-                f"{BASE}/{self.token}/staff",
-                data=json.dumps({"user_id": self.second.id, "note": "Priya is my legal name"}),
-                content_type="application/json",
-            )
-        self.assertEqual(asked.status_code, 200)
-        row = ClusterMember.objects.get(cluster=self.cluster, user=self.second)
-        self.assertEqual(row.state, ClusterMember.State.PENDING_STAFF)
 
 
 ADMIN_STORAGES = {

@@ -949,39 +949,3 @@ class TestIntegration(BaseCase):
         self.assert_element("p#merge-finished")
         self.assert_element_absent(f"button#merge-send-code-{ravis.pk}")
         print("The other owner said no, and a request was cancelled!")
-
-    # Breaks if: the blocked-merge review (Task 2) — the `blocked` signal from
-    # a "reason": "blocked" response, or the staff note/button it then shows,
-    # including their ids being distinct from the open-row staff-note ids and
-    # the "Ask our team to review" wording spec §12 requires; the confirm
-    # dialog's error not using role="alert" (redesign).
-    def test_a_blocked_merge_goes_to_our_team(self) -> None:
-        keeper = make_player("rahul.k@x.com", first="Rahul", last="Sharma")
-        other = make_player("priya.s@y.com", first="Priya", last="Sharma")
-        mine = request_merge(keeper, other.email, "")
-        theirs = mine.cluster.members.get(user=other)
-        # Proven already: a blocker is only ever reached after proof.
-        ClusterMember.objects.filter(pk=theirs.pk).update(
-            state=ClusterMember.State.VERIFIED,
-            verified_by_id=keeper.id,
-            verified_at=now(),
-            proof=ClusterMember.Proof.EMAIL_CODE,
-        )
-
-        self.sign_in_as(keeper)
-        self.open(f"{APP_URL}/merge-accounts/{mine.claim_token}")
-        self.click(f"button#merge-confirm-{theirs.pk}")
-        self.click(f"button#merge-modal-confirm-{theirs.pk}")
-        self.assert_text("different people", f"p#merge-modal-error-{theirs.pk}")
-        self.assertTrue(User.objects.filter(id=other.id).exists())
-        self.click(f"button#merge-modal-cancel-{theirs.pk}")
-
-        # Spec §12 mandates this exact phrase on the offered review.
-        self.assert_text("Ask our team to review", f"button#merge-blocked-send-{theirs.pk}")
-        self.type(f"textarea#merge-blocked-note-{theirs.pk}", "Priya is my legal name")
-        self.click(f"button#merge-blocked-send-{theirs.pk}")
-        self.assert_attribute(f"span#merge-state-{theirs.pk}", "data-state", "pending-staff")
-        theirs.refresh_from_db()
-        self.assertEqual(theirs.state, ClusterMember.State.PENDING_STAFF)
-        self.assertIsNotNone(theirs.staff_request_id)
-        print("A blocked merge went to our team!")

@@ -37,7 +37,6 @@ const post = async (path, body) => {
     const error = new Error(
       (response.status < 500 && data?.message) || TRY_AGAIN
     );
-    error.reason = data?.reason;
     throw error;
   }
   return data;
@@ -144,7 +143,6 @@ function Row(props) {
   const [code, setCode] = createSignal("");
   const [note, setNote] = createSignal("");
   const [picked, setPicked] = createSignal({});
-  const [blocked, setBlocked] = createSignal(false);
   // One dialog is open at a time, so one error signal serves all three.
   const [modalError, setModalError] = createSignal("");
   let confirmRef, codeRef, helpRef;
@@ -239,7 +237,6 @@ function Row(props) {
       confirmRef.close();
       return;
     }
-    if (failure.reason === "blocked") setBlocked(true);
     failed(failure);
   };
 
@@ -494,33 +491,6 @@ function Row(props) {
               </button>
             </div>
           </Modal>
-        </Show>
-
-        <Show when={canAct() && row().verified_for_you && blocked()}>
-          <div class="mt-2 space-y-2">
-            <p class="text-xs text-gray-700 dark:text-gray-300">
-              If they really are both yours, our team can check and correct the
-              details, then merge them.
-            </p>
-            <label class="block text-xs text-gray-700 dark:text-gray-300">
-              Tell our team why these are both yours
-              <textarea
-                id={`merge-blocked-note-${row().row_id}`}
-                rows="3"
-                class={TEXT_INPUT}
-                value={note()}
-                onInput={e => setNote(e.currentTarget.value)}
-              />
-            </label>
-            <button
-              id={`merge-blocked-send-${row().row_id}`}
-              disabled={props.busy}
-              onClick={() => act("staff", { note: note() })}
-              class={PRIMARY_BUTTON}
-            >
-              Ask our team to review
-            </button>
-          </div>
         </Show>
       </td>
     </tr>
