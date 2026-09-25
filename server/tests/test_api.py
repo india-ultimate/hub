@@ -22,6 +22,7 @@ from server.core.accounts import find_login_user
 from server.core.models import Guardianship, Player, UCPerson, User
 from server.duplicates.models import EmailAlias
 from server.membership.models import Membership
+from server.passkey_utils import ClientResponse
 from server.tests.base import ApiBaseTestCase, create_pool, fake_id, fake_order, start_tournament
 from server.tests.test_membership import MembershipStatusTestCase
 from server.tournament.models import Event, Match, UCRegistration
@@ -52,6 +53,19 @@ class TestLogin(ApiBaseTestCase):
         self.assertEqual(200, response.status_code)
         response = c.post("/api/logout", content_type="application/json")
         self.assertEqual(200, response.status_code)
+
+
+class TestPasskey(ApiBaseTestCase):
+    def test_enabling_one_tap_does_not_need_forum_login(self) -> None:
+        self.client.force_login(self.user)
+        with mock.patch("server.api.passkey_client.finish_registration") as finish:
+            finish.return_value = ClientResponse(data="{}")
+            response = self.client.post(
+                "/api/passkey/create/finish",
+                data={"passkey_request": "{}"},
+                content_type="application/json",
+            )
+        self.assertEqual(response.status_code, 200)
 
 
 class TestRegistration(ApiBaseTestCase):
