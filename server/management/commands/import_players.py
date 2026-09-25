@@ -97,8 +97,10 @@ class Command(BaseCommand):
                     "not_in_india": row["not_in_india"].strip().upper() == "Y",
                     "occupation": OCCUPATIONS.get(row["occupation"].strip(), None),
                     "educational_institution": row["educational_institution"].strip(),
-                    "sponsored": row["sponsored"].upper() == "Y" if "sponsored" in row else False,
                 }
+                sponsored = (row.get("sponsored") or "").strip()
+                if sponsored:
+                    player_data["sponsored"] = sponsored.upper() == "Y"
                 if player_data["gender"] != Player.GenderTypes.OTHER:
                     player_data["match_up"] = player_data["gender"]
 
