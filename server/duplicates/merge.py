@@ -493,7 +493,8 @@ def _resolve_one_to_ones(
         rows = list(manager.filter(**{f"{rel.field.name}__in": [primary_player, duplicate_player]}))
         if len(rows) < 2:  # noqa: PLR2004
             continue
-        keep = max(rows, key=(lambda row: (rank(row), row.pk)))
+        name, mine = rel.field.name, primary_player.pk
+        keep = max(rows, key=lambda row: (rank(row), getattr(row, f"{name}_id") == mine))
         for row in rows:
             if row.pk != keep.pk:
                 casualties.append(row)
