@@ -9,6 +9,7 @@ from django.test import SimpleTestCase, TestCase
 from django.utils.timezone import now
 
 from server.core.models import Guardianship, Player, User
+from server.duplicates.clusters import create_clusters
 from server.duplicates.detect import (
     BLOCK_DIFFERENT_GENDER,
     BLOCK_DIFFERENT_GUARDIANS,
@@ -492,3 +493,17 @@ class TestFindDuplicateAccountsCommand(TestFindClusters):
         call_command("find_duplicate_accounts", stdout=out)
         self.assertIn("Blocked clusters:      1", out.getvalue())
         self.assertIn(f"blocked by {BLOCK_GUARDIANSHIP}: 1", out.getvalue())
+
+
+class TestUnreachableClusters(TestFindClusters):
+    def test_a_group_nobody_can_email_is_not_saved(self) -> None:
+        self.make_player("rahul-sharma", email="")
+        self.make_player("sharma-rahul", first="Sharma", last="Rahul", email="")
+
+        self.assertEqual(create_clusters(find_clusters()), [])
+
+    def test_one_reachable_member_is_enough(self) -> None:
+        self.make_player("rahul-sharma", email="")
+        self.make_player("rahul@x.com")
+
+        self.assertEqual(len(create_clusters(find_clusters())), 1)

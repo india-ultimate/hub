@@ -150,6 +150,9 @@ def create_clusters(clusters: list[Cluster]) -> list[DuplicateCluster]:
             continue
         if frozenset(user_ids) in dismissed:
             continue
+        # notify() can't reach it, so it would stay Detected and hold its accounts forever.
+        if not any(member.has_deliverable_email for member in cluster.members):
+            continue
 
         record = DuplicateCluster.objects.create(matched_by=" ".join(sorted(cluster.rules)))
         users = User.objects.filter(id__in=user_ids).order_by("id")
