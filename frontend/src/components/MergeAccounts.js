@@ -639,8 +639,13 @@ export default function MergeAccounts() {
           </p>
         </Show>
 
-        <Show when={finished() && data().rows.length === 0}>
-          <p id="merge-finished" class="text-gray-700 dark:text-gray-300">
+        <Show
+          when={
+            finished() &&
+            (data().rows.length === 0 || data().status === "Resolved")
+          }
+        >
+          <p id="merge-finished" class="mb-2 text-gray-700 dark:text-gray-300">
             {data().status === "Dismissed"
               ? "Someone in this group said these aren't the same person."
               : data().anything_merged
@@ -653,16 +658,6 @@ export default function MergeAccounts() {
             {data().cancelled_by_you
               ? "You cancelled this merge request."
               : "Someone in this group said these aren't the same person."}
-          </p>
-        </Show>
-        <Show
-          when={
-            data().status === "Resolved" &&
-            data().rows.some(row => row.state === "merged")
-          }
-        >
-          <p id="merge-finished" class="mb-2 text-gray-700 dark:text-gray-300">
-            These accounts were merged.
           </p>
         </Show>
 

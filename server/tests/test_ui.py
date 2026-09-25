@@ -738,7 +738,7 @@ class TestIntegration(BaseCase):
         self.assertEqual(resolved_by_deletion.status, DuplicateCluster.Status.RESOLVED)
         own_row = resolved_by_deletion.members.get(user=gone_keeper)
         self.open(f"{APP_URL}/merge-accounts/{own_row.claim_token}")
-        self.assert_element_not_present("p#merge-finished")
+        self.assert_text("These accounts were sorted out.", "p#merge-finished")
         self.assert_text("Account deleted")
         # The list says what the group page says: nothing was merged here.
         self.open(f"{APP_URL}/merge-accounts")
