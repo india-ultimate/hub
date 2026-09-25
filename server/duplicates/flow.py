@@ -366,7 +366,9 @@ def request_merge(keeper: User, email: str, note: str) -> ClusterMember:
         )
         mine = ClusterMember.of(cluster, keeper)
         mine.save()
-        ClusterMember.of(cluster, other).save()
+        theirs = ClusterMember.of(cluster, other)
+        theirs.account_email = email.strip().lower()
+        theirs.save()
         log(
             cluster, ClusterEvent.Kind.REQUESTED, member=mine, actor=keeper, note=note.strip()[:500]
         )

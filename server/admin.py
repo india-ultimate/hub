@@ -985,6 +985,7 @@ class ClusterMemberInline(ReadOnly, admin.TabularInline[ClusterMember, Duplicate
     model = ClusterMember
     extra = 0
     fields = (
+        "account_id",
         "account_email",
         "state",
         "proof",
