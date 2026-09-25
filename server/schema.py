@@ -519,7 +519,6 @@ class PasskeyResponseSchema(Schema):
 
 class PasskeyRequestSchema(Schema):
     passkey_request: str
-    forum_login: bool
 
 
 class RegistrationCount(Schema):
