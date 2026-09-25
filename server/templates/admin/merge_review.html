@@ -1,0 +1,42 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+<p>
+  Asked by <strong>{{ item.user.get_full_name }}</strong> on {{ item.created_at }}.
+  {% if item.message %}<br>&ldquo;{{ item.message }}&rdquo;{% endif %}
+</p>
+
+{% if blockers %}
+  <p><strong>Our records say:</strong></p>
+  <ul>{% for blocker in blockers %}<li>{{ blocker }}</li>{% endfor %}</ul>
+{% endif %}
+
+<table>
+  <thead><tr><th></th><th>Keeping</th><th>Will be deleted</th></tr></thead>
+  <tbody>
+    {% for line in lines %}
+      <tr>
+        <th scope="row">{{ line.label }}{% if line.differs %} &ne;{% endif %}</th>
+        {% for value in line.values %}<td>{{ value|default:"&mdash;" }}</td>{% endfor %}
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>If you approve</h2>
+<ul>
+  {% for move in moves %}<li>{{ move }}</li>{% endfor %}
+  <li><strong>The second account is deleted. This cannot be undone.</strong></li>
+</ul>
+
+<form method="post">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="approve_and_merge">
+  <input type="hidden" name="_selected_action" value="{{ item.pk }}">
+  <input type="hidden" name="merge_confirmed" value="yes">
+  <div class="submit-row">
+    <input type="submit" class="default" value="Approve and merge">
+    <a href="{% url 'admin:server_servicerequest_changelist' %}" class="button cancel-link">Cancel</a>
+  </div>
+</form>
+{% endblock %}

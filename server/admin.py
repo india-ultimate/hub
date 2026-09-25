@@ -11,8 +11,16 @@ from django.utils.html import format_html
 
 from server.announcements.models import Announcement
 from server.core.models import Accreditation, Guardianship, Player, Team, User
+from server.duplicates import review
 from server.duplicates.flow import FlowError, approve_staff, reject_staff
-from server.duplicates.merge import MergeBlockedError, MergeFieldError, MergeIncompleteError
+from server.duplicates.merge import (
+    MergeBlockedError,
+    MergeFieldError,
+    MergeIncompleteError,
+    RelationMove,
+    build_plan,
+    check_blockers,
+)
 from server.duplicates.models import (
     AccountMerge,
     AliasHeldError,
@@ -34,7 +42,7 @@ from server.forms.models import Form, FormResponse
 from server.membership.models import Membership
 from server.season.models import Season
 from server.series.models import Series, SeriesRegistration, SeriesRosterInvitation
-from server.servicerequests.models import ServiceRequest, ServiceRequestType
+from server.servicerequests.models import ServiceRequest, ServiceRequestStatus, ServiceRequestType
 from server.task.manager import TaskManager
 from server.task.models import Task
 from server.tournament.models import (
@@ -729,6 +737,17 @@ class SpiritScoreAdmin(admin.ModelAdmin[SpiritScore]):
     pass
 
 
+def _describe(move: RelationMove) -> str:
+    line = f"{move.label.split('.', 1)[1]}: {move.moved} moved"
+    if move.collided:
+        theirs = move.collided - move.primary_loses
+        line += (
+            f"; {move.collided} clashed, deleting {theirs} of the other account's rows"
+            f" and {move.primary_loses} of the kept account's"
+        )
+    return line
+
+
 @admin.register(ServiceRequest)
 class ServiceRequestAdmin(admin.ModelAdmin[ServiceRequest]):
     search_fields = ["user__first_name", "user__last_name", "user__email"]
@@ -746,28 +765,60 @@ class ServiceRequestAdmin(admin.ModelAdmin[ServiceRequest]):
         return self.has_change_permission(request) and request.user.has_perm("server.delete_user")
 
     @admin.action(description="Merge requests: approve and merge", permissions=["merge"])
-    def approve_and_merge(self, request: HttpRequest, queryset: QuerySet[ServiceRequest]) -> None:
-        for item in queryset.filter(type=ServiceRequestType.REQUEST_ACCOUNT_MERGE):
-            try:
-                approve_staff(item, request.user)  # type: ignore[arg-type]
-            except (
-                FlowError,
-                MergeBlockedError,
-                MergeFieldError,
-                MergeIncompleteError,
-                AliasHeldError,
-            ) as error:
-                if isinstance(error, MergeBlockedError):
-                    reason = ", ".join(error.args[0])
-                elif isinstance(error, AliasHeldError):
-                    reason = f"{error.args[0]} already signs another account in"
-                else:
-                    reason = str(error)
-                self.message_user(
-                    request, f"Request {item.pk} not merged: {reason}", messages.ERROR
-                )
+    def approve_and_merge(
+        self, request: HttpRequest, queryset: QuerySet[ServiceRequest]
+    ) -> TemplateResponse | None:
+        items = list(queryset.filter(type=ServiceRequestType.REQUEST_ACCOUNT_MERGE))
+        if len(items) != 1:
+            self.message_user(request, "Approve merge requests one at a time", messages.WARNING)
+            return None
+        (item,) = items
+        if request.POST.get("merge_confirmed") != "yes":
+            return self._merge_review(request, item)
+        try:
+            approve_staff(item, request.user)  # type: ignore[arg-type]
+        except (
+            FlowError,
+            MergeBlockedError,
+            MergeFieldError,
+            MergeIncompleteError,
+            AliasHeldError,
+        ) as error:
+            if isinstance(error, MergeBlockedError):
+                reason = ", ".join(error.args[0])
+            elif isinstance(error, AliasHeldError):
+                reason = f"{error.args[0]} already signs another account in"
             else:
-                self.message_user(request, f"Request {item.pk} merged")
+                reason = str(error)
+            self.message_user(request, f"Request {item.pk} not merged: {reason}", messages.ERROR)
+        else:
+            self.message_user(request, f"Request {item.pk} merged")
+        return None
+
+    def _merge_review(self, request: HttpRequest, item: ServiceRequest) -> TemplateResponse | None:
+        row = ClusterMember.objects.filter(staff_request=item).select_related("user").first()
+        if item.user_id == request.user.pk:
+            error = "you asked for this merge, so someone else must approve it"
+        elif item.status != ServiceRequestStatus.PENDING:
+            error = "already closed"
+        elif row is None or row.user is None:
+            error = "the other account is gone"
+        else:
+            keeper, other = item.user, row.user
+            return TemplateResponse(
+                request,
+                "admin/merge_review.html",
+                {
+                    **self.admin_site.each_context(request),
+                    "title": "Approve this merge?",
+                    "item": item,
+                    "blockers": review.in_words(check_blockers(keeper, [other])),
+                    "lines": review.compare(keeper, [other]),
+                    "moves": [_describe(move) for move in build_plan(keeper, [other]).moves],
+                },
+            )
+        self.message_user(request, f"Request {item.pk}: {error}", messages.ERROR)
+        return None
 
     @admin.action(description="Merge requests: reject", permissions=["change"])
     def reject_merge(self, request: HttpRequest, queryset: QuerySet[ServiceRequest]) -> None:
