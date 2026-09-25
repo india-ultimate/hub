@@ -1446,6 +1446,25 @@ class TestStaffReview(RowActions):
         self.assertEqual(self.request().status, ServiceRequestStatus.PENDING)
         self.assertTrue(User.objects.filter(id=self.second.id).exists())
 
+    def test_changing_requests_is_not_enough_to_merge(self) -> None:
+        self.ask()
+        clerk = User.objects.create(username="clerk@x.com", email="clerk@x.com", is_staff=True)
+        clerk.user_permissions.add(Permission.objects.get(codename="change_servicerequest"))
+        self.client.force_login(clerk)
+        self.client.post(
+            "/admin/server/servicerequest/",
+            {"action": "approve_and_merge", "_selected_action": [self.request().pk]},
+        )
+        self.assertEqual(self.request().status, ServiceRequestStatus.PENDING)
+
+        clerk.user_permissions.add(Permission.objects.get(codename="delete_user"))
+        self.client.force_login(User.objects.get(pk=clerk.pk))
+        self.client.post(
+            "/admin/server/servicerequest/",
+            {"action": "approve_and_merge", "_selected_action": [self.request().pk]},
+        )
+        self.assertEqual(self.request().status, ServiceRequestStatus.APPROVED)
+
     def test_the_admin_action_approves_and_merges(self) -> None:
         self.ask()
         self.client.force_login(self.staff())
