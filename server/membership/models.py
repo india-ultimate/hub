@@ -1,3 +1,5 @@
+"""The catalog, what a person holds, and who may buy a discounted tier."""
+
 import uuid
 from typing import Any
 
@@ -8,7 +10,69 @@ from django_prometheus.models import ExportModelOperationsMixin
 
 from server.core.models import Player, User
 from server.season.models import Season
+from server.servicerequests.models import ServiceRequest  # noqa: F401
 from server.tournament.models import Event
+
+
+class Scope(models.TextChoices):
+    PLAY_CHAMPIONSHIPS = "play_championships", "Play in series and championships"
+    STAFF_CHAMPIONSHIPS = "staff_championships", "Coach or manage at series and championships"
+    VOTE = "vote", "Vote in state and national elections"
+
+
+# Before the catalog there was no Community tier, so every membership was full.
+LEGACY_SCOPES = frozenset(Scope)
+
+
+class MembershipType(models.Model):
+    """A tier. Stable across seasons; what it allows is its scopes."""
+
+    slug = models.SlugField(unique=True)
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
+    requires_grant = models.BooleanField(default=False)
+    display_order = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ["display_order"]
+
+    def __str__(self) -> str:
+        return self.name
+
+    def allows(self, scope: str) -> bool:
+        # A forward query (rather than the `scopes` related manager) sidesteps
+        # a django-stubs quirk: it can't yet see a reverse relation to a model
+        # defined later in the same file.
+        return MembershipTypeScope.objects.filter(type=self, scope=scope).exists()
+
+
+class MembershipTypeScope(models.Model):
+    """One thing a tier lets its holders do."""
+
+    type = models.ForeignKey(MembershipType, related_name="scopes", on_delete=models.CASCADE)
+    scope = models.CharField(max_length=40, choices=Scope.choices)
+
+    class Meta:
+        unique_together = ("type", "scope")
+
+    def __str__(self) -> str:
+        return f"{self.type.slug}:{self.scope}"
+
+
+class MembershipPlan(models.Model):
+    """A tier on sale in one season, at one price."""
+
+    season = models.ForeignKey(Season, related_name="plans", on_delete=models.PROTECT)
+    type = models.ForeignKey(MembershipType, related_name="plans", on_delete=models.PROTECT)
+    amount = models.PositiveIntegerField(help_text="In paise.")
+    is_available = models.BooleanField(default=True)
+
+    class Meta:
+        unique_together = ("season", "type")
+        ordering = ["season", "type__display_order"]
+
+    def __str__(self) -> str:
+        return f"{self.type.name} — {self.season.name}"
 
 
 class Membership(ExportModelOperationsMixin("membership"), models.Model):  # type: ignore[misc]
