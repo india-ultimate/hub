@@ -639,6 +639,9 @@ def build_plan(primary: User, duplicates: list[User]) -> MergePlan:
     plan = MergePlan(primary.id, [user.id for user in duplicates])
     players = list(Player.objects.filter(user__in=duplicates))
     primary_player = Player.objects.filter(user=primary).first()
+    if primary_player is None and players:
+        # The merge hands this profile over whole, so nothing on it moves.
+        primary_player, players = players[0], players[1:]
 
     for model, objects, target in (
         (User, list(duplicates), primary),
