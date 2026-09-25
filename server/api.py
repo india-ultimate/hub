@@ -34,7 +34,7 @@ from ninja.security import django_auth
 
 from server.announcements.api import router as announcements_router
 from server.chat.api import router as chat_router
-from server.core.accounts import resolve_login_user
+from server.core.accounts import find_user, resolve_login_user
 from server.core.models import (
     Accreditation,
     CollegeId,
@@ -637,9 +637,8 @@ def passkey_finish_login(
     if error:
         return 400, {"message": error}
 
-    try:
-        user = User.objects.get(id=user_id)
-    except User.DoesNotExist:
+    user = find_user(int(user_id))
+    if user is None:
         return 400, {"message": "User does not exist"}
 
     request.user = user

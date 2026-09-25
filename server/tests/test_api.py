@@ -20,6 +20,7 @@ from server.constants import (
 )
 from server.core.accounts import find_login_user
 from server.core.models import Guardianship, Player, UCPerson, User
+from server.duplicates.merge import merge_accounts
 from server.duplicates.models import EmailAlias
 from server.membership.models import Membership
 from server.passkey_utils import ClientResponse
@@ -66,6 +67,29 @@ class TestPasskey(ApiBaseTestCase):
                 content_type="application/json",
             )
         self.assertEqual(response.status_code, 200)
+
+    def test_a_passkey_on_a_merged_away_account_signs_in_to_the_keeper(self) -> None:
+        gone = User.objects.create(username="gone@foo.com", email="gone@foo.com")
+        middle = User.objects.create(username="middle@foo.com", email="middle@foo.com")
+        gone_id = gone.id
+        merge_accounts(middle, [gone], dry_run=False)
+        merge_accounts(self.user, [middle], dry_run=False)
+
+        def passkey_login() -> Any:
+            with mock.patch("server.api.passkey_client.finish_login") as finish:
+                finish.return_value = ClientResponse(data="{}", user_id=str(gone_id))
+                return self.client.post(
+                    "/api/passkey/login/finish",
+                    data={"passkey_request": "{}"},
+                    content_type="application/json",
+                )
+
+        response = passkey_login()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["username"], self.username)
+
+        self.user.delete()
+        self.assertEqual(passkey_login().status_code, 400)
 
 
 class TestRegistration(ApiBaseTestCase):
