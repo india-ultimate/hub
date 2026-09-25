@@ -91,6 +91,17 @@ class TestPasskey(ApiBaseTestCase):
         self.user.delete()
         self.assertEqual(passkey_login().status_code, 400)
 
+    def test_a_deactivated_account_cannot_use_its_passkey(self) -> None:
+        User.objects.filter(pk=self.user.pk).update(is_active=False)
+        with mock.patch("server.api.passkey_client.finish_login") as finish:
+            finish.return_value = ClientResponse(data="{}", user_id=str(self.user.id))
+            response = self.client.post(
+                "/api/passkey/login/finish",
+                data={"passkey_request": "{}"},
+                content_type="application/json",
+            )
+        self.assertEqual(response.status_code, 400)
+
 
 class TestRegistration(ApiBaseTestCase):
     def setUp(self) -> None:

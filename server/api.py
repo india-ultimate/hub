@@ -638,7 +638,7 @@ def passkey_finish_login(
         return 400, {"message": error}
 
     user = find_user(int(user_id))
-    if user is None:
+    if user is None or not user.is_active:
         return 400, {"message": "User does not exist"}
 
     request.user = user
