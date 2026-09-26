@@ -202,9 +202,15 @@ class TestWebhook(TestCase):
     def test_a_resync_can_apply_payments_without_mailing_anyone(self) -> None:
         # What the launch runbook runs: old payments are handed over, but
         # nobody hears about a membership they have had for a year.
-        with mock.patch(
-            "server.management.commands.sync_razorpay_transactions.get_transactions",
-            return_value=[{"status": "captured", "order_id": "order_hook"}],
+        with (
+            mock.patch(
+                "server.management.commands.sync_razorpay_transactions.get_transactions",
+                return_value=[{"status": "captured", "order_id": "order_hook"}],
+            ),
+            mock.patch(
+                "server.management.commands.sync_razorpay_transactions.get_refunds",
+                return_value=[],
+            ),
         ):
             call_command("sync_razorpay_transactions", "--no-email")
 

@@ -7,3 +7,4 @@ python manage.py open_or_close_tournament_registrations
 python manage.py calculate_player_points
 python manage.py cleanup_old_tasks
 python manage.py cleanup_abandoned_form_responses
+python manage.py sync_razorpay_transactions

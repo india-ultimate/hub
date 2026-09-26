@@ -1,15 +1,19 @@
+import importlib
 from typing import Any
 from unittest import mock
 
+from django.apps import apps
 from django.test import TestCase
 
-from server.membership import pricing, sponsorship
+from server.membership import pricing, purchase, sponsorship
 from server.membership.models import Membership, MembershipPlan, MembershipType
 from server.season.models import Season
 from server.tests.base import ApiBaseTestCase, fake_order
 from server.transaction.models import RazorpayTransaction, RazorpayTransactionPlayer
 
 from .test_membership_model import make_player
+
+inflight = importlib.import_module("server.migrations.0155_inflight_orders")
 
 
 class TestQuote(TestCase):
@@ -327,3 +331,83 @@ class TestOrderValidation(ApiBaseTestCase):
         for url in ("/api/transactions/phonepe", "/api/transactions/manual/123"):
             response = self.client.post(url, data=body, content_type="application/json")
             self.assertIn(response.status_code, (404, 405), url)
+
+
+class TestInFlightOrders(TestCase):
+    """Orders placed before the deploy, whose lines carry no tier."""
+
+    def setUp(self) -> None:
+        self.season = Season.objects.get(name="Season 2026-2027")
+        self.player = make_player("inflight@example.com")
+
+    def order(self, amount: int, status: str, **fields: Any) -> RazorpayTransaction:
+        return RazorpayTransaction.objects.create(
+            order_id=f"order_old_{amount}_{status}",
+            payment_id="",
+            amount=amount,
+            currency="INR",
+            user=self.player.user,
+            season=self.season,
+            start_date=self.season.start_date,
+            end_date=self.season.end_date,
+            status=status,
+            **fields,
+        )
+
+    def test_an_order_placed_before_the_change_still_lands_when_paid(self) -> None:
+        transaction = self.order(75000, RazorpayTransaction.TransactionStatusChoices.PENDING)
+        # A line with no plan, exactly as the old checkout left it.
+        RazorpayTransactionPlayer.objects.create(transaction=transaction, player=self.player)
+
+        inflight.fill_pending_lines(apps, None)
+
+        line = RazorpayTransactionPlayer.objects.get(transaction=transaction)
+        self.assertEqual(
+            line.plan, MembershipPlan.objects.get(season=self.season, type__slug="regular")
+        )
+        self.assertEqual(line.amount, 75000)
+
+        transaction.status = RazorpayTransaction.TransactionStatusChoices.COMPLETED
+        transaction.save(update_fields=["status"])
+        purchase.fulfil(transaction)
+
+        self.assertTrue(Membership.objects.get(player=self.player, season=self.season).is_active)
+
+    def test_an_abandoned_order_is_no_trouble(self) -> None:
+        # 927 of these sit in production, most for amounts no tier matches.
+        odd = self.order(31337, RazorpayTransaction.TransactionStatusChoices.PENDING)
+        RazorpayTransactionPlayer.objects.create(transaction=odd, player=self.player)
+        empty = self.order(75000, RazorpayTransaction.TransactionStatusChoices.FAILED)
+
+        inflight.fill_pending_lines(apps, None)
+
+        self.assertIsNone(RazorpayTransactionPlayer.objects.get(transaction=odd).plan)
+        self.assertFalse(RazorpayTransactionPlayer.objects.filter(transaction=empty).exists())
+        self.assertFalse(Membership.objects.exists())
+
+    def test_the_discounted_rate_still_needs_the_old_sponsored_flag(self) -> None:
+        transaction = self.order(25000, RazorpayTransaction.TransactionStatusChoices.PENDING)
+        RazorpayTransactionPlayer.objects.create(transaction=transaction, player=self.player)
+
+        inflight.fill_pending_lines(apps, None)
+
+        self.assertIsNone(RazorpayTransactionPlayer.objects.get(transaction=transaction).plan)
+
+    def test_a_group_order_is_left_for_staff(self) -> None:
+        # Two people, and a total that happens to be one person's patron
+        # price. The old checkout charged for the line set as it was then,
+        # which is not necessarily the line set now, so any tier read back
+        # from the total would be a guess.
+        transaction = self.order(150000, RazorpayTransaction.TransactionStatusChoices.PENDING)
+        for email in ("one@example.com", "two@example.com"):
+            RazorpayTransactionPlayer.objects.create(
+                transaction=transaction, player=make_player(email)
+            )
+
+        inflight.fill_pending_lines(apps, None)
+
+        self.assertFalse(
+            RazorpayTransactionPlayer.objects.filter(
+                transaction=transaction, plan__isnull=False
+            ).exists()
+        )

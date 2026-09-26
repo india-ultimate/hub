@@ -44,29 +44,36 @@ def create_order(
     return response
 
 
-def get_transactions() -> list[dict[str, Any]]:
+def _all_since(resource: Any, since: datetime.datetime | None) -> list[dict[str, Any]]:
+    """Every page Razorpay has for this resource since `since`, or a week ago."""
     today = now()
-    last_week = today - datetime.timedelta(days=7)
+    start = since if since is not None else today - datetime.timedelta(days=7)
 
     page_size = 100
     default = {
-        "from": int(last_week.timestamp()),
+        "from": int(start.timestamp()),
         "to": int(today.timestamp()),
         "count": page_size,
     }
 
-    transactions = []
+    items: list[dict[str, Any]] = []
     skip = 0
     while True:
-        query = dict(**default, skip=skip)
-        transactions_ = CLIENT.payment.all(query)
-        if transactions_["count"] == 0:
+        page = resource.all(dict(**default, skip=skip))
+        if page["count"] == 0:
             break
-        else:
-            transactions.extend(transactions_["items"])
+        items.extend(page["items"])
         skip += page_size
 
-    return transactions
+    return items
+
+
+def get_transactions(since: datetime.datetime | None = None) -> list[dict[str, Any]]:
+    return _all_since(CLIENT.payment, since)
+
+
+def get_refunds(since: datetime.datetime | None = None) -> list[dict[str, Any]]:
+    return _all_since(CLIENT.refund, since)
 
 
 def verify_payment(payment_info: dict[str, str]) -> bool:

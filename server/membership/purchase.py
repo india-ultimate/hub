@@ -6,6 +6,7 @@ from django.db import transaction as db_transaction
 from server.membership.emails import queue_confirmation
 from server.membership.models import Membership, MembershipPlan
 from server.membership.numbers import assign_number
+from server.membership.refunds import unrefunded
 from server.transaction.models import RazorpayTransaction, RazorpayTransactionPlayer
 
 
@@ -29,13 +30,17 @@ def fulfil(transaction: RazorpayTransaction, notify: bool = True) -> int:
         # line.membership, and the unique (player, season) on Membership is
         # the backstop for two orders racing.
         RazorpayTransaction.objects.select_for_update().filter(pk=transaction.pk).first()
-        lines = RazorpayTransactionPlayer.objects.select_related(
-            "plan__season", "plan__type", "player__user"
-        ).filter(
-            transaction=transaction,
-            plan__isnull=False,
-            membership__isnull=True,
-            needs_review=False,
+        # A refunded line must never be applied again: the refund cleared the
+        # membership it had bought, or the review flag it was carrying.
+        lines = unrefunded(
+            RazorpayTransactionPlayer.objects.select_related(
+                "plan__season", "plan__type", "player__user"
+            ).filter(
+                transaction=transaction,
+                plan__isnull=False,
+                membership__isnull=True,
+                needs_review=False,
+            )
         )
         for line in lines:
             try:
