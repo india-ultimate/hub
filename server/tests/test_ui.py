@@ -6,10 +6,12 @@ import re
 import zlib
 from contextlib import ExitStack
 from email.utils import getaddresses
+from importlib import import_module
 from pathlib import Path
 from typing import Any
 
 import pytest
+from django.apps import apps
 from django.conf import settings
 from django.test import Client
 from django.utils.timezone import now
@@ -318,6 +320,27 @@ class TestIntegration(BaseCase):
 
         self.click("h2#accordion-heading-transactions")
         self.assert_element("h2#accordion-heading-transactions")
+
+    # Breaks if: the page stops reading tiers from /api/seasons/{id}/plans,
+    # drops a tier, or stops showing the membership number.
+    def test_a_member_can_see_the_four_tiers_and_their_number(self) -> None:
+        # An earlier transactional test may have flushed what migrations
+        # seeded, so seed the seasons and tiers again (both get_or_create).
+        import_module("server.migrations.0145_legacy_seasons").add_seasons(apps, None)
+        import_module("server.migrations.0147_seed_catalog").seed(apps, None)
+        user = make_player("tiers@example.com")
+        Player.objects.filter(user=user).update(membership_number="IU-26-0001")
+        player_id = Player.objects.get(user=user).id
+
+        self.sign_in_as(user)
+        self.open(f"{APP_URL}/membership/{player_id}")
+        self.assert_text("Patron member")
+        self.assert_text("Regular Annual Membership")
+        self.assert_text("Community Membership")
+        # Discounted is listed, but without a grant it cannot be bought.
+        self.assert_text("Discounted Membership")
+        self.assert_text("Needs approval before it can be bought.")
+        self.assert_text("IU-26-0001", "#membership-number")
 
     def test_login_with_otp(self) -> None:
         username, password, user_id = create_login_user()

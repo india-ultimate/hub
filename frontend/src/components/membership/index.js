@@ -3,8 +3,8 @@ import { createQuery } from "@tanstack/solid-query";
 import { inboxStack } from "solid-heroicons/solid";
 import { createEffect, createSignal, For, Show } from "solid-js";
 
-import { eventMembershipFee, minAge, minAgeWarning } from "../../constants";
-import { fetchPlayerById, fetchSeasons } from "../../queries";
+import { minAge, minAgeWarning } from "../../constants";
+import { fetchPlayerById, fetchSeasonPlans, fetchSeasons } from "../../queries";
 import { displayDate, getAge } from "../../utils";
 import Info from "../alerts/Info";
 import Breadcrumbs from "../Breadcrumbs";
@@ -13,16 +13,14 @@ import PillTabs from "../tabs/PillTabs";
 import GroupMembership from "./GroupMembership";
 import ServiceRequestModal from "./ServiceRequestModal";
 
+const rupees = paise => (paise / 100).toLocaleString("en-IN");
+
 const Membership = () => {
   const [player, setPlayer] = createSignal();
   const [membership, setMembership] = createSignal();
 
   const [season, setSeason] = createSignal();
-  const [annual, _setAnnual] = createSignal(true);
   const [ageRestricted, setAgeRestricted] = createSignal(false);
-  const [membershipType, setMembershipType] = createSignal("patron"); // "patron" or "standard"
-
-  const [event, _setEvent] = createSignal();
 
   const [status, setStatus] = createSignal();
   const [activeTab, setActiveTab] = createSignal("individual");
@@ -49,6 +47,18 @@ const Membership = () => {
     }
   });
 
+  // Every price and every "can they buy this" comes from here. The page
+  // renders the server's answer and never works one out for itself.
+  const plansQuery = createQuery(
+    () => ["season-plans", season()?.id, player()?.id],
+    () => fetchSeasonPlans(season().id, player().id),
+    {
+      get enabled() {
+        return Boolean(season()?.id && player()?.id);
+      }
+    }
+  );
+
   const handleSeasonChange = e => {
     setSeason(
       seasonsQuery.data?.filter(
@@ -57,33 +67,12 @@ const Membership = () => {
     );
   };
 
-  const [payDisabled, setPayDisabled] = createSignal(false);
-
   createEffect(() => {
-    const dob = player()?.date_of_birth;
-    const seasonEnd = new Date(season()?.end_date);
-    const age = annual()
-      ? getAge(dob, seasonEnd)
-      : getAge(dob, new Date(event()?.start_date));
-    const noSelection = annual() ? !season() : !event();
+    const age = getAge(player()?.date_of_birth, new Date(season()?.end_date));
     setAgeRestricted(age < minAge);
-    setPayDisabled(noSelection || age < minAge);
   });
 
-  const getAmount = () => {
-    if (!annual()) {
-      return eventMembershipFee / 100;
-    }
-
-    // For annual membership, check membership type and sponsored status
-    if (player()?.sponsored) {
-      return season()?.sponsored_annual_membership_amount / 100;
-    } else {
-      return membershipType() === "patron"
-        ? season()?.supporter_annual_membership_amount / 100
-        : season()?.annual_membership_amount / 100;
-    }
-  };
+  const onSale = () => plansQuery.data ?? [];
 
   return (
     <div>
@@ -95,6 +84,12 @@ const Membership = () => {
         ]}
       />
       <h1 class="text-2xl font-bold text-blue-500">Membership</h1>
+
+      <Show when={player()?.membership_number}>
+        <p id="membership-number" class="mt-1 text-sm text-gray-500">
+          Membership number: {player().membership_number}
+        </p>
+      </Show>
 
       <div class="my-2 rounded-lg bg-blue-50 p-4 text-sm " role="alert">
         <details>
@@ -124,70 +119,18 @@ const Membership = () => {
                 Opportunity for you to participate in WFDF recognised events
                 through your club
               </li>
-              <li>Coaching & Workshops</li>
-              <li>Governance & Voice</li>
+              <li>Coaching &amp; Workshops</li>
+              <li>Governance &amp; Voice</li>
               <li>
-                Credibility of your participation -- Certificates & recognition
+                Credibility of your participation -- Certificates &amp;
+                recognition
               </li>
               <li>
-                Updates & Content - IU newsletter + access to Hub (rostering,
-                stats, schedules, scores)
+                Updates &amp; Content - IU newsletter + access to Hub
+                (rostering, stats, schedules, scores)
               </li>
               <li>Contribute to growth of Flying Disc in India</li>
             </ul>
-            <hr />
-            <h2 class="text-base font-semibold text-gray-600 dark:text-white">
-              Membership Fees
-            </h2>
-            <div>
-              <details>
-                <summary class="text-base font-bold">
-                  Patron membership – Rs. 1500
-                </summary>
-                <p class="mt-2">
-                  The <strong>Patron Membership</strong> is for those who wish
-                  to actively support the growth of flying disc sports and
-                  FDSF(I). As the number of members grows, so do the
-                  responsibilities of the federation. To meet these needs, the
-                  organisation continues to rely on the goodwill of the
-                  community while working towards diversifying revenue streams,
-                  including private sponsors and, in the long run, government
-                  support. Recognising the different economic backgrounds within
-                  our community, the Patron Membership at Rs. 1500 per year
-                  helps subsidise the standard membership, ensuring equitable
-                  sharing of responsibility. The usage of the membership fee is
-                  explained in the pie chart below.
-                </p>
-              </details>
-              <details>
-                <summary class="mt-2 text-base font-bold">
-                  Standard membership – Rs. 750
-                </summary>
-              </details>
-              <details>
-                <summary class="mt-2 text-base font-bold">
-                  Supported Membership – Rs. 250 (on a need basis)
-                </summary>
-                <p class="mt-2">
-                  <strong>Supported Membership</strong> is designed to increase
-                  access to FDSF(I) membership for community members from
-                  underserved social groups. By reducing entry-level barriers to
-                  playing the sport, IU operations will grant a case-by-case
-                  partial waiver to those who require subsidisation. Please
-                  avail this option if needed.
-                </p>
-              </details>
-            </div>
-
-            <p class="my-2">
-              If you, or players on your college/NGO team need assistance in
-              paying this, then you can apply for supported membership by
-              clicking the button below.
-            </p>
-
-            <div class="my-4">
-              <ServiceRequestModal currentPlayer={player()} />
-            </div>
           </div>
         </details>
       </div>
@@ -226,80 +169,99 @@ const Membership = () => {
             <h1 class="text-lg font-semibold text-blue-500">
               Individual Membership
             </h1>
-            <h3 class="text-sm italic">
-              Renew membership for {player()?.full_name}
-            </h3>
+            <h3 class="text-sm italic">Membership for {player()?.full_name}</h3>
+            <p class="mt-1 text-sm">
+              Validity: {displayDate(season()?.start_date)} to{" "}
+              {displayDate(season()?.end_date)}
+            </p>
+
+            <Show when={membership()?.is_active && membership()?.tier}>
+              <div id="membership-exist" class="mt-4">
+                {player()?.full_name} holds {membership().tier_name} until{" "}
+                {displayDate(membership().end_date)}
+              </div>
+            </Show>
+
+            <Show when={ageRestricted()}>
+              <div
+                class="my-4 rounded-lg bg-red-50 p-4 text-sm text-red-800 dark:bg-gray-800 dark:text-red-400"
+                role="alert"
+              >
+                {minAgeWarning}
+              </div>
+            </Show>
+
             <Show
-              when={!membership()?.is_active}
+              when={onSale().length > 0}
               fallback={
-                <div id="membership-exist" class="mt-4">
-                  Membership for {player().full_name} is active until{" "}
-                  {displayDate(membership().end_date)}
+                <div class="my-4">
+                  <Info text="No memberships are on sale for this season." />
                 </div>
               }
             >
-              <Show when={annual()}>
-                <div class="mt-4">
-                  <label class="mb-2 block text-sm font-medium text-gray-900 dark:text-white">
-                    Membership Type
-                  </label>
-                  <Show
-                    when={!player()?.sponsored}
-                    fallback={
-                      <div class="block w-full rounded-lg border border-gray-300 bg-gray-100 p-2.5 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
-                        Supported Membership – ₹{" "}
-                        {season()?.sponsored_annual_membership_amount / 100}
-                      </div>
-                    }
-                  >
-                    <select
-                      class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
-                      value={membershipType()}
-                      onChange={e => setMembershipType(e.target.value)}
-                    >
-                      <option value="patron">
-                        Patron Membership - ₹{" "}
-                        {season()?.supporter_annual_membership_amount / 100}
-                      </option>
-                      <option value="standard">
-                        Standard Membership - ₹{" "}
-                        {season()?.annual_membership_amount / 100}
-                      </option>
-                    </select>
-                  </Show>
-                </div>
-                <p class="mt-4 font-bold">
-                  Paying India Ultimate membership fee:
-                </p>
-                <p class="mt-1">
-                  Validity: {displayDate(season()?.start_date)} to{" "}
-                  {displayDate(season()?.end_date)}
-                </p>
-                <p class="mt-1 font-extrabold">Total Amount: ₹ {getAmount()}</p>
-              </Show>
-              <Show when={ageRestricted()}>
-                <div
-                  class="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-800 dark:bg-gray-800 dark:text-red-400"
-                  role="alert"
-                >
-                  {minAgeWarning}
-                </div>
-              </Show>
-              <RazorpayPayment
-                disabled={payDisabled()}
-                annual={annual()}
-                season={season()}
-                event={event()}
-                player_id={player().id}
-                amount={getAmount()}
-                setStatus={setStatus}
-                is_supporter={membershipType() === "patron"}
-                successCallback={() => {
-                  playerQuery.refetch();
-                }}
-              />
-              <p>{status()}</p>
+              <div class="my-4 space-y-4">
+                <For each={onSale()}>
+                  {plan => (
+                    <div class="rounded-lg border p-4 dark:border-gray-700">
+                      <h3 class="text-lg font-medium">{plan.name}</h3>
+                      <p class="my-2 text-sm text-gray-600 dark:text-gray-400">
+                        {plan.description}
+                      </p>
+                      <p class="text-sm font-semibold">
+                        ₹ {rupees(plan.amount)}
+                      </p>
+                      <Show
+                        when={plan.available_to_player}
+                        fallback={
+                          <p class="mt-2 text-sm text-gray-500">
+                            {plan.requires_grant
+                              ? "Needs approval before it can be bought."
+                              : "Not available for you this season."}
+                          </p>
+                        }
+                      >
+                        <RazorpayPayment
+                          disabled={ageRestricted()}
+                          season={season()}
+                          items={[
+                            { player_id: player().id, plan_type: plan.slug }
+                          ]}
+                          buttonText={
+                            plan.upgrade_amount
+                              ? `Upgrade from ${
+                                  plan.upgrade_from
+                                } — pay ₹ ${rupees(plan.upgrade_amount)}`
+                              : `Pay ₹ ${rupees(plan.amount)}`
+                          }
+                          setStatus={setStatus}
+                          successCallback={() => {
+                            playerQuery.refetch();
+                            plansQuery.refetch();
+                          }}
+                        />
+                      </Show>
+                    </div>
+                  )}
+                </For>
+              </div>
             </Show>
+
+            {/* `sponsored` is computed server-side as "holds a grant for the
+                season they would buy next", so someone flagged in a past
+                season can ask again. */}
+            <Show when={!player()?.sponsored}>
+              <div class="my-4 rounded-lg bg-blue-50 p-4 text-sm dark:bg-gray-800">
+                <p class="mb-2">
+                  If you, or players on your college/NGO team, need assistance
+                  in paying this, you can ask for a discounted membership.
+                </p>
+                <ServiceRequestModal
+                  currentPlayer={player()}
+                  season={season()}
+                />
+              </div>
+            </Show>
+            <p>{status()}</p>
           </div>
         </Show>
 
@@ -309,16 +271,15 @@ const Membership = () => {
               <h1 class="text-lg font-semibold text-blue-500">
                 Group Membership
               </h1>
-              <h3 class="text-sm italic">Renew membership for a group</h3>
+              <h3 class="text-sm italic">Pay for a group of players</h3>
             </div>
 
             <div class="mb-4">
-              <ServiceRequestModal currentPlayer={player()} />
+              <ServiceRequestModal currentPlayer={player()} season={season()} />
             </div>
 
             <GroupMembership
               season={season()}
-              membershipType={membershipType()}
               successCallback={() => {
                 playerQuery.refetch();
               }}

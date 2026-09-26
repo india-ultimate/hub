@@ -29,6 +29,7 @@ import {
   Switch
 } from "solid-js";
 
+import { playerRoles } from "../../constants";
 import { ChevronLeft, ChevronRight, Spinner } from "../../icons";
 import {
   fetchUser,
@@ -185,6 +186,8 @@ const AddPlayerRegistrationForm = componentProps => {
     pageSize: 5
   });
   const [status, setStatus] = createSignal("");
+  // The role the next invitation offers. Staff roles don't take a player spot.
+  const [role, setRole] = createSignal("DFLT");
 
   const queryClient = useQueryClient();
 
@@ -295,7 +298,8 @@ const AddPlayerRegistrationForm = componentProps => {
                   series_slug: componentProps.seriesSlug,
                   team_slug: componentProps.teamSlug,
                   body: {
-                    to_player_id: props.getValue()
+                    to_player_id: props.getValue(),
+                    role: role()
                   }
                 })
               }
@@ -363,6 +367,26 @@ const AddPlayerRegistrationForm = componentProps => {
       <h3 class="w-full text-left text-sm italic">
         Search players by name or email (min. 3 letters)
       </h3>
+      <label
+        for="invite-role"
+        class="mt-4 block text-sm font-medium text-gray-900 dark:text-white"
+      >
+        Invite as
+      </label>
+      <select
+        id="invite-role"
+        class="mt-1 block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+        value={role()}
+        onChange={e => setRole(e.target.value)}
+      >
+        <For each={playerRoles}>
+          {choice => (
+            <option value={choice.value}>
+              {choice.value === "DFLT" ? "Player" : choice.label}
+            </option>
+          )}
+        </For>
+      </select>
       <div class="relative my-4 w-full">
         <div class="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-3">
           <svg

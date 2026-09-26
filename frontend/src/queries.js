@@ -102,6 +102,66 @@ export const fetchSeasons = async () => {
   return await response.json();
 };
 
+// The tiers on sale for a season, priced by the server. Passing a player
+// also says whether each tier is available to them and, when they are moving
+// up, the difference they owe rather than the full price. Never price a
+// membership in the browser.
+export const fetchSeasonPlans = async (seasonId, playerId) => {
+  const params = playerId ? `?player_id=${playerId}` : "";
+  const response = await fetch(`/api/seasons/${seasonId}/plans${params}`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin"
+  });
+  if (!response.ok) {
+    throw new Error("Failed to fetch membership plans");
+  }
+  return await response.json();
+};
+
+// The ids, out of those asked about, that hold a sponsorship grant for the
+// season. One request for the whole group; the server refuses more than
+// MAX_GRANT_LOOKUP ids, so a bigger group is asked about in slices.
+const MAX_GRANT_LOOKUP = 50;
+export const fetchSeasonGrants = async (seasonId, playerIds) => {
+  if (!seasonId || playerIds.length === 0) {
+    return [];
+  }
+  if (playerIds.length > MAX_GRANT_LOOKUP) {
+    const slices = [];
+    for (let i = 0; i < playerIds.length; i += MAX_GRANT_LOOKUP) {
+      slices.push(
+        fetchSeasonGrants(seasonId, playerIds.slice(i, i + MAX_GRANT_LOOKUP))
+      );
+    }
+    return (await Promise.all(slices)).flat();
+  }
+  const response = await fetch(
+    `/api/seasons/${seasonId}/grants?player_ids=${playerIds.join(",")}`,
+    {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin"
+    }
+  );
+  if (!response.ok) {
+    throw new Error("Failed to fetch sponsorship grants");
+  }
+  return await response.json();
+};
+
+export const fetchPlayerMemberships = async playerId => {
+  const response = await fetch(`/api/players/${playerId}/memberships`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin"
+  });
+  if (!response.ok) {
+    throw new Error("Failed to fetch membership history");
+  }
+  return await response.json();
+};
+
 export const searchTeams = async (searchText, pagination) => {
   let baseUrl = "/api/teams/search";
   let params = new URLSearchParams();

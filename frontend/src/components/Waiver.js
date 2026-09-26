@@ -369,6 +369,9 @@ const WaiverForm = props => {
             {displayDate(props.player?.membership?.end_date)} by{" "}
             {props.player?.membership?.waiver_signed_by} on{" "}
             {displayDate(props.player?.membership?.waiver_signed_at)}.
+            <Show when={props.player?.membership_number}>
+              {` Membership number: ${props.player.membership_number}.`}
+            </Show>
           </div>
           <button
             class="my-4 w-full rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 sm:w-auto"
@@ -381,6 +384,9 @@ const WaiverForm = props => {
           <span>
             Validity: {displayDate(props?.player?.membership?.start_date)} to{" "}
             {displayDate(props?.player?.membership?.end_date)}
+            <Show when={props.player?.membership_number}>
+              {` · Membership number: ${props.player.membership_number}`}
+            </Show>
           </span>
           <PartA
             signed={props.signed}

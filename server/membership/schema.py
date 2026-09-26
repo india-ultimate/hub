@@ -20,7 +20,19 @@ class MembershipPlanSchema(Schema):
 class MembershipSchema(ModelSchema):
     waiver_signed_by: str | None
     tier: str | None
+    tier_name: str | None
     scopes: list[str]
+    season_name: str
+
+    @staticmethod
+    def resolve_tier_name(membership: Membership) -> str | None:
+        """The tier as people read it; `tier` is the slug code compares."""
+        return membership.plan.type.name if membership.plan is not None else None
+
+    @staticmethod
+    def resolve_season_name(membership: Membership) -> str:
+        """The season spelled out, so a history list reads without a lookup."""
+        return membership.season.name
 
     @staticmethod
     def resolve_waiver_signed_by(membership: Membership) -> str | None:

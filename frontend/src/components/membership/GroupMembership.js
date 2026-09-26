@@ -11,7 +11,11 @@ import { createEffect, createSignal, For, Match, Show, Switch } from "solid-js";
 
 import { minAge, minAgeWarning } from "../../constants";
 import { ChevronLeft, ChevronRight, Spinner } from "../../icons";
-import { searchPlayers } from "../../queries";
+import {
+  fetchSeasonGrants,
+  fetchSeasonPlans,
+  searchPlayers
+} from "../../queries";
 import { displayDate } from "../../utils";
 import Info from "../alerts/Info";
 import RazorpayPayment from "../RazorpayPayment";
@@ -263,19 +267,74 @@ const PlayerSearchDropdown = componentProps => {
 
 const GroupMembership = props => {
   const [status, setStatus] = createSignal();
-  const [membershipType, setMembershipType] = createSignal(
-    props.membershipType || "patron"
-  );
 
   const [payingPlayers, setPayingPlayers] = createSignal([]);
   const [paymentSuccess, setPaymentSuccess] = createSignal(false);
+  // player id -> tier slug. The tier is per person, not per group.
+  const [tiers, setTiers] = createSignal({});
 
-  // Sync membership type from props
-  createEffect(() => {
-    if (props.membershipType) {
-      setMembershipType(props.membershipType);
+  const plansQuery = createQuery(
+    () => ["season-plans", props.season?.id],
+    () => fetchSeasonPlans(props.season.id),
+    {
+      get enabled() {
+        return Boolean(props.season?.id);
+      }
     }
-  });
+  );
+
+  // One request for the whole selection, refetched as it changes: the
+  // legacy `sponsored` flag on a player says nothing about this season.
+  const grantsQuery = createQuery(
+    () => [
+      "season-grants",
+      props.season?.id,
+      payingPlayers()
+        .map(p => p.id)
+        .join(",")
+    ],
+    () =>
+      fetchSeasonGrants(
+        props.season.id,
+        payingPlayers().map(p => p.id)
+      ),
+    {
+      get enabled() {
+        return Boolean(props.season?.id) && payingPlayers().length > 0;
+      }
+    }
+  );
+
+  const plans = () => plansQuery.data ?? [];
+  const hasGrant = playerId => (grantsQuery.data ?? []).includes(playerId);
+
+  // What this person may pick: the open tiers, plus a grant-only tier when
+  // they hold a grant for this season.
+  const plansFor = playerId =>
+    plans().filter(plan => !plan.requires_grant || hasGrant(playerId));
+
+  const defaultTier = playerId => {
+    const available = plansFor(playerId);
+    const granted = available.find(plan => plan.requires_grant);
+    if (granted) {
+      return granted.slug;
+    }
+    return (available.find(plan => plan.slug === "regular") ?? available[0])
+      ?.slug;
+  };
+
+  const tierFor = playerId => tiers()[playerId] ?? defaultTier(playerId);
+
+  const planFor = playerId =>
+    plans().find(plan => plan.slug === tierFor(playerId));
+
+  const setTierFor = (playerId, slug) =>
+    setTiers({ ...tiers(), [playerId]: slug });
+
+  const items = () =>
+    payingPlayers()
+      .filter(player => tierFor(player.id))
+      .map(player => ({ player_id: player.id, plan_type: tierFor(player.id) }));
 
   const paymentSuccessCallback = () => {
     setPaymentSuccess(true);
@@ -304,41 +363,17 @@ const GroupMembership = props => {
     setPayDisabled(payingPlayers().length === 0);
   });
 
+  // Every rupee here is a price the server sent back for the tier that was
+  // picked; nothing is worked out in the browser.
   const getAmount = () =>
     payingPlayers().reduce(
-      (acc, player) =>
-        acc +
-        (player?.sponsored
-          ? props.season?.sponsored_annual_membership_amount
-          : membershipType() === "patron"
-          ? props.season?.supporter_annual_membership_amount
-          : props.season?.annual_membership_amount),
+      (acc, player) => acc + (planFor(player.id)?.amount ?? 0),
       0
     ) / 100;
 
   return (
     <div>
       <Show when={!paymentSuccess()}>
-        <div class="mb-4">
-          <label class="mb-2 block text-sm font-medium text-gray-900 dark:text-white">
-            Membership Type
-          </label>
-          <select
-            class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
-            value={membershipType()}
-            onChange={e => setMembershipType(e.target.value)}
-          >
-            <option value="patron">
-              Patron Membership - ₹{" "}
-              {props.season?.supporter_annual_membership_amount / 100} per
-              player
-            </option>
-            <option value="standard">
-              Standard Membership - ₹{" "}
-              {props.season?.annual_membership_amount / 100} per player
-            </option>
-          </select>
-        </div>
         <PlayerSearchDropdown
           payingPlayers={payingPlayers()}
           onPlayerPayingStatusChange={handlePlayerPayingStatus}
@@ -350,8 +385,10 @@ const GroupMembership = props => {
         startDate={displayDate(props.season?.start_date)}
         endDate={displayDate(props.season?.end_date)}
         onPlayerPayingStatusChange={handlePlayerPayingStatus}
-        season={props.season}
-        membershipType={membershipType()}
+        plansFor={plansFor}
+        planFor={planFor}
+        tierFor={tierFor}
+        onTierChange={setTierFor}
       />
       <Show when={payingPlayers()?.find(p => p.is_minor)}>
         <div
@@ -366,14 +403,12 @@ const GroupMembership = props => {
         <Switch>
           <Match when={!paymentSuccess()}>
             <RazorpayPayment
-              disabled={payDisabled() || payingPlayers().length === 0}
-              annual={true}
+              disabled={payDisabled() || items().length === 0}
               season={props.season}
-              player_ids={payingPlayers().map(p => p.id)}
-              amount={getAmount()}
+              items={items()}
+              buttonText={`Pay ₹ ${getAmount().toLocaleString("en-IN")}`}
               setStatus={setStatus}
               successCallback={paymentSuccessCallback}
-              is_supporter={membershipType() === "patron"}
             />
           </Match>
           <Match when={paymentSuccess()}>

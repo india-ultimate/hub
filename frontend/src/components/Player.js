@@ -1,13 +1,25 @@
 import { A, useNavigate } from "@solidjs/router";
+import { createQuery } from "@tanstack/solid-query";
 import { For, Match, Show, Switch } from "solid-js";
 
 import { genderChoices, occupationChoices, stateChoices } from "../constants";
+import { fetchPlayerMemberships } from "../queries";
 import { displayDate } from "../utils";
 import { getLabel } from "../utils";
 import StatusStepper from "./StatusStepper";
 
 const Player = props => {
   const navigate = useNavigate();
+
+  const membershipsQuery = createQuery(
+    () => ["player-memberships", props.player?.id],
+    () => fetchPlayerMemberships(props.player.id),
+    {
+      get enabled() {
+        return Boolean(props.player?.id);
+      }
+    }
+  );
 
   const navMembership = (e, playerId) => {
     e.preventDefault();
@@ -92,6 +104,41 @@ const Player = props => {
               </Switch>
             </td>
           </tr>
+          <Show when={props.player?.membership_number}>
+            <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
+              <th
+                scope="row"
+                class="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white"
+              >
+                Membership number
+              </th>
+              <td class="px-6 py-4">{props.player.membership_number}</td>
+            </tr>
+          </Show>
+          <Show when={membershipsQuery.data?.length > 0}>
+            <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
+              <th
+                scope="row"
+                class="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white"
+              >
+                Membership history
+              </th>
+              <td class="px-6 py-4">
+                <ul class="list-inside list-disc">
+                  <For each={membershipsQuery.data}>
+                    {membership => (
+                      <li>
+                        {membership.season_name}
+                        <Show when={membership.tier_name}>
+                          {` — ${membership.tier_name}`}
+                        </Show>
+                      </li>
+                    )}
+                  </For>
+                </ul>
+              </td>
+            </tr>
+          </Show>
           <Show when={props.player?.membership}>
             <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
               <th

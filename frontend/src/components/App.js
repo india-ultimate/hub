@@ -50,7 +50,6 @@ const TournamentStandings = lazy(() => import("./TournamentStandings"));
 const TournamentLeaderboard = lazy(() => import("./tournament/Leaderboard"));
 const TournamentTeam = lazy(() => import("./TournamentTeam"));
 const Error404 = lazy(() => import("./Error404"));
-const PhonePeTransaction = lazy(() => import("./PhonePeTransaction"));
 const CheckMemberships = lazy(() => import("./CheckMemberships"));
 const CollegeID = lazy(() => import("./CollegeID"));
 const AllSeries = lazy(() => import("./series/index"));
@@ -256,11 +255,6 @@ export default function App() {
                     path="/commentary-info/:playerId"
                     component={CommentaryInfo}
                     matchFilters={filters}
-                  />
-                  {/* Transaction */}
-                  <UserRoute
-                    path="/phonepe-transaction/:transactionId"
-                    component={PhonePeTransaction}
                   />
                   <UserRoute
                     path="/validate-rosters"

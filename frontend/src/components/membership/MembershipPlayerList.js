@@ -19,6 +19,9 @@ const MembershipPlayerList = props => {
                 Player
               </th>
               <th scope="col" class="px-6 py-3">
+                Tier
+              </th>
+              <th scope="col" class="px-6 py-3">
                 Fee
               </th>
               <th scope="col" class="px-2 py-3">
@@ -29,7 +32,7 @@ const MembershipPlayerList = props => {
           <tbody>
             <Show when={props.players.length === 0}>
               <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
-                <td colspan={3} class="text-center italic">
+                <td colspan={4} class="text-center italic">
                   No Players Selected
                 </td>
               </tr>
@@ -44,12 +47,35 @@ const MembershipPlayerList = props => {
                     {player.full_name} {player.is_minor ? "*" : ""}
                   </th>
                   <td class="px-6 py-4">
-                    ₹
-                    {player?.sponsored
-                      ? props.season?.sponsored_annual_membership_amount / 100
-                      : props.membershipType === "patron"
-                      ? props.season?.supporter_annual_membership_amount / 100
-                      : props.season?.annual_membership_amount / 100}
+                    <select
+                      class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                      value={props.tierFor(player.id)}
+                      onChange={e =>
+                        props.onTierChange(player.id, e.target.value)
+                      }
+                    >
+                      <For each={props.plansFor(player.id)}>
+                        {/* `selected`, not just the select's `value`: Solid
+                            sets that value before these options exist, so
+                            the browser would show the first tier instead. */}
+                        {plan => (
+                          <option
+                            value={plan.slug}
+                            selected={plan.slug === props.tierFor(player.id)}
+                          >
+                            {plan.name}
+                          </option>
+                        )}
+                      </For>
+                    </select>
+                  </td>
+                  {/* The server's price for the chosen tier, never one this
+                      page worked out. */}
+                  <td class="px-6 py-4">
+                    ₹{" "}
+                    {(
+                      (props.planFor(player.id)?.amount ?? 0) / 100
+                    ).toLocaleString("en-IN")}
                   </td>
                   <td>
                     <button
