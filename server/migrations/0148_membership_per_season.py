@@ -55,12 +55,16 @@ class Migration(migrations.Migration):
                 to="server.event",
             ),
         ),
-        # Was nullable (on_delete=CASCADE); every row already has a season,
-        # so no default is needed to tighten it.
+        # Still nullable: production has 697 rows with no season at all.
+        # Task 5's migration buckets every one of them by its start date
+        # before tightening this to non-null -- doing it here would refuse
+        # to apply against real data.
         migrations.AlterField(
             model_name="membership",
             name="season",
             field=models.ForeignKey(
+                blank=True,
+                null=True,
                 on_delete=django.db.models.deletion.PROTECT,
                 related_name="memberships",
                 to="server.season",
