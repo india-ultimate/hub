@@ -35,12 +35,9 @@ from .schema import (
     TeamRegistrationSchema,
 )
 from .utils import (
+    apply_transaction,
     create_transaction,
     list_transactions_by_type,
-    update_transaction_partial_team_registration,
-    update_transaction_player_memberships,
-    update_transaction_player_registrations,
-    update_transaction_team_registration,
 )
 
 router = Router()
@@ -74,23 +71,20 @@ def handle_razorpay_callback(
     if not authentic:
         return 422, {"message": "We were unable to ascertain the authenticity of the payment."}
 
+    existing = RazorpayTransaction.objects.filter(order_id=payment.razorpay_order_id).first()
+    if existing is None:
+        return 404, {"message": "No order found."}
+    # The same guard the webhook has. A double-clicked or replayed callback
+    # must not run the handlers again: membership fulfilment is idempotent,
+    # but nothing promises the registration handlers are.
+    if existing.status != RazorpayTransaction.TransactionStatusChoices.PENDING:
+        return 200, existing.players.all()
+
     transaction = razorpay.update_transaction(payment)
     if not transaction:
         return 404, {"message": "No order found."}
 
-    if transaction.type == RazorpayTransaction.TransactionTypeChoices.ANNUAL_MEMBERSHIP:
-        update_transaction_player_memberships(transaction)
-    elif transaction.type == RazorpayTransaction.TransactionTypeChoices.TEAM_REGISTRATION:
-        update_transaction_team_registration(transaction)
-    elif transaction.type == RazorpayTransaction.TransactionTypeChoices.PLAYER_REGISTRATION:
-        update_transaction_player_registrations(transaction)
-    elif transaction.type == RazorpayTransaction.TransactionTypeChoices.PARTIAL_TEAM_REGISTRATION:
-        update_transaction_partial_team_registration(transaction)
-    elif transaction.type == RazorpayTransaction.TransactionTypeChoices.FORM_PAYMENT:
-        # Lazy import to avoid a transaction <-> forms import cycle.
-        from server.forms.utils import mark_form_response_paid
-
-        mark_form_response_paid(transaction)
+    apply_transaction(transaction)
 
     return 200, transaction.players.all()
 
@@ -105,29 +99,33 @@ def payment_webhook(request: HttpRequest) -> message_response:
     signature = request.headers.get("X-Razorpay-Signature", "")
     if not razorpay.verify_webhook_payload(body, signature):
         return {"message": "Signature could not be verified"}
-    data = json.loads(body)["payload"]["payment"]["entity"]
+
+    data = json.loads(body)
+    # Only money actually taken means anything here. Razorpay sends a dozen
+    # other events to the same URL, and an authorized-but-not-captured
+    # payment is not one we may act on.
+    if data.get("event") != "payment.captured":
+        return {"message": "Ignored webhook"}
+    entity = data["payload"]["payment"]["entity"]
+
+    transaction = RazorpayTransaction.objects.filter(order_id=entity["order_id"]).first()
+    if transaction is None:
+        return {"message": "No order found."}
+    # Razorpay retries a webhook until it sees a 200, and the callback has
+    # usually landed first. A settled order is not touched again.
+    if transaction.status != RazorpayTransaction.TransactionStatusChoices.PENDING:
+        return {"message": "Already processed"}
+
     payment = RazorpayCallbackSchema(
-        razorpay_payment_id=data["id"],
-        razorpay_order_id=data["order_id"],
+        razorpay_payment_id=entity["id"],
+        razorpay_order_id=entity["order_id"],
         razorpay_signature=f"webhook_{signature}",
     )
-    transaction = razorpay.update_transaction(payment)
-    if not transaction:
+    updated = razorpay.update_transaction(payment)
+    if updated is None:
         return {"message": "No order found."}
 
-    if transaction.type == RazorpayTransaction.TransactionTypeChoices.ANNUAL_MEMBERSHIP:
-        update_transaction_player_memberships(transaction)
-    elif transaction.type == RazorpayTransaction.TransactionTypeChoices.TEAM_REGISTRATION:
-        update_transaction_team_registration(transaction)
-    elif transaction.type == RazorpayTransaction.TransactionTypeChoices.PLAYER_REGISTRATION:
-        update_transaction_player_registrations(transaction)
-    elif transaction.type == RazorpayTransaction.TransactionTypeChoices.PARTIAL_TEAM_REGISTRATION:
-        update_transaction_partial_team_registration(transaction)
-    elif transaction.type == RazorpayTransaction.TransactionTypeChoices.FORM_PAYMENT:
-        # Lazy import to avoid a transaction <-> forms import cycle.
-        from server.forms.utils import mark_form_response_paid
-
-        mark_form_response_paid(transaction)
+    apply_transaction(updated)
 
     return {"message": "Webhook processed"}
 

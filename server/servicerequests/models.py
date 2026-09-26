@@ -103,9 +103,22 @@ def send_service_request_notification_email(service_request: ServiceRequest) -> 
         else:  # REJECTED
             subject = f"Service Request Update - {service_request.get_type_display()}"
 
+        # Local: server.season.models imports nothing from here, but keeping
+        # the import lazy matches the grant path above.
+        from server.season.models import Season
+
+        # A sponsorship is granted for one season, so the mail has to say
+        # which one — the same season the grant above uses.
+        season = (
+            (service_request.season or Season.current())
+            if service_request.type == ServiceRequestType.REQUEST_SPONSORED_MEMBERSHIP
+            else None
+        )
+
         # Prepare email context
         context = {
             "service_request": service_request,
+            "season": season,
             "site_url": settings.EMAIL_INVITATION_BASE_URL,
         }
 
@@ -120,8 +133,10 @@ Request Type: {service_request.get_type_display()}
 Status: {service_request.get_status_display()}
 Submitted: {service_request.created_at.strftime('%B %d, %Y at %I:%M %p')}
 Updated: {service_request.updated_at.strftime('%B %d, %Y at %I:%M %p')}
-
 """
+        if season is not None:
+            plain_message += f"Season: {season.name}\n"
+        plain_message += "\n"
 
         if service_request.message:
             plain_message += f"Your Message: {service_request.message}\n\n"
@@ -133,7 +148,8 @@ Updated: {service_request.updated_at.strftime('%B %d, %Y at %I:%M %p')}
             plain_message += "\n"
 
         if service_request.status == ServiceRequestStatus.APPROVED:
-            plain_message += "🎉 Great news! Your service request has been approved.\n\n"
+            plain_message += "🎉 Great news! Your service request has been approved"
+            plain_message += f" for {season.name}.\n\n" if season is not None else ".\n\n"
         else:
             plain_message += "📋 We have reviewed your service request and unfortunately, it has not been approved at this time.\n\n"
             plain_message += "If you have any questions about this decision or would like to submit a new request, please don't hesitate to contact our support team.\n\n"

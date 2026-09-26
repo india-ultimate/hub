@@ -10,6 +10,7 @@ from server.core.models import Player, Team, User
 from server.membership import catalog
 from server.membership.models import Membership
 from server.membership.pricing import UPGRADE, NeedsGrant, NotForSale, Quote, quote
+from server.membership.purchase import fulfil
 from server.season.models import Season
 from server.tournament.models import Event, Registration, Tournament
 from server.tournament.utils import can_register_player_to_series_event
@@ -355,24 +356,32 @@ def create_transaction(
     return 200, data
 
 
-def update_transaction_player_memberships(
-    transaction: RazorpayTransaction | PhonePeTransaction,
-) -> None:
-    membership_defaults = {
-        "start_date": transaction.start_date,
-        "end_date": transaction.end_date,
-        "event": transaction.event,
-        "season": transaction.season,
-        "is_active": True,
-    }
-    for player in transaction.players.all():
-        membership, created = Membership.objects.get_or_create(
-            player=player, defaults=membership_defaults
-        )
-        if not created:
-            for key, value in membership_defaults.items():
-                setattr(membership, key, value)
-            membership.save()
+def apply_transaction(transaction: RazorpayTransaction, notify: bool = True) -> None:
+    """Give the buyer what a captured payment bought.
+
+    Every payment route ends here, so the one guard below is the only place
+    that decides whether an order is settled enough to act on. A refunded
+    order never is, however many times Razorpay reports it as captured.
+
+    `notify` off skips the confirmation emails, for a bulk historical resync.
+    """
+    if transaction.status != RazorpayTransaction.TransactionStatusChoices.COMPLETED:
+        return
+
+    kinds = RazorpayTransaction.TransactionTypeChoices
+    if transaction.type == kinds.ANNUAL_MEMBERSHIP:
+        fulfil(transaction, notify=notify)
+    elif transaction.type == kinds.TEAM_REGISTRATION:
+        update_transaction_team_registration(transaction)
+    elif transaction.type == kinds.PLAYER_REGISTRATION:
+        update_transaction_player_registrations(transaction)
+    elif transaction.type == kinds.PARTIAL_TEAM_REGISTRATION:
+        update_transaction_partial_team_registration(transaction)
+    elif transaction.type == kinds.FORM_PAYMENT:
+        # Lazy import to avoid a transaction <-> forms import cycle.
+        from server.forms.utils import mark_form_response_paid
+
+        mark_form_response_paid(transaction)
 
 
 def update_transaction_team_registration(
