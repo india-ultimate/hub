@@ -1,6 +1,7 @@
 import { useParams } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
-import { inboxStack } from "solid-heroicons/solid";
+import { Icon } from "solid-heroicons";
+import { heart, inboxStack } from "solid-heroicons/solid";
 import { createEffect, createSignal, For, Show } from "solid-js";
 
 import { minAge, minAgeWarning } from "../../constants";
@@ -8,12 +9,10 @@ import { fetchPlayerById, fetchSeasonPlans, fetchSeasons } from "../../queries";
 import { displayDate, getAge } from "../../utils";
 import Info from "../alerts/Info";
 import Breadcrumbs from "../Breadcrumbs";
-import RazorpayPayment from "../RazorpayPayment";
 import PillTabs from "../tabs/PillTabs";
 import GroupMembership from "./GroupMembership";
 import ServiceRequestModal from "./ServiceRequestModal";
-
-const rupees = paise => (paise / 100).toLocaleString("en-IN");
+import TierPicker from "./TierPicker";
 
 const Membership = () => {
   const [player, setPlayer] = createSignal();
@@ -199,69 +198,55 @@ const Membership = () => {
                 </div>
               }
             >
-              <div class="my-4 space-y-4">
-                <For each={onSale()}>
-                  {plan => (
-                    <div class="rounded-lg border p-4 dark:border-gray-700">
-                      <h3 class="text-lg font-medium">{plan.name}</h3>
-                      <p class="my-2 text-sm text-gray-600 dark:text-gray-400">
-                        {plan.description}
-                      </p>
-                      <p class="text-sm font-semibold">
-                        ₹ {rupees(plan.amount)}
-                      </p>
-                      <Show
-                        when={plan.available_to_player}
-                        fallback={
-                          <p class="mt-2 text-sm text-gray-500">
-                            {plan.requires_grant
-                              ? "Needs approval before it can be bought."
-                              : "Not available for you this season."}
-                          </p>
-                        }
-                      >
-                        <RazorpayPayment
-                          disabled={ageRestricted()}
-                          season={season()}
-                          items={[
-                            { player_id: player().id, plan_type: plan.slug }
-                          ]}
-                          buttonText={
-                            plan.upgrade_amount
-                              ? `Upgrade from ${
-                                  plan.upgrade_from
-                                } — pay ₹ ${rupees(plan.upgrade_amount)}`
-                              : `Pay ₹ ${rupees(plan.amount)}`
-                          }
-                          setStatus={setStatus}
-                          successCallback={() => {
-                            playerQuery.refetch();
-                            plansQuery.refetch();
-                          }}
-                        />
-                      </Show>
-                    </div>
-                  )}
-                </For>
-              </div>
+              <TierPicker
+                plans={onSale()}
+                season={season()}
+                playerId={player().id}
+                heldSlug={
+                  membership()?.season === season()?.id
+                    ? membership()?.tier
+                    : null
+                }
+                disabled={ageRestricted()}
+                setStatus={setStatus}
+                onPaid={() => {
+                  playerQuery.refetch();
+                  plansQuery.refetch();
+                }}
+              />
             </Show>
+            <p class="mt-2 text-sm">{status()}</p>
 
-            {/* `sponsored` is computed server-side as "holds a grant for the
-                season they would buy next", so someone flagged in a past
-                season can ask again. */}
-            <Show when={!player()?.sponsored}>
-              <div class="my-4 rounded-lg bg-blue-50 p-4 text-sm dark:bg-gray-800">
-                <p class="mb-2">
-                  If you, or players on your college/NGO team, need assistance
-                  in paying this, you can ask for a discounted membership.
-                </p>
+            {/* Open to anyone: a request can cover this person, others, or
+                both, whatever they hold now. */}
+            <section class="mt-10 flex flex-col gap-4 rounded-2xl border border-blue-100 bg-blue-50 p-6 dark:border-gray-700 dark:bg-gray-800 sm:flex-row sm:items-center sm:justify-between">
+              <div class="flex gap-4">
+                <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 dark:bg-gray-700">
+                  <Icon
+                    path={heart}
+                    class="h-5 w-5 text-blue-600 dark:text-blue-400"
+                    aria-hidden="true"
+                  />
+                </span>
+                <div>
+                  <h2 class="text-base font-semibold text-gray-900 dark:text-white">
+                    Need help with the fee?
+                  </h2>
+                  <p class="mt-1 max-w-xl text-sm text-gray-600 dark:text-gray-300">
+                    If you'd like to request a discounted membership for
+                    yourself and/or others, send us a request. Each approval
+                    covers one season.
+                  </p>
+                </div>
+              </div>
+              <div class="shrink-0">
                 <ServiceRequestModal
                   currentPlayer={player()}
                   season={season()}
+                  buttonText="Request a discounted membership"
                 />
               </div>
-            </Show>
-            <p>{status()}</p>
+            </section>
           </div>
         </Show>
 

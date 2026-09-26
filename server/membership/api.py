@@ -7,7 +7,7 @@ from django.shortcuts import get_object_or_404
 from ninja import Router
 
 from server.core.models import Guardianship, Player
-from server.membership import catalog, pricing
+from server.membership import catalog, pricing, sponsorship
 from server.membership.models import Membership, SponsorshipGrant
 from server.membership.schema import MembershipPlanSchema, MembershipSchema
 from server.season.models import Season
@@ -70,8 +70,14 @@ def season_plans(
                 slug=plan.type.slug,
                 name=plan.type.name,
                 description=plan.type.description,
+                features=plan.type.feature_list(),
                 amount=plan.amount,
                 requires_grant=plan.type.requires_grant,
+                granted=bool(
+                    player is not None
+                    and plan.type.requires_grant
+                    and sponsorship.has_grant(player, season)
+                ),
                 available_to_player=available,
                 upgrade_from=upgrade_from,
                 upgrade_amount=upgrade_amount,

@@ -25,6 +25,11 @@ class MembershipType(models.Model):
     slug = models.SlugField(unique=True)
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
+    features = models.TextField(
+        blank=True,
+        help_text="One per line, shown as a checklist. Start a line with '-' for "
+        "something this tier does not include.",
+    )
     requires_grant = models.BooleanField(default=False)
     display_order = models.PositiveSmallIntegerField(default=0)
 
@@ -33,6 +38,9 @@ class MembershipType(models.Model):
 
     def __str__(self) -> str:
         return self.name
+
+    def feature_list(self) -> list[str]:
+        return [line.strip() for line in self.features.splitlines() if line.strip()]
 
     def allows(self, scope: str) -> bool:
         # A forward query (rather than the `scopes` related manager) sidesteps

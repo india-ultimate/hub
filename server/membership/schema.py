@@ -10,8 +10,12 @@ class MembershipPlanSchema(Schema):
     slug: str
     name: str
     description: str
+    features: list[str]
     amount: int
     requires_grant: bool
+    # A grant-only tier the player holds a grant for: the page shows it in
+    # place of Regular, and hides grant-only tiers otherwise.
+    granted: bool = False
     available_to_player: bool
     upgrade_from: str | None = None
     upgrade_amount: int | None = None

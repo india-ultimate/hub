@@ -30,6 +30,7 @@ from server.duplicates.models import (
     DuplicateCluster,
     EmailAlias,
 )
+from server.membership import sponsorship
 from server.season.models import Season
 from server.servicerequests.models import ServiceRequestStatus
 from server.task.models import Task
@@ -337,10 +338,19 @@ class TestIntegration(BaseCase):
         self.assert_text("Patron member")
         self.assert_text("Regular Annual Membership")
         self.assert_text("Community Membership")
-        # Discounted is listed, but without a grant it cannot be bought.
-        self.assert_text("Discounted Membership")
-        self.assert_text("Needs approval before it can be bought.")
+        self.assert_text("Recommended")
+        # Without a grant, the discounted tier is not shown at all.
+        self.assert_text_not_visible("Discounted Membership")
         self.assert_text("IU-26-0001", "#membership-number")
+
+        # With one, it takes Regular's place.
+        sponsorship.grant(
+            Player.objects.get(user=user), Season.objects.get(name="Season 2026-2027")
+        )
+        self.open(f"{APP_URL}/membership/{player_id}")
+        self.assert_text("Discounted Membership")
+        self.assert_text("Approved for you")
+        self.assert_text_not_visible("Regular Annual Membership")
 
     def test_login_with_otp(self) -> None:
         username, password, user_id = create_login_user()

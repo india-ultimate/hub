@@ -22,7 +22,24 @@ class TestPlansEndpoint(ApiBaseTestCase):
         response = self.client.get(f"/api/seasons/{self.s26.id}/plans?player_id={self.player.id}")
         by_slug = {plan["slug"]: plan for plan in response.json()}
         self.assertFalse(by_slug["discounted"]["available_to_player"])
+        self.assertFalse(by_slug["discounted"]["granted"])
         self.assertTrue(by_slug["regular"]["available_to_player"])
+
+    def test_a_granted_tier_says_so(self) -> None:
+        sponsorship.grant(self.player, self.s26)
+        response = self.client.get(f"/api/seasons/{self.s26.id}/plans?player_id={self.player.id}")
+        by_slug = {plan["slug"]: plan for plan in response.json()}
+        self.assertTrue(by_slug["discounted"]["granted"])
+        self.assertTrue(by_slug["discounted"]["available_to_player"])
+        # Only grant-only tiers are ever "granted".
+        self.assertFalse(by_slug["regular"]["granted"])
+
+    def test_each_tier_lists_its_features(self) -> None:
+        response = self.client.get(f"/api/seasons/{self.s26.id}/plans")
+        by_slug = {plan["slug"]: plan for plan in response.json()}
+        self.assertIn("Play in NCS tournaments", by_slug["regular"]["features"])
+        # A "-" line is something the tier leaves out.
+        self.assertTrue(any(f.startswith("-") for f in by_slug["community"]["features"]))
 
     def test_a_stranger_cannot_price_someone_else(self) -> None:
         self.client.force_login(User.objects.create(username="nosy", email="nosy@example.com"))
