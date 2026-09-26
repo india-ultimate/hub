@@ -31,6 +31,7 @@ class TestInvalidateMemberships(TestCase):
     def test_invalidate_memberships(self) -> None:
         start_date = "2001-01-01"
         end_date = "2001-12-31"
+        season = Season.objects.get(name="Season 2023-2024")
         for i in range(10):
             user = User.objects.create(username=f"user-{i}")
             player = Player.objects.create(
@@ -38,6 +39,7 @@ class TestInvalidateMemberships(TestCase):
             )
             Membership.objects.create(
                 player=player,
+                season=season,
                 start_date=start_date,
                 end_date=end_date,
                 is_active=True,
@@ -77,10 +79,10 @@ class MergeUsersCommandTestCase(TestCase):
         self.player2 = Player.objects.create(
             user=self.user2, date_of_birth=datetime.date(1995, 5, 5), ultimate_central_id=100
         )
+        season = Season.objects.get(name="Season 2023-2024")
         self.membership1 = Membership.objects.create(
             player=self.player1,
-            membership_number="M12345",
-            is_annual=True,
+            season=season,
             start_date=datetime.date(2023, 1, 1),
             end_date=datetime.date(2023, 12, 31),
             is_active=False,
@@ -90,8 +92,7 @@ class MergeUsersCommandTestCase(TestCase):
         )
         self.membership2 = Membership.objects.create(
             player=self.player2,
-            membership_number="M67890",
-            is_annual=True,
+            season=season,
             start_date=datetime.date(2023, 1, 1),
             end_date=datetime.date(2023, 12, 31),
             is_active=True,
@@ -240,7 +241,7 @@ class TestActivateMemberships(TestCase):
         self.fixtures_dir = Path(__file__).parent.joinpath("fixtures")
         self.fixture = self.fixtures_dir / "import-players.csv"
         ind_tz = datetime.timezone(datetime.timedelta(hours=5, minutes=30), name="IND")
-        Season.objects.create(
+        self.season = Season.objects.create(
             name="Season 24-25",
             start_date=f"{datetime.datetime.now(ind_tz).year}-08-01",
             end_date=f"{datetime.datetime.now(ind_tz).year+1}-07-30",
@@ -258,8 +259,11 @@ class TestActivateMemberships(TestCase):
         self.assertEqual(n_players, Membership.objects.count())
 
     def tearDown(self) -> None:
-        # Clean up test data
-        Season.objects.all().delete()
+        # Clean up test data. Memberships protect their season, so go
+        # first; delete only the season this test created, not the ones
+        # the catalog migration seeded (they protect their own plans).
+        Membership.objects.all().delete()
+        self.season.delete()
 
 
 class TestAddToSeriesRoster(TestCase):
@@ -268,7 +272,7 @@ class TestAddToSeriesRoster(TestCase):
         self.fixtures_dir = Path(__file__).parent.joinpath("fixtures")
         self.fixture = self.fixtures_dir / "import-players.csv"
         ind_tz = datetime.timezone(datetime.timedelta(hours=5, minutes=30), name="IND")
-        Season.objects.create(
+        self.season = Season.objects.create(
             name="Season 24-25",
             start_date=f"{datetime.datetime.now(ind_tz).year}-08-01",
             end_date=f"{datetime.datetime.now(ind_tz).year+1}-07-30",
@@ -317,8 +321,11 @@ class TestAddToSeriesRoster(TestCase):
         self.assertEqual(n_players, self.team.players.count())
 
     def tearDown(self) -> None:
-        # Clean up test data
-        Season.objects.all().delete()
+        # Clean up test data. Memberships protect their season, so go
+        # first; delete only the season this test created, not the ones
+        # the catalog migration seeded (they protect their own plans).
+        Membership.objects.all().delete()
+        self.season.delete()
         Series.objects.all().delete()
         Team.objects.all().delete()
         SeriesRegistration.objects.all().delete()
@@ -330,7 +337,7 @@ class TestAddToEventRoster(TestCase):
         self.fixtures_dir = Path(__file__).parent.joinpath("fixtures")
         self.fixture = self.fixtures_dir / "import-players.csv"
         ind_tz = datetime.timezone(datetime.timedelta(hours=5, minutes=30), name="IND")
-        Season.objects.create(
+        self.season = Season.objects.create(
             name="Season 24-25",
             start_date=f"{datetime.datetime.now(ind_tz).year}-08-01",
             end_date=f"{datetime.datetime.now(ind_tz).year+1}-07-30",
@@ -392,8 +399,11 @@ class TestAddToEventRoster(TestCase):
         self.assertEqual(n_players, self.team.players.count())
 
     def tearDown(self) -> None:
-        # Clean up test data
-        Season.objects.all().delete()
+        # Clean up test data. Memberships protect their season, so go
+        # first; delete only the season this test created, not the ones
+        # the catalog migration seeded (they protect their own plans).
+        Membership.objects.all().delete()
+        self.season.delete()
         Series.objects.all().delete()
         Team.objects.all().delete()
         SeriesRegistration.objects.all().delete()

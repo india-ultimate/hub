@@ -67,7 +67,12 @@ class MembershipSchema(ModelSchema):
 
     class Config:
         model = Membership
-        model_fields = "__all__"
+        # membership_number and is_annual are retained on the model only
+        # for the deploy window (a still-running previous release reads
+        # the columns); they are not part of this API. Exclude rather than
+        # enumerate, so fields later tasks add (plan, amount_paid,
+        # refunded_at, ...) keep appearing here automatically.
+        model_exclude = ["membership_number", "is_annual"]
 
 
 class UserFormSchema(ModelSchema):
@@ -193,10 +198,8 @@ class PlayerSchema(ModelSchema):
 
     @staticmethod
     def resolve_membership(player: Player) -> MembershipSchema | None:
-        try:
-            return MembershipSchema.from_orm(player.membership)
-        except Membership.DoesNotExist:
-            return None
+        membership = player.current_membership
+        return MembershipSchema.from_orm(membership) if membership is not None else None
 
     vaccination: VaccinationSchema | None
 
@@ -287,10 +290,8 @@ class PlayerTinySchema(ModelSchema):
 
     @staticmethod
     def resolve_has_membership(player: Player) -> bool:
-        try:
-            return player.membership.is_active
-        except Membership.DoesNotExist:
-            return False
+        membership = player.current_membership
+        return membership is not None and membership.is_active
 
     is_minor: bool
 

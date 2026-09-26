@@ -48,7 +48,7 @@ def get_membership_status(input_csv: Path | StringIO) -> dict[str, Any] | None:
         print(f"Could not find CSV header: {EMAIL_HEADER_NAME}")
         return None
 
-    membership_statuses = dict(Player.objects.values_list("user__email", "membership__is_active"))
+    membership_statuses = dict(Player.objects.values_list("user__email", "memberships__is_active"))
 
     for email, row in csv_data.items():
         row["membership_status"] = bool(membership_statuses.get(email, False))

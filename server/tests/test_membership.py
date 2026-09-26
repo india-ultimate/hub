@@ -5,6 +5,7 @@ from django.test import TestCase
 from server.core.models import Player, User
 from server.lib.membership import get_membership_status
 from server.membership.models import Membership
+from server.season.models import Season
 
 
 class MembershipStatusTestCase(TestCase):
@@ -19,12 +20,15 @@ class MembershipStatusTestCase(TestCase):
             email_address,field1,field2
             Test1@example.com,value1,value2
         """
+        season = Season.objects.get(name="Season 2023-2024")
+
         email1 = "test1@example.com"
         user1 = User.objects.create(username=email1, email=email1)
         player1 = Player.objects.create(user=user1, date_of_birth="2001-01-01")
         Membership.objects.create(
             is_active=True,
             player=player1,
+            season=season,
             start_date="2023-01-01",
             end_date="2023-12-31",
         )
@@ -35,6 +39,7 @@ class MembershipStatusTestCase(TestCase):
         Membership.objects.create(
             is_active=False,
             player=player2,
+            season=season,
             start_date="2023-01-01",
             end_date="2023-12-31",
         )
