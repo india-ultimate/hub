@@ -49,10 +49,13 @@ class Line:
 
 
 def _membership(player: Player) -> str:
-    membership = getattr(player, "membership", None)
+    membership = player.current_membership
     if membership is None:
         return ""
-    return f"{membership.start_date}..{membership.end_date}" if membership.is_active else "expired"
+    tier = membership.plan.type.name if membership.plan is not None else "unknown tier"
+    if not membership.is_active:
+        return f"{tier}, expired"
+    return f"{tier}, {membership.start_date}..{membership.end_date}"
 
 
 def compare(keeper: User, others: list[User]) -> list[Line]:

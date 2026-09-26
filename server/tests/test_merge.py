@@ -26,6 +26,7 @@ from server.core.models import (
 )
 from server.duplicates.history import log
 from server.duplicates.merge import (
+    ROW_PREFERENCE,
     MergeBlockedError,
     MergeFieldError,
     MergeIncompleteError,
@@ -42,13 +43,19 @@ from server.duplicates.models import (
     DuplicateCluster,
     EmailAlias,
 )
-from server.membership.models import Membership
+from server.membership import sponsorship
+from server.membership.models import Membership, MembershipPlan, SponsorshipGrant
 from server.season.models import Season
 from server.servicerequests.models import ServiceRequest, ServiceRequestStatus, ServiceRequestType
 from server.tests.base import create_event, create_player, create_tournament
 from server.ticket.models import Ticket, TicketMessage
 from server.tournament.models import MatchScore, Registration, Tournament
-from server.transaction.models import ManualTransaction, PhonePeTransaction
+from server.transaction.models import (
+    ManualTransaction,
+    PhonePeTransaction,
+    RazorpayTransaction,
+    RazorpayTransactionPlayer,
+)
 from server.wrapped.models import PlayerWrapped
 
 
@@ -195,28 +202,208 @@ class TestMergeMechanics(MergeTestCase):
 
         self.assertEqual({move.label: move.moved for move in plan.moves}["server.Player.user"], 1)
 
-    def test_the_better_membership_survives(self) -> None:
-        season = Season.objects.get(name="Season 2025-2026")
-        Membership.objects.create(
-            player=self.primary_player,
+    def make_membership(self, player: Player, season: Season, **kwargs: Any) -> Membership:
+        return Membership.objects.create(
+            player=player,
             season=season,
-            start_date=datetime.date(2024, 1, 1),
-            end_date=datetime.date(2024, 12, 31),
-            is_active=False,
+            start_date=season.start_date,
+            end_date=season.end_date,
+            **kwargs,
         )
-        Membership.objects.create(
-            player=self.duplicate_player,
+
+    def make_order(self, user: User, season: Season, order_id: str) -> RazorpayTransaction:
+        return RazorpayTransaction.objects.create(
+            order_id=order_id,
+            payment_id=f"pay_{order_id}",
+            amount=75000,
+            currency="INR",
+            user=user,
             season=season,
-            start_date=datetime.date(2026, 1, 1),
-            end_date=datetime.date(2026, 12, 31),
-            is_active=True,
+            start_date=season.start_date,
+            end_date=season.end_date,
+            status=RazorpayTransaction.TransactionStatusChoices.COMPLETED,
+        )
+
+    def test_one_membership_per_season_survives_a_merge(self) -> None:
+        season = Season.objects.get(name="Season 2026-2027")
+        self.make_membership(self.primary_player, season, is_active=False, amount_paid=25000)
+        self.make_membership(self.duplicate_player, season, is_active=True, amount_paid=75000)
+
+        merge_accounts(self.primary, [self.duplicate], dry_run=False)
+
+        surviving = Membership.objects.get(player=self.primary_player, season=season)
+        self.assertTrue(surviving.is_active)
+        self.assertEqual(surviving.amount_paid, 75000)
+
+    def test_a_refunded_membership_does_not_beat_a_live_one(self) -> None:
+        season = Season.objects.get(name="Season 2026-2027")
+        self.make_membership(self.primary_player, season, is_active=True, amount_paid=25000)
+        self.make_membership(
+            self.duplicate_player,
+            season,
+            is_active=False,
+            amount_paid=0,
+            refunded_at=now(),
         )
 
         merge_accounts(self.primary, [self.duplicate], dry_run=False)
 
-        membership = Membership.objects.get(player=self.primary_player)
-        self.assertTrue(membership.is_active)
-        self.assertEqual(Membership.objects.count(), 1)
+        surviving = Membership.objects.get(player=self.primary_player, season=season)
+        self.assertIsNone(surviving.refunded_at)
+
+    def test_different_seasons_both_survive_a_merge(self) -> None:
+        s25 = Season.objects.get(name="Season 2025-2026")
+        s26 = Season.objects.get(name="Season 2026-2027")
+        self.make_membership(self.primary_player, s26, is_active=True)
+        self.make_membership(self.duplicate_player, s25, is_active=False)
+
+        merge_accounts(self.primary, [self.duplicate], dry_run=False)
+
+        self.assertEqual(
+            set(
+                Membership.objects.filter(player=self.primary_player).values_list(
+                    "season__name", flat=True
+                )
+            ),
+            {s25.name, s26.name},
+        )
+
+    def test_a_destroyed_paid_membership_is_flagged_for_staff(self) -> None:
+        season = Season.objects.get(name="Season 2026-2027")
+        weaker = self.make_membership(
+            self.primary_player, season, is_active=False, amount_paid=25000
+        )
+        self.make_membership(self.duplicate_player, season, is_active=True, amount_paid=75000)
+        line = RazorpayTransactionPlayer.objects.create(
+            transaction=self.make_order(self.primary, season, "order_lost"),
+            player=self.primary_player,
+            amount=25000,
+            membership=weaker,
+        )
+
+        merge_accounts(self.primary, [self.duplicate], dry_run=False)
+
+        line.refresh_from_db()
+        self.assertTrue(line.needs_review)
+        self.assertIn("merged", line.review_note)
+
+    def test_a_surviving_membership_keeps_its_order_line(self) -> None:
+        """The flag is for a payment with nothing left to show for it. A line
+        whose membership came through the merge must not be dragged in."""
+        season = Season.objects.get(name="Season 2026-2027")
+        kept = self.make_membership(
+            self.duplicate_player, season, is_active=True, amount_paid=75000
+        )
+        line = RazorpayTransactionPlayer.objects.create(
+            transaction=self.make_order(self.duplicate, season, "order_kept"),
+            player=self.duplicate_player,
+            amount=75000,
+            membership=kept,
+        )
+
+        merge_accounts(self.primary, [self.duplicate], dry_run=False)
+
+        line.refresh_from_db()
+        self.assertFalse(line.needs_review)
+        self.assertEqual(line.membership_id, kept.pk)
+
+    def test_the_surviving_account_takes_a_number_it_does_not_have(self) -> None:
+        self.duplicate_player.membership_number = "IU-25-0007"
+        self.duplicate_player.save(update_fields=["membership_number"])
+
+        merge_accounts(self.primary, [self.duplicate], dry_run=False)
+
+        self.primary_player.refresh_from_db()
+        self.assertEqual(self.primary_player.membership_number, "IU-25-0007")
+
+    def test_the_surviving_account_keeps_its_own_number(self) -> None:
+        self.primary_player.membership_number = "IU-24-0001"
+        self.primary_player.save(update_fields=["membership_number"])
+        self.duplicate_player.membership_number = "IU-25-0007"
+        self.duplicate_player.save(update_fields=["membership_number"])
+
+        merge_accounts(self.primary, [self.duplicate], dry_run=False)
+
+        self.primary_player.refresh_from_db()
+        self.assertEqual(self.primary_player.membership_number, "IU-24-0001")
+        # The other number is only in the snapshot now, and nothing may hand
+        # it back out: it is on signed waivers under the merged-away account.
+        self.assertFalse(Player.objects.filter(membership_number="IU-25-0007").exists())
+
+    def test_a_grant_on_each_account_leaves_one_grant(self) -> None:
+        season = Season.objects.get(name="Season 2026-2027")
+        sponsorship.grant(self.primary_player, season)
+        sponsorship.grant(self.duplicate_player, season)
+
+        merge_accounts(self.primary, [self.duplicate], dry_run=False)
+
+        self.assertTrue(sponsorship.has_grant(self.primary_player, season))
+        self.assertEqual(SponsorshipGrant.objects.filter(season=season).count(), 1)
+
+    def test_order_lines_keep_their_tier_and_amount(self) -> None:
+        season = Season.objects.get(name="Season 2026-2027")
+        plan = MembershipPlan.objects.get(season=season, type__slug="regular")
+        transaction = self.make_order(self.duplicate, season, "order_keep")
+        RazorpayTransactionPlayer.objects.create(
+            transaction=transaction, player=self.duplicate_player, plan=plan, amount=75000
+        )
+
+        merge_accounts(self.primary, [self.duplicate], dry_run=False)
+
+        line = RazorpayTransactionPlayer.objects.get(transaction=transaction)
+        self.assertEqual(line.player_id, self.primary_player.pk)
+        self.assertEqual(line.plan_id, plan.pk)
+        self.assertEqual(line.amount, 75000)
+
+    def test_both_accounts_in_one_order_leaves_a_flagged_line(self) -> None:
+        """unique_together ("transaction", "player") can only keep one of the
+        two lines, and the one it drops is a payment record. Its own
+        membership still resolves, so nothing else would notice."""
+        season = Season.objects.get(name="Season 2026-2027")
+        transaction = self.make_order(self.primary, season, "order_both")
+        for player in (self.primary_player, self.duplicate_player):
+            RazorpayTransactionPlayer.objects.create(
+                transaction=transaction, player=player, amount=75000
+            )
+
+        merge_accounts(self.primary, [self.duplicate], dry_run=False)
+
+        line = RazorpayTransactionPlayer.objects.get(transaction=transaction)
+        self.assertEqual(line.player_id, self.primary_player.pk)
+        self.assertTrue(line.needs_review)
+        self.assertIn("merging them", line.review_note)
+
+    def test_the_grant_with_a_request_survives(self) -> None:
+        season = Season.objects.get(name="Season 2026-2027")
+        request = ServiceRequest.objects.create(
+            user=self.duplicate,
+            type=ServiceRequestType.REQUEST_SPONSORED_MEMBERSHIP,
+            message="hi",
+        )
+        sponsorship.grant(self.primary_player, season)
+        sponsorship.grant(self.duplicate_player, season, request=request)
+
+        merge_accounts(self.primary, [self.duplicate], dry_run=False)
+
+        grant = SponsorshipGrant.objects.get(season=season)
+        self.assertEqual(grant.player_id, self.primary_player.pk)
+        self.assertEqual(grant.request_id, request.pk)
+
+    def test_a_live_membership_outranks_every_inactive_one(self) -> None:
+        """The ranking leans on is_active to keep a refunded row from beating
+        a live one. invalidate_memberships also deactivates paid rows whose
+        end date has passed, so inactive is not only refunded - but a live row
+        must outrank all of them, whatever they paid. A reordered
+        ROW_PREFERENCE, or a refund that stops deactivating, fails here."""
+        rank = ROW_PREFERENCE["server.Membership"]
+        season = Season.objects.get(name="Season 2026-2027")
+        fields = {"season": season, "start_date": season.start_date, "end_date": season.end_date}
+        live = Membership(is_active=True, amount_paid=25000, **fields)
+        refunded = Membership(is_active=False, amount_paid=0, refunded_at=now(), **fields)
+        expired = Membership(is_active=False, amount_paid=75000, **fields)
+
+        self.assertGreater(rank(live), rank(refunded))
+        self.assertGreater(rank(live), rank(expired))
 
     def test_a_unique_together_collision_keeps_the_primary_row(self) -> None:
         Registration.objects.create(

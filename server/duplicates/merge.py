@@ -7,7 +7,7 @@ deleted, so forgetting a table fails the transaction instead of losing data.
 """
 
 import json
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -41,6 +41,7 @@ from server.duplicates.models import (
     EmailAlias,
 )
 from server.duplicates.staff import close_request
+from server.transaction.models import RazorpayTransactionPlayer
 
 # Per M2M field name: what the absorbed row is linked to, and the primary
 # keys the survivor was already linked to. See `outbound_m2m_snapshot`.
@@ -63,7 +64,25 @@ COMMENTARY_FIELDS = (
 )
 
 ROW_PREFERENCE = {
-    "server.Membership": lambda row: (row.is_active, row.end_date),
+    # A membership that is live, covers more, and cost more is the better row.
+    # amount_paid separates an upgrade from the tier it replaced.
+    #
+    # is_active leading is what keeps a refunded row from beating a live one:
+    # a full refund deactivates the row it takes back. Nothing else in the
+    # codebase deactivates a membership except invalidate_memberships, which
+    # only touches rows whose end date has passed. A future write that
+    # deactivates a live, unrefunded membership would break that reasoning -
+    # test_a_live_membership_outranks_every_inactive_one is where it fails.
+    "server.Membership": lambda row: (
+        row.is_active,
+        row.allows("play_championships"),
+        row.amount_paid or 0,
+        row.end_date,
+    ),
+    # Two grants for one season are interchangeable as entitlements, but only
+    # one of them says which request granted it. Keep the one with the paper
+    # trail rather than the primary's by default.
+    "server.SponsorshipGrant": lambda row: (row.request_id is not None,),
     "server.Accreditation": lambda row: (row.is_valid, row.date, row.wfdf_id is not None),
     "server.Vaccination": lambda row: (row.is_vaccinated, bool(row.certificate)),
     "server.CollegeId": lambda row: (row.expiry,),
@@ -85,8 +104,10 @@ ROW_PREFERENCE = {
 O2O_PREFERENCE = {
     label: rank
     for label, rank in ROW_PREFERENCE.items()
-    if label
-    in {"server.Membership", "server.Accreditation", "server.Vaccination", "server.CollegeId"}
+    # server.Membership is deliberately absent: a person holds one per season,
+    # so it is no longer one-to-one, and resolving it here would keep a single
+    # row and delete every other season's.
+    if label in {"server.Accreditation", "server.Vaccination", "server.CollegeId"}
 }
 
 # Filled from the duplicate when the primary has nothing there. email is absent
@@ -97,6 +118,11 @@ PLAYER_FILLABLE = (
     # Filling a blank is an OR for a flag: the survivor keeps sponsorship if
     # either account had it. A merge must never take away something granted.
     "sponsored",
+    # Unique, and safe here for the same reason ultimate_central_id is:
+    # _fill_blanks runs after the duplicate's Player row is deleted. Only a
+    # blank is filled, so the primary keeps its own number if it has one, and
+    # otherwise inherits the one the person has already been given.
+    "membership_number",
     "city",
     "state_ut",
     "occupation",
@@ -228,7 +254,10 @@ class MergeFieldError(Exception):
 # Second line only: PlayerFormSchema already refuses these as input, because
 # they are administrative. Kept so that widening the form cannot quietly put a
 # fee discount on the review page.
-NOT_RESOLVABLE = frozenset({"imported_data", "sponsored"})
+# membership_number is here for a third reason: the merge itself decides
+# which of two numbers survives, and it is kept for life. Letting the review
+# page rewrite it would undo that decision, on a unique column.
+NOT_RESOLVABLE = frozenset({"imported_data", "sponsored", "membership_number"})
 
 
 def resolvable_fields() -> tuple[frozenset[str], frozenset[str]]:
@@ -352,7 +381,16 @@ class MergePlan:
 # the keeper, or deleting it on a clash, would erase that. _settle_group_rows
 # handles these explicitly instead, and the dangling-reference guard skips
 # them because it walks the same list.
-NOT_WALKED = frozenset({"server.ClusterMember.user"})
+NOT_WALKED = frozenset(
+    {
+        "server.ClusterMember.user",
+        # The link row carries a tier, an amount and the membership it bought.
+        # Moving it as a many-to-many would .add() a fresh empty row and
+        # .remove() the one holding all of that. The through model's own
+        # player foreign key is walked instead, which repoints the real row.
+        "server.RazorpayTransaction.players",
+    }
+)
 
 
 def inbound_relations(model: type[Model]) -> list[ForeignObjectRel]:
@@ -574,6 +612,16 @@ def _fill_blanks(
                 record.overwrote(target, name, was, incoming)
     if filled:
         target.save(update_fields=filled)
+
+
+def _flag_lines(lines: Iterable[RazorpayTransactionPlayer], note: str) -> None:
+    """Put an order line in front of staff, without overwriting an older note."""
+    for line in lines:
+        if line.needs_review:
+            continue
+        line.needs_review = True
+        line.review_note = note
+        line.save(update_fields=["needs_review", "review_note"])
 
 
 def references_to(model: type[Model], objects: Sequence[Model]) -> dict[str, int]:
@@ -822,12 +870,54 @@ def merge_accounts(
             # it, on whichever side lost, and the walk would then have nothing
             # left to hand over.
             teams_held = outbound_m2m_snapshot(duplicate_player, primary_player)
+            # The paid order lines of both people, read before the walk can
+            # delete a membership. RazorpayTransactionPlayer.membership is
+            # SET_NULL, so afterwards nothing says which line lost what.
+            paid_lines = set(
+                RazorpayTransactionPlayer.objects.filter(
+                    player__in=[primary_player, duplicate_player],
+                    membership__isnull=False,
+                    amount__gt=0,
+                ).values_list("pk", flat=True)
+            )
             casualties += _resolve_one_to_ones(primary_player, duplicate_player, record)
+            walked: list[Model] = []
             for rel in inbound_relations(Player):
                 moved, lost = _move_rows(rel, duplicate_player, primary_player, record)
-                casualties += lost
+                walked += lost
                 plan.record(relation_label(rel), moved, len(lost))
+            casualties += walked
             _move_outbound_m2m(duplicate_player, primary_player, record, teams_held)
+
+            # A membership the walk deleted on a unique clash was paid for.
+            # The snapshot keeps the row, but the line that bought it now
+            # points at nothing, and without this the payment is archived and
+            # forgotten instead of refunded.
+            _flag_lines(
+                RazorpayTransactionPlayer.objects.filter(
+                    pk__in=paid_lines, membership__isnull=True
+                ),
+                "The membership this paid for was removed when two accounts "
+                "were merged. Refund it or apply it by hand.",
+            )
+            # Both accounts were in one order. unique_together
+            # ("transaction", "player") means one of the two lines could not
+            # move, so it is in the snapshot and no longer in the audit trail,
+            # while its own membership still resolves and the flag above never
+            # sees it. The line that survived says the order needs a look.
+            _flag_lines(
+                RazorpayTransactionPlayer.objects.filter(
+                    transaction_id__in=[
+                        row.transaction_id
+                        for row in walked
+                        if isinstance(row, RazorpayTransactionPlayer)
+                    ],
+                    player=primary_player,
+                ),
+                "Both accounts were in this order, so merging them left one "
+                "line where there were two. Check what was paid for whom.",
+            )
+
             # Checked here rather than after the merge: once the row is gone
             # so is anything the walk failed to move, and the cascade would
             # have taken it silently.
