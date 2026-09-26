@@ -143,11 +143,11 @@ const RazorpayPayment = props => {
   return (
     <>
       <button
-        class={`my-5 block rounded-lg bg-${
-          props.buttonColor || "blue"
-        }-600 px-3 py-2.5 text-center text-sm font-medium text-white hover:bg-${
-          props.buttonColor || "blue"
-        }-700  ${
+        class={`block rounded-lg bg-${props.buttonColor || "blue"}-600 ${
+          props.large
+            ? "mx-auto w-full max-w-md px-6 py-4 text-base font-semibold shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-300"
+            : "my-5 px-3 py-2.5 text-sm font-medium"
+        } text-center text-white hover:bg-${props.buttonColor || "blue"}-700  ${
           props.disabled || loading()
             ? "cursor-not-allowed bg-gray-400 hover:bg-gray-500"
             : ""

@@ -6,8 +6,8 @@ import RazorpayPayment from "../RazorpayPayment";
 
 const rupees = paise => (paise / 100).toLocaleString("en-IN");
 
-// The tier offered to most people, and the one a granted tier stands in for.
-const RECOMMENDED = "regular";
+// The tier selected to start with, and the one a granted tier stands in for.
+const DEFAULT_TIER = "regular";
 
 // A feature line starting with "-" is something the tier does not include.
 const Feature = props => {
@@ -47,8 +47,7 @@ const TierCard = props => {
         "cursor-pointer hover:shadow-lg": !disabled(),
         "cursor-not-allowed opacity-60": disabled(),
         "border-blue-600 ring-2 ring-blue-600 shadow-lg": props.selected,
-        "border-gray-200 dark:border-gray-700": !props.selected,
-        "order-first md:order-none md:-my-3 md:py-9": props.featured
+        "border-gray-200 dark:border-gray-700": !props.selected
       }}
     >
       <input
@@ -60,9 +59,17 @@ const TierCard = props => {
         disabled={disabled()}
         onChange={() => props.onSelect(plan().slug)}
       />
-      <Show when={props.featured}>
-        <span class="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-blue-600 px-3 py-1 text-xs font-semibold text-white">
-          {plan().granted ? "Approved for you" : "Recommended"}
+      {/* Only the selection is highlighted; no tier is pushed over another. */}
+      <Show when={props.selected || plan().granted}>
+        <span
+          class="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold"
+          classList={{
+            "bg-blue-600 text-white": props.selected,
+            "bg-blue-100 text-blue-800 dark:bg-gray-700 dark:text-blue-300":
+              !props.selected
+          }}
+        >
+          {plan().granted ? "Approved for you" : "Selected"}
         </span>
       </Show>
 
@@ -112,32 +119,32 @@ const TierCard = props => {
 };
 
 /**
- * The tiers as a three-column comparison, cheapest to dearest. Regular sits in
- * the middle and starts selected; a granted tier (Discounted) takes its place
+ * The tiers as a three-column comparison, dearest first so Patron is seen
+ * first. Regular starts selected; a granted tier (Discounted) takes its place
  * and its selection. A grant-only tier the player has no grant for is never
  * shown.
  */
 const TierPicker = props => {
   const plans = () => props.plans ?? [];
   const granted = () => plans().find(p => p.requires_grant && p.granted);
-  const featuredSlug = () => granted()?.slug ?? RECOMMENDED;
+  const defaultSlug = () => granted()?.slug ?? DEFAULT_TIER;
 
   const lineup = () =>
     plans()
       .filter(p =>
-        p.requires_grant ? p.granted : !(granted() && p.slug === RECOMMENDED)
+        p.requires_grant ? p.granted : !(granted() && p.slug === DEFAULT_TIER)
       )
-      .sort((a, b) => a.amount - b.amount);
+      .sort((a, b) => b.amount - a.amount);
 
   const [selected, setSelected] = createSignal();
 
-  // Start on the featured tier, or the first one they can buy, and move off
+  // Start on the default tier, or the first one they can buy, and move off
   // a tier that stops being buyable (after a purchase, say).
   createEffect(() => {
     const buyable = lineup().filter(p => p.available_to_player);
     if (buyable.some(p => p.slug === selected())) return;
     setSelected(
-      (buyable.find(p => p.slug === featuredSlug()) ?? buyable[0])?.slug
+      (buyable.find(p => p.slug === defaultSlug()) ?? buyable[0])?.slug
     );
   });
 
@@ -155,7 +162,6 @@ const TierPicker = props => {
             <TierCard
               plan={plan}
               selected={plan.slug === selected()}
-              featured={plan.slug === featuredSlug()}
               held={props.heldSlug === plan.slug}
               onSelect={setSelected}
             />
@@ -165,14 +171,15 @@ const TierPicker = props => {
 
       <Show keyed when={selectedPlan()}>
         {plan => (
-          <div class="mt-6 flex flex-col items-start gap-4 rounded-2xl bg-gray-50 p-5 dark:bg-gray-800 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p class="text-sm text-gray-500 dark:text-gray-400">Selected</p>
-              <p class="font-semibold text-gray-900 dark:text-white">
-                {plan.name} · {props.season?.name}
-              </p>
-            </div>
+          <div class="mt-8 flex flex-col items-center gap-3 text-center">
+            <p class="text-sm text-gray-500 dark:text-gray-400">
+              <span class="font-semibold text-gray-900 dark:text-white">
+                {plan.name}
+              </span>{" "}
+              for {props.season?.name}
+            </p>
             <RazorpayPayment
+              large
               disabled={props.disabled}
               season={props.season}
               items={[{ player_id: props.playerId, plan_type: plan.slug }]}

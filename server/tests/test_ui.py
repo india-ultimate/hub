@@ -338,7 +338,9 @@ class TestIntegration(BaseCase):
         self.assert_text("Patron member")
         self.assert_text("Regular Annual Membership")
         self.assert_text("Community Membership")
-        self.assert_text("Recommended")
+        # Regular starts selected, but nothing is labelled as the one to buy.
+        self.assert_text("Selected")
+        self.assert_text_not_visible("Recommended")
         # Without a grant, the discounted tier is not shown at all.
         self.assert_text_not_visible("Discounted Membership")
         self.assert_text("IU-26-0001", "#membership-number")
