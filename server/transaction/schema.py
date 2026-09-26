@@ -92,17 +92,6 @@ class ManualTransactionValidationFormSchema(Schema):
     validation_comment: str
 
 
-class ManualTransactionLiteSchema(ModelSchema):
-    class Config:
-        model = ManualTransaction
-        model_fields = ["transaction_id", "amount", "currency"]
-
-
-class PhonePeOrderSchema(Schema):
-    redirect_url: str
-    amount: int
-
-
 class RazorpayOrderSchema(Schema):
     order_id: str
     amount: int
@@ -121,21 +110,16 @@ class RazorpayCallbackSchema(Schema):
     razorpay_signature: str
 
 
-class AnnualMembershipSchema(Schema):
+class MembershipOrderItem(Schema):
     player_id: int
+    plan_type: str
+
+
+class MembershipOrderSchema(Schema):
+    """What each person is buying. The server prices it; no amount is sent."""
+
     season_id: int
-    is_supporter: bool = False
-
-
-class EventMembershipSchema(Schema):
-    player_id: int
-    event_id: int
-
-
-class GroupMembershipSchema(Schema):
-    player_ids: list[int]
-    season_id: int
-    is_supporter: bool = False
+    items: list[MembershipOrderItem]
 
 
 class TeamRegistrationSchema(Schema):

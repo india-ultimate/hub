@@ -1,6 +1,7 @@
 import datetime
 import random
 import string
+from http import HTTPStatus
 from typing import Any, TypeVar
 
 from django.test import TestCase
@@ -204,3 +205,11 @@ class ApiBaseTestCase(TestCase):
         )
         self.tournament = create_tournament(self.event)
         self.season = Season.objects.get(name="Season 2024-2025")
+
+    def login(self) -> None:
+        response = self.client.post(
+            "/api/login",
+            data={"username": self.username, "password": self.password, "forum_login": False},
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, HTTPStatus.OK, response.content)

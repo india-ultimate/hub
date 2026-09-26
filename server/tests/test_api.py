@@ -16,14 +16,15 @@ from django.utils.timezone import now
 from server.constants import (
     ANNUAL_MEMBERSHIP_AMOUNT,
     EVENT_MEMBERSHIP_AMOUNT,
-    SPONSORED_ANNUAL_MEMBERSHIP_AMOUNT,
 )
 from server.core.accounts import find_login_user
 from server.core.models import Guardianship, Player, UCPerson, User
 from server.duplicates.merge import merge_accounts
 from server.duplicates.models import EmailAlias
+from server.membership import sponsorship
 from server.membership.models import Membership
 from server.passkey_utils import ClientResponse
+from server.season.models import Season
 from server.tests.base import ApiBaseTestCase, create_pool, fake_id, fake_order, start_tournament
 from server.tests.test_membership import MembershipStatusTestCase
 from server.tournament.models import Event, Match, UCRegistration
@@ -540,107 +541,38 @@ class TestPayment(ApiBaseTestCase):
     def setUp(self) -> None:
         super().setUp()
         self.client.force_login(self.user)
+        self.on_sale = Season.objects.get(name="Season 2026-2027")
+
+    def order(self, items: list[dict[str, Any]], amount: int) -> Any:
+        with mock.patch(
+            "server.transaction.client.razorpay.create_order",
+            return_value=fake_order(amount),
+        ) as f:
+            response = self.client.post(
+                "/api/transactions/razorpay",
+                data={"season_id": self.on_sale.id, "items": items},
+                content_type="application/json",
+            )
+        self.create_order = f
+        return response
 
     def test_create_order_no_player(self) -> None:
-        c = self.client
-
-        player_id = 200
-
-        # Player does not exist
-        with mock.patch(
-            "server.transaction.client.razorpay.create_order",
-            return_value=mock.MagicMock(email=self.username),
-        ):
-            response = c.post(
-                "/api/transactions/razorpay",
-                data={
-                    "player_id": player_id,
-                    "season_id": self.season.id,
-                },
-                content_type="application/json",
-            )
+        response = self.order([{"player_id": 200, "plan_type": "regular"}], 0)
         self.assertEqual(422, response.status_code)
-        self.assertEqual("Player does not exist!", response.json()["message"])
-
-    def test_create_manual_transaction_player_exists(self) -> None:
-        c = self.client
-        player = self.player
-        amount = ANNUAL_MEMBERSHIP_AMOUNT
-        transaction_id = "123123123"
-        response = c.post(
-            f"/api/transactions/manual/{transaction_id}",
-            data={
-                "player_id": player.id,
-                "season_id": self.season.id,
-            },
-            content_type="application/json",
+        self.assertEqual(
+            "Some players couldn't be found in the DB: [200]", response.json()["message"]
         )
-        self.assertEqual(200, response.status_code)
-        order_data = response.json()
-        self.assertIn("amount", order_data)
-        self.assertIn("transaction_id", order_data)
-        transaction_id = order_data["transaction_id"]
-        transaction = ManualTransaction.objects.get(transaction_id=transaction_id)
-        self.assertEqual(self.user, transaction.user)
-        self.assertEqual(amount, transaction.amount)
-        self.assertIn(player, transaction.players.all())
-        self.assertFalse(transaction.validated)
-        self.assertEqual("2024-08-01", player.membership.start_date.strftime("%Y-%m-%d"))
-        self.assertEqual("2025-07-31", player.membership.end_date.strftime("%Y-%m-%d"))
-
-    def test_create_manual_transaction_membership_exists(self) -> None:
-        c = self.client
-        player = self.player
-        membership = Membership.objects.create(
-            player=player, start_date="2022-01-01", end_date="2022-12-31"
-        )
-        amount = ANNUAL_MEMBERSHIP_AMOUNT
-        transaction_id = "123123123"
-        response = c.post(
-            f"/api/transactions/manual/{transaction_id}",
-            data={
-                "player_id": player.id,
-                "season_id": self.season.id,
-            },
-            content_type="application/json",
-        )
-        self.assertEqual(200, response.status_code)
-        order_data = response.json()
-        self.assertIn("amount", order_data)
-        self.assertIn("transaction_id", order_data)
-        transaction_id = order_data["transaction_id"]
-        transaction = ManualTransaction.objects.get(transaction_id=transaction_id)
-        self.assertEqual(self.user, transaction.user)
-        self.assertEqual(amount, transaction.amount)
-        self.assertIn(player, transaction.players.all())
-        self.assertFalse(transaction.validated)
-        membership.refresh_from_db()
-        self.assertEqual("2024-08-01", membership.start_date.strftime("%Y-%m-%d"))
-        self.assertEqual("2025-07-31", membership.end_date.strftime("%Y-%m-%d"))
 
     def test_create_order_player_exists(self) -> None:
-        c = self.client
         player = self.player
-        amount = ANNUAL_MEMBERSHIP_AMOUNT
-        with mock.patch(
-            "server.transaction.client.razorpay.create_order",
-            return_value=fake_order(amount),
-        ) as f:
-            response = c.post(
-                "/api/transactions/razorpay",
-                data={
-                    "player_id": player.id,
-                    "season_id": self.season.id,
-                },
-                content_type="application/json",
-            )
-        f.assert_called_once_with(amount, receipt=mock.ANY, notes=mock.ANY)
+        amount = 75000
+        response = self.order([{"player_id": player.id, "plan_type": "regular"}], amount)
+        self.create_order.assert_called_once_with(amount, receipt=mock.ANY, notes=mock.ANY)
         self.assertEqual(200, response.status_code)
         order_data = response.json()
         self.assertIn("amount", order_data)
         self.assertIn("order_id", order_data)
-        order_id = order_data["order_id"]
-        transaction = RazorpayTransaction.objects.get(order_id=order_id)
+        transaction = RazorpayTransaction.objects.get(order_id=order_data["order_id"])
         self.assertEqual(self.user, transaction.user)
         self.assertEqual(amount, transaction.amount)
         self.assertIn(player, transaction.players.all())
@@ -648,197 +580,25 @@ class TestPayment(ApiBaseTestCase):
             RazorpayTransaction.TransactionStatusChoices.PENDING,
             transaction.status,
         )
-        self.assertEqual("2024-08-01", transaction.start_date.strftime("%Y-%m-%d"))
-        self.assertEqual("2025-07-31", transaction.end_date.strftime("%Y-%m-%d"))
-        self.assertIsNotNone(transaction.season)
-        if transaction.season is not None:
-            self.assertEqual(self.season.id, transaction.season.id)
+        self.assertEqual(self.on_sale.start_date, transaction.start_date)
+        self.assertEqual(self.on_sale.end_date, transaction.end_date)
+        self.assertEqual(self.on_sale, transaction.season)
+        self.assertFalse(Membership.objects.filter(player=player).exists())
 
     def test_create_order_sponsored_player_exists(self) -> None:
-        c = self.client
         player = self.player
-        player.sponsored = True
-        player.save()
-        amount = SPONSORED_ANNUAL_MEMBERSHIP_AMOUNT
-        with mock.patch(
-            "server.transaction.client.razorpay.create_order",
-            return_value=fake_order(amount),
-        ) as f:
-            response = c.post(
-                "/api/transactions/razorpay",
-                data={
-                    "player_id": player.id,
-                    "season_id": self.season.id,
-                },
-                content_type="application/json",
-            )
-        f.assert_called_once_with(amount, receipt=mock.ANY, notes=mock.ANY)
+        sponsorship.grant(player, self.on_sale)
+        amount = 30000
+        response = self.order([{"player_id": player.id, "plan_type": "discounted"}], amount)
+        self.create_order.assert_called_once_with(amount, receipt=mock.ANY, notes=mock.ANY)
         self.assertEqual(200, response.status_code)
-        order_data = response.json()
-        self.assertIn("amount", order_data)
-        self.assertIn("order_id", order_data)
-        order_id = order_data["order_id"]
-        transaction = RazorpayTransaction.objects.get(order_id=order_id)
-        self.assertEqual(self.user, transaction.user)
+        transaction = RazorpayTransaction.objects.get(order_id=response.json()["order_id"])
         self.assertEqual(amount, transaction.amount)
         self.assertIn(player, transaction.players.all())
-        self.assertEqual(
-            RazorpayTransaction.TransactionStatusChoices.PENDING,
-            transaction.status,
-        )
-        self.assertEqual("2024-08-01", transaction.start_date.strftime("%Y-%m-%d"))
-        self.assertEqual("2025-07-31", transaction.end_date.strftime("%Y-%m-%d"))
-        self.assertIsNotNone(transaction.season)
-        if transaction.season is not None:
-            self.assertEqual(self.season.id, transaction.season.id)
-
-    def test_create_order_event_membership_no_player(self) -> None:
-        c = self.client
-
-        player_id = 200
-        event_id = 20
-
-        # Player does not exist
-        with mock.patch(
-            "server.transaction.client.razorpay.create_order",
-            return_value=mock.MagicMock(email=self.username),
-        ):
-            response = c.post(
-                "/api/transactions/razorpay",
-                data={
-                    "player_id": player_id,
-                    "event_id": event_id,
-                },
-                content_type="application/json",
-            )
-        self.assertEqual(422, response.status_code)
-        self.assertEqual("Player does not exist!", response.json()["message"])
-
-    def test_create_order_event_membership_no_event(self) -> None:
-        c = self.client
-        event_id = 20
-
-        with mock.patch(
-            "server.transaction.client.razorpay.create_order",
-            return_value=fake_order(0),
-        ):
-            response = c.post(
-                "/api/transactions/razorpay",
-                data={
-                    "player_id": self.player.id,
-                    "event_id": event_id,
-                },
-                content_type="application/json",
-            )
-        self.assertEqual(422, response.status_code)
-        self.assertEqual("Event does not exist!", response.json()["message"])
-
-    def test_create_order_event_membership(self) -> None:
-        c = self.client
-        # Player exists, event exists, membership does not exist
-        player = self.player
-        event = Event.objects.create(
-            start_date="2023-09-08",
-            end_date="2023-09-10",
-            title="South Regionals",
-            team_registration_start_date="2023-08-01",
-            team_registration_end_date="2023-08-10",
-            player_registration_start_date="2023-08-12",
-            player_registration_end_date="2023-08-30",
-        )
-        event.refresh_from_db()
-        amount = EVENT_MEMBERSHIP_AMOUNT
-
-        with mock.patch(
-            "server.transaction.client.razorpay.create_order",
-            return_value=fake_order(amount),
-        ) as f:
-            response = c.post(
-                "/api/transactions/razorpay",
-                data={
-                    "player_id": player.id,
-                    "event_id": event.id,
-                },
-                content_type="application/json",
-            )
-        f.assert_called_once_with(amount, receipt=mock.ANY, notes=mock.ANY)
-        self.assertEqual(200, response.status_code)
-        order_data = response.json()
-        self.assertIn("amount", order_data)
-        self.assertIn("order_id", order_data)
-        order_id = order_data["order_id"]
-        transaction = RazorpayTransaction.objects.get(order_id=order_id)
-        self.assertEqual(self.user, transaction.user)
-        self.assertIn(player, transaction.players.all())
-        self.assertEqual(player.membership.start_date, event.start_date)
-        self.assertEqual(player.membership.end_date, event.end_date)
-        self.assertFalse(player.membership.is_annual)
-        self.assertEqual(player.membership.event, event)
-        self.assertEqual(transaction.event, event)
-        self.assertEqual(
-            RazorpayTransaction.TransactionStatusChoices.PENDING,
-            transaction.status,
-        )
-        self.assertEqual(event.start_date, transaction.start_date)
-        self.assertEqual(event.end_date, transaction.end_date)
-
-    def test_create_manual_transaction_event_membership(self) -> None:
-        c = self.client
-        # Player exists, event exists, membership does not exist
-        player = self.player
-        event = Event.objects.create(
-            start_date="2023-09-08",
-            end_date="2023-09-10",
-            title="South Regionals",
-            team_registration_start_date="2023-08-01",
-            team_registration_end_date="2023-08-10",
-            player_registration_start_date="2023-08-12",
-            player_registration_end_date="2023-08-30",
-        )
-        event.refresh_from_db()
-        transaction_id = "1231231234"
-
-        response = c.post(
-            f"/api/transactions/manual/{transaction_id}",
-            data={
-                "player_id": player.id,
-                "event_id": event.id,
-            },
-            content_type="application/json",
-        )
-        self.assertEqual(200, response.status_code)
-        order_data = response.json()
-        self.assertIn("amount", order_data)
-        self.assertIn("transaction_id", order_data)
-        transaction_id = order_data["transaction_id"]
-        transaction = ManualTransaction.objects.get(transaction_id=transaction_id)
-        self.assertEqual(self.user, transaction.user)
-        self.assertIn(player, transaction.players.all())
-        self.assertEqual(player.membership.start_date, event.start_date)
-        self.assertEqual(player.membership.end_date, event.end_date)
-        self.assertFalse(player.membership.is_annual)
-        self.assertEqual(player.membership.event, event)
-        self.assertEqual(transaction.event, event)
-        self.assertFalse(transaction.validated)
 
     def test_create_order_group_membership_missing_players(self) -> None:
-        c = self.client
-
         player_ids = [200, 220, 230, 225]
-
-        # Player does not exist
-        with mock.patch(
-            "server.transaction.client.razorpay.create_order",
-            return_value=mock.MagicMock(email=self.username),
-        ):
-            response = c.post(
-                "/api/transactions/razorpay",
-                data={
-                    "player_ids": player_ids,
-                    "season_id": self.season.id,
-                },
-                content_type="application/json",
-            )
+        response = self.order([{"player_id": id_, "plan_type": "regular"} for id_ in player_ids], 0)
         self.assertEqual(422, response.status_code)
         self.assertEqual(
             "Some players couldn't be found in the DB: [200, 220, 225, 230]",
@@ -846,81 +606,30 @@ class TestPayment(ApiBaseTestCase):
         )
 
     def test_create_order_group_membership(self) -> None:
-        c = self.client
         player_ids = [200, 220, 230, 225]
 
         for id_ in player_ids:
             username = str(uuid.uuid4())[:8]
             user = User.objects.create(username=username)
             date_of_birth = "2001-01-01"
-            player = Player.objects.create(id=id_, user=user, date_of_birth=date_of_birth)
+            Player.objects.create(id=id_, user=user, date_of_birth=date_of_birth)
 
-        amount = ANNUAL_MEMBERSHIP_AMOUNT * len(player_ids)
-        with mock.patch(
-            "server.transaction.client.razorpay.create_order",
-            return_value=fake_order(amount),
-        ) as f:
-            response = c.post(
-                "/api/transactions/razorpay",
-                data={
-                    "player_ids": player_ids,
-                    "season_id": self.season.id,
-                },
-                content_type="application/json",
-            )
-        f.assert_called_once_with(amount, receipt=mock.ANY, notes=mock.ANY)
+        amount = 75000 * len(player_ids)
+        response = self.order(
+            [{"player_id": id_, "plan_type": "regular"} for id_ in player_ids], amount
+        )
+        self.create_order.assert_called_once_with(amount, receipt=mock.ANY, notes=mock.ANY)
         self.assertEqual(200, response.status_code)
-        order_data = response.json()
-        self.assertIn("amount", order_data)
-        self.assertIn("order_id", order_data)
-        order_id = order_data["order_id"]
-        transaction = RazorpayTransaction.objects.get(order_id=order_id)
+        transaction = RazorpayTransaction.objects.get(order_id=response.json()["order_id"])
         self.assertEqual(self.user, transaction.user)
-        self.assertIsNotNone(transaction.start_date)
-        self.assertIsNotNone(transaction.end_date)
-        for player_id in player_ids:
-            player = Player.objects.get(id=player_id)
-            self.assertIn(player, transaction.players.all())
-            self.assertEqual(player.membership.start_date, transaction.start_date)
-            self.assertEqual(player.membership.end_date, transaction.end_date)
-            self.assertTrue(player.membership.is_annual)
+        self.assertEqual(self.on_sale.start_date, transaction.start_date)
+        self.assertEqual(self.on_sale.end_date, transaction.end_date)
+        self.assertEqual(set(player_ids), {p.id for p in transaction.players.all()})
+        self.assertFalse(Membership.objects.filter(player_id__in=player_ids).exists())
         self.assertEqual(
             RazorpayTransaction.TransactionStatusChoices.PENDING,
             transaction.status,
         )
-
-    def test_create_manual_transaction_group_membership(self) -> None:
-        c = self.client
-        player_ids = [200, 220, 230, 225]
-
-        for id_ in player_ids:
-            username = str(uuid.uuid4())[:8]
-            user = User.objects.create(username=username)
-            date_of_birth = "2001-01-01"
-            player = Player.objects.create(id=id_, user=user, date_of_birth=date_of_birth)
-
-        ANNUAL_MEMBERSHIP_AMOUNT * len(player_ids)
-        transaction_id = "432198765"
-        response = c.post(
-            f"/api/transactions/manual/{transaction_id}",
-            data={
-                "player_ids": player_ids,
-                "season_id": self.season.id,
-            },
-            content_type="application/json",
-        )
-        self.assertEqual(200, response.status_code)
-        order_data = response.json()
-        self.assertIn("amount", order_data)
-        self.assertIn("transaction_id", order_data)
-        transaction_id = order_data["transaction_id"]
-        transaction = ManualTransaction.objects.get(transaction_id=transaction_id)
-        self.assertEqual(self.user, transaction.user)
-        for player_id in player_ids:
-            player = Player.objects.get(id=player_id)
-            self.assertIn(player, transaction.players.all())
-            self.assertTrue(player.membership.is_annual)
-        self.assertFalse(transaction.validated)
 
     def test_payment_success(self) -> None:
         c = self.client
@@ -1176,8 +885,8 @@ class TestPayment(ApiBaseTestCase):
             response = c.post(
                 "/api/transactions/razorpay",
                 data={
-                    "player_id": player.id,
-                    "season_id": self.season.id,
+                    "season_id": self.on_sale.id,
+                    "items": [{"player_id": player.id, "plan_type": "regular"}],
                 },
                 content_type="application/json",
             )
@@ -1191,8 +900,7 @@ class TestPayment(ApiBaseTestCase):
         )
         transaction.players.add(self.player)
         update_transaction(transaction, "ERROR")
-        with self.assertRaises(Membership.DoesNotExist):
-            self.assertFalse(self.player.membership.is_active)
+        self.assertFalse(Membership.objects.filter(player=self.player).exists())
 
 
 class TestVaccination(ApiBaseTestCase):

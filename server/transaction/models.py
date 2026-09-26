@@ -31,6 +31,37 @@ def create_transaction_from_order_data(cls: Any, data: dict[str, Any]) -> Any:
     return transaction
 
 
+class RazorpayTransactionPlayer(models.Model):
+    """One person in one order. For membership orders, what they're buying."""
+
+    # The table was auto-created for the many-to-many with a bigint key
+    # (DEFAULT_AUTO_FIELD was already BigAutoField), verified against the
+    # production schema. Declared so state matches, and no ALTER is generated.
+    id = models.BigAutoField(primary_key=True)
+    transaction = models.ForeignKey(
+        "server.RazorpayTransaction",
+        on_delete=models.CASCADE,
+        db_column="razorpaytransaction_id",
+    )
+    player = models.ForeignKey(Player, on_delete=models.CASCADE)
+    plan = models.ForeignKey(
+        "server.MembershipPlan", on_delete=models.PROTECT, blank=True, null=True
+    )
+    amount = models.PositiveIntegerField(blank=True, null=True, help_text="In paise.")
+    membership = models.ForeignKey(
+        "server.Membership", on_delete=models.SET_NULL, blank=True, null=True
+    )
+    needs_review = models.BooleanField(default=False)
+    review_note = models.TextField(blank=True)
+
+    class Meta:
+        db_table = "server_razorpaytransaction_players"
+        unique_together = ("transaction", "player")
+
+    def __str__(self) -> str:
+        return f"{self.transaction_id} — {self.player}"
+
+
 class RazorpayTransaction(ExportModelOperationsMixin("razorpay_transaction"), models.Model):  # type: ignore[misc]
     class TransactionStatusChoices(models.TextChoices):
         PENDING = "pending", _("Pending")
@@ -63,7 +94,7 @@ class RazorpayTransaction(ExportModelOperationsMixin("razorpay_transaction"), mo
         default=TransactionStatusChoices.PENDING,
     )
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    players = models.ManyToManyField(Player)
+    players = models.ManyToManyField(Player, through=RazorpayTransactionPlayer)
     event = models.ForeignKey(Event, on_delete=models.SET_NULL, blank=True, null=True)
     season = models.ForeignKey(Season, on_delete=models.SET_NULL, blank=True, null=True)
     team = models.ForeignKey(Team, on_delete=models.SET_NULL, blank=True, null=True)
@@ -72,6 +103,9 @@ class RazorpayTransaction(ExportModelOperationsMixin("razorpay_transaction"), mo
         choices=TransactionTypeChoices.choices,
         default=TransactionTypeChoices.ANNUAL_MEMBERSHIP,
     )
+
+    class Meta:
+        permissions = [("refund_razorpaytransaction", "Can refund payments")]
 
     def __str__(self) -> str:
         return self.order_id
