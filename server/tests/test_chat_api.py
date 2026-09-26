@@ -3,9 +3,13 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 from django.test import Client, TestCase
+from django.utils.timezone import now
 
+from server.chat.llm import ChatService
 from server.chat.models import ChatMessage, ChatMessageType, ChatSession
-from server.core.models import User
+from server.core.models import Player, User
+from server.membership.models import Membership, MembershipPlan, MembershipType
+from server.season.models import Season
 
 # Test-specific constants
 TEST_PASSWORD = "test_password_123"  # nosec B105
@@ -132,3 +136,51 @@ class ChatAPITestCase(TestCase):
         self.assertEqual(response.status_code, 401)
         response = self.client.post("/api/chat/clear_history")
         self.assertEqual(response.status_code, 401)
+
+
+class PlayerMembershipToolTestCase(TestCase):
+    """The agent answers "when was X a member" from the whole history,
+    not just the season they hold now."""
+
+    def setUp(self) -> None:
+        self.user = User.objects.create_user(
+            username="member@example.com", email="member@example.com", password=TEST_PASSWORD
+        )
+        self.player = Player.objects.create(user=self.user, date_of_birth="2000-01-01")
+        self.service = ChatService(MagicMock(), self.user)
+
+    def hold(self, season_name: str, slug: str, refunded: bool = False) -> None:
+        season = Season.objects.get(name=season_name)
+        Membership.objects.create(
+            player=self.player,
+            season=season,
+            plan=MembershipPlan.objects.get(
+                season=season, type=MembershipType.objects.get(slug=slug)
+            ),
+            is_active=not refunded,
+            start_date=season.start_date,
+            end_date=season.end_date,
+            refunded_at=now() if refunded else None,
+        )
+
+    def test_history_lists_every_season_newest_first(self) -> None:
+        self.hold("Season 2025-2026", "discounted", refunded=True)
+        self.hold("Season 2026-2027", "regular")
+
+        answer = self.service.get_player_membership(self.player.id)
+
+        assert answer is not None  # noqa: S101 - narrows the type
+        self.assertTrue(answer["has_membership"])
+        self.assertEqual(
+            [("Season 2026-2027", "regular", False), ("Season 2025-2026", "discounted", True)],
+            [(row["season"], row["tier"], row["refunded"]) for row in answer["history"]],
+        )
+
+    def test_a_lapsed_member_still_has_a_history(self) -> None:
+        self.hold("Season 2025-2026", "regular")
+
+        answer = self.service.get_player_membership(self.player.id)
+
+        assert answer is not None  # noqa: S101 - narrows the type
+        self.assertFalse(answer["has_membership"])
+        self.assertEqual(["Season 2025-2026"], [row["season"] for row in answer["history"]])

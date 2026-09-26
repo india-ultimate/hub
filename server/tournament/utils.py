@@ -11,7 +11,7 @@ from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 
 from server.core.models import Player, Team, UCPerson, User
-from server.series.models import SeriesRegistration
+from server.series.models import SeriesRegistration, is_playing_role
 from server.tournament.models import Event
 from server.types import message_response, validation_error_dict
 from server.utils import ordinal_suffix
@@ -2266,15 +2266,24 @@ def get_bracket_match_name(start: int, end: int, seed_1: int, seed_2: int) -> st
     return ""
 
 
+def series_role(event: Event, team: Team, player: Player) -> str | None:
+    """The role this person holds on the series roster, if any."""
+    if not event.series:
+        return None
+    registration = SeriesRegistration.objects.filter(
+        series=event.series, team=team, player=player
+    ).first()
+    return registration.role if registration is not None else None
+
+
 def can_register_player_to_series_event(
     event: Event, team: Team, player: Player
 ) -> tuple[bool, message_response | None]:
     if not event.series:
         return True, None
 
-    if not SeriesRegistration.objects.filter(
-        series=event.series, team=team, player=player
-    ).exists():
+    role = series_role(event, team, player)
+    if role is None:
         return False, {
             "message": "Player is not part of series roster",
             "description": "Players need to be added to the series roster first, to be added to the tournament roster.",
@@ -2282,7 +2291,13 @@ def can_register_player_to_series_event(
             "action_href": f"/series/{event.series.slug}/team/{team.slug}",
         }
 
-    num_total_registered = Registration.objects.filter(event=event, team=team).count()
+    # Staff take no player spot, so none of the three caps applies to them.
+    if not is_playing_role(role):
+        return True, None
+
+    num_total_registered = Registration.objects.filter(
+        event=event, team=team, is_playing=True
+    ).count()
 
     if not (num_total_registered + 1) <= event.series.event_max_players_total:
         return False, {
@@ -2292,7 +2307,7 @@ def can_register_player_to_series_event(
     match player.match_up:
         case player.MatchupTypes.MALE:
             num_male_matching_registered = Registration.objects.filter(
-                event=event, team=team, player__match_up=player.MatchupTypes.MALE
+                event=event, team=team, is_playing=True, player__match_up=player.MatchupTypes.MALE
             ).count()
 
             if not (num_male_matching_registered + 1) <= event.series.event_max_players_male:
@@ -2302,7 +2317,10 @@ def can_register_player_to_series_event(
 
         case player.MatchupTypes.FEMALE:
             num_female_matching_registered = Registration.objects.filter(
-                event=event, team=team, player__match_up=player.MatchupTypes.FEMALE
+                event=event,
+                team=team,
+                is_playing=True,
+                player__match_up=player.MatchupTypes.FEMALE,
             ).count()
 
             if not (num_female_matching_registered + 1) <= event.series.event_max_players_female:

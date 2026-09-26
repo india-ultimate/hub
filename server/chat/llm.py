@@ -86,7 +86,8 @@ Key Data Structures and Concepts:
 
 1. Players:
    - Basic info: name, gender
-   - Membership: annual status, membership number, waiver info
+   - Membership: current tier and status, membership number, waiver info,
+     and the per-season history
    - Accreditation: WFDF accreditation level and validity
    - Analytics: player participation trends, gender ratios
 
@@ -96,7 +97,6 @@ Key Data Structures and Concepts:
 
 3. Seasons:
    - Annual membership periods
-   - Membership fees (regular and sponsored)
    - Start and end dates
    - Analytics: membership growth, revenue trends, seasonal patterns
 
@@ -1090,18 +1090,34 @@ Available Tools:
         """Get India Ultimate membership information for a specific player."""
         try:
             player = Player.objects.get(id=player_id)
-            membership = Membership.objects.filter(player=player).first()
+            membership = player.current_membership
+
+            # Every season this person has held, newest first. A refunded row
+            # is kept and marked, so "when did they lapse" can be answered.
+            history = [
+                {
+                    "season": held.season.name,
+                    "tier": held.tier,
+                    "is_active": held.is_active,
+                    "refunded": held.refunded_at is not None,
+                }
+                for held in Membership.objects.filter(player=player)
+                .select_related("season", "plan__type")
+                .order_by("-season__start_date")
+            ]
 
             if not membership:
                 return {
                     "has_membership": False,
-                    "message": "No India Ultimate membership found for this player",
+                    "message": "No current India Ultimate membership for this player",
+                    "history": history,
                 }
 
             return {
                 "has_membership": True,
-                "membership_number": membership.membership_number,
-                "is_annual": membership.is_annual,
+                "history": history,
+                "membership_number": player.membership_number,
+                "tier": membership.tier,
                 "start_date": membership.start_date.isoformat(),
                 "end_date": membership.end_date.isoformat(),
                 "is_active": membership.is_active,
@@ -1127,8 +1143,6 @@ Available Tools:
                 "name": season.name,
                 "start_date": season.start_date.isoformat(),
                 "end_date": season.end_date.isoformat(),
-                "annual_membership_amount": season.annual_membership_amount,
-                "sponsored_annual_membership_amount": season.sponsored_annual_membership_amount,
             }
             for season in seasons
         ]
@@ -1142,8 +1156,6 @@ Available Tools:
                 "name": season.name,
                 "start_date": season.start_date.isoformat(),
                 "end_date": season.end_date.isoformat(),
-                "annual_membership_amount": season.annual_membership_amount,
-                "sponsored_annual_membership_amount": season.sponsored_annual_membership_amount,
                 "is_current": season.start_date <= timezone.now().date() <= season.end_date,
             }
         except Season.DoesNotExist:
@@ -1813,11 +1825,8 @@ Available Tools:
                     "id": player.id,
                     "teams": [{"id": team.id, "name": team.name} for team in player.teams.all()],
                     "membership": {
-                        "is_active": bool(
-                            Membership.objects.filter(player=player, is_active=True).first()
-                        )
-                        if Membership.objects.filter(player=player).first()
-                        else None,
+                        "is_active": player.current_membership is not None
+                        and player.current_membership.is_active,
                     },
                 }
                 if player is not None

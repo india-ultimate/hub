@@ -12,7 +12,7 @@ from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 from django_prometheus.models import ExportModelOperationsMixin
 
-from server.constants import ANNUAL_MEMBERSHIP_AMOUNT, MAJOR_AGE, SPONSORED_ANNUAL_MEMBERSHIP_AMOUNT
+from server.constants import MAJOR_AGE
 from server.utils import slugify_max, today
 
 if TYPE_CHECKING:
@@ -168,10 +168,6 @@ class Player(ExportModelOperationsMixin("player"), models.Model):  # type: ignor
 
     def __str__(self) -> str:
         return self.user.get_full_name()
-
-    @property
-    def membership_amount(self) -> int:
-        return SPONSORED_ANNUAL_MEMBERSHIP_AMOUNT if self.sponsored else ANNUAL_MEMBERSHIP_AMOUNT
 
     @property
     def is_minor(self) -> bool:

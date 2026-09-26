@@ -11,10 +11,11 @@ from server.season.models import Season
 from server.types import message_response
 from server.utils import today
 
-from .models import Series, SeriesRegistration, SeriesRosterInvitation
+from .models import Role, Series, SeriesRegistration, SeriesRosterInvitation
 from .schema import (
     AddOrRemoveTeamSeriesRegistrationSchema,
     SeriesCreateSchema,
+    SeriesRegistrationRoleSchema,
     SeriesRegistrationSchema,
     SeriesRosterInvitationCreateSchema,
     SeriesRosterInvitationSchema,
@@ -24,6 +25,7 @@ from .schema import (
 from .utils import (
     can_invite_player_to_series_roster,
     can_register_player_to_series_roster,
+    change_series_role,
     generate_invitation_token,
     get_details_from_invitation_token,
     register_player,
@@ -215,20 +217,24 @@ def send_series_invitation(
     except Player.DoesNotExist:
         return 400, {"message": "Player does not exist"}
 
+    role = invitation_details.role or Role.DEFAULT
+    if role not in Role._value2member_map_:
+        return 400, {"message": "Invalid role"}
+
     can_invite, error = can_invite_player_to_series_roster(
-        series=series, team=team, player=to_player
+        series=series, team=team, player=to_player, role=role
     )
     if not can_invite and error:
         return 400, error
 
     can_register, error = can_register_player_to_series_roster(
-        series=series, team=team, player=to_player
+        series=series, team=team, player=to_player, role=role
     )
     if not can_register and error:
         return 400, {"message": "Player has already registered with another team for this series"}
 
     invitation = SeriesRosterInvitation(
-        series=series, from_user=request.user, to_player=to_player, team=team
+        series=series, from_user=request.user, to_player=to_player, team=team, role=role
     )
 
     if invitation_details.expires_on is not None:
@@ -293,7 +299,10 @@ def accept_series_invitation_via_mail(
 
         case SeriesRosterInvitation.Status.PENDING:
             series_registration, error = register_player(
-                series=invitation.series, team=invitation.team, player=invitation.to_player
+                series=invitation.series,
+                team=invitation.team,
+                player=invitation.to_player,
+                role=invitation.role,
             )
             if error:
                 return 400, error
@@ -408,7 +417,10 @@ def accept_series_invitation(
 
         case SeriesRosterInvitation.Status.PENDING:
             series_registration, error = register_player(
-                series=invitation.series, team=invitation.team, player=invitation.to_player
+                series=invitation.series,
+                team=invitation.team,
+                player=invitation.to_player,
+                role=invitation.role,
             )
             if error:
                 return 400, error
@@ -588,3 +600,38 @@ def add_myself_to_team_series_roster(
         return 200, series_registration
 
     return 400, {"message": "Couldn't register player"}
+
+
+@router.put(
+    "/{series_slug}/team/{team_slug}/roster/{registration_id}/role",
+    response={200: SeriesRegistrationSchema, 400: Response, 401: Response},
+)
+def update_series_roster_role(
+    request: AuthenticatedHttpRequest,
+    series_slug: str,
+    team_slug: str,
+    registration_id: int,
+    role_details: SeriesRegistrationRoleSchema,
+) -> tuple[int, SeriesRegistration | message_response]:
+    try:
+        series = Series.objects.get(slug=series_slug)
+        team = Team.objects.get(slug=team_slug)
+    except (Series.DoesNotExist, Team.DoesNotExist):
+        return 400, {"message": "Series/Team does not exist"}
+
+    if request.user not in team.admins.all():
+        return 401, {"message": "Only team admins can change a series roster role"}
+
+    if role_details.role not in Role._value2member_map_:
+        return 400, {"message": "Invalid role"}
+
+    try:
+        registration = SeriesRegistration.objects.get(id=registration_id, series=series, team=team)
+    except SeriesRegistration.DoesNotExist:
+        return 400, {"message": "Registration does not exist"}
+
+    error = change_series_role(registration, role_details.role)
+    if error is not None:
+        return 400, error
+
+    return 200, registration

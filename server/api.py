@@ -54,8 +54,9 @@ from server.flarum.utils import (
     update_flarum_user_avatar,
 )
 from server.forms.api import router as forms_router
-from server.lib.membership import get_membership_status
-from server.membership.models import Membership
+from server.membership import eligibility
+from server.membership.api import router as membership_router
+from server.membership.bulk_check import get_membership_status
 from server.passkey_utils import PassKeyClient
 from server.schema import (
     AccreditationFormSchema,
@@ -96,7 +97,7 @@ from server.schema import (
 )
 from server.season.api import router as season_router
 from server.series.api import router as series_router
-from server.series.models import SeriesRegistration
+from server.series.models import Role, SeriesRegistration, is_playing_role
 from server.servicerequests.api import router as servicerequests_router
 from server.task.api import router as task_router
 from server.ticket.api import ticket_api
@@ -175,6 +176,7 @@ from server.tournament.utils import (
     parse_match_time,
     populate_fixtures,
     rerun_swiss_round,
+    series_role,
     update_match_score_and_results,
     update_tournament_seeding,
     update_tournament_spirit_rankings,
@@ -209,6 +211,7 @@ def _deny_unless_manager(user: User, tournament: Tournament) -> tuple[int, messa
 
 # Routers
 api.add_router("/seasons", season_router)
+api.add_router("/", membership_router)
 api.add_router("/series/", series_router)
 api.add_router("/transactions", transaction_router)
 api.add_router("/forms", forms_router)
@@ -276,7 +279,7 @@ def me_membership(
     except Player.DoesNotExist:
         return 404, {"message": "Player profile not found"}
 
-    membership = Membership.objects.filter(player=player).first()
+    membership = player.current_membership
     if not membership:
         return 200, {
             "has_membership": False,
@@ -311,7 +314,7 @@ def list_players(
 ) -> list[PlayerTinySchema | PlayerSchema]:
     # This list is not paginated, and both schemas read a player's name, email,
     # phone, membership and teams -- five queries each over every player there is.
-    players = Player.objects.select_related("user", "membership").prefetch_related("teams")
+    players = Player.objects.select_related("user").prefetch_related("teams")
     is_staff = request.user.is_staff
     if is_staff and full_schema:
         return [PlayerSchema.from_orm(p) for p in players]
@@ -547,8 +550,7 @@ def handle_forum_login(user: User, response: HttpResponse) -> None:
     if not is_admin:
         # Check if user has active membership
         try:
-            player = user.player_profile
-            membership = Membership.objects.filter(player=player).first()
+            membership = user.player_profile.current_membership
             has_active_membership = membership is not None and membership.is_active
         except Player.DoesNotExist:
             # User doesn't have a player profile, no active membership
@@ -1064,9 +1066,8 @@ def waiver(
     except Player.DoesNotExist:
         return 400, {"message": "Player does not exist"}
 
-    try:
-        membership = player.membership
-    except Membership.DoesNotExist:
+    membership = player.current_membership
+    if membership is None:
         return 400, {"message": "Player does not have a membership"}
 
     if player.is_minor:
@@ -1313,23 +1314,22 @@ def add_player_to_roster(
         )
         if not can_register and error:
             return 400, error
-    elif event.is_membership_needed:
-        try:
-            membership = player.membership
-        except Membership.DoesNotExist:
-            return 400, {"message": "Player's membership does not exist !"}
-        if not membership.is_active:
-            return 400, {"message": "Player's membership is not active !"}
-        if not membership.waiver_valid:
-            return 400, {"message": "Player's waiver is not signed!"}
+        # On a series event the spot follows the person's series role: staff
+        # are rostered non-playing and cannot be made playing here.
+        is_playing = is_playing_role(series_role(event, team, player) or Role.DEFAULT)
+    else:
+        is_playing = registration_details.is_playing is not False
+
+    membership_error = eligibility.check(player, event, is_playing=is_playing)
+    if membership_error is not None:
+        return 400, membership_error
 
     registration = Registration(
         event=event,
         team=team,
         player=player,
+        is_playing=is_playing,
     )
-    if registration_details.is_playing:
-        registration.is_playing = registration_details.is_playing
     if registration_details.role:
         registration.role = registration_details.role
     try:
@@ -1409,13 +1409,34 @@ def update_registration(
     except Registration.DoesNotExist:
         return 400, {"message": "Registration does not exist"}
 
-    if registration_details.is_playing is not None:
-        registration.is_playing = registration_details.is_playing
-
     if registration_details.role:
         if registration_details.role not in Registration.Role._value2member_map_:
             return 400, {"message": "Invalid role"}
         registration.role = registration_details.role
+
+    was_playing = registration.is_playing
+    if event.series:
+        # Same rule as adding: the series role decides, not the caller.
+        registration.is_playing = is_playing_role(
+            series_role(event, team, registration.player) or Role.DEFAULT
+        )
+    elif registration_details.is_playing is not None:
+        registration.is_playing = registration_details.is_playing
+
+    # Taking a playing spot here has to pass the same caps as being added to
+    # one; otherwise staff could be rostered onto a full event and promoted.
+    if registration.is_playing and not was_playing:
+        can_register, error = can_register_player_to_series_event(
+            event=event, team=team, player=registration.player
+        )
+        if not can_register and error:
+            return 400, error
+
+    membership_error = eligibility.check(
+        registration.player, event, is_playing=registration.is_playing
+    )
+    if membership_error is not None:
+        return 400, membership_error
 
     registration.save()
     return 200, registration

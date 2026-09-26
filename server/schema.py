@@ -11,9 +11,9 @@ from server.core.models import (
     User,
     Vaccination,
 )
-from server.membership.models import (
-    Membership,
-)
+from server.membership import catalog
+from server.membership.schema import MembershipSchema
+from server.membership.sponsorship import has_grant
 from server.utils import mask_string
 
 
@@ -55,24 +55,6 @@ class ValidationStatsSchema(Schema):
     total: int
     invalid_found: int
     validated: int
-
-
-class MembershipSchema(ModelSchema):
-    waiver_signed_by: str | None
-
-    @staticmethod
-    def resolve_waiver_signed_by(membership: Membership) -> str | None:
-        user = membership.waiver_signed_by
-        return user.get_full_name() if user is not None else None
-
-    class Config:
-        model = Membership
-        # membership_number and is_annual are retained on the model only
-        # for the deploy window (a still-running previous release reads
-        # the columns); they are not part of this API. Exclude rather than
-        # enumerate, so fields later tasks add (plan, amount_paid,
-        # refunded_at, ...) keep appearing here automatically.
-        model_exclude = ["membership_number", "is_annual"]
 
 
 class UserFormSchema(ModelSchema):
@@ -200,6 +182,17 @@ class PlayerSchema(ModelSchema):
     def resolve_membership(player: Player) -> MembershipSchema | None:
         membership = player.current_membership
         return MembershipSchema.from_orm(membership) if membership is not None else None
+
+    sponsored: bool
+
+    @staticmethod
+    def resolve_sponsored(player: Player) -> bool:
+        """A grant for the season this person would buy next.
+
+        Computed, not the legacy `Player.sponsored` column: grants are per
+        season now, and someone sponsored last season has to ask again.
+        """
+        return has_grant(player, catalog.season_to_buy(player))
 
     vaccination: VaccinationSchema | None
 
@@ -405,9 +398,11 @@ class UserWardFormSchema(ModelSchema):
 class PlayerFormSchema(ModelSchema):
     class Config:
         model = Player
-        # sponsored decides what a membership costs and imported_data says
-        # where a row came from. Both are administrative and neither may be
-        # set by the person registering, so they are not input fields at all.
+        # sponsored decides what a membership costs, imported_data says where
+        # a row came from, and membership_number is printed on waivers and
+        # certificates -- a self-chosen one is identity forgery. All three are
+        # administrative and none may be set by the person registering, so
+        # they are not input fields at all.
         model_exclude = [
             "user",
             "teams",
@@ -415,6 +410,7 @@ class PlayerFormSchema(ModelSchema):
             "ultimate_central_id",
             "sponsored",
             "imported_data",
+            "membership_number",
         ]
         model_fields_optional = "__all__"
 

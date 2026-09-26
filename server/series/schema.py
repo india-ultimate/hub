@@ -81,6 +81,7 @@ class SeriesCreateSchema(Schema):
 class SeriesRosterInvitationCreateSchema(Schema):
     to_player_id: int
     expires_on: date | None
+    role: str | None = None
 
 
 class SeriesRosterInvitationSchema(ModelSchema):
@@ -116,3 +117,7 @@ class SeriesTeamRosterSchema(ModelSchema):
 
 class SeriesRegistrationAddSchema(Schema):
     player_id: int
+
+
+class SeriesRegistrationRoleSchema(Schema):
+    role: str

@@ -6,7 +6,7 @@ from django.test import TestCase
 from server.core.models import Player, User
 from server.membership import numbers
 from server.membership.models import Membership, MembershipPlan, MembershipType, Scope
-from server.schema import MembershipSchema
+from server.membership.schema import MembershipSchema
 from server.season.models import Season
 
 

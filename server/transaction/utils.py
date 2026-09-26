@@ -7,8 +7,7 @@ from django.db import transaction as db_transaction
 from django.db.models import Model, Q, QuerySet
 
 from server.core.models import Player, Team, User
-from server.membership import catalog
-from server.membership.models import Membership
+from server.membership import catalog, eligibility
 from server.membership.pricing import UPGRADE, NeedsGrant, NotForSale, Quote, quote
 from server.membership.purchase import fulfil
 from server.season.models import Season
@@ -246,21 +245,10 @@ def create_transaction(
                 )
                 if not can_register and error:
                     return 400, error
-            elif event.is_membership_needed:
-                try:
-                    membership = player.membership
-                except Membership.DoesNotExist:
-                    return 400, {
-                        "message": f"Player - {player.user.get_full_name()} membership does not exist !"
-                    }
-                if not membership.is_active:
-                    return 400, {
-                        "message": f"Player - {player.user.get_full_name()} membership is not active !"
-                    }
-                if not membership.waiver_valid:
-                    return 400, {
-                        "message": f"Player - {player.user.get_full_name()} waiver is not signed!"
-                    }
+
+            membership_error = eligibility.check(player, event, is_playing=True)
+            if membership_error is not None:
+                return 400, membership_error
 
             if Registration.objects.filter(event=event, player=player).exists():
                 return 400, {
