@@ -83,7 +83,13 @@ def _send(
 
     The record is written before Razorpay is called, so a crash between the
     two leaves a trace the nightly sync can match to Razorpay's own record by
-    the `hub_refund_id` note. A gateway refusal comes back as a `failed`
+    the `hub_refund_id` note. The gateway call happens inside the caller's
+    transaction, so there is a window the other way too: if anything after a
+    successful call raises before the commit, this record rolls back while
+    the money really has gone. That is deliberate, not an oversight — the
+    nightly sync finds the refund at Razorpay with no record here, writes it
+    as a dashboard-sourced one and flags its line for review. Do not tidy the
+    bookkeeping out of this block without keeping that recovery intact. A gateway refusal comes back as a `failed`
     record rather than an exception, so that record survives the caller's
     transaction; the caller raises once it has committed.
     """
