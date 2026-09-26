@@ -6,6 +6,11 @@ from django.core.management.base import BaseCommand
 
 from server.membership.models import Membership
 from server.season.models import Season
+from server.servicerequests.models import (
+    ServiceRequest,
+    ServiceRequestStatus,
+    ServiceRequestType,
+)
 from server.transaction.models import RazorpayTransaction
 
 
@@ -46,6 +51,20 @@ class Command(BaseCommand):
         self.stdout.write(f"  with an event:        {with_event}")
         self.stdout.write(f"  recoverable history:  {recoverable}")
         self.stdout.write(f"  no completed payment: {len(never_paid)}  (kept, tier unknown)")
+
+        # 0151 grants by created_at; an updated_at this late means a request
+        # was edited after 2026-27 began, so check its season by hand.
+        s26 = Season.objects.filter(name="Season 2026-2027").first()
+        late = (
+            ServiceRequest.objects.filter(
+                type=ServiceRequestType.REQUEST_SPONSORED_MEMBERSHIP,
+                status=ServiceRequestStatus.APPROVED,
+                updated_at__date__gte=s26.start_date,
+            ).count()
+            if s26 is not None
+            else 0
+        )
+        self.stdout.write(f"  approved sponsorships touched since 2026-27 began: {late}")
 
         if unplaceable:
             self.stdout.write(

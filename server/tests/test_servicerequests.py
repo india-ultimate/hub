@@ -2,6 +2,9 @@ from django.core import mail
 from django.test import TestCase
 
 from server.core.models import Player, User
+from server.membership.models import SponsorshipGrant
+from server.membership.sponsorship import has_grant
+from server.season.models import Season
 from server.servicerequests.models import ServiceRequest, ServiceRequestStatus, ServiceRequestType
 
 
@@ -20,16 +23,17 @@ class ServiceRequestSignalTest(TestCase):
             gender="M",
             match_up="M",
             city="Test City",
-            sponsored=False,  # Initially not sponsored
         )
+        self.season = Season.objects.get(name="Season 2025-2026")
 
     def test_sponsored_membership_approval_signal(self) -> None:
-        """Test that approving a sponsored membership request sets player.sponsored=True"""
+        """Approving a request grants its season"""
         # Create a sponsored membership request
         service_request = ServiceRequest.objects.create(
             user=self.user,
             type=ServiceRequestType.REQUEST_SPONSORED_MEMBERSHIP,
             message="Please approve my sponsored membership",
+            season=self.season,
             status=ServiceRequestStatus.PENDING,
         )
 
@@ -37,25 +41,23 @@ class ServiceRequestSignalTest(TestCase):
         service_request.service_players.add(self.player)
 
         # Verify player is not sponsored initially
-        self.player.refresh_from_db()
-        self.assertFalse(self.player.sponsored)
+        self.assertFalse(has_grant(self.player, self.season))
 
         # Approve the service request
         service_request.status = ServiceRequestStatus.APPROVED
         service_request.save()
 
-        # Verify player is now sponsored
-        self.player.refresh_from_db()
-        self.assertTrue(self.player.sponsored)
+        self.assertTrue(has_grant(self.player, self.season))
 
     def test_non_sponsored_request_does_not_affect_player(self) -> None:
-        """Test that approving a non-sponsored request doesn't affect player.sponsored"""
+        """Test that approving a non-sponsored request grants nothing"""
         # Create a different type of service request (if we had other types)
         # For now, we'll test with a sponsored request but reject it
         service_request = ServiceRequest.objects.create(
             user=self.user,
             type=ServiceRequestType.REQUEST_SPONSORED_MEMBERSHIP,
             message="Please approve my sponsored membership",
+            season=self.season,
             status=ServiceRequestStatus.PENDING,
         )
 
@@ -63,16 +65,14 @@ class ServiceRequestSignalTest(TestCase):
         service_request.service_players.add(self.player)
 
         # Verify player is not sponsored initially
-        self.player.refresh_from_db()
-        self.assertFalse(self.player.sponsored)
+        self.assertFalse(has_grant(self.player, self.season))
 
         # Reject the service request instead of approving
         service_request.status = ServiceRequestStatus.REJECTED
         service_request.save()
 
         # Verify player is still not sponsored
-        self.player.refresh_from_db()
-        self.assertFalse(self.player.sponsored)
+        self.assertFalse(has_grant(self.player, self.season))
 
     def test_signal_only_triggers_on_approval(self) -> None:
         """Test that the signal only triggers when status changes to APPROVED"""
@@ -81,6 +81,7 @@ class ServiceRequestSignalTest(TestCase):
             user=self.user,
             type=ServiceRequestType.REQUEST_SPONSORED_MEMBERSHIP,
             message="Please approve my sponsored membership",
+            season=self.season,
             status=ServiceRequestStatus.APPROVED,  # Create directly as approved
         )
 
@@ -88,23 +89,19 @@ class ServiceRequestSignalTest(TestCase):
         service_request.service_players.add(self.player)
 
         # Verify player is still not sponsored (signal only triggers on status change)
-        self.player.refresh_from_db()
-        self.assertFalse(self.player.sponsored)
+        self.assertFalse(has_grant(self.player, self.season))
 
         # Now change from approved to rejected and back to approved
         service_request.status = ServiceRequestStatus.REJECTED
         service_request.save()
 
-        self.player.refresh_from_db()
-        self.assertFalse(self.player.sponsored)
+        self.assertFalse(has_grant(self.player, self.season))
 
         # Change back to approved - this should trigger the signal
         service_request.status = ServiceRequestStatus.APPROVED
         service_request.save()
 
-        # Verify player is now sponsored
-        self.player.refresh_from_db()
-        self.assertTrue(self.player.sponsored)
+        self.assertTrue(has_grant(self.player, self.season))
 
     def test_email_sent_on_approval(self) -> None:
         """Test that an email is sent when a service request is approved"""
@@ -116,6 +113,7 @@ class ServiceRequestSignalTest(TestCase):
             user=self.user,
             type=ServiceRequestType.REQUEST_SPONSORED_MEMBERSHIP,
             message="Please approve my sponsored membership",
+            season=self.season,
             status=ServiceRequestStatus.PENDING,
         )
 
@@ -146,6 +144,7 @@ class ServiceRequestSignalTest(TestCase):
             user=self.user,
             type=ServiceRequestType.REQUEST_SPONSORED_MEMBERSHIP,
             message="Please approve my sponsored membership",
+            season=self.season,
             status=ServiceRequestStatus.PENDING,
         )
 
@@ -179,6 +178,7 @@ class ServiceRequestSignalTest(TestCase):
             user=self.user,
             type=ServiceRequestType.REQUEST_SPONSORED_MEMBERSHIP,
             message="Please approve my sponsored membership",
+            season=self.season,
             status=ServiceRequestStatus.PENDING,
         )
 
@@ -195,6 +195,7 @@ class ServiceRequestSignalTest(TestCase):
             user=self.user,
             type=ServiceRequestType.REQUEST_SPONSORED_MEMBERSHIP,
             message="Please approve my sponsored membership",
+            season=self.season,
             status=ServiceRequestStatus.APPROVED,
         )
 
@@ -204,3 +205,22 @@ class ServiceRequestSignalTest(TestCase):
 
         # Check that no email was sent
         self.assertEqual(len(mail.outbox), 0)
+
+    def test_resaving_an_approved_request_leaves_a_revoked_grant_revoked(self) -> None:
+        service_request = ServiceRequest.objects.create(
+            user=self.user,
+            type=ServiceRequestType.REQUEST_SPONSORED_MEMBERSHIP,
+            message="Please approve my sponsored membership",
+            season=self.season,
+        )
+        service_request.service_players.add(self.player)
+        service_request.status = ServiceRequestStatus.APPROVED
+        service_request.save()
+        self.assertEqual(len(mail.outbox), 1)
+
+        SponsorshipGrant.objects.filter(player=self.player).delete()
+        service_request.message = "Edited by staff"
+        service_request.save()
+
+        self.assertFalse(has_grant(self.player, self.season))
+        self.assertEqual(len(mail.outbox), 1)

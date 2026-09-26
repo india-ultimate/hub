@@ -26,3 +26,4 @@ class ServiceRequestCreateSchema(Schema):
     type: str
     message: str
     service_player_ids: list[int] | None = None
+    season_id: int | None = None

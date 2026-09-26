@@ -5,7 +5,7 @@ from django_prometheus.models import ExportModelOperationsMixin
 
 from server.core.models import Player, User
 from server.season.models import Season
-from server.servicerequests.models import ServiceRequest  # noqa: F401
+from server.servicerequests.models import ServiceRequest
 from server.tournament.models import Event
 
 
@@ -145,3 +145,20 @@ class Membership(ExportModelOperationsMixin("membership"), models.Model):  # typ
         if self.plan is None:
             return scope in LEGACY_SCOPES
         return self.plan.type.allows(scope)
+
+
+class SponsorshipGrant(models.Model):
+    """Entitlement to a requires_grant tier, for one season."""
+
+    player = models.ForeignKey(Player, related_name="sponsorships", on_delete=models.CASCADE)
+    season = models.ForeignKey(Season, related_name="sponsorships", on_delete=models.PROTECT)
+    granted_at = models.DateTimeField(auto_now_add=True)
+    granted_by = models.ForeignKey(User, on_delete=models.SET_NULL, blank=True, null=True)
+    request = models.ForeignKey(ServiceRequest, on_delete=models.SET_NULL, blank=True, null=True)
+    note = models.TextField(blank=True)
+
+    class Meta:
+        unique_together = ("player", "season")
+
+    def __str__(self) -> str:
+        return f"{self.player} — {self.season}"
