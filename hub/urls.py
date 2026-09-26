@@ -19,7 +19,12 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import URLPattern, URLResolver, include, path
 
-from server.admin_views import csv_imports_view
+from server.admin_views import (
+    csv_imports_view,
+    refund_line_view,
+    refund_membership_view,
+    refund_order_view,
+)
 
 _admin_urls = admin.site.get_urls()
 
@@ -27,6 +32,21 @@ _admin_urls = admin.site.get_urls()
 def _admin_get_urls() -> list[URLPattern | URLResolver]:
     return [
         path("csv-imports/", admin.site.admin_view(csv_imports_view), name="csv_imports"),
+        path(
+            "refund-line/<int:line_id>/",
+            admin.site.admin_view(refund_line_view),
+            name="refund_line",
+        ),
+        path(
+            "refund-membership/<int:membership_id>/",
+            admin.site.admin_view(refund_membership_view),
+            name="refund_membership",
+        ),
+        path(
+            "refund-order/<str:order_id>/",
+            admin.site.admin_view(refund_order_view),
+            name="refund_order",
+        ),
         *_admin_urls,
     ]
 
