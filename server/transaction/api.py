@@ -77,7 +77,7 @@ def handle_razorpay_callback(
     # The same guard the webhook has. A double-clicked or replayed callback
     # must not run the handlers again: membership fulfilment is idempotent,
     # but nothing promises the registration handlers are.
-    if existing.status != RazorpayTransaction.TransactionStatusChoices.PENDING:
+    if existing.status in RazorpayTransaction.SETTLED:
         return 200, existing.players.all()
 
     transaction = razorpay.update_transaction(payment)
@@ -103,8 +103,9 @@ def payment_webhook(request: HttpRequest) -> message_response:
     data = json.loads(body)
     # Only money actually taken means anything here. Razorpay sends a dozen
     # other events to the same URL, and an authorized-but-not-captured
-    # payment is not one we may act on.
-    if data.get("event") != "payment.captured":
+    # payment is not one we may act on. Both of these carry the captured
+    # payment, and which one the dashboard subscribes to isn't recorded here.
+    if data.get("event") not in ("payment.captured", "order.paid"):
         return {"message": "Ignored webhook"}
     entity = data["payload"]["payment"]["entity"]
 
@@ -113,7 +114,7 @@ def payment_webhook(request: HttpRequest) -> message_response:
         return {"message": "No order found."}
     # Razorpay retries a webhook until it sees a 200, and the callback has
     # usually landed first. A settled order is not touched again.
-    if transaction.status != RazorpayTransaction.TransactionStatusChoices.PENDING:
+    if transaction.status in RazorpayTransaction.SETTLED:
         return {"message": "Already processed"}
 
     payment = RazorpayCallbackSchema(

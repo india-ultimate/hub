@@ -69,6 +69,11 @@ class RazorpayTransaction(ExportModelOperationsMixin("razorpay_transaction"), mo
         FAILED = "failed", _("Failed")
         REFUNDED = "refunded", _("Refunded")
 
+    # An unpaid order is stored with Razorpay's own order status, "created",
+    # not PENDING: the order data is saved as Razorpay returns it. So "still
+    # open" means "not settled", never "== PENDING".
+    SETTLED = ("completed", "refunded")
+
     class TransactionTypeChoices(models.TextChoices):
         ANNUAL_MEMBERSHIP = "annual-membership", _("Annual Membership")
         TEAM_REGISTRATION = "team-reg", _("Team Registration")

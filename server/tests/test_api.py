@@ -607,10 +607,8 @@ class TestPayment(ApiBaseTestCase):
         self.assertEqual(self.user, transaction.user)
         self.assertEqual(amount, transaction.amount)
         self.assertIn(player, transaction.players.all())
-        self.assertEqual(
-            RazorpayTransaction.TransactionStatusChoices.PENDING,
-            transaction.status,
-        )
+        # Saved with Razorpay's own order status, as production stores it.
+        self.assertEqual("created", transaction.status)
         self.assertEqual(self.on_sale.start_date, transaction.start_date)
         self.assertEqual(self.on_sale.end_date, transaction.end_date)
         self.assertEqual(self.on_sale, transaction.season)
@@ -657,10 +655,8 @@ class TestPayment(ApiBaseTestCase):
         self.assertEqual(self.on_sale.end_date, transaction.end_date)
         self.assertEqual(set(player_ids), {p.id for p in transaction.players.all()})
         self.assertFalse(Membership.objects.filter(player_id__in=player_ids).exists())
-        self.assertEqual(
-            RazorpayTransaction.TransactionStatusChoices.PENDING,
-            transaction.status,
-        )
+        # Saved with Razorpay's own order status, as production stores it.
+        self.assertEqual("created", transaction.status)
 
     def paid_order(self, members: list[Player], slug: str = "regular") -> RazorpayTransaction:
         """A pending order with one priced line per person."""

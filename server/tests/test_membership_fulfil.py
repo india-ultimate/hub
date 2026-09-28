@@ -145,6 +145,8 @@ class TestWebhook(TestCase):
         self.transaction = RazorpayTransaction.objects.create(
             order_id="order_hook",
             payment_id="",
+            # As production stores an unpaid order: Razorpay's status, saved as-is.
+            status="created",
             amount=self.plan.amount,
             currency="INR",
             user=self.player.user,
@@ -189,9 +191,11 @@ class TestWebhook(TestCase):
         self.assertEqual(self.post("payment.authorized").json()["message"], "Ignored webhook")
         self.assertEqual(Membership.objects.count(), 0)
         self.transaction.refresh_from_db()
-        self.assertEqual(
-            self.transaction.status, RazorpayTransaction.TransactionStatusChoices.PENDING
-        )
+        self.assertEqual(self.transaction.status, "created")
+
+    def test_an_order_paid_event_also_completes_the_order(self) -> None:
+        self.assertEqual(self.post("order.paid").json()["message"], "Webhook processed")
+        self.assertEqual(Membership.objects.filter(player=self.player).count(), 1)
 
     def test_a_capture_is_only_acted_on_once(self) -> None:
         self.assertEqual(self.post("payment.captured").json()["message"], "Webhook processed")
