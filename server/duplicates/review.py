@@ -49,14 +49,13 @@ class Line:
 
 
 def _subscription(player: Player) -> str:
-    subscription = getattr(player, "subscription", None)
+    subscription = player.current_subscription
     if subscription is None:
         return ""
-    return (
-        f"{subscription.start_date}..{subscription.end_date}"
-        if subscription.is_active
-        else "expired"
-    )
+    tier = subscription.plan.type.name if subscription.plan is not None else "unknown tier"
+    if not subscription.is_active:
+        return f"{tier}, expired"
+    return f"{tier}, {subscription.start_date}..{subscription.end_date}"
 
 
 def compare(keeper: User, others: list[User]) -> list[Line]:
