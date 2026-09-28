@@ -395,10 +395,14 @@ def update_transaction_player_subscriptions(
         "is_active": True,
     }
     for player in transaction.players.all():
-        subscription, created = Subscription.objects.get_or_create(
-            player=player, defaults=subscription_defaults
-        )
-        if not created:
+        # A player can hold one row per season now, so get_or_create(player=
+        # player) raises MultipleObjectsReturned once they hold more than
+        # one. Reuse the most recent row, same as this did back when a
+        # player could only ever have one.
+        subscription = Subscription.objects.filter(player=player).order_by("-start_date").first()
+        if subscription is None:
+            subscription = Subscription.objects.create(player=player, **subscription_defaults)
+        else:
             for key, value in subscription_defaults.items():
                 setattr(subscription, key, value)
             subscription.save()

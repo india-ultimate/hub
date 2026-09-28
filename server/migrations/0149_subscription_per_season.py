@@ -55,31 +55,19 @@ class Migration(migrations.Migration):
                 to="server.event",
             ),
         ),
-        # Was nullable (on_delete=CASCADE); every row already has a season,
-        # so no default is needed to tighten it.
+        # Still nullable: production has 697 rows with no season at all.
+        # Task 5's migration buckets every one of them by its start date
+        # before tightening this to non-null -- doing it here would refuse
+        # to apply against real data.
         migrations.AlterField(
             model_name="subscription",
             name="season",
             field=models.ForeignKey(
+                blank=True,
+                null=True,
                 on_delete=django.db.models.deletion.PROTECT,
                 related_name="subscriptions",
                 to="server.season",
             ),
-        ),
-        # A pure loosening (OneToOne -> ForeignKey), so it can't fail against
-        # any data, and one player still holds at most one row, so the new
-        # (player, season) uniqueness can't conflict with anything either.
-        migrations.AlterField(
-            model_name="subscription",
-            name="player",
-            field=models.ForeignKey(
-                on_delete=django.db.models.deletion.CASCADE,
-                related_name="subscriptions",
-                to="server.player",
-            ),
-        ),
-        migrations.AlterUniqueTogether(
-            name="subscription",
-            unique_together={("player", "season")},
         ),
     ]
