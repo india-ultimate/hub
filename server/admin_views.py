@@ -4,13 +4,31 @@ from io import StringIO
 from pathlib import Path
 
 from django.contrib import messages
+from django.core.exceptions import PermissionDenied
 from django.core.management import call_command
+from django.db.models import QuerySet
 from django.http import HttpRequest, HttpResponse
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 
 from server.core.models import Team
 from server.series.models import Series
+from server.subscription.models import Subscription
+from server.subscription.refunds import (
+    STANDING,
+    RefundRefused,
+    refund_line,
+    refund_order,
+    refund_subscription,
+    refunded_total,
+    unrefunded,
+)
 from server.tournament.models import Event
+from server.transaction.models import (
+    RazorpayRefund,
+    RazorpayTransaction,
+    RazorpayTransactionPlayer,
+)
 
 OUTPUT_MAX_LENGTH = 2000
 
@@ -130,3 +148,235 @@ def csv_imports_view(request: HttpRequest) -> HttpResponse:
         "event_list": Event.objects.all().order_by("title"),
     }
     return render(request, "admin/csv_imports.html", context)
+
+
+REFUND_PERM = "server.refund_razorpaytransaction"
+
+# What a refund does to the subscription it paid for. Shown before staff commit.
+SUBSCRIPTION_CHANGES = [
+    "It stays on record, marked refunded, so the history is intact.",
+    "They keep their IU ID. Numbers are never reused.",
+    "They can buy that season again afterwards.",
+]
+
+
+def _money(paise: int | None) -> str:
+    return f"₹{(paise or 0) / 100:,.0f}"
+
+
+def _untouched_subscription_warning(transaction: RazorpayTransaction, player_ids: list[int]) -> str:
+    """What to say when the money goes back but the subscription it bought stays."""
+    held = Subscription.objects.filter(
+        player__in=player_ids, season=transaction.season_id
+    ).select_related("player__user", "season")
+    names = ", ".join(
+        f"{subscription.player.user.get_full_name()}'s {subscription.season.name} subscription"
+        f" (#{subscription.pk})"
+        for subscription in held
+    )
+    return (
+        "This payment was made before the Hub recorded a tier per person, so the refund "
+        "does not touch any subscription. The money goes back, but "
+        f"{names or 'the subscription it paid for'} stays exactly as it is. Deactivate it by "
+        "hand if that is what you intend."
+    )
+
+
+def _report_partial(
+    request: HttpRequest, error: RefundRefused, made: QuerySet[RazorpayRefund], before: set[int]
+) -> None:
+    """Say exactly how much money moved before the refund stopped.
+
+    refund_order and refund_subscription go line by line, so a later line can be
+    refused after earlier ones have already sent real money back.
+    """
+    moved = list(made.filter(status__in=STANDING).exclude(pk__in=before))
+    if moved:
+        messages.warning(
+            request,
+            f"Stopped after refunding {_money(sum(refund.amount for refund in moved))} "
+            f"on {len(moved)} payment(s). The rest was not refunded: {error}",
+        )
+    else:
+        messages.error(request, str(error))
+
+
+def refund_line_view(request: HttpRequest, line_id: int) -> HttpResponse:
+    """Confirm, then refund one person's line. Money only moves on POST."""
+    if not request.user.has_perm(REFUND_PERM):
+        raise PermissionDenied
+
+    line = get_object_or_404(
+        RazorpayTransactionPlayer.objects.select_related(
+            "player__user", "subscription__season", "transaction"
+        ),
+        pk=line_id,
+    )
+    back = reverse("admin:server_razorpaytransaction_change", args=[line.transaction_id])
+
+    if request.method == "POST":
+        try:
+            refund_line(
+                line,
+                by=request.user,  # type: ignore[arg-type]
+                reason=request.POST.get("reason", "").strip(),
+            )
+        except RefundRefused as error:
+            messages.error(request, str(error))
+        else:
+            messages.success(
+                request, f"Refunded {_money(line.amount)} to {line.player.user.get_full_name()}."
+            )
+            return redirect(back)
+
+    changes: list[str] = []
+    warning = ""
+    if line.subscription is not None:
+        changes = [
+            f"Their {line.subscription.season.name} subscription stops counting: not for "
+            "rostering, not in member counts, not in voter lists.",
+            *SUBSCRIPTION_CHANGES,
+        ]
+    elif line.plan_id is not None:
+        changes = ["This payment was never applied to a subscription, so nothing else changes."]
+    elif line.transaction.type == RazorpayTransaction.TransactionTypeChoices.ANNUAL_SUBSCRIPTION:
+        warning = _untouched_subscription_warning(line.transaction, [line.player_id])
+    else:
+        warning = (
+            f"This is a {line.transaction.get_type_display()}, not a subscription. The money "
+            "goes back, but the registration stays exactly as it is. Remove it by hand if "
+            "that is what you intend."
+        )
+
+    return render(
+        request,
+        "admin/refund_confirmation.html",
+        {
+            "title": f"Refund {_money(line.amount)}?",
+            "amount": _money(line.amount),
+            "person": line.player.user.get_full_name(),
+            "changes": changes,
+            "warning": warning,
+            "cancel_url": back,
+        },
+    )
+
+
+def refund_subscription_view(request: HttpRequest, subscription_id: int) -> HttpResponse:
+    """Confirm, then give back everything still standing on one subscription."""
+    if not request.user.has_perm(REFUND_PERM):
+        raise PermissionDenied
+
+    subscription = get_object_or_404(
+        Subscription.objects.select_related("player__user", "season"), pk=subscription_id
+    )
+    left = sum(
+        line.amount or 0
+        for line in unrefunded(RazorpayTransactionPlayer.objects.filter(subscription=subscription))
+    )
+    made = RazorpayRefund.objects.filter(line__subscription=subscription)
+    back = reverse("admin:server_subscription_change", args=[subscription.pk])
+
+    if request.method == "POST":
+        before = set(made.values_list("pk", flat=True))
+        try:
+            refunds = refund_subscription(
+                subscription,
+                by=request.user,  # type: ignore[arg-type]
+                reason=request.POST.get("reason", "").strip(),
+            )
+        except RefundRefused as error:
+            _report_partial(request, error, made, before)
+        else:
+            messages.success(
+                request,
+                f"Refunded {_money(sum(refund.amount for refund in refunds))} to "
+                f"{subscription.player.user.get_full_name()}."
+                if refunds
+                else "There was nothing left to refund.",
+            )
+            return redirect(back)
+
+    return render(
+        request,
+        "admin/refund_confirmation.html",
+        {
+            "title": f"Refund {_money(left)}?",
+            "amount": _money(left),
+            "person": subscription.player.user.get_full_name(),
+            "changes": [
+                f"Every payment still standing on their {subscription.season.name} subscription "
+                "is sent back, newest first.",
+                "The subscription stops counting: not for rostering, not in member counts, "
+                "not in voter lists.",
+                *SUBSCRIPTION_CHANGES,
+            ],
+            "warning": ""
+            if left
+            else "No payment on this subscription can be refunded from here. If money is still "
+            "owed back, refund the order instead and mark this subscription by hand.",
+            "cancel_url": back,
+        },
+    )
+
+
+def refund_order_view(request: HttpRequest, order_id: str) -> HttpResponse:
+    """Confirm, then refund whatever is left of a whole order."""
+    if not request.user.has_perm(REFUND_PERM):
+        raise PermissionDenied
+
+    transaction = get_object_or_404(RazorpayTransaction.objects.select_related("user"), pk=order_id)
+    left = transaction.amount - refunded_total(transaction)
+    made = RazorpayRefund.objects.filter(transaction=transaction)
+    back = reverse("admin:server_razorpaytransaction_change", args=[transaction.pk])
+
+    if request.method == "POST":
+        before = set(made.values_list("pk", flat=True))
+        try:
+            refunds = refund_order(
+                transaction,
+                by=request.user,  # type: ignore[arg-type]
+                reason=request.POST.get("reason", "").strip(),
+            )
+        except RefundRefused as error:
+            _report_partial(request, error, made, before)
+        else:
+            messages.success(
+                request, f"Refunded {_money(sum(refund.amount for refund in refunds))}."
+            )
+            return redirect(back)
+
+    is_subscription = (
+        transaction.type == RazorpayTransaction.TransactionTypeChoices.ANNUAL_SUBSCRIPTION
+    )
+    lines = list(RazorpayTransactionPlayer.objects.filter(transaction=transaction))
+    changes: list[str] = []
+    if not is_subscription:
+        warning = (
+            f"This is a {transaction.get_type_display()}, not a subscription. The money "
+            "goes back, but what it paid for stays exactly as it is. Undo that by hand if "
+            "that is what you intend."
+        )
+    elif all(line.plan_id is None for line in lines):
+        # Paid before orders named a tier per person: refund_order sends the
+        # money back whole and touches no subscription.
+        warning = _untouched_subscription_warning(transaction, [line.player_id for line in lines])
+    else:
+        warning = ""
+        changes = [
+            "Everyone on this order who has not been refunded already is refunded, and "
+            "their subscription for that season stops counting.",
+            *SUBSCRIPTION_CHANGES,
+        ]
+    return render(
+        request,
+        "admin/refund_confirmation.html",
+        {
+            "title": f"Refund {_money(left)}?",
+            "amount": _money(left),
+            "person": transaction.user.get_full_name(),
+            "changes": changes,
+            "warning": warning,
+            "cancel_url": back,
+        },
+    )
