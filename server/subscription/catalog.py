@@ -2,8 +2,9 @@
 
 from django.db.models import QuerySet
 
+from server.core.models import Player
 from server.season.models import Season
-from server.subscription.models import SubscriptionPlan
+from server.subscription.models import Subscription, SubscriptionPlan
 
 PATRON = "patron"
 REGULAR = "regular"
@@ -17,6 +18,20 @@ def plans_for(season: Season, available_only: bool = True) -> QuerySet[Subscript
     if available_only:
         plans = plans.filter(is_available=True)
     return plans.order_by("type__display_order")
+
+
+def season_to_buy(player: Player) -> Season | None:
+    """The season this person would buy a subscription for next.
+
+    This season, unless they already hold it, in which case the next one.
+    None when there is no season to buy at all.
+    """
+    current = Season.current()
+    if current is None:
+        return None
+    if not Subscription.objects.for_season(current).filter(player=player, is_active=True).exists():
+        return current
+    return Season.objects.filter(start_date__gt=current.start_date).order_by("start_date").first()
 
 
 def plan_for(season: Season, slug: str) -> SubscriptionPlan | None:

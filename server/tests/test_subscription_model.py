@@ -4,10 +4,10 @@ from django.db.utils import IntegrityError
 from django.test import TestCase
 
 from server.core.models import Player, User
-from server.schema import SubscriptionSchema
 from server.season.models import Season
 from server.subscription import numbers
 from server.subscription.models import Scope, Subscription, SubscriptionPlan, SubscriptionType
+from server.subscription.schema import SubscriptionSchema
 
 
 def make_player(email: str) -> Player:

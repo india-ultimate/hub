@@ -3,8 +3,8 @@ from io import StringIO
 from django.test import TestCase
 
 from server.core.models import Player, User
-from server.lib.subscription import get_subscription_status
 from server.season.models import Season
+from server.subscription.bulk_check import get_subscription_status
 from server.subscription.models import Subscription
 
 
@@ -20,7 +20,8 @@ class SubscriptionStatusTestCase(TestCase):
             email_address,field1,field2
             Test1@example.com,value1,value2
         """
-        season = Season.objects.get(name="Season 2023-2024")
+        season = Season.current()
+        assert season is not None  # noqa: S101 - the seeded seasons cover today
 
         email1 = "test1@example.com"
         user1 = User.objects.create(username=email1, email=email1)
@@ -29,8 +30,8 @@ class SubscriptionStatusTestCase(TestCase):
             is_active=True,
             player=player1,
             season=season,
-            start_date="2023-01-01",
-            end_date="2023-12-31",
+            start_date=season.start_date,
+            end_date=season.end_date,
         )
 
         email2 = "test2@example.com"
@@ -40,8 +41,8 @@ class SubscriptionStatusTestCase(TestCase):
             is_active=False,
             player=player2,
             season=season,
-            start_date="2023-01-01",
-            end_date="2023-12-31",
+            start_date=season.start_date,
+            end_date=season.end_date,
         )
         self.email1 = email1
         self.email2 = email2

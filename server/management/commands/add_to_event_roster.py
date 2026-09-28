@@ -6,7 +6,7 @@ from django.core.management.base import BaseCommand, CommandParser
 from django.db import IntegrityError
 
 from server.core.models import Player, Team, User
-from server.subscription.models import Subscription
+from server.subscription import eligibility
 from server.tournament.models import Event, Registration, Tournament
 from server.tournament.utils import can_register_player_to_series_event
 
@@ -57,21 +57,10 @@ class Command(BaseCommand):
                         self.stderr.write(self.style.ERROR(f"Error: {error}, player: {email}"))
                         continue
 
-                if event.is_subscription_needed:
-                    subscription = (
-                        Subscription.objects.filter(player=player).order_by("-start_date").first()
-                    )
-                    if subscription is None:
-                        self.stderr.write(self.style.ERROR(f"Subscription not found: {email}"))
-                        continue
-
-                    if not subscription.is_active:
-                        self.stderr.write(self.style.ERROR(f"Subscription not active: {email}"))
-                        continue
-
-                    if not subscription.waiver_valid:
-                        self.stderr.write(self.style.ERROR(f"Waiver not valid: {email}"))
-                        continue
+                subscription_error = eligibility.check(player, event, is_playing=True)
+                if subscription_error is not None:
+                    self.stderr.write(self.style.ERROR(f"{subscription_error['message']}: {email}"))
+                    continue
 
                 registration = Registration(
                     event=event,

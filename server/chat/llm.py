@@ -86,7 +86,8 @@ Key Data Structures and Concepts:
 
 1. Players:
    - Basic info: name, gender
-   - Subscription: annual status, subscription number, waiver info
+   - Subscription: current tier and status, IU ID, waiver info,
+     and the per-season history
    - Accreditation: WFDF accreditation level and validity
    - Analytics: player participation trends, gender ratios
 
@@ -96,7 +97,6 @@ Key Data Structures and Concepts:
 
 3. Seasons:
    - Annual subscription periods
-   - Subscription fees (regular and sponsored)
    - Start and end dates
    - Analytics: subscription growth, revenue trends, seasonal patterns
 
@@ -1090,18 +1090,34 @@ Available Tools:
         """Get India Ultimate subscription information for a specific player."""
         try:
             player = Player.objects.get(id=player_id)
-            subscription = Subscription.objects.filter(player=player).first()
+            subscription = player.current_subscription
+
+            # Every season this person has held, newest first. A refunded row
+            # is kept and marked, so "when did they lapse" can be answered.
+            history = [
+                {
+                    "season": held.season.name,
+                    "tier": held.tier,
+                    "is_active": held.is_active,
+                    "refunded": held.refunded_at is not None,
+                }
+                for held in Subscription.objects.filter(player=player)
+                .select_related("season", "plan__type")
+                .order_by("-season__start_date")
+            ]
 
             if not subscription:
                 return {
                     "has_subscription": False,
-                    "message": "No India Ultimate subscription found for this player",
+                    "message": "No current India Ultimate subscription for this player",
+                    "history": history,
                 }
 
             return {
                 "has_subscription": True,
-                "subscription_number": subscription.subscription_number,
-                "is_annual": subscription.is_annual,
+                "history": history,
+                "iu_id": player.iu_id,
+                "tier": subscription.tier,
                 "start_date": subscription.start_date.isoformat(),
                 "end_date": subscription.end_date.isoformat(),
                 "is_active": subscription.is_active,
@@ -1127,8 +1143,6 @@ Available Tools:
                 "name": season.name,
                 "start_date": season.start_date.isoformat(),
                 "end_date": season.end_date.isoformat(),
-                "annual_subscription_amount": season.annual_subscription_amount,
-                "sponsored_annual_subscription_amount": season.sponsored_annual_subscription_amount,
             }
             for season in seasons
         ]
@@ -1142,8 +1156,6 @@ Available Tools:
                 "name": season.name,
                 "start_date": season.start_date.isoformat(),
                 "end_date": season.end_date.isoformat(),
-                "annual_subscription_amount": season.annual_subscription_amount,
-                "sponsored_annual_subscription_amount": season.sponsored_annual_subscription_amount,
                 "is_current": season.start_date <= timezone.now().date() <= season.end_date,
             }
         except Season.DoesNotExist:
@@ -1813,11 +1825,8 @@ Available Tools:
                     "id": player.id,
                     "teams": [{"id": team.id, "name": team.name} for team in player.teams.all()],
                     "subscription": {
-                        "is_active": bool(
-                            Subscription.objects.filter(player=player, is_active=True).first()
-                        )
-                        if Subscription.objects.filter(player=player).first()
-                        else None,
+                        "is_active": player.current_subscription is not None
+                        and player.current_subscription.is_active,
                     },
                 }
                 if player is not None

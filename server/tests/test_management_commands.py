@@ -240,14 +240,10 @@ class TestActivateSubscriptions(TestCase):
         super().setUp()
         self.fixtures_dir = Path(__file__).parent.joinpath("fixtures")
         self.fixture = self.fixtures_dir / "import-players.csv"
-        ind_tz = datetime.timezone(datetime.timedelta(hours=5, minutes=30), name="IND")
-        self.season = Season.objects.create(
-            name="Season 24-25",
-            start_date=f"{datetime.datetime.now(ind_tz).year}-08-01",
-            end_date=f"{datetime.datetime.now(ind_tz).year+1}-07-30",
-            annual_subscription_amount=70000,
-            sponsored_annual_subscription_amount=20000,
-        )
+        # The seeded current season, not one of this test's own: subscriptions
+        # now need a plan, and only the seeded seasons have a catalog.
+        self.season = Season.current()
+        assert self.season is not None  # noqa: S101 - seeded
 
     def test_import_players(self) -> None:
         call_command("import_players", self.fixture, "--date-format", "%d-%m-%Y")
@@ -263,7 +259,6 @@ class TestActivateSubscriptions(TestCase):
         # first; delete only the season this test created, not the ones
         # the catalog migration seeded (they protect their own plans).
         Subscription.objects.all().delete()
-        self.season.delete()
 
 
 class TestAddToSeriesRoster(TestCase):
@@ -272,13 +267,10 @@ class TestAddToSeriesRoster(TestCase):
         self.fixtures_dir = Path(__file__).parent.joinpath("fixtures")
         self.fixture = self.fixtures_dir / "import-players.csv"
         ind_tz = datetime.timezone(datetime.timedelta(hours=5, minutes=30), name="IND")
-        self.season = Season.objects.create(
-            name="Season 24-25",
-            start_date=f"{datetime.datetime.now(ind_tz).year}-08-01",
-            end_date=f"{datetime.datetime.now(ind_tz).year+1}-07-30",
-            annual_subscription_amount=70000,
-            sponsored_annual_subscription_amount=20000,
-        )
+        # The seeded current season, not one of this test's own: subscriptions
+        # now need a plan, and only the seeded seasons have a catalog.
+        self.season = Season.current()
+        assert self.season is not None  # noqa: S101 - seeded
         self.series = Series.objects.create(
             name="NCS",
             start_date=f"{datetime.datetime.now(ind_tz).year}-08-01",
@@ -325,7 +317,6 @@ class TestAddToSeriesRoster(TestCase):
         # first; delete only the season this test created, not the ones
         # the catalog migration seeded (they protect their own plans).
         Subscription.objects.all().delete()
-        self.season.delete()
         Series.objects.all().delete()
         Team.objects.all().delete()
         SeriesRegistration.objects.all().delete()
@@ -337,13 +328,10 @@ class TestAddToEventRoster(TestCase):
         self.fixtures_dir = Path(__file__).parent.joinpath("fixtures")
         self.fixture = self.fixtures_dir / "import-players.csv"
         ind_tz = datetime.timezone(datetime.timedelta(hours=5, minutes=30), name="IND")
-        self.season = Season.objects.create(
-            name="Season 24-25",
-            start_date=f"{datetime.datetime.now(ind_tz).year}-08-01",
-            end_date=f"{datetime.datetime.now(ind_tz).year+1}-07-30",
-            annual_subscription_amount=70000,
-            sponsored_annual_subscription_amount=20000,
-        )
+        # The seeded current season, not one of this test's own: subscriptions
+        # now need a plan, and only the seeded seasons have a catalog.
+        self.season = Season.current()
+        assert self.season is not None  # noqa: S101 - seeded
         self.series = Series.objects.create(
             name="NCS",
             start_date=f"{datetime.datetime.now(ind_tz).year}-08-01",
@@ -403,7 +391,6 @@ class TestAddToEventRoster(TestCase):
         # first; delete only the season this test created, not the ones
         # the catalog migration seeded (they protect their own plans).
         Subscription.objects.all().delete()
-        self.season.delete()
         Series.objects.all().delete()
         Team.objects.all().delete()
         SeriesRegistration.objects.all().delete()

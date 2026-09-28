@@ -36,9 +36,7 @@ def send_announcement_to_members(announcement: Announcement) -> list[Task]:
     :param announcement: Announcement instance
     :return: List of created Task objects
     """
-    active_subscriptions = Subscription.objects.filter(is_active=True).select_related(
-        "player__user"
-    )
+    active_subscriptions = Subscription.objects.current().filter(is_active=True)
     recipients = list(active_subscriptions.values_list("player__user__email", flat=True).distinct())
     return _queue_announcement_emails(announcement, recipients)
 
