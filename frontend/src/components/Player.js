@@ -1,13 +1,25 @@
 import { A, useNavigate } from "@solidjs/router";
+import { createQuery } from "@tanstack/solid-query";
 import { For, Match, Show, Switch } from "solid-js";
 
 import { genderChoices, occupationChoices, stateChoices } from "../constants";
+import { fetchPlayerSubscriptions } from "../queries";
 import { displayDate } from "../utils";
 import { getLabel } from "../utils";
 import StatusStepper from "./StatusStepper";
 
 const Player = props => {
   const navigate = useNavigate();
+
+  const subscriptionsQuery = createQuery(
+    () => ["player-subscriptions", props.player?.id],
+    () => fetchPlayerSubscriptions(props.player.id),
+    {
+      get enabled() {
+        return Boolean(props.player?.id);
+      }
+    }
+  );
 
   const navSubscription = (e, playerId) => {
     e.preventDefault();
@@ -92,6 +104,41 @@ const Player = props => {
               </Switch>
             </td>
           </tr>
+          <Show when={props.player?.iu_id}>
+            <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
+              <th
+                scope="row"
+                class="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white"
+              >
+                IU ID
+              </th>
+              <td class="px-6 py-4">{props.player.iu_id}</td>
+            </tr>
+          </Show>
+          <Show when={subscriptionsQuery.data?.length > 0}>
+            <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
+              <th
+                scope="row"
+                class="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white"
+              >
+                Subscription history
+              </th>
+              <td class="px-6 py-4">
+                <ul class="list-inside list-disc">
+                  <For each={subscriptionsQuery.data}>
+                    {subscription => (
+                      <li>
+                        {subscription.season_name}
+                        <Show when={subscription.tier_name}>
+                          {` — ${subscription.tier_name}`}
+                        </Show>
+                      </li>
+                    )}
+                  </For>
+                </ul>
+              </td>
+            </tr>
+          </Show>
           <Show when={props.player?.subscription}>
             <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
               <th

@@ -10,8 +10,12 @@ class SubscriptionPlanSchema(Schema):
     slug: str
     name: str
     description: str
+    features: list[str]
     amount: int
     requires_grant: bool
+    # A grant-only tier the player holds a grant for: the page shows it in
+    # place of Regular, and hides grant-only tiers otherwise.
+    granted: bool = False
     available_to_player: bool
     upgrade_from: str | None = None
     upgrade_amount: int | None = None
@@ -20,7 +24,19 @@ class SubscriptionPlanSchema(Schema):
 class SubscriptionSchema(ModelSchema):
     waiver_signed_by: str | None
     tier: str | None
+    tier_name: str | None
     scopes: list[str]
+    season_name: str
+
+    @staticmethod
+    def resolve_tier_name(subscription: Subscription) -> str | None:
+        """The tier as people read it; `tier` is the slug code compares."""
+        return subscription.plan.type.name if subscription.plan is not None else None
+
+    @staticmethod
+    def resolve_season_name(subscription: Subscription) -> str:
+        """The season spelled out, so a history list reads without a lookup."""
+        return subscription.season.name
 
     @staticmethod
     def resolve_waiver_signed_by(subscription: Subscription) -> str | None:

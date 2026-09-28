@@ -6,10 +6,12 @@ import re
 import zlib
 from contextlib import ExitStack
 from email.utils import getaddresses
+from importlib import import_module
 from pathlib import Path
 from typing import Any
 
 import pytest
+from django.apps import apps
 from django.conf import settings
 from django.test import Client
 from django.utils.timezone import now
@@ -30,6 +32,7 @@ from server.duplicates.models import (
 )
 from server.season.models import Season
 from server.servicerequests.models import ServiceRequestStatus
+from server.subscription import sponsorship
 from server.task.models import Task
 from server.tests.localserver import APP_URL, DJANGO_URL, running_test_server
 from server.tests.razorpay_checkout import complete_razorpay_test_payment
@@ -318,6 +321,38 @@ class TestIntegration(BaseCase):
 
         self.click("h2#accordion-heading-transactions")
         self.assert_element("h2#accordion-heading-transactions")
+
+    # Breaks if: the page stops reading tiers from /api/seasons/{id}/plans,
+    # drops a tier, or stops showing the IU ID.
+    def test_a_member_can_see_the_four_tiers_and_their_number(self) -> None:
+        # An earlier transactional test may have flushed what migrations
+        # seeded, so seed the seasons and tiers again (both get_or_create).
+        import_module("server.migrations.0146_legacy_seasons").add_seasons(apps, None)
+        import_module("server.migrations.0148_seed_catalog").seed(apps, None)
+        user = make_player("tiers@example.com")
+        Player.objects.filter(user=user).update(iu_id="IU-26-0001")
+        player_id = Player.objects.get(user=user).id
+
+        self.sign_in_as(user)
+        self.open(f"{APP_URL}/subscription/{player_id}")
+        self.assert_text("Patron Subscription")
+        self.assert_text("Regular Subscription")
+        self.assert_text("Community Subscription")
+        # Regular starts selected, but nothing is labelled as the one to buy.
+        self.assert_text("Selected")
+        self.assert_text_not_visible("Recommended")
+        # Without a grant, the discounted tier is not shown at all.
+        self.assert_text_not_visible("Discounted Subscription")
+        self.assert_text("IU-26-0001", "#iu-id")
+
+        # With one, it takes Regular's place.
+        sponsorship.grant(
+            Player.objects.get(user=user), Season.objects.get(name="Season 2026-2027")
+        )
+        self.open(f"{APP_URL}/subscription/{player_id}")
+        self.assert_text("Discounted Subscription")
+        self.assert_text("Approved for you")
+        self.assert_text_not_visible("Regular Subscription")
 
     def test_login_with_otp(self) -> None:
         username, password, user_id = create_login_user()

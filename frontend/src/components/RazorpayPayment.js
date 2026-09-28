@@ -23,22 +23,17 @@ const RazorpayPayment = props => {
   });
 
   const initiatePayment = () => {
-    const player_id = props?.player_id;
     const player_ids = props?.player_ids;
-    const season_id = props.season?.id;
     const event_id = props.event?.id;
     const team_id = props.team?.id;
     const partial = props.partialPayment || false;
-    const is_supporter = props.is_supporter || false;
+    // A subscription order names who is buying which tier; the server prices
+    // it. Registrations keep their own shapes.
     const data = team_id
       ? player_ids
         ? { team_id, event_id, player_ids } // Player Registration
         : { team_id, event_id, partial } // Team Registration
-      : props.annual
-      ? player_ids
-        ? { player_ids, season_id, is_supporter } // Group Subscription
-        : { player_id, season_id, is_supporter } // Individual Subscription
-      : { player_id, event_id }; // Event Subscription
+      : { season_id: props.season?.id, items: props.items }; // Subscription
 
     setLoading(true);
     props.setStatus("");
@@ -148,11 +143,11 @@ const RazorpayPayment = props => {
   return (
     <>
       <button
-        class={`my-5 block rounded-lg bg-${
-          props.buttonColor || "blue"
-        }-600 px-3 py-2.5 text-center text-sm font-medium text-white hover:bg-${
-          props.buttonColor || "blue"
-        }-700  ${
+        class={`block rounded-lg bg-${props.buttonColor || "blue"}-600 ${
+          props.large
+            ? "mx-auto w-full max-w-md px-6 py-4 text-base font-semibold shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-300"
+            : "my-5 px-3 py-2.5 text-sm font-medium"
+        } text-center text-white hover:bg-${props.buttonColor || "blue"}-700  ${
           props.disabled || loading()
             ? "cursor-not-allowed bg-gray-400 hover:bg-gray-500"
             : ""
@@ -168,29 +163,6 @@ const RazorpayPayment = props => {
           </div>
         </Show>
       </button>
-      {/* <div
-        class="mb-4 rounded-lg bg-yellow-50 p-4 text-sm text-yellow-800 dark:bg-gray-800 dark:text-yellow-300"
-        role="alert"
-      >
-        <details>
-          <summary>Facing issues with the Payment gateway?</summary>
-          <div class="my-4">
-            You can make a direct payment (without using the payment gateway)
-            and record the payment in the Hub
-            <ManualPaymentModal
-              disabled={props.disabled}
-              annual={props.annual}
-              year={props.year}
-              player_id={props.player_id}
-              player_ids={props.player_ids}
-              amount={props.amount}
-              setStatus={props.setStatus}
-              successCallback={props.successCallback}
-              event={props.event}
-            />
-          </div>
-        </details>
-      </div> */}
     </>
   );
 };

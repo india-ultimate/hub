@@ -10,6 +10,7 @@ import { trophy } from "solid-heroicons/solid";
 import { trash } from "solid-heroicons/solid";
 import { createEffect, createSignal, For, Match, Show, Switch } from "solid-js";
 
+import { playerRoles } from "../../constants";
 import {
   fetchSeriesBySlug,
   fetchSeriesTeamBySlug,
@@ -39,6 +40,33 @@ function groupInvitationsByPlayerId(invitations) {
   return groupedInvitations;
 }
 
+// Mirrors series.models.PLAYING_ROLES: everyone else is staff and does not
+// count towards the roster limit.
+const PLAYING_ROLES = ["DFLT", "CAP", "SCAP"];
+const roleLabel = value => playerRoles.find(r => r.value === value)?.label;
+
+const RosterList = props => (
+  <div class="mt-2 w-full divide-y">
+    <For each={props.registrations}>
+      {registration => (
+        <div class="mr-6 flex w-full items-center justify-between space-x-4 py-2 pr-2">
+          <div class="font-medium">
+            {registration.player?.full_name}
+            <Show when={registration.player?.match_up}>
+              {` (${registration.player?.match_up})`}
+            </Show>
+            <Show when={registration.role && registration.role !== "DFLT"}>
+              <span class="ml-2 text-sm text-gray-500">
+                {roleLabel(registration.role)}
+              </span>
+            </Show>
+          </div>
+        </div>
+      )}
+    </For>
+  </div>
+);
+
 const SeriesRoster = () => {
   const params = useParams();
   const [store] = useStore();
@@ -62,6 +90,11 @@ const SeriesRoster = () => {
   );
 
   const userQuery = createQuery(() => ["me"], fetchUser);
+
+  const players = () =>
+    (rosterQuery.data ?? []).filter(r => PLAYING_ROLES.includes(r.role));
+  const staff = () =>
+    (rosterQuery.data ?? []).filter(r => !PLAYING_ROLES.includes(r.role));
 
   const rosterInvitationsQuery = createQuery(
     () => ["series-invitations-sent", params.series_slug, params.team_slug],
@@ -230,35 +263,21 @@ const SeriesRoster = () => {
           <div class="mx-auto max-w-screen-md">
             <div class="mt-4">
               <h4 class="mb-2 text-xl font-bold text-blue-500 underline underline-offset-2">
-                Current Roster {`(${rosterQuery.data?.length || "-"})`}
+                Current Roster {`(${players().length || "-"} players)`}
               </h4>
 
               <Show
-                when={rosterQuery.data?.length !== 0}
+                when={players().length !== 0}
                 fallback={<Info text="No Players in the roster yet" />}
               >
-                <div class="mt-2 w-full divide-y">
-                  <For each={rosterQuery.data}>
-                    {registration => (
-                      <div
-                        class={clsx(
-                          "mr-6 flex w-full items-center justify-between space-x-4 py-2 pr-2"
-                        )}
-                      >
-                        <div class="flex items-center gap-x-4">
-                          <div class="font-medium">
-                            <div>
-                              {registration.player?.full_name}
-                              <Show
-                                when={registration.player?.match_up}
-                              >{` (${registration.player?.match_up})`}</Show>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </For>
-                </div>
+                <RosterList registrations={players()} />
+              </Show>
+
+              <Show when={staff().length !== 0}>
+                <h4 class="mb-2 mt-4 text-xl font-bold text-blue-500 underline underline-offset-2">
+                  Staff {`(${staff().length})`}
+                </h4>
+                <RosterList registrations={staff()} />
               </Show>
             </div>
 
