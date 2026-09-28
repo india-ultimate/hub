@@ -767,6 +767,56 @@ class TestSubscriptionCommandFailures(TestCase):
         self.assertFalse(RazorpayRefund.objects.exists())
         self.assertFalse(RazorpayTransactionPlayer.objects.filter(needs_review=True).exists())
 
+    def test_sync_razorpay_transactions_survives_an_unknown_payment_status(self) -> None:
+        player = make_player("payer@x.com")
+        RazorpayTransaction.objects.create(
+            order_id="order_authorized",
+            payment_id="pay_authorized",
+            amount=75000,
+            currency="INR",
+            user=player.user,
+            status=RazorpayTransaction.TransactionStatusChoices.PENDING,
+        )
+        RazorpayTransaction.objects.create(
+            order_id="order_refundable",
+            payment_id="pay_refundable",
+            amount=75000,
+            currency="INR",
+            user=player.user,
+            status=RazorpayTransaction.TransactionStatusChoices.COMPLETED,
+        )
+        payments = [
+            # Razorpay's own statuses for an uncaptured payment: neither is one
+            # of the Hub's own TransactionStatusChoices.
+            {"order_id": "order_authorized", "status": "authorized"},
+            # A status the Hub has never heard of.
+            {"order_id": "order_unknown", "status": "disputed"},
+        ]
+        refunds = [
+            {
+                "id": "rfnd_ok",
+                "payment_id": "pay_refundable",
+                "amount": 75000,
+                "status": "processed",
+            }
+        ]
+        command = "server.management.commands.sync_razorpay_transactions"
+        with mock.patch(f"{command}.get_transactions", return_value=payments), mock.patch(
+            f"{command}.get_refunds", return_value=refunds
+        ):
+            out, err = self.run_command("sync_razorpay_transactions")
+
+        self.assertIn("disputed", err)
+        self.assertIn("Recorded 1 refunds.", out)
+        self.assertEqual(
+            RazorpayTransaction.TransactionStatusChoices.PENDING,
+            RazorpayTransaction.objects.get(order_id="order_authorized").status,
+        )
+        self.assertEqual(
+            RazorpayTransaction.TransactionStatusChoices.REFUNDED,
+            RazorpayTransaction.objects.get(order_id="order_refundable").status,
+        )
+
 
 class TestSubscriptionMigrationReport(TestCase):
     def setUp(self) -> None:
