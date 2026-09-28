@@ -586,7 +586,7 @@ class TestPayment(ApiBaseTestCase):
         self.assertIn(player, transaction.players.all())
         self.assertFalse(transaction.validated)
         self.assertEqual("2024-08-01", player.subscription.start_date.strftime("%Y-%m-%d"))
-        self.assertEqual("2025-07-30", player.subscription.end_date.strftime("%Y-%m-%d"))
+        self.assertEqual("2025-07-31", player.subscription.end_date.strftime("%Y-%m-%d"))
 
     def test_create_manual_transaction_subscription_exists(self) -> None:
         c = self.client
@@ -616,7 +616,7 @@ class TestPayment(ApiBaseTestCase):
         self.assertFalse(transaction.validated)
         subscription.refresh_from_db()
         self.assertEqual("2024-08-01", subscription.start_date.strftime("%Y-%m-%d"))
-        self.assertEqual("2025-07-30", subscription.end_date.strftime("%Y-%m-%d"))
+        self.assertEqual("2025-07-31", subscription.end_date.strftime("%Y-%m-%d"))
 
     def test_create_order_player_exists(self) -> None:
         c = self.client
@@ -649,7 +649,7 @@ class TestPayment(ApiBaseTestCase):
             transaction.status,
         )
         self.assertEqual("2024-08-01", transaction.start_date.strftime("%Y-%m-%d"))
-        self.assertEqual("2025-07-30", transaction.end_date.strftime("%Y-%m-%d"))
+        self.assertEqual("2025-07-31", transaction.end_date.strftime("%Y-%m-%d"))
         self.assertIsNotNone(transaction.season)
         if transaction.season is not None:
             self.assertEqual(self.season.id, transaction.season.id)
@@ -687,7 +687,7 @@ class TestPayment(ApiBaseTestCase):
             transaction.status,
         )
         self.assertEqual("2024-08-01", transaction.start_date.strftime("%Y-%m-%d"))
-        self.assertEqual("2025-07-30", transaction.end_date.strftime("%Y-%m-%d"))
+        self.assertEqual("2025-07-31", transaction.end_date.strftime("%Y-%m-%d"))
         self.assertIsNotNone(transaction.season)
         if transaction.season is not None:
             self.assertEqual(self.season.id, transaction.season.id)
