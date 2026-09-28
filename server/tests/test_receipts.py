@@ -1,7 +1,10 @@
 import datetime
 import io
+from typing import Any
 from unittest import mock
 
+from django.conf import settings
+from django.core.management import call_command
 from django.db import transaction as db_transaction
 from django.test import TestCase
 
@@ -11,7 +14,8 @@ from server.receipts.issue import issue_receipt, issue_refund_note, next_number
 from server.receipts.models import Receipt, ReceiptSequence
 from server.season.models import Season
 from server.subscription import purchase
-from server.subscription.models import SubscriptionPlan
+from server.subscription.models import Subscription, SubscriptionPlan
+from server.task.models import Task
 from server.transaction.models import (
     RazorpayRefund,
     RazorpayTransaction,
@@ -403,10 +407,10 @@ class TestRefundNotes(ReceiptTestCase):
             for r in (first, second)
         ]
 
-        def note(refund: RazorpayRefund) -> Receipt | None:
+        def note(refund: RazorpayRefund, notify: bool = True) -> Receipt | None:
             if refund.pk == first.pk:
                 raise RuntimeError("no number")
-            return issue_refund_note(refund)
+            return issue_refund_note(refund, notify=notify)
 
         target = "server.management.commands.sync_razorpay_transactions"
         with (
@@ -441,3 +445,120 @@ class TestRefundNotes(ReceiptTestCase):
         self.assertTrue(
             Receipt.objects.filter(kind=Receipt.Kind.REFUND, reference="rfnd_d").exists()
         )
+
+
+def receipt_mails() -> list[dict[str, Any]]:
+    return [
+        task.data
+        for task in Task.objects.filter(type=Task.TaskType.SEND_EMAIL)
+        if task.data["subject"].startswith(("Receipt ", "Refund note "))
+    ]
+
+
+class TestReceiptEmail(ReceiptTestCase):
+    def test_the_payer_gets_one_email_once_the_capture_commits(self) -> None:
+        transaction = self.order(
+            (make_player("e@example.com"), plan("regular", self.season), 75000)
+        )
+        with self.captureOnCommitCallbacks(execute=True):
+            purchase.fulfil(transaction)
+            purchase.fulfil(transaction)  # a rerun sends nothing more
+        receipt = Receipt.objects.get(transaction=transaction)
+        [mail] = receipt_mails()
+        self.assertEqual(mail["to"], ["payer@example.com"])
+        self.assertEqual(mail["subject"], f"Receipt {receipt.number} — India Ultimate")
+        self.assertIn(receipt.number, mail["html_content"])
+        self.assertIn("750.00", mail["html_content"])
+        base = settings.EMAIL_INVITATION_BASE_URL
+        self.assertTrue(base.startswith("http"), base)
+        self.assertIn(f'href="{base}/receipts/{receipt.pk}"', mail["html_content"])
+        self.assertIn(f'src="{base}/static/assets/logo-vertical.png"', mail["html_content"])
+
+    def test_the_email_is_queued_only_after_the_commit(self) -> None:
+        transaction = self.order(
+            (make_player("c@example.com"), plan("regular", self.season), 75000)
+        )
+        with self.captureOnCommitCallbacks(execute=False) as callbacks:
+            purchase.fulfil(transaction)
+            self.assertEqual(receipt_mails(), [])  # the payment has not committed yet
+        self.assertEqual(receipt_mails(), [])
+        for callback in callbacks:
+            callback()
+        self.assertEqual(len(receipt_mails()), 1)
+
+    def test_a_bug_in_the_email_never_undoes_the_payment(self) -> None:
+        player = make_player("boom@example.com")
+        transaction = self.order((player, plan("regular", self.season), 75000))
+        with (
+            mock.patch("server.receipts.emails.render_html", side_effect=RuntimeError("boom")),
+            self.assertLogs("server.receipts.emails", level="ERROR") as logs,
+            self.captureOnCommitCallbacks(execute=True),
+        ):
+            applied = purchase.fulfil(transaction)
+        self.assertIn("could not be sent", logs.output[0])
+        self.assertEqual(applied, 1)
+        self.assertTrue(Subscription.objects.filter(player=player, is_active=True).exists())
+        self.assertTrue(Receipt.objects.filter(transaction=transaction).exists())
+        self.assertEqual(receipt_mails(), [])
+
+    def test_a_bulk_resync_records_but_does_not_email(self) -> None:
+        transaction = self.order(
+            (make_player("q@example.com"), plan("regular", self.season), 75000)
+        )
+        with self.captureOnCommitCallbacks(execute=True):
+            purchase.fulfil(transaction, notify=False)
+        self.assertTrue(Receipt.objects.filter(transaction=transaction).exists())
+        self.assertEqual(receipt_mails(), [])
+
+    def test_no_email_for_a_payer_without_an_address(self) -> None:
+        self.payer.user.email = ""
+        self.payer.user.save()
+        transaction = self.order(
+            (make_player("n@example.com"), plan("regular", self.season), 75000)
+        )
+        with self.captureOnCommitCallbacks(execute=True):
+            purchase.fulfil(transaction)
+        self.assertTrue(Receipt.objects.filter(transaction=transaction).exists())
+        self.assertEqual(receipt_mails(), [])
+
+    def test_a_refund_note_is_emailed(self) -> None:
+        transaction = self.order(
+            (make_player("rn@example.com"), plan("regular", self.season), 75000)
+        )
+        purchase.fulfil(transaction, notify=False)
+        refund = RazorpayRefund.objects.create(
+            transaction=transaction, amount=75000, reason="x", status=PROCESSED
+        )
+        with self.captureOnCommitCallbacks(execute=True):
+            note = issue_refund_note(refund)
+        assert note is not None  # noqa: S101 - for mypy; the subject below checks the value
+        [mail] = receipt_mails()
+        self.assertEqual(mail["subject"], f"Refund note {note.number} — India Ultimate")
+
+    def test_the_sync_with_no_email_records_a_refund_note_but_sends_none(self) -> None:
+        transaction = self.order(
+            (make_player("sn@example.com"), plan("regular", self.season), 75000)
+        )
+        purchase.fulfil(transaction, notify=False)
+        entry = {
+            "id": "rfnd_sn",
+            "status": "processed",
+            "payment_id": transaction.payment_id,
+            "amount": 75000,
+        }
+        with (
+            mock.patch(
+                "server.management.commands.sync_razorpay_transactions.get_transactions",
+                return_value=[],
+            ),
+            mock.patch(
+                "server.management.commands.sync_razorpay_transactions.get_refunds",
+                return_value=[entry],
+            ),
+            self.captureOnCommitCallbacks(execute=True),
+        ):
+            call_command("sync_razorpay_transactions", "--no-email")
+        self.assertTrue(
+            Receipt.objects.filter(kind=Receipt.Kind.REFUND, reference="rfnd_sn").exists()
+        )
+        self.assertEqual(receipt_mails(), [])
