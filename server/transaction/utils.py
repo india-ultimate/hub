@@ -100,7 +100,12 @@ def create_transaction(
         end_date = event.end_date
         is_annual = False
         amount = EVENT_SUBSCRIPTION_AMOUNT
-        season = None
+        # Subscription.season is required now; an event subscription belongs to
+        # whichever season its event falls in.
+        event_season = Season.containing(event.start_date)
+        if event_season is None:
+            return 422, {"message": "No season covers this event's dates!"}
+        season = event_season
         team = None
 
     elif isinstance(order, TeamRegistrationSchema):
@@ -214,9 +219,10 @@ def create_transaction(
                 if not can_register and error:
                     return 400, error
             elif event.is_subscription_needed:
-                try:
-                    subscription = player.subscription
-                except Subscription.DoesNotExist:
+                subscription = (
+                    Subscription.objects.filter(player=player).order_by("-start_date").first()
+                )
+                if subscription is None:
                     return 400, {
                         "message": f"Player - {player.user.get_full_name()} subscription does not exist !"
                     }
@@ -383,7 +389,9 @@ def update_transaction_player_subscriptions(
         "start_date": transaction.start_date,
         "end_date": transaction.end_date,
         "event": transaction.event,
-        "season": transaction.season,
+        # Subscription.season is required now; an event transaction (no season
+        # of its own) belongs to whichever season its dates fall in.
+        "season": transaction.season or Season.containing(transaction.start_date),
         "is_active": True,
     }
     for player in transaction.players.all():

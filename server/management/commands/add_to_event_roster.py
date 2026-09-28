@@ -58,9 +58,10 @@ class Command(BaseCommand):
                         continue
 
                 if event.is_subscription_needed:
-                    try:
-                        subscription = player.subscription
-                    except Subscription.DoesNotExist:
+                    subscription = (
+                        Subscription.objects.filter(player=player).order_by("-start_date").first()
+                    )
+                    if subscription is None:
                         self.stderr.write(self.style.ERROR(f"Subscription not found: {email}"))
                         continue
 

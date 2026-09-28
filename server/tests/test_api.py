@@ -23,6 +23,7 @@ from server.core.models import Guardianship, Player, UCPerson, User
 from server.duplicates.merge import merge_accounts
 from server.duplicates.models import EmailAlias
 from server.passkey_utils import ClientResponse
+from server.season.models import Season
 from server.subscription.models import Subscription
 from server.tests.base import ApiBaseTestCase, create_pool, fake_id, fake_order, start_tournament
 from server.tests.test_subscription import SubscriptionStatusTestCase
@@ -585,14 +586,15 @@ class TestPayment(ApiBaseTestCase):
         self.assertEqual(amount, transaction.amount)
         self.assertIn(player, transaction.players.all())
         self.assertFalse(transaction.validated)
-        self.assertEqual("2024-08-01", player.subscription.start_date.strftime("%Y-%m-%d"))
-        self.assertEqual("2025-07-31", player.subscription.end_date.strftime("%Y-%m-%d"))
+        subscription = Subscription.objects.get(player=player)
+        self.assertEqual("2024-08-01", subscription.start_date.strftime("%Y-%m-%d"))
+        self.assertEqual("2025-07-31", subscription.end_date.strftime("%Y-%m-%d"))
 
     def test_create_manual_transaction_subscription_exists(self) -> None:
         c = self.client
         player = self.player
         subscription = Subscription.objects.create(
-            player=player, start_date="2022-01-01", end_date="2022-12-31"
+            player=player, season=self.season, start_date="2022-01-01", end_date="2022-12-31"
         )
         amount = ANNUAL_SUBSCRIPTION_AMOUNT
         transaction_id = "123123123"
@@ -770,10 +772,11 @@ class TestPayment(ApiBaseTestCase):
         transaction = RazorpayTransaction.objects.get(order_id=order_id)
         self.assertEqual(self.user, transaction.user)
         self.assertIn(player, transaction.players.all())
-        self.assertEqual(player.subscription.start_date, event.start_date)
-        self.assertEqual(player.subscription.end_date, event.end_date)
-        self.assertFalse(player.subscription.is_annual)
-        self.assertEqual(player.subscription.event, event)
+        subscription = Subscription.objects.get(player=player)
+        self.assertEqual(subscription.start_date, event.start_date)
+        self.assertEqual(subscription.end_date, event.end_date)
+        self.assertFalse(subscription.is_annual)
+        self.assertEqual(subscription.event, event)
         self.assertEqual(transaction.event, event)
         self.assertEqual(
             RazorpayTransaction.TransactionStatusChoices.PENDING,
@@ -814,10 +817,11 @@ class TestPayment(ApiBaseTestCase):
         transaction = ManualTransaction.objects.get(transaction_id=transaction_id)
         self.assertEqual(self.user, transaction.user)
         self.assertIn(player, transaction.players.all())
-        self.assertEqual(player.subscription.start_date, event.start_date)
-        self.assertEqual(player.subscription.end_date, event.end_date)
-        self.assertFalse(player.subscription.is_annual)
-        self.assertEqual(player.subscription.event, event)
+        subscription = Subscription.objects.get(player=player)
+        self.assertEqual(subscription.start_date, event.start_date)
+        self.assertEqual(subscription.end_date, event.end_date)
+        self.assertFalse(subscription.is_annual)
+        self.assertEqual(subscription.event, event)
         self.assertEqual(transaction.event, event)
         self.assertFalse(transaction.validated)
 
@@ -881,9 +885,10 @@ class TestPayment(ApiBaseTestCase):
         for player_id in player_ids:
             player = Player.objects.get(id=player_id)
             self.assertIn(player, transaction.players.all())
-            self.assertEqual(player.subscription.start_date, transaction.start_date)
-            self.assertEqual(player.subscription.end_date, transaction.end_date)
-            self.assertTrue(player.subscription.is_annual)
+            subscription = Subscription.objects.get(player=player)
+            self.assertEqual(subscription.start_date, transaction.start_date)
+            self.assertEqual(subscription.end_date, transaction.end_date)
+            self.assertTrue(subscription.is_annual)
         self.assertEqual(
             RazorpayTransaction.TransactionStatusChoices.PENDING,
             transaction.status,
@@ -919,7 +924,7 @@ class TestPayment(ApiBaseTestCase):
         for player_id in player_ids:
             player = Player.objects.get(id=player_id)
             self.assertIn(player, transaction.players.all())
-            self.assertTrue(player.subscription.is_annual)
+            self.assertTrue(Subscription.objects.get(player=player).is_annual)
         self.assertFalse(transaction.validated)
 
     def test_payment_success(self) -> None:
@@ -928,11 +933,13 @@ class TestPayment(ApiBaseTestCase):
         order = fake_order(amount)
         order_id = order["order_id"]
         user = self.user
-        start_date = "2023-06-01"
-        end_date = "2024-05-31"
+        season = Season.current()
+        assert season is not None  # noqa: S101 - the seeded seasons cover today
+        start_date = season.start_date.strftime("%Y-%m-%d")
+        end_date = season.end_date.strftime("%Y-%m-%d")
         player = self.player
         subscription = Subscription.objects.create(
-            start_date=start_date, end_date=end_date, player=player
+            start_date=start_date, end_date=end_date, player=player, season=season
         )
         order.update(
             {"start_date": start_date, "end_date": end_date, "user": user, "players": [player]}
@@ -960,9 +967,9 @@ class TestPayment(ApiBaseTestCase):
         self.assertEqual(1, len(data))
         player_data = data[0]
         self.assertEqual(player.id, player_data["id"])
-        self.assertEqual(
-            subscription.subscription_number, player_data["subscription"]["subscription_number"]
-        )
+        # iu_id is excluded from the schema now; it lives on
+        # Player, not Subscription, and nothing assigns it yet.
+        self.assertEqual(subscription.id, player_data["subscription"]["id"])
 
         transaction.refresh_from_db()
         self.assertEqual(transaction.payment_id, payment_id)
@@ -983,8 +990,10 @@ class TestPayment(ApiBaseTestCase):
         order = fake_order(amount)
         order_id = order["order_id"]
         user = self.user
-        start_date = "2023-06-01"
-        end_date = "2024-05-31"
+        season = Season.current()
+        assert season is not None  # noqa: S101 - the seeded seasons cover today
+        start_date = season.start_date.strftime("%Y-%m-%d")
+        end_date = season.end_date.strftime("%Y-%m-%d")
 
         players = []
         for _ in range(n_players):
@@ -1039,8 +1048,10 @@ class TestPayment(ApiBaseTestCase):
         user = self.user
         start_old = "2022-06-01"
         end_old = "2023-05-31"
-        start_date = "2023-06-01"
-        end_date = "2024-05-31"
+        current_season = Season.current()
+        assert current_season is not None  # noqa: S101 - the seeded seasons cover today
+        start_date = current_season.start_date.strftime("%Y-%m-%d")
+        end_date = current_season.end_date.strftime("%Y-%m-%d")
         player = self.player
         event_old = Event.objects.create(
             start_date=start_old,
@@ -1061,8 +1072,13 @@ class TestPayment(ApiBaseTestCase):
             player_registration_end_date="2023-05-30",
         )
         event.refresh_from_db()
+        season_old = Season.objects.get(name="Season 2022-2023")
         subscription = Subscription.objects.create(
-            start_date=start_old, end_date=end_old, player=player, event=event_old
+            start_date=start_old,
+            end_date=end_old,
+            player=player,
+            event=event_old,
+            season=season_old,
         )
         order.update(
             {
@@ -1077,7 +1093,7 @@ class TestPayment(ApiBaseTestCase):
         self.assertFalse(subscription.is_active)
         self.assertEqual(self.user, transaction.user)
         self.assertIn(player, transaction.players.all())
-        self.assertEqual(event_old, player.subscription.event)
+        self.assertEqual(event_old, Subscription.objects.get(player=player).event)
         self.assertEqual(event, transaction.event)
 
         payment_id = f"pay_{fake_id(16)}"
@@ -1098,9 +1114,9 @@ class TestPayment(ApiBaseTestCase):
         self.assertEqual(1, len(data))
         player_data = data[0]
         self.assertEqual(player.id, player_data["id"])
-        self.assertEqual(
-            subscription.subscription_number, player_data["subscription"]["subscription_number"]
-        )
+        # iu_id is excluded from the schema now; it lives on
+        # Player, not Subscription, and nothing assigns it yet.
+        self.assertEqual(subscription.id, player_data["subscription"]["id"])
 
         transaction.refresh_from_db()
         self.assertEqual(transaction.payment_id, payment_id)
@@ -1191,8 +1207,7 @@ class TestPayment(ApiBaseTestCase):
         )
         transaction.players.add(self.player)
         update_transaction(transaction, "ERROR")
-        with self.assertRaises(Subscription.DoesNotExist):
-            self.assertFalse(self.player.subscription.is_active)
+        self.assertFalse(Subscription.objects.filter(player=self.player).exists())
 
 
 class TestVaccination(ApiBaseTestCase):
@@ -1330,10 +1345,13 @@ class TestWaiver(ApiBaseTestCase):
     def setUp(self) -> None:
         super().setUp()
         self.client.force_login(self.user)
-        start_date = "2023-06-01"
-        end_date = "2024-05-31"
+        season = Season.current()
+        assert season is not None  # noqa: S101 - the seeded seasons cover today
         _subscription = Subscription.objects.create(
-            start_date=start_date, end_date=end_date, player=self.player
+            start_date=season.start_date,
+            end_date=season.end_date,
+            player=self.player,
+            season=season,
         )
 
     def test_waiver_signed(self) -> None:

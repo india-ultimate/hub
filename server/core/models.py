@@ -1,6 +1,6 @@
 import datetime
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from dateutil.relativedelta import relativedelta
 from django.contrib.auth.models import AbstractUser
@@ -17,7 +17,10 @@ from server.constants import (
     MAJOR_AGE,
     SPONSORED_ANNUAL_SUBSCRIPTION_AMOUNT,
 )
-from server.utils import slugify_max
+from server.utils import slugify_max, today
+
+if TYPE_CHECKING:
+    from server.subscription.models import Subscription
 
 
 class User(AbstractUser):
@@ -163,6 +166,7 @@ class Player(ExportModelOperationsMixin("player"), models.Model):  # type: ignor
         unique=True, null=True, blank=True, db_index=True
     )
     profile_pic_url = models.URLField(max_length=255, null=True, blank=True)
+    iu_id = models.CharField(max_length=20, unique=True, blank=True, null=True)
     sponsored = models.BooleanField(default=False)
     imported_data = models.BooleanField(default=False)
 
@@ -181,6 +185,21 @@ class Player(ExportModelOperationsMixin("player"), models.Model):  # type: ignor
         dob = self.date_of_birth
         age = (today.year - dob.year) + (today.month - dob.month) / 12 + (today.day - dob.day) / 365
         return age < MAJOR_AGE
+
+    @property
+    def current_subscription(self) -> "Subscription | None":
+        """This season's subscription, or one already bought for next season."""
+        from server.subscription.models import Subscription
+
+        current = Subscription.objects.filter(player=self).current().first()
+        if current is not None:
+            return current
+        return (
+            Subscription.objects.filter(player=self, start_date__gt=today())
+            .live()
+            .order_by("start_date")
+            .first()
+        )
 
     def was_minor_on_date(self, date: datetime.date) -> bool:
         """Check if the player was a minor on a specific date"""

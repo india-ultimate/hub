@@ -24402,8 +24402,6 @@
     "pk": 1,
     "fields": {
       "player": 5,
-      "subscription_number": "6a39ea1f",
-      "is_annual": true,
       "start_date": "2024-08-01",
       "end_date": "2025-07-31",
       "event": null,
@@ -24419,8 +24417,6 @@
     "pk": 2,
     "fields": {
       "player": 6,
-      "subscription_number": "f2562215",
-      "is_annual": true,
       "start_date": "2024-08-01",
       "end_date": "2025-07-31",
       "event": null,
@@ -24436,8 +24432,6 @@
     "pk": 3,
     "fields": {
       "player": 7,
-      "subscription_number": "bbc199b0",
-      "is_annual": true,
       "start_date": "2024-08-01",
       "end_date": "2025-07-31",
       "event": null,
@@ -24453,8 +24447,6 @@
     "pk": 4,
     "fields": {
       "player": 9,
-      "subscription_number": "b86005e4",
-      "is_annual": true,
       "start_date": "2024-08-01",
       "end_date": "2025-07-31",
       "event": null,
@@ -24470,8 +24462,6 @@
     "pk": 5,
     "fields": {
       "player": 11,
-      "subscription_number": "193916d3",
-      "is_annual": true,
       "start_date": "2024-08-01",
       "end_date": "2025-07-31",
       "event": null,
@@ -24487,8 +24477,6 @@
     "pk": 6,
     "fields": {
       "player": 12,
-      "subscription_number": "fef6eed0",
-      "is_annual": true,
       "start_date": "2024-08-01",
       "end_date": "2025-07-31",
       "event": null,
@@ -24504,8 +24492,6 @@
     "pk": 7,
     "fields": {
       "player": 13,
-      "subscription_number": "b953c22b",
-      "is_annual": true,
       "start_date": "2024-08-01",
       "end_date": "2025-07-31",
       "event": null,
@@ -24521,8 +24507,6 @@
     "pk": 8,
     "fields": {
       "player": 16,
-      "subscription_number": "c6041739",
-      "is_annual": true,
       "start_date": "2024-08-01",
       "end_date": "2025-07-31",
       "event": null,
@@ -24538,8 +24522,6 @@
     "pk": 9,
     "fields": {
       "player": 17,
-      "subscription_number": "2edf3d33",
-      "is_annual": true,
       "start_date": "2024-08-01",
       "end_date": "2025-07-31",
       "event": null,
@@ -24555,8 +24537,6 @@
     "pk": 10,
     "fields": {
       "player": 26,
-      "subscription_number": "baffb035",
-      "is_annual": true,
       "start_date": "2024-08-01",
       "end_date": "2025-07-31",
       "event": null,

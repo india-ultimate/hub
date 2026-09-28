@@ -49,7 +49,7 @@ def get_subscription_status(input_csv: Path | StringIO) -> dict[str, Any] | None
         return None
 
     subscription_statuses = dict(
-        Player.objects.values_list("user__email", "subscription__is_active")
+        Player.objects.values_list("user__email", "subscriptions__is_active")
     )
 
     for email, row in csv_data.items():

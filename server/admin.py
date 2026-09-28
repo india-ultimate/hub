@@ -398,8 +398,6 @@ class SubscriptionAdmin(admin.ModelAdmin[Subscription]):
     search_fields = ["player__user__first_name"]
     list_display = [
         "get_name",
-        "subscription_number",
-        "is_annual",
         "start_date",
         "end_date",
         "is_active",
@@ -407,6 +405,10 @@ class SubscriptionAdmin(admin.ModelAdmin[Subscription]):
     ]
     list_filter = ["is_active", "player__sponsored"]
     actions = [export_as_csv]
+    # subscription_number and is_annual are retained on the model only for
+    # the deploy window (a still-running previous release reads the
+    # columns); nothing should read or write them through this form.
+    exclude = ["subscription_number", "is_annual"]
 
     @admin.display(description="Player Name", ordering="player__user__first_name")
     def get_name(self, obj: Subscription) -> str:
