@@ -8,8 +8,8 @@ from server.core.models import Player, User
 # A merge reassigns every row pointing at the account being absorbed. These
 # counts fail the build when a relation is added, so merge.py gets taught
 # about it instead of the rows being cascade-deleted.
-INBOUND_USER_RELATIONS = 28
-INBOUND_PLAYER_RELATIONS = 24
+INBOUND_USER_RELATIONS = 29
+INBOUND_PLAYER_RELATIONS = 25
 
 
 def inbound_relations(model: type[Model]) -> list[str]:
