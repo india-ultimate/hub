@@ -38,6 +38,10 @@ from server.forms.models import (  # noqa: F401
     Form,
     FormResponse,
 )
+from server.receipts.models import (  # noqa: F401
+    Receipt,
+    ReceiptSequence,
+)
 from server.season.models import (  # noqa: F401
     Season,
 )

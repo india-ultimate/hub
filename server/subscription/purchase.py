@@ -3,6 +3,7 @@
 from django.db import IntegrityError
 from django.db import transaction as db_transaction
 
+from server.receipts.issue import describe_items, issue_receipt
 from server.subscription.emails import queue_confirmation
 from server.subscription.models import Subscription, SubscriptionPlan
 from server.subscription.numbers import assign_number
@@ -30,6 +31,11 @@ def fulfil(transaction: RazorpayTransaction, notify: bool = True) -> int:
         # line.subscription, and the unique (player, season) on Subscription is
         # the backstop for two orders racing.
         RazorpayTransaction.objects.select_for_update().filter(pk=transaction.pk).first()
+        # The receipt is written in two halves. What each line buys is read
+        # here, before anything is applied, so an upgrade still sees the tier
+        # it moves up from; the receipt itself is issued after the loop, so a
+        # first-time player's new IU ID prints beside their name.
+        items = describe_items(transaction)
         # A refunded line must never be applied again: the refund cleared the
         # subscription it had bought, or the review flag it was carrying.
         lines = unrefunded(
@@ -58,6 +64,9 @@ def fulfil(transaction: RazorpayTransaction, notify: bool = True) -> int:
                     "season's subscription at the same time, or no IU ID could "
                     "be allocated.",
                 )
+        # Every paid order gets one, even a line that only lands on staff's
+        # review list: the money did arrive.
+        issue_receipt(transaction, items=items)
     return applied
 
 
