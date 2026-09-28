@@ -42,8 +42,8 @@ from server.duplicates.models import (
     DuplicateCluster,
     EmailAlias,
 )
-from server.membership.models import Membership
 from server.servicerequests.models import ServiceRequest, ServiceRequestStatus, ServiceRequestType
+from server.subscription.models import Subscription
 from server.tests.base import create_event, create_player, create_tournament
 from server.ticket.models import Ticket, TicketMessage
 from server.tournament.models import MatchScore, Registration, Tournament
@@ -75,9 +75,9 @@ class MergeTestCase(TestCase):
 
     def populate(self, user: User, player: Player, tag: str) -> None:
         """A row in as many relations as the account can hold."""
-        Membership.objects.create(
+        Subscription.objects.create(
             player=player,
-            membership_number=f"MEM-{tag}",
+            subscription_number=f"MEM-{tag}",
             start_date=datetime.date(2026, 1, 1),
             end_date=datetime.date(2026, 12, 31),
             is_active=True,
@@ -110,7 +110,7 @@ class MergeTestCase(TestCase):
         self.tournament.volunteers.add(user)
 
         request = ServiceRequest.objects.create(
-            user=user, type=ServiceRequestType.REQUEST_SPONSORED_MEMBERSHIP, message="hi"
+            user=user, type=ServiceRequestType.REQUEST_SPONSORED_SUBSCRIPTION, message="hi"
         )
         request.service_players.add(player)
 
@@ -135,7 +135,7 @@ class TestMergeKeepsEveryRow(MergeTestCase):
         expected = before | {
             "server.User": before["server.User"] - 1,
             "server.Player": before["server.Player"] - 1,
-            "server.Membership": before["server.Membership"] - 1,
+            "server.Subscription": before["server.Subscription"] - 1,
             "server.Vaccination": before["server.Vaccination"] - 1,
             "server.Accreditation": before["server.Accreditation"] - 1,
             "server.CollegeId": before["server.CollegeId"] - 1,
@@ -194,17 +194,17 @@ class TestMergeMechanics(MergeTestCase):
 
         self.assertEqual({move.label: move.moved for move in plan.moves}["server.Player.user"], 1)
 
-    def test_the_better_membership_survives(self) -> None:
-        Membership.objects.create(
+    def test_the_better_subscription_survives(self) -> None:
+        Subscription.objects.create(
             player=self.primary_player,
-            membership_number="OLD",
+            subscription_number="OLD",
             start_date=datetime.date(2024, 1, 1),
             end_date=datetime.date(2024, 12, 31),
             is_active=False,
         )
-        Membership.objects.create(
+        Subscription.objects.create(
             player=self.duplicate_player,
-            membership_number="CURRENT",
+            subscription_number="CURRENT",
             start_date=datetime.date(2026, 1, 1),
             end_date=datetime.date(2026, 12, 31),
             is_active=True,
@@ -212,9 +212,9 @@ class TestMergeMechanics(MergeTestCase):
 
         merge_accounts(self.primary, [self.duplicate], dry_run=False)
 
-        membership = Membership.objects.get(player=self.primary_player)
-        self.assertEqual(membership.membership_number, "CURRENT")
-        self.assertEqual(Membership.objects.count(), 1)
+        subscription = Subscription.objects.get(player=self.primary_player)
+        self.assertEqual(subscription.subscription_number, "CURRENT")
+        self.assertEqual(Subscription.objects.count(), 1)
 
     def test_a_unique_together_collision_keeps_the_primary_row(self) -> None:
         Registration.objects.create(
@@ -253,21 +253,21 @@ class TestMergeMechanics(MergeTestCase):
         """Every IntegrityError used to be read as the expected uniqueness
         clash, so a constraint or trigger this does not understand deleted
         the row instead of stopping the merge."""
-        Membership.objects.create(
+        Subscription.objects.create(
             player=self.duplicate_player,
-            membership_number="ONLY",
+            subscription_number="ONLY",
             start_date=datetime.date(2026, 1, 1),
             end_date=datetime.date(2026, 12, 31),
             is_active=True,
         )
 
         with (
-            mock.patch.object(Membership, "save", side_effect=IntegrityError("a trigger")),
+            mock.patch.object(Subscription, "save", side_effect=IntegrityError("a trigger")),
             self.assertRaises(IntegrityError),
         ):
             merge_accounts(self.primary, [self.duplicate], dry_run=False)
 
-        self.assertEqual(Membership.objects.count(), 1)
+        self.assertEqual(Subscription.objects.count(), 1)
         self.assertTrue(User.objects.filter(pk=self.duplicate.pk).exists())
 
     def test_the_snapshot_says_whose_the_destroyed_row_was(self) -> None:
@@ -736,10 +736,10 @@ class TestTheRecord(MergeTestCase):
                     set(entry), {"model", "field", "other_pk", "was", "now", "already_held"}
                 )
                 self.assertIsNotNone(entry["other_pk"])
-        # The membership moved, and the entry says where from and where to.
-        membership = next(m for m in moves if m["model"] == "server.Membership")
-        self.assertEqual(membership["was"], self.duplicate_player.id)
-        self.assertEqual(membership["now"], self.primary_player.id)
+        # The subscription moved, and the entry says where from and where to.
+        subscription = next(m for m in moves if m["model"] == "server.Subscription")
+        self.assertEqual(subscription["was"], self.duplicate_player.id)
+        self.assertEqual(subscription["now"], self.primary_player.id)
 
     def test_a_bulk_moved_relation_is_named_row_by_row(self) -> None:
         """These move in one UPDATE, so the identities have to be read first
@@ -816,7 +816,7 @@ class TestTheRecord(MergeTestCase):
         )
         self.assertEqual(moved["pk"], str(transaction_id))
 
-    def test_a_team_membership_moves_with_a_record_of_it(self) -> None:
+    def test_a_team_subscription_moves_with_a_record_of_it(self) -> None:
         """teams belongs to the player row being deleted, and the snapshot is
         taken after that delete, so it reads back empty. If the move is not
         recorded here nothing anywhere says this player was on the team."""
@@ -946,21 +946,21 @@ class TestMergePlan(MergeTestCase):
 
     def test_a_tie_keeps_the_keeper_s_row_as_planned(self) -> None:
         for player in (self.primary_player, self.duplicate_player):
-            Membership.objects.create(
+            Subscription.objects.create(
                 player=player,
-                membership_number=f"MEM-{player.pk}",
+                subscription_number=f"MEM-{player.pk}",
                 start_date=datetime.date(2026, 1, 1),
                 end_date=datetime.date(2026, 12, 31),
                 is_active=True,
             )
         plan = merge_accounts(self.primary, [self.duplicate])
-        move = next(m for m in plan.moves if m.label == "server.Membership.player")
+        move = next(m for m in plan.moves if m.label == "server.Subscription.player")
         self.assertEqual(move.primary_loses, 0)
 
         merge_accounts(self.primary, [self.duplicate], dry_run=False)
 
         self.assertEqual(
-            Membership.objects.get().membership_number, f"MEM-{self.primary_player.pk}"
+            Subscription.objects.get().subscription_number, f"MEM-{self.primary_player.pk}"
         )
 
     def test_a_tie_keeps_the_accreditation_with_a_wfdf_id(self) -> None:

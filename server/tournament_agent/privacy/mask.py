@@ -40,7 +40,7 @@ FORBIDDEN_KEYS = frozenset(
         "mvp_name",
         "msp_name",
         # sensitive attributes and free text
-        "membership_number",
+        "iu_id",
         "date_of_birth",
         "dob",
         "gender",

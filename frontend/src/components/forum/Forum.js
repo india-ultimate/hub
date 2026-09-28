@@ -2,14 +2,14 @@ import { useNavigate } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
 import { Show } from "solid-js";
 
-import { fetchMembershipStatus } from "../../queries";
+import { fetchSubscriptionStatus } from "../../queries";
 
 const Forum = () => {
   const navigate = useNavigate();
 
-  const membershipQuery = createQuery(
-    () => ["membership"],
-    fetchMembershipStatus
+  const subscriptionQuery = createQuery(
+    () => ["subscription"],
+    fetchSubscriptionStatus
   );
 
   const handleGoToDashboard = () => {
@@ -19,10 +19,12 @@ const Forum = () => {
   return (
     <div class="rounded-lg bg-white dark:bg-gray-800 md:p-6 md:shadow">
       <Show
-        when={membershipQuery.isLoading}
+        when={subscriptionQuery.isLoading}
         fallback={
           <Show
-            when={membershipQuery.isSuccess && membershipQuery.data?.is_active}
+            when={
+              subscriptionQuery.isSuccess && subscriptionQuery.data?.is_active
+            }
             fallback={
               <div class="space-y-4">
                 <h2 class="text-2xl font-bold text-blue-700 dark:text-white">
@@ -42,11 +44,11 @@ const Forum = () => {
                         clip-rule="evenodd"
                       />
                     </svg>
-                    <h3 class="text-lg font-medium">Membership Required</h3>
+                    <h3 class="text-lg font-medium">Subscription Required</h3>
                   </div>
                   <div class="mt-2">
                     <p>
-                      You do not have an active India Ultimate membership and
+                      You do not have an active India Ultimate subscription and
                       hence cannot access the India Ultimate Forum.
                     </p>
                     <button
@@ -82,7 +84,7 @@ const Forum = () => {
                 </div>
                 <div class="mt-2">
                   <p class="mb-4">
-                    You have an active India Ultimate membership. You can now
+                    You have an active India Ultimate subscription. You can now
                     access the India Ultimate Forum.
                   </p>
                   <a
@@ -120,7 +122,7 @@ const Forum = () => {
         </div>
       </Show>
 
-      <Show when={membershipQuery.error}>
+      <Show when={subscriptionQuery.error}>
         <div class="rounded-lg bg-red-100 p-6 text-red-800 dark:bg-red-900 dark:text-red-300">
           <div class="flex items-center">
             <svg
@@ -139,7 +141,7 @@ const Forum = () => {
           </div>
           <div class="mt-2">
             <p>
-              {membershipQuery.error?.message ||
+              {subscriptionQuery.error?.message ||
                 "Failed to load forum access information. Please try again later."}
             </p>
           </div>

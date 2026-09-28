@@ -121,18 +121,18 @@ class RazorpayCallbackSchema(Schema):
     razorpay_signature: str
 
 
-class AnnualMembershipSchema(Schema):
+class AnnualSubscriptionSchema(Schema):
     player_id: int
     season_id: int
     is_supporter: bool = False
 
 
-class EventMembershipSchema(Schema):
+class EventSubscriptionSchema(Schema):
     player_id: int
     event_id: int
 
 
-class GroupMembershipSchema(Schema):
+class GroupSubscriptionSchema(Schema):
     player_ids: list[int]
     season_id: int
     is_supporter: bool = False

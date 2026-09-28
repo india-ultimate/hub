@@ -2125,12 +2125,12 @@ export const clearChatHistory = async () => {
   return data;
 };
 
-export const fetchMembershipStatus = async () => {
-  // Same shape the API returns for a user with no membership.
+export const fetchSubscriptionStatus = async () => {
+  // Same shape the API returns for a user with no subscription.
   if (!hasAuthHint()) {
-    return { has_membership: false, is_active: false };
+    return { has_subscription: false, is_active: false };
   }
-  const response = await fetch("/api/me/membership", {
+  const response = await fetch("/api/me/subscription", {
     method: "GET",
     headers: { "Content-Type": "application/json" },
     credentials: "same-origin"
@@ -2138,7 +2138,7 @@ export const fetchMembershipStatus = async () => {
 
   const data = await response.json();
   if (!response.ok) {
-    throw new Error(data?.message || "Failed to fetch membership status");
+    throw new Error(data?.message || "Failed to fetch subscription status");
   }
   return data;
 };

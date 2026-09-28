@@ -8,11 +8,11 @@ from server.core.models import Player, User
 from server.duplicates.flow import (
     FlowError,
     dismiss,
-    membership,
     merge_pair,
     request_merge,
     request_staff,
     send_code,
+    subscription,
     verify_code,
     verify_same_inbox,
 )
@@ -89,7 +89,7 @@ def _anything_merged(rows: list[ClusterMember]) -> bool:
 
 def _serialize(link: ClusterMember, viewer: User | None) -> dict[str, object]:
     cluster = link.cluster
-    mine = membership(cluster, viewer)
+    mine = subscription(cluster, viewer)
     if viewer is not None and mine is not None and cluster.is_open and not mine.is_expired:
         verify_same_inbox(cluster, viewer)
     rows = list(cluster.members.select_related("user").order_by("id"))
@@ -257,7 +257,7 @@ def get_cluster(request: HttpRequest, token: str) -> tuple[int, object]:
     if link is None:
         return 404, {"message": "This link is not valid any more"}
     viewer = _viewer(request)
-    is_member = membership(link.cluster, viewer) is not None
+    is_member = subscription(link.cluster, viewer) is not None
     # Expiry stops actions, not viewing — for members. Anyone else holding
     # an expired link to an open group gets nothing, as before.
     if link.is_expired and link.cluster.is_open and not is_member:

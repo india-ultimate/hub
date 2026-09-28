@@ -253,9 +253,9 @@ class TestIntegration(BaseCase):
             name="Season 24-25",
             start_date="2024-08-01",
             end_date="2025-07-30",
-            annual_membership_amount=70000,
-            sponsored_annual_membership_amount=20000,
-            supporter_annual_membership_amount=150000,
+            annual_subscription_amount=70000,
+            sponsored_annual_subscription_amount=20000,
+            supporter_annual_subscription_amount=150000,
         )
 
         self.open(DJANGO_URL)
@@ -288,16 +288,16 @@ class TestIntegration(BaseCase):
         self.assert_element(f'a[href="/edit/registration/{player_id}"] svg')
         # self.assert_element(f'a[href="/vaccination/{player_id}"]')
         # self.assert_element(f'a[href="/uc-login/{player_id}"]')
-        self.assert_element(f'a[href="/membership/{player_id}"]')
+        self.assert_element(f'a[href="/subscription/{player_id}"]')
         self.assert_element(f'a[href="/waiver/{player_id}"]')
         print("Successfully registered!")
 
-        self.click(f'a[href="/membership/{player_id}"]')
+        self.click(f'a[href="/subscription/{player_id}"]')
         self.assert_element('button:contains("Pay")')
 
         # Redirect to Razorpay modal (card flow; UPI Collect was removed in 2026)
         complete_razorpay_test_payment(self)
-        self.wait_for_element("div#membership-exist", timeout=45)
+        self.wait_for_element("div#subscription-exist", timeout=45)
         self.save_screenshot_to_logs("pay-clicked.png")
 
         self.click("#my-account", timeout=45)
@@ -744,7 +744,7 @@ class TestIntegration(BaseCase):
         self.open(f"{APP_URL}/merge-accounts")
         self.assert_text("Sorted out", f"tr#merge-list-row-{own_row.claim_token}")
 
-        # 5c. Anonymous — no membership at all, so no rows either way — still
+        # 5c. Anonymous — no cluster entry at all, so no rows either way — still
         # learns whether a merge happened: "were merged" for the group that
         # really merged, something else for the one deletion resolved.
         # Revert the payload's anything_merged flag and this fails, since

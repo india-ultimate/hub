@@ -5,7 +5,7 @@
 <!-- All the content from about:start to about:end appears in the About page -->
 <!-- about:start -->
 
-This is India Ultimate's Membership, Payments and Tournament Management Portal
+This is India Ultimate's Subscription, Payments and Tournament Management Portal
 
 The site is built using [Django](https://www.djangoproject.com/), [Django
 Ninja](https://django-ninja.rest-framework.com/) and

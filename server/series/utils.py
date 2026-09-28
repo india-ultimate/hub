@@ -5,7 +5,7 @@ from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 
 from server.core.models import Player, Team, User
-from server.membership.models import Membership
+from server.subscription.models import Subscription
 from server.types import message_response
 
 from .models import Series, SeriesRegistration, SeriesRosterInvitation
@@ -101,24 +101,24 @@ def register_player(
     series: Series, team: Team, player: Player
 ) -> tuple[SeriesRegistration, None] | tuple[None, message_response]:
     try:
-        membership = player.membership
-    except Membership.DoesNotExist:
+        subscription = player.subscription
+    except Subscription.DoesNotExist:
         return None, {
-            "message": "Membership missing",
-            "description": "You need an active IU membership to register for the series.",
-            "action_name": "Get membership",
-            "action_href": f"/membership/{player.id}",
+            "message": "Subscription missing",
+            "description": "You need an active IU subscription to register for the series.",
+            "action_name": "Get subscription",
+            "action_href": f"/subscription/{player.id}",
         }
 
-    if not membership.is_active:
+    if not subscription.is_active:
         return None, {
-            "message": "Membership missing",
-            "description": "You need an active IU membership to register for the series.",
-            "action_name": "Get membership",
-            "action_href": f"/membership/{player.id}",
+            "message": "Subscription missing",
+            "description": "You need an active IU subscription to register for the series.",
+            "action_name": "Get subscription",
+            "action_href": f"/subscription/{player.id}",
         }
 
-    if not membership.waiver_valid:
+    if not subscription.waiver_valid:
         return None, {
             "message": "Waiver not signed",
             "description": "You need to sign the liability waiver, to register for the series.",
@@ -217,11 +217,11 @@ def send_invitation_acceptation_email(
 # def series_team_players_search_list(
 #     series: Series, team: Team, search_text: str
 # ) -> list[Player] | QuerySet[Player]:
-#     # Off-season (meaning not hosted by IU) series or tournaments don't need a membership
+#     # Off-season (meaning not hosted by IU) series or tournaments don't need a subscription
 #     # IU season/series rules don't apply
 #     if series.season is not None:
 #         players = (
-#             Player.objects.filter(membership__is_active=True)
+#             Player.objects.filter(subscription__is_active=True)
 #             .annotate(full_name=Concat("user__first_name", Value(" "), "user__last_name"))
 #             .filter(Q(full_name__icontains=search_text) | Q(user__username__icontains=search_text))
 #             .order_by("full_name")

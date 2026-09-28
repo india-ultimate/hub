@@ -168,7 +168,7 @@ class ClusterMember(ExportModelOperationsMixin("cluster_member"), models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name="duplicate_memberships",
+        related_name="duplicate_cluster_entries",
     )
     claim_token = models.CharField(max_length=64, unique=True, default=secrets.token_urlsafe)
     expires_at = models.DateTimeField(default=default_claim_expiry)

@@ -2,7 +2,7 @@ import { Icon } from "solid-heroicons";
 import { trash } from "solid-heroicons/solid";
 import { For, Show } from "solid-js";
 
-const MembershipPlayerList = props => {
+const SubscriptionPlayerList = props => {
   return (
     <div>
       <div class="relative my-4 overflow-x-auto">
@@ -10,7 +10,7 @@ const MembershipPlayerList = props => {
           <caption class="bg-white py-2 text-left text-lg font-semibold text-blue-500 rtl:text-right dark:bg-gray-800 dark:text-white">
             Selected Players
             <p class="mt-1 text-sm font-normal text-gray-500 dark:text-gray-400">
-              List of players for whom membership is being paid
+              List of players for whom subscription is being paid
             </p>
           </caption>
           <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
@@ -46,10 +46,10 @@ const MembershipPlayerList = props => {
                   <td class="px-6 py-4">
                     ₹
                     {player?.sponsored
-                      ? props.season?.sponsored_annual_membership_amount / 100
-                      : props.membershipType === "patron"
-                      ? props.season?.supporter_annual_membership_amount / 100
-                      : props.season?.annual_membership_amount / 100}
+                      ? props.season?.sponsored_annual_subscription_amount / 100
+                      : props.subscriptionType === "patron"
+                      ? props.season?.supporter_annual_subscription_amount / 100
+                      : props.season?.annual_subscription_amount / 100}
                   </td>
                   <td>
                     <button
@@ -70,7 +70,7 @@ const MembershipPlayerList = props => {
           </tbody>
         </table>
       </div>
-      <p class="mt-8 font-bold">Paying India Ultimate membership fee:</p>
+      <p class="mt-8 font-bold">Paying India Ultimate subscription fee:</p>
       <p class="mt-1">Number of players: {props.players.length}</p>
       <p class="mt-1">
         Validity: {props.startDate} to {props.endDate}
@@ -79,4 +79,4 @@ const MembershipPlayerList = props => {
     </div>
   );
 };
-export default MembershipPlayerList;
+export default SubscriptionPlayerList;

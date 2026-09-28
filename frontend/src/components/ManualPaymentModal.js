@@ -157,7 +157,9 @@ const ManualPaymentModal = props => {
                 </details>
               </div>
               <ol class="mt-2 list-decimal space-y-1 pl-5 text-sm">
-                <li>Pay the membership fee using UPI or a Bank Transaction</li>
+                <li>
+                  Pay the subscription fee using UPI or a Bank Transaction
+                </li>
                 <li>
                   Submit the UPI transaction ID of your transaction. Please make
                   sure that you submit the correct Transaction ID so that your

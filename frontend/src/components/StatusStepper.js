@@ -98,10 +98,10 @@ const StatusStepper = props => {
           color={status.ucLink ? "green" : "red"}
         /> */}
         <Step
-          title="Membership info"
+          title="Subscription info"
           icon={currencyRupee}
-          link={`/membership/${props.player.id}`}
-          color={status.membership ? "green" : "red"}
+          link={`/subscription/${props.player.id}`}
+          color={status.subscription ? "green" : "red"}
         />
         <Step
           title="Liability Waiver"

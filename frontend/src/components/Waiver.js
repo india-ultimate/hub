@@ -346,10 +346,10 @@ const WaiverForm = props => {
       <Show
         fallback={
           <p>
-            There is no active membership for the {props.player.full_name}. Get
-            a membership{" "}
+            There is no active subscription for the {props.player.full_name}.
+            Get a subscription{" "}
             <A
-              href={`/membership/${props.player.id}`}
+              href={`/subscription/${props.player.id}`}
               class="w-full cursor-pointer border-b border-gray-200 hover:bg-gray-100 hover:text-blue-700 focus:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 dark:border-gray-600 dark:hover:bg-gray-600 dark:hover:text-white dark:focus:text-white dark:focus:ring-gray-500"
             >
               here
@@ -357,7 +357,7 @@ const WaiverForm = props => {
             .
           </p>
         }
-        when={props.player?.membership?.is_active}
+        when={props.player?.subscription?.is_active}
       >
         <Show when={props.signed}>
           <div
@@ -365,10 +365,10 @@ const WaiverForm = props => {
             role="alert"
           >
             Liability Waiver form for {props.player?.full_name} has been signed
-            for {displayDate(props.player?.membership?.start_date)} to{" "}
-            {displayDate(props.player?.membership?.end_date)} by{" "}
-            {props.player?.membership?.waiver_signed_by} on{" "}
-            {displayDate(props.player?.membership?.waiver_signed_at)}.
+            for {displayDate(props.player?.subscription?.start_date)} to{" "}
+            {displayDate(props.player?.subscription?.end_date)} by{" "}
+            {props.player?.subscription?.waiver_signed_by} on{" "}
+            {displayDate(props.player?.subscription?.waiver_signed_at)}.
           </div>
           <button
             class="my-4 w-full rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 sm:w-auto"
@@ -379,14 +379,14 @@ const WaiverForm = props => {
         </Show>
         <Show when={detailed()}>
           <span>
-            Validity: {displayDate(props?.player?.membership?.start_date)} to{" "}
-            {displayDate(props?.player?.membership?.end_date)}
+            Validity: {displayDate(props?.player?.subscription?.start_date)} to{" "}
+            {displayDate(props?.player?.subscription?.end_date)}
           </span>
           <PartA
             signed={props.signed}
             minor={props.minor}
-            startDate={props?.player?.membership?.start_date}
-            endDate={props?.player?.membership?.end_date}
+            startDate={props?.player?.subscription?.start_date}
+            endDate={props?.player?.subscription?.end_date}
           />
           <PartB
             signed={props.signed}
@@ -412,7 +412,7 @@ const WaiverForm = props => {
           </button>
         </Show>
         <Show when={detailed()}>
-          <Disclaimer date={props?.player?.membership?.waiver_signed_at} />
+          <Disclaimer date={props?.player?.subscription?.waiver_signed_at} />
         </Show>
       </Show>
     </div>
@@ -472,7 +472,7 @@ const Waiver = () => {
         <Match when={!player()}>
           <p>Waiver information for player {params.playerId} not accessible.</p>
         </Match>
-        <Match when={player()?.membership?.waiver_valid}>
+        <Match when={player()?.subscription?.waiver_valid}>
           <>
             <WaiverForm
               signed={true}

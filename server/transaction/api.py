@@ -26,9 +26,9 @@ from .models import (
     RazorpayTransaction,
 )
 from .schema import (
-    AnnualMembershipSchema,
-    EventMembershipSchema,
-    GroupMembershipSchema,
+    AnnualSubscriptionSchema,
+    EventSubscriptionSchema,
+    GroupSubscriptionSchema,
     ManualTransactionLiteSchema,
     ManualTransactionSchema,
     ManualTransactionValidationFormSchema,
@@ -44,8 +44,8 @@ from .utils import (
     create_transaction,
     list_transactions_by_type,
     update_transaction_partial_team_registration,
-    update_transaction_player_memberships,
     update_transaction_player_registrations,
+    update_transaction_player_subscriptions,
     update_transaction_team_registration,
 )
 
@@ -62,9 +62,9 @@ router = Router()
 )
 def create_razorpay_transaction(
     request: AuthenticatedHttpRequest,
-    order: AnnualMembershipSchema
-    | EventMembershipSchema
-    | GroupMembershipSchema
+    order: AnnualSubscriptionSchema
+    | EventSubscriptionSchema
+    | GroupSubscriptionSchema
     | PlayerRegistrationSchema
     | TeamRegistrationSchema,
 ) -> tuple[int, str | message_response | dict[str, Any]]:
@@ -78,7 +78,7 @@ def create_razorpay_transaction(
 )
 def create_phonepe_transaction(
     request: AuthenticatedHttpRequest,
-    order: AnnualMembershipSchema | EventMembershipSchema | GroupMembershipSchema,
+    order: AnnualSubscriptionSchema | EventSubscriptionSchema | GroupSubscriptionSchema,
 ) -> tuple[int, str | message_response | dict[str, Any]]:
     return create_transaction(request, order, PaymentGateway.PHONEPE)
 
@@ -91,7 +91,7 @@ def create_phonepe_transaction(
 def create_manual_transaction(
     request: AuthenticatedHttpRequest,
     transaction_id: str,
-    order: AnnualMembershipSchema | EventMembershipSchema | GroupMembershipSchema,
+    order: AnnualSubscriptionSchema | EventSubscriptionSchema | GroupSubscriptionSchema,
 ) -> tuple[int, str | message_response | dict[str, Any]]:
     return create_transaction(request, order, PaymentGateway.MANUAL, transaction_id)
 
@@ -113,8 +113,8 @@ def handle_razorpay_callback(
     if not transaction:
         return 404, {"message": "No order found."}
 
-    if transaction.type == RazorpayTransaction.TransactionTypeChoices.ANNUAL_MEMBERSHIP:
-        update_transaction_player_memberships(transaction)
+    if transaction.type == RazorpayTransaction.TransactionTypeChoices.ANNUAL_SUBSCRIPTION:
+        update_transaction_player_subscriptions(transaction)
     elif transaction.type == RazorpayTransaction.TransactionTypeChoices.TEAM_REGISTRATION:
         update_transaction_team_registration(transaction)
     elif transaction.type == RazorpayTransaction.TransactionTypeChoices.PLAYER_REGISTRATION:
@@ -148,7 +148,7 @@ def get_phonepe_transaction(
         transaction = phonepe.check_and_update_transaction(transaction)
 
         if transaction.status == PhonePeTransaction.TransactionStatusChoices.SUCCESS:
-            update_transaction_player_memberships(transaction)
+            update_transaction_player_subscriptions(transaction)
 
     return 200, transaction
 
@@ -197,8 +197,8 @@ def payment_webhook(request: HttpRequest) -> message_response:
     if not transaction:
         return {"message": "No order found."}
 
-    if transaction.type == RazorpayTransaction.TransactionTypeChoices.ANNUAL_MEMBERSHIP:
-        update_transaction_player_memberships(transaction)
+    if transaction.type == RazorpayTransaction.TransactionTypeChoices.ANNUAL_SUBSCRIPTION:
+        update_transaction_player_subscriptions(transaction)
     elif transaction.type == RazorpayTransaction.TransactionTypeChoices.TEAM_REGISTRATION:
         update_transaction_team_registration(transaction)
     elif transaction.type == RazorpayTransaction.TransactionTypeChoices.PLAYER_REGISTRATION:

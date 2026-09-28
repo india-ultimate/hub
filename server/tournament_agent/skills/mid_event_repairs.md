@@ -142,7 +142,7 @@ narrower fix is.
 - **A score entered wrong.** Scores accumulate into standings and nothing reverses them. Django admin
   on the match, then Populate Fixtures from Classic Tournament Manager. Offer to show what the table
   should look like afterwards.
-- **A team that needs to leave.** Forfeit their remaining games; never touch team membership.
+- **A team that needs to leave.** Forfeit their remaining games; never touch the team's roster.
 - **A confirmed proposal.** There is no undo — only the next smallest forward change.
 
 ## Anti-patterns

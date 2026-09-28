@@ -44,7 +44,7 @@ const TicketList = props => {
         return "bg-sky-100 text-sky-800 dark:bg-sky-900 dark:text-sky-300";
       case "Competitions":
         return "bg-violet-100 text-violet-800 dark:bg-violet-900 dark:text-violet-300";
-      case "Membership":
+      case "Subscription":
         return "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-300";
       case "Tournament":
         return "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300";

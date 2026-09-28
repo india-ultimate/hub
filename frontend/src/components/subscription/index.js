@@ -3,24 +3,24 @@ import { createQuery } from "@tanstack/solid-query";
 import { inboxStack } from "solid-heroicons/solid";
 import { createEffect, createSignal, For, Show } from "solid-js";
 
-import { eventMembershipFee, minAge, minAgeWarning } from "../../constants";
+import { eventSubscriptionFee, minAge, minAgeWarning } from "../../constants";
 import { fetchPlayerById, fetchSeasons } from "../../queries";
 import { displayDate, getAge } from "../../utils";
 import Info from "../alerts/Info";
 import Breadcrumbs from "../Breadcrumbs";
 import RazorpayPayment from "../RazorpayPayment";
 import PillTabs from "../tabs/PillTabs";
-import GroupMembership from "./GroupMembership";
+import GroupSubscription from "./GroupSubscription";
 import ServiceRequestModal from "./ServiceRequestModal";
 
-const Membership = () => {
+const Subscription = () => {
   const [player, setPlayer] = createSignal();
-  const [membership, setMembership] = createSignal();
+  const [subscription, setSubscription] = createSignal();
 
   const [season, setSeason] = createSignal();
   const [annual, _setAnnual] = createSignal(true);
   const [ageRestricted, setAgeRestricted] = createSignal(false);
-  const [membershipType, setMembershipType] = createSignal("patron"); // "patron" or "standard"
+  const [subscriptionType, setSubscriptionType] = createSignal("patron"); // "patron" or "standard"
 
   const [event, _setEvent] = createSignal();
 
@@ -37,7 +37,7 @@ const Membership = () => {
   createEffect(() => {
     if (playerQuery.isSuccess && playerQuery.data) {
       setPlayer(playerQuery.data);
-      setMembership(playerQuery.data?.membership);
+      setSubscription(playerQuery.data?.subscription);
     }
   });
 
@@ -72,16 +72,16 @@ const Membership = () => {
 
   const getAmount = () => {
     if (!annual()) {
-      return eventMembershipFee / 100;
+      return eventSubscriptionFee / 100;
     }
 
-    // For annual membership, check membership type and sponsored status
+    // For annual subscription, check subscription type and sponsored status
     if (player()?.sponsored) {
-      return season()?.sponsored_annual_membership_amount / 100;
+      return season()?.sponsored_annual_subscription_amount / 100;
     } else {
-      return membershipType() === "patron"
-        ? season()?.supporter_annual_membership_amount / 100
-        : season()?.annual_membership_amount / 100;
+      return subscriptionType() === "patron"
+        ? season()?.supporter_annual_subscription_amount / 100
+        : season()?.annual_subscription_amount / 100;
     }
   };
 
@@ -91,26 +91,27 @@ const Membership = () => {
         icon={inboxStack}
         pageList={[
           { url: "/dashboard", name: "Dashboard" },
-          { name: "Membership" }
+          { name: "Subscription" }
         ]}
       />
-      <h1 class="text-2xl font-bold text-blue-500">Membership</h1>
+      <h1 class="text-2xl font-bold text-blue-500">Subscription</h1>
 
       <div class="my-2 rounded-lg bg-blue-50 p-4 text-sm " role="alert">
         <details>
           <summary class="text-blue-600">
-            More Information about India Ultimate Membership
+            More Information about India Ultimate Subscription
           </summary>
           <div class="my-2 space-y-2 text-sm">
             <p>
-              Membership fees help cover India Ultimate's essential costs: WFDF
-              dues, audit, accountant, legal fees etc., along with the salary of
-              at least one full-time staff member. Currently, IU has a team of a
-              CEO, two senior operations executives, and one part-time staff.
+              Subscription fees help cover India Ultimate's essential costs:
+              WFDF dues, audit, accountant, legal fees etc., along with the
+              salary of at least one full-time staff member. Currently, IU has a
+              team of a CEO, two senior operations executives, and one part-time
+              staff.
             </p>
             <h2 class="text-base font-semibold text-gray-600 dark:text-white">
               Apart from helping sustain India Ultimate, what does your
-              membership get you?
+              subscription get you?
             </h2>
             <ul class="list-inside list-disc space-y-1">
               <li>
@@ -137,15 +138,15 @@ const Membership = () => {
             </ul>
             <hr />
             <h2 class="text-base font-semibold text-gray-600 dark:text-white">
-              Membership Fees
+              Subscription Fees
             </h2>
             <div>
               <details>
                 <summary class="text-base font-bold">
-                  Patron membership – Rs. 1500
+                  Patron subscription – Rs. 1500
                 </summary>
                 <p class="mt-2">
-                  The <strong>Patron Membership</strong> is for those who wish
+                  The <strong>Patron Subscription</strong> is for those who wish
                   to actively support the growth of flying disc sports and
                   FDSF(I). As the number of members grows, so do the
                   responsibilities of the federation. To meet these needs, the
@@ -153,35 +154,35 @@ const Membership = () => {
                   community while working towards diversifying revenue streams,
                   including private sponsors and, in the long run, government
                   support. Recognising the different economic backgrounds within
-                  our community, the Patron Membership at Rs. 1500 per year
-                  helps subsidise the standard membership, ensuring equitable
-                  sharing of responsibility. The usage of the membership fee is
-                  explained in the pie chart below.
+                  our community, the Patron Subscription at Rs. 1500 per year
+                  helps subsidise the standard subscription, ensuring equitable
+                  sharing of responsibility. The usage of the subscription fee
+                  is explained in the pie chart below.
                 </p>
               </details>
               <details>
                 <summary class="mt-2 text-base font-bold">
-                  Standard membership – Rs. 750
+                  Standard subscription – Rs. 750
                 </summary>
               </details>
               <details>
                 <summary class="mt-2 text-base font-bold">
-                  Supported Membership – Rs. 250 (on a need basis)
+                  Supported Subscription – Rs. 250 (on a need basis)
                 </summary>
                 <p class="mt-2">
-                  <strong>Supported Membership</strong> is designed to increase
-                  access to FDSF(I) membership for community members from
-                  underserved social groups. By reducing entry-level barriers to
-                  playing the sport, IU operations will grant a case-by-case
-                  partial waiver to those who require subsidisation. Please
-                  avail this option if needed.
+                  <strong>Supported Subscription</strong> is designed to
+                  increase access to FDSF(I) subscription for community members
+                  from underserved social groups. By reducing entry-level
+                  barriers to playing the sport, IU operations will grant a
+                  case-by-case partial waiver to those who require
+                  subsidisation. Please avail this option if needed.
                 </p>
               </details>
             </div>
 
             <p class="my-2">
               If you, or players on your college/NGO team need assistance in
-              paying this, then you can apply for supported membership by
+              paying this, then you can apply for supported subscription by
               clicking the button below.
             </p>
 
@@ -214,8 +215,8 @@ const Membership = () => {
       >
         <PillTabs
           tabs={[
-            { id: "individual", label: "Individual Membership" },
-            { id: "group", label: "Group Membership" }
+            { id: "individual", label: "Individual Subscription" },
+            { id: "group", label: "Group Subscription" }
           ]}
           activeTab={activeTab}
           onTabChange={setActiveTab}
@@ -224,52 +225,52 @@ const Membership = () => {
         <Show when={activeTab() === "individual"}>
           <div>
             <h1 class="text-lg font-semibold text-blue-500">
-              Individual Membership
+              Individual Subscription
             </h1>
             <h3 class="text-sm italic">
-              Renew membership for {player()?.full_name}
+              Renew subscription for {player()?.full_name}
             </h3>
             <Show
-              when={!membership()?.is_active}
+              when={!subscription()?.is_active}
               fallback={
-                <div id="membership-exist" class="mt-4">
-                  Membership for {player().full_name} is active until{" "}
-                  {displayDate(membership().end_date)}
+                <div id="subscription-exist" class="mt-4">
+                  Subscription for {player().full_name} is active until{" "}
+                  {displayDate(subscription().end_date)}
                 </div>
               }
             >
               <Show when={annual()}>
                 <div class="mt-4">
                   <label class="mb-2 block text-sm font-medium text-gray-900 dark:text-white">
-                    Membership Type
+                    Subscription Type
                   </label>
                   <Show
                     when={!player()?.sponsored}
                     fallback={
                       <div class="block w-full rounded-lg border border-gray-300 bg-gray-100 p-2.5 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
-                        Supported Membership – ₹{" "}
-                        {season()?.sponsored_annual_membership_amount / 100}
+                        Supported Subscription – ₹{" "}
+                        {season()?.sponsored_annual_subscription_amount / 100}
                       </div>
                     }
                   >
                     <select
                       class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
-                      value={membershipType()}
-                      onChange={e => setMembershipType(e.target.value)}
+                      value={subscriptionType()}
+                      onChange={e => setSubscriptionType(e.target.value)}
                     >
                       <option value="patron">
-                        Patron Membership - ₹{" "}
-                        {season()?.supporter_annual_membership_amount / 100}
+                        Patron Subscription - ₹{" "}
+                        {season()?.supporter_annual_subscription_amount / 100}
                       </option>
                       <option value="standard">
-                        Standard Membership - ₹{" "}
-                        {season()?.annual_membership_amount / 100}
+                        Standard Subscription - ₹{" "}
+                        {season()?.annual_subscription_amount / 100}
                       </option>
                     </select>
                   </Show>
                 </div>
                 <p class="mt-4 font-bold">
-                  Paying India Ultimate membership fee:
+                  Paying India Ultimate subscription fee:
                 </p>
                 <p class="mt-1">
                   Validity: {displayDate(season()?.start_date)} to{" "}
@@ -293,7 +294,7 @@ const Membership = () => {
                 player_id={player().id}
                 amount={getAmount()}
                 setStatus={setStatus}
-                is_supporter={membershipType() === "patron"}
+                is_supporter={subscriptionType() === "patron"}
                 successCallback={() => {
                   playerQuery.refetch();
                 }}
@@ -307,18 +308,18 @@ const Membership = () => {
           <div class="space-y-2">
             <div>
               <h1 class="text-lg font-semibold text-blue-500">
-                Group Membership
+                Group Subscription
               </h1>
-              <h3 class="text-sm italic">Renew membership for a group</h3>
+              <h3 class="text-sm italic">Renew subscription for a group</h3>
             </div>
 
             <div class="mb-4">
               <ServiceRequestModal currentPlayer={player()} />
             </div>
 
-            <GroupMembership
+            <GroupSubscription
               season={season()}
-              membershipType={membershipType()}
+              subscriptionType={subscriptionType()}
               successCallback={() => {
                 playerQuery.refetch();
               }}
@@ -330,4 +331,4 @@ const Membership = () => {
   );
 };
 
-export default Membership;
+export default Subscription;

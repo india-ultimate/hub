@@ -12326,8 +12326,8 @@
       "start_date": "2024-08-01",
       "end_date": "2025-07-31",
       "name": "Season 2024-2025",
-      "annual_membership_amount": 70000,
-      "sponsored_annual_membership_amount": 20000
+      "annual_subscription_amount": 70000,
+      "sponsored_annual_subscription_amount": 20000
     }
   },
   {
@@ -12337,8 +12337,8 @@
       "start_date": "2025-08-01",
       "end_date": "2025-07-31",
       "name": "Season 2025-2026",
-      "annual_membership_amount": 0,
-      "sponsored_annual_membership_amount": 0
+      "annual_subscription_amount": 0,
+      "sponsored_annual_subscription_amount": 0
     }
   },
   {
@@ -24398,11 +24398,11 @@
     }
   },
   {
-    "model": "server.membership",
+    "model": "server.subscription",
     "pk": 1,
     "fields": {
       "player": 5,
-      "membership_number": "6a39ea1f",
+      "subscription_number": "6a39ea1f",
       "is_annual": true,
       "start_date": "2024-08-01",
       "end_date": "2025-07-31",
@@ -24415,11 +24415,11 @@
     }
   },
   {
-    "model": "server.membership",
+    "model": "server.subscription",
     "pk": 2,
     "fields": {
       "player": 6,
-      "membership_number": "f2562215",
+      "subscription_number": "f2562215",
       "is_annual": true,
       "start_date": "2024-08-01",
       "end_date": "2025-07-31",
@@ -24432,11 +24432,11 @@
     }
   },
   {
-    "model": "server.membership",
+    "model": "server.subscription",
     "pk": 3,
     "fields": {
       "player": 7,
-      "membership_number": "bbc199b0",
+      "subscription_number": "bbc199b0",
       "is_annual": true,
       "start_date": "2024-08-01",
       "end_date": "2025-07-31",
@@ -24449,11 +24449,11 @@
     }
   },
   {
-    "model": "server.membership",
+    "model": "server.subscription",
     "pk": 4,
     "fields": {
       "player": 9,
-      "membership_number": "b86005e4",
+      "subscription_number": "b86005e4",
       "is_annual": true,
       "start_date": "2024-08-01",
       "end_date": "2025-07-31",
@@ -24466,11 +24466,11 @@
     }
   },
   {
-    "model": "server.membership",
+    "model": "server.subscription",
     "pk": 5,
     "fields": {
       "player": 11,
-      "membership_number": "193916d3",
+      "subscription_number": "193916d3",
       "is_annual": true,
       "start_date": "2024-08-01",
       "end_date": "2025-07-31",
@@ -24483,11 +24483,11 @@
     }
   },
   {
-    "model": "server.membership",
+    "model": "server.subscription",
     "pk": 6,
     "fields": {
       "player": 12,
-      "membership_number": "fef6eed0",
+      "subscription_number": "fef6eed0",
       "is_annual": true,
       "start_date": "2024-08-01",
       "end_date": "2025-07-31",
@@ -24500,11 +24500,11 @@
     }
   },
   {
-    "model": "server.membership",
+    "model": "server.subscription",
     "pk": 7,
     "fields": {
       "player": 13,
-      "membership_number": "b953c22b",
+      "subscription_number": "b953c22b",
       "is_annual": true,
       "start_date": "2024-08-01",
       "end_date": "2025-07-31",
@@ -24517,11 +24517,11 @@
     }
   },
   {
-    "model": "server.membership",
+    "model": "server.subscription",
     "pk": 8,
     "fields": {
       "player": 16,
-      "membership_number": "c6041739",
+      "subscription_number": "c6041739",
       "is_annual": true,
       "start_date": "2024-08-01",
       "end_date": "2025-07-31",
@@ -24534,11 +24534,11 @@
     }
   },
   {
-    "model": "server.membership",
+    "model": "server.subscription",
     "pk": 9,
     "fields": {
       "player": 17,
-      "membership_number": "2edf3d33",
+      "subscription_number": "2edf3d33",
       "is_annual": true,
       "start_date": "2024-08-01",
       "end_date": "2025-07-31",
@@ -24551,11 +24551,11 @@
     }
   },
   {
-    "model": "server.membership",
+    "model": "server.subscription",
     "pk": 10,
     "fields": {
       "player": 26,
-      "membership_number": "baffb035",
+      "subscription_number": "baffb035",
       "is_annual": true,
       "start_date": "2024-08-01",
       "end_date": "2025-07-31",

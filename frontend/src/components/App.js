@@ -26,7 +26,7 @@ const Legal = lazy(() => import("./Legal"));
 const TermsAndConditions = lazy(() => import("./TermsAndConditions"));
 const PrivacyPolicy = lazy(() => import("./PrivacyPolicy"));
 const ContactUs = lazy(() => import("./ContactUs"));
-const Membership = lazy(() => import("./membership"));
+const Subscription = lazy(() => import("./subscription"));
 const Vaccination = lazy(() => import("./Vaccination"));
 const Accreditation = lazy(() => import("./Accreditation"));
 const CommentaryInfo = lazy(() => import("./CommentaryInfo"));
@@ -51,7 +51,7 @@ const TournamentLeaderboard = lazy(() => import("./tournament/Leaderboard"));
 const TournamentTeam = lazy(() => import("./TournamentTeam"));
 const Error404 = lazy(() => import("./Error404"));
 const PhonePeTransaction = lazy(() => import("./PhonePeTransaction"));
-const CheckMemberships = lazy(() => import("./CheckMemberships"));
+const CheckSubscriptions = lazy(() => import("./CheckSubscriptions"));
 const CollegeID = lazy(() => import("./CollegeID"));
 const AllSeries = lazy(() => import("./series/index"));
 const Series = lazy(() => import("./series/Series"));
@@ -221,10 +221,10 @@ export default function App() {
                   />
                   <Route path="/privacy-policy" component={PrivacyPolicy} />
                   <Route path="/contact-us" component={ContactUs} />
-                  {/* Membership, vaccination, waiver, etc. */}
+                  {/* Subscription, vaccination, waiver, etc. */}
                   <UserRoute
-                    path="/membership/:playerId"
-                    component={Membership}
+                    path="/subscription/:playerId"
+                    component={Subscription}
                     matchFilters={filters}
                   />
                   <UserRoute
@@ -278,8 +278,8 @@ export default function App() {
                     admin={true}
                   />
                   <UserRoute
-                    path="/check-memberships"
-                    component={CheckMemberships}
+                    path="/check-subscriptions"
+                    component={CheckSubscriptions}
                     admin={true}
                   />
                   <UserRoute

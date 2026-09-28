@@ -123,7 +123,7 @@ There is no walkover status. A forfeit is recorded as a score:
 `propose_match_score(match_id, 15, 0, forfeit=True)` in favour of the team that showed up. Say in
 your summary that it is a forfeit and that it counts as a normal result for standings and
 tie-breaks — because it does. If a team withdraws with several games left, propose the forfeits one
-at a time and never touch team membership.
+at a time and never touch the team's roster.
 
 ## "Who makes Top 8?" and other what-ifs
 

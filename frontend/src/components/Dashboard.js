@@ -161,13 +161,13 @@ const Actions = props => {
         href="/registration/ward"
         class="block w-full cursor-pointer border-b border-gray-200 px-4 py-2 hover:bg-gray-100 hover:text-blue-700 focus:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 dark:border-gray-600 dark:hover:bg-gray-600 dark:hover:text-white dark:focus:text-white dark:focus:ring-gray-500"
       >
-        Fill the membership form for a minor player as Guardian
+        Fill the subscription form for a minor player as Guardian
       </A>
       <A
         href="/registration/others"
         class="block w-full cursor-pointer border-b border-gray-200 px-4 py-2 hover:bg-gray-100 hover:text-blue-700 focus:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 dark:border-gray-600 dark:hover:bg-gray-600 dark:hover:text-white dark:focus:text-white dark:focus:ring-gray-500"
       >
-        Fill the membership form for another player
+        Fill the subscription form for another player
       </A>
       <A
         href="/help#import-players-from-a-spreadsheet"
@@ -176,10 +176,10 @@ const Actions = props => {
         Import players information from a Spreadsheet
       </A>
       <A
-        href={`/membership/${props.player?.id}`}
+        href={`/subscription/${props.player?.id}`}
         class="block w-full cursor-pointer border-b border-gray-200 px-4 py-2 hover:bg-gray-100 hover:text-blue-700 focus:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 dark:border-gray-600 dark:hover:bg-gray-600 dark:hover:text-white dark:focus:text-white dark:focus:ring-gray-500"
       >
-        Pay the membership fee for yourself or a group
+        Pay the subscription fee for yourself or a group
       </A>
       <A
         href="/validate-rosters"
@@ -244,10 +244,10 @@ const StaffActions = () => {
         Validate Transactions
       </A>
       <A
-        href="/check-memberships"
+        href="/check-subscriptions"
         class="block w-full cursor-pointer border-b border-gray-200 px-4 py-2 hover:bg-gray-100 hover:text-blue-700 focus:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 dark:border-gray-600 dark:hover:bg-gray-600 dark:hover:text-white dark:focus:text-white dark:focus:ring-gray-500"
       >
-        Check Membership Status
+        Check Subscription Status
       </A>
       <A
         href="/forms/new"

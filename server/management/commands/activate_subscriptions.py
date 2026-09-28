@@ -5,13 +5,13 @@ from typing import Any
 from django.core.management.base import BaseCommand, CommandParser
 
 from server.core.models import Player, User
-from server.membership.models import Membership
 from server.season.models import Season
+from server.subscription.models import Subscription
 from server.utils import today
 
 
 class Command(BaseCommand):
-    help = "Activate memberships from CSV file with player details"
+    help = "Activate subscriptions from CSV file with player details"
 
     def add_arguments(self, parser: CommandParser) -> None:
         parser.add_argument("csv_file", type=Path, help="Path to the CSV file")
@@ -23,7 +23,7 @@ class Command(BaseCommand):
             self.stderr.write(self.style.ERROR("No Season found"))
             return
 
-        membership_defaults = {
+        subscription_defaults = {
             "start_date": season.start_date,
             "end_date": season.end_date,
             "event": None,
@@ -47,10 +47,10 @@ class Command(BaseCommand):
                     self.stderr.write(self.style.ERROR(f"Player not found: {email}"))
                     continue
 
-                membership, created = Membership.objects.get_or_create(
-                    player=player, defaults=membership_defaults
+                subscription, created = Subscription.objects.get_or_create(
+                    player=player, defaults=subscription_defaults
                 )
                 if not created:
-                    for key, value in membership_defaults.items():
-                        setattr(membership, key, value)
-                    membership.save()
+                    for key, value in subscription_defaults.items():
+                        setattr(subscription, key, value)
+                    subscription.save()

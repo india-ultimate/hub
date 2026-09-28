@@ -19,7 +19,7 @@ import {
   getAnnouncementTypeColor,
   getAnnouncementTypeLabel
 } from "../../colors";
-import { fetchMembershipStatus } from "../../queries";
+import { fetchSubscriptionStatus } from "../../queries";
 import { useStore } from "../../store";
 
 const fetchAnnouncement = async slug => {
@@ -38,10 +38,10 @@ export default function AnnouncementDetail() {
     () => fetchAnnouncement(params.slug)
   );
 
-  // Fetch membership status
-  const membershipQuery = createQuery(
-    () => ["membership"],
-    fetchMembershipStatus,
+  // Fetch subscription status
+  const subscriptionQuery = createQuery(
+    () => ["subscription"],
+    fetchSubscriptionStatus,
     {
       refetchOnWindowFocus: false
     }
@@ -173,7 +173,7 @@ export default function AnnouncementDetail() {
             <Show
               when={
                 !query.data.is_members_only ||
-                (membershipQuery.data?.is_active ?? false)
+                (subscriptionQuery.data?.is_active ?? false)
               }
               fallback={
                 <div class="py-12 text-center">

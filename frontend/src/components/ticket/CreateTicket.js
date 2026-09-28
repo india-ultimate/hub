@@ -168,7 +168,7 @@ const CreateTicket = () => {
                       <option value="">Select a category</option>
                       <option value="Account">Account</option>
                       <option value="Competitions">Competitions</option>
-                      <option value="Membership">Membership</option>
+                      <option value="Subscription">Subscription</option>
                       <option value="Tournament">Tournament</option>
                       <option value="Payment">Payment</option>
                       <option value="Tech">Tech</option>

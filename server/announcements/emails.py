@@ -10,7 +10,7 @@ from django.template.loader import render_to_string
 
 from server.announcements.models import Announcement
 from server.core.models import User
-from server.membership.models import Membership
+from server.subscription.models import Subscription
 from server.task.helpers import queue_emails
 from server.task.models import Task
 
@@ -31,13 +31,15 @@ def send_announcement_to_all_users(announcement: Announcement) -> list[Task]:
 
 def send_announcement_to_members(announcement: Announcement) -> list[Task]:
     """
-    Queue announcement emails to users with active memberships
+    Queue announcement emails to users with active subscriptions
 
     :param announcement: Announcement instance
     :return: List of created Task objects
     """
-    active_memberships = Membership.objects.filter(is_active=True).select_related("player__user")
-    recipients = list(active_memberships.values_list("player__user__email", flat=True).distinct())
+    active_subscriptions = Subscription.objects.filter(is_active=True).select_related(
+        "player__user"
+    )
+    recipients = list(active_subscriptions.values_list("player__user__email", flat=True).distinct())
     return _queue_announcement_emails(announcement, recipients)
 
 

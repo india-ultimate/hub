@@ -132,7 +132,7 @@
         
         <div class="email-option">
             <h4>Send to All Members</h4>
-            <p>Send this announcement to users with active memberships only</p>
+            <p>Send this announcement to users with active subscriptions only</p>
             <form method="post" style="margin-top: 10px;">
                 {% csrf_token %}
                 <input type="hidden" name="announcement_id" value="{{ original.id }}" />

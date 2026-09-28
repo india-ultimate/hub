@@ -2,10 +2,10 @@
 
 India Ultimate, operating the website "The Hub," affirms that no physical
 products or goods are shipped with any purchase made on the platform. All
-transactions conducted on The Hub pertain exclusively to memberships and
+transactions conducted on The Hub pertain exclusively to subscriptions and
 tournament registrations. As such, there are no shipping charges applicable,
 and no physical items shall be dispatched or received in association with the
-membership or tournament registration process.
+subscription or tournament registration process.
 
 Players are encouraged to review their selections thoroughly before completing
 any transaction on The Hub. By accessing and utilizing The Hub, players
@@ -16,7 +16,7 @@ shipping.
 
 India Ultimate, operating the website "The Hub," affirms that no physical
 products or goods are shipped with any purchase made on the platform. Since no
-physical products are shipped or received in association with the membership or
+physical products are shipped or received in association with the subscription or
 tournament registration process, no returns are applicable.
 
 Players are urged to review their selections meticulously before finalizing any
@@ -30,7 +30,7 @@ regard shall be final and binding.
 
 # Refund Policy
 
-India Ultimate, the organization behind the website "The Hub," values the satisfaction and trust of its players. While all transactions made through The Hub, including membership fees and tournament registrations, are generally non-refundable, the organization recognizes the existence of exceptional circumstances. Refunds may be considered in rare cases, solely at the discretion of the Operations team.
+India Ultimate, the organization behind the website "The Hub," values the satisfaction and trust of its players. While all transactions made through The Hub, including subscription fees and tournament registrations, are generally non-refundable, the organization recognizes the existence of exceptional circumstances. Refunds may be considered in rare cases, solely at the discretion of the Operations team.
 
 Players seeking a refund must initiate the process by sending a detailed email
 outlining the circumstances to the Operations team at

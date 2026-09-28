@@ -38,9 +38,6 @@ from server.forms.models import (  # noqa: F401
     Form,
     FormResponse,
 )
-from server.membership.models import (  # noqa: F401
-    Membership,
-)
 from server.season.models import (  # noqa: F401
     Season,
 )
@@ -51,6 +48,9 @@ from server.series.models import (  # noqa: F401
 )
 from server.servicerequests.models import (  # noqa: F401
     ServiceRequest,
+)
+from server.subscription.models import (  # noqa: F401
+    Subscription,
 )
 from server.task.models import (  # noqa: F401
     Task,

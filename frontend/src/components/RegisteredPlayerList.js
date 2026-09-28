@@ -87,7 +87,7 @@ const RegisteredPlayerList = () => {
                       City
                     </th>
                     <th scope="col" class="px-6 py-3">
-                      Active Membership
+                      Active Subscription
                     </th>
                     <th scope="col" class="px-6 py-3">
                       UC ID
@@ -124,13 +124,13 @@ const RegisteredPlayerList = () => {
                           {
                             <Icon
                               path={
-                                player?.membership?.is_active
+                                player?.subscription?.is_active
                                   ? checkBadge
                                   : xCircle
                               }
                               style={{ width: "20px" }}
                               class={
-                                player?.membership?.is_active
+                                player?.subscription?.is_active
                                   ? "text-green-600 dark:text-green-500"
                                   : "text-red-600 dark:text-red-500"
                               }
@@ -159,13 +159,13 @@ const RegisteredPlayerList = () => {
                           {
                             <Icon
                               path={
-                                player?.membership?.waiver_valid
+                                player?.subscription?.waiver_valid
                                   ? checkBadge
                                   : xCircle
                               }
                               style={{ width: "20px" }}
                               class={
-                                player?.membership?.waiver_valid
+                                player?.subscription?.waiver_valid
                                   ? "text-green-600 dark:text-green-500"
                                   : "text-red-600 dark:text-red-500"
                               }

@@ -11,9 +11,9 @@ from server.season.models import Season
 from server.tournament.models import Event
 
 
-class Membership(ExportModelOperationsMixin("membership"), models.Model):  # type: ignore[misc]
+class Subscription(ExportModelOperationsMixin("subscription"), models.Model):  # type: ignore[misc]
     player = models.OneToOneField(Player, on_delete=models.CASCADE)
-    membership_number = models.CharField(max_length=20, unique=True)
+    subscription_number = models.CharField(max_length=20, unique=True)
     is_annual = models.BooleanField(default=False)
     start_date = models.DateField()
     end_date = models.DateField()
@@ -25,10 +25,12 @@ class Membership(ExportModelOperationsMixin("membership"), models.Model):  # typ
     season = models.ForeignKey(Season, on_delete=models.CASCADE, blank=True, null=True)
 
 
-@receiver(pre_save, sender=Membership)
-def create_membership_number(sender: Any, instance: Membership, raw: bool, **kwargs: Any) -> None:
-    if raw or instance.membership_number:
+@receiver(pre_save, sender=Subscription)
+def create_subscription_number(
+    sender: Any, instance: Subscription, raw: bool, **kwargs: Any
+) -> None:
+    if raw or instance.subscription_number:
         return
 
-    instance.membership_number = str(uuid.uuid4())[:8]
+    instance.subscription_number = str(uuid.uuid4())[:8]
     return

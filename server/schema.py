@@ -11,8 +11,8 @@ from server.core.models import (
     User,
     Vaccination,
 )
-from server.membership.models import (
-    Membership,
+from server.subscription.models import (
+    Subscription,
 )
 from server.utils import mask_string
 
@@ -57,16 +57,16 @@ class ValidationStatsSchema(Schema):
     validated: int
 
 
-class MembershipSchema(ModelSchema):
+class SubscriptionSchema(ModelSchema):
     waiver_signed_by: str | None
 
     @staticmethod
-    def resolve_waiver_signed_by(membership: Membership) -> str | None:
-        user = membership.waiver_signed_by
+    def resolve_waiver_signed_by(subscription: Subscription) -> str | None:
+        user = subscription.waiver_signed_by
         return user.get_full_name() if user is not None else None
 
     class Config:
-        model = Membership
+        model = Subscription
         model_fields = "__all__"
 
 
@@ -189,13 +189,13 @@ class PlayerSchema(ModelSchema):
     def resolve_phone(player: Player) -> str:
         return player.user.phone
 
-    membership: MembershipSchema | None
+    subscription: SubscriptionSchema | None
 
     @staticmethod
-    def resolve_membership(player: Player) -> MembershipSchema | None:
+    def resolve_subscription(player: Player) -> SubscriptionSchema | None:
         try:
-            return MembershipSchema.from_orm(player.membership)
-        except Membership.DoesNotExist:
+            return SubscriptionSchema.from_orm(player.subscription)
+        except Subscription.DoesNotExist:
             return None
 
     vaccination: VaccinationSchema | None
@@ -283,13 +283,13 @@ class PlayerTinySchema(ModelSchema):
     def resolve_phone(player: Player) -> str:
         return mask_string(player.user.phone)
 
-    has_membership: bool
+    has_subscription: bool
 
     @staticmethod
-    def resolve_has_membership(player: Player) -> bool:
+    def resolve_has_subscription(player: Player) -> bool:
         try:
-            return player.membership.is_active
-        except Membership.DoesNotExist:
+            return player.subscription.is_active
+        except Subscription.DoesNotExist:
             return False
 
     is_minor: bool
@@ -404,7 +404,7 @@ class UserWardFormSchema(ModelSchema):
 class PlayerFormSchema(ModelSchema):
     class Config:
         model = Player
-        # sponsored decides what a membership costs and imported_data says
+        # sponsored decides what a subscription costs and imported_data says
         # where a row came from. Both are administrative and neither may be
         # set by the person registering, so they are not input fields at all.
         model_exclude = [

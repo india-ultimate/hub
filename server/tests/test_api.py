@@ -14,18 +14,18 @@ from django.test.client import MULTIPART_CONTENT
 from django.utils.timezone import now
 
 from server.constants import (
-    ANNUAL_MEMBERSHIP_AMOUNT,
-    EVENT_MEMBERSHIP_AMOUNT,
-    SPONSORED_ANNUAL_MEMBERSHIP_AMOUNT,
+    ANNUAL_SUBSCRIPTION_AMOUNT,
+    EVENT_SUBSCRIPTION_AMOUNT,
+    SPONSORED_ANNUAL_SUBSCRIPTION_AMOUNT,
 )
 from server.core.accounts import find_login_user
 from server.core.models import Guardianship, Player, UCPerson, User
 from server.duplicates.merge import merge_accounts
 from server.duplicates.models import EmailAlias
-from server.membership.models import Membership
 from server.passkey_utils import ClientResponse
+from server.subscription.models import Subscription
 from server.tests.base import ApiBaseTestCase, create_pool, fake_id, fake_order, start_tournament
-from server.tests.test_membership import MembershipStatusTestCase
+from server.tests.test_subscription import SubscriptionStatusTestCase
 from server.tournament.models import Event, Match, UCRegistration
 from server.transaction.client.phonepe import update_transaction
 from server.transaction.models import ManualTransaction, PhonePeTransaction, RazorpayTransaction
@@ -164,7 +164,7 @@ class TestRegistration(ApiBaseTestCase):
         self.assertEqual(self.user.id, response_data["user"])
 
     def test_a_player_cannot_make_themselves_sponsored(self) -> None:
-        """sponsored decides the membership fee and is an admin decision.
+        """sponsored decides the subscription fee and is an admin decision.
         It must not be settable by the person who would pay it."""
         self.assertFalse(self.player.sponsored)
 
@@ -506,7 +506,7 @@ class TestPlayers(ApiBaseTestCase):
         self.assertIn("city", user_data)
         self.assertIn("state_ut", user_data)
         self.assertEqual("username@foo.com", user_data["email"])
-        self.assertNotIn("membership", user_data)
+        self.assertNotIn("subscription", user_data)
         self.assertNotIn("guardian", user_data)
 
     def test_get_players_staff(self) -> None:
@@ -521,7 +521,7 @@ class TestPlayers(ApiBaseTestCase):
         self.assertIn("city", user_data)
         self.assertIn("state_ut", user_data)
         self.assertEqual("username@foo.com", user_data["email"])
-        self.assertIn("membership", user_data)
+        self.assertIn("subscription", user_data)
         self.assertIn("guardian", user_data)
 
         response = c.get("/api/players", content_type="application/json")
@@ -532,7 +532,7 @@ class TestPlayers(ApiBaseTestCase):
         self.assertIn("city", user_data)
         self.assertIn("state_ut", user_data)
         self.assertEqual("username@foo.com", user_data["email"])
-        self.assertNotIn("membership", user_data)
+        self.assertNotIn("subscription", user_data)
         self.assertNotIn("guardian", user_data)
 
 
@@ -565,7 +565,7 @@ class TestPayment(ApiBaseTestCase):
     def test_create_manual_transaction_player_exists(self) -> None:
         c = self.client
         player = self.player
-        amount = ANNUAL_MEMBERSHIP_AMOUNT
+        amount = ANNUAL_SUBSCRIPTION_AMOUNT
         transaction_id = "123123123"
         response = c.post(
             f"/api/transactions/manual/{transaction_id}",
@@ -585,16 +585,16 @@ class TestPayment(ApiBaseTestCase):
         self.assertEqual(amount, transaction.amount)
         self.assertIn(player, transaction.players.all())
         self.assertFalse(transaction.validated)
-        self.assertEqual("2024-08-01", player.membership.start_date.strftime("%Y-%m-%d"))
-        self.assertEqual("2025-07-30", player.membership.end_date.strftime("%Y-%m-%d"))
+        self.assertEqual("2024-08-01", player.subscription.start_date.strftime("%Y-%m-%d"))
+        self.assertEqual("2025-07-30", player.subscription.end_date.strftime("%Y-%m-%d"))
 
-    def test_create_manual_transaction_membership_exists(self) -> None:
+    def test_create_manual_transaction_subscription_exists(self) -> None:
         c = self.client
         player = self.player
-        membership = Membership.objects.create(
+        subscription = Subscription.objects.create(
             player=player, start_date="2022-01-01", end_date="2022-12-31"
         )
-        amount = ANNUAL_MEMBERSHIP_AMOUNT
+        amount = ANNUAL_SUBSCRIPTION_AMOUNT
         transaction_id = "123123123"
         response = c.post(
             f"/api/transactions/manual/{transaction_id}",
@@ -614,14 +614,14 @@ class TestPayment(ApiBaseTestCase):
         self.assertEqual(amount, transaction.amount)
         self.assertIn(player, transaction.players.all())
         self.assertFalse(transaction.validated)
-        membership.refresh_from_db()
-        self.assertEqual("2024-08-01", membership.start_date.strftime("%Y-%m-%d"))
-        self.assertEqual("2025-07-30", membership.end_date.strftime("%Y-%m-%d"))
+        subscription.refresh_from_db()
+        self.assertEqual("2024-08-01", subscription.start_date.strftime("%Y-%m-%d"))
+        self.assertEqual("2025-07-30", subscription.end_date.strftime("%Y-%m-%d"))
 
     def test_create_order_player_exists(self) -> None:
         c = self.client
         player = self.player
-        amount = ANNUAL_MEMBERSHIP_AMOUNT
+        amount = ANNUAL_SUBSCRIPTION_AMOUNT
         with mock.patch(
             "server.transaction.client.razorpay.create_order",
             return_value=fake_order(amount),
@@ -659,7 +659,7 @@ class TestPayment(ApiBaseTestCase):
         player = self.player
         player.sponsored = True
         player.save()
-        amount = SPONSORED_ANNUAL_MEMBERSHIP_AMOUNT
+        amount = SPONSORED_ANNUAL_SUBSCRIPTION_AMOUNT
         with mock.patch(
             "server.transaction.client.razorpay.create_order",
             return_value=fake_order(amount),
@@ -692,7 +692,7 @@ class TestPayment(ApiBaseTestCase):
         if transaction.season is not None:
             self.assertEqual(self.season.id, transaction.season.id)
 
-    def test_create_order_event_membership_no_player(self) -> None:
+    def test_create_order_event_subscription_no_player(self) -> None:
         c = self.client
 
         player_id = 200
@@ -714,7 +714,7 @@ class TestPayment(ApiBaseTestCase):
         self.assertEqual(422, response.status_code)
         self.assertEqual("Player does not exist!", response.json()["message"])
 
-    def test_create_order_event_membership_no_event(self) -> None:
+    def test_create_order_event_subscription_no_event(self) -> None:
         c = self.client
         event_id = 20
 
@@ -733,9 +733,9 @@ class TestPayment(ApiBaseTestCase):
         self.assertEqual(422, response.status_code)
         self.assertEqual("Event does not exist!", response.json()["message"])
 
-    def test_create_order_event_membership(self) -> None:
+    def test_create_order_event_subscription(self) -> None:
         c = self.client
-        # Player exists, event exists, membership does not exist
+        # Player exists, event exists, subscription does not exist
         player = self.player
         event = Event.objects.create(
             start_date="2023-09-08",
@@ -747,7 +747,7 @@ class TestPayment(ApiBaseTestCase):
             player_registration_end_date="2023-08-30",
         )
         event.refresh_from_db()
-        amount = EVENT_MEMBERSHIP_AMOUNT
+        amount = EVENT_SUBSCRIPTION_AMOUNT
 
         with mock.patch(
             "server.transaction.client.razorpay.create_order",
@@ -770,10 +770,10 @@ class TestPayment(ApiBaseTestCase):
         transaction = RazorpayTransaction.objects.get(order_id=order_id)
         self.assertEqual(self.user, transaction.user)
         self.assertIn(player, transaction.players.all())
-        self.assertEqual(player.membership.start_date, event.start_date)
-        self.assertEqual(player.membership.end_date, event.end_date)
-        self.assertFalse(player.membership.is_annual)
-        self.assertEqual(player.membership.event, event)
+        self.assertEqual(player.subscription.start_date, event.start_date)
+        self.assertEqual(player.subscription.end_date, event.end_date)
+        self.assertFalse(player.subscription.is_annual)
+        self.assertEqual(player.subscription.event, event)
         self.assertEqual(transaction.event, event)
         self.assertEqual(
             RazorpayTransaction.TransactionStatusChoices.PENDING,
@@ -782,9 +782,9 @@ class TestPayment(ApiBaseTestCase):
         self.assertEqual(event.start_date, transaction.start_date)
         self.assertEqual(event.end_date, transaction.end_date)
 
-    def test_create_manual_transaction_event_membership(self) -> None:
+    def test_create_manual_transaction_event_subscription(self) -> None:
         c = self.client
-        # Player exists, event exists, membership does not exist
+        # Player exists, event exists, subscription does not exist
         player = self.player
         event = Event.objects.create(
             start_date="2023-09-08",
@@ -814,14 +814,14 @@ class TestPayment(ApiBaseTestCase):
         transaction = ManualTransaction.objects.get(transaction_id=transaction_id)
         self.assertEqual(self.user, transaction.user)
         self.assertIn(player, transaction.players.all())
-        self.assertEqual(player.membership.start_date, event.start_date)
-        self.assertEqual(player.membership.end_date, event.end_date)
-        self.assertFalse(player.membership.is_annual)
-        self.assertEqual(player.membership.event, event)
+        self.assertEqual(player.subscription.start_date, event.start_date)
+        self.assertEqual(player.subscription.end_date, event.end_date)
+        self.assertFalse(player.subscription.is_annual)
+        self.assertEqual(player.subscription.event, event)
         self.assertEqual(transaction.event, event)
         self.assertFalse(transaction.validated)
 
-    def test_create_order_group_membership_missing_players(self) -> None:
+    def test_create_order_group_subscription_missing_players(self) -> None:
         c = self.client
 
         player_ids = [200, 220, 230, 225]
@@ -845,7 +845,7 @@ class TestPayment(ApiBaseTestCase):
             response.json()["message"],
         )
 
-    def test_create_order_group_membership(self) -> None:
+    def test_create_order_group_subscription(self) -> None:
         c = self.client
         player_ids = [200, 220, 230, 225]
 
@@ -855,7 +855,7 @@ class TestPayment(ApiBaseTestCase):
             date_of_birth = "2001-01-01"
             player = Player.objects.create(id=id_, user=user, date_of_birth=date_of_birth)
 
-        amount = ANNUAL_MEMBERSHIP_AMOUNT * len(player_ids)
+        amount = ANNUAL_SUBSCRIPTION_AMOUNT * len(player_ids)
         with mock.patch(
             "server.transaction.client.razorpay.create_order",
             return_value=fake_order(amount),
@@ -881,15 +881,15 @@ class TestPayment(ApiBaseTestCase):
         for player_id in player_ids:
             player = Player.objects.get(id=player_id)
             self.assertIn(player, transaction.players.all())
-            self.assertEqual(player.membership.start_date, transaction.start_date)
-            self.assertEqual(player.membership.end_date, transaction.end_date)
-            self.assertTrue(player.membership.is_annual)
+            self.assertEqual(player.subscription.start_date, transaction.start_date)
+            self.assertEqual(player.subscription.end_date, transaction.end_date)
+            self.assertTrue(player.subscription.is_annual)
         self.assertEqual(
             RazorpayTransaction.TransactionStatusChoices.PENDING,
             transaction.status,
         )
 
-    def test_create_manual_transaction_group_membership(self) -> None:
+    def test_create_manual_transaction_group_subscription(self) -> None:
         c = self.client
         player_ids = [200, 220, 230, 225]
 
@@ -899,7 +899,7 @@ class TestPayment(ApiBaseTestCase):
             date_of_birth = "2001-01-01"
             player = Player.objects.create(id=id_, user=user, date_of_birth=date_of_birth)
 
-        ANNUAL_MEMBERSHIP_AMOUNT * len(player_ids)
+        ANNUAL_SUBSCRIPTION_AMOUNT * len(player_ids)
         transaction_id = "432198765"
         response = c.post(
             f"/api/transactions/manual/{transaction_id}",
@@ -919,7 +919,7 @@ class TestPayment(ApiBaseTestCase):
         for player_id in player_ids:
             player = Player.objects.get(id=player_id)
             self.assertIn(player, transaction.players.all())
-            self.assertTrue(player.membership.is_annual)
+            self.assertTrue(player.subscription.is_annual)
         self.assertFalse(transaction.validated)
 
     def test_payment_success(self) -> None:
@@ -931,14 +931,14 @@ class TestPayment(ApiBaseTestCase):
         start_date = "2023-06-01"
         end_date = "2024-05-31"
         player = self.player
-        membership = Membership.objects.create(
+        subscription = Subscription.objects.create(
             start_date=start_date, end_date=end_date, player=player
         )
         order.update(
             {"start_date": start_date, "end_date": end_date, "user": user, "players": [player]}
         )
         transaction = RazorpayTransaction.create_from_order_data(order)
-        self.assertFalse(membership.is_active)
+        self.assertFalse(subscription.is_active)
         self.assertEqual(self.user, transaction.user)
         self.assertIn(player, transaction.players.all())
 
@@ -961,7 +961,7 @@ class TestPayment(ApiBaseTestCase):
         player_data = data[0]
         self.assertEqual(player.id, player_data["id"])
         self.assertEqual(
-            membership.membership_number, player_data["membership"]["membership_number"]
+            subscription.subscription_number, player_data["subscription"]["subscription_number"]
         )
 
         transaction.refresh_from_db()
@@ -971,12 +971,12 @@ class TestPayment(ApiBaseTestCase):
             transaction.status,
         )
 
-        membership.refresh_from_db()
-        self.assertTrue(membership.is_active)
-        self.assertEqual(start_date, membership.start_date.strftime("%Y-%m-%d"))
-        self.assertEqual(end_date, membership.end_date.strftime("%Y-%m-%d"))
+        subscription.refresh_from_db()
+        self.assertTrue(subscription.is_active)
+        self.assertEqual(start_date, subscription.start_date.strftime("%Y-%m-%d"))
+        self.assertEqual(end_date, subscription.end_date.strftime("%Y-%m-%d"))
 
-    def test_payment_success_group_membership(self) -> None:
+    def test_payment_success_group_subscription(self) -> None:
         c = self.client
         n_players = 4
         amount = 60000 * n_players
@@ -1019,10 +1019,10 @@ class TestPayment(ApiBaseTestCase):
         data = response.json()
         self.assertEqual(n_players, len(data))
         for player_data in data:
-            membership = player_data["membership"]
-            self.assertTrue(membership["is_active"])
-            self.assertEqual(start_date, membership["start_date"])
-            self.assertEqual(end_date, membership["end_date"])
+            subscription = player_data["subscription"]
+            self.assertTrue(subscription["is_active"])
+            self.assertEqual(start_date, subscription["start_date"])
+            self.assertEqual(end_date, subscription["end_date"])
 
         transaction.refresh_from_db()
         self.assertEqual(transaction.payment_id, payment_id)
@@ -1031,9 +1031,9 @@ class TestPayment(ApiBaseTestCase):
             transaction.status,
         )
 
-    def test_payment_success_event_membership(self) -> None:
+    def test_payment_success_event_subscription(self) -> None:
         c = self.client
-        amount = EVENT_MEMBERSHIP_AMOUNT
+        amount = EVENT_SUBSCRIPTION_AMOUNT
         order = fake_order(amount)
         order_id = order["order_id"]
         user = self.user
@@ -1061,7 +1061,7 @@ class TestPayment(ApiBaseTestCase):
             player_registration_end_date="2023-05-30",
         )
         event.refresh_from_db()
-        membership = Membership.objects.create(
+        subscription = Subscription.objects.create(
             start_date=start_old, end_date=end_old, player=player, event=event_old
         )
         order.update(
@@ -1074,10 +1074,10 @@ class TestPayment(ApiBaseTestCase):
             }
         )
         transaction = RazorpayTransaction.create_from_order_data(order)
-        self.assertFalse(membership.is_active)
+        self.assertFalse(subscription.is_active)
         self.assertEqual(self.user, transaction.user)
         self.assertIn(player, transaction.players.all())
-        self.assertEqual(event_old, player.membership.event)
+        self.assertEqual(event_old, player.subscription.event)
         self.assertEqual(event, transaction.event)
 
         payment_id = f"pay_{fake_id(16)}"
@@ -1099,7 +1099,7 @@ class TestPayment(ApiBaseTestCase):
         player_data = data[0]
         self.assertEqual(player.id, player_data["id"])
         self.assertEqual(
-            membership.membership_number, player_data["membership"]["membership_number"]
+            subscription.subscription_number, player_data["subscription"]["subscription_number"]
         )
 
         transaction.refresh_from_db()
@@ -1110,11 +1110,11 @@ class TestPayment(ApiBaseTestCase):
         )
         self.assertEqual(event, transaction.event)
 
-        membership.refresh_from_db()
-        self.assertTrue(membership.is_active)
-        self.assertEqual(event.start_date, membership.start_date)
-        self.assertEqual(event.end_date, membership.end_date)
-        self.assertEqual(event, membership.event)
+        subscription.refresh_from_db()
+        self.assertTrue(subscription.is_active)
+        self.assertEqual(event.start_date, subscription.start_date)
+        self.assertEqual(event.end_date, subscription.end_date)
+        self.assertEqual(event, subscription.event)
 
     def test_list_transactions(self) -> None:
         c = self.client
@@ -1137,25 +1137,25 @@ class TestPayment(ApiBaseTestCase):
         orders = set()
 
         # Create transaction made by current user
-        order = fake_order(ANNUAL_MEMBERSHIP_AMOUNT * 2)
+        order = fake_order(ANNUAL_SUBSCRIPTION_AMOUNT * 2)
         order.update(user=self.user, players=players[2:], transaction_id=order["order_id"])
         ManualTransaction.create_from_order_data(order)
         orders.add(order["order_id"])
 
         # Create transaction for current user's player
-        order = fake_order(ANNUAL_MEMBERSHIP_AMOUNT)
+        order = fake_order(ANNUAL_SUBSCRIPTION_AMOUNT)
         order.update(user=users[0], players=players[:1], transaction_id=order["order_id"])
         ManualTransaction.create_from_order_data(order)
         orders.add(order["order_id"])
 
         # Create transaction for current user's ward
-        order = fake_order(ANNUAL_MEMBERSHIP_AMOUNT)
+        order = fake_order(ANNUAL_SUBSCRIPTION_AMOUNT)
         order.update(user=users[2], players=players[1:2], transaction_id=order["order_id"])
         ManualTransaction.create_from_order_data(order)
         orders.add(order["order_id"])
 
         # Create transaction made by another user
-        order = fake_order(ANNUAL_MEMBERSHIP_AMOUNT * 2)
+        order = fake_order(ANNUAL_SUBSCRIPTION_AMOUNT * 2)
         order.update(user=users[2], players=players[2:], transaction_id=order["order_id"])
         ManualTransaction.create_from_order_data(order)
 
@@ -1191,8 +1191,8 @@ class TestPayment(ApiBaseTestCase):
         )
         transaction.players.add(self.player)
         update_transaction(transaction, "ERROR")
-        with self.assertRaises(Membership.DoesNotExist):
-            self.assertFalse(self.player.membership.is_active)
+        with self.assertRaises(Subscription.DoesNotExist):
+            self.assertFalse(self.player.subscription.is_active)
 
 
 class TestVaccination(ApiBaseTestCase):
@@ -1332,7 +1332,7 @@ class TestWaiver(ApiBaseTestCase):
         self.client.force_login(self.user)
         start_date = "2023-06-01"
         end_date = "2024-05-31"
-        _membership = Membership.objects.create(
+        _subscription = Subscription.objects.create(
             start_date=start_date, end_date=end_date, player=self.player
         )
 
@@ -1343,10 +1343,10 @@ class TestWaiver(ApiBaseTestCase):
         )
         response_data = response.json()
         self.assertEqual(200, response.status_code)
-        membership = response_data["membership"]
-        self.assertEqual(self.user.get_full_name(), membership["waiver_signed_by"])
-        self.assertTrue(membership["waiver_valid"])
-        self.assertIsNotNone(membership["waiver_signed_at"])
+        subscription = response_data["subscription"]
+        self.assertEqual(self.user.get_full_name(), subscription["waiver_signed_by"])
+        self.assertTrue(subscription["waiver_valid"])
+        self.assertIsNotNone(subscription["waiver_signed_at"])
 
     def test_minor_cannot_sign_waiver(self) -> None:
         c = self.client
@@ -1426,14 +1426,14 @@ class TestValidateTransactions(ApiBaseTestCase):
         self.assertFalse(ManualTransaction.objects.get(transaction_id="33680091811DC").validated)
 
 
-class TestCheckMemberships(ApiBaseTestCase, MembershipStatusTestCase):
+class TestCheckSubscriptions(ApiBaseTestCase, SubscriptionStatusTestCase):
     def setUp(self) -> None:
         super().setUp()
         self.client.force_login(self.user)
         self.user.is_staff = True
         self.user.save()
 
-    def test_check_memberships(self) -> None:
+    def test_check_subscriptions(self) -> None:
         c = self.client
         info_csv = SimpleUploadedFile(
             "info.csv",
@@ -1441,7 +1441,7 @@ class TestCheckMemberships(ApiBaseTestCase, MembershipStatusTestCase):
             content_type="application/csv",
         )
         response = c.post(
-            path="/api/check-memberships",
+            path="/api/check-subscriptions",
             data={"info_csv": info_csv},
             content_type=MULTIPART_CONTENT,
         )
@@ -1449,7 +1449,7 @@ class TestCheckMemberships(ApiBaseTestCase, MembershipStatusTestCase):
         data = response.json()
         self.assertEqual(len(data), len(self.csv_data.strip().split()) - 1)
         for row in data:
-            self.assertIn("membership_status", row)
+            self.assertIn("subscription_status", row)
 
 
 class TestTournaments(ApiBaseTestCase):

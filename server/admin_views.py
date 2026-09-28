@@ -29,7 +29,7 @@ def csv_imports_view(request: HttpRequest) -> HttpResponse:
 
         if not action or action not in (
             "import_players",
-            "activate_memberships",
+            "activate_subscriptions",
             "add_to_series_roster",
             "add_to_event_roster",
         ):
@@ -79,8 +79,8 @@ def csv_imports_view(request: HttpRequest) -> HttpResponse:
                     stdout=out,
                     stderr=err,
                 )
-            elif action == "activate_memberships":
-                call_command("activate_memberships", tmp_path, stdout=out, stderr=err)
+            elif action == "activate_subscriptions":
+                call_command("activate_subscriptions", tmp_path, stdout=out, stderr=err)
             elif action == "add_to_series_roster":
                 call_command(
                     "add_to_series_roster",

@@ -11,7 +11,10 @@ from server.core.models import Player, User
 
 
 class ServiceRequestType(models.TextChoices):
-    REQUEST_SPONSORED_MEMBERSHIP = "REQUEST_SPONSORED_MEMBERSHIP", "Request Sponsored Membership"
+    REQUEST_SPONSORED_SUBSCRIPTION = (
+        "REQUEST_SPONSORED_SUBSCRIPTION",
+        "Request Sponsored Subscription",
+    )
     REQUEST_ACCOUNT_MERGE = "REQUEST_ACCOUNT_MERGE", "Merge accounts"
 
 
@@ -39,7 +42,7 @@ def handle_service_request_status_change(
 ) -> None:
     """
     When a service request status changes to approved or rejected,
-    send email notification to the user and handle sponsored membership approval.
+    send email notification to the user and handle sponsored subscription approval.
     """
     # A merge request sends its own emails, and its status changes in bulk.
     if instance.type == ServiceRequestType.REQUEST_ACCOUNT_MERGE:
@@ -53,10 +56,10 @@ def handle_service_request_status_change(
         # Send email notification
         send_service_request_notification_email(instance)
 
-        # Handle sponsored membership approval logic
+        # Handle sponsored subscription approval logic
         if (
             instance.status == ServiceRequestStatus.APPROVED
-            and instance.type == ServiceRequestType.REQUEST_SPONSORED_MEMBERSHIP
+            and instance.type == ServiceRequestType.REQUEST_SPONSORED_SUBSCRIPTION
         ):
             # Update all service players' sponsored field
             for player in instance.service_players.all():

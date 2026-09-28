@@ -63,7 +63,7 @@ COMMENTARY_FIELDS = (
 )
 
 ROW_PREFERENCE = {
-    "server.Membership": lambda row: (row.is_active, row.end_date),
+    "server.Subscription": lambda row: (row.is_active, row.end_date),
     "server.Accreditation": lambda row: (row.is_valid, row.date, row.wfdf_id is not None),
     "server.Vaccination": lambda row: (row.is_vaccinated, bool(row.certificate)),
     "server.CollegeId": lambda row: (row.expiry,),
@@ -86,7 +86,7 @@ O2O_PREFERENCE = {
     label: rank
     for label, rank in ROW_PREFERENCE.items()
     if label
-    in {"server.Membership", "server.Accreditation", "server.Vaccination", "server.CollegeId"}
+    in {"server.Subscription", "server.Accreditation", "server.Vaccination", "server.CollegeId"}
 }
 
 # Filled from the duplicate when the primary has nothing there. email is absent

@@ -38,7 +38,7 @@ class FlowError(Exception):
         self.status = status
 
 
-def membership(cluster: DuplicateCluster, user: User | None) -> ClusterMember | None:
+def subscription(cluster: DuplicateCluster, user: User | None) -> ClusterMember | None:
     if user is None:
         return None
     return cluster.members.filter(user=user).first()
@@ -456,7 +456,7 @@ def approve_staff(request: ServiceRequest, staff: User) -> MergePlan:
 def reject_staff(request: ServiceRequest, staff: User) -> None:
     with transaction.atomic():
         row = _staff_row(request)
-        keeper_row = membership(row.cluster, request.user)
+        keeper_row = subscription(row.cluster, request.user)
         request.status = ServiceRequestStatus.REJECTED
         request.save(update_fields=["status", "updated_at"])
         row.state = ClusterMember.State.REJECTED

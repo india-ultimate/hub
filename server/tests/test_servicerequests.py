@@ -23,13 +23,13 @@ class ServiceRequestSignalTest(TestCase):
             sponsored=False,  # Initially not sponsored
         )
 
-    def test_sponsored_membership_approval_signal(self) -> None:
-        """Test that approving a sponsored membership request sets player.sponsored=True"""
-        # Create a sponsored membership request
+    def test_sponsored_subscription_approval_signal(self) -> None:
+        """Test that approving a sponsored subscription request sets player.sponsored=True"""
+        # Create a sponsored subscription request
         service_request = ServiceRequest.objects.create(
             user=self.user,
-            type=ServiceRequestType.REQUEST_SPONSORED_MEMBERSHIP,
-            message="Please approve my sponsored membership",
+            type=ServiceRequestType.REQUEST_SPONSORED_SUBSCRIPTION,
+            message="Please approve my sponsored subscription",
             status=ServiceRequestStatus.PENDING,
         )
 
@@ -54,8 +54,8 @@ class ServiceRequestSignalTest(TestCase):
         # For now, we'll test with a sponsored request but reject it
         service_request = ServiceRequest.objects.create(
             user=self.user,
-            type=ServiceRequestType.REQUEST_SPONSORED_MEMBERSHIP,
-            message="Please approve my sponsored membership",
+            type=ServiceRequestType.REQUEST_SPONSORED_SUBSCRIPTION,
+            message="Please approve my sponsored subscription",
             status=ServiceRequestStatus.PENDING,
         )
 
@@ -79,8 +79,8 @@ class ServiceRequestSignalTest(TestCase):
         # Create and approve a request
         service_request = ServiceRequest.objects.create(
             user=self.user,
-            type=ServiceRequestType.REQUEST_SPONSORED_MEMBERSHIP,
-            message="Please approve my sponsored membership",
+            type=ServiceRequestType.REQUEST_SPONSORED_SUBSCRIPTION,
+            message="Please approve my sponsored subscription",
             status=ServiceRequestStatus.APPROVED,  # Create directly as approved
         )
 
@@ -114,8 +114,8 @@ class ServiceRequestSignalTest(TestCase):
         # Create a service request
         service_request = ServiceRequest.objects.create(
             user=self.user,
-            type=ServiceRequestType.REQUEST_SPONSORED_MEMBERSHIP,
-            message="Please approve my sponsored membership",
+            type=ServiceRequestType.REQUEST_SPONSORED_SUBSCRIPTION,
+            message="Please approve my sponsored subscription",
             status=ServiceRequestStatus.PENDING,
         )
 
@@ -144,8 +144,8 @@ class ServiceRequestSignalTest(TestCase):
         # Create a service request
         service_request = ServiceRequest.objects.create(
             user=self.user,
-            type=ServiceRequestType.REQUEST_SPONSORED_MEMBERSHIP,
-            message="Please approve my sponsored membership",
+            type=ServiceRequestType.REQUEST_SPONSORED_SUBSCRIPTION,
+            message="Please approve my sponsored subscription",
             status=ServiceRequestStatus.PENDING,
         )
 
@@ -177,8 +177,8 @@ class ServiceRequestSignalTest(TestCase):
         # Create a service request (this should not send an email)
         ServiceRequest.objects.create(
             user=self.user,
-            type=ServiceRequestType.REQUEST_SPONSORED_MEMBERSHIP,
-            message="Please approve my sponsored membership",
+            type=ServiceRequestType.REQUEST_SPONSORED_SUBSCRIPTION,
+            message="Please approve my sponsored subscription",
             status=ServiceRequestStatus.PENDING,
         )
 
@@ -193,8 +193,8 @@ class ServiceRequestSignalTest(TestCase):
         # Create a service request
         service_request = ServiceRequest.objects.create(
             user=self.user,
-            type=ServiceRequestType.REQUEST_SPONSORED_MEMBERSHIP,
-            message="Please approve my sponsored membership",
+            type=ServiceRequestType.REQUEST_SPONSORED_SUBSCRIPTION,
+            message="Please approve my sponsored subscription",
             status=ServiceRequestStatus.APPROVED,
         )
 

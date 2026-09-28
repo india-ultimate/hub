@@ -413,9 +413,9 @@ class TestOddSwissTournamentLifecycle(ApiBaseTestCase):
             name="Season 24-25",
             start_date="2024-08-01",
             end_date="2025-07-30",
-            annual_membership_amount=70000,
-            sponsored_annual_membership_amount=20000,
-            supporter_annual_membership_amount=50000,
+            annual_subscription_amount=70000,
+            sponsored_annual_subscription_amount=20000,
+            supporter_annual_subscription_amount=50000,
         )
 
         self.client.force_login(self.user)
@@ -1692,9 +1692,9 @@ class TestSwissBackToBackAvoidance(ApiBaseTestCase):
             name="Season 24-25",
             start_date="2024-08-01",
             end_date="2025-07-30",
-            annual_membership_amount=70000,
-            sponsored_annual_membership_amount=20000,
-            supporter_annual_membership_amount=50000,
+            annual_subscription_amount=70000,
+            sponsored_annual_subscription_amount=20000,
+            supporter_annual_subscription_amount=50000,
         )
 
         self.client.force_login(self.user)
@@ -1948,9 +1948,9 @@ class TestSwiss24TeamLifecycle(ApiBaseTestCase):
             name="Season 24-25",
             start_date="2024-08-01",
             end_date="2025-07-30",
-            annual_membership_amount=70000,
-            sponsored_annual_membership_amount=20000,
-            supporter_annual_membership_amount=50000,
+            annual_subscription_amount=70000,
+            sponsored_annual_subscription_amount=20000,
+            supporter_annual_subscription_amount=50000,
         )
 
         self.client.force_login(self.user)

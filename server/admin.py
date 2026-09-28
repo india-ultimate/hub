@@ -39,10 +39,10 @@ from server.election.models import (
     VoterVerification,
 )
 from server.forms.models import Form, FormResponse
-from server.membership.models import Membership
 from server.season.models import Season
 from server.series.models import Series, SeriesRegistration, SeriesRosterInvitation
 from server.servicerequests.models import ServiceRequest, ServiceRequestStatus, ServiceRequestType
+from server.subscription.models import Subscription
 from server.task.manager import TaskManager
 from server.task.models import Task
 from server.tournament.models import (
@@ -66,10 +66,10 @@ from server.transaction.models import ManualTransaction, PhonePeTransaction, Raz
 @admin.action(description="Export Selected")
 def export_as_csv(
     self: admin.ModelAdmin[
-        Membership | RazorpayTransaction | PhonePeTransaction | ManualTransaction
+        Subscription | RazorpayTransaction | PhonePeTransaction | ManualTransaction
     ],
     request: HttpRequest,
-    queryset: QuerySet[Membership | RazorpayTransaction | PhonePeTransaction | ManualTransaction],
+    queryset: QuerySet[Subscription | RazorpayTransaction | PhonePeTransaction | ManualTransaction],
 ) -> HttpResponse:
     meta = self.model._meta
     field_names = [field.name for field in meta.fields]
@@ -393,12 +393,12 @@ class MatchEventAdmin(admin.ModelAdmin[MatchEvent]):
         return " | ".join(details) if details else ""
 
 
-@admin.register(Membership)
-class MembershipAdmin(admin.ModelAdmin[Membership]):
+@admin.register(Subscription)
+class SubscriptionAdmin(admin.ModelAdmin[Subscription]):
     search_fields = ["player__user__first_name"]
     list_display = [
         "get_name",
-        "membership_number",
+        "subscription_number",
         "is_annual",
         "start_date",
         "end_date",
@@ -409,11 +409,11 @@ class MembershipAdmin(admin.ModelAdmin[Membership]):
     actions = [export_as_csv]
 
     @admin.display(description="Player Name", ordering="player__user__first_name")
-    def get_name(self, obj: Membership) -> str:
+    def get_name(self, obj: Subscription) -> str:
         return obj.player.user.first_name
 
     @admin.display(description="Sponsored", ordering="player__sponsored")
-    def get_sponsored(self, obj: Membership) -> bool:
+    def get_sponsored(self, obj: Subscription) -> bool:
         return obj.player.sponsored
 
 

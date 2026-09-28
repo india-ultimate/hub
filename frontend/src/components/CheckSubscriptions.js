@@ -4,7 +4,7 @@ import { createSignal, For } from "solid-js";
 import { getCookie } from "../utils";
 import FileInput from "./FileInput";
 
-const MembershipStatusTable = props => {
+const SubscriptionStatusTable = props => {
   if (!props.data || props.data.length === 0) {
     return <p>No data found in the CSV</p>;
   }
@@ -26,7 +26,7 @@ const MembershipStatusTable = props => {
             {row => (
               <tr
                 class={
-                  row.membership_status
+                  row.subscription_status
                     ? "bg-green-200 dark:bg-green-700"
                     : "bg-red-800 text-white"
                 }
@@ -54,7 +54,7 @@ const MembershipStatusTable = props => {
   );
 };
 
-const CheckMemberships = () => {
+const CheckSubscriptions = () => {
   const [status, setStatus] = createSignal("");
   const initialValues = {};
   const [_csvForm, { Form, Field }] = createForm({
@@ -68,7 +68,7 @@ const CheckMemberships = () => {
     const formData = new FormData();
     formData.append("info_csv", info_csv);
     try {
-      const response = await fetch("/api/check-memberships", {
+      const response = await fetch("/api/check-subscriptions", {
         method: "POST",
         headers: {
           "X-CSRFToken": getCookie("csrftoken")
@@ -77,14 +77,16 @@ const CheckMemberships = () => {
       });
       if (response.ok) {
         const data = await response.json();
-        setStatus(<MembershipStatusTable data={data} />);
+        setStatus(<SubscriptionStatusTable data={data} />);
       } else {
         const message = await response.json();
         const text = message?.message || JSON.stringify(message);
         setStatus(`${text}`);
       }
     } catch (error) {
-      setStatus(`An error occurred while processing membership data: ${error}`);
+      setStatus(
+        `An error occurred while processing subscription data: ${error}`
+      );
     }
   };
 
@@ -129,4 +131,4 @@ const CheckMemberships = () => {
   );
 };
 
-export default CheckMemberships;
+export default CheckSubscriptions;
