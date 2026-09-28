@@ -3,48 +3,101 @@ from typing import Any
 
 from django.conf import settings
 from django.db import IntegrityError
+from django.db import transaction as db_transaction
 from django.db.models import Model, Q, QuerySet
 
-from server.constants import EVENT_SUBSCRIPTION_AMOUNT
 from server.core.models import Player, Team, User
 from server.season.models import Season
+from server.subscription import catalog
 from server.subscription.models import Subscription
+from server.subscription.pricing import UPGRADE, NeedsGrant, NotForSale, Quote, quote
 from server.tournament.models import Event, Registration, Tournament
 from server.tournament.utils import can_register_player_to_series_event
 from server.types import message_response
 from server.utils import calculate_late_penalty, is_today_in_between_dates
 
-from .client import phonepe, razorpay
+from .client import razorpay
 from .models import (
     AuthenticatedHttpRequest,
     ManualTransaction,
     PaymentGateway,
     PhonePeTransaction,
     RazorpayTransaction,
+    RazorpayTransactionPlayer,
 )
 from .schema import (
-    AnnualSubscriptionSchema,
-    EventSubscriptionSchema,
-    GroupSubscriptionSchema,
     PlayerRegistrationSchema,
+    SubscriptionOrderSchema,
     TeamRegistrationSchema,
 )
 
 
+class ValidationError(Exception):
+    """An order that cannot be placed, with the reason to show the buyer."""
+
+
+def _names(players: list[Player]) -> str:
+    names = ", ".join(sorted(player.user.get_full_name() for player in players))
+    if len(names) > razorpay.RAZORPAY_NOTES_MAX:
+        names = names[:500] + "..."
+    return names
+
+
+def build_subscription_order(
+    order: SubscriptionOrderSchema,
+) -> tuple[Season, list[tuple[Player, Quote]]]:
+    """Check every line and price it, before any money is involved.
+
+    Nothing about a subscription is created here. A payment that never
+    completes must leave no trace, which is what the old code got wrong.
+    """
+    try:
+        season = Season.objects.get(id=order.season_id)
+    except Season.DoesNotExist as error:
+        raise ValidationError("Season does not exist!") from error
+
+    if not order.items:
+        raise ValidationError("An order needs at least one person in it.")
+
+    player_ids = [item.player_id for item in order.items]
+    if len(set(player_ids)) != len(player_ids):
+        raise ValidationError("The same person appears twice in this order.")
+
+    players = {
+        player.id: player
+        for player in Player.objects.filter(id__in=player_ids).select_related("user")
+    }
+    missing = sorted(set(player_ids) - set(players))
+    if missing:
+        raise ValidationError(f"Some players couldn't be found in the DB: {missing}")
+
+    lines = []
+    for item in order.items:
+        player = players[item.player_id]
+        plan = catalog.plan_for(season, item.plan_type)
+        if plan is None:
+            raise ValidationError(f"{item.plan_type} is not offered for {season.name}.")
+        try:
+            priced = quote(player, plan)
+        except (NotForSale, NeedsGrant) as error:
+            raise ValidationError(f"{player.user.get_full_name()}: {error}") from error
+        lines.append((player, priced))
+
+    if len(lines) > 1 and any(priced.kind == UPGRADE for _, priced in lines):
+        raise ValidationError("Upgrades are bought one person at a time.")
+
+    return season, lines
+
+
 def create_transaction(
     request: AuthenticatedHttpRequest,
-    order: AnnualSubscriptionSchema
-    | EventSubscriptionSchema
-    | GroupSubscriptionSchema
-    | PlayerRegistrationSchema
-    | TeamRegistrationSchema,
-    gateway: PaymentGateway,
-    transaction_id: str | None = None,
+    order: SubscriptionOrderSchema | PlayerRegistrationSchema | TeamRegistrationSchema,
 ) -> tuple[int, str | message_response | dict[str, Any]]:
     user = request.user
     ts = round(time.time())
+    lines: list[tuple[Player, Quote]] = []
 
-    if isinstance(order, GroupSubscriptionSchema | PlayerRegistrationSchema):
+    if isinstance(order, PlayerRegistrationSchema):
         players = Player.objects.filter(id__in=order.player_ids)
         player_ids = {p.id for p in players}
         if len(player_ids) != len(order.player_ids):
@@ -53,60 +106,32 @@ def create_transaction(
                 "message": f"Some players couldn't be found in the DB: {sorted(missing_players)}"
             }
 
-    elif isinstance(order, AnnualSubscriptionSchema | EventSubscriptionSchema):
+    if isinstance(order, SubscriptionOrderSchema):
         try:
-            player = Player.objects.get(id=order.player_id)
-        except Player.DoesNotExist:
-            return 422, {"message": "Player does not exist!"}
-
-    if isinstance(order, GroupSubscriptionSchema | AnnualSubscriptionSchema):
-        try:
-            season = Season.objects.get(id=order.season_id)
-        except Season.DoesNotExist:
-            return 422, {"message": "Season does not exist!"}
+            season, lines = build_subscription_order(order)
+        except ValidationError as invalid:
+            return 422, {"message": str(invalid)}
         start_date = season.start_date
         end_date = season.end_date
-        is_annual = True
         event = None
         team = None
-        amount = (
-            sum(
-                (
-                    season.sponsored_annual_subscription_amount
-                    if player.sponsored
-                    else season.supporter_annual_subscription_amount
-                    if order.is_supporter
-                    else season.annual_subscription_amount
-                )
-                for player in players
-            )
-            if isinstance(order, GroupSubscriptionSchema)
-            else (
-                season.sponsored_annual_subscription_amount
-                if player.sponsored
-                else season.supporter_annual_subscription_amount
-                if order.is_supporter
-                else season.annual_subscription_amount
-            )
+        # The amount always comes from the plans, never from the client.
+        amount = sum(priced.amount for _, priced in lines)
+        members = [player for player, _ in lines]
+        player_names = _names(members)
+        notes: dict[str, int | str] = {
+            "user_id": user.id,
+            "season_id": season.id,
+            "player_ids": str([player.id for player in members]),
+            "players": player_names,
+            "iu_ids": ", ".join(player.iu_id or "new" for player in members),
+        }
+        first = members[0]
+        receipt = (
+            f"{first.iu_id or first.id}:{season.id}:{ts}"
+            if len(members) == 1
+            else f"group:{season.id}:{ts}"
         )
-
-    elif isinstance(order, EventSubscriptionSchema):
-        try:
-            event = Event.objects.get(id=order.event_id)
-        except Event.DoesNotExist:
-            return 422, {"message": "Event does not exist!"}
-
-        start_date = event.start_date
-        end_date = event.end_date
-        is_annual = False
-        amount = EVENT_SUBSCRIPTION_AMOUNT
-        # Subscription.season is required now; an event subscription belongs to
-        # whichever season its event falls in.
-        event_season = Season.containing(event.start_date)
-        if event_season is None:
-            return 422, {"message": "No season covers this event's dates!"}
-        season = event_season
-        team = None
 
     elif isinstance(order, TeamRegistrationSchema):
         try:
@@ -170,7 +195,7 @@ def create_transaction(
         base_amount = amount
         amount += penalty
 
-        notes: dict[str, int | str] = {
+        notes = {
             "user_id": user.id,
             "team_id": team.id,
             "event_id": event.id,
@@ -273,67 +298,17 @@ def create_transaction(
         # NOTE: We should never be here, thanks to request validation!
         pass
 
-    if isinstance(
-        order, GroupSubscriptionSchema | AnnualSubscriptionSchema | EventSubscriptionSchema
-    ):
-        subscription_defaults = {
-            "is_annual": is_annual,
-            "start_date": start_date,
-            "end_date": end_date,
-            "event": event,
-            "season": season,
-        }
-        if isinstance(order, GroupSubscriptionSchema):
-            player_names = ", ".join(sorted([player.user.get_full_name() for player in players]))
-            if len(player_names) > razorpay.RAZORPAY_NOTES_MAX:
-                player_names = player_names[:500] + "..."
-            notes = {
-                "user_id": user.id,
-                "player_ids": str(player_ids),
-                "players": player_names,
-            }
-            receipt = f"group:{start_date}:{ts}"
-            for player in players:
-                Subscription.objects.get_or_create(player=player, defaults=subscription_defaults)
-        else:
-            subscription, _ = Subscription.objects.get_or_create(
-                player=player,
-                defaults=subscription_defaults,
-            )
-            notes = {
-                "user_id": user.id,
-                "player_id": player.id,
-                "subscription_id": subscription.id,
-            }
-            receipt = f"{subscription.subscription_number}:{start_date}:{ts}"
-
-    if gateway == PaymentGateway.RAZORPAY:
-        data = razorpay.create_order(amount, receipt=receipt, notes=notes)
-        if data is None:
-            return 502, "Failed to connect to Razorpay."
-    elif gateway == PaymentGateway.PHONEPE:
-        host = f"{request.scheme}://{request.get_host()}"
-        next_url = (
-            "/subscription/group"
-            if isinstance(order, GroupSubscriptionSchema)
-            else f"/subscription/{player.id}"
-        )
-        data = phonepe.initiate_payment(amount, user, host, next_url)
-        if data is None:
-            return 502, "Failed to connect to PhonePe."
-    else:
-        data = {"amount": amount, "currency": "INR", "transaction_id": transaction_id}
+    data = razorpay.create_order(amount, receipt=receipt, notes=notes)
+    if data is None:
+        return 502, "Failed to connect to Razorpay."
 
     data.update(
         {
             "start_date": start_date,
             "end_date": end_date,
             "user": user,
-            "players": []
-            if isinstance(order, TeamRegistrationSchema)
-            else [player]
-            if not isinstance(order, GroupSubscriptionSchema | PlayerRegistrationSchema)
-            else players,
+            # Subscription lines are written below, each with what it bought.
+            "players": players if isinstance(order, PlayerRegistrationSchema) else [],
             "event": event,
             "season": season,
             "team": team,
@@ -346,38 +321,35 @@ def create_transaction(
             else RazorpayTransaction.TransactionTypeChoices.ANNUAL_SUBSCRIPTION,
         }
     )
-    if gateway == PaymentGateway.RAZORPAY:
-        RazorpayTransaction.create_from_order_data(data)
-        transaction_user_name = user.get_full_name()
-        description = (
-            f"Team registration payment by {transaction_user_name} for {team.name if team is not None else ''}, event: {event.title if event is not None else ''}"
-            if isinstance(order, TeamRegistrationSchema)
-            else f"Player registration payment by {transaction_user_name} for {player_names}, event: {event.title if event is not None else ''}"
-            if isinstance(order, PlayerRegistrationSchema)
-            else f"Subscription for {player.user.get_full_name()}"
-            if not isinstance(order, GroupSubscriptionSchema)
-            else f"Subscription group payment by {transaction_user_name} for {player_names}"
+    with db_transaction.atomic():
+        transaction = RazorpayTransaction.create_from_order_data(data)
+        RazorpayTransactionPlayer.objects.bulk_create(
+            RazorpayTransactionPlayer(
+                transaction=transaction, player=player, plan=priced.plan, amount=priced.amount
+            )
+            for player, priced in lines
         )
-        if len(description) > razorpay.RAZORPAY_DESCRIPTION_MAX:
-            description = description[:250] + "..."
-        extra_data = {
+
+    transaction_user_name = user.get_full_name()
+    if isinstance(order, TeamRegistrationSchema):
+        description = f"Team registration payment by {transaction_user_name} for {team.name if team is not None else ''}, event: {event.title if event is not None else ''}"
+    elif isinstance(order, PlayerRegistrationSchema):
+        description = f"Player registration payment by {transaction_user_name} for {player_names}, event: {event.title if event is not None else ''}"
+    elif len(lines) == 1:
+        member, priced = lines[0]
+        description = f"{priced.plan.type.name} subscription for {member.user.get_full_name()}, {priced.plan.season.name}"
+    else:
+        description = f"Subscription group payment by {transaction_user_name} for {player_names}"
+    if len(description) > razorpay.RAZORPAY_DESCRIPTION_MAX:
+        description = description[:250] + "..."
+    data.update(
+        {
             "name": settings.APP_NAME,
             "image": settings.LOGO_URL,
             "description": description,
             "prefill": {"name": user.get_full_name(), "email": user.email, "contact": user.phone},
         }
-        data.update(extra_data)
-    elif gateway == PaymentGateway.PHONEPE:
-        PhonePeTransaction.create_from_order_data(data)
-    elif gateway == PaymentGateway.MANUAL:
-        ManualTransaction.create_from_order_data(data)
-        subscriptions = Subscription.objects.filter(
-            player__in=player_ids if isinstance(order, GroupSubscriptionSchema) else [player.id]
-        )
-        subscriptions.update(is_active=True, start_date=start_date, end_date=end_date)
-    else:
-        # We shouldn't get here, because enum
-        pass
+    )
 
     return 200, data
 
@@ -389,8 +361,8 @@ def update_transaction_player_subscriptions(
         "start_date": transaction.start_date,
         "end_date": transaction.end_date,
         "event": transaction.event,
-        # Subscription.season is required now; an event transaction (no season
-        # of its own) belongs to whichever season its dates fall in.
+        # Subscription.season is required now; fall back to whichever season
+        # the transaction's dates fall in when it doesn't carry one.
         "season": transaction.season or Season.containing(transaction.start_date),
         "is_active": True,
     }
