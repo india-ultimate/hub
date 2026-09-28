@@ -8,9 +8,11 @@ from unittest import mock
 from django.core import mail
 from django.core.files.storage import default_storage
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.db import connection
 from django.db.models import Q
 from django.test import Client
 from django.test.client import MULTIPART_CONTENT
+from django.test.utils import CaptureQueriesContext
 from django.utils.timezone import now
 
 from server.core.accounts import find_login_user
@@ -566,6 +568,28 @@ class TestPlayers(ApiBaseTestCase):
         self.assertEqual("username@foo.com", user_data["email"])
         self.assertNotIn("subscription", user_data)
         self.assertNotIn("guardian", user_data)
+
+    def test_get_players_query_count_does_not_grow_with_player_count(self) -> None:
+        # The plain (non-staff) shape: this is the unpaginated list every
+        # visitor hits, so it must not do more work per player added.
+        c = self.client
+
+        with CaptureQueriesContext(connection) as ctx:
+            response = c.get("/api/players", content_type="application/json")
+        self.assertEqual(200, response.status_code)
+        self.assertEqual(1, len(response.json()))
+        baseline = len(ctx.captured_queries)
+
+        for i in range(2):
+            extra_user = User.objects.create(
+                username=f"extra{i}@foo.com", email=f"extra{i}@foo.com"
+            )
+            Player.objects.create(user=extra_user, date_of_birth="1995-01-01")
+
+        with self.assertNumQueries(baseline):
+            response = c.get("/api/players", content_type="application/json")
+        self.assertEqual(200, response.status_code)
+        self.assertEqual(3, len(response.json()))
 
 
 class TestPayment(ApiBaseTestCase):
