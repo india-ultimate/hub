@@ -79,7 +79,7 @@ const ValidationLegend = () => (
           display: "inline"
         }}
       />
-      — Membership Fee status
+      — Subscription Fee status
     </li>
     <li class="w-full border-b border-gray-200 px-4 py-2 dark:border-gray-600">
       <Icon
@@ -248,20 +248,20 @@ const ValidateRoster = () => {
     return new Date(player?.accreditation?.date) > lastValid;
   };
 
-  const membershipValidForEvent = player => {
-    if (!player?.membership?.is_active) {
+  const subscriptionValidForEvent = player => {
+    if (!player?.subscription?.is_active) {
       return false;
     }
     if (!event()) {
-      return player?.membership?.is_active;
+      return player?.subscription?.is_active;
     }
     const eventStart = new Date(event()?.event?.start_date);
     const eventEnd = new Date(event()?.event?.end_date);
 
-    const membershipStart = new Date(player.membership.start_date);
-    const membershipEnd = new Date(player.membership.end_date);
+    const subscriptionStart = new Date(player.subscription.start_date);
+    const subscriptionEnd = new Date(player.subscription.end_date);
 
-    return membershipStart <= eventStart && membershipEnd >= eventEnd;
+    return subscriptionStart <= eventStart && subscriptionEnd >= eventEnd;
   };
 
   return (
@@ -449,10 +449,10 @@ const ValidateRoster = () => {
                                       <Switch>
                                         <Match when={registration?.player}>
                                           <span
-                                            title="Membership valid?"
+                                            title="Subscription valid?"
                                             class={clsx(
                                               "mx-1",
-                                              membershipValidForEvent(
+                                              subscriptionValidForEvent(
                                                 registration.player
                                               )
                                                 ? greenText
@@ -471,7 +471,7 @@ const ValidateRoster = () => {
                                             title="Liability Waiver signed?"
                                             class={clsx(
                                               "mx-1",
-                                              registration.player?.membership
+                                              registration.player?.subscription
                                                 ?.waiver_valid
                                                 ? greenText
                                                 : redText
@@ -479,8 +479,8 @@ const ValidateRoster = () => {
                                           >
                                             <Icon
                                               path={
-                                                registration.player?.membership
-                                                  ?.waiver_valid
+                                                registration.player
+                                                  ?.subscription?.waiver_valid
                                                   ? handThumbUp
                                                   : handThumbDown
                                               }

@@ -36,9 +36,9 @@ const RazorpayPayment = props => {
         : { team_id, event_id, partial } // Team Registration
       : props.annual
       ? player_ids
-        ? { player_ids, season_id, is_supporter } // Group Membership
-        : { player_id, season_id, is_supporter } // Individual Membership
-      : { player_id, event_id }; // Event Membership
+        ? { player_ids, season_id, is_supporter } // Group Subscription
+        : { player_id, season_id, is_supporter } // Individual Subscription
+      : { player_id, event_id }; // Event Subscription
 
     setLoading(true);
     props.setStatus("");

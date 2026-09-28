@@ -4,7 +4,7 @@ import { createEffect, For, onMount, Show } from "solid-js";
 import {
   clearChatHistory,
   fetchChatHistory,
-  fetchMembershipStatus,
+  fetchSubscriptionStatus,
   sendChatMessage
 } from "../../queries";
 import { useStore } from "../../store";
@@ -17,10 +17,10 @@ const ChatPage = () => {
   const [store] = useStore();
   let messagesEndRef;
 
-  // Fetch membership status
-  const membershipQuery = createQuery({
-    queryKey: () => ["membership", "status"],
-    queryFn: fetchMembershipStatus
+  // Fetch subscription status
+  const subscriptionQuery = createQuery({
+    queryKey: () => ["subscription", "status"],
+    queryFn: fetchSubscriptionStatus
   });
 
   // Fetch chat history
@@ -87,16 +87,16 @@ const ChatPage = () => {
   }
 
   return (
-    <Show when={membershipQuery.isSuccess && historyQuery.isSuccess}>
+    <Show when={subscriptionQuery.isSuccess && historyQuery.isSuccess}>
       <Show
-        when={membershipQuery.isSuccess && membershipQuery.data.is_active}
+        when={subscriptionQuery.isSuccess && subscriptionQuery.data.is_active}
         fallback={
           <div class="flex h-full flex-col items-center justify-center gap-4 p-4 text-center">
             <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
-              India Ultimate Membership Required
+              India Ultimate Subscription Required
             </h2>
             <p class="text-gray-600 dark:text-gray-400">
-              You need an active India Ultimate membership to use the chat
+              You need an active India Ultimate subscription to use the chat
               feature. This helps us maintain a safe and verified community.
             </p>
           </div>
@@ -105,7 +105,7 @@ const ChatPage = () => {
         <div class="flex h-full flex-col">
           <ChatHeader onClearHistory={handleClearHistory} />
           <div class="flex-1 overflow-y-auto p-4">
-            <Show when={historyQuery.isLoading || membershipQuery.isLoading}>
+            <Show when={historyQuery.isLoading || subscriptionQuery.isLoading}>
               <p class="text-center text-gray-500">Loading...</p>
             </Show>
 
@@ -113,8 +113,8 @@ const ChatPage = () => {
               <Error text={historyQuery.error.message} />
             </Show>
 
-            <Show when={membershipQuery.error}>
-              <Error text={membershipQuery.error.message} />
+            <Show when={subscriptionQuery.error}>
+              <Error text={subscriptionQuery.error.message} />
             </Show>
 
             <Show when={sendMessageMutation.error}>

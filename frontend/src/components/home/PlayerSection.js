@@ -14,7 +14,7 @@ const PlayerSection = () => {
           <img class="w-full" src={assetURL("hub-player.png")} />
           <h3 class="mt-2 text-xl font-bold text-black">Are you a player?</h3>
           <p class="mt-1 text-sm text-gray-700">
-            Manage your memberships, accreditation and payments in one place.
+            Manage your subscriptions, accreditation and payments in one place.
           </p>
           <Show
             when={store?.data?.player}
@@ -44,7 +44,8 @@ const PlayerSection = () => {
               Are you a player?
             </h3>
             <p class="mt-3 text-lg text-gray-700">
-              Manage your memberships, accreditation and payments in one place.
+              Manage your subscriptions, accreditation and payments in one
+              place.
             </p>
             <Show
               when={store?.data?.player}

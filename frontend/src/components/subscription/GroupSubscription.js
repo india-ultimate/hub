@@ -15,7 +15,7 @@ import { searchPlayers } from "../../queries";
 import { displayDate } from "../../utils";
 import Info from "../alerts/Info";
 import RazorpayPayment from "../RazorpayPayment";
-import MembershipPlayerList from "./MembershipPlayerList";
+import SubscriptionPlayerList from "./SubscriptionPlayerList";
 
 const PlayerSearchDropdown = componentProps => {
   const [search, setSearch] = createSignal("");
@@ -82,8 +82,8 @@ const PlayerSearchDropdown = componentProps => {
             </button>
           }
         >
-          <Match when={props.row.original.has_membership}>
-            Membership already exists
+          <Match when={props.row.original.has_subscription}>
+            Subscription already exists
           </Match>
           <Match when={payingPlayers()[props.getValue()]}>Added</Match>
         </Switch>
@@ -261,19 +261,19 @@ const PlayerSearchDropdown = componentProps => {
   );
 };
 
-const GroupMembership = props => {
+const GroupSubscription = props => {
   const [status, setStatus] = createSignal();
-  const [membershipType, setMembershipType] = createSignal(
-    props.membershipType || "patron"
+  const [subscriptionType, setSubscriptionType] = createSignal(
+    props.subscriptionType || "patron"
   );
 
   const [payingPlayers, setPayingPlayers] = createSignal([]);
   const [paymentSuccess, setPaymentSuccess] = createSignal(false);
 
-  // Sync membership type from props
+  // Sync subscription type from props
   createEffect(() => {
-    if (props.membershipType) {
-      setMembershipType(props.membershipType);
+    if (props.subscriptionType) {
+      setSubscriptionType(props.subscriptionType);
     }
   });
 
@@ -283,8 +283,8 @@ const GroupMembership = props => {
   };
 
   const handlePlayerPayingStatus = (player, isPaying) => {
-    // Don't perform any actions on a player who already has a membership
-    if (player?.has_membership) {
+    // Don't perform any actions on a player who already has a subscription
+    if (player?.has_subscription) {
       return;
     }
     if (isPaying) {
@@ -309,10 +309,10 @@ const GroupMembership = props => {
       (acc, player) =>
         acc +
         (player?.sponsored
-          ? props.season?.sponsored_annual_membership_amount
-          : membershipType() === "patron"
-          ? props.season?.supporter_annual_membership_amount
-          : props.season?.annual_membership_amount),
+          ? props.season?.sponsored_annual_subscription_amount
+          : subscriptionType() === "patron"
+          ? props.season?.supporter_annual_subscription_amount
+          : props.season?.annual_subscription_amount),
       0
     ) / 100;
 
@@ -321,21 +321,21 @@ const GroupMembership = props => {
       <Show when={!paymentSuccess()}>
         <div class="mb-4">
           <label class="mb-2 block text-sm font-medium text-gray-900 dark:text-white">
-            Membership Type
+            Subscription Type
           </label>
           <select
             class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
-            value={membershipType()}
-            onChange={e => setMembershipType(e.target.value)}
+            value={subscriptionType()}
+            onChange={e => setSubscriptionType(e.target.value)}
           >
             <option value="patron">
-              Patron Membership - ₹{" "}
-              {props.season?.supporter_annual_membership_amount / 100} per
+              Patron Subscription - ₹{" "}
+              {props.season?.supporter_annual_subscription_amount / 100} per
               player
             </option>
             <option value="standard">
-              Standard Membership - ₹{" "}
-              {props.season?.annual_membership_amount / 100} per player
+              Standard Subscription - ₹{" "}
+              {props.season?.annual_subscription_amount / 100} per player
             </option>
           </select>
         </div>
@@ -344,14 +344,14 @@ const GroupMembership = props => {
           onPlayerPayingStatusChange={handlePlayerPayingStatus}
         />
       </Show>
-      <MembershipPlayerList
+      <SubscriptionPlayerList
         players={payingPlayers()}
         fee={getAmount()}
         startDate={displayDate(props.season?.start_date)}
         endDate={displayDate(props.season?.end_date)}
         onPlayerPayingStatusChange={handlePlayerPayingStatus}
         season={props.season}
-        membershipType={membershipType()}
+        subscriptionType={subscriptionType()}
       />
       <Show when={payingPlayers()?.find(p => p.is_minor)}>
         <div
@@ -373,7 +373,7 @@ const GroupMembership = props => {
               amount={getAmount()}
               setStatus={setStatus}
               successCallback={paymentSuccessCallback}
-              is_supporter={membershipType() === "patron"}
+              is_supporter={subscriptionType() === "patron"}
             />
           </Match>
           <Match when={paymentSuccess()}>
@@ -399,4 +399,4 @@ const GroupMembership = props => {
   );
 };
 
-export default GroupMembership;
+export default GroupSubscription;

@@ -84,7 +84,7 @@ const ServiceRequestModal = props => {
 
     try {
       await createServiceRequest({
-        type: "REQUEST_SPONSORED_MEMBERSHIP",
+        type: "REQUEST_SPONSORED_SUBSCRIPTION",
         message: message().trim(),
         service_player_ids: selectedPlayers().map(p => p.id)
       });
@@ -111,7 +111,7 @@ const ServiceRequestModal = props => {
         onClick={openModal}
         class="mb-2 me-2 rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
       >
-        Request Supported Membership
+        Request Supported Subscription
       </button>
 
       {/* Modal */}
@@ -121,7 +121,7 @@ const ServiceRequestModal = props => {
             {/* Header */}
             <div class="mb-4 flex items-center justify-between border-b border-gray-200 pb-4 dark:border-gray-700">
               <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
-                Supported Membership Requests
+                Supported Subscription Requests
               </h3>
               <button
                 onClick={closeModal}
@@ -203,7 +203,7 @@ const ServiceRequestModal = props => {
             {/* Create New Request Section */}
             <div class="space-y-4">
               <h4 class="text-lg font-medium text-gray-900 dark:text-white">
-                Create New Supported Membership Request
+                Create New Supported Subscription Request
               </h4>
 
               {/* Message Input */}
@@ -214,7 +214,7 @@ const ServiceRequestModal = props => {
                 <textarea
                   class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
                   rows="4"
-                  placeholder="Please elaborate on why you/other players added need supported membership?"
+                  placeholder="Please elaborate on why you/other players added need supported subscription?"
                   value={message()}
                   onInput={e => setMessage(e.target.value)}
                 />

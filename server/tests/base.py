@@ -51,7 +51,7 @@ def fake_order(amount: int) -> dict[str, Any]:
         "key": "rzp_test_2wH8PYPLML64BA",
         "name": "India Ultimate Hub",
         "image": "https://d36m266ykvepgv.cloudfront.net/uploads/media/o4G97mT9vR/s-448-250/upai-2.png",
-        "description": "Membership for ",
+        "description": "Subscription for ",
         "prefill": {"name": "John Doe", "email": "username@foo.com", "contact": "9898234512"},
     }
 
@@ -207,7 +207,7 @@ class ApiBaseTestCase(TestCase):
             name="Season 24-25",
             start_date="2024-08-01",
             end_date="2025-07-30",
-            annual_membership_amount=70000,
-            sponsored_annual_membership_amount=20000,
-            supporter_annual_membership_amount=50000,
+            annual_subscription_amount=70000,
+            sponsored_annual_subscription_amount=20000,
+            supporter_annual_subscription_amount=50000,
         )

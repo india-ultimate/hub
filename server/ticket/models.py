@@ -21,7 +21,7 @@ class Ticket(models.Model):
     class Category(models.TextChoices):
         ACCOUNT = "Account", "Account"
         COMPETITIONS = "Competitions", "Competitions"
-        MEMBERSHIP = "Membership", "Membership"
+        SUBSCRIPTION = "Subscription", "Subscription"
         TOURNAMENT = "Tournament", "Tournament"
         PAYMENT = "Payment", "Payment"
         TECH = "Tech", "Tech"

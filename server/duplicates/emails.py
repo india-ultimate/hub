@@ -55,7 +55,7 @@ def build_messages(cluster: DuplicateCluster) -> list[EmailMultiAlternatives]:
                     "is_you": other.pk == member.pk,
                     # Month and year only (spec §4): a stranger from a false
                     # match should not learn the exact day, and an active
-                    # membership flag is not on the table this email is
+                    # subscription flag is not on the table this email is
                     # allowed to show at all.
                     "last_login": other.user.last_login if other.user is not None else None,
                 }

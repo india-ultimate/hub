@@ -62,7 +62,7 @@ export default function MergeRequest() {
         </p>
         <ul class="mt-2 list-disc space-y-1 pl-5">
           <li>
-            Memberships, registrations, payments and teams move across to it.
+            Subscriptions, registrations, payments and teams move across to it.
           </li>
           <li>Anything this account already has stays as it is.</li>
           <li>The other account is then deleted. This cannot be undone.</li>

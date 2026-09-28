@@ -35,7 +35,7 @@ class Command(BaseCommand):
                 # NOTE: Not sure if we need to do any additional actions for
                 # other statuses like refunded, for instance. May be we deal
                 # with it manually for now. If the transactions are being
-                # processed oldest first, may be we can set the memberships to
+                # processed oldest first, may be we can set the subscriptions to
                 # inactive based on this status?
                 n = qs.update(status=status)
 

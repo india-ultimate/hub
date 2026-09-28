@@ -18,9 +18,9 @@ from groq.types.chat import (
 from typing_extensions import NotRequired
 
 from server.core.models import Accreditation, Player, Team, User
-from server.membership.models import Membership
 from server.season.models import Season
 from server.series.models import Series, SeriesRegistration
+from server.subscription.models import Subscription
 from server.tournament.models import (
     Bracket,
     CrossPool,
@@ -86,7 +86,7 @@ Key Data Structures and Concepts:
 
 1. Players:
    - Basic info: name, gender
-   - Membership: annual status, membership number, waiver info
+   - Subscription: annual status, subscription number, waiver info
    - Accreditation: WFDF accreditation level and validity
    - Analytics: player participation trends, gender ratios
 
@@ -95,10 +95,10 @@ Key Data Structures and Concepts:
    - Analytics: team performance metrics, regional distribution, category trends
 
 3. Seasons:
-   - Annual membership periods
-   - Membership fees (regular and sponsored)
+   - Annual subscription periods
+   - Subscription fees (regular and sponsored)
    - Start and end dates
-   - Analytics: membership growth, revenue trends, seasonal patterns
+   - Analytics: subscription growth, revenue trends, seasonal patterns
 
 4. Series:
    - Tournament series information
@@ -180,7 +180,7 @@ Key Data Structures and Concepts:
 7. Registrations:
    - Tournament registrations (event, team, player)
    - Series registrations
-   - Membership registrations
+   - Subscription registrations
    - Analytics: registration patterns, participation rates
 
 8. Matches:
@@ -256,12 +256,12 @@ Analytics Capabilities:
 
 2. Participation Analysis:
    - Registration trends
-   - Membership growth
+   - Subscription growth
    - Volunteer engagement
    - Regional participation
 
 3. Financial Analysis:
-   - Membership revenue
+   - Subscription revenue
    - Tournament fees
    - Sponsorship impact
 
@@ -287,7 +287,7 @@ Guidelines:
 9. Utilize filtering capabilities to provide focused information
 
 Available Tools:
-- Player information tools (stats, details, search, accreditation, membership)
+- Player information tools (stats, details, search, accreditation, subscription)
 - Team information tools (stats, details)
 - Season information tools (all seasons, details)
 - Series information tools (all series, details, registrations)
@@ -394,14 +394,14 @@ Available Tools:
             {
                 "type": "function",
                 "function": {
-                    "name": "get_player_membership",
-                    "description": "Get India Ultimate membership information for a specific player",
+                    "name": "get_player_subscription",
+                    "description": "Get India Ultimate subscription information for a specific player",
                     "parameters": {
                         "type": "object",
                         "properties": {
                             "player_id": {
                                 "type": "integer",
-                                "description": "The ID of the player to get India Ultimate membership details for",
+                                "description": "The ID of the player to get India Ultimate subscription details for",
                             }
                         },
                         "required": ["player_id"],
@@ -849,8 +849,8 @@ Available Tools:
                     elif function_name == "get_player_accreditation":
                         result = self.get_player_accreditation(**function_args)
                         function_response = result if result is not None else {}
-                    elif function_name == "get_player_membership":
-                        result = self.get_player_membership(**function_args)
+                    elif function_name == "get_player_subscription":
+                        result = self.get_player_subscription(**function_args)
                         function_response = result if result is not None else {}
                     elif function_name == "get_all_seasons":
                         function_response = {"seasons": self.get_all_seasons()}
@@ -1086,34 +1086,34 @@ Available Tools:
         except Player.DoesNotExist:
             return None
 
-    def get_player_membership(self, player_id: int) -> dict[str, Any] | None:
-        """Get India Ultimate membership information for a specific player."""
+    def get_player_subscription(self, player_id: int) -> dict[str, Any] | None:
+        """Get India Ultimate subscription information for a specific player."""
         try:
             player = Player.objects.get(id=player_id)
-            membership = Membership.objects.filter(player=player).first()
+            subscription = Subscription.objects.filter(player=player).first()
 
-            if not membership:
+            if not subscription:
                 return {
-                    "has_membership": False,
-                    "message": "No India Ultimate membership found for this player",
+                    "has_subscription": False,
+                    "message": "No India Ultimate subscription found for this player",
                 }
 
             return {
-                "has_membership": True,
-                "membership_number": membership.membership_number,
-                "is_annual": membership.is_annual,
-                "start_date": membership.start_date.isoformat(),
-                "end_date": membership.end_date.isoformat(),
-                "is_active": membership.is_active,
-                "waiver_valid": membership.waiver_valid,
-                "waiver_signed_at": membership.waiver_signed_at.isoformat()
-                if membership.waiver_signed_at
+                "has_subscription": True,
+                "subscription_number": subscription.subscription_number,
+                "is_annual": subscription.is_annual,
+                "start_date": subscription.start_date.isoformat(),
+                "end_date": subscription.end_date.isoformat(),
+                "is_active": subscription.is_active,
+                "waiver_valid": subscription.waiver_valid,
+                "waiver_signed_at": subscription.waiver_signed_at.isoformat()
+                if subscription.waiver_signed_at
                 else None,
-                "waiver_signed_by": membership.waiver_signed_by.get_full_name()
-                if membership.waiver_signed_by
+                "waiver_signed_by": subscription.waiver_signed_by.get_full_name()
+                if subscription.waiver_signed_by
                 else None,
-                "season": membership.season.name if membership.season else None,
-                "event": membership.event.name if membership.event else None,
+                "season": subscription.season.name if subscription.season else None,
+                "event": subscription.event.name if subscription.event else None,
             }
         except Player.DoesNotExist:
             return None
@@ -1127,8 +1127,8 @@ Available Tools:
                 "name": season.name,
                 "start_date": season.start_date.isoformat(),
                 "end_date": season.end_date.isoformat(),
-                "annual_membership_amount": season.annual_membership_amount,
-                "sponsored_annual_membership_amount": season.sponsored_annual_membership_amount,
+                "annual_subscription_amount": season.annual_subscription_amount,
+                "sponsored_annual_subscription_amount": season.sponsored_annual_subscription_amount,
             }
             for season in seasons
         ]
@@ -1142,8 +1142,8 @@ Available Tools:
                 "name": season.name,
                 "start_date": season.start_date.isoformat(),
                 "end_date": season.end_date.isoformat(),
-                "annual_membership_amount": season.annual_membership_amount,
-                "sponsored_annual_membership_amount": season.sponsored_annual_membership_amount,
+                "annual_subscription_amount": season.annual_subscription_amount,
+                "sponsored_annual_subscription_amount": season.sponsored_annual_subscription_amount,
                 "is_current": season.start_date <= timezone.now().date() <= season.end_date,
             }
         except Season.DoesNotExist:
@@ -1247,7 +1247,7 @@ Available Tools:
                 "team_fee": tournament.event.team_fee,
                 "player_fee": tournament.event.player_fee,
                 "partial_team_fee": tournament.event.partial_team_fee,
-                "is_membership_needed": tournament.event.is_membership_needed,
+                "is_subscription_needed": tournament.event.is_subscription_needed,
                 "tier": tournament.event.tier,
                 "series": tournament.event.series.name if tournament.event.series else None,
                 "team_count": tournament.teams.count(),
@@ -1282,7 +1282,7 @@ Available Tools:
                 "team_fee": tournament.event.team_fee,
                 "player_fee": tournament.event.player_fee,
                 "partial_team_fee": tournament.event.partial_team_fee,
-                "is_membership_needed": tournament.event.is_membership_needed,
+                "is_subscription_needed": tournament.event.is_subscription_needed,
                 "tier": tournament.event.tier,
                 "series": tournament.event.series.name if tournament.event.series else None,
                 "teams": [{"id": team.id, "name": team.name} for team in tournament.teams.all()],
@@ -1812,11 +1812,11 @@ Available Tools:
                 "player": {
                     "id": player.id,
                     "teams": [{"id": team.id, "name": team.name} for team in player.teams.all()],
-                    "membership": {
+                    "subscription": {
                         "is_active": bool(
-                            Membership.objects.filter(player=player, is_active=True).first()
+                            Subscription.objects.filter(player=player, is_active=True).first()
                         )
-                        if Membership.objects.filter(player=player).first()
+                        if Subscription.objects.filter(player=player).first()
                         else None,
                     },
                 }

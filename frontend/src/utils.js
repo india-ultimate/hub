@@ -7,7 +7,7 @@ import { Icon } from "solid-heroicons";
 import { checkCircle, exclamationCircle } from "solid-heroicons/solid-mini";
 
 import { matchCardColors } from "./colors";
-import { membershipStartDate } from "./constants";
+import { subscriptionStartDate } from "./constants";
 
 export const getCookie = name => {
   const cookies = document.cookie.split(";").reduce((acc, x) => {
@@ -107,21 +107,21 @@ export const fetchUrl = (url, successHandler, errorHandler) => {
     .catch(errorHandler);
 };
 
-export const membershipYearOptions = () => {
+export const subscriptionYearOptions = () => {
   // Get the current date
   const currentDate = new Date();
   const currentMonth = currentDate.getMonth() + 1;
   const year = currentDate.getFullYear();
-  const [_, membershipEndMonth] = membershipStartDate;
+  const [_, subscriptionEndMonth] = subscriptionStartDate;
 
   let renewalOptions = [];
 
-  if (currentMonth <= membershipEndMonth) {
+  if (currentMonth <= subscriptionEndMonth) {
     renewalOptions.push(year - 1);
-    if (currentMonth == membershipEndMonth) {
+    if (currentMonth == subscriptionEndMonth) {
       renewalOptions.push(year);
     }
-  } else if (currentMonth >= membershipEndMonth) {
+  } else if (currentMonth >= subscriptionEndMonth) {
     renewalOptions.push(year);
   }
 
@@ -178,8 +178,8 @@ export const getStatusAndPercent = player => {
     profile: !!player?.id,
     // vaccine: !!player?.vaccination,
     // ucLink: !!player?.ultimate_central_id,
-    membership: player?.membership?.is_active,
-    waiver: player?.membership?.waiver_valid,
+    subscription: player?.subscription?.is_active,
+    waiver: player?.subscription?.waiver_valid,
     accreditation: player?.accreditation?.is_valid,
     commentary_info: !!player?.commentary_info,
     college_id:

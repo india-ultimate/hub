@@ -54,8 +54,7 @@ from server.flarum.utils import (
     update_flarum_user_avatar,
 )
 from server.forms.api import router as forms_router
-from server.lib.membership import get_membership_status
-from server.membership.models import Membership
+from server.lib.subscription import get_subscription_status
 from server.passkey_utils import PassKeyClient
 from server.schema import (
     AccreditationFormSchema,
@@ -98,6 +97,7 @@ from server.season.api import router as season_router
 from server.series.api import router as series_router
 from server.series.models import SeriesRegistration
 from server.servicerequests.api import router as servicerequests_router
+from server.subscription.models import Subscription
 from server.task.api import router as task_router
 from server.ticket.api import ticket_api
 from server.top_score_utils import TopScoreClient
@@ -267,8 +267,8 @@ def me_registrations(request: AuthenticatedHttpRequest) -> list[Registration]:
     return list(Registration.objects.filter(player=player).order_by("-event__start_date"))
 
 
-@api.get("/me/membership", response={200: dict[str, Any], 404: Response})
-def me_membership(
+@api.get("/me/subscription", response={200: dict[str, Any], 404: Response})
+def me_subscription(
     request: AuthenticatedHttpRequest,
 ) -> tuple[int, dict[str, Any] | message_response]:
     try:
@@ -276,16 +276,16 @@ def me_membership(
     except Player.DoesNotExist:
         return 404, {"message": "Player profile not found"}
 
-    membership = Membership.objects.filter(player=player).first()
-    if not membership:
+    subscription = Subscription.objects.filter(player=player).first()
+    if not subscription:
         return 200, {
-            "has_membership": False,
+            "has_subscription": False,
             "is_active": False,
         }
 
     return 200, {
-        "has_membership": True,
-        "is_active": membership.is_active,
+        "has_subscription": True,
+        "is_active": subscription.is_active,
     }
 
 
@@ -310,8 +310,8 @@ def list_players(
     request: AuthenticatedHttpRequest, full_schema: bool = False
 ) -> list[PlayerTinySchema | PlayerSchema]:
     # This list is not paginated, and both schemas read a player's name, email,
-    # phone, membership and teams -- five queries each over every player there is.
-    players = Player.objects.select_related("user", "membership").prefetch_related("teams")
+    # phone, subscription and teams -- five queries each over every player there is.
+    players = Player.objects.select_related("user", "subscription").prefetch_related("teams")
     is_staff = request.user.is_staff
     if is_staff and full_schema:
         return [PlayerSchema.from_orm(p) for p in players]
@@ -534,28 +534,28 @@ def get_otp(
 
 def handle_forum_login(user: User, response: HttpResponse) -> None:
     """
-    Handle forum login for a user if they are an admin or have active membership.
+    Handle forum login for a user if they are an admin or have active subscription.
 
     Args:
         user: The authenticated user
         response: HTTP response object to set cookies
     """
-    # Check if user is admin (staff or superuser) or has active membership
+    # Check if user is admin (staff or superuser) or has active subscription
     is_admin = user.is_staff or user.is_superuser
-    has_active_membership = False
+    has_active_subscription = False
 
     if not is_admin:
-        # Check if user has active membership
+        # Check if user has active subscription
         try:
             player = user.player_profile
-            membership = Membership.objects.filter(player=player).first()
-            has_active_membership = membership is not None and membership.is_active
+            subscription = Subscription.objects.filter(player=player).first()
+            has_active_subscription = subscription is not None and subscription.is_active
         except Player.DoesNotExist:
-            # User doesn't have a player profile, no active membership
+            # User doesn't have a player profile, no active subscription
             pass
 
-    # Proceed with forum login if user is admin or has active membership
-    if is_admin or has_active_membership:
+    # Proceed with forum login if user is admin or has active subscription
+    if is_admin or has_active_subscription:
         token = get_flarum_token(user.username, user.date_joined)
 
         if not token:
@@ -853,22 +853,24 @@ def list_registrations(
     return 200, registrations
 
 
-# Memberships ##########
+# Subscriptions ##########
 
 
-@api.post("/check-memberships", response={200: list[dict[str, Any]], 400: Response, 401: Response})
-def check_membership_status(
+@api.post(
+    "/check-subscriptions", response={200: list[dict[str, Any]], 400: Response, 401: Response}
+)
+def check_subscription_status(
     request: AuthenticatedHttpRequest,
     info_csv: UploadedFile = File(...),  # noqa: B008
 ) -> tuple[int, message_response] | tuple[int, list[dict[str, Any]]]:
     if not request.user.is_staff:
-        return 401, {"message": "Only Admins can check membership status"}
+        return 401, {"message": "Only Admins can check subscription status"}
 
     if not info_csv.name or not info_csv.name.endswith(".csv"):
         return 400, {"message": "Please upload a CSV file!"}
 
     text = info_csv.read().decode("utf-8")
-    data = get_membership_status(io.StringIO(text))
+    data = get_subscription_status(io.StringIO(text))
     if data is None:
         return 400, {"message": "Could not file an Email header in the CSV!"}
 
@@ -1065,9 +1067,9 @@ def waiver(
         return 400, {"message": "Player does not exist"}
 
     try:
-        membership = player.membership
-    except Membership.DoesNotExist:
-        return 400, {"message": "Player does not have a membership"}
+        subscription = player.subscription
+    except Subscription.DoesNotExist:
+        return 400, {"message": "Player does not have a subscription"}
 
     if player.is_minor:
         if request.user == player.user:
@@ -1083,10 +1085,10 @@ def waiver(
                 "message": f"Only Guardian - {guardianship.user.username} can sign this player's waiver"
             }
 
-    membership.waiver_signed_by = request.user
-    membership.waiver_signed_at = now()
-    membership.waiver_valid = True
-    membership.save(update_fields=["waiver_signed_by", "waiver_signed_at", "waiver_valid"])
+    subscription.waiver_signed_by = request.user
+    subscription.waiver_signed_at = now()
+    subscription.waiver_valid = True
+    subscription.save(update_fields=["waiver_signed_by", "waiver_signed_at", "waiver_valid"])
 
     return 200, player
 
@@ -1254,7 +1256,7 @@ def event_roster_player_search(
         )
 
     # Players have to be in the series roster first, to be added to the event roster
-    # Membership active status already checked before adding to the season roster
+    # Subscription active status already checked before adding to the season roster
     series_roster_player_ids = SeriesRegistration.objects.filter(
         series=event.series, team=team
     ).values_list("player__id", flat=True)
@@ -1313,14 +1315,14 @@ def add_player_to_roster(
         )
         if not can_register and error:
             return 400, error
-    elif event.is_membership_needed:
+    elif event.is_subscription_needed:
         try:
-            membership = player.membership
-        except Membership.DoesNotExist:
-            return 400, {"message": "Player's membership does not exist !"}
-        if not membership.is_active:
-            return 400, {"message": "Player's membership is not active !"}
-        if not membership.waiver_valid:
+            subscription = player.subscription
+        except Subscription.DoesNotExist:
+            return 400, {"message": "Player's subscription does not exist !"}
+        if not subscription.is_active:
+            return 400, {"message": "Player's subscription is not active !"}
+        if not subscription.waiver_valid:
             return 400, {"message": "Player's waiver is not signed!"}
 
     registration = Registration(

@@ -39,7 +39,7 @@ class RazorpayTransaction(ExportModelOperationsMixin("razorpay_transaction"), mo
         REFUNDED = "refunded", _("Refunded")
 
     class TransactionTypeChoices(models.TextChoices):
-        ANNUAL_MEMBERSHIP = "annual-membership", _("Annual Membership")
+        ANNUAL_SUBSCRIPTION = "annual-subscription", _("Annual Subscription")
         TEAM_REGISTRATION = "team-reg", _("Team Registration")
         PARTIAL_TEAM_REGISTRATION = "partial-team-reg", _("Partial Team Registration")
         PLAYER_REGISTRATION = "player-reg", _("Player Registration")
@@ -52,9 +52,9 @@ class RazorpayTransaction(ExportModelOperationsMixin("razorpay_transaction"), mo
     currency = models.CharField(max_length=5)
     # FIXME: payment_date is actually order_date, currently
     payment_date = models.DateTimeField(auto_now_add=True)
-    # NOTE: These dates are for the membership for which the transaction is
+    # NOTE: These dates are for the subscription for which the transaction is
     # being done. We store these dates when the order is created, and use them
-    # to update the membership on payment success.
+    # to update the subscription on payment success.
     start_date = models.DateField(default="1900-01-01")
     end_date = models.DateField(default="1900-01-01")
     status = models.CharField(
@@ -70,7 +70,7 @@ class RazorpayTransaction(ExportModelOperationsMixin("razorpay_transaction"), mo
     type = models.CharField(
         max_length=30,
         choices=TransactionTypeChoices.choices,
-        default=TransactionTypeChoices.ANNUAL_MEMBERSHIP,
+        default=TransactionTypeChoices.ANNUAL_SUBSCRIPTION,
     )
 
     def __str__(self) -> str:
@@ -92,9 +92,9 @@ class PhonePeTransaction(ExportModelOperationsMixin("phonepe_transaction"), mode
     amount = models.IntegerField()
     currency = models.CharField(max_length=5)
     transaction_date = models.DateTimeField(auto_now_add=True)
-    # NOTE: These dates are for the membership for which the transaction is
+    # NOTE: These dates are for the subscription for which the transaction is
     # being done. We store these dates when the order is created, and use them
-    # to update the membership on payment success.
+    # to update the subscription on payment success.
     start_date = models.DateField(default="1900-01-01")
     end_date = models.DateField(default="1900-01-01")
     status = models.CharField(

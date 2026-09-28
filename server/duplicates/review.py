@@ -48,11 +48,15 @@ class Line:
         return len(values) > 1
 
 
-def _membership(player: Player) -> str:
-    membership = getattr(player, "membership", None)
-    if membership is None:
+def _subscription(player: Player) -> str:
+    subscription = getattr(player, "subscription", None)
+    if subscription is None:
         return ""
-    return f"{membership.start_date}..{membership.end_date}" if membership.is_active else "expired"
+    return (
+        f"{subscription.start_date}..{subscription.end_date}"
+        if subscription.is_active
+        else "expired"
+    )
 
 
 def compare(keeper: User, others: list[User]) -> list[Line]:
@@ -72,7 +76,7 @@ def compare(keeper: User, others: list[User]) -> list[Line]:
         Line("Phone", [user.phone or "" for user in accounts]),
         Line("Last login", [str(user.last_login or "never") for user in accounts]),
         profile("Has a player profile", lambda p: "yes"),
-        profile("Membership", _membership),
+        profile("Subscription", _subscription),
         profile("Teams", lambda p: ", ".join(team.name for team in p.teams.all())),
         profile("Tournament registrations", lambda p: p.registration_set.count()),
         profile("Ultimate Central id", lambda p: p.ultimate_central_id),

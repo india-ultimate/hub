@@ -42,15 +42,17 @@ def read_csv_with_emails(bank_statement: Path | StringIO) -> dict[str, dict[str,
     return data
 
 
-def get_membership_status(input_csv: Path | StringIO) -> dict[str, Any] | None:
+def get_subscription_status(input_csv: Path | StringIO) -> dict[str, Any] | None:
     csv_data = read_csv_with_emails(input_csv)
     if csv_data is None:
         print(f"Could not find CSV header: {EMAIL_HEADER_NAME}")
         return None
 
-    membership_statuses = dict(Player.objects.values_list("user__email", "membership__is_active"))
+    subscription_statuses = dict(
+        Player.objects.values_list("user__email", "subscription__is_active")
+    )
 
     for email, row in csv_data.items():
-        row["membership_status"] = bool(membership_statuses.get(email, False))
+        row["subscription_status"] = bool(subscription_statuses.get(email, False))
 
     return csv_data

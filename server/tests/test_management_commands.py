@@ -10,9 +10,9 @@ from django.utils.timezone import now, utc
 
 from server.core.models import Accreditation, Guardianship, Player, Team, Vaccination
 from server.duplicates.models import EmailAlias
-from server.membership.models import Membership
 from server.season.models import Season
 from server.series.models import Series, SeriesRegistration
+from server.subscription.models import Subscription
 from server.tournament.models import (
     Event,
     Match,
@@ -27,8 +27,8 @@ from server.transaction.models import ManualTransaction
 User = get_user_model()
 
 
-class TestInvalidateMemberships(TestCase):
-    def test_invalidate_memberships(self) -> None:
+class TestInvalidateSubscriptions(TestCase):
+    def test_invalidate_subscriptions(self) -> None:
         start_date = "2001-01-01"
         end_date = "2001-12-31"
         for i in range(10):
@@ -36,7 +36,7 @@ class TestInvalidateMemberships(TestCase):
             player = Player.objects.create(
                 user=user, date_of_birth=start_date, sponsored=i % 2 == 0
             )
-            Membership.objects.create(
+            Subscription.objects.create(
                 player=player,
                 start_date=start_date,
                 end_date=end_date,
@@ -45,12 +45,12 @@ class TestInvalidateMemberships(TestCase):
                 waiver_signed_at=now(),
                 waiver_valid=True,
             )
-        call_command("invalidate_memberships")
-        for membership in Membership.objects.filter():
-            self.assertFalse(membership.is_active)
-            self.assertFalse(membership.waiver_valid)
-            self.assertIsNotNone(membership.waiver_signed_at)
-            self.assertIsNotNone(membership.waiver_signed_by)
+        call_command("invalidate_subscriptions")
+        for subscription in Subscription.objects.filter():
+            self.assertFalse(subscription.is_active)
+            self.assertFalse(subscription.waiver_valid)
+            self.assertIsNotNone(subscription.waiver_signed_at)
+            self.assertIsNotNone(subscription.waiver_signed_by)
 
 
 class MergeUsersCommandTestCase(TestCase):
@@ -77,9 +77,9 @@ class MergeUsersCommandTestCase(TestCase):
         self.player2 = Player.objects.create(
             user=self.user2, date_of_birth=datetime.date(1995, 5, 5), ultimate_central_id=100
         )
-        self.membership1 = Membership.objects.create(
+        self.subscription1 = Subscription.objects.create(
             player=self.player1,
-            membership_number="M12345",
+            subscription_number="M12345",
             is_annual=True,
             start_date=datetime.date(2023, 1, 1),
             end_date=datetime.date(2023, 12, 31),
@@ -88,9 +88,9 @@ class MergeUsersCommandTestCase(TestCase):
             waiver_signed_by=self.user1,
             waiver_signed_at=now(),
         )
-        self.membership2 = Membership.objects.create(
+        self.subscription2 = Subscription.objects.create(
             player=self.player2,
-            membership_number="M67890",
+            subscription_number="M67890",
             is_annual=True,
             start_date=datetime.date(2023, 1, 1),
             end_date=datetime.date(2023, 12, 31),
@@ -134,10 +134,10 @@ class MergeUsersCommandTestCase(TestCase):
 
         player = Player.objects.get(user=user)
 
-        # Membership data should be merged correctly
-        membership = Membership.objects.get(player=player)
-        self.assertTrue(membership.is_active)
-        self.assertTrue(membership.waiver_valid)
+        # Subscription data should be merged correctly
+        subscription = Subscription.objects.get(player=player)
+        self.assertTrue(subscription.is_active)
+        self.assertTrue(subscription.waiver_valid)
 
         # Guardianship should be transferred
         self.assertEqual(player.guardianship.player, player)
@@ -160,7 +160,7 @@ class MergeUsersCommandTestCase(TestCase):
         # Clean up test data
         User.objects.all().delete()
         Player.objects.all().delete()
-        Membership.objects.all().delete()
+        Subscription.objects.all().delete()
         Guardianship.objects.all().delete()
 
 
@@ -234,7 +234,7 @@ class TestImportingAnAbsorbedAddress(TestCase):
         self.assertEqual(self.owner.email, "owner@x.com")
 
 
-class TestActivateMemberships(TestCase):
+class TestActivateSubscriptions(TestCase):
     def setUp(self) -> None:
         super().setUp()
         self.fixtures_dir = Path(__file__).parent.joinpath("fixtures")
@@ -244,18 +244,18 @@ class TestActivateMemberships(TestCase):
             name="Season 24-25",
             start_date=f"{datetime.datetime.now(ind_tz).year}-08-01",
             end_date=f"{datetime.datetime.now(ind_tz).year+1}-07-30",
-            annual_membership_amount=70000,
-            sponsored_annual_membership_amount=20000,
+            annual_subscription_amount=70000,
+            sponsored_annual_subscription_amount=20000,
         )
 
     def test_import_players(self) -> None:
         call_command("import_players", self.fixture, "--date-format", "%d-%m-%Y")
-        call_command("activate_memberships", self.fixture)
+        call_command("activate_subscriptions", self.fixture)
 
         n_players = 4
         self.assertEqual(n_players, User.objects.count())
         self.assertEqual(n_players, Player.objects.count())
-        self.assertEqual(n_players, Membership.objects.count())
+        self.assertEqual(n_players, Subscription.objects.count())
 
     def tearDown(self) -> None:
         # Clean up test data
@@ -272,8 +272,8 @@ class TestAddToSeriesRoster(TestCase):
             name="Season 24-25",
             start_date=f"{datetime.datetime.now(ind_tz).year}-08-01",
             end_date=f"{datetime.datetime.now(ind_tz).year+1}-07-30",
-            annual_membership_amount=70000,
-            sponsored_annual_membership_amount=20000,
+            annual_subscription_amount=70000,
+            sponsored_annual_subscription_amount=20000,
         )
         self.series = Series.objects.create(
             name="NCS",
@@ -299,7 +299,7 @@ class TestAddToSeriesRoster(TestCase):
 
     def test_add_to_series_roster(self) -> None:
         call_command("import_players", self.fixture, "--date-format", "%d-%m-%Y")
-        call_command("activate_memberships", self.fixture)
+        call_command("activate_subscriptions", self.fixture)
         call_command(
             "add_to_series_roster",
             self.fixture,
@@ -312,7 +312,7 @@ class TestAddToSeriesRoster(TestCase):
         n_players = 4
         self.assertEqual(n_players, User.objects.count())
         self.assertEqual(n_players, Player.objects.count())
-        self.assertEqual(n_players, Membership.objects.count())
+        self.assertEqual(n_players, Subscription.objects.count())
         self.assertEqual(n_players, SeriesRegistration.objects.count())
         self.assertEqual(n_players, self.team.players.count())
 
@@ -334,8 +334,8 @@ class TestAddToEventRoster(TestCase):
             name="Season 24-25",
             start_date=f"{datetime.datetime.now(ind_tz).year}-08-01",
             end_date=f"{datetime.datetime.now(ind_tz).year+1}-07-30",
-            annual_membership_amount=70000,
-            sponsored_annual_membership_amount=20000,
+            annual_subscription_amount=70000,
+            sponsored_annual_subscription_amount=20000,
         )
         self.series = Series.objects.create(
             name="NCS",
@@ -365,7 +365,7 @@ class TestAddToEventRoster(TestCase):
 
     def test_add_to_event_roster(self) -> None:
         call_command("import_players", self.fixture, "--date-format", "%d-%m-%Y")
-        call_command("activate_memberships", self.fixture)
+        call_command("activate_subscriptions", self.fixture)
         call_command(
             "add_to_series_roster",
             self.fixture,
@@ -386,7 +386,7 @@ class TestAddToEventRoster(TestCase):
         n_players = 4
         self.assertEqual(n_players, User.objects.count())
         self.assertEqual(n_players, Player.objects.count())
-        self.assertEqual(n_players, Membership.objects.count())
+        self.assertEqual(n_players, Subscription.objects.count())
         self.assertEqual(n_players, SeriesRegistration.objects.count())
         self.assertEqual(n_players, Registration.objects.count())
         self.assertEqual(n_players, self.team.players.count())

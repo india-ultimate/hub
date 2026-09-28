@@ -5,10 +5,10 @@ from django.conf import settings
 from django.db import IntegrityError
 from django.db.models import Model, Q, QuerySet
 
-from server.constants import EVENT_MEMBERSHIP_AMOUNT
+from server.constants import EVENT_SUBSCRIPTION_AMOUNT
 from server.core.models import Player, Team, User
-from server.membership.models import Membership
 from server.season.models import Season
+from server.subscription.models import Subscription
 from server.tournament.models import Event, Registration, Tournament
 from server.tournament.utils import can_register_player_to_series_event
 from server.types import message_response
@@ -23,9 +23,9 @@ from .models import (
     RazorpayTransaction,
 )
 from .schema import (
-    AnnualMembershipSchema,
-    EventMembershipSchema,
-    GroupMembershipSchema,
+    AnnualSubscriptionSchema,
+    EventSubscriptionSchema,
+    GroupSubscriptionSchema,
     PlayerRegistrationSchema,
     TeamRegistrationSchema,
 )
@@ -33,9 +33,9 @@ from .schema import (
 
 def create_transaction(
     request: AuthenticatedHttpRequest,
-    order: AnnualMembershipSchema
-    | EventMembershipSchema
-    | GroupMembershipSchema
+    order: AnnualSubscriptionSchema
+    | EventSubscriptionSchema
+    | GroupSubscriptionSchema
     | PlayerRegistrationSchema
     | TeamRegistrationSchema,
     gateway: PaymentGateway,
@@ -44,7 +44,7 @@ def create_transaction(
     user = request.user
     ts = round(time.time())
 
-    if isinstance(order, GroupMembershipSchema | PlayerRegistrationSchema):
+    if isinstance(order, GroupSubscriptionSchema | PlayerRegistrationSchema):
         players = Player.objects.filter(id__in=order.player_ids)
         player_ids = {p.id for p in players}
         if len(player_ids) != len(order.player_ids):
@@ -53,13 +53,13 @@ def create_transaction(
                 "message": f"Some players couldn't be found in the DB: {sorted(missing_players)}"
             }
 
-    elif isinstance(order, AnnualMembershipSchema | EventMembershipSchema):
+    elif isinstance(order, AnnualSubscriptionSchema | EventSubscriptionSchema):
         try:
             player = Player.objects.get(id=order.player_id)
         except Player.DoesNotExist:
             return 422, {"message": "Player does not exist!"}
 
-    if isinstance(order, GroupMembershipSchema | AnnualMembershipSchema):
+    if isinstance(order, GroupSubscriptionSchema | AnnualSubscriptionSchema):
         try:
             season = Season.objects.get(id=order.season_id)
         except Season.DoesNotExist:
@@ -72,25 +72,25 @@ def create_transaction(
         amount = (
             sum(
                 (
-                    season.sponsored_annual_membership_amount
+                    season.sponsored_annual_subscription_amount
                     if player.sponsored
-                    else season.supporter_annual_membership_amount
+                    else season.supporter_annual_subscription_amount
                     if order.is_supporter
-                    else season.annual_membership_amount
+                    else season.annual_subscription_amount
                 )
                 for player in players
             )
-            if isinstance(order, GroupMembershipSchema)
+            if isinstance(order, GroupSubscriptionSchema)
             else (
-                season.sponsored_annual_membership_amount
+                season.sponsored_annual_subscription_amount
                 if player.sponsored
-                else season.supporter_annual_membership_amount
+                else season.supporter_annual_subscription_amount
                 if order.is_supporter
-                else season.annual_membership_amount
+                else season.annual_subscription_amount
             )
         )
 
-    elif isinstance(order, EventMembershipSchema):
+    elif isinstance(order, EventSubscriptionSchema):
         try:
             event = Event.objects.get(id=order.event_id)
         except Event.DoesNotExist:
@@ -99,7 +99,7 @@ def create_transaction(
         start_date = event.start_date
         end_date = event.end_date
         is_annual = False
-        amount = EVENT_MEMBERSHIP_AMOUNT
+        amount = EVENT_SUBSCRIPTION_AMOUNT
         season = None
         team = None
 
@@ -213,18 +213,18 @@ def create_transaction(
                 )
                 if not can_register and error:
                     return 400, error
-            elif event.is_membership_needed:
+            elif event.is_subscription_needed:
                 try:
-                    membership = player.membership
-                except Membership.DoesNotExist:
+                    subscription = player.subscription
+                except Subscription.DoesNotExist:
                     return 400, {
-                        "message": f"Player - {player.user.get_full_name()} membership does not exist !"
+                        "message": f"Player - {player.user.get_full_name()} subscription does not exist !"
                     }
-                if not membership.is_active:
+                if not subscription.is_active:
                     return 400, {
-                        "message": f"Player - {player.user.get_full_name()} membership is not active !"
+                        "message": f"Player - {player.user.get_full_name()} subscription is not active !"
                     }
-                if not membership.waiver_valid:
+                if not subscription.waiver_valid:
                     return 400, {
                         "message": f"Player - {player.user.get_full_name()} waiver is not signed!"
                     }
@@ -267,15 +267,17 @@ def create_transaction(
         # NOTE: We should never be here, thanks to request validation!
         pass
 
-    if isinstance(order, GroupMembershipSchema | AnnualMembershipSchema | EventMembershipSchema):
-        membership_defaults = {
+    if isinstance(
+        order, GroupSubscriptionSchema | AnnualSubscriptionSchema | EventSubscriptionSchema
+    ):
+        subscription_defaults = {
             "is_annual": is_annual,
             "start_date": start_date,
             "end_date": end_date,
             "event": event,
             "season": season,
         }
-        if isinstance(order, GroupMembershipSchema):
+        if isinstance(order, GroupSubscriptionSchema):
             player_names = ", ".join(sorted([player.user.get_full_name() for player in players]))
             if len(player_names) > razorpay.RAZORPAY_NOTES_MAX:
                 player_names = player_names[:500] + "..."
@@ -286,18 +288,18 @@ def create_transaction(
             }
             receipt = f"group:{start_date}:{ts}"
             for player in players:
-                Membership.objects.get_or_create(player=player, defaults=membership_defaults)
+                Subscription.objects.get_or_create(player=player, defaults=subscription_defaults)
         else:
-            membership, _ = Membership.objects.get_or_create(
+            subscription, _ = Subscription.objects.get_or_create(
                 player=player,
-                defaults=membership_defaults,
+                defaults=subscription_defaults,
             )
             notes = {
                 "user_id": user.id,
                 "player_id": player.id,
-                "membership_id": membership.id,
+                "subscription_id": subscription.id,
             }
-            receipt = f"{membership.membership_number}:{start_date}:{ts}"
+            receipt = f"{subscription.subscription_number}:{start_date}:{ts}"
 
     if gateway == PaymentGateway.RAZORPAY:
         data = razorpay.create_order(amount, receipt=receipt, notes=notes)
@@ -306,9 +308,9 @@ def create_transaction(
     elif gateway == PaymentGateway.PHONEPE:
         host = f"{request.scheme}://{request.get_host()}"
         next_url = (
-            "/membership/group"
-            if isinstance(order, GroupMembershipSchema)
-            else f"/membership/{player.id}"
+            "/subscription/group"
+            if isinstance(order, GroupSubscriptionSchema)
+            else f"/subscription/{player.id}"
         )
         data = phonepe.initiate_payment(amount, user, host, next_url)
         if data is None:
@@ -324,7 +326,7 @@ def create_transaction(
             "players": []
             if isinstance(order, TeamRegistrationSchema)
             else [player]
-            if not isinstance(order, GroupMembershipSchema | PlayerRegistrationSchema)
+            if not isinstance(order, GroupSubscriptionSchema | PlayerRegistrationSchema)
             else players,
             "event": event,
             "season": season,
@@ -335,7 +337,7 @@ def create_transaction(
             if isinstance(order, TeamRegistrationSchema)
             else RazorpayTransaction.TransactionTypeChoices.PLAYER_REGISTRATION
             if isinstance(order, PlayerRegistrationSchema)
-            else RazorpayTransaction.TransactionTypeChoices.ANNUAL_MEMBERSHIP,
+            else RazorpayTransaction.TransactionTypeChoices.ANNUAL_SUBSCRIPTION,
         }
     )
     if gateway == PaymentGateway.RAZORPAY:
@@ -346,9 +348,9 @@ def create_transaction(
             if isinstance(order, TeamRegistrationSchema)
             else f"Player registration payment by {transaction_user_name} for {player_names}, event: {event.title if event is not None else ''}"
             if isinstance(order, PlayerRegistrationSchema)
-            else f"Membership for {player.user.get_full_name()}"
-            if not isinstance(order, GroupMembershipSchema)
-            else f"Membership group payment by {transaction_user_name} for {player_names}"
+            else f"Subscription for {player.user.get_full_name()}"
+            if not isinstance(order, GroupSubscriptionSchema)
+            else f"Subscription group payment by {transaction_user_name} for {player_names}"
         )
         if len(description) > razorpay.RAZORPAY_DESCRIPTION_MAX:
             description = description[:250] + "..."
@@ -363,10 +365,10 @@ def create_transaction(
         PhonePeTransaction.create_from_order_data(data)
     elif gateway == PaymentGateway.MANUAL:
         ManualTransaction.create_from_order_data(data)
-        memberships = Membership.objects.filter(
-            player__in=player_ids if isinstance(order, GroupMembershipSchema) else [player.id]
+        subscriptions = Subscription.objects.filter(
+            player__in=player_ids if isinstance(order, GroupSubscriptionSchema) else [player.id]
         )
-        memberships.update(is_active=True, start_date=start_date, end_date=end_date)
+        subscriptions.update(is_active=True, start_date=start_date, end_date=end_date)
     else:
         # We shouldn't get here, because enum
         pass
@@ -374,10 +376,10 @@ def create_transaction(
     return 200, data
 
 
-def update_transaction_player_memberships(
+def update_transaction_player_subscriptions(
     transaction: RazorpayTransaction | PhonePeTransaction,
 ) -> None:
-    membership_defaults = {
+    subscription_defaults = {
         "start_date": transaction.start_date,
         "end_date": transaction.end_date,
         "event": transaction.event,
@@ -385,13 +387,13 @@ def update_transaction_player_memberships(
         "is_active": True,
     }
     for player in transaction.players.all():
-        membership, created = Membership.objects.get_or_create(
-            player=player, defaults=membership_defaults
+        subscription, created = Subscription.objects.get_or_create(
+            player=player, defaults=subscription_defaults
         )
         if not created:
-            for key, value in membership_defaults.items():
-                setattr(membership, key, value)
-            membership.save()
+            for key, value in subscription_defaults.items():
+                setattr(subscription, key, value)
+            subscription.save()
 
 
 def update_transaction_team_registration(

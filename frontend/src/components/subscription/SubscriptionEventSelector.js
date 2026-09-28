@@ -1,9 +1,9 @@
 import { createEffect, createSignal, For, onMount, Show } from "solid-js";
 
-import { eventMembershipFee } from "../../constants";
+import { eventSubscriptionFee } from "../../constants";
 import { displayDate, fetchUrl } from "../../utils";
 
-const MembershipEventSelector = props => {
+const SubscriptionEventSelector = props => {
   const [events, setEvents] = createSignal([]);
 
   const isShortEvent = event =>
@@ -49,16 +49,16 @@ const MembershipEventSelector = props => {
           </For>
         </select>
         <p>
-          Pay India Ultimate membership fee (₹ {eventMembershipFee / 100}) for
-          the {props.event.title} ({displayDate(props.startDate)} to{" "}
+          Pay India Ultimate subscription fee (₹ {eventSubscriptionFee / 100})
+          for the {props.event.title} ({displayDate(props.startDate)} to{" "}
           {displayDate(props.endDate)})
         </p>
       </Show>
       <Show when={!props.annual && events()?.length === 0}>
-        <p>No upcoming events found, for membership...</p>
+        <p>No upcoming events found, for subscription...</p>
       </Show>
     </>
   );
 };
 
-export default MembershipEventSelector;
+export default SubscriptionEventSelector;

@@ -17,7 +17,7 @@ import {
   getAnnouncementTypeColor,
   getAnnouncementTypeLabel
 } from "../../colors";
-import { fetchMembershipStatus } from "../../queries";
+import { fetchSubscriptionStatus } from "../../queries";
 import { useStore } from "../../store";
 import { getCookie } from "../../utils";
 
@@ -44,10 +44,10 @@ const Announcements = () => {
     refetchOnWindowFocus: false
   });
 
-  // Fetch membership status
-  const membershipQuery = createQuery(
-    () => ["membership"],
-    fetchMembershipStatus,
+  // Fetch subscription status
+  const subscriptionQuery = createQuery(
+    () => ["subscription"],
+    fetchSubscriptionStatus,
     {
       refetchOnWindowFocus: false
     }
@@ -129,10 +129,10 @@ const Announcements = () => {
             <div class="space-y-6">
               <For each={query.data}>
                 {announcement => {
-                  const hasActiveMembership =
-                    membershipQuery.data?.is_active ?? false;
+                  const hasActiveSubscription =
+                    subscriptionQuery.data?.is_active ?? false;
                   const isMembersOnly = announcement.is_members_only;
-                  const canAccess = !isMembersOnly || hasActiveMembership;
+                  const canAccess = !isMembersOnly || hasActiveSubscription;
 
                   return (
                     <div

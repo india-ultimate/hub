@@ -23,9 +23,9 @@ You agree and acknowledge that by virtue of being a Member or a User, You are no
 You acknowledge that the Website can only be used by persons who are capable of entering into a contact as per the Indian Contract Act, 1872 and that the you are a person who satisfies the criteria prescribed therein.
 Specifically with regard to minors, i.e.; persons below the age of 18 years, the Website could be only used by their respective legal guardian(s) acting upon their behalf. All usage/participation by any minors has to be controlled/ monitored by such guardians and India Ultimate will have no liability whatsoever in this regard.
 
-## 4. Membership
+## 4. Subscription
 
-Membership of the India Ultimate can be secured by filling up and submitting the registration form and complying with other conditions prescribed therein.
+A subscription to India Ultimate can be obtained by filling up and submitting the registration form and complying with other conditions prescribed therein.
 All Members shall be bound by the Terms and Conditions.
 As a Member of India Ultimate, You have the same equitable right of participating in the affairs of India Ultimate as that of another Member of India Ultimate.
 

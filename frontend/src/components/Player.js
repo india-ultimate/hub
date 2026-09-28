@@ -9,9 +9,9 @@ import StatusStepper from "./StatusStepper";
 const Player = props => {
   const navigate = useNavigate();
 
-  const navMembership = (e, playerId) => {
+  const navSubscription = (e, playerId) => {
     e.preventDefault();
-    navigate(`/membership/${playerId}`);
+    navigate(`/subscription/${playerId}`);
   };
 
   const navWaiver = (e, playerId) => {
@@ -38,7 +38,7 @@ const Player = props => {
           role="alert"
         >
           Your profile information has been imported from the India Ultimate
-          Membership form for 2022-2023.
+          Subscription form for 2022-2023.
         </div>
       </Show>
       <table class="w-full break-all text-left text-sm text-gray-500 dark:text-gray-400">
@@ -92,29 +92,29 @@ const Player = props => {
               </Switch>
             </td>
           </tr>
-          <Show when={props.player?.membership}>
+          <Show when={props.player?.subscription}>
             <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
               <th
                 scope="row"
                 class="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white"
               >
-                Membership validity
+                Subscription validity
               </th>
               <td class="px-6 py-4">
-                {props.player?.membership.start_date &&
-                  displayDate(props.player.membership.start_date)}{" "}
+                {props.player?.subscription.start_date &&
+                  displayDate(props.player.subscription.start_date)}{" "}
                 &mdash;{" "}
-                {props.player?.membership.end_date &&
-                  displayDate(props.player.membership.end_date)}
-                <Show when={!props.player?.membership?.is_active}>
+                {props.player?.subscription.end_date &&
+                  displayDate(props.player.subscription.end_date)}
+                <Show when={!props.player?.subscription?.is_active}>
                   <p class="mb-4">
-                    You need a valid India Ultimate membership to participate in
-                    India Ultimate events.
+                    You need a valid India Ultimate subscription to participate
+                    in India Ultimate events.
                   </p>
                   <button
                     type="submit"
                     class="w-full rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 sm:w-auto"
-                    onClick={e => navMembership(e, props.player?.id)}
+                    onClick={e => navSubscription(e, props.player?.id)}
                   >
                     Renew
                   </button>
@@ -130,11 +130,11 @@ const Player = props => {
               </th>
               <td class="px-6 py-4">
                 <Switch>
-                  <Match when={props.player?.membership.waiver_valid}>
-                    Signed by {props.player?.membership.waiver_signed_by} on{" "}
-                    {displayDate(props.player?.membership.waiver_signed_at)}
+                  <Match when={props.player?.subscription.waiver_valid}>
+                    Signed by {props.player?.subscription.waiver_signed_by} on{" "}
+                    {displayDate(props.player?.subscription.waiver_signed_at)}
                   </Match>
-                  <Match when={!props.player?.membership.waiver_valid}>
+                  <Match when={!props.player?.subscription.waiver_valid}>
                     <button
                       type="submit"
                       class="w-full rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 sm:w-auto"
@@ -147,23 +147,23 @@ const Player = props => {
               </td>
             </tr>
           </Show>
-          <Show when={!props.player?.membership && !props.others}>
+          <Show when={!props.player?.subscription && !props.others}>
             <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
               <th
                 scope="row"
                 class="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white"
               >
-                Membership
+                Subscription
               </th>
               <td class="px-6 py-4">
                 <p class="mb-4">
-                  You need a India Ultimate membership to participate in India
+                  You need a India Ultimate subscription to participate in India
                   Ultimate events.
                 </p>
                 <button
                   type="submit"
                   class="w-full rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 sm:w-auto"
-                  onClick={e => navMembership(e, props.player?.id)}
+                  onClick={e => navSubscription(e, props.player?.id)}
                 >
                   Enroll
                 </button>

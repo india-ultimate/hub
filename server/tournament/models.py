@@ -49,7 +49,7 @@ class Event(ExportModelOperationsMixin("event"), models.Model):  # type: ignore[
         default=0,
         help_text="Per-day late registration penalty for players, in paise.",
     )
-    is_membership_needed = models.BooleanField(default=False)
+    is_subscription_needed = models.BooleanField(default=False)
     tier = models.IntegerField(default=4)
 
     def save(self, *args: Any, **kwargs: Any) -> None:
