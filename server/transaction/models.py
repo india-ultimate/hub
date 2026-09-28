@@ -170,3 +170,41 @@ class ManualTransaction(ExportModelOperationsMixin("manual_transaction"), models
     @classmethod
     def create_from_order_data(cls, data: dict[str, Any]) -> "ManualTransaction":
         return create_transaction_from_order_data(cls, data)
+
+
+class RazorpayRefund(models.Model):
+    """Money sent back through Razorpay, for one person's line or a whole order."""
+
+    class Status(models.TextChoices):
+        REQUESTED = "requested", _("Requested")
+        PENDING = "pending", _("Pending")
+        PROCESSED = "processed", _("Processed")
+        FAILED = "failed", _("Failed")
+
+    class Source(models.TextChoices):
+        HUB = "hub", _("Hub")
+        RAZORPAY_DASHBOARD = "razorpay_dashboard", _("Razorpay dashboard")
+
+    transaction = models.ForeignKey(
+        RazorpayTransaction, related_name="refunds", on_delete=models.PROTECT
+    )
+    # No line for a refund of a whole order: a team or form registration has
+    # no per-person amount to give back.
+    line = models.ForeignKey(
+        RazorpayTransactionPlayer,
+        related_name="refunds",
+        on_delete=models.PROTECT,
+        blank=True,
+        null=True,
+    )
+    amount = models.PositiveIntegerField(help_text="In paise.")
+    razorpay_refund_id = models.CharField(max_length=64, unique=True, blank=True, null=True)
+    status = models.CharField(max_length=12, choices=Status.choices, default=Status.REQUESTED)
+    source = models.CharField(max_length=20, choices=Source.choices, default=Source.HUB)
+    reason = models.TextField()
+    error = models.TextField(blank=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self) -> str:
+        return f"{self.amount} on {self.transaction_id}"
