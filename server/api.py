@@ -55,6 +55,7 @@ from server.flarum.utils import (
 )
 from server.forms.api import router as forms_router
 from server.passkey_utils import PassKeyClient
+from server.receipts.api import router as receipts_router
 from server.schema import (
     AccreditationFormSchema,
     AccreditationSchema,
@@ -220,6 +221,7 @@ def _deny_unless_manager(user: User, tournament: Tournament) -> tuple[int, messa
 # Routers
 api.add_router("/seasons", season_router)
 api.add_router("/", subscription_router)
+api.add_router("/", receipts_router)
 api.add_router("/series/", series_router)
 api.add_router("/transactions", transaction_router)
 api.add_router("/forms", forms_router)
