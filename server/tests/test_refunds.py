@@ -32,7 +32,7 @@ class TestRefunds(TestCase):
             slug: SubscriptionPlan.objects.get(
                 season=self.season, type=SubscriptionType.objects.get(slug=slug)
             )
-            for slug in ("regular", "community")
+            for slug in ("regular", "community", "patron")
         }
         self.transaction = RazorpayTransaction.objects.create(
             order_id="order_refund",
@@ -114,6 +114,39 @@ class TestRefunds(TestCase):
         subscription = Subscription.objects.get(player=self.player, season=self.season)
         self.assertTrue(subscription.is_active)
         self.assertIsNone(subscription.refunded_at)
+
+    def test_reactivating_a_refunded_subscription_at_the_wrong_price_is_flagged(self) -> None:
+        # Regular is refunded before an in-flight upgrade to Patron -- priced
+        # at just the difference, not Patron's own price -- captures.
+        with mock.patch("server.subscription.refunds.CLIENT.payment.refund", return_value=ACCEPTED):
+            refunds.refund_line(self.line, by=self.staff, reason="x")
+
+        upgrade = RazorpayTransaction.objects.create(
+            order_id="order_upgrade_after_refund",
+            payment_id="pay_u",
+            amount=75000,
+            currency="INR",
+            user=self.player.user,
+            season=self.season,
+            start_date=self.season.start_date,
+            end_date=self.season.end_date,
+            status=RazorpayTransaction.TransactionStatusChoices.COMPLETED,
+        )
+        line = RazorpayTransactionPlayer.objects.create(
+            transaction=upgrade,
+            player=self.player,
+            plan=self.plans["patron"],
+            amount=75000,
+        )
+
+        purchase.fulfil(upgrade)
+
+        line.refresh_from_db()
+        subscription = Subscription.objects.get(player=self.player, season=self.season)
+        self.assertTrue(line.needs_review)
+        self.assertIsNone(line.subscription)
+        self.assertNotEqual(subscription.plan_id, self.plans["patron"].id)
+        self.assertNotEqual(subscription.amount_paid, self.plans["patron"].amount)
 
     def test_a_refunded_line_is_not_applied_again(self) -> None:
         # The nightly sync re-applies every completed order it sees.
