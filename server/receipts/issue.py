@@ -10,7 +10,11 @@ from server.receipts.money import financial_year, india_date
 from server.receipts.rows import Row, group, legacy_row, person_label
 from server.season.models import Season
 from server.subscription.models import Subscription
-from server.transaction.models import RazorpayTransaction, RazorpayTransactionPlayer
+from server.transaction.models import (
+    RazorpayRefund,
+    RazorpayTransaction,
+    RazorpayTransactionPlayer,
+)
 
 RECEIPT_SERIES = "IU"
 REFUND_SERIES = "RF"
@@ -133,4 +137,80 @@ def issue_receipt(
         total=sum(row["amount"] for row in rows),
         reference=transaction.payment_id,
         order_id=transaction.order_id,
+    )
+
+
+def _find_person(original: Receipt, line: RazorpayTransactionPlayer) -> tuple[Row, str] | None:
+    """The receipt row a refunded line was printed on, and the person as the
+    receipt froze them (a rename since then changes nothing)."""
+    for row in original.lines:
+        if line.pk in row.get("line_ids", []):
+            return row, row["people"][row["line_ids"].index(line.pk)]
+    # Receipts frozen before rows carried line ids (the backfill): match the
+    # label. A line flagged for review can get its player an IU ID later, so
+    # also accept the bare name the receipt froze.
+    live = _person(line)
+    return next(
+        (
+            (row, label)
+            for row in original.lines
+            if "line_ids" not in row
+            for label in row["people"]
+            if live == label or live.startswith(f"{label} (")
+        ),
+        None,
+    )
+
+
+def issue_refund_note(refund: RazorpayRefund) -> Receipt | None:
+    """The refund note for a refund Razorpay has confirmed, issued once.
+
+    Only once it is processed: a pending refund can still fail, and a note
+    once issued is never withdrawn.
+    """
+    if refund.status != RazorpayRefund.Status.PROCESSED:
+        return None
+    existing = Receipt.objects.filter(refund=refund).first()
+    if existing is not None:
+        return existing
+    original = Receipt.objects.filter(
+        transaction_id=refund.transaction_id, kind=Receipt.Kind.RECEIPT
+    ).first()
+    if original is None:
+        return None
+
+    particulars = f"Refund against receipt {original.number}"
+    people: list[str] = []
+    if refund.line is not None:
+        found = _find_person(original, refund.line)
+        if found is not None:
+            row, person = found
+            particulars, people = f"Refund: {row['particulars']}", [person]
+
+    when = now()
+    number, year, sequence = next_number(REFUND_SERIES, when)
+    return Receipt.objects.create(
+        kind=Receipt.Kind.REFUND,
+        transaction_id=refund.transaction_id,
+        refund=refund,
+        original=original,
+        number=number,
+        financial_year=year,
+        sequence=sequence,
+        issued_at=when,
+        payer_name=original.payer_name,
+        payer_email=original.payer_email,
+        payer_phone=original.payer_phone,
+        lines=[
+            {
+                "particulars": particulars,
+                "people": people,
+                "quantity": 1,
+                "rate": refund.amount,
+                "amount": refund.amount,
+            }
+        ],
+        total=refund.amount,
+        reference=refund.razorpay_refund_id or "",
+        order_id=original.order_id,
     )
