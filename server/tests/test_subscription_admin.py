@@ -1,3 +1,4 @@
+import datetime
 from typing import Any
 from unittest import mock
 
@@ -186,6 +187,152 @@ class TestRefundViews(RefundAdminTestCase):
             self.assertNotContains(response, "stops counting", msg_prefix=url)
             self.assertNotContains(response, "not a subscription", msg_prefix=url)
 
+    def test_refunding_a_whole_order_goes_back_to_it(self) -> None:
+        url = reverse("admin:refund_order", args=[self.transaction.pk])
+        with mock.patch("server.subscription.refunds.CLIENT.payment.refund", return_value=ACCEPTED):
+            response = self.client.post(url, data={"reason": "event cancelled"})
+        self.assertRedirects(
+            response,
+            reverse("admin:server_razorpaytransaction_change", args=[self.transaction.pk]),
+            fetch_redirect_response=False,
+        )
+        self.assertContains(self.client.get(response["Location"]), "Refunded ₹750.")
+        self.subscription.refresh_from_db()
+        self.assertIsNotNone(self.subscription.refunded_at)
+
+    def test_refunding_a_historical_order_leaves_the_subscription_alone(self) -> None:
+        """Paid before tiers: the money goes back whole, and the page warns
+        that nothing else changes, even when the subscription can't be found."""
+        player = make_player("old@example.com")
+        old = RazorpayTransaction.objects.create(
+            order_id="order_old",
+            payment_id="pay_old",
+            amount=70000,
+            currency="INR",
+            user=player.user,
+            season=self.season,
+            status=RazorpayTransaction.TransactionStatusChoices.COMPLETED,
+        )
+        RazorpayTransactionPlayer.objects.create(transaction=old, player=player)
+        url = reverse("admin:refund_order", args=[old.pk])
+
+        self.assertContains(self.client.get(url), "the subscription it paid for stays")
+
+        with mock.patch(
+            "server.subscription.refunds.CLIENT.payment.refund", return_value=ACCEPTED
+        ) as gateway:
+            self.client.post(url, data={"reason": "duplicate payment"})
+        gateway.assert_called_once_with("pay_old", mock.ANY)
+        self.assertEqual(RazorpayRefund.objects.get(transaction=old).amount, 70000)
+
+    def test_a_registration_order_warns_it_is_not_a_subscription(self) -> None:
+        team_order = RazorpayTransaction.objects.create(
+            order_id="order_team",
+            payment_id="pay_team",
+            amount=500000,
+            currency="INR",
+            user=self.player.user,
+            type=RazorpayTransaction.TransactionTypeChoices.TEAM_REGISTRATION,
+            status=RazorpayTransaction.TransactionStatusChoices.COMPLETED,
+        )
+        response = self.client.get(reverse("admin:refund_order", args=[team_order.pk]))
+        self.assertContains(response, "not a subscription")
+
+    def test_razorpay_refusing_a_whole_order_refund_is_shown_and_recorded(self) -> None:
+        team_order = RazorpayTransaction.objects.create(
+            order_id="order_team",
+            payment_id="pay_team",
+            amount=500000,
+            currency="INR",
+            user=self.player.user,
+            type=RazorpayTransaction.TransactionTypeChoices.TEAM_REGISTRATION,
+            status=RazorpayTransaction.TransactionStatusChoices.COMPLETED,
+        )
+        with mock.patch(
+            "server.subscription.refunds.CLIENT.payment.refund",
+            side_effect=Exception("insufficient balance"),
+        ):
+            response = self.client.post(
+                reverse("admin:refund_order", args=[team_order.pk]),
+                data={"reason": "withdrew"},
+                follow=True,
+            )
+        self.assertContains(response, "Razorpay refused the refund: insufficient balance")
+        # The failed attempt is kept, for the nightly sync and for staff.
+        refund = RazorpayRefund.objects.get(transaction=team_order)
+        self.assertEqual(refund.status, RazorpayRefund.Status.FAILED)
+        self.assertEqual(refund.error, "insufficient balance")
+        team_order.refresh_from_db()
+        self.assertEqual(team_order.status, RazorpayTransaction.TransactionStatusChoices.COMPLETED)
+
+    def test_refunding_an_order_whose_lines_are_refunded_is_refused(self) -> None:
+        with mock.patch("server.subscription.refunds.CLIENT.payment.refund", return_value=ACCEPTED):
+            self.client.post(
+                reverse("admin:refund_line", args=[self.line.pk]), data={"reason": "first"}
+            )
+            response = self.client.post(
+                reverse("admin:refund_order", args=[self.transaction.pk]),
+                data={"reason": "again"},
+                follow=True,
+            )
+        self.assertContains(response, "This order has already been refunded.")
+        self.assertEqual(RazorpayRefund.objects.count(), 1)
+
+    def test_an_order_refund_without_a_reason_is_refused(self) -> None:
+        team_order = RazorpayTransaction.objects.create(
+            order_id="order_team",
+            payment_id="pay_team",
+            amount=500000,
+            currency="INR",
+            user=self.player.user,
+            type=RazorpayTransaction.TransactionTypeChoices.TEAM_REGISTRATION,
+            status=RazorpayTransaction.TransactionStatusChoices.COMPLETED,
+        )
+        with mock.patch("server.subscription.refunds.CLIENT.payment.refund") as gateway:
+            response = self.client.post(
+                reverse("admin:refund_order", args=[team_order.pk]),
+                data={"reason": "   "},
+                follow=True,
+            )
+        self.assertContains(response, "A refund needs a reason.")
+        gateway.assert_not_called()
+        self.assertFalse(RazorpayRefund.objects.exists())
+
+    def test_refunding_a_subscription_says_what_moved_before_it_stopped(self) -> None:
+        patron = SubscriptionPlan.objects.get(season=self.season, type__slug="patron")
+        upgrade = RazorpayTransaction.objects.create(
+            order_id="order_upgrade",
+            payment_id="pay_upgrade",
+            amount=75000,
+            currency="INR",
+            user=self.player.user,
+            season=self.season,
+            start_date=self.season.start_date,
+            end_date=self.season.end_date,
+            status=RazorpayTransaction.TransactionStatusChoices.COMPLETED,
+        )
+        RazorpayTransactionPlayer.objects.create(
+            transaction=upgrade, player=self.player, plan=patron, amount=75000
+        )
+        purchase.fulfil(upgrade)
+
+        # The upgrade goes back first, then the gateway fails on the original.
+        with mock.patch(
+            "server.subscription.refunds.CLIENT.payment.refund",
+            side_effect=[ACCEPTED, RuntimeError("gateway is down")],
+        ):
+            response = self.client.post(
+                reverse("admin:refund_subscription", args=[self.subscription.pk]),
+                data={"reason": "quit"},
+                follow=True,
+            )
+
+        self.assertContains(response, "Stopped after refunding ₹750 on 1 payment(s)")
+        self.assertContains(response, "gateway is down")
+        self.subscription.refresh_from_db()
+        self.assertTrue(self.subscription.is_active)
+        self.assertEqual(self.subscription.plan, self.plan)
+
 
 @override_settings(STORAGES=ADMIN_STORAGES)
 class TestPartialRefund(TestCase):
@@ -260,6 +407,43 @@ class TestAdminScreens(RefundAdminTestCase):
         flagged = self.client.get(url, {"needs_review": "yes"})
         self.assertContains(flagged, self.transaction.pk)
         self.assertNotContains(flagged, clean.pk)
+        unflagged = self.client.get(url, {"needs_review": "no"})
+        self.assertContains(unflagged, clean.pk)
+        self.assertNotContains(unflagged, self.transaction.pk)
+
+    def test_refund_completely_takes_one_subscription_at_a_time(self) -> None:
+        other = make_player("other@example.com")
+        second = Subscription.objects.create(
+            player=other,
+            season=self.season,
+            plan=self.plan,
+            is_active=True,
+            start_date=self.season.start_date,
+            end_date=self.season.end_date,
+        )
+        url = reverse("admin:server_subscription_changelist")
+        with mock.patch("server.subscription.refunds.CLIENT.payment.refund") as gateway:
+            response = self.client.post(
+                url,
+                data={
+                    "action": "refund_completely",
+                    "_selected_action": [str(self.subscription.pk), str(second.pk)],
+                },
+                follow=True,
+            )
+        self.assertContains(response, "Refund one subscription at a time")
+        gateway.assert_not_called()
+
+        # One row goes to the confirmation page, and still moves no money.
+        response = self.client.post(
+            url, data={"action": "refund_completely", "_selected_action": [str(second.pk)]}
+        )
+        self.assertRedirects(
+            response,
+            reverse("admin:refund_subscription", args=[second.pk]),
+            fetch_redirect_response=False,
+        )
+        self.assertFalse(RazorpayRefund.objects.exists())
 
     def test_the_player_form_cannot_set_sponsored_or_a_number(self) -> None:
         # The change form, not just the list: a sponsored checkbox here would
@@ -372,3 +556,24 @@ class TestApproveSponsorship(TestCase):
         self.assertTrue(
             SponsorshipGrant.objects.filter(player=self.player, season=self.season).exists()
         )
+
+    def test_a_request_with_no_season_to_grant_is_left_pending(self) -> None:
+        item = ServiceRequest.objects.create(
+            user=self.player.user,
+            type=ServiceRequestType.REQUEST_SPONSORED_SUBSCRIPTION,
+            message="please",
+        )
+        item.service_players.add(self.player)
+
+        # No season on the request, and today falls in none.
+        with mock.patch("server.season.models.today", return_value=datetime.date(2019, 1, 1)):
+            response = self.client.post(
+                reverse("admin:server_servicerequest_changelist"),
+                data={"action": "approve_sponsorship", "_selected_action": [str(item.pk)]},
+                follow=True,
+            )
+
+        self.assertContains(response, f"Request {item.pk}: no season to grant")
+        item.refresh_from_db()
+        self.assertNotEqual(item.status, ServiceRequestStatus.APPROVED)
+        self.assertFalse(SponsorshipGrant.objects.exists())

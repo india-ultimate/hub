@@ -8,7 +8,7 @@ from django.db.migrations.exceptions import IrreversibleError
 from django.test import TestCase
 
 from server.season.models import Season
-from server.subscription.models import Subscription
+from server.subscription.models import Subscription, SubscriptionType
 from server.transaction.models import RazorpayTransaction
 
 from .test_subscription_model import make_player
@@ -367,3 +367,31 @@ class TestIrreversible(TestCase):
     def test_the_data_steps_refuse_to_reverse(self) -> None:
         with self.assertRaises(IrreversibleError):
             migration.irreversible(apps, None)
+
+
+class TestReversingTheCatalogMigrations(TestCase):
+    def test_0145_removes_only_the_two_legacy_seasons(self) -> None:
+        legacy_seasons = importlib.import_module("server.migrations.0146_legacy_seasons")
+        legacy = {"Season 2022-2023", "Season 2023-2024"}
+        before = set(Season.objects.values_list("name", flat=True))
+        self.assertLessEqual(legacy | {"Season 2024-2025", "Season 2026-2027"}, before)
+
+        legacy_seasons.remove_legacy_seasons(apps, None)
+
+        self.assertEqual(set(Season.objects.values_list("name", flat=True)), before - legacy)
+
+    def test_0156_restores_the_0147_descriptions(self) -> None:
+        tier_features = importlib.import_module("server.migrations.0157_tier_features")
+        seeded = importlib.import_module("server.migrations.0148_seed_catalog").TIERS
+        # As 0156 left them: its own card copy.
+        self.assertEqual(
+            SubscriptionType.objects.get(slug="community").description,
+            tier_features.COPY["community"][0],
+        )
+
+        tier_features.restore_descriptions(apps, None)
+
+        self.assertEqual(
+            dict(SubscriptionType.objects.values_list("slug", "description")),
+            {slug: description for slug, *_, description in seeded},
+        )

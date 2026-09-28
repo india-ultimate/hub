@@ -1,12 +1,16 @@
 import datetime
+from typing import Any
 
 from django.test import TestCase
+from django.utils.timezone import now
 
+from server.core.models import Player, Team, User
 from server.season.models import Season
-from server.series.models import Role, Series, is_playing_role
+from server.series.models import Role, Series, SeriesRegistration, is_playing_role
 from server.subscription import eligibility
 from server.subscription.models import Subscription, SubscriptionPlan, SubscriptionType
-from server.tournament.models import Event
+from server.tournament.models import Event, Registration, Tournament
+from server.utils import today
 
 from .test_subscription_model import make_player
 
@@ -173,3 +177,111 @@ class TestEligibility(TestCase):
         self.assertFalse(is_playing_role("COACH"))
         playing = {r for r in Role if is_playing_role(r)}
         self.assertEqual(playing, {Role.DEFAULT, Role.CAPTAIN, Role.SPIRIT_CAPTAIN})
+
+
+class TestRosterEligibilityThroughTheApi(TestCase):
+    """Adding to and editing an event roster, as a team admin does it."""
+
+    def setUp(self) -> None:
+        self.season = Season.objects.get(name="Season 2026-2027")
+        self.series = make_series(self.season)
+        self.series.event_max_players_total = 20
+        self.series.save()
+        self.team = Team.objects.create(name="Team A")
+        self.series.teams.add(self.team)
+        admin = User.objects.create(username="admin@example.com", email="admin@example.com")
+        self.team.admins.add(admin)
+        self.client.force_login(admin)
+        self.series_event = self.open_event("Sectionals", series=self.series)
+        # Starts inside 2026-27, so the flag alone decides whether it is gated.
+        self.one_off = self.open_event("Club friendly")
+
+    def open_event(self, title: str, **fields: Any) -> Event:
+        day = today()
+        event = Event.objects.create(
+            title=title,
+            start_date=day + datetime.timedelta(days=20),
+            end_date=day + datetime.timedelta(days=22),
+            team_registration_start_date=day - datetime.timedelta(days=1),
+            team_registration_end_date=day + datetime.timedelta(days=10),
+            player_registration_start_date=day - datetime.timedelta(days=1),
+            player_registration_end_date=day + datetime.timedelta(days=10),
+            **fields,
+        )
+        Tournament.objects.create(event=event).teams.add(self.team)
+        return event
+
+    def member(self, email: str, slug: str | None, **fields: Any) -> Player:
+        player = make_player(email)
+        if slug is not None:
+            Subscription.objects.create(
+                player=player,
+                season=self.season,
+                plan=SubscriptionPlan.objects.get(season=self.season, type__slug=slug),
+                **{
+                    "is_active": True,
+                    "waiver_valid": True,
+                    "start_date": self.season.start_date,
+                    "end_date": self.season.end_date,
+                    **fields,
+                },
+            )
+        return player
+
+    def on_series(self, player: Player, role: str) -> Player:
+        SeriesRegistration.objects.create(
+            series=self.series, team=self.team, player=player, role=role
+        )
+        return player
+
+    def add(self, event: Event, player: Player, **data: Any) -> Any:
+        return self.client.post(
+            f"/api/tournament/{event.id}/team/{self.team.id}/roster",
+            data={"player_id": player.id, **data},
+            content_type="application/json",
+        )
+
+    def test_a_community_member_may_be_staff_but_not_play_at_a_series_event(self) -> None:
+        coach = self.on_series(self.member("coach@example.com", "community"), Role.COACH)
+        response = self.add(self.series_event, coach)
+        self.assertEqual(200, response.status_code, response.content)
+        self.assertFalse(Registration.objects.get(player=coach).is_playing)
+
+        player = self.on_series(self.member("player@example.com", "community"), Role.DEFAULT)
+        response = self.add(self.series_event, player)
+        self.assertEqual(400, response.status_code)
+        self.assertIn("does not cover playing", response.json()["message"])
+        self.assertFalse(Registration.objects.filter(player=player).exists())
+
+    def test_a_private_event_needs_no_subscription(self) -> None:
+        nobody = self.member("nobody@example.com", None)
+        response = self.add(self.one_off, nobody, is_playing=True)
+        self.assertEqual(200, response.status_code, response.content)
+        self.assertTrue(Registration.objects.get(player=nobody).is_playing)
+
+    def test_a_refunded_subscription_does_not_count(self) -> None:
+        refunded = self.on_series(
+            self.member("refunded@example.com", "regular", refunded_at=now()), Role.DEFAULT
+        )
+        response = self.add(self.series_event, refunded)
+        self.assertEqual(400, response.status_code)
+        self.assertEqual("Subscription missing", response.json()["message"])
+        self.assertFalse(Registration.objects.filter(player=refunded).exists())
+
+    def test_editing_a_staff_entry_into_a_player_is_checked(self) -> None:
+        self.one_off.is_subscription_needed = True
+        self.one_off.save()
+        coach = self.member("coach@example.com", "community")
+        response = self.add(self.one_off, coach, is_playing=False)
+        self.assertEqual(200, response.status_code, response.content)
+        registration = Registration.objects.get(player=coach)
+
+        response = self.client.put(
+            f"/api/tournament/{self.one_off.id}/team/{self.team.id}/roster/{registration.id}",
+            data={"is_playing": True},
+            content_type="application/json",
+        )
+        self.assertEqual(400, response.status_code)
+        self.assertIn("does not cover playing", response.json()["message"])
+        registration.refresh_from_db()
+        self.assertFalse(registration.is_playing)
