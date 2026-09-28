@@ -7,7 +7,7 @@ from django.utils.translation import gettext_lazy as _
 from django_prometheus.models import ExportModelOperationsMixin
 
 from server.core.models import Player, Team, UCPerson, User
-from server.series.models import Series, SeriesRegistration
+from server.series.models import Role, Series, SeriesRegistration
 from server.utils import default_invitation_expiry_date, slugify_max
 
 
@@ -131,13 +131,7 @@ class EventRosterInvitation(ExportModelOperationsMixin("event_roster_invitation"
 
 
 class Registration(ExportModelOperationsMixin("registration"), models.Model):  # type: ignore[misc]
-    class Role(models.TextChoices):
-        DEFAULT = "DFLT", _("Default")
-        CAPTAIN = "CAP", _("Captain")
-        SPIRIT_CAPTAIN = "SCAP", _("Spirit Captain")
-        COACH = "COACH", _("Coach")
-        ASSISTANT_COACH = "ACOACH", _("Assistant Coach")
-        MANAGER = "MNGR", _("Manager")
+    Role = Role
 
     series_registration = models.ForeignKey(
         SeriesRegistration, on_delete=models.CASCADE, blank=True, null=True
