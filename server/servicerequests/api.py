@@ -4,6 +4,8 @@ from django.http import HttpRequest
 from ninja import Router
 
 from server.core.models import Player, User
+from server.season.models import Season
+from server.subscription.models import SubscriptionPlan
 from server.types import message_response
 
 from .models import ServiceRequest, ServiceRequestType
@@ -43,9 +45,28 @@ def create_service_request(
         except Exception:
             return 400, {"message": "Invalid player IDs provided"}
 
+    # A sponsorship is for one season, which must offer a tier that needs a grant.
+    season: Season | None = None
+    if service_request_data.type == ServiceRequestType.REQUEST_SPONSORED_SUBSCRIPTION:
+        plan = (
+            SubscriptionPlan.objects.filter(
+                season__id=service_request_data.season_id or 0,
+                is_available=True,
+                type__requires_grant=True,
+            )
+            .select_related("season")
+            .first()
+        )
+        if plan is None:
+            return 400, {"message": "This season has no sponsored subscription to request"}
+        season = plan.season
+
     # Create the service request
     service_request = ServiceRequest(
-        user=request.user, type=service_request_data.type, message=service_request_data.message
+        user=request.user,
+        type=service_request_data.type,
+        message=service_request_data.message,
+        season=season,
     )
 
     try:

@@ -1,13 +1,16 @@
+import logging
 from typing import Any
 
 from django.conf import settings
 from django.core.mail import send_mail
 from django.db import models
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 from django.template.loader import render_to_string
 
 from server.core.models import Player, User
+
+logger = logging.getLogger(__name__)
 
 
 class ServiceRequestType(models.TextChoices):
@@ -34,6 +37,19 @@ class ServiceRequest(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     service_players = models.ManyToManyField(Player, blank=True, related_name="service_requests")
+    season = models.ForeignKey("server.Season", on_delete=models.PROTECT, blank=True, null=True)
+
+    # The status as stored before this save, set by remember_previous_status.
+    previous_status: str | None = None
+
+
+@receiver(pre_save, sender=ServiceRequest)
+def remember_previous_status(sender: Any, instance: ServiceRequest, **kwargs: Any) -> None:
+    instance.previous_status = (
+        ServiceRequest.objects.filter(pk=instance.pk).values_list("status", flat=True).first()
+        if instance.pk
+        else None
+    )
 
 
 @receiver(post_save, sender=ServiceRequest)
@@ -48,23 +64,32 @@ def handle_service_request_status_change(
     if instance.type == ServiceRequestType.REQUEST_ACCOUNT_MERGE:
         return
 
-    # Only process if this is an update (not creation) and status is APPROVED or REJECTED
+    # Act only on a change of status, so re-saving a decided request neither
+    # re-sends its email nor restores a grant staff have since deleted.
+    if not created and instance.status == instance.previous_status:
+        return
+
+    # Only an update, not a creation, sends an email.
     if not created and instance.status in [
         ServiceRequestStatus.APPROVED,
         ServiceRequestStatus.REJECTED,
     ]:
-        # Send email notification
         send_service_request_notification_email(instance)
 
-        # Handle sponsored subscription approval logic
-        if (
-            instance.status == ServiceRequestStatus.APPROVED
-            and instance.type == ServiceRequestType.REQUEST_SPONSORED_SUBSCRIPTION
-        ):
-            # Update all service players' sponsored field
-            for player in instance.service_players.all():
-                player.sponsored = True
-                player.save(update_fields=["sponsored"])
+    if (
+        instance.status == ServiceRequestStatus.APPROVED
+        and instance.type == ServiceRequestType.REQUEST_SPONSORED_SUBSCRIPTION
+    ):
+        # Local: server.subscription.models imports ServiceRequest.
+        from server.season.models import Season
+        from server.subscription.sponsorship import grant
+
+        season = instance.season or Season.current()
+        if season is None:
+            logger.warning("Approved service request %s has no season to grant", instance.pk)
+            return
+        for player in instance.service_players.all():
+            grant(player, season, request=instance)
 
 
 def send_service_request_notification_email(service_request: ServiceRequest) -> None:
