@@ -41,6 +41,28 @@ class TestPlansEndpoint(ApiBaseTestCase):
         # A "-" line is something the tier leaves out.
         self.assertTrue(any(f.startswith("-") for f in by_slug["community"]["features"]))
 
+    def test_a_regular_holder_is_offered_patron_as_an_upgrade(self) -> None:
+        Membership.objects.create(
+            player=self.player,
+            season=self.s26,
+            plan=MembershipPlan.objects.get(season=self.s26, type__slug="regular"),
+            amount_paid=75000,
+            is_active=True,
+            start_date=self.s26.start_date,
+            end_date=self.s26.end_date,
+        )
+        response = self.client.get(f"/api/seasons/{self.s26.id}/plans?player_id={self.player.id}")
+        by_slug = {plan["slug"]: plan for plan in response.json()}
+        patron = by_slug["patron"]
+        self.assertTrue(patron["available_to_player"])
+        self.assertEqual(patron["upgrade_amount"], 75000)
+        self.assertEqual(patron["upgrade_from"], "Regular Annual Membership")
+        # What they hold and anything cheaper is not for sale, and not an upgrade.
+        for slug in ("regular", "community"):
+            self.assertFalse(by_slug[slug]["available_to_player"], slug)
+            self.assertIsNone(by_slug[slug]["upgrade_from"], slug)
+            self.assertIsNone(by_slug[slug]["upgrade_amount"], slug)
+
     def test_a_stranger_cannot_price_someone_else(self) -> None:
         self.client.force_login(User.objects.create(username="nosy", email="nosy@example.com"))
         response = self.client.get(f"/api/seasons/{self.s26.id}/plans?player_id={self.player.id}")

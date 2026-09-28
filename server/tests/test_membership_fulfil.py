@@ -2,9 +2,11 @@ from typing import Any
 from unittest import mock
 
 from django.core.management import call_command
+from django.db import IntegrityError
 from django.test import TestCase
 
-from server.membership import purchase
+from server.core.models import Player
+from server.membership import numbers, purchase
 from server.membership.models import Membership, MembershipPlan, MembershipType
 from server.season.models import Season
 from server.task.models import Task
@@ -131,6 +133,83 @@ class TestFulfil(TestCase):
         RazorpayTransactionPlayer.objects.create(transaction=transaction, player=self.player)
         self.assertEqual(purchase.fulfil(transaction), 0)
         self.assertEqual(Membership.objects.count(), 0)
+
+    def test_an_unpaid_order_applies_nothing(self) -> None:
+        transaction = self.order(self.plans["regular"], 75000)
+        transaction.status = "created"
+        transaction.save(update_fields=["status"])
+        self.assertEqual(purchase.fulfil(transaction), 0)
+        self.assertFalse(Membership.objects.exists())
+
+    def test_a_line_that_loses_a_race_is_flagged_and_the_rest_applied(self) -> None:
+        """Another order creates this season's membership between fulfil's
+        read and its insert. The unique (player, season) refuses the insert;
+        that line goes to staff, and the other person still gets theirs."""
+        friend = make_player("friend@example.com")
+        transaction = self.order(self.plans["regular"], 75000)
+        RazorpayTransactionPlayer.objects.create(
+            transaction=transaction, player=friend, plan=self.plans["regular"], amount=75000
+        )
+        winner = Membership.objects.create(
+            player=self.player,
+            season=self.season,
+            plan=self.plans["community"],
+            amount_paid=25000,
+            is_active=True,
+            start_date=self.season.start_date,
+            end_date=self.season.end_date,
+        )
+        read = Membership.objects.filter
+
+        def before_the_race(**lookups: Any) -> Any:
+            # What fulfil read before the other order committed.
+            if lookups.get("player_id") == self.player.id:
+                return Membership.objects.none()
+            return read(**lookups)
+
+        with mock.patch.object(Membership.objects, "filter", side_effect=before_the_race):
+            applied = purchase.fulfil(transaction, notify=False)
+
+        self.assertEqual(applied, 1)
+        lost = RazorpayTransactionPlayer.objects.get(transaction=transaction, player=self.player)
+        self.assertTrue(lost.needs_review)
+        self.assertIn("another payment created", lost.review_note)
+        self.assertIsNone(lost.membership)
+        winner.refresh_from_db()
+        self.assertEqual((winner.plan, winner.amount_paid), (self.plans["community"], 25000))
+        self.assertTrue(Membership.objects.get(player=friend, season=self.season).is_active)
+
+    def test_running_out_of_numbers_flags_the_line(self) -> None:
+        # Someone already holds the one number every attempt picks.
+        make_player("holder@example.com")
+        Player.objects.filter(user__email="holder@example.com").update(
+            membership_number="IU-26-0001"
+        )
+        transaction = self.order(self.plans["regular"], 75000)
+
+        with mock.patch("server.membership.numbers.next_position", return_value=1) as next_position:
+            applied = purchase.fulfil(transaction, notify=False)
+
+        self.assertEqual(next_position.call_count, numbers.RETRIES)
+        self.assertEqual(applied, 0)
+        line = RazorpayTransactionPlayer.objects.get(transaction=transaction)
+        self.assertTrue(line.needs_review)
+        self.assertIn("no membership number could be allocated", line.review_note)
+        # The savepoint took the half-made membership back with it.
+        self.assertFalse(Membership.objects.filter(player=self.player).exists())
+        self.player.refresh_from_db()
+        self.assertIsNone(self.player.membership_number)
+
+    def test_assign_number_gives_up_after_its_retries(self) -> None:
+        make_player("holder@example.com")
+        Player.objects.filter(user__email="holder@example.com").update(
+            membership_number="IU-26-0001"
+        )
+        with mock.patch(
+            "server.membership.numbers.next_position", return_value=1
+        ), self.assertRaises(IntegrityError):
+            numbers.assign_number(self.player, self.season)
+        self.assertIsNone(self.player.membership_number)
 
 
 class TestWebhook(TestCase):

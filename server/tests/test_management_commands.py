@@ -2,17 +2,26 @@ import datetime
 import tempfile
 from io import StringIO
 from pathlib import Path
+from typing import Any
+from unittest import mock
 
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
+from django.core.management.base import CommandError
 from django.test import TestCase
 from django.utils.timezone import now, utc
 
 from server.core.models import Accreditation, Guardianship, Player, Team, Vaccination
 from server.duplicates.models import EmailAlias
-from server.membership.models import Membership
+from server.membership.models import Membership, SponsorshipGrant
 from server.season.models import Season
 from server.series.models import Series, SeriesRegistration
+from server.servicerequests.models import (
+    ServiceRequest,
+    ServiceRequestStatus,
+    ServiceRequestType,
+)
+from server.task.models import Task
 from server.tournament.models import (
     Event,
     Match,
@@ -22,7 +31,15 @@ from server.tournament.models import (
     SpiritScore,
     Tournament,
 )
-from server.transaction.models import ManualTransaction
+from server.transaction.models import (
+    ManualTransaction,
+    RazorpayRefund,
+    RazorpayTransaction,
+    RazorpayTransactionPlayer,
+)
+
+from .test_membership_migration import make_transaction
+from .test_membership_model import make_player
 
 User = get_user_model()
 
@@ -633,3 +650,169 @@ class TestGenerateWrappedData(TestCase):
         PlayerWrapped.objects.all().delete()
         Player.objects.all().delete()
         User.objects.all().delete()
+
+
+def no_season_today() -> Any:
+    """Today falls in no season, so Season.current() is None."""
+    return mock.patch("server.season.models.today", return_value=datetime.date(2019, 1, 1))
+
+
+class TestMembershipCommandFailures(TestCase):
+    """What each membership command does when it cannot do its job."""
+
+    def setUp(self) -> None:
+        self.season = Season.objects.get(name="Season 2026-2027")
+        self.folder = tempfile.TemporaryDirectory()
+        self.addCleanup(self.folder.cleanup)
+
+    def sheet(self, text: str) -> Path:
+        path = Path(self.folder.name) / "sheet.csv"
+        path.write_text(text)
+        return path
+
+    def run_command(self, *args: Any) -> tuple[str, str]:
+        out, err = StringIO(), StringIO()
+        call_command(*args, stdout=out, stderr=err)
+        return out.getvalue(), err.getvalue()
+
+    def test_import_players_grants_sponsorship_for_the_current_season(self) -> None:
+        sheet = self.sheet(
+            f"{TestImportingAnAbsorbedAddress.HEADER},sponsored\n"
+            "Spon,Sored,yes@x.com,,+91999,01-01-2001,Male,,Pune,,N,,,,,,,,Y\n"
+            "Not,Sored,no@x.com,,+91998,01-01-2001,Male,,Pune,,N,,,,,,,,N\n"
+        )
+        self.run_command("import_players", sheet, "--date-format", "%d-%m-%Y")
+        grant = SponsorshipGrant.objects.get()
+        self.assertEqual((grant.player.user.email, grant.season), ("yes@x.com", self.season))
+        self.assertEqual(grant.note, "Imported from a sheet")
+
+    def test_import_players_reports_a_sponsored_row_with_no_season(self) -> None:
+        sheet = self.sheet(
+            f"{TestImportingAnAbsorbedAddress.HEADER},sponsored\n"
+            "Spon,Sored,yes@x.com,,+91999,01-01-2001,Male,,Pune,,N,,,,,,,,Y\n"
+        )
+        with no_season_today():
+            _, err = self.run_command("import_players", sheet, "--date-format", "%d-%m-%Y")
+        self.assertIn("No current season: yes@x.com", err)
+        self.assertTrue(Player.objects.filter(user__email="yes@x.com").exists())
+        self.assertFalse(SponsorshipGrant.objects.exists())
+
+    def test_activate_memberships_refuses_an_unknown_tier(self) -> None:
+        make_player("member@x.com")
+        sheet = self.sheet("email\nmember@x.com\n")
+        _, err = self.run_command("activate_memberships", sheet, "--tier", "gold")
+        self.assertIn(f"No 'gold' plan for {self.season.name}", err)
+        self.assertFalse(Membership.objects.exists())
+
+    def test_add_to_event_roster_checks_membership(self) -> None:
+        make_player("member@x.com")
+        team = Team.objects.create(name="Team A")
+        event = Event.objects.create(
+            title="Nationals",
+            start_date="2026-11-01",
+            end_date="2026-11-03",
+            team_registration_start_date="2026-10-01",
+            team_registration_end_date="2026-10-10",
+            player_registration_start_date="2026-10-01",
+            player_registration_end_date="2026-10-10",
+            is_membership_needed=True,
+        )
+        Tournament.objects.create(event=event).teams.add(team)
+        sheet = self.sheet("email\nmember@x.com\n")
+
+        _, err = self.run_command(
+            "add_to_event_roster", sheet, "--event-id", event.id, "--team-id", team.id
+        )
+
+        self.assertIn("Membership missing: member@x.com", err)
+        self.assertFalse(Registration.objects.exists())
+
+    def test_email_sponsorship_reset_needs_a_current_season(self) -> None:
+        player = make_player("was-sponsored@x.com")
+        player.sponsored = True
+        player.save()
+        with no_season_today():
+            out, err = self.run_command("email_sponsorship_reset")
+        self.assertIn("No current season.", err)
+        self.assertEqual(out, "")
+        self.assertFalse(Task.objects.exists())
+
+    def test_sync_razorpay_transactions_refuses_a_bad_since(self) -> None:
+        with self.assertRaisesMessage(CommandError, "YYYY-MM-DD"):
+            call_command("sync_razorpay_transactions", "--since", "last week")
+
+    def test_sync_razorpay_transactions_skips_refunds_it_cannot_use(self) -> None:
+        player = make_player("payer@x.com")
+        RazorpayTransaction.objects.create(
+            order_id="order_known",
+            payment_id="pay_known",
+            amount=75000,
+            currency="INR",
+            user=player.user,
+            status=RazorpayTransaction.TransactionStatusChoices.COMPLETED,
+        )
+        refunds = [
+            # A dashboard refund that failed: no money moved, nothing to record.
+            {"id": "rfnd_failed", "payment_id": "pay_known", "amount": 75000, "status": "failed"},
+            # A refund of a payment the Hub never saw.
+            {"id": "rfnd_other", "payment_id": "pay_other", "amount": 100, "status": "processed"},
+        ]
+        command = "server.management.commands.sync_razorpay_transactions"
+        with mock.patch(f"{command}.get_transactions", return_value=[]), mock.patch(
+            f"{command}.get_refunds", return_value=refunds
+        ):
+            out, _ = self.run_command("sync_razorpay_transactions")
+
+        self.assertIn("Recorded 0 refunds.", out)
+        self.assertFalse(RazorpayRefund.objects.exists())
+        self.assertFalse(RazorpayTransactionPlayer.objects.filter(needs_review=True).exists())
+
+
+class TestMembershipMigrationReport(TestCase):
+    def setUp(self) -> None:
+        self.season = Season.objects.get(name="Season 2026-2027")
+
+    def hold(self, player: Player) -> Membership:
+        return Membership.objects.create(
+            player=player,
+            season=self.season,
+            start_date=self.season.start_date,
+            end_date=self.season.end_date,
+        )
+
+    def test_it_counts_what_the_migration_would_change(self) -> None:
+        lost = make_player("lost@x.com")  # Paid, and the membership was overwritten.
+        unpaid = make_player("unpaid@x.com")  # Holds one, never paid for it.
+        paid = make_player("paid@x.com")  # Paid, and holds it.
+        make_transaction(order_id="o_lost", season=self.season, players=[lost], amount=75000)
+        make_transaction(order_id="o_paid", season=self.season, players=[paid], amount=75000)
+        # An order that was never paid recovers nothing.
+        make_transaction(
+            order_id="o_abandoned",
+            season=self.season,
+            players=[make_player("abandoned@x.com")],
+            amount=75000,
+            status="created",
+        )
+        unpaid_row = self.hold(unpaid)
+        paid_row = self.hold(paid)
+        for status in (ServiceRequestStatus.APPROVED, ServiceRequestStatus.PENDING):
+            ServiceRequest.objects.create(
+                user=unpaid.user,
+                type=ServiceRequestType.REQUEST_SPONSORED_MEMBERSHIP,
+                message="please",
+                status=status,
+            )
+
+        out = StringIO()
+        call_command("membership_migration_report", stdout=out)
+        report = out.getvalue()
+
+        self.assertIn("memberships:            2", report)
+        self.assertIn("with no tier:         2", report)
+        self.assertIn("recoverable history:  1", report)
+        self.assertIn("no completed payment: 1", report)
+        self.assertIn("approved sponsorships touched since 2026-27 began: 1", report)
+        self.assertIn("Every row can be placed in a season.", report)
+        self.assertIn(f"membership {unpaid_row.pk}  player {unpaid.pk}", report)
+        self.assertNotIn(f"membership {paid_row.pk}  player {paid.pk}", report)

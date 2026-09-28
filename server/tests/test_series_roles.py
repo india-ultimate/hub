@@ -1,11 +1,13 @@
 """A place on a series roster is decided by the role, not by a flag."""
 
+from typing import Any
+
 from django.test import TestCase
 
 from server.core.models import Player, Team, User
 from server.membership.models import Membership, MembershipPlan, MembershipType
 from server.season.models import Season
-from server.series.models import Role, Series, SeriesRegistration
+from server.series.models import Role, Series, SeriesRegistration, SeriesRosterInvitation
 from server.series.utils import change_series_role, register_player
 from server.tournament.models import Event, Registration, Tournament
 
@@ -212,3 +214,110 @@ class TestEventCapOnRoleChange(TestCase):
         self.assertEqual(200, response.status_code)
         self.staff.refresh_from_db()
         self.assertTrue(self.staff.is_playing)
+
+
+class TestSeriesRoleEndpoint(TestCase):
+    """PUT /series/{slug}/team/{slug}/roster/{id}/role, as a team admin would."""
+
+    def setUp(self) -> None:
+        self.season = Season.objects.get(name="Season 2026-2027")
+        self.series = make_series(self.season)
+        self.series.series_roster_max_players = 1
+        self.series.save()
+        self.team = Team.objects.create(name="Team A")
+        self.series.teams.add(self.team)
+        self.admin = User.objects.create(username="admin@example.com", email="admin@example.com")
+        self.team.admins.add(self.admin)
+        self.client.force_login(self.admin)
+
+    def rostered(self, email: str, slug: str, role: str) -> SeriesRegistration:
+        player = make_player(email)
+        Membership.objects.create(
+            player=player,
+            season=self.season,
+            plan=MembershipPlan.objects.get(season=self.season, type__slug=slug),
+            is_active=True,
+            waiver_valid=True,
+            start_date=self.season.start_date,
+            end_date=self.season.end_date,
+        )
+        registration, error = register_player(self.series, self.team, player, role)
+        assert registration is not None, error  # noqa: S101 - narrows the type
+        return registration
+
+    def put_role(
+        self, registration: SeriesRegistration, role: str, series: str = "", team: str = ""
+    ) -> Any:
+        url = (
+            f"/api/series/{series or self.series.slug}/team/{team or self.team.slug}"
+            f"/roster/{registration.id}/role"
+        )
+        return self.client.put(url, data={"role": role}, content_type="application/json")
+
+    def assert_role(self, registration: SeriesRegistration, role: str) -> None:
+        registration.refresh_from_db()
+        self.assertEqual(role, registration.role)
+
+    def test_a_team_admin_can_change_a_role(self) -> None:
+        registration = self.rostered("cap@example.com", "regular", Role.DEFAULT)
+        response = self.put_role(registration, Role.CAPTAIN)
+        self.assertEqual(200, response.status_code, response.content)
+        self.assertEqual(Role.CAPTAIN, response.json()["role"])
+        self.assert_role(registration, Role.CAPTAIN)
+
+    def test_someone_who_is_not_a_team_admin_is_refused(self) -> None:
+        registration = self.rostered("cap@example.com", "regular", Role.DEFAULT)
+        self.client.force_login(User.objects.create(username="nosy", email="nosy@example.com"))
+        response = self.put_role(registration, Role.CAPTAIN)
+        self.assertEqual(401, response.status_code)
+        self.assert_role(registration, Role.DEFAULT)
+
+    def test_an_invalid_role_is_refused(self) -> None:
+        registration = self.rostered("cap@example.com", "regular", Role.DEFAULT)
+        response = self.put_role(registration, "BOSS")
+        self.assertEqual(400, response.status_code)
+        self.assertEqual("Invalid role", response.json()["message"])
+        self.assert_role(registration, Role.DEFAULT)
+
+    def test_an_unknown_series_team_or_registration_is_refused(self) -> None:
+        registration = self.rostered("cap@example.com", "regular", Role.DEFAULT)
+        for response in (
+            self.put_role(registration, Role.CAPTAIN, series="nope"),
+            self.put_role(registration, Role.CAPTAIN, team="nope"),
+        ):
+            self.assertEqual(400, response.status_code)
+            self.assertEqual("Series/Team does not exist", response.json()["message"])
+
+        # A registration on another team's roster is not this team's to change.
+        other = Team.objects.create(name="Team B")
+        other.admins.add(self.admin)
+        response = self.put_role(registration, Role.CAPTAIN, team=str(other.slug))
+        self.assertEqual(400, response.status_code)
+        self.assertEqual("Registration does not exist", response.json()["message"])
+        self.assert_role(registration, Role.DEFAULT)
+
+    def test_a_promotion_the_membership_does_not_cover_is_refused(self) -> None:
+        registration = self.rostered("coach@example.com", "community", Role.COACH)
+        response = self.put_role(registration, Role.DEFAULT)
+        self.assertEqual(400, response.status_code)
+        self.assertIn("does not cover playing", response.json()["message"])
+        self.assert_role(registration, Role.COACH)
+
+    def test_a_promotion_past_the_roster_cap_is_refused(self) -> None:
+        self.rostered("player@example.com", "regular", Role.DEFAULT)
+        manager = self.rostered("manager@example.com", "regular", Role.MANAGER)
+        response = self.put_role(manager, Role.DEFAULT)
+        self.assertEqual(400, response.status_code)
+        self.assertIn("Only 1 players", response.json()["message"])
+        self.assert_role(manager, Role.MANAGER)
+
+    def test_an_invitation_with_an_invalid_role_is_refused(self) -> None:
+        player = make_player("invitee@example.com")
+        response = self.client.post(
+            f"/api/series/{self.series.slug}/team/{self.team.slug}/invitation",
+            data={"to_player_id": player.id, "expires_on": None, "role": "BOSS"},
+            content_type="application/json",
+        )
+        self.assertEqual(400, response.status_code)
+        self.assertEqual("Invalid role", response.json()["message"])
+        self.assertFalse(SeriesRosterInvitation.objects.exists())

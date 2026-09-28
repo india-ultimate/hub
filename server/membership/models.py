@@ -91,19 +91,6 @@ class MembershipQuerySet(models.QuerySet["Membership"]):
     def current(self) -> "MembershipQuerySet":
         return self.for_season(Season.current())
 
-    def for_event(self, event: Event) -> "MembershipQuerySet":
-        return self.for_season(Season.containing(event.start_date))
-
-    def with_scope(self, scope: str, season: Season | None) -> "MembershipQuerySet":
-        """Members of a season whose tier allows something.
-
-        A membership with no tier predates the catalog, when every membership
-        was a full one, so it allows everything.
-        """
-        return self.for_season(season).filter(
-            models.Q(plan__isnull=True) | models.Q(plan__type__scopes__scope=scope)
-        )
-
 
 class Membership(ExportModelOperationsMixin("membership"), models.Model):  # type: ignore[misc]
     """What one player holds for one season."""
