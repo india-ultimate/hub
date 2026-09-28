@@ -311,7 +311,7 @@ def list_players(
 ) -> list[PlayerTinySchema | PlayerSchema]:
     # This list is not paginated, and both schemas read a player's name, email,
     # phone, subscription and teams -- five queries each over every player there is.
-    players = Player.objects.select_related("user", "subscription").prefetch_related("teams")
+    players = Player.objects.select_related("user").prefetch_related("teams")
     is_staff = request.user.is_staff
     if is_staff and full_schema:
         return [PlayerSchema.from_orm(p) for p in players]
@@ -1066,9 +1066,8 @@ def waiver(
     except Player.DoesNotExist:
         return 400, {"message": "Player does not exist"}
 
-    try:
-        subscription = player.subscription
-    except Subscription.DoesNotExist:
+    subscription = Subscription.objects.filter(player=player).order_by("-start_date").first()
+    if subscription is None:
         return 400, {"message": "Player does not have a subscription"}
 
     if player.is_minor:
@@ -1316,9 +1315,8 @@ def add_player_to_roster(
         if not can_register and error:
             return 400, error
     elif event.is_subscription_needed:
-        try:
-            subscription = player.subscription
-        except Subscription.DoesNotExist:
+        subscription = Subscription.objects.filter(player=player).order_by("-start_date").first()
+        if subscription is None:
             return 400, {"message": "Player's subscription does not exist !"}
         if not subscription.is_active:
             return 400, {"message": "Player's subscription is not active !"}

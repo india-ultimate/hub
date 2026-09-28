@@ -1112,7 +1112,7 @@ Available Tools:
                 "waiver_signed_by": subscription.waiver_signed_by.get_full_name()
                 if subscription.waiver_signed_by
                 else None,
-                "season": subscription.season.name if subscription.season else None,
+                "season": subscription.season.name,
                 "event": subscription.event.name if subscription.event else None,
             }
         except Player.DoesNotExist:

@@ -100,9 +100,8 @@ def can_invite_player_to_series_roster(
 def register_player(
     series: Series, team: Team, player: Player
 ) -> tuple[SeriesRegistration, None] | tuple[None, message_response]:
-    try:
-        subscription = player.subscription
-    except Subscription.DoesNotExist:
+    subscription = Subscription.objects.filter(player=player).order_by("-start_date").first()
+    if subscription is None:
         return None, {
             "message": "Subscription missing",
             "description": "You need an active IU subscription to register for the series.",
