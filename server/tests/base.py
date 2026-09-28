@@ -46,6 +46,9 @@ def fake_order(amount: int) -> dict[str, Any]:
     order_id = f"order_{fake_id(16)}"
     return {
         "order_id": order_id,
+        # Razorpay's own order status, saved as returned: this is what an
+        # unpaid order looks like in production, not PENDING.
+        "status": "created",
         "amount": amount,
         "currency": "INR",
         "receipt": "78e1cdbe:2023-06-01:1689402191",

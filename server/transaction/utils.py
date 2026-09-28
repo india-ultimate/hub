@@ -11,6 +11,7 @@ from server.season.models import Season
 from server.subscription import catalog
 from server.subscription.models import Subscription
 from server.subscription.pricing import UPGRADE, NeedsGrant, NotForSale, Quote, quote
+from server.subscription.purchase import fulfil
 from server.tournament.models import Event, Registration, Tournament
 from server.tournament.utils import can_register_player_to_series_event
 from server.types import message_response
@@ -244,10 +245,9 @@ def create_transaction(
                 if not can_register and error:
                     return 400, error
             elif event.is_subscription_needed:
-                subscription = (
-                    Subscription.objects.filter(player=player).order_by("-start_date").first()
-                )
-                if subscription is None:
+                try:
+                    subscription = player.subscription
+                except Subscription.DoesNotExist:
                     return 400, {
                         "message": f"Player - {player.user.get_full_name()} subscription does not exist !"
                     }
@@ -354,30 +354,32 @@ def create_transaction(
     return 200, data
 
 
-def update_transaction_player_subscriptions(
-    transaction: RazorpayTransaction | PhonePeTransaction,
-) -> None:
-    subscription_defaults = {
-        "start_date": transaction.start_date,
-        "end_date": transaction.end_date,
-        "event": transaction.event,
-        # Subscription.season is required now; fall back to whichever season
-        # the transaction's dates fall in when it doesn't carry one.
-        "season": transaction.season or Season.containing(transaction.start_date),
-        "is_active": True,
-    }
-    for player in transaction.players.all():
-        # A player can hold one row per season now, so get_or_create(player=
-        # player) raises MultipleObjectsReturned once they hold more than
-        # one. Reuse the most recent row, same as this did back when a
-        # player could only ever have one.
-        subscription = Subscription.objects.filter(player=player).order_by("-start_date").first()
-        if subscription is None:
-            subscription = Subscription.objects.create(player=player, **subscription_defaults)
-        else:
-            for key, value in subscription_defaults.items():
-                setattr(subscription, key, value)
-            subscription.save()
+def apply_transaction(transaction: RazorpayTransaction, notify: bool = True) -> None:
+    """Give the buyer what a captured payment bought.
+
+    Every payment route ends here, so the one guard below is the only place
+    that decides whether an order is settled enough to act on. A refunded
+    order never is, however many times Razorpay reports it as captured.
+
+    `notify` off skips the confirmation emails, for a bulk historical resync.
+    """
+    if transaction.status != RazorpayTransaction.TransactionStatusChoices.COMPLETED:
+        return
+
+    kinds = RazorpayTransaction.TransactionTypeChoices
+    if transaction.type == kinds.ANNUAL_SUBSCRIPTION:
+        fulfil(transaction, notify=notify)
+    elif transaction.type == kinds.TEAM_REGISTRATION:
+        update_transaction_team_registration(transaction)
+    elif transaction.type == kinds.PLAYER_REGISTRATION:
+        update_transaction_player_registrations(transaction)
+    elif transaction.type == kinds.PARTIAL_TEAM_REGISTRATION:
+        update_transaction_partial_team_registration(transaction)
+    elif transaction.type == kinds.FORM_PAYMENT:
+        # Lazy import to avoid a transaction <-> forms import cycle.
+        from server.forms.utils import mark_form_response_paid
+
+        mark_form_response_paid(transaction)
 
 
 def update_transaction_team_registration(
