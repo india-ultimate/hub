@@ -13,10 +13,7 @@ from django.test import Client
 from django.test.client import MULTIPART_CONTENT
 from django.utils.timezone import now
 
-from server.constants import (
-    ANNUAL_SUBSCRIPTION_AMOUNT,
-    EVENT_SUBSCRIPTION_AMOUNT,
-)
+from server.constants import ANNUAL_SUBSCRIPTION_AMOUNT
 from server.core.accounts import find_login_user
 from server.core.models import Guardianship, Player, UCPerson, User
 from server.duplicates.merge import merge_accounts
@@ -24,12 +21,17 @@ from server.duplicates.models import EmailAlias
 from server.passkey_utils import ClientResponse
 from server.season.models import Season
 from server.subscription import sponsorship
-from server.subscription.models import Subscription
+from server.subscription.models import Subscription, SubscriptionPlan, SubscriptionType
 from server.tests.base import ApiBaseTestCase, create_pool, fake_id, fake_order, start_tournament
 from server.tests.test_subscription import SubscriptionStatusTestCase
-from server.tournament.models import Event, Match, UCRegistration
+from server.tournament.models import Match, UCRegistration
 from server.transaction.client.phonepe import update_transaction
-from server.transaction.models import ManualTransaction, PhonePeTransaction, RazorpayTransaction
+from server.transaction.models import (
+    ManualTransaction,
+    PhonePeTransaction,
+    RazorpayTransaction,
+    RazorpayTransactionPlayer,
+)
 from server.utils import today
 
 
@@ -576,10 +578,8 @@ class TestPayment(ApiBaseTestCase):
         self.assertEqual(self.user, transaction.user)
         self.assertEqual(amount, transaction.amount)
         self.assertIn(player, transaction.players.all())
-        self.assertEqual(
-            RazorpayTransaction.TransactionStatusChoices.PENDING,
-            transaction.status,
-        )
+        # Saved with Razorpay's own order status, as production stores it.
+        self.assertEqual("created", transaction.status)
         self.assertEqual(self.on_sale.start_date, transaction.start_date)
         self.assertEqual(self.on_sale.end_date, transaction.end_date)
         self.assertEqual(self.on_sale, transaction.season)
@@ -626,215 +626,113 @@ class TestPayment(ApiBaseTestCase):
         self.assertEqual(self.on_sale.end_date, transaction.end_date)
         self.assertEqual(set(player_ids), {p.id for p in transaction.players.all()})
         self.assertFalse(Subscription.objects.filter(player_id__in=player_ids).exists())
-        self.assertEqual(
-            RazorpayTransaction.TransactionStatusChoices.PENDING,
-            transaction.status,
+        # Saved with Razorpay's own order status, as production stores it.
+        self.assertEqual("created", transaction.status)
+
+    def paid_order(self, members: list[Player], slug: str = "regular") -> RazorpayTransaction:
+        """A pending order with one priced line per person."""
+        plan = SubscriptionPlan.objects.get(
+            season=self.on_sale, type=SubscriptionType.objects.get(slug=slug)
         )
-
-    def test_payment_success(self) -> None:
-        c = self.client
-        amount = 60000
-        order = fake_order(amount)
-        order_id = order["order_id"]
-        user = self.user
-        season = Season.current()
-        assert season is not None  # noqa: S101 - the seeded seasons cover today
-        start_date = season.start_date.strftime("%Y-%m-%d")
-        end_date = season.end_date.strftime("%Y-%m-%d")
-        player = self.player
-        subscription = Subscription.objects.create(
-            start_date=start_date, end_date=end_date, player=player, season=season
-        )
-        order.update(
-            {"start_date": start_date, "end_date": end_date, "user": user, "players": [player]}
-        )
-        transaction = RazorpayTransaction.create_from_order_data(order)
-        self.assertFalse(subscription.is_active)
-        self.assertEqual(self.user, transaction.user)
-        self.assertIn(player, transaction.players.all())
-
-        payment_id = f"pay_{fake_id(16)}"
-        signature = f"{fake_id(64)}"
-        with mock.patch("server.transaction.client.razorpay.verify_payment", return_value=True):
-            response = c.post(
-                "/api/transactions/razorpay/callback",
-                data={
-                    "razorpay_order_id": order_id,
-                    "razorpay_payment_id": payment_id,
-                    "razorpay_signature": signature,
-                },
-                content_type="application/json",
-            )
-
-        self.assertEqual(200, response.status_code)
-        data = response.json()
-        self.assertEqual(1, len(data))
-        player_data = data[0]
-        self.assertEqual(player.id, player_data["id"])
-        # iu_id is excluded from the schema now; it lives on
-        # Player, not Subscription, and nothing assigns it yet.
-        self.assertEqual(subscription.id, player_data["subscription"]["id"])
-
-        transaction.refresh_from_db()
-        self.assertEqual(transaction.payment_id, payment_id)
-        self.assertEqual(
-            RazorpayTransaction.TransactionStatusChoices.COMPLETED,
-            transaction.status,
-        )
-
-        subscription.refresh_from_db()
-        self.assertTrue(subscription.is_active)
-        self.assertEqual(start_date, subscription.start_date.strftime("%Y-%m-%d"))
-        self.assertEqual(end_date, subscription.end_date.strftime("%Y-%m-%d"))
-
-    def test_payment_success_group_subscription(self) -> None:
-        c = self.client
-        n_players = 4
-        amount = 60000 * n_players
-        order = fake_order(amount)
-        order_id = order["order_id"]
-        user = self.user
-        season = Season.current()
-        assert season is not None  # noqa: S101 - the seeded seasons cover today
-        start_date = season.start_date.strftime("%Y-%m-%d")
-        end_date = season.end_date.strftime("%Y-%m-%d")
-
-        players = []
-        for _ in range(n_players):
-            username = str(uuid.uuid4())[:8]
-            user_ = User.objects.create(username=username)
-            date_of_birth = "2001-01-01"
-            player = Player.objects.create(user=user_, date_of_birth=date_of_birth)
-            players.append(player)
-
-        order.update(
-            {"start_date": start_date, "end_date": end_date, "user": user, "players": players}
-        )
-        transaction = RazorpayTransaction.create_from_order_data(order)
-        self.assertEqual(self.user, transaction.user)
-        for player in players:
-            self.assertIn(player, transaction.players.all())
-
-        payment_id = f"pay_{fake_id(16)}"
-        signature = f"{fake_id(64)}"
-        with mock.patch("server.transaction.client.razorpay.verify_payment", return_value=True):
-            response = c.post(
-                "/api/transactions/razorpay/callback",
-                data={
-                    "razorpay_order_id": order_id,
-                    "razorpay_payment_id": payment_id,
-                    "razorpay_signature": signature,
-                },
-                content_type="application/json",
-            )
-
-        self.assertEqual(200, response.status_code)
-        data = response.json()
-        self.assertEqual(n_players, len(data))
-        for player_data in data:
-            subscription = player_data["subscription"]
-            self.assertTrue(subscription["is_active"])
-            self.assertEqual(start_date, subscription["start_date"])
-            self.assertEqual(end_date, subscription["end_date"])
-
-        transaction.refresh_from_db()
-        self.assertEqual(transaction.payment_id, payment_id)
-        self.assertEqual(
-            RazorpayTransaction.TransactionStatusChoices.COMPLETED,
-            transaction.status,
-        )
-
-    def test_payment_success_event_subscription(self) -> None:
-        c = self.client
-        amount = EVENT_SUBSCRIPTION_AMOUNT
-        order = fake_order(amount)
-        order_id = order["order_id"]
-        user = self.user
-        start_old = "2022-06-01"
-        end_old = "2023-05-31"
-        current_season = Season.current()
-        assert current_season is not None  # noqa: S101 - the seeded seasons cover today
-        start_date = current_season.start_date.strftime("%Y-%m-%d")
-        end_date = current_season.end_date.strftime("%Y-%m-%d")
-        player = self.player
-        event_old = Event.objects.create(
-            start_date=start_old,
-            end_date=end_old,
-            title="Old",
-            team_registration_start_date="2022-05-01",
-            team_registration_end_date="2022-05-10",
-            player_registration_start_date="2022-05-12",
-            player_registration_end_date="2022-05-30",
-        )
-        event = Event.objects.create(
-            start_date=start_date,
-            end_date=end_date,
-            title="New",
-            team_registration_start_date="2023-05-01",
-            team_registration_end_date="2023-05-10",
-            player_registration_start_date="2023-05-12",
-            player_registration_end_date="2023-05-30",
-        )
-        event.refresh_from_db()
-        season_old = Season.objects.get(name="Season 2022-2023")
-        subscription = Subscription.objects.create(
-            start_date=start_old,
-            end_date=end_old,
-            player=player,
-            event=event_old,
-            season=season_old,
-        )
+        order = fake_order(plan.amount * len(members))
         order.update(
             {
-                "start_date": start_date,
-                "end_date": end_date,
-                "user": user,
-                "players": [player],
-                "event": event,
+                "start_date": self.on_sale.start_date,
+                "end_date": self.on_sale.end_date,
+                "user": self.user,
+                "season": self.on_sale,
             }
         )
         transaction = RazorpayTransaction.create_from_order_data(order)
-        self.assertFalse(subscription.is_active)
-        self.assertEqual(self.user, transaction.user)
-        self.assertIn(player, transaction.players.all())
-        self.assertEqual(event_old, Subscription.objects.get(player=player).event)
-        self.assertEqual(event, transaction.event)
+        for member in members:
+            RazorpayTransactionPlayer.objects.create(
+                transaction=transaction, player=member, plan=plan, amount=plan.amount
+            )
+        return transaction
 
-        payment_id = f"pay_{fake_id(16)}"
-        signature = f"{fake_id(64)}"
+    def pay(self, transaction: RazorpayTransaction) -> Any:
         with mock.patch("server.transaction.client.razorpay.verify_payment", return_value=True):
-            response = c.post(
+            return self.client.post(
                 "/api/transactions/razorpay/callback",
                 data={
-                    "razorpay_order_id": order_id,
-                    "razorpay_payment_id": payment_id,
-                    "razorpay_signature": signature,
+                    "razorpay_order_id": transaction.order_id,
+                    "razorpay_payment_id": f"pay_{fake_id(16)}",
+                    "razorpay_signature": f"{fake_id(64)}",
                 },
                 content_type="application/json",
             )
 
+    def test_payment_success(self) -> None:
+        player = self.player
+        transaction = self.paid_order([player])
+        self.assertFalse(Subscription.objects.filter(player=player).exists())
+
+        response = self.pay(transaction)
+
         self.assertEqual(200, response.status_code)
         data = response.json()
         self.assertEqual(1, len(data))
-        player_data = data[0]
-        self.assertEqual(player.id, player_data["id"])
-        # iu_id is excluded from the schema now; it lives on
-        # Player, not Subscription, and nothing assigns it yet.
-        self.assertEqual(subscription.id, player_data["subscription"]["id"])
+        self.assertEqual(player.id, data[0]["id"])
+        self.assertTrue(data[0]["subscription"]["is_active"])
 
         transaction.refresh_from_db()
-        self.assertEqual(transaction.payment_id, payment_id)
         self.assertEqual(
             RazorpayTransaction.TransactionStatusChoices.COMPLETED,
             transaction.status,
         )
-        self.assertEqual(event, transaction.event)
+        # The signature is written to the column it belongs in.
+        self.assertTrue(transaction.payment_signature)
 
-        subscription.refresh_from_db()
+        subscription = Subscription.objects.get(player=player, season=self.on_sale)
         self.assertTrue(subscription.is_active)
-        self.assertEqual(event.start_date, subscription.start_date)
-        self.assertEqual(event.end_date, subscription.end_date)
-        self.assertEqual(event, subscription.event)
+        self.assertEqual(self.on_sale.start_date, subscription.start_date)
+        self.assertEqual(self.on_sale.end_date, subscription.end_date)
+        self.assertEqual(75000, subscription.amount_paid)
+        player.refresh_from_db()
+        self.assertTrue(player.iu_id)
+
+    def test_a_replayed_callback_changes_nothing(self) -> None:
+        transaction = self.paid_order([self.player])
+        self.assertEqual(200, self.pay(transaction).status_code)
+        transaction.refresh_from_db()
+        first_payment_id = transaction.payment_id
+
+        # Razorpay's checkout can fire the callback twice, and the buyer can
+        # double-click. A settled order is not acted on again.
+        response = self.pay(transaction)
+
+        self.assertEqual(200, response.status_code)
+        self.assertEqual(self.player.id, response.json()[0]["id"])
+        transaction.refresh_from_db()
+        self.assertEqual(first_payment_id, transaction.payment_id)
+        self.assertEqual(1, Subscription.objects.filter(player=self.player).count())
+
+    def test_payment_success_group_subscription(self) -> None:
+        players = []
+        for _ in range(4):
+            user_ = User.objects.create(username=str(uuid.uuid4())[:8])
+            players.append(Player.objects.create(user=user_, date_of_birth="2001-01-01"))
+
+        transaction = self.paid_order(players)
+        response = self.pay(transaction)
+
+        self.assertEqual(200, response.status_code)
+        data = response.json()
+        self.assertEqual(len(players), len(data))
+        for player_data in data:
+            subscription = player_data["subscription"]
+            self.assertTrue(subscription["is_active"])
+            self.assertEqual(str(self.on_sale.start_date), subscription["start_date"])
+            self.assertEqual(str(self.on_sale.end_date), subscription["end_date"])
+
+        transaction.refresh_from_db()
+        self.assertEqual(
+            RazorpayTransaction.TransactionStatusChoices.COMPLETED,
+            transaction.status,
+        )
+        self.assertEqual(
+            len(players), Subscription.objects.filter(season=self.on_sale, is_active=True).count()
+        )
 
     def test_list_transactions(self) -> None:
         c = self.client

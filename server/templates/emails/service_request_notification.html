@@ -213,7 +213,10 @@
                 <!-- Status Message -->
                 <div class="status-message {{ service_request.status|lower }}">
                   {% if service_request.status == 'APPROVED' %}
-                  <p>🎉 Great news! Your service request has been approved.</p>
+                  <p>
+                    🎉 Great news! Your service request has been approved{% if season %}
+                    for {{ season.name }}{% endif %}.
+                  </p>
                   {% else %}
                   <p>
                     📋 We have reviewed your service request and unfortunately,
@@ -245,6 +248,14 @@
                       >
                     </td>
                   </tr>
+                  {% if season %}
+                  <tr>
+                    <td class="detail-row">
+                      <span class="detail-label">Season:</span>
+                      <span class="detail-value">{{ season.name }}</span>
+                    </td>
+                  </tr>
+                  {% endif %}
                 </table>
 
                 <!-- User Message -->

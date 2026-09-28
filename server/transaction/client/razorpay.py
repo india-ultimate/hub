@@ -94,12 +94,21 @@ def update_transaction(payment: RazorpayCallbackSchema) -> RazorpayTransaction |
 
     n = len("razorpay_")
     for key, value in payment.dict().items():
-        setattr(transaction, key[n:], value)
+        field = key[n:]
+        # The model field is payment_signature; writing "signature" silently
+        # went nowhere, which is why every completed row has an empty one.
+        setattr(transaction, "payment_signature" if field == "signature" else field, value)
 
     return mark_transaction_completed(transaction)
 
 
 def mark_transaction_completed(transaction: RazorpayTransaction) -> RazorpayTransaction:
+    # A refund is the last word on an order. Razorpay keeps reporting the
+    # payment as captured afterwards, and the nightly sync used to march
+    # refunded rows back to completed.
+    if transaction.status == RazorpayTransaction.TransactionStatusChoices.REFUNDED:
+        return transaction
+
     transaction.status = RazorpayTransaction.TransactionStatusChoices.COMPLETED
     transaction.save()
 
