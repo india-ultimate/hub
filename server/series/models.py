@@ -9,6 +9,26 @@ from server.season.models import Season
 from server.utils import default_invitation_expiry_date, slugify_max
 
 
+class Role(models.TextChoices):
+    """A place on a roster. Shared with Registration.Role, which tournament
+    models can't define for us: they import this module."""
+
+    DEFAULT = "DFLT", _("Default")
+    CAPTAIN = "CAP", _("Captain")
+    SPIRIT_CAPTAIN = "SCAP", _("Spirit Captain")
+    COACH = "COACH", _("Coach")
+    ASSISTANT_COACH = "ACOACH", _("Assistant Coach")
+    MANAGER = "MNGR", _("Manager")
+
+
+# Roles that take up a player spot. Everything else is non-playing staff.
+PLAYING_ROLES = frozenset({Role.DEFAULT, Role.CAPTAIN, Role.SPIRIT_CAPTAIN})
+
+
+def is_playing_role(role: str) -> bool:
+    return role in PLAYING_ROLES
+
+
 class Series(ExportModelOperationsMixin("series"), models.Model):  # type: ignore[misc]
     class Type(models.TextChoices):
         MIXED = "MXD", _("Mixed")
@@ -66,6 +86,7 @@ class SeriesRegistration(ExportModelOperationsMixin("series_registration"), mode
     series = models.ForeignKey(Series, on_delete=models.CASCADE)
     team = models.ForeignKey(Team, on_delete=models.CASCADE)
     player = models.ForeignKey(Player, on_delete=models.CASCADE)
+    role = models.CharField(max_length=6, choices=Role.choices, default=Role.DEFAULT)
 
 
 class SeriesRosterInvitation(ExportModelOperationsMixin("series_roster_invitation"), models.Model):  # type: ignore[misc]
@@ -88,3 +109,4 @@ class SeriesRosterInvitation(ExportModelOperationsMixin("series_roster_invitatio
     expires_on = models.DateField(default=default_invitation_expiry_date)
     created_at = models.DateTimeField(auto_now_add=True)
     rsvp_date = models.DateField(blank=True, null=True)
+    role = models.CharField(max_length=6, choices=Role.choices, default=Role.DEFAULT)
