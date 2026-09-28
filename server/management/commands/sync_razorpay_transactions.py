@@ -19,6 +19,10 @@ from server.transaction.utils import apply_transaction
 
 STATUSES = {s.value: s for s in RazorpayTransaction.TransactionStatusChoices}
 
+# Razorpay payment statuses that mean "not captured yet", mapped onto the
+# Hub's own PENDING -- neither is a status the Hub records directly.
+UNPAID_STATUSES = {"created", "authorized"}
+
 # Razorpay's refund statuses, as the Hub records them.
 REFUND_STATUSES = {
     "processed": RazorpayRefund.Status.PROCESSED,
@@ -59,7 +63,13 @@ class Command(BaseCommand):
 
         order_ids_by_status: dict[str, set[str]] = {}
         for payment in get_transactions(since):
-            status_value = "completed" if payment["status"] == "captured" else payment["status"]
+            razorpay_status = payment["status"]
+            if razorpay_status == "captured":
+                status_value = "completed"
+            elif razorpay_status in UNPAID_STATUSES:
+                status_value = "pending"
+            else:
+                status_value = razorpay_status
             order_ids_by_status.setdefault(status_value, set()).add(payment["order_id"])
         # A card that failed before a retry was captured leaves both payments
         # on one order. Any capture means the order is paid, so the failed try
@@ -67,7 +77,15 @@ class Command(BaseCommand):
         paid = order_ids_by_status.get("completed", set())
 
         for status_value, order_ids in order_ids_by_status.items():
-            status = STATUSES[status_value]
+            status = STATUSES.get(status_value)
+            if status is None:
+                self.stderr.write(
+                    self.style.WARNING(
+                        f"Unknown Razorpay status {status_value!r} for {len(order_ids)} "
+                        "order(s); skipping them."
+                    )
+                )
+                continue
             qs = (
                 RazorpayTransaction.objects.filter(order_id__in=order_ids).exclude(status=status)
                 # A refund is the last word on an order: nothing Razorpay
