@@ -42,6 +42,8 @@ from server.election.models import (
     VoterVerification,
 )
 from server.forms.models import Form, FormResponse
+from server.receipts.models import Receipt
+from server.receipts.money import format_inr
 from server.season.models import Season
 from server.series.models import Series, SeriesRegistration, SeriesRosterInvitation
 from server.servicerequests.models import ServiceRequest, ServiceRequestStatus, ServiceRequestType
@@ -1287,3 +1289,18 @@ class RazorpayRefundAdmin(ReadOnly, admin.ModelAdmin[RazorpayRefund]):
     search_fields = ["transaction__order_id", "razorpay_refund_id"]
     list_select_related = ["transaction", "created_by"]
     date_hierarchy = "created_at"
+
+
+@admin.register(Receipt)
+class ReceiptAdmin(ReadOnly, admin.ModelAdmin[Receipt]):
+    list_display = ["number", "kind", "issued_at", "payer_name", "total_inr", "open_link"]
+    list_filter = ["kind", "financial_year"]
+    search_fields = ["number", "payer_name", "payer_email", "order_id", "reference"]
+
+    @admin.display(description="Total (INR)")
+    def total_inr(self, receipt: Receipt) -> str:
+        return format_inr(receipt.total)
+
+    @admin.display(description="Document")
+    def open_link(self, receipt: Receipt) -> str:
+        return format_html('<a href="/receipts/{}" target="_blank">View</a>', receipt.pk)

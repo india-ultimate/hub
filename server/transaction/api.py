@@ -9,6 +9,7 @@ from ninja import File, Router, UploadedFile
 
 from server.core.models import Player
 from server.lib.manual_transactions import validate_manual_transactions
+from server.receipts.models import Receipt
 from server.schema import (
     PlayerSchema,
     Response,
@@ -153,10 +154,20 @@ def list_transactions(
             continue
         transactions = list_transactions_by_type(user, payment_type, user_only, only_invalid)
         transaction_dicts = [schema.from_orm(t).dict() for t in transactions]
+        receipts: dict[str, tuple[int, str]] = {}
+        if payment_type == PaymentGateway.RAZORPAY:
+            receipts = {
+                order_id: (pk, number)
+                for order_id, pk, number in Receipt.objects.filter(
+                    kind=Receipt.Kind.RECEIPT,
+                    transaction_id__in=[d["order_id"] for d in transaction_dicts],
+                ).values_list("transaction_id", "id", "number")
+            }
         for d in transaction_dicts:
             d["type"] = payment_type.value
             if "payment_date" not in d:
                 d["payment_date"] = d["transaction_date"]
+            d["receipt_id"], d["receipt_number"] = receipts.get(d.get("order_id", ""), (None, None))
 
         response_data.extend(transaction_dicts)
     return response_data
