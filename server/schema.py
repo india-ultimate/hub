@@ -180,7 +180,10 @@ class PlayerSchema(ModelSchema):
 
     @staticmethod
     def resolve_subscription(player: Player) -> SubscriptionSchema | None:
-        subscription = player.current_subscription
+        if hasattr(player, "_prefetched_subscription"):
+            subscription = player._prefetched_subscription
+        else:
+            subscription = player.current_subscription
         return SubscriptionSchema.from_orm(subscription) if subscription is not None else None
 
     sponsored: bool
@@ -192,6 +195,8 @@ class PlayerSchema(ModelSchema):
         Computed, not the legacy `Player.sponsored` column: grants are per
         season now, and someone sponsored last season has to ask again.
         """
+        if hasattr(player, "_prefetched_sponsored"):
+            return bool(player._prefetched_sponsored)
         return has_grant(player, catalog.season_to_buy(player))
 
     vaccination: VaccinationSchema | None
@@ -283,7 +288,10 @@ class PlayerTinySchema(ModelSchema):
 
     @staticmethod
     def resolve_has_subscription(player: Player) -> bool:
-        subscription = player.current_subscription
+        if hasattr(player, "_prefetched_subscription"):
+            subscription = player._prefetched_subscription
+        else:
+            subscription = player.current_subscription
         return subscription is not None and subscription.is_active
 
     is_minor: bool
