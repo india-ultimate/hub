@@ -1,9 +1,11 @@
+"""A CSV of addresses, answered against subscriptions."""
+
 import csv
 from io import StringIO
 from pathlib import Path
 from typing import Any
 
-from server.core.models import Player
+from server.subscription.models import Subscription
 
 EMAIL_HEADER_NAME = "email"
 
@@ -48,11 +50,13 @@ def get_subscription_status(input_csv: Path | StringIO) -> dict[str, Any] | None
         print(f"Could not find CSV header: {EMAIL_HEADER_NAME}")
         return None
 
-    subscription_statuses = dict(
-        Player.objects.values_list("user__email", "subscriptions__is_active")
+    members = set(
+        Subscription.objects.current()
+        .filter(is_active=True)
+        .values_list("player__user__email", flat=True)
     )
 
     for email, row in csv_data.items():
-        row["subscription_status"] = bool(subscription_statuses.get(email, False))
+        row["subscription_status"] = email in members
 
     return csv_data

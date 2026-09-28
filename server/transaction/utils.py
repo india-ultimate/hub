@@ -8,8 +8,7 @@ from django.db.models import Model, Q, QuerySet
 
 from server.core.models import Player, Team, User
 from server.season.models import Season
-from server.subscription import catalog
-from server.subscription.models import Subscription
+from server.subscription import catalog, eligibility
 from server.subscription.pricing import UPGRADE, NeedsGrant, NotForSale, Quote, quote
 from server.subscription.purchase import fulfil
 from server.tournament.models import Event, Registration, Tournament
@@ -244,21 +243,10 @@ def create_transaction(
                 )
                 if not can_register and error:
                     return 400, error
-            elif event.is_subscription_needed:
-                try:
-                    subscription = player.subscription
-                except Subscription.DoesNotExist:
-                    return 400, {
-                        "message": f"Player - {player.user.get_full_name()} subscription does not exist !"
-                    }
-                if not subscription.is_active:
-                    return 400, {
-                        "message": f"Player - {player.user.get_full_name()} subscription is not active !"
-                    }
-                if not subscription.waiver_valid:
-                    return 400, {
-                        "message": f"Player - {player.user.get_full_name()} waiver is not signed!"
-                    }
+
+            subscription_error = eligibility.check(player, event, is_playing=True)
+            if subscription_error is not None:
+                return 400, subscription_error
 
             if Registration.objects.filter(event=event, player=player).exists():
                 return 400, {

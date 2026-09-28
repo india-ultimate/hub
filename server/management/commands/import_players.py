@@ -17,6 +17,8 @@ from server.core.models import (
     User,
     Vaccination,
 )
+from server.season.models import Season
+from server.subscription import sponsorship
 
 GENDERS = {t.label: t for t in Player.GenderTypes}
 STATE_UT = {t.label: t for t in StatesUTs}
@@ -98,9 +100,7 @@ class Command(BaseCommand):
                     "occupation": OCCUPATIONS.get(row["occupation"].strip(), None),
                     "educational_institution": row["educational_institution"].strip(),
                 }
-                sponsored = (row.get("sponsored") or "").strip()
-                if sponsored:
-                    player_data["sponsored"] = sponsored.upper() == "Y"
+                sponsored = (row.get("sponsored") or "").strip().upper() == "Y"
                 if player_data["gender"] != Player.GenderTypes.OTHER:
                     player_data["match_up"] = player_data["gender"]
 
@@ -137,6 +137,16 @@ class Command(BaseCommand):
                         pass
 
                 player.save()
+
+                # Sponsorship is a per-season grant now, not a column on the
+                # player. A sheet saying "N", or with no column at all, leaves
+                # any existing grant alone: revoking is an admin action.
+                if sponsored:
+                    season = Season.current()
+                    if season is None:
+                        self.stderr.write(self.style.ERROR(f"No current season: {email}"))
+                    else:
+                        sponsorship.grant(player, season, note="Imported from a sheet")
 
                 if has_guardian and not player.is_minor:
                     print(f"Ignoring guardian information for major: {email}")

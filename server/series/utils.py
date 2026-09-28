@@ -5,10 +5,17 @@ from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 
 from server.core.models import Player, Team, User
-from server.subscription.models import Subscription
+from server.subscription import eligibility
 from server.types import message_response
 
-from .models import Series, SeriesRegistration, SeriesRosterInvitation
+from .models import (
+    PLAYING_ROLES,
+    Role,
+    Series,
+    SeriesRegistration,
+    SeriesRosterInvitation,
+    is_playing_role,
+)
 
 
 class RegistrationError(Exception):
@@ -19,12 +26,37 @@ class RegistrationError(Exception):
         return self.message
 
 
+def playing_registrations(series: Series, team: Team) -> int:
+    """How many of a team's series roster spots are taken by players."""
+    return SeriesRegistration.objects.filter(
+        series=series, team=team, role__in=PLAYING_ROLES
+    ).count()
+
+
 def can_register_player_to_series_roster(
-    series: Series, team: Team, player: Player
+    series: Series,
+    team: Team,
+    player: Player,
+    role: str = Role.DEFAULT,
+    exclude_registration_id: int | None = None,
 ) -> tuple[bool, message_response | None]:
-    registered_teams_categories = SeriesRegistration.objects.filter(
-        series=series, player=player
-    ).values_list("team__category", flat=True)
+    """Whether this person may take a playing spot with this team.
+
+    `exclude_registration_id` leaves one row out, for a role change: without
+    it the row being edited collides with itself, and promoting a player to
+    captain on their own team would be refused as a second team.
+    """
+    # The one-team-per-series rules are about playing for a team. Coaching or
+    # managing a second team is allowed, so staff skip them.
+    if not is_playing_role(role):
+        return True, None
+
+    registrations = SeriesRegistration.objects.filter(
+        series=series, player=player, role__in=PLAYING_ROLES
+    )
+    if exclude_registration_id is not None:
+        registrations = registrations.exclude(id=exclude_registration_id)
+    registered_teams_categories = registrations.values_list("team__category", flat=True)
 
     if series.category in (Series.Category.SCHOOL, Series.Category.COLLEGE, Series.Category.STATE):
         # Player can register with only 1 team for these school, college or state series
@@ -74,7 +106,7 @@ def can_register_player_to_series_roster(
 
 
 def can_invite_player_to_series_roster(
-    series: Series, team: Team, player: Player
+    series: Series, team: Team, player: Player, role: str = Role.DEFAULT
 ) -> tuple[bool, message_response | None]:
     is_invitation_pending = SeriesRosterInvitation.objects.filter(
         series=series, team=team, to_player=player, status=SeriesRosterInvitation.Status.PENDING
@@ -83,10 +115,17 @@ def can_invite_player_to_series_roster(
     if is_invitation_pending:
         return False, {"message": "This player has already been invited to your team"}
 
-    num_registrations = SeriesRegistration.objects.filter(series=series, team=team).count()
+    # Staff take no player spot, so the roster cap doesn't apply to them.
+    if not is_playing_role(role):
+        return True, None
+
+    num_registrations = playing_registrations(series, team)
 
     num_pending_invitations = SeriesRosterInvitation.objects.filter(
-        series=series, team=team, status=SeriesRosterInvitation.Status.PENDING
+        series=series,
+        team=team,
+        status=SeriesRosterInvitation.Status.PENDING,
+        role__in=PLAYING_ROLES,
     ).count()
 
     if not (num_registrations + num_pending_invitations + 1) <= series.series_roster_max_players:
@@ -98,48 +137,70 @@ def can_invite_player_to_series_roster(
 
 
 def register_player(
-    series: Series, team: Team, player: Player
+    series: Series, team: Team, player: Player, role: str = Role.DEFAULT
 ) -> tuple[SeriesRegistration, None] | tuple[None, message_response]:
-    subscription = Subscription.objects.filter(player=player).order_by("-start_date").first()
-    if subscription is None:
-        return None, {
-            "message": "Subscription missing",
-            "description": "You need an active IU subscription to register for the series.",
-            "action_name": "Get subscription",
-            "action_href": f"/subscription/{player.id}",
-        }
+    playing = is_playing_role(role)
 
-    if not subscription.is_active:
-        return None, {
-            "message": "Subscription missing",
-            "description": "You need an active IU subscription to register for the series.",
-            "action_name": "Get subscription",
-            "action_href": f"/subscription/{player.id}",
-        }
+    error = eligibility.check(player, series, is_playing=playing)
+    if error is not None:
+        return None, error
 
-    if not subscription.waiver_valid:
-        return None, {
-            "message": "Waiver not signed",
-            "description": "You need to sign the liability waiver, to register for the series.",
-            "action_name": "Sign waiver",
-            "action_href": f"/waiver/{player.id}",
-        }
-
-    num_registrations = SeriesRegistration.objects.filter(series=series, team=team).count()
-
-    if not num_registrations + 1 <= series.series_roster_max_players:
+    if playing and not playing_registrations(series, team) + 1 <= series.series_roster_max_players:
         return None, {
             "message": f"Only {series.series_roster_max_players} players can register for this series"
         }
 
     can_register, error = can_register_player_to_series_roster(
-        series=series, team=team, player=player
+        series=series, team=team, player=player, role=role
     )
 
     if not can_register and error:
         return None, error
 
-    return SeriesRegistration.objects.create(series=series, team=team, player=player), None
+    return (
+        SeriesRegistration.objects.create(series=series, team=team, player=player, role=role),
+        None,
+    )
+
+
+def change_series_role(registration: SeriesRegistration, role: str) -> message_response | None:
+    """Move someone between playing and staff on a series roster."""
+    if role == registration.role:
+        return None
+
+    playing = is_playing_role(role)
+
+    error = eligibility.check(registration.player, registration.series, is_playing=playing)
+    if error is not None:
+        return error
+
+    # Only a move into a playing spot takes one; this row is already counted
+    # if it held one before.
+    if (
+        playing
+        and not is_playing_role(registration.role)
+        and not (
+            playing_registrations(registration.series, registration.team) + 1
+            <= registration.series.series_roster_max_players
+        )
+    ):
+        return {
+            "message": f"Only {registration.series.series_roster_max_players} players can register for this series"
+        }
+
+    can_register, error = can_register_player_to_series_roster(
+        series=registration.series,
+        team=registration.team,
+        player=registration.player,
+        role=role,
+        exclude_registration_id=registration.id,
+    )
+    if not can_register and error:
+        return error
+
+    registration.role = role
+    registration.save(update_fields=["role"])
+    return None
 
 
 def generate_invitation_token(invitation_id: int) -> str:

@@ -13,7 +13,6 @@ from django.test import Client
 from django.test.client import MULTIPART_CONTENT
 from django.utils.timezone import now
 
-from server.constants import ANNUAL_SUBSCRIPTION_AMOUNT
 from server.core.accounts import find_login_user
 from server.core.models import Guardianship, Player, UCPerson, User
 from server.duplicates.merge import merge_accounts
@@ -190,6 +189,36 @@ class TestRegistration(ApiBaseTestCase):
         self.assertEqual(200, response.status_code)
         self.player.refresh_from_db()
         self.assertFalse(self.player.sponsored, "a player set their own fee discount")
+
+    def test_a_player_cannot_choose_their_iu_id(self) -> None:
+        """The number is printed on waivers and certificates. A self-chosen
+        one -- IU-22-0001 to look like a founding member -- is forgery."""
+        self.player.iu_id = "IU-26-0042"
+        self.player.save(update_fields=["iu_id"])
+
+        response = self.client.put(
+            "/api/registration",
+            data={
+                "player_id": self.player.id,
+                "phone": "+1234567890",
+                "date_of_birth": "1990-01-01",
+                "gender": "F",
+                "match_up": "F",
+                "city": "Bangalore",
+                "first_name": "Nora",
+                "last_name": "Quinn",
+                "iu_id": "IU-22-0001",
+            },
+            content_type="application/json",
+        )
+
+        self.assertEqual(200, response.status_code)
+        self.player.refresh_from_db()
+        self.assertEqual(
+            "IU-26-0042",
+            self.player.iu_id,
+            "a player chose their own IU ID",
+        )
 
     def test_a_player_cannot_mark_themselves_imported(self) -> None:
         self.assertFalse(self.player.imported_data)
@@ -755,25 +784,25 @@ class TestPayment(ApiBaseTestCase):
         orders = set()
 
         # Create transaction made by current user
-        order = fake_order(ANNUAL_SUBSCRIPTION_AMOUNT * 2)
+        order = fake_order(140000)
         order.update(user=self.user, players=players[2:], transaction_id=order["order_id"])
         ManualTransaction.create_from_order_data(order)
         orders.add(order["order_id"])
 
         # Create transaction for current user's player
-        order = fake_order(ANNUAL_SUBSCRIPTION_AMOUNT)
+        order = fake_order(70000)
         order.update(user=users[0], players=players[:1], transaction_id=order["order_id"])
         ManualTransaction.create_from_order_data(order)
         orders.add(order["order_id"])
 
         # Create transaction for current user's ward
-        order = fake_order(ANNUAL_SUBSCRIPTION_AMOUNT)
+        order = fake_order(70000)
         order.update(user=users[2], players=players[1:2], transaction_id=order["order_id"])
         ManualTransaction.create_from_order_data(order)
         orders.add(order["order_id"])
 
         # Create transaction made by another user
-        order = fake_order(ANNUAL_SUBSCRIPTION_AMOUNT * 2)
+        order = fake_order(140000)
         order.update(user=users[2], players=players[2:], transaction_id=order["order_id"])
         ManualTransaction.create_from_order_data(order)
 
@@ -952,8 +981,8 @@ class TestWaiver(ApiBaseTestCase):
         _subscription = Subscription.objects.create(
             start_date=season.start_date,
             end_date=season.end_date,
-            player=self.player,
             season=season,
+            player=self.player,
         )
 
     def test_waiver_signed(self) -> None:
