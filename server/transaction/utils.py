@@ -8,11 +8,12 @@ from django.db.models import Model, Q, QuerySet
 
 from server.core.models import Player, Team, User
 from server.season.models import Season
+from server.series.models import Role, is_playing_role
 from server.subscription import catalog, eligibility
 from server.subscription.pricing import UPGRADE, NeedsGrant, NotForSale, Quote, quote
 from server.subscription.purchase import fulfil
 from server.tournament.models import Event, Registration, Tournament
-from server.tournament.utils import can_register_player_to_series_event
+from server.tournament.utils import can_register_player_to_series_event, series_role
 from server.types import message_response
 from server.utils import calculate_late_penalty, is_today_in_between_dates
 
@@ -237,14 +238,16 @@ def create_transaction(
             return 400, {"message": "No players selected !"}
 
         for player in players:
+            is_playing = True
             if event.series:
                 can_register, error = can_register_player_to_series_event(
                     event=event, team=team, player=player
                 )
                 if not can_register and error:
                     return 400, error
+                is_playing = is_playing_role(series_role(event, team, player) or Role.DEFAULT)
 
-            subscription_error = eligibility.check(player, event, is_playing=True)
+            subscription_error = eligibility.check(player, event, is_playing=is_playing)
             if subscription_error is not None:
                 return 400, subscription_error
 
@@ -398,12 +401,19 @@ def update_transaction_partial_team_registration(
 def update_transaction_player_registrations(
     transaction: RazorpayTransaction,
 ) -> None:
+    event = transaction.event
+    team = transaction.team
     for player in transaction.players.all():
+        role: str = Role.DEFAULT
+        if event is not None and team is not None and event.series:
+            role = series_role(event, team, player) or Role.DEFAULT
         try:
             registration = Registration(
-                event=transaction.event,
-                team=transaction.team,
+                event=event,
+                team=team,
                 player=player,
+                is_playing=is_playing_role(role),
+                role=role,
             )
 
             registration.save()
