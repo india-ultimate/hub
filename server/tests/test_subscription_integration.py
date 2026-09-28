@@ -584,3 +584,31 @@ class TestSubscriptionIntegration(BaseCase):
         # order.paid is the other event it accepts.
         self.assertEqual(hook("order.paid", idle), "Webhook processed")
         self.assertEqual(self.subscription(other).tier, "community")
+
+    def test_a_payment_gets_a_receipt_in_the_hub(self) -> None:
+        from server.receipts.models import Receipt
+
+        user = make_player("receipt@example.com", first="Rita", last="Das")
+        player = Player.objects.get(user=user)
+        self.sign_in_as(user)
+        self.open_subscription(player)
+        self.pay()
+
+        receipt = Receipt.objects.get(transaction__user=user, kind="receipt")
+        self.assertRegex(receipt.number, r"^IU/\d{4}-\d{2}/\d{5}$")
+        self.open(f"{APP_URL}/dashboard")
+        self.click('button:contains("Receipts")')
+        self.assert_text(receipt.number, "#accordion-body-receipts")
+        self.click(f'#accordion-body-receipts a[href="/receipts/{receipt.pk}"]')
+        self.assert_element('a:contains("Download PDF")')
+        self.switch_to_frame("iframe")
+        self.assert_text("RECEIPT")
+        self.assert_text(receipt.number)
+        self.assert_text("RECEIVED FROM")  # the template upper-cases it with CSS
+        self.switch_to_default_content()
+
+        client = Client()
+        client.force_login(user)
+        pdf = client.get(f"/api/receipts/{receipt.pk}/pdf")
+        self.assertEqual(pdf["Content-Type"], "application/pdf")
+        self.assertTrue(pdf.content.startswith(b"%PDF"))

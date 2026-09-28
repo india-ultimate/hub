@@ -1,3 +1,4 @@
+import { A } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
 import { createEffect, createSignal, For, Show, Suspense } from "solid-js";
 
@@ -76,6 +77,9 @@ const TransactionList = props => {
                 Transaction ID
               </th>
               <th scope="col" class="px-6 py-3">
+                Receipt
+              </th>
+              <th scope="col" class="px-6 py-3">
                 Transaction Type
               </th>
               <Show when={props.admin}>
@@ -128,6 +132,16 @@ const TransactionList = props => {
                         {transaction.event?.title || "Annual"}
                       </td>
                       <td class="px-6 py-4">{transaction.transaction_id}</td>
+                      <td class="px-6 py-4">
+                        <Show when={transaction.receipt_id} fallback="—">
+                          <A
+                            href={`/receipts/${transaction.receipt_id}`}
+                            class="font-mono text-blue-700 hover:underline dark:text-blue-400"
+                          >
+                            {transaction.receipt_number}
+                          </A>
+                        </Show>
+                      </td>
                       <td class="px-6 py-4">
                         {getLabel(transactionTypes, transaction.type)}
                       </td>
