@@ -47,6 +47,14 @@ class TestSeasonCurrent(TestCase):
         with mock.patch("server.season.models.today", return_value=datetime.date(2019, 1, 1)):
             self.assertIsNone(Season.current())
 
+    def test_no_current_season_logs_a_warning(self) -> None:
+        with (
+            mock.patch("server.season.models.today", return_value=datetime.date(2019, 1, 1)),
+            self.assertLogs("server.season.models", level="WARNING") as logs,
+        ):
+            self.assertIsNone(Season.current())
+        self.assertIn("no season", logs.output[0].lower())
+
     def test_overlap_breaks_the_tie_by_start_date_not_by_row_order(self) -> None:
         # `early` is created first, so it has the lower pk, but `late` has
         # the later start_date and should win: the pk order and the

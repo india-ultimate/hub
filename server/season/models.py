@@ -1,9 +1,12 @@
 import datetime
+import logging
 
 from django.db import models
 from django_prometheus.models import ExportModelOperationsMixin
 
 from server.utils import today
+
+logger = logging.getLogger(__name__)
 
 
 class Season(ExportModelOperationsMixin("season"), models.Model):  # type: ignore[misc]
@@ -20,7 +23,10 @@ class Season(ExportModelOperationsMixin("season"), models.Model):  # type: ignor
     @classmethod
     def current(cls) -> "Season | None":
         """The season today falls inside, in IST."""
-        return cls.containing(today())
+        season = cls.containing(today())
+        if season is None:
+            logger.warning("No season covers today (%s)", today())
+        return season
 
     @classmethod
     def containing(cls, day: datetime.date) -> "Season | None":
