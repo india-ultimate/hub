@@ -43,6 +43,7 @@ from server.duplicates.models import (
     DuplicateCluster,
     EmailAlias,
 )
+from server.duplicates.review import compare
 from server.season.models import Season
 from server.servicerequests.models import ServiceRequest, ServiceRequestStatus, ServiceRequestType
 from server.subscription import sponsorship
@@ -1490,3 +1491,44 @@ class TestDescribingAMove(SimpleTestCase):
             "Guardianship.player: 1 moved; 2 clashed, deleting 1 of the other account's rows"
             " and 1 of the kept account's",
         )
+
+
+class TestReviewSubscriptionLine(TestCase):
+    """The Subscription row of the side-by-side a reviewer reads before a merge."""
+
+    def setUp(self) -> None:
+        self.season = Season.objects.get(name="Season 2026-2027")
+        self.user = User.objects.create(username="kept@example.com", email="kept@example.com")
+        self.player = create_player(self.user)
+
+    def shown(self) -> str:
+        line = next(line for line in compare(self.user, []) if line.label == "Subscription")
+        return line.values[0]
+
+    def hold(self, plan: SubscriptionPlan | None, is_active: bool) -> None:
+        Subscription.objects.create(
+            player=self.player,
+            season=self.season,
+            plan=plan,
+            is_active=is_active,
+            start_date=self.season.start_date,
+            end_date=self.season.end_date,
+        )
+
+    def test_no_subscription_is_blank(self) -> None:
+        self.assertEqual(self.shown(), "")
+
+    def test_a_live_subscription_shows_its_tier_and_dates(self) -> None:
+        self.hold(SubscriptionPlan.objects.get(season=self.season, type__slug="regular"), True)
+        self.assertEqual(
+            self.shown(),
+            f"Regular Subscription, {self.season.start_date}..{self.season.end_date}",
+        )
+
+    def test_a_subscription_with_no_tier_says_so(self) -> None:
+        self.hold(None, True)
+        self.assertTrue(self.shown().startswith("unknown tier, "))
+
+    def test_an_inactive_subscription_is_expired(self) -> None:
+        self.hold(SubscriptionPlan.objects.get(season=self.season, type__slug="community"), False)
+        self.assertEqual(self.shown(), "Community Subscription, expired")
