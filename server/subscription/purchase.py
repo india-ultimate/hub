@@ -84,8 +84,20 @@ def _apply(line: RazorpayTransactionPlayer, notify: bool = True) -> bool:
         )
         _activate(held, plan, amount)
     elif not held.is_active or held.refunded_at is not None:
-        # An abandoned order left this behind, or a refund emptied it.
-        _activate(held, plan, amount)
+        # An abandoned order left this behind, or a refund emptied it. Only
+        # activate outright if the amount matches this plan's own price -- an
+        # upgrade quoted against a row that got refunded before it captured
+        # pays just the difference, not the full tier price, and must not be
+        # recorded as though it bought this plan outright.
+        if amount == plan.amount:
+            _activate(held, plan, amount)
+        else:
+            _flag(
+                line,
+                f"Paid {amount} for {plan.type.name}, but its price for "
+                f"{season.name} is {plan.amount}.",
+            )
+            return False
     elif (held.amount_paid or 0) + amount == plan.amount:
         # An upgrade: the same subscription moves up a tier.
         held.plan = plan
