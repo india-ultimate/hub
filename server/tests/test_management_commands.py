@@ -240,7 +240,7 @@ class TestActivateSubscriptions(TestCase):
         self.fixtures_dir = Path(__file__).parent.joinpath("fixtures")
         self.fixture = self.fixtures_dir / "import-players.csv"
         ind_tz = datetime.timezone(datetime.timedelta(hours=5, minutes=30), name="IND")
-        Season.objects.create(
+        self.season = Season.objects.create(
             name="Season 24-25",
             start_date=f"{datetime.datetime.now(ind_tz).year}-08-01",
             end_date=f"{datetime.datetime.now(ind_tz).year+1}-07-30",
@@ -258,8 +258,9 @@ class TestActivateSubscriptions(TestCase):
         self.assertEqual(n_players, Subscription.objects.count())
 
     def tearDown(self) -> None:
-        # Clean up test data
-        Season.objects.all().delete()
+        # Clean up test data. Delete only the season this test created, not
+        # the ones the catalog migration seeded (they protect their plans).
+        self.season.delete()
 
 
 class TestAddToSeriesRoster(TestCase):
@@ -268,7 +269,7 @@ class TestAddToSeriesRoster(TestCase):
         self.fixtures_dir = Path(__file__).parent.joinpath("fixtures")
         self.fixture = self.fixtures_dir / "import-players.csv"
         ind_tz = datetime.timezone(datetime.timedelta(hours=5, minutes=30), name="IND")
-        Season.objects.create(
+        self.season = Season.objects.create(
             name="Season 24-25",
             start_date=f"{datetime.datetime.now(ind_tz).year}-08-01",
             end_date=f"{datetime.datetime.now(ind_tz).year+1}-07-30",
@@ -317,8 +318,9 @@ class TestAddToSeriesRoster(TestCase):
         self.assertEqual(n_players, self.team.players.count())
 
     def tearDown(self) -> None:
-        # Clean up test data
-        Season.objects.all().delete()
+        # Clean up test data. Delete only the season this test created, not
+        # the ones the catalog migration seeded (they protect their plans).
+        self.season.delete()
         Series.objects.all().delete()
         Team.objects.all().delete()
         SeriesRegistration.objects.all().delete()
@@ -330,7 +332,7 @@ class TestAddToEventRoster(TestCase):
         self.fixtures_dir = Path(__file__).parent.joinpath("fixtures")
         self.fixture = self.fixtures_dir / "import-players.csv"
         ind_tz = datetime.timezone(datetime.timedelta(hours=5, minutes=30), name="IND")
-        Season.objects.create(
+        self.season = Season.objects.create(
             name="Season 24-25",
             start_date=f"{datetime.datetime.now(ind_tz).year}-08-01",
             end_date=f"{datetime.datetime.now(ind_tz).year+1}-07-30",
@@ -392,8 +394,9 @@ class TestAddToEventRoster(TestCase):
         self.assertEqual(n_players, self.team.players.count())
 
     def tearDown(self) -> None:
-        # Clean up test data
-        Season.objects.all().delete()
+        # Clean up test data. Delete only the season this test created, not
+        # the ones the catalog migration seeded (they protect their plans).
+        self.season.delete()
         Series.objects.all().delete()
         Team.objects.all().delete()
         SeriesRegistration.objects.all().delete()
