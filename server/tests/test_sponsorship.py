@@ -191,3 +191,60 @@ class TestBackfill(TestCase):
 
         backfill.backfill(apps, None)
         self.assertEqual(SponsorshipGrant.objects.count(), len(grants))
+
+
+class TestResetEmail(TestCase):
+    def setUp(self) -> None:
+        self.s26 = Season.objects.get(name="Season 2026-2027")
+        self.lost = make_player("lost@example.com")
+        self.lost.sponsored = True
+        self.lost.save(update_fields=["sponsored"])
+
+    def recipients(self) -> list[str]:
+        from server.task.models import Task
+
+        queued = Task.objects.filter(type=Task.TaskType.SEND_EMAIL)
+        return [task.data["to"][0] for task in queued]
+
+    def test_only_people_who_lost_sponsorship_are_written_to(self) -> None:
+        kept = make_player("kept@example.com")
+        kept.sponsored = True
+        kept.save(update_fields=["sponsored"])
+        sponsorship.grant(kept, self.s26)
+
+        blank = make_player("blank@example.com")
+        blank.sponsored = True
+        blank.save(update_fields=["sponsored"])
+        blank.user.email = ""
+        blank.user.save(update_fields=["email"])
+
+        make_player("never@example.com")
+
+        call_command("email_sponsorship_reset", stdout=io.StringIO())
+
+        self.assertEqual(self.recipients(), ["lost@example.com"])
+
+    def test_the_email_names_the_season_and_links_the_subscription_page(self) -> None:
+        from server.task.models import Task
+
+        call_command("email_sponsorship_reset", stdout=io.StringIO())
+
+        html = Task.objects.get().data["html_content"]
+        self.assertIn("Season 2026-2027", html)
+        self.assertIn(f"/subscription/{self.lost.pk}", html)
+
+    def test_a_second_run_writes_to_nobody_twice(self) -> None:
+        call_command("email_sponsorship_reset", stdout=io.StringIO())
+        out = io.StringIO()
+        call_command("email_sponsorship_reset", stdout=out)
+
+        self.assertEqual(self.recipients(), ["lost@example.com"])
+        self.assertIn("Nobody to write to", out.getvalue())
+
+    def test_a_dry_run_lists_everyone_and_sends_nothing(self) -> None:
+        out = io.StringIO()
+        call_command("email_sponsorship_reset", "--dry-run", stdout=out)
+
+        self.assertEqual(self.recipients(), [])
+        self.assertIn("Would write to 1 people", out.getvalue())
+        self.assertIn("lost@example.com", out.getvalue())
