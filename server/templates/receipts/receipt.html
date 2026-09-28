@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ title|title }} {{ doc.number }}</title>
+{% if mode == "pdf" %}
+<style>
+  @page {
+    size: a4; margin: 16mm 16mm 30mm 16mm;
+    @frame foot { -pdf-frame-content: foot; left: 16mm; right: 16mm; bottom: 16mm; height: 12mm; }
+  }
+  body { font-family: IBMPlexSans; font-size: 9.5pt; color: #0F172A; }
+  .mono { font-family: IBMPlexMono; }
+  .mult { display: none; }
+  div { margin: 0; padding: 0; }
+</style>
+{% else %}
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  body { margin: 0; background: {% if mode == "page" %}#E7EBF0{% else %}#FFFFFF{% endif %}; font-family: "IBM Plex Sans", Arial, Helvetica, sans-serif; font-size: 14px; line-height: 1.5; color: #0F172A; }
+  .mono { font-family: "IBM Plex Mono", "Courier New", monospace; }
+  {% if mode == "page" %}
+  .sheet { box-sizing: border-box; width: 100%; max-width: 210mm; min-height: 297mm; margin: 24px auto; padding: 16mm; background: #FFFFFF; border: 1px solid #D8DEE6; }
+  .outer { height: 265mm; }
+  .grow { height: 100%; }
+  @page { size: A4; margin: 0; }
+  @media print { body { background: #FFFFFF; } .sheet { margin: 0; border: 0; } }
+  {% endif %}
+  .mult { display: none; }
+  @media (max-width: 560px) {
+    .sheet { min-height: 0; margin: 0; padding: 22px 16px; border: 0; }
+    .outer { height: auto; }
+    .meta { float: none !important; margin-left: 0 !important; }
+    .stack, .stack > tbody, .stack > tbody > tr, .stack > tbody > tr > td { display: block; width: auto !important; text-align: left !important; }
+    .stack > tbody > tr > td { padding: 0 0 12px 0 !important; }
+    .col-qty, .col-rate { display: none; }
+    .mult { display: block !important; }
+  }
+</style>
+{% endif %}
+</head>
+<body>
+{% with blue="#1B3F8B" amber="#B45309" %}
+<div class="sheet">
+<table class="outer" width="100%" cellpadding="0" cellspacing="0" style="{% if mode == 'email' %}max-width:720px; margin:0 auto; padding:24px 16px;{% endif %}">
+<tr><td class="grow" valign="top">
+
+  {% if mode == "email" %}
+  <p style="margin:0 0 14px; font-size:14px;">Here is your {{ noun }} from India Ultimate. You can open it in the Hub at any time and download it as a PDF.</p>
+  <table cellpadding="0" cellspacing="0" style="margin:0 0 24px;"><tr>
+    <td style="background:{{ blue }};"><a href="{{ hub_url }}" style="display:inline-block; padding:11px 20px; color:#FFFFFF; font-weight:700; font-size:14px; text-decoration:none;">View in Hub</a></td>
+  </tr></table>
+  {% endif %}
+
+  <table class="stack" width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td width="90" valign="top"><img src="{{ logo }}" alt="India Ultimate" width="72" style="width:72px; height:auto;"></td>
+      <td valign="top" style="text-align:right; font-size:11.5px; color:#475569; line-height:1.55;">
+        <div style="font-size:13.5px; font-weight:700; color:#0F172A; margin-bottom:2px;">{{ issuer.name }}</div>
+        {{ issuer.address }}<br>
+        {{ issuer.phones|join:" · " }} · {{ issuer.email }} · {{ issuer.website }}<br>
+        <span class="mono" style="color:#0F172A;">GSTIN {{ issuer.gstin }} · PAN {{ issuer.pan }}</span>
+      </td>
+    </tr>
+  </table>
+
+  <table width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0;"><tr><td height="3" bgcolor="{% if refund %}{{ amber }}{% else %}{{ blue }}{% endif %}" style="height:3px; line-height:3px; font-size:1px; background:{% if refund %}{{ amber }}{% else %}{{ blue }}{% endif %};">&nbsp;</td></tr></table>
+
+  <table class="stack" width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td valign="bottom"><div style="font-size:24px; font-weight:700; letter-spacing:3px; color:{% if refund %}{{ amber }}{% else %}{{ blue }}{% endif %};">{{ title }}</div></td>
+      <td valign="bottom" style="text-align:right;">
+        <table class="meta" align="right" cellpadding="0" cellspacing="0" style="margin-left:auto; font-size:12.5px;">
+          <tr><td style="color:#475569; padding:1px 14px 1px 0;">{% if refund %}Refund note #{% else %}Receipt #{% endif %}</td><td class="mono" style="font-weight:500;">{{ doc.number }}</td></tr>
+          <tr><td style="color:#475569; padding:1px 14px 1px 0;">Date</td><td class="mono" style="font-weight:500;">{{ date }}</td></tr>
+          <tr><td style="color:#475569; padding:1px 14px 1px 0;">Status</td><td><span style="font-size:10.5px; font-weight:700; letter-spacing:1px; padding:1px 7px; border:1px solid {% if refund %}{{ amber }}; color:{{ amber }}{% else %}#15803D; color:#15803D{% endif %};">{% if refund %}REFUNDED{% else %}PAID{% endif %}</span></td></tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+
+  {% if refund and original %}
+  <div style="margin-top:16px; padding:9px 12px; background:#F4F6F9; font-size:12.5px;">Against receipt {% if mode == "page" %}<a href="/receipts/{{ original.pk }}" target="_top" class="mono" style="font-weight:500; color:{{ blue }};">{{ original.number }}</a>{% else %}<span class="mono" style="font-weight:500;">{{ original.number }}</span>{% endif %} dated {{ original_date }}</div>
+  {% endif %}
+  {% if mode == "page" and not refund and notes %}
+  <div style="margin-top:16px; padding:9px 12px; background:#FBF3E8; font-size:12.5px;">Refunded against this receipt:
+    {% for note in notes %}<a href="/receipts/{{ note.pk }}" target="_top" class="mono" style="font-weight:500; color:#B45309;">{{ note.number }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}
+  </div>
+  {% endif %}
+
+  <table class="stack" width="100%" cellpadding="0" cellspacing="0" style="margin-top:20px; font-size:12.5px;">
+    <tr>
+      <td width="50%" valign="top" style="padding-right:16px;">
+        <div style="font-size:10.5px; font-weight:700; letter-spacing:1px; color:#475569; text-transform:uppercase;">{% if refund %}Refunded to{% else %}Received from{% endif %}</div>
+        <div style="font-size:14.5px; font-weight:700; padding:3px 0 1px;">{{ doc.payer_name }}</div>
+        {% if doc.payer_email %}<div>{{ doc.payer_email }}</div>{% endif %}<div>{{ doc.payer_phone }}</div>
+      </td>
+      <td width="50%" valign="top">
+        <div style="font-size:10.5px; font-weight:700; letter-spacing:1px; color:#475569;">{% if refund %}REFUND{% else %}PAYMENT{% endif %}</div>
+        <div style="font-size:14.5px; font-weight:700; padding:3px 0 1px;">{% if refund %}Via Razorpay, to the original payment method{% else %}Paid online via Razorpay{% endif %}</div>
+        {% if refund %}<div>Refund ID <span class="mono">{{ doc.reference }}</span></div><div>Payment ID <span class="mono">{{ doc.transaction.payment_id }}</span></div>
+        {% else %}<div>Payment ID <span class="mono">{{ doc.reference }}</span></div><div>Order ID <span class="mono">{{ doc.order_id }}</span></div>{% endif %}
+      </td>
+    </tr>
+  </table>
+
+  <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:22px; font-size:12.5px;">
+    <tr style="background:#F4F6F9;">
+      <td width="48" style="padding:8px; font-size:10.5px; font-weight:700; color:#475569; border-bottom:1px solid #D8DEE6; white-space:nowrap;">S NO</td>
+      <td style="padding:8px; font-size:10.5px; font-weight:700; color:#475569; border-bottom:1px solid #D8DEE6;">PARTICULARS</td>
+      <td class="col-qty" width="40" style="padding:8px; font-size:10.5px; font-weight:700; color:#475569; border-bottom:1px solid #D8DEE6; text-align:right;">QTY</td>
+      <td class="col-rate" width="80" style="padding:8px; font-size:10.5px; font-weight:700; color:#475569; border-bottom:1px solid #D8DEE6; text-align:right;">RATE</td>
+      <td width="95" style="padding:8px; font-size:10.5px; font-weight:700; color:#475569; border-bottom:1px solid #D8DEE6; text-align:right;">AMOUNT INR</td>
+    </tr>
+    {% for row in rows %}
+    <tr>
+      <td valign="top" style="padding:10px 8px; color:#475569; border-bottom:1px solid #D8DEE6;">{{ row.index }}</td>
+      <td valign="top" style="padding:10px 8px; border-bottom:1px solid #D8DEE6;"><div style="font-weight:700;">{{ row.particulars }}</div>
+        {% for person in row.people %}<div style="color:#475569; font-size:11.5px;">{{ person }}</div>{% endfor %}
+        {% if row.rate_text %}<div class="mult mono" style="display:none; color:#475569; font-size:11.5px;">{{ row.quantity }} × {{ row.rate_text }}</div>{% endif %}
+      </td>
+      <td class="col-qty mono" valign="top" style="padding:10px 8px; text-align:right; border-bottom:1px solid #D8DEE6;">{{ row.quantity }}</td>
+      <td class="col-rate mono" valign="top" style="padding:10px 8px; text-align:right; border-bottom:1px solid #D8DEE6;">{{ row.rate_text }}</td>
+      <td class="mono" valign="top" style="padding:10px 8px; text-align:right; border-bottom:1px solid #D8DEE6; white-space:nowrap;">{{ row.amount_text }}</td>
+    </tr>
+    {% endfor %}
+    <tr>
+      <td style="padding:12px 8px; border-bottom:2px solid #0F172A;">&nbsp;</td>
+      <td style="padding:12px 8px; border-bottom:2px solid #0F172A; text-align:right; font-weight:700;">{% if refund %}Total refunded{% else %}Grand total{% endif %}</td>
+      <td class="col-qty" style="padding:12px 8px; border-bottom:2px solid #0F172A;">&nbsp;</td>
+      <td class="col-rate" style="padding:12px 8px; border-bottom:2px solid #0F172A;">&nbsp;</td>
+      <td class="mono" style="padding:12px 8px; border-bottom:2px solid #0F172A; text-align:right; font-weight:700; font-size:14.5px; white-space:nowrap;">{{ total_text }}</td>
+    </tr>
+  </table>
+
+  <p style="margin:12px 0 0; font-size:12.5px;">Amount in words: <span style="font-weight:700;">{{ words }}</span></p>
+
+</td></tr>
+<tr><td valign="bottom">
+  <div id="foot">
+  <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:24px; border-top:1px solid #D8DEE6; font-size:10.5px; color:#475569;">
+    <tr>
+      <td width="62%" style="padding-top:10px;">This is a computer-generated {{ noun }} and does not require a signature.</td>
+      <td width="38%" style="padding-top:10px; text-align:right;">Questions: {{ issuer.email }}</td>
+    </tr>
+  </table>
+  </div>
+
+</td></tr>
+</table>
+</div>
+{% endwith %}
+</body>
+</html>
