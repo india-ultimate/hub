@@ -181,12 +181,15 @@ class Player(ExportModelOperationsMixin("player"), models.Model):  # type: ignor
         """This season's subscription, or one already bought for next season."""
         from server.subscription.models import Subscription
 
-        current = Subscription.objects.filter(player=self).current().first()
+        current = (
+            Subscription.objects.filter(player=self).current().select_related("season").first()
+        )
         if current is not None:
             return current
         return (
             Subscription.objects.filter(player=self, start_date__gt=today())
             .live()
+            .select_related("season")
             .order_by("start_date")
             .first()
         )
