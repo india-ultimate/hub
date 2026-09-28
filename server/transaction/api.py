@@ -1,6 +1,5 @@
 import io
 import json
-from base64 import b64decode
 from typing import Any
 
 from django.db.models import QuerySet
@@ -17,27 +16,22 @@ from server.schema import (
 )
 from server.types import message_response
 
-from .client import phonepe, razorpay
+from .client import razorpay
 from .models import (
     AuthenticatedHttpRequest,
     ManualTransaction,
     PaymentGateway,
-    PhonePeTransaction,
     RazorpayTransaction,
 )
 from .schema import (
-    AnnualSubscriptionSchema,
-    EventSubscriptionSchema,
-    GroupSubscriptionSchema,
-    ManualTransactionLiteSchema,
     ManualTransactionSchema,
     ManualTransactionValidationFormSchema,
-    PhonePeOrderSchema,
     PhonePeTransactionSchema,
     PlayerRegistrationSchema,
     RazorpayCallbackSchema,
     RazorpayOrderSchema,
     RazorpayTransactionSchema,
+    SubscriptionOrderSchema,
     TeamRegistrationSchema,
 )
 from .utils import (
@@ -62,38 +56,9 @@ router = Router()
 )
 def create_razorpay_transaction(
     request: AuthenticatedHttpRequest,
-    order: AnnualSubscriptionSchema
-    | EventSubscriptionSchema
-    | GroupSubscriptionSchema
-    | PlayerRegistrationSchema
-    | TeamRegistrationSchema,
+    order: SubscriptionOrderSchema | PlayerRegistrationSchema | TeamRegistrationSchema,
 ) -> tuple[int, str | message_response | dict[str, Any]]:
-    return create_transaction(request, order, PaymentGateway.RAZORPAY)
-
-
-# Phonepe Transaction
-@router.post(
-    "/phonepe",
-    response={200: PhonePeOrderSchema, 400: Response, 422: Response, 502: str},
-)
-def create_phonepe_transaction(
-    request: AuthenticatedHttpRequest,
-    order: AnnualSubscriptionSchema | EventSubscriptionSchema | GroupSubscriptionSchema,
-) -> tuple[int, str | message_response | dict[str, Any]]:
-    return create_transaction(request, order, PaymentGateway.PHONEPE)
-
-
-# Manual Transaction
-@router.post(
-    "/manual/{transaction_id}",
-    response={200: ManualTransactionLiteSchema, 400: Response, 422: Response, 502: str},
-)
-def create_manual_transaction(
-    request: AuthenticatedHttpRequest,
-    transaction_id: str,
-    order: AnnualSubscriptionSchema | EventSubscriptionSchema | GroupSubscriptionSchema,
-) -> tuple[int, str | message_response | dict[str, Any]]:
-    return create_transaction(request, order, PaymentGateway.MANUAL, transaction_id)
+    return create_transaction(request, order)
 
 
 # Callback APIs ####################
@@ -128,53 +93,6 @@ def handle_razorpay_callback(
         mark_form_response_paid(transaction)
 
     return 200, transaction.players.all()
-
-
-@router.get(
-    "/phonepe/{transaction_id}",
-    response={200: PhonePeTransactionSchema, 400: Response, 422: Response, 502: str},
-)
-def get_phonepe_transaction(
-    request: AuthenticatedHttpRequest,
-    transaction_id: str,
-) -> tuple[int, message_response | PhonePeTransaction]:
-    try:
-        transaction = PhonePeTransaction.objects.get(transaction_id=transaction_id)
-    except PhonePeTransaction.DoesNotExist:
-        return 422, {"message": "PhonePe Transaction does not exist!"}
-
-    # Check transaction status with PhonePe for pending transactions
-    if transaction.status == PhonePeTransaction.TransactionStatusChoices.PENDING:
-        transaction = phonepe.check_and_update_transaction(transaction)
-
-        if transaction.status == PhonePeTransaction.TransactionStatusChoices.SUCCESS:
-            update_transaction_player_subscriptions(transaction)
-
-    return 200, transaction
-
-
-@router.post("/phonepe/callback", auth=None, response={200: Response})
-@csrf_exempt
-def phonepe_callback(request: HttpRequest) -> message_response:
-    body = request.body.decode("utf8")
-    signature = request.headers.get("X-Verify", "")
-    if not phonepe.verify_callback_checksum(body, signature):
-        return {"message": "Signature could not be verified"}
-
-    encoded_data = json.loads(body)["response"]
-    data = json.loads(b64decode(encoded_data).decode("utf8"))
-    code = data["code"]
-    prefix = "PAYMENT_"
-    if not code.startswith(prefix):
-        return {"message": "Ignored webhook"}
-    code = code[len(prefix) :]
-    transaction_id = data["data"]["merchantTransactionId"]
-    try:
-        transaction = PhonePeTransaction.objects.get(transaction_id=transaction_id)
-    except PhonePeTransaction.DoesNotExist:
-        return {"message": "Transaction not found"}
-    phonepe.update_transaction(transaction, code)
-    return {"message": "Webhook processed"}
 
 
 # Webhook APIs ####################
