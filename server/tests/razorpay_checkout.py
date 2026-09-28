@@ -168,11 +168,17 @@ def _complete_card_payment(test_case: BaseCase) -> None:
     _leave_checkout_if_open(test_case)
 
 
-def complete_razorpay_test_payment(test_case: BaseCase) -> None:
-    """Complete Razorpay checkout in test mode using the card payment flow."""
+def complete_razorpay_test_payment(
+    test_case: BaseCase, pay_button: str = 'button:contains("Pay")'
+) -> None:
+    """Complete Razorpay checkout in test mode using the card payment flow.
+
+    `pay_button` is the page's own button that opens checkout; an upgrade's
+    reads "Upgrade from ... pay", which the default does not match.
+    """
     _wait_for_razorpay_sdk(test_case)
-    test_case.wait_for_element('button:contains("Pay")', timeout=45)
-    test_case.js_click('button:contains("Pay")', timeout=45)
+    test_case.wait_for_element(pay_button, timeout=45)
+    test_case.js_click(pay_button, timeout=45)
     test_case.wait_for_element_visible(".razorpay-container iframe", timeout=45)
     test_case.switch_to_frame(".razorpay-container iframe")
     _submit_contact_details_if_needed(test_case)
