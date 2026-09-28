@@ -252,14 +252,10 @@ class TestIntegration(BaseCase):
         names = ["NCS 23-24 SW Sectionals (Bangalore)", "NCS 23-24 North Sectionals (Delhi)"]
         for name in names:
             create_event(name)
-        Season.objects.create(
-            name="Season 24-25",
-            start_date="2024-08-01",
-            end_date="2025-07-30",
-            annual_membership_amount=70000,
-            sponsored_annual_membership_amount=20000,
-            supporter_annual_membership_amount=150000,
-        )
+        # Prices come from the season's plans now, not columns on Season: the
+        # page offers only what the catalog has on sale, so seed it.
+        import_module("server.migrations.0145_legacy_seasons").add_seasons(apps, None)
+        import_module("server.migrations.0147_seed_catalog").seed(apps, None)
 
         self.open(DJANGO_URL)
         self.click_link("Login")
@@ -301,6 +297,10 @@ class TestIntegration(BaseCase):
         # Redirect to Razorpay modal (card flow; UPI Collect was removed in 2026)
         complete_razorpay_test_payment(self)
         self.wait_for_element("div#membership-exist", timeout=45)
+        self.assertEqual(
+            Player.objects.get(id=player_id).memberships.get(is_active=True).tier,
+            "regular",
+        )
         self.save_screenshot_to_logs("pay-clicked.png")
 
         self.click("#my-account", timeout=45)
