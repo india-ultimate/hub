@@ -44,7 +44,7 @@ class Command(BaseCommand):
         parser.add_argument(
             "--no-email",
             action="store_true",
-            help="Apply the payments but queue no confirmation emails.",
+            help="Apply payments and refunds but queue no confirmation, receipt or refund-note emails.",
         )
         parser.add_argument(
             "--since",
@@ -114,7 +114,7 @@ class Command(BaseCommand):
                 self.style.SUCCESS(f"Updated status of {n} transactions to {status_value}.")
             )
 
-        recorded, failed = self.sync_refunds(since)
+        recorded, failed = self.sync_refunds(since, notify=notify)
         self.stdout.write(self.style.SUCCESS(f"Recorded {recorded} refunds."))
         if failed:
             self.stderr.write(
@@ -123,7 +123,7 @@ class Command(BaseCommand):
                 )
             )
 
-    def sync_refunds(self, since: datetime.datetime | None) -> tuple[int, int]:
+    def sync_refunds(self, since: datetime.datetime | None, notify: bool = True) -> tuple[int, int]:
         """Bring the Hub's record of refunds in line with Razorpay's.
 
         Returns (recorded, failed). One bad entry must not stop the rest:
@@ -133,15 +133,15 @@ class Command(BaseCommand):
         recorded = failed = 0
         for entry in get_refunds(since):
             try:
-                recorded += self._sync_refund(entry)
-            except Exception as error:  # - reported, and retried by the next sync
+                recorded += self._sync_refund(entry, notify)
+            except Exception as error:  # reported here, retried by the next sync
                 failed += 1
                 self.stderr.write(
                     self.style.ERROR(f"Refund {entry['id']} was not synced: {error!r}")
                 )
         return recorded, failed
 
-    def _sync_refund(self, entry: dict[str, Any]) -> int:
+    def _sync_refund(self, entry: dict[str, Any], notify: bool) -> int:
         """Sync one Razorpay refund entry; 1 if it changed the Hub's record."""
         status = REFUND_STATUSES.get(entry["status"], RazorpayRefund.Status.PENDING)
         existing = RazorpayRefund.objects.filter(razorpay_refund_id=entry["id"]).first()
@@ -166,7 +166,7 @@ class Command(BaseCommand):
                 else:
                     existing.status = status
                     existing.save(update_fields=["status"])
-                    issue_refund_note(existing)
+                    issue_refund_note(existing, notify=notify)
                     settle(existing.transaction)
             return 1
 
@@ -197,5 +197,5 @@ class Command(BaseCommand):
             # This is what finally marks the two refunded team registrations
             # the audit found, which Razorpay still reports as captured.
             settle(transaction)
-            issue_refund_note(refund)
+            issue_refund_note(refund, notify=notify)
         return 1

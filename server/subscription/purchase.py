@@ -66,7 +66,7 @@ def fulfil(transaction: RazorpayTransaction, notify: bool = True) -> int:
                 )
         # Every paid order gets one, even a line that only lands on staff's
         # review list: the money did arrive.
-        issue_receipt(transaction, items=items)
+        issue_receipt(transaction, items=items, notify=notify)
     return applied
 
 

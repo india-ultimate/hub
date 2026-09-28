@@ -112,8 +112,10 @@ def issue_receipt(
     transaction: RazorpayTransaction,
     received_at: datetime.datetime | None = None,
     items: dict[int, str] | None = None,
+    notify: bool = True,
 ) -> Receipt | None:
-    """The receipt for a paid subscription order, issued once."""
+    """The receipt for a paid subscription order, issued once. `notify` off
+    records it without emailing, for a bulk historical resync."""
     if transaction.type != SUBSCRIPTION:
         return None
     existing = Receipt.objects.filter(transaction=transaction, kind=Receipt.Kind.RECEIPT).first()
@@ -123,7 +125,7 @@ def issue_receipt(
     rows = rows_for_order(transaction, items)
     number, year, sequence = next_number(RECEIPT_SERIES, when)
     user = transaction.user
-    return Receipt.objects.create(
+    receipt = Receipt.objects.create(
         kind=Receipt.Kind.RECEIPT,
         transaction=transaction,
         number=number,
@@ -138,6 +140,11 @@ def issue_receipt(
         reference=transaction.payment_id,
         order_id=transaction.order_id,
     )
+    if notify:
+        from server.receipts.emails import queue_receipt_email  # avoids a cycle via render
+
+        queue_receipt_email(receipt)
+    return receipt
 
 
 def _find_person(original: Receipt, line: RazorpayTransactionPlayer) -> tuple[Row, str] | None:
@@ -162,7 +169,7 @@ def _find_person(original: Receipt, line: RazorpayTransactionPlayer) -> tuple[Ro
     )
 
 
-def issue_refund_note(refund: RazorpayRefund) -> Receipt | None:
+def issue_refund_note(refund: RazorpayRefund, notify: bool = True) -> Receipt | None:
     """The refund note for a refund Razorpay has confirmed, issued once.
 
     Only once it is processed: a pending refund can still fail, and a note
@@ -189,7 +196,7 @@ def issue_refund_note(refund: RazorpayRefund) -> Receipt | None:
 
     when = now()
     number, year, sequence = next_number(REFUND_SERIES, when)
-    return Receipt.objects.create(
+    note = Receipt.objects.create(
         kind=Receipt.Kind.REFUND,
         transaction_id=refund.transaction_id,
         refund=refund,
@@ -214,3 +221,8 @@ def issue_refund_note(refund: RazorpayRefund) -> Receipt | None:
         reference=refund.razorpay_refund_id or "",
         order_id=original.order_id,
     )
+    if notify:
+        from server.receipts.emails import queue_receipt_email  # avoids a cycle via render
+
+        queue_receipt_email(note)
+    return note
