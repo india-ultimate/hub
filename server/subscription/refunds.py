@@ -7,6 +7,7 @@ from django.db.models import QuerySet, Sum
 from django.utils.timezone import now
 
 from server.core.models import User
+from server.receipts.issue import issue_refund_note
 from server.subscription.models import Subscription, SubscriptionPlan
 from server.transaction.client.razorpay import CLIENT
 from server.transaction.models import (
@@ -119,6 +120,7 @@ def _send(
         else RazorpayRefund.Status.PENDING
     )
     refund.save(update_fields=["razorpay_refund_id", "status"])
+    issue_refund_note(refund)
     settle(transaction)
     return refund
 

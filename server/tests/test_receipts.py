@@ -1,4 +1,5 @@
 import datetime
+import io
 from unittest import mock
 
 from django.db import transaction as db_transaction
@@ -6,12 +7,16 @@ from django.test import TestCase
 
 from server.core.models import Player
 from server.receipts import rows
-from server.receipts.issue import issue_receipt, next_number
+from server.receipts.issue import issue_receipt, issue_refund_note, next_number
 from server.receipts.models import Receipt, ReceiptSequence
 from server.season.models import Season
 from server.subscription import purchase
 from server.subscription.models import SubscriptionPlan
-from server.transaction.models import RazorpayTransaction, RazorpayTransactionPlayer
+from server.transaction.models import (
+    RazorpayRefund,
+    RazorpayTransaction,
+    RazorpayTransactionPlayer,
+)
 
 from .test_subscription_model import make_player
 
@@ -237,3 +242,202 @@ class TestIssuing(ReceiptTestCase):
         purchase.fulfil(first)
         self.assertTrue(Receipt.objects.get().number.endswith("/00001"))
         self.assertEqual(ReceiptSequence.objects.get(series="IU").last, 1)
+
+
+PROCESSED = RazorpayRefund.Status.PROCESSED
+
+
+class TestRefundNotes(ReceiptTestCase):
+    def paid(self, *people: str) -> RazorpayTransaction:
+        transaction = self.order(
+            *[(make_player(p), plan("regular", self.season), 75000) for p in people]
+        )
+        purchase.fulfil(transaction)
+        return transaction
+
+    def note(self, refund: RazorpayRefund) -> Receipt:
+        note = issue_refund_note(refund)
+        assert note is not None  # noqa: S101 - for mypy; the tests below check the value
+        return note
+
+    def refund(
+        self,
+        transaction: RazorpayTransaction,
+        line: RazorpayTransactionPlayer | None = None,
+        **extra: object,
+    ) -> RazorpayRefund:
+        return RazorpayRefund.objects.create(
+            transaction=transaction, line=line, amount=75000, reason="staff only", **extra
+        )
+
+    def test_a_processed_line_refund_gets_a_note_against_the_receipt(self) -> None:
+        transaction = self.paid("r1@example.com", "r2@example.com")
+        line = RazorpayTransactionPlayer.objects.filter(transaction=transaction).first()
+        note = self.note(
+            self.refund(transaction, line, status=PROCESSED, razorpay_refund_id="rfnd_1")
+        )
+        receipt = Receipt.objects.get(transaction=transaction, kind=Receipt.Kind.RECEIPT)
+        self.assertEqual(note.kind, Receipt.Kind.REFUND)
+        self.assertRegex(note.number, r"^RF/\d{4}-\d{2}/00001$")
+        self.assertEqual(note.original, receipt)
+        self.assertEqual(note.reference, "rfnd_1")
+        [row] = note.lines
+        self.assertEqual(row["particulars"], "Refund: Regular Subscription, Season 2026-2027")
+        self.assertEqual((row["quantity"], row["amount"]), (1, 75000))
+        self.assertEqual(len(row["people"]), 1)
+        # The receipt already carries the IU ID, so the note repeats it exactly.
+        self.assertRegex(row["people"][0], r"\(IU-\d{2}-\d+\)$")
+        self.assertIn(row["people"][0], receipt.lines[0]["people"])
+        self.assertNotIn("staff only", str(note.lines))
+        # The receipt itself is untouched.
+        self.assertEqual(Receipt.objects.get(pk=receipt.pk).total, 150000)
+
+    def test_a_renamed_player_still_reads_as_the_receipt_printed_them(self) -> None:
+        transaction = self.paid("ren1@example.com", "ren2@example.com")
+        line = RazorpayTransactionPlayer.objects.filter(transaction=transaction).first()
+        assert line is not None  # noqa: S101 - for mypy
+        receipt = Receipt.objects.get(transaction=transaction, kind=Receipt.Kind.RECEIPT)
+        frozen = receipt.lines[0]["people"][0]
+        line.player.user.first_name = "Renamed"
+        line.player.user.save()
+        note = self.note(self.refund(transaction, line, status=PROCESSED))
+        [row] = note.lines
+        self.assertEqual(row["particulars"], "Refund: Regular Subscription, Season 2026-2027")
+        self.assertEqual(row["people"], [frozen])
+        self.assertNotIn("Renamed", frozen)
+
+    def test_a_whole_order_or_dashboard_refund_reads_against_the_receipt(self) -> None:
+        transaction = self.paid("w@example.com")
+        note = self.note(self.refund(transaction, status=PROCESSED))
+        receipt = Receipt.objects.get(transaction=transaction, kind=Receipt.Kind.RECEIPT)
+        self.assertEqual(note.lines[0]["particulars"], f"Refund against receipt {receipt.number}")
+
+    def test_a_pending_refund_gets_no_note_until_processed(self) -> None:
+        refund = self.refund(self.paid("p@example.com"), status=RazorpayRefund.Status.PENDING)
+        self.assertIsNone(issue_refund_note(refund))
+        refund.status = PROCESSED
+        refund.save()
+        first = self.note(refund)
+        self.assertEqual(self.note(refund).pk, first.pk)
+        self.assertEqual(Receipt.objects.get(refund=refund).pk, first.pk)
+
+    def test_a_refund_that_fails_gets_no_note(self) -> None:
+        refund = self.refund(self.paid("f@example.com"), status=RazorpayRefund.Status.FAILED)
+        self.assertIsNone(issue_refund_note(refund))
+        self.assertFalse(Receipt.objects.filter(kind=Receipt.Kind.REFUND).exists())
+
+    def test_no_note_for_an_order_without_a_receipt(self) -> None:
+        team = self.order((make_player("tm@example.com"), None, 75000), type="team-reg")
+        self.assertIsNone(issue_refund_note(self.refund(team, status=PROCESSED)))
+
+    def test_the_sync_notes_a_refund_when_it_turns_processed(self) -> None:
+        from server.management.commands.sync_razorpay_transactions import Command
+
+        transaction = self.paid("s@example.com")
+        refund = self.refund(
+            transaction, status=RazorpayRefund.Status.PENDING, razorpay_refund_id="rfnd_s"
+        )
+        entry = {
+            "id": "rfnd_s",
+            "status": "processed",
+            "payment_id": transaction.payment_id,
+            "amount": 75000,
+        }
+        with mock.patch(
+            "server.management.commands.sync_razorpay_transactions.get_refunds",
+            return_value=[entry],
+        ):
+            Command().sync_refunds(None)
+        self.assertTrue(Receipt.objects.filter(refund=refund).exists())
+
+    def test_a_failed_note_in_the_sync_is_reported_and_retried(self) -> None:
+        from server.management.commands.sync_razorpay_transactions import Command
+
+        transaction = self.paid("retry@example.com")
+        refund = self.refund(
+            transaction, status=RazorpayRefund.Status.PENDING, razorpay_refund_id="rfnd_retry"
+        )
+        entry = {
+            "id": "rfnd_retry",
+            "status": "processed",
+            "payment_id": transaction.payment_id,
+            "amount": 75000,
+        }
+        target = "server.management.commands.sync_razorpay_transactions"
+        errors = io.StringIO()
+        with (
+            mock.patch(f"{target}.get_refunds", return_value=[entry]),
+            mock.patch(f"{target}.issue_refund_note", side_effect=RuntimeError("no number")),
+        ):
+            result = Command(stderr=errors).sync_refunds(None)
+        self.assertEqual(result, (0, 1))
+        self.assertIn("rfnd_retry", errors.getvalue())
+        self.assertIn("no number", errors.getvalue())
+        # The status change went with the failed note, so the next sync sees it again.
+        refund.refresh_from_db()
+        self.assertEqual(refund.status, RazorpayRefund.Status.PENDING)
+        self.assertFalse(Receipt.objects.filter(refund=refund).exists())
+        with mock.patch(f"{target}.get_refunds", return_value=[entry]):
+            self.assertEqual(Command().sync_refunds(None), (1, 0))
+        refund.refresh_from_db()
+        self.assertEqual(refund.status, PROCESSED)
+        self.assertTrue(Receipt.objects.filter(refund=refund).exists())
+
+    def test_one_bad_refund_does_not_stop_the_rest_of_the_sync(self) -> None:
+        from server.management.commands.sync_razorpay_transactions import Command
+
+        first_order, second_order = self.paid("one@example.com"), self.paid("two@example.com")
+        first = self.refund(
+            first_order, status=RazorpayRefund.Status.PENDING, razorpay_refund_id="rfnd_bad"
+        )
+        second = self.refund(
+            second_order, status=RazorpayRefund.Status.PENDING, razorpay_refund_id="rfnd_good"
+        )
+        entries = [
+            {
+                "id": r.razorpay_refund_id,
+                "status": "processed",
+                "payment_id": r.transaction.payment_id,
+                "amount": 75000,
+            }
+            for r in (first, second)
+        ]
+
+        def note(refund: RazorpayRefund) -> Receipt | None:
+            if refund.pk == first.pk:
+                raise RuntimeError("no number")
+            return issue_refund_note(refund)
+
+        target = "server.management.commands.sync_razorpay_transactions"
+        with (
+            mock.patch(f"{target}.get_refunds", return_value=entries),
+            mock.patch(f"{target}.issue_refund_note", side_effect=note),
+        ):
+            result = Command(stderr=io.StringIO()).sync_refunds(None)
+
+        self.assertEqual(result, (1, 1))
+        first.refresh_from_db()
+        second.refresh_from_db()
+        self.assertEqual(first.status, RazorpayRefund.Status.PENDING)
+        self.assertFalse(Receipt.objects.filter(refund=first).exists())
+        self.assertEqual(second.status, PROCESSED)
+        self.assertTrue(Receipt.objects.filter(refund=second).exists())
+
+    def test_the_sync_notes_a_processed_dashboard_refund(self) -> None:
+        from server.management.commands.sync_razorpay_transactions import Command
+
+        transaction = self.paid("d@example.com")
+        entry = {
+            "id": "rfnd_d",
+            "status": "processed",
+            "payment_id": transaction.payment_id,
+            "amount": 75000,
+        }
+        with mock.patch(
+            "server.management.commands.sync_razorpay_transactions.get_refunds",
+            return_value=[entry],
+        ):
+            Command().sync_refunds(None)
+        self.assertTrue(
+            Receipt.objects.filter(kind=Receipt.Kind.REFUND, reference="rfnd_d").exists()
+        )
