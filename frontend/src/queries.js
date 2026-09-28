@@ -26,6 +26,15 @@ export const fetchTransactions = async () => {
   return await response.json();
 };
 
+export const fetchReceipts = async () => {
+  const response = await fetch("/api/receipts", {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin"
+  });
+  return await response.json();
+};
+
 export const fetchAllManualTransactions = async () => {
   const response = await fetch(
     "/api/transactions?user_only=false&only_manual=True",

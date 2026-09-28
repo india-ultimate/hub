@@ -16,6 +16,7 @@ import { useStore } from "../store";
 import { registerPasskey, showPlayerStatus } from "../utils";
 import { getCookie } from "../utils";
 import Player from "./Player";
+import ReceiptList from "./receipts/ReceiptList";
 import TransactionList from "./TransactionList";
 
 // Profile Picture Component
@@ -610,6 +611,27 @@ const Dashboard = () => {
             </div>
           </div>
         </Show>
+        <h2 id="accordion-heading-receipts">
+          <button
+            type="button"
+            class="flex w-full items-center justify-between border-b border-gray-200 py-5 text-left font-medium text-gray-500 dark:border-gray-700 dark:text-gray-400"
+            data-accordion-target="#accordion-body-receipts"
+            aria-expanded="false"
+            aria-controls="accordion-body-receipts"
+          >
+            <span>Receipts</span>
+            <AccordionDownIcon />
+          </button>
+        </h2>
+        <div
+          id="accordion-body-receipts"
+          class="hidden"
+          aria-labelledby="accordion-heading-receipts"
+        >
+          <div class="border-b border-gray-200 py-5 dark:border-gray-700">
+            <ReceiptList />
+          </div>
+        </div>
         <h2 id="accordion-heading-transactions">
           <button
             type="button"
