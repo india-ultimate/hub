@@ -4,15 +4,17 @@ import datetime
 from typing import Any
 from unittest import mock
 
-from server.core.models import Team
+from server.core.models import Player, Team
 from server.forms.models import Form, FormResponse
 from server.season.models import Season
+from server.series.models import Role, Series, SeriesRegistration
 from server.subscription.models import Subscription, SubscriptionPlan
 from server.tests.base import ApiBaseTestCase, fake_id, fake_order
 from server.tournament.models import Event, Registration, Tournament
 from server.transaction.models import RazorpayTransaction
 from server.utils import today
 
+from .test_eligibility import make_series
 from .test_subscription_model import make_player
 
 TEAM_FEE = 500000
@@ -40,6 +42,21 @@ class TestPaymentFlows(ApiBaseTestCase):
             player_fee=PLAYER_FEE,
         )
         self.open_tournament = Tournament.objects.create(event=self.open_event)
+        self.season = Season.objects.get(name="Season 2026-2027")
+
+    def rostered_for_series(self, series: Series, email: str, slug: str, role: str) -> Player:
+        player = make_player(email)
+        Subscription.objects.create(
+            player=player,
+            season=self.season,
+            plan=SubscriptionPlan.objects.get(season=self.season, type__slug=slug),
+            is_active=True,
+            waiver_valid=True,
+            start_date=self.season.start_date,
+            end_date=self.season.end_date,
+        )
+        SeriesRegistration.objects.create(series=series, team=self.team, player=player, role=role)
+        return player
 
     def order(self, data: dict[str, Any], amount: int) -> RazorpayTransaction:
         with mock.patch(
@@ -148,6 +165,73 @@ class TestPaymentFlows(ApiBaseTestCase):
             end_date=season.end_date,
         )
         self.order(data, PLAYER_FEE)
+
+    def test_paying_for_series_staff_skips_caps_but_not_the_playing_count(self) -> None:
+        self.open_tournament.teams.add(self.team)
+        series = make_series(self.season)
+        series.event_max_players_total = 1
+        series.save()
+        self.open_event.series = series
+        self.open_event.save()
+
+        # The one playing spot is already taken.
+        playing = self.rostered_for_series(series, "playing@example.com", "regular", Role.DEFAULT)
+        Registration.objects.create(
+            event=self.open_event, team=self.team, player=playing, is_playing=True
+        )
+
+        coach = self.rostered_for_series(series, "coach@example.com", "community", Role.COACH)
+        data = {
+            "team_id": self.team.id,
+            "event_id": self.open_event.id,
+            "player_ids": [coach.id],
+        }
+        transaction = self.order(data, PLAYER_FEE)
+        self.pay(transaction.order_id)
+
+        registration = Registration.objects.get(event=self.open_event, player=coach)
+        self.assertFalse(registration.is_playing)
+        self.assertEqual(
+            1, Registration.objects.filter(event=self.open_event, is_playing=True).count()
+        )
+
+    def test_paid_series_staff_role_is_accepted_though_it_cannot_play(self) -> None:
+        self.open_tournament.teams.add(self.team)
+        series = make_series(self.season)
+        series.event_max_players_total = 10
+        series.save()
+        self.open_event.series = series
+        self.open_event.save()
+
+        coach = self.rostered_for_series(series, "coach@example.com", "community", Role.COACH)
+        data = {
+            "team_id": self.team.id,
+            "event_id": self.open_event.id,
+            "player_ids": [coach.id],
+        }
+        self.order(data, PLAYER_FEE)
+
+    def test_a_community_tier_playing_role_is_still_refused(self) -> None:
+        self.open_tournament.teams.add(self.team)
+        series = make_series(self.season)
+        series.event_max_players_total = 10
+        series.save()
+        self.open_event.series = series
+        self.open_event.save()
+
+        player = self.rostered_for_series(series, "player@example.com", "community", Role.DEFAULT)
+        data = {
+            "team_id": self.team.id,
+            "event_id": self.open_event.id,
+            "player_ids": [player.id],
+        }
+        with mock.patch("server.transaction.client.razorpay.create_order") as create_order:
+            response = self.client.post(
+                "/api/transactions/razorpay", data=data, content_type="application/json"
+            )
+        self.assertEqual(400, response.status_code)
+        self.assertIn("does not cover playing here", response.json()["message"])
+        create_order.assert_not_called()
 
     def test_a_paid_form_response_is_marked_paid(self) -> None:
         form = Form.objects.create(
