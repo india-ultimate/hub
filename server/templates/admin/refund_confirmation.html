@@ -1,0 +1,29 @@
+{% extends "admin/base_site.html" %} {% block content %}
+<h1>{{ title }}</h1>
+
+<p>
+  This sends {{ amount }} back to <strong>{{ person }}</strong> through
+  Razorpay. Razorpay emails them about the refund; the Hub does not.
+</p>
+
+{% if changes %}
+<h2>What changes here</h2>
+<ul>
+  {% for change in changes %}
+  <li>{{ change }}</li>
+  {% endfor %}
+</ul>
+{% endif %} {% if warning %}
+<p class="warning">{{ warning }}</p>
+{% endif %}
+
+<form method="post">
+  {% csrf_token %}
+  <p>
+    <label for="reason">Why is this being refunded?</label><br />
+    <textarea id="reason" name="reason" rows="3" cols="60" required></textarea>
+  </p>
+  <input type="submit" class="default" value="Refund {{ amount }}" />
+  <a href="{{ cancel_url }}" class="button cancel-link">Cancel</a>
+</form>
+{% endblock %}

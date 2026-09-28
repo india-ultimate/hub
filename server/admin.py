@@ -6,9 +6,12 @@ from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 from django.db.models import CharField, Q, QuerySet, Sum, Value
 from django.db.models.functions import Concat
 from django.http import HttpRequest, HttpResponse
+from django.shortcuts import redirect
 from django.template.response import TemplateResponse
+from django.urls import reverse
 from django.utils.html import format_html
 
+from server.admin_views import REFUND_PERM
 from server.announcements.models import Announcement
 from server.core.models import Accreditation, Guardianship, Player, Team, User
 from server.duplicates import review
@@ -42,7 +45,14 @@ from server.forms.models import Form, FormResponse
 from server.season.models import Season
 from server.series.models import Series, SeriesRegistration, SeriesRosterInvitation
 from server.servicerequests.models import ServiceRequest, ServiceRequestStatus, ServiceRequestType
-from server.subscription.models import Subscription
+from server.subscription import catalog, sponsorship
+from server.subscription.models import (
+    SponsorshipGrant,
+    Subscription,
+    SubscriptionPlan,
+    SubscriptionType,
+    SubscriptionTypeScope,
+)
 from server.task.manager import TaskManager
 from server.task.models import Task
 from server.tournament.models import (
@@ -60,7 +70,13 @@ from server.tournament.models import (
     Tournament,
     TournamentField,
 )
-from server.transaction.models import ManualTransaction, PhonePeTransaction, RazorpayTransaction
+from server.transaction.models import (
+    ManualTransaction,
+    PhonePeTransaction,
+    RazorpayRefund,
+    RazorpayTransaction,
+    RazorpayTransactionPlayer,
+)
 
 
 @admin.action(description="Export Selected")
@@ -85,26 +101,29 @@ def export_as_csv(
     return response
 
 
-@admin.action(description="Set sponsored to False")
-def set_sponsored_false(
-    self: admin.ModelAdmin[Player],
-    request: HttpRequest,
-    queryset: QuerySet[Player],
-) -> None:
-    """Set sponsored status to False for all selected players"""
-    updated_count = queryset.update(sponsored=False)
-    self.message_user(
-        request,
-        f"Successfully updated {updated_count} player(s) to set sponsored=False.",
-    )
+class SponsorshipGrantInline(admin.TabularInline[SponsorshipGrant, Player]):
+    model = SponsorshipGrant
+    extra = 0
+    fields = ["season", "granted_at", "granted_by", "request", "note"]
+    readonly_fields = ["granted_at"]
 
 
 @admin.register(Player)
 class PlayerAdmin(admin.ModelAdmin[Player]):
     search_fields = ["user__first_name", "user__last_name", "user__username", "user__email"]
-    list_display = ["get_name", "get_email", "gender", "sponsored"]
-    list_filter = ["gender", "sponsored"]
-    actions = [export_as_csv, set_sponsored_false]
+    list_display = ["get_name", "get_email", "gender"]
+    list_filter = ["gender"]
+    actions = [export_as_csv]
+    inlines = [SponsorshipGrantInline]
+    # Player.sponsored is dead after per-season sponsorship, and nothing
+    # reads it any more, so it is kept off this form too: ticking it would
+    # look like granting sponsorship and grant nothing. A grant is per
+    # season, made in the inline below, and revoked by deleting it there.
+    exclude = ["sponsored"]
+    # The number is assigned once and kept for life, and it is printed on
+    # waivers and certificates, so a typo here could not be taken back and
+    # a repeat would break the unique column. Readable, not editable.
+    readonly_fields = ["iu_id"]
 
     @admin.display(description="Name", ordering="user__first_name")
     def get_name(self, obj: Player) -> str:
@@ -398,13 +417,20 @@ class SubscriptionAdmin(admin.ModelAdmin[Subscription]):
     search_fields = ["player__user__first_name"]
     list_display = [
         "get_name",
-        "start_date",
-        "end_date",
+        "season",
+        "get_tier",
+        "amount_paid",
         "is_active",
-        "get_sponsored",
+        "refunded_at",
     ]
-    list_filter = ["is_active", "player__sponsored"]
-    actions = [export_as_csv]
+    list_filter = [
+        "season",
+        "plan__type",
+        "is_active",
+        ("refunded_at", admin.EmptyFieldListFilter),
+    ]
+    list_select_related = ["player__user", "season", "plan__type"]
+    actions = [export_as_csv, "refund_completely"]
     # subscription_number and is_annual are retained on the model only for
     # the deploy window (a still-running previous release reads the
     # columns); nothing should read or write them through this form.
@@ -414,15 +440,87 @@ class SubscriptionAdmin(admin.ModelAdmin[Subscription]):
     def get_name(self, obj: Subscription) -> str:
         return obj.player.user.first_name
 
-    @admin.display(description="Sponsored", ordering="player__sponsored")
-    def get_sponsored(self, obj: Subscription) -> bool:
-        return obj.player.sponsored
+    @admin.display(description="Tier", ordering="plan__type__display_order")
+    def get_tier(self, obj: Subscription) -> str:
+        return obj.plan.type.name if obj.plan is not None else "—"
+
+    def has_refund_permission(self, request: HttpRequest) -> bool:
+        return request.user.has_perm(REFUND_PERM)
+
+    @admin.action(description="Refund this subscription completely", permissions=["refund"])
+    def refund_completely(
+        self, request: HttpRequest, queryset: QuerySet[Subscription]
+    ) -> HttpResponse | None:
+        items = list(queryset)
+        if len(items) != 1:
+            self.message_user(request, "Refund one subscription at a time", messages.WARNING)
+            return None
+        # Straight to the confirmation page: no money moves until staff confirm.
+        return redirect("admin:refund_subscription", items[0].pk)
+
+
+class NeedsReviewFilter(admin.SimpleListFilter):
+    """Orders with a line staff have to look at — Task 9's flagged payments."""
+
+    title = "needs review"
+    parameter_name = "needs_review"
+
+    def lookups(self, request: HttpRequest, model_admin: Any) -> list[tuple[str, str]]:
+        return [("yes", "Yes"), ("no", "No")]
+
+    def queryset(
+        self, request: HttpRequest, queryset: QuerySet[RazorpayTransaction]
+    ) -> QuerySet[RazorpayTransaction]:
+        flagged = RazorpayTransactionPlayer.objects.filter(needs_review=True).values("transaction")
+        if self.value() == "yes":
+            return queryset.filter(pk__in=flagged)
+        if self.value() == "no":
+            return queryset.exclude(pk__in=flagged)
+        return queryset
+
+
+class RazorpayTransactionPlayerInline(
+    admin.TabularInline[RazorpayTransactionPlayer, RazorpayTransaction]
+):
+    model = RazorpayTransactionPlayer
+    extra = 0
+    readonly_fields = ["refund_link"]
+
+    def get_fields(self, request: HttpRequest, obj: Any = None) -> list[str]:
+        fields = ["player", "plan", "amount", "subscription", "needs_review", "review_note"]
+        # The button is only shown to staff who may actually refund; the view
+        # refuses anyone else anyway.
+        if request.user.has_perm(REFUND_PERM):
+            fields.append("refund_link")
+        return fields
+
+    @admin.display(description="Refund")
+    def refund_link(self, obj: RazorpayTransactionPlayer) -> str:
+        if not obj.pk or not obj.amount:
+            return "—"
+        return format_html(
+            '<a class="button" href="{}">Refund ₹{}</a>',
+            reverse("admin:refund_line", args=[obj.pk]),
+            obj.amount // 100,
+        )
+
+
+class RazorpayRefundInline(admin.TabularInline[RazorpayRefund, RazorpayTransaction]):
+    model = RazorpayRefund
+    extra = 0
+    fields = ("amount", "status", "source", "reason", "created_by", "created_at")
+    readonly_fields = fields
+    can_delete = False
+
+    def has_add_permission(self, request: HttpRequest, obj: Any = None) -> bool:
+        return False
 
 
 @admin.register(RazorpayTransaction)
 class RazorpayTransactionAdmin(admin.ModelAdmin[RazorpayTransaction]):
     change_list_template = "admin/razorpay_transaction.html"
     search_fields = ["user__first_name"]
+    inlines = [RazorpayTransactionPlayerInline, RazorpayRefundInline]
     list_display = [
         "get_name",
         "type",
@@ -432,9 +530,21 @@ class RazorpayTransactionAdmin(admin.ModelAdmin[RazorpayTransaction]):
         "payment_date",
         "status",
     ]
-    list_filter = ["status", "type", "payment_date"]
+    list_filter = ["status", "type", NeedsReviewFilter, "payment_date"]
     date_hierarchy = "payment_date"
     actions = [export_as_csv]
+
+    def get_readonly_fields(self, request: HttpRequest, obj: Any = None) -> list[str]:
+        if obj is not None and request.user.has_perm(REFUND_PERM):
+            return ["refund_order_link"]
+        return []
+
+    @admin.display(description="Refund the whole order")
+    def refund_order_link(self, obj: RazorpayTransaction) -> str:
+        return format_html(
+            '<a class="button" href="{}">Refund what is left of this order</a>',
+            reverse("admin:refund_order", args=[obj.pk]),
+        )
 
     def changelist_view(
         self, request: HttpRequest, extra_context: dict[str, Any] | None = None
@@ -469,6 +579,36 @@ class RazorpayTransactionAdmin(admin.ModelAdmin[RazorpayTransaction]):
         return obj.user.first_name
 
 
+class SubscriptionTypeScopeInline(admin.TabularInline[SubscriptionTypeScope, SubscriptionType]):
+    model = SubscriptionTypeScope
+    extra = 0
+
+
+@admin.register(SubscriptionType)
+class SubscriptionTypeAdmin(admin.ModelAdmin[SubscriptionType]):
+    list_display = ["name", "slug", "requires_grant", "display_order"]
+    inlines = [SubscriptionTypeScopeInline]
+
+
+class SubscriptionPlanInline(admin.TabularInline[SubscriptionPlan, Season]):
+    model = SubscriptionPlan
+    extra = 0
+
+
+@admin.register(SubscriptionPlan)
+class SubscriptionPlanAdmin(admin.ModelAdmin[SubscriptionPlan]):
+    list_display = ["season", "type", "amount", "is_available"]
+    list_filter = ["season", "type", "is_available"]
+
+
+@admin.register(SponsorshipGrant)
+class SponsorshipGrantAdmin(admin.ModelAdmin[SponsorshipGrant]):
+    list_display = ["player", "season", "granted_at", "granted_by"]
+    list_filter = ["season"]
+    search_fields = ["player__user__email", "player__user__first_name"]
+    list_select_related = ["player__user", "season", "granted_by"]
+
+
 @admin.register(PhonePeTransaction)
 class PhonePeTransactionAdmin(admin.ModelAdmin[PhonePeTransaction]):
     search_fields = ["user__first_name"]
@@ -494,7 +634,24 @@ class ManualTransactionAdmin(admin.ModelAdmin[ManualTransaction]):
 @admin.register(Season)
 class SeasonAdmin(admin.ModelAdmin[Season]):
     search_fields = ["name"]
-    list_display = ["name"]
+    list_display = ["name", "start_date", "end_date"]
+    inlines = [SubscriptionPlanInline]
+
+    def save_model(self, request: HttpRequest, obj: Season, form: Any, change: bool) -> None:
+        super().save_model(request, obj, form, change)
+        if change:
+            return
+        previous = (
+            Season.objects.exclude(pk=obj.pk)
+            .filter(start_date__lt=obj.start_date)
+            .order_by("-start_date")
+            .first()
+        )
+        if previous is None:
+            return
+        copied = catalog.copy_plans(previous, obj)
+        if copied:
+            self.message_user(request, f"Copied {copied} plan(s) from {previous.name}. Check them.")
 
 
 @admin.register(Series)
@@ -753,11 +910,41 @@ def _describe(move: RelationMove) -> str:
 @admin.register(ServiceRequest)
 class ServiceRequestAdmin(admin.ModelAdmin[ServiceRequest]):
     search_fields = ["user__first_name", "user__last_name", "user__email"]
-    list_display = ["get_user", "type", "status", "created_at"]
-    list_filter = ["type", "status", "created_at"]
+    list_display = ["get_user", "type", "status", "season", "created_at"]
+    list_filter = ["type", "status", "season", "created_at"]
     date_hierarchy = "created_at"
     filter_horizontal = ("service_players",)
-    actions = ["approve_and_merge", "reject_merge"]
+    actions = ["approve_sponsorship", "approve_and_merge", "reject_merge"]
+
+    @admin.action(description="Sponsorship requests: approve", permissions=["change"])
+    def approve_sponsorship(self, request: HttpRequest, queryset: QuerySet[ServiceRequest]) -> None:
+        """Approve, and grant the season explicitly.
+
+        The status signal grants too, but it cannot help a request that was
+        created already approved: the M2M players are not attached yet when
+        post_save fires. Granting here is what actually entitles them.
+        """
+        for item in queryset.filter(type=ServiceRequestType.REQUEST_SPONSORED_SUBSCRIPTION):
+            season = item.season or Season.current()
+            if season is None:
+                self.message_user(request, f"Request {item.pk}: no season to grant", messages.ERROR)
+                continue
+            # Granted before the status is saved, so this records who approved
+            # it: the status signal grants too, and whichever runs first wins.
+            players = list(item.service_players.all())
+            for player in players:
+                sponsorship.grant(
+                    player,
+                    season,
+                    by=request.user,  # type: ignore[arg-type]
+                    request=item,
+                )
+            if item.status != ServiceRequestStatus.APPROVED:
+                item.status = ServiceRequestStatus.APPROVED
+                item.save()
+            self.message_user(
+                request, f"Request {item.pk}: {len(players)} player(s) sponsored for {season.name}"
+            )
 
     @admin.display(description="User", ordering="user__first_name")
     def get_user(self, obj: ServiceRequest) -> str:
@@ -1089,3 +1276,14 @@ class FormResponseAdmin(admin.ModelAdmin[FormResponse]):
     list_display = ["form", "user", "is_paid", "submitted_at"]
     search_fields = ["form__title", "user__first_name", "user__last_name", "user__email"]
     list_filter = ["form", "is_paid"]
+
+
+@admin.register(RazorpayRefund)
+class RazorpayRefundAdmin(ReadOnly, admin.ModelAdmin[RazorpayRefund]):
+    """Every refund: who, when, why, how much, and how it went."""
+
+    list_display = ["transaction", "line", "amount", "status", "source", "created_by", "created_at"]
+    list_filter = ["status", "source", "created_at"]
+    search_fields = ["transaction__order_id", "razorpay_refund_id"]
+    list_select_related = ["transaction", "created_by"]
+    date_hierarchy = "created_at"
