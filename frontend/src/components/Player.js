@@ -6,6 +6,7 @@ import { genderChoices, occupationChoices, stateChoices } from "../constants";
 import { fetchPlayerSubscriptions } from "../queries";
 import { displayDate } from "../utils";
 import { getLabel } from "../utils";
+import IUIDBadge from "./IUIDBadge";
 import StatusStepper from "./StatusStepper";
 
 const Player = props => {
@@ -44,6 +45,11 @@ const Player = props => {
   return (
     <div class="relative overflow-x-auto">
       <StatusStepper player={props.player} />
+      <Show when={props.player?.iu_id}>
+        <div class="mb-4">
+          <IUIDBadge id={props.player.iu_id} />
+        </div>
+      </Show>
       <Show when={props.player?.imported_data}>
         <div
           class="mb-4 rounded-lg bg-blue-50 p-4 text-sm text-blue-800 dark:bg-gray-800 dark:text-blue-400"
