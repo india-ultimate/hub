@@ -167,15 +167,15 @@ STORAGES = {
 APP_NAME = "India Ultimate Hub"
 LOGO_URL = "https://hub.indiaultimate.org/static/assets/favico.png"
 
-# Printed on every receipt and refund note.
+# Printed on every receipt. Unset tax ids drop the tax line entirely.
 RECEIPT_ISSUER = {
     "name": "FLYING DISC SPORTS FEDERATION (INDIA)",
     "address": "24, Girinagar 2nd Street, Ramapuram, Chennai 600 089, Tamil Nadu, India",
     "phones": ["+91 60021 54601", "+91 98849 81941"],
     "email": "operations@indiaultimate.org",
     "website": "indiaultimate.org",
-    "gstin": "33AAECF4262G1ZW",
-    "pan": "AAECF4262G",
+    "gstin": os.environ.get("RECEIPT_ISSUER_GSTIN", ""),
+    "pan": os.environ.get("RECEIPT_ISSUER_PAN", ""),
 }
 
 # Razorpay settings

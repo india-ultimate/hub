@@ -5,7 +5,8 @@ import subprocess
 import sys
 from typing import Any, cast
 
-from django.test import SimpleTestCase, TestCase
+from django.conf import settings
+from django.test import SimpleTestCase, TestCase, override_settings
 from pypdf import PdfReader
 
 from server.receipts.models import Receipt
@@ -71,11 +72,25 @@ class TestHtml(RenderTestCase):
                 "2,250.00",
                 "Rupees Two Thousand Two Hundred Fifty Only",
                 "pay_R",
-                "33AAECF4262G1ZW",
                 "does not require a signature",
             ):
                 self.assertIn(text, html, f"{mode}: {text}")
             self.assertNotIn("DONATED", html.upper())
+
+    def test_the_tax_ids_are_whatever_the_environment_set(self) -> None:
+        issuer = {**settings.RECEIPT_ISSUER, "gstin": "22AAAAA0000A1Z5", "pan": "AAAAA0000A"}
+        with override_settings(RECEIPT_ISSUER=issuer):
+            html = render_html(self.receipt, "page")
+        self.assertIn("GSTIN 22AAAAA0000A1Z5 \u00b7 PAN AAAAA0000A", html)
+
+    def test_a_missing_tax_id_prints_no_label(self) -> None:
+        for absent in ({"gstin": ""}, {"pan": ""}, {"gstin": "", "pan": ""}):
+            issuer = {**settings.RECEIPT_ISSUER, "gstin": "22AAAAA0000A1Z5", "pan": "AAAAA0000A"}
+            issuer.update(absent)
+            with override_settings(RECEIPT_ISSUER=issuer):
+                html = render_html(self.receipt, "page")
+            self.assertNotIn("GSTIN", html, absent)
+            self.assertNotIn("PAN", html, absent)
 
     def test_the_email_links_to_the_hub(self) -> None:
         self.assertIn(f"/receipts/{self.receipt.pk}", render_html(self.receipt, "email"))
