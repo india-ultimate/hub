@@ -160,7 +160,13 @@ const Subscription = () => {
             </h3>
             <p class="text-sm italic">Subscription for {player()?.full_name}</p>
 
-            <Show when={subscription()?.is_active && subscription()?.tier}>
+            <Show
+              when={
+                subscription()?.is_active &&
+                subscription()?.tier &&
+                subscription()?.season === season()?.id
+              }
+            >
               <div id="subscription-exist" class="mt-4">
                 {player()?.full_name} holds {subscription().tier_name} until{" "}
                 {displayDate(subscription().end_date)}
