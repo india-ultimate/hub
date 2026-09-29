@@ -10,8 +10,9 @@ kill_timeout = "30s"
 swap_size_mb = 512
 
 [experimental]
-  # Off while migrations rename/drop columns: the old image can't read the
-  # new schema. Turn back on once the last of them is deployed.
+  # Off through 0160, which drops columns the previous image still selects:
+  # rolling back after it commits is an outage, not a recovery. Once 0160 is
+  # deployed this goes back to true.
   auto_rollback = false
 
 [build]
