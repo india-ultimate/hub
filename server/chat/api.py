@@ -29,10 +29,7 @@ class AuthenticatedHttpRequest(HttpRequest):
 
 @functools.cache
 def _groq_client() -> "groq.Client":
-    # groq drags in httpx, httpcore, anyio, trio and rich: ~11 MB and 70+
-    # modules that only the chat endpoints need. Every gunicorn worker
-    # imports this router to build the URL conf (there is no --preload), so
-    # it is imported where it is used, not here.
+    # Lazy: groq pulls httpx/anyio/trio, ~11MB in every worker.
     import groq
 
     return groq.Client(api_key=settings.GROQ_API_KEY)
