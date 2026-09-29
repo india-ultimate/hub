@@ -71,6 +71,40 @@ class TestSeasonCurrent(TestCase):
             self.assertNotEqual(Season.current(), early)
 
 
+class TestCurrentSeasonApi(TestCase):
+    def setUp(self) -> None:
+        self.season = Season.objects.create(
+            name="Test Season 2031-2032", start_date="2031-08-01", end_date="2032-07-31"
+        )
+
+    def get(self, day: datetime.date) -> "tuple[int, dict[str, object]]":
+        with mock.patch("server.season.models.today", return_value=day):
+            response = self.client.get("/api/seasons/current")
+        return response.status_code, response.json()
+
+    def test_it_answers_with_the_season_containing_today(self) -> None:
+        status, body = self.get(datetime.date(2031, 9, 25))
+        self.assertEqual(status, 200)
+        self.assertEqual(body["name"], self.season.name)
+        self.assertEqual(body["id"], self.season.id)
+
+    def test_a_season_that_has_not_started_is_not_answered_early(self) -> None:
+        Season.objects.create(
+            name="Test Season 2032-2033", start_date="2032-08-01", end_date="2033-07-31"
+        )
+        status, body = self.get(datetime.date(2031, 9, 25))
+        self.assertEqual(status, 200)
+        self.assertEqual(body["name"], self.season.name)
+
+    def test_no_season_covering_today_is_a_404_not_an_empty_season(self) -> None:
+        status, _ = self.get(datetime.date(2019, 1, 1))
+        self.assertEqual(status, 404)
+
+    def test_it_needs_no_login(self) -> None:
+        status, _ = self.get(datetime.date(2031, 9, 25))
+        self.assertEqual(status, 200)
+
+
 REAL_SEASON_NAMES = [
     "Season 2022-2023",
     "Season 2023-2024",
