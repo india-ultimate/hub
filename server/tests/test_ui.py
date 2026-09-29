@@ -366,18 +366,23 @@ class TestIntegration(BaseCase):
         user = make_player("gap@example.com")
         player_id = Player.objects.get(user=user).id
 
-        # Move every season into the past, so none covers today.
-        for season in Season.objects.all():
-            Season.objects.filter(pk=season.pk).update(
-                start_date=season.start_date - datetime.timedelta(days=365 * 20),
-                end_date=season.end_date - datetime.timedelta(days=365 * 20),
-            )
+        # Move every season into the past, so none covers today, and put them
+        # back afterwards: add_seasons is get_or_create, so it matches on name
+        # and would leave shifted dates in place for every test after this one.
+        original = {s.pk: (s.start_date, s.end_date) for s in Season.objects.all()}
+        shift = datetime.timedelta(days=365 * 20)
+        try:
+            for pk, (start, end) in original.items():
+                Season.objects.filter(pk=pk).update(start_date=start - shift, end_date=end - shift)
 
-        self.sign_in_as(user)
-        self.open(f"{APP_URL}/subscription/{player_id}")
-        self.assert_text("no subscription season running")
-        self.assert_text_not_visible("Regular Subscription")
-        self.assert_element_absent("select#year")
+            self.sign_in_as(user)
+            self.open(f"{APP_URL}/subscription/{player_id}")
+            self.assert_text("no subscription season running")
+            self.assert_text_not_visible("Regular Subscription")
+            self.assert_element_absent("select#year")
+        finally:
+            for pk, (start, end) in original.items():
+                Season.objects.filter(pk=pk).update(start_date=start, end_date=end)
 
     def test_login_with_otp(self) -> None:
         username, password, user_id = create_login_user()
