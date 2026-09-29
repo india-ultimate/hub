@@ -77,6 +77,11 @@ class TestPlansEndpoint(ApiBaseTestCase):
         response = self.client.get(f"/api/seasons/{self.s26.id}/plans?player_id={self.player.id}")
         self.assertEqual(response.status_code, 200)
 
+    def test_an_unknown_player_is_a_404_not_the_unpriced_list(self) -> None:
+        # Falling through to the unpriced list showed every tier as buyable.
+        response = self.client.get(f"/api/seasons/{self.s26.id}/plans?player_id=99999")
+        self.assertEqual(response.status_code, 404)
+
     def test_a_season_with_no_plans_returns_an_empty_list(self) -> None:
         empty = Season.objects.create(
             name="Season 2030-2031", start_date="2030-08-01", end_date="2031-07-31"

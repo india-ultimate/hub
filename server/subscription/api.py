@@ -42,7 +42,9 @@ def season_plans(
     guardian or staff may ask.
     """
     season = get_object_or_404(Season, id=season_id)
-    player = Player.objects.filter(id=player_id).first() if player_id else None
+    # 404, not None: an id that matches nobody used to fall through to the
+    # unpriced list, showing every tier as buyable.
+    player = get_object_or_404(Player, id=player_id) if player_id else None
     if player is not None and not may_see(request.user, player):
         return 403, {"message": "You can only price a subscription for yourself, or your ward"}
 
