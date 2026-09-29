@@ -10,10 +10,8 @@ kill_timeout = "30s"
 swap_size_mb = 512
 
 [experimental]
-  # Off while the subscription releases land. 0145 renames tables and columns,
-  # and the releases queued behind it drop some, so a boot that fails after
-  # migrate would put the old image back to read a schema that no longer
-  # matches it. Turn this on again once the last of them is deployed.
+  # Off while migrations rename/drop columns: the old image can't read the
+  # new schema. Turn back on once the last of them is deployed.
   auto_rollback = false
 
 [build]

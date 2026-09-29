@@ -205,8 +205,7 @@ def change_series_role(registration: SeriesRegistration, role: str) -> message_r
 
 
 def generate_invitation_token(invitation_id: int) -> str:
-    # jwt drags in cryptography (32 modules): ~5.2 MB that only a token
-    # actually being made or read needs.
+    # Lazy: jwt pulls cryptography, ~5MB in every worker.
     import jwt
 
     mail_secret_key = cast(str, settings.EMAIL_SECRET_KEY)
@@ -220,9 +219,7 @@ def generate_invitation_token(invitation_id: int) -> str:
 
 
 def get_details_from_invitation_token(token: str) -> tuple[bool, int | str]:
-    # jwt drags in cryptography (32 modules): ~5.2 MB that only a token
-    # actually being made or read needs. Imported above the try, not inside
-    # it, so `except jwt.InvalidTokenError` below can still reference it.
+    # Lazy, and above the try so `except jwt.*` below can still name it.
     import jwt
 
     try:

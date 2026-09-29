@@ -10,11 +10,7 @@ from django.db.models import Count, Q
 from django.utils import timezone
 from typing_extensions import NotRequired
 
-# groq drags in httpx, httpcore, anyio, trio and rich: ~11 MB and 70+ modules
-# that only the chat endpoints need. Every gunicorn worker imports this router
-# to build the URL conf (there is no --preload), so groq is only ever imported
-# where a `groq.Client` is actually built (`server/chat/api.py`), not here -
-# this module only ever calls methods on a client it is handed.
+# Types only. The client is built in chat/api.py; this module is handed one.
 if TYPE_CHECKING:
     import groq
     from groq.types.chat import (

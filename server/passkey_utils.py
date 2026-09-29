@@ -105,8 +105,7 @@ class PassKeyClient:
             )
             return ClientResponse(error="Failed to finalize login passkey")
 
-        # jwt drags in cryptography (32 modules): ~5.2 MB that only a token
-        # actually being made or read needs.
+        # Lazy: jwt pulls cryptography, ~5MB in every worker.
         import jwt
 
         data = response.json()
