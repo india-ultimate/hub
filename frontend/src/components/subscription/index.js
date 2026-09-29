@@ -128,6 +128,11 @@ const Subscription = () => {
         when={season()}
         fallback={
           <div class="my-4">
+            <Show when={seasonQuery.isLoading}>
+              <p class="text-sm text-gray-500 dark:text-gray-400">
+                Loading the current season&hellip;
+              </p>
+            </Show>
             <Show when={seasonQuery.isError}>
               <Error text="Could not load the current season. Please try again." />
             </Show>

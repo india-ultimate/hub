@@ -47,7 +47,8 @@ class TestTournamentAgentImportCost(SimpleTestCase):
 
 class TestAnnouncementsImportCost(SimpleTestCase):
     def test_setup_leaves_markdownify_alone(self) -> None:
-        # markdownify costs 5.7MB during django.setup(), so cron pays it too.
+        # markdownify is no longer a dependency; this guards re-adding it at
+        # module scope, where django.setup() pays 5.7MB and so does cron.
         script = (
             "import sys, django; django.setup();"
             "sys.exit(1 if {'markdownify', 'bs4'} & set(sys.modules) else 0)"
