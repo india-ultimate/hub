@@ -1304,6 +1304,23 @@ def _model_id_for_style(style: str) -> str:
     return model.id
 
 
+class OpenCodeSessionHeaderTests(TestCase):
+    """OpenCode Go 400s without x-opencode-session, and caches by its value."""
+
+    def test_both_header_styles_carry_the_session(self) -> None:
+        client = OpenCodeGoClient(api_key="test-key", session_id="hub-7-0")
+        self.assertEqual(client._headers()["x-opencode-session"], "hub-7-0")
+        self.assertEqual(client._anthropic_headers()["x-opencode-session"], "hub-7-0")
+
+    def test_a_client_given_no_session_still_sends_one(self) -> None:
+        # A bare client is a real caller too, and an absent header is a 400.
+        self.assertTrue(OpenCodeGoClient(api_key="k")._headers()["x-opencode-session"])
+
+    def test_two_clients_do_not_share_a_default_session(self) -> None:
+        first = OpenCodeGoClient(api_key="k").session_id
+        self.assertNotEqual(first, OpenCodeGoClient(api_key="k").session_id)
+
+
 class ProviderStreamParsingTests(TestCase):
     """chat_stream assembles deltas back into a ChatCompletionResult."""
 
