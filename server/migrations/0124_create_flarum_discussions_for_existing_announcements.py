@@ -5,7 +5,6 @@ import logging
 from django.db import migrations
 from django.db.backends.base.schema import BaseDatabaseSchemaEditor
 from django.db.migrations.state import StateApps
-from markdownify import markdownify as md
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +55,12 @@ def create_flarum_discussions_for_announcements(
                 failed_count += 1
                 continue
 
-            # Convert HTML content to Markdown
+            # Convert HTML content to Markdown. markdownify is no longer a
+            # runtime dependency (there is no forum any more) - imported here,
+            # at the point of use, so a fresh install without it can still run
+            # this historical migration when there are no rows to convert.
+            from markdownify import markdownify as md
+
             content = md(announcement.content, heading_style="ATX", table_infer_header=True)
 
             # Build tag IDs: always include "Announcements" (id: 1) + type-specific tag + Members Only if applicable
