@@ -8,6 +8,7 @@ import queue
 import re
 import threading
 import time
+import uuid
 from collections.abc import Iterator
 from dataclasses import dataclass
 from typing import Any
@@ -391,10 +392,17 @@ class OpenCodeGoClient:
         api_key: str | None = None,
         base_url: str | None = None,
         timeout: float = 120.0,
+        session_id: str | None = None,
     ) -> None:
         self.api_key = api_key if api_key is not None else settings.OPENCODE_GO_API_KEY
         self.base_url = (base_url or settings.OPENCODE_GO_BASE_URL).rstrip("/")
         self.timeout = timeout
+        # OpenCode Go refuses a request without x-opencode-session (400
+        # MissingSessionID) and routes and caches by it, so one conversation
+        # wants one value. A client belongs to a single caller, so this is set
+        # per conversation rather than per call; anything sharing one client
+        # across conversations must set it each time.
+        self.session_id = session_id or f"hub-{uuid.uuid4()}"
 
     def _resolve(
         self, model_id: str, temperature: float | None, max_tokens: int | None
@@ -542,6 +550,7 @@ class OpenCodeGoClient:
         return {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
+            "x-opencode-session": self.session_id,
         }
 
     @staticmethod
@@ -736,6 +745,7 @@ class OpenCodeGoClient:
             "x-api-key": self.api_key or "",
             "Content-Type": "application/json",
             "anthropic-version": "2023-06-01",
+            "x-opencode-session": self.session_id,
         }
 
     def _anthropic_chat(

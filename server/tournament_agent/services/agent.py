@@ -125,6 +125,16 @@ def round_tokens(result: ChatCompletionResult) -> tuple[int, int]:
         return 0, 0
 
 
+def opencode_session_key(session: TournamentAgentSession) -> str:
+    """What OpenCode routes and caches this conversation by.
+
+    Clearing the history starts a new conversation, so it starts a new key
+    rather than inheriting the old one's cached prefix.
+    """
+    cleared = int(session.history_cleared_at.timestamp()) if session.history_cleared_at else 0
+    return f"hub-{session.id}-{cleared}"
+
+
 def budget_refusal(session: TournamentAgentSession) -> str:
     """Why this turn must not start, or empty when it may.
 
@@ -589,6 +599,7 @@ class TournamentAgentService:
         tool_choice: str = TOOL_CHOICE_AUTO,
     ) -> Generator[dict[str, Any], None, ChatCompletionResult]:
         """One model call. Yields text_delta events; returns the assembled result."""
+        self.client.session_id = opencode_session_key(session)
         if not self.streaming:
             return self.client.chat(
                 model_id=session.model_id,
