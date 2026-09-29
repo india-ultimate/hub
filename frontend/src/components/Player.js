@@ -104,17 +104,6 @@ const Player = props => {
               </Switch>
             </td>
           </tr>
-          <Show when={props.player?.iu_id}>
-            <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
-              <th
-                scope="row"
-                class="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white"
-              >
-                IU ID
-              </th>
-              <td class="px-6 py-4">{props.player.iu_id}</td>
-            </tr>
-          </Show>
           <Show when={subscriptionsQuery.data?.length > 0}>
             <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
               <th
