@@ -1,4 +1,7 @@
 import datetime
+import os
+import subprocess
+import sys
 from zoneinfo import ZoneInfo
 
 from django.test import SimpleTestCase
@@ -45,3 +48,23 @@ class TestInWords(SimpleTestCase):
 
     def test_paise(self) -> None:
         self.assertEqual(in_words(150050), "Rupees One Thousand Five Hundred and Fifty Paise Only")
+
+
+class TestImportCost(SimpleTestCase):
+    def test_importing_money_leaves_num2words_alone(self) -> None:
+        """Every gunicorn worker, the task worker and every cron run import
+        this module; only a rendered receipt needs num2words, and it pays
+        the ~3.5MB cost on first use, not at startup."""
+        script = (
+            "import sys, django; django.setup(); import server.receipts.money as m; "
+            "assert 'num2words' not in sys.modules, sys.modules.keys(); "
+            "assert m.in_words(75000) == 'Rupees Seven Hundred Fifty Only'"
+        )
+        answer = subprocess.run(
+            [sys.executable, "-c", script],  # noqa: S603
+            env={**os.environ, "DJANGO_SETTINGS_MODULE": "hub.test_settings"},
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(answer.returncode, 0, answer.stderr)
