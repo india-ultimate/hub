@@ -1,14 +1,13 @@
 """The IU-YY-NNNN a person keeps for life."""
 
-import re
-
 from django.db import IntegrityError, transaction
+from django.db.models import IntegerField, Max
+from django.db.models.functions import Cast, Substr
 
 from server.core.models import Player
 from server.season.models import Season
 
 PREFIX = "IU"
-PATTERN = re.compile(r"^IU-(\d{2})-(\d+)$")
 RETRIES = 5
 
 
@@ -24,15 +23,14 @@ def format_number(season: Season, position: int) -> str:
 def next_position(season: Season) -> int:
     """One past the highest number already issued for this season's year."""
     code = season_code(season)
-    highest = 0
-    numbers = Player.objects.filter(iu_id__startswith=f"{PREFIX}-{code}-").values_list(
-        "iu_id", flat=True
-    )
-    for number in numbers:
-        match = PATTERN.match(number or "")
-        if match and match.group(1) == code:
-            highest = max(highest, int(match.group(2)))
-    return highest + 1
+    # Aggregated in the database: this runs inside the payment transaction,
+    # so it must not grow with the number of players. Cast, not lexical max:
+    # "IU-26-10000" sorts below "IU-26-9999" as text.
+    start = len(f"{PREFIX}-{code}-") + 1
+    highest = Player.objects.filter(iu_id__startswith=f"{PREFIX}-{code}-").aggregate(
+        highest=Max(Cast(Substr("iu_id", start), IntegerField()))
+    )["highest"]
+    return (highest or 0) + 1
 
 
 def assign_number(player: Player, season: Season) -> str:

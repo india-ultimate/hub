@@ -116,6 +116,15 @@ class TestSubscriptionNumbers(TestCase):
             numbers.assign_number(make_player("g@example.com"), self.s26), "IU-26-0042"
         )
 
+    def test_the_highest_is_compared_as_a_number_not_as_text(self) -> None:
+        # "IU-26-10000" sorts below "IU-26-9999" as text.
+        taken = make_player("h@example.com")
+        taken.iu_id = "IU-26-10000"
+        taken.save(update_fields=["iu_id"])
+        self.assertEqual(
+            numbers.assign_number(make_player("i@example.com"), self.s26), "IU-26-10001"
+        )
+
 
 class TestSubscriptionSerialization(TestCase):
     def test_the_retired_fields_never_leave_the_model(self) -> None:
