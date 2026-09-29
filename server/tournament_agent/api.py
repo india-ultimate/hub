@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import json
 import logging
 from collections.abc import Iterator
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from django.conf import settings
 from django.http import HttpRequest, StreamingHttpResponse
@@ -26,12 +28,14 @@ from server.tournament_agent.schema import (
     SetModelSchema,
     SuccessSchema,
 )
-from server.tournament_agent.services.agent import TournamentAgentService
 from server.tournament_agent.services.proposals import (
     ProposalApplyError,
     apply_proposal,
     reject_proposal,
 )
+
+if TYPE_CHECKING:
+    from server.tournament_agent.services.agent import TournamentAgentService
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +44,16 @@ router = Router()
 
 class AuthenticatedHttpRequest(HttpRequest):
     user: User
+
+
+def _service(user: User, *, streaming: bool = False) -> TournamentAgentService:
+    # services.agent reaches the OpenCode client, and so httpx: ~6 MB that
+    # only an agent turn needs. Every gunicorn worker imports this router to
+    # build the URL conf (there is no --preload), so it is imported where it
+    # is used, not here.
+    from server.tournament_agent.services.agent import TournamentAgentService
+
+    return TournamentAgentService(user, streaming=streaming)
 
 
 def _agent_user_or_401(request: AuthenticatedHttpRequest) -> dict[str, str] | None:
@@ -121,7 +135,7 @@ def list_models(request: AuthenticatedHttpRequest) -> dict[str, Any] | tuple[int
 def get_history(
     request: AuthenticatedHttpRequest, tournament_id: int
 ) -> dict[str, Any] | tuple[int, dict[str, str]]:
-    service = TournamentAgentService(request.user)
+    service = _service(request.user)
     try:
         session = service.get_or_create_session(tournament_id)
         return service.history(session)
@@ -138,7 +152,7 @@ def get_history(
 def send_message(
     request: AuthenticatedHttpRequest, data: SendMessageSchema
 ) -> dict[str, Any] | tuple[int, dict[str, str]]:
-    service = TournamentAgentService(request.user)
+    service = _service(request.user)
     try:
         session = service.get_or_create_session(data.tournament_id, model_id=data.model_id)
         return service.process_message(session, data.message)
@@ -155,7 +169,7 @@ def stream_message(
     request: AuthenticatedHttpRequest, data: SendMessageSchema
 ) -> StreamingHttpResponse:
     """Same turn as send_message, delivered as Server-Sent Events."""
-    service = TournamentAgentService(request.user, streaming=True)
+    service = _service(request.user, streaming=True)
     try:
         session = service.get_or_create_session(data.tournament_id, model_id=data.model_id)
     except PermissionError as exc:
@@ -179,7 +193,7 @@ def answer_question_stream(
     err = _manage_session_or_401(request, question.session)
     if err:
         return _sse_error(err["message"], 401)
-    service = TournamentAgentService(request.user, streaming=True)
+    service = _service(request.user, streaming=True)
     try:
         # Validates and records the answer eagerly, so a bad answer is a 400 rather
         # than an error frame on an already-committed 200 stream.
@@ -211,7 +225,7 @@ def answer_question(
     err = _manage_session_or_401(request, question.session)
     if err:
         return 401, err
-    service = TournamentAgentService(request.user)
+    service = _service(request.user)
     try:
         return service.answer_question(
             question.session,
@@ -276,7 +290,7 @@ def reject_proposal_endpoint(
 def set_model(
     request: AuthenticatedHttpRequest, data: SetModelSchema
 ) -> dict[str, Any] | tuple[int, dict[str, str]]:
-    service = TournamentAgentService(request.user)
+    service = _service(request.user)
     try:
         session = service.get_or_create_session(data.tournament_id)
         service.set_model(session, data.model_id)
@@ -291,7 +305,7 @@ def set_model(
 def clear_history(
     request: AuthenticatedHttpRequest, tournament_id: int
 ) -> dict[str, Any] | tuple[int, dict[str, str]]:
-    service = TournamentAgentService(request.user)
+    service = _service(request.user)
     try:
         session = service.get_or_create_session(tournament_id)
         service.clear_session(session)

@@ -35,8 +35,8 @@ class ChatAPITestCase(TestCase):
         ChatSession.objects.all().delete()
         ChatMessage.objects.all().delete()
 
-    @patch("server.chat.llm.groq.Client")
-    @patch("server.chat.api.ChatService")
+    @patch("groq.Client")
+    @patch("server.chat.llm.ChatService")
     def test_send_message_success(self, mock_chat_service: Any, mock_groq_client: Any) -> None:
         """Test successful message sending."""
         mock_chat_service.return_value.process_message = MagicMock(
@@ -53,8 +53,8 @@ class ChatAPITestCase(TestCase):
             self.user, "Test message"
         )
 
-    @patch("server.chat.llm.groq.Client")
-    @patch("server.chat.api.ChatService")
+    @patch("groq.Client")
+    @patch("server.chat.llm.ChatService")
     def test_send_message_error(self, mock_chat_service: Any, mock_groq_client: Any) -> None:
         """Test message sending with error."""
         mock_chat_service.return_value.process_message = MagicMock(
@@ -68,7 +68,7 @@ class ChatAPITestCase(TestCase):
         self.assertEqual(response.status_code, 500)
         self.assertEqual(json.loads(response.content), {"message": "Test error"})
 
-    @patch("server.chat.llm.groq.Client")
+    @patch("groq.Client")
     def test_get_history_success(self, mock_groq_client: Any) -> None:
         """Test successful history retrieval."""
         response = self.client.get("/api/chat/history")
@@ -85,8 +85,8 @@ class ChatAPITestCase(TestCase):
         self.assertEqual(messages[1]["type"], "ASSISTANT")
         self.assertEqual(messages[1]["message"], "Hi there!")
 
-    @patch("server.chat.llm.groq.Client")
-    @patch("server.chat.api.ChatService")
+    @patch("groq.Client")
+    @patch("server.chat.llm.ChatService")
     def test_get_history_error(self, mock_chat_service: Any, mock_groq_client: Any) -> None:
         """Test history retrieval with error."""
         mock_chat_service.return_value.get_session_history.side_effect = Exception("Test error")
@@ -94,7 +94,7 @@ class ChatAPITestCase(TestCase):
         self.assertEqual(response.status_code, 500)
         self.assertEqual(json.loads(response.content), {"message": "Test error"})
 
-    @patch("server.chat.llm.groq.Client")
+    @patch("groq.Client")
     def test_clear_history_success(self, mock_groq_client: Any) -> None:
         """Test successful history clearing."""
         response = self.client.post("/api/chat/clear_history")
@@ -105,7 +105,7 @@ class ChatAPITestCase(TestCase):
         exists = ChatSession.objects.filter(user=self.user).exists()
         self.assertFalse(exists)
 
-    @patch("server.chat.llm.groq.Client")
+    @patch("groq.Client")
     def test_clear_history_no_session(self, mock_groq_client: Any) -> None:
         """Test clearing history when no session exists."""
         self.chat_session.delete()
@@ -113,8 +113,8 @@ class ChatAPITestCase(TestCase):
         self.assertEqual(response.status_code, 404)
         self.assertEqual(json.loads(response.content), {"message": "No active chat session found"})
 
-    @patch("server.chat.llm.groq.Client")
-    @patch("server.chat.api.ChatService")
+    @patch("groq.Client")
+    @patch("server.chat.llm.ChatService")
     def test_clear_history_error(self, mock_chat_service: Any, mock_groq_client: Any) -> None:
         """Test history clearing with error."""
         mock_chat_service.return_value.clear_session.side_effect = Exception("Test error")
@@ -122,7 +122,7 @@ class ChatAPITestCase(TestCase):
         self.assertEqual(response.status_code, 500)
         self.assertEqual(json.loads(response.content), {"message": "Test error"})
 
-    @patch("server.chat.llm.groq.Client")
+    @patch("groq.Client")
     def test_authentication_required(self, mock_groq_client: Any) -> None:
         """Test that authentication is required for all endpoints."""
         self.client.logout()

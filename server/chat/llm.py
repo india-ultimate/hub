@@ -1,21 +1,30 @@
+from __future__ import annotations
+
 import json
 from collections.abc import Iterable
-from typing import Any, TypedDict, TypeVar, cast
+from typing import TYPE_CHECKING, Any, TypedDict, TypeVar, cast
 
-import groq
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Count, Q
 from django.utils import timezone
-from groq.types.chat import (
-    ChatCompletionAssistantMessageParam,
-    ChatCompletionFunctionMessageParam,
-    ChatCompletionSystemMessageParam,
-    ChatCompletionToolMessageParam,
-    ChatCompletionToolParam,
-    ChatCompletionUserMessageParam,
-)
 from typing_extensions import NotRequired
+
+# groq drags in httpx, httpcore, anyio, trio and rich: ~11 MB and 70+ modules
+# that only the chat endpoints need. Every gunicorn worker imports this router
+# to build the URL conf (there is no --preload), so groq is only ever imported
+# where a `groq.Client` is actually built (`server/chat/api.py`), not here -
+# this module only ever calls methods on a client it is handed.
+if TYPE_CHECKING:
+    import groq
+    from groq.types.chat import (
+        ChatCompletionAssistantMessageParam,
+        ChatCompletionFunctionMessageParam,
+        ChatCompletionSystemMessageParam,
+        ChatCompletionToolMessageParam,
+        ChatCompletionToolParam,
+        ChatCompletionUserMessageParam,
+    )
 
 from server.core.models import Accreditation, Player, Team, User
 from server.season.models import Season
@@ -774,7 +783,8 @@ Available Tools:
             | ChatCompletionFunctionMessageParam
         ] = [
             cast(
-                ChatCompletionSystemMessageParam, {"role": "system", "content": self.system_prompt}
+                "ChatCompletionSystemMessageParam",
+                {"role": "system", "content": self.system_prompt},
             )
         ]
 
@@ -782,7 +792,7 @@ Available Tools:
         conversation_history.extend(
             [
                 cast(
-                    ChatCompletionUserMessageParam,
+                    "ChatCompletionUserMessageParam",
                     {"role": msg.get_type_display().lower(), "content": msg.message},
                 )
                 for msg in session.messages.all()
@@ -797,7 +807,7 @@ Available Tools:
                 temperature=self.temperature,
                 max_tokens=self.max_tokens,
                 top_p=self.top_p,
-                tools=cast(Iterable[ChatCompletionToolParam], self.tools),
+                tools=cast("Iterable[ChatCompletionToolParam]", self.tools),
                 tool_choice="required",
                 stream=False,
             )
@@ -809,7 +819,7 @@ Available Tools:
                 # Process tool calls
                 conversation_history.append(
                     cast(
-                        ChatCompletionAssistantMessageParam,
+                        "ChatCompletionAssistantMessageParam",
                         {
                             "role": "assistant",
                             "content": response_message.content or "",
@@ -903,7 +913,7 @@ Available Tools:
                     # Add tool response to conversation
                     conversation_history.append(
                         cast(
-                            ChatCompletionToolMessageParam,
+                            "ChatCompletionToolMessageParam",
                             {
                                 "role": "tool",
                                 "content": json.dumps(function_response),
