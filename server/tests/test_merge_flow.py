@@ -1983,9 +1983,7 @@ class TestAliasSignIn(MergeFlowTestCase):
         otp = pyotp.TOTP(get_email_hash("second@x.com")).generate_otp(ts)
         response = self.client.post(
             "/api/otp-login",
-            data=json.dumps(
-                {"email": "second@x.com", "otp": otp, "otp_ts": ts, "forum_login": False}
-            ),
+            data=json.dumps({"email": "second@x.com", "otp": otp, "otp_ts": ts}),
             content_type="application/json",
         )
         self.assertEqual(response.status_code, 200)

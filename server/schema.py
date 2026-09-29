@@ -20,7 +20,6 @@ from server.utils import mask_string
 class Credentials(Schema):
     username: str
     password: str
-    forum_login: bool
 
 
 class TopScoreCredentials(Schema):
@@ -41,7 +40,6 @@ class OTPLoginCredentials(Schema):
     email: str
     otp: str
     otp_ts: int
-    forum_login: bool
 
 
 class Response(Schema):
