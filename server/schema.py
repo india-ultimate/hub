@@ -11,7 +11,7 @@ from server.core.models import (
     User,
     Vaccination,
 )
-from server.subscription import catalog
+from server.season.models import Season
 from server.subscription.schema import SubscriptionSchema
 from server.subscription.sponsorship import has_grant
 from server.utils import mask_string
@@ -195,7 +195,7 @@ class PlayerSchema(ModelSchema):
         """
         if hasattr(player, "_prefetched_sponsored"):
             return bool(player._prefetched_sponsored)
-        return has_grant(player, catalog.season_to_buy(player))
+        return has_grant(player, Season.current())
 
     vaccination: VaccinationSchema | None
 

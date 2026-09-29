@@ -326,7 +326,6 @@ def _attach_subscription_prefetch(players: list[Player], *, need_sponsored: bool
     current_season = Season.current()
 
     held_current_by_player: dict[int, Subscription] = {}
-    next_season = None
     if current_season is not None:
         held_current_by_player = {
             sub.player_id: sub
@@ -334,12 +333,6 @@ def _attach_subscription_prefetch(players: list[Player], *, need_sponsored: bool
             .live()
             .select_related("season")
         }
-        if need_sponsored:
-            next_season = (
-                Season.objects.filter(start_date__gt=current_season.start_date)
-                .order_by("start_date")
-                .first()
-            )
 
     missing_ids = [pid for pid in ids if pid not in held_current_by_player]
     future_by_player: dict[int, Subscription] = {}
@@ -354,7 +347,7 @@ def _attach_subscription_prefetch(players: list[Player], *, need_sponsored: bool
 
     grant_pairs: set[tuple[int, int]] = set()
     if need_sponsored:
-        season_ids = [s.id for s in (current_season, next_season) if s is not None]
+        season_ids = [current_season.id] if current_season is not None else []
         if season_ids:
             grant_pairs = set(
                 SponsorshipGrant.objects.filter(
@@ -366,15 +359,8 @@ def _attach_subscription_prefetch(players: list[Player], *, need_sponsored: bool
         held_current = held_current_by_player.get(player.id)
         player._prefetched_subscription = held_current or future_by_player.get(player.id)
         if need_sponsored:
-            season_to_buy = None
-            if current_season is not None:
-                season_to_buy = (
-                    next_season
-                    if held_current is not None and held_current.is_active
-                    else current_season
-                )
             player._prefetched_sponsored = (
-                season_to_buy is not None and (player.id, season_to_buy.id) in grant_pairs
+                current_season is not None and (player.id, current_season.id) in grant_pairs
             )
 
 

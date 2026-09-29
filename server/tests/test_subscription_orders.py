@@ -167,25 +167,32 @@ class TestOrderValidation(ApiBaseTestCase):
         self.assertEqual(response.status_code, 422)
         self.assertEqual(response.json()["message"], "Season does not exist!")
 
-    def test_a_season_that_has_ended_is_refused(self) -> None:
-        # The page no longer offers old seasons, but a tab opened before this
-        # release still does, and their plans stay is_available for ever.
-        over = Season.objects.create(
-            name="Season 2019-2020", start_date="2019-08-01", end_date="2020-07-31"
+    def order_for(self, season: Season) -> Any:
+        SubscriptionPlan.objects.get_or_create(
+            season=season,
+            type=SubscriptionType.objects.get(slug="regular"),
+            defaults={"amount": 70000},
         )
-        SubscriptionPlan.objects.create(
-            season=over, type=SubscriptionType.objects.get(slug="regular"), amount=70000
-        )
-        response = self.client.post(
+        return self.client.post(
             "/api/transactions/razorpay",
             data={
-                "season_id": over.id,
+                "season_id": season.id,
                 "items": [{"player_id": self.player.id, "plan_type": "regular"}],
             },
             content_type="application/json",
         )
-        self.assertEqual(response.status_code, 422)
-        self.assertIn("has ended", response.json()["message"])
+
+    def test_only_the_running_season_can_be_bought(self) -> None:
+        # The page no longer offers any other, but a tab opened before this
+        # release does, and plans stay is_available for ever.
+        for name, start, end in [
+            ("Season 2019-2020", "2019-08-01", "2020-07-31"),
+            ("Season 2040-2041", "2040-08-01", "2041-07-31"),
+        ]:
+            season = Season.objects.create(name=name, start_date=start, end_date=end)
+            response = self.order_for(season)
+            self.assertEqual(response.status_code, 422, name)
+            self.assertIn("not the season that is running", response.json()["message"])
 
     def test_an_unknown_tier_is_refused(self) -> None:
         response = self.post_order([{"player_id": self.player.id, "plan_type": "gold"}])
