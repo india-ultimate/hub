@@ -21,8 +21,7 @@ from django.db import transaction
 from django.db.models import Count, F, Q, QuerySet, Value
 from django.db.models.functions import Concat
 from django.db.utils import IntegrityError
-from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
-from django.shortcuts import redirect
+from django.http import HttpRequest
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from django.utils.text import slugify
@@ -48,11 +47,6 @@ from server.core.models import (
 )
 from server.duplicates.api import router as merge_router
 from server.election.api import router as election_router
-from server.flarum.utils import (
-    create_flarum_user,
-    get_flarum_token,
-    update_flarum_user_avatar,
-)
 from server.forms.api import router as forms_router
 from server.passkey_utils import PassKeyClient
 from server.receipts.api import router as receipts_router
@@ -562,7 +556,7 @@ def create_team(
 
 @api.post("/login", auth=None, response={200: UserSchema, 403: Response})
 def api_login(
-    request: HttpRequest, response: HttpResponse, credentials: Credentials
+    request: HttpRequest, credentials: Credentials
 ) -> tuple[int, AbstractBaseUser | message_response]:
     user = authenticate(
         request, username=credentials.username.strip().lower(), password=credentials.password
@@ -570,9 +564,6 @@ def api_login(
     if user is not None:
         login(request, user)
 
-        if credentials.forum_login:
-            base_user = User.objects.get(username=user.get_username())
-            handle_forum_login(base_user, response)
         return 200, user
     else:
         return 403, {"message": "Invalid credentials"}
@@ -613,47 +604,9 @@ def get_otp(
     return 200, {"otp_ts": current_ts}
 
 
-def handle_forum_login(user: User, response: HttpResponse) -> None:
-    """
-    Handle forum login for a user if they are an admin or have active subscription.
-
-    Args:
-        user: The authenticated user
-        response: HTTP response object to set cookies
-    """
-    # Check if user is admin (staff or superuser) or has active subscription
-    is_admin = user.is_staff or user.is_superuser
-    has_active_subscription = False
-
-    if not is_admin:
-        # Check if user has active subscription
-        try:
-            subscription = user.player_profile.current_subscription
-            has_active_subscription = subscription is not None and subscription.is_active
-        except Player.DoesNotExist:
-            # User doesn't have a player profile, no active subscription
-            pass
-
-    # Proceed with forum login if user is admin or has active subscription
-    if is_admin or has_active_subscription:
-        token = get_flarum_token(user.username, user.date_joined)
-
-        if not token:
-            create_flarum_user(user)
-            token = get_flarum_token(user.username, user.date_joined)
-
-        if token:
-            response.set_cookie(
-                "flarum_remember",
-                token["token"],
-                max_age=60 * 60 * 24 * 365 * 5,
-                domain=".indiaultimate.org",
-            )  # 5 years
-
-
 @api.post("/otp-login", auth=None, response={200: UserSchema, 403: Response, 404: Response})
 def otp_login(
-    request: HttpRequest, response: HttpResponse, credentials: OTPLoginCredentials
+    request: HttpRequest, credentials: OTPLoginCredentials
 ) -> tuple[int, User | message_response]:
     credentials.email = credentials.email.strip().lower()
     email_hash = get_email_hash(credentials.email)
@@ -664,9 +617,6 @@ def otp_login(
         user = resolve_login_user(credentials.email)
         request.user = user
         login(request, user)
-
-        if credentials.forum_login:
-            handle_forum_login(user, response)
 
         return 200, user
 
@@ -724,17 +674,6 @@ def passkey_finish_login(
     request.user = user
     login(request, user)
     return 200, user
-
-
-@api.get("/forum-login", auth=None)
-def forum_login(request: HttpRequest) -> HttpResponse:
-    if request.user.is_authenticated:
-        response = HttpResponseRedirect("/forum")
-        user = User.objects.get(username=request.user.get_username())
-        handle_forum_login(user, response)
-        return response
-    else:
-        return redirect("/login?redirect=/forum")
 
 
 # Registration #########
@@ -1223,10 +1162,6 @@ def upload_profile_pic(
         # Update player profile
         player.profile_pic_url = profile_pic_url
         player.save(update_fields=["profile_pic_url"])
-
-        # Update Flarum avatar if user has a forum_id
-        if request.user.forum_id:
-            update_flarum_user_avatar(request.user, profile_pic_url)
 
         return 200, player
 

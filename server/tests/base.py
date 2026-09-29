@@ -212,7 +212,7 @@ class ApiBaseTestCase(TestCase):
     def login(self) -> None:
         response = self.client.post(
             "/api/login",
-            data={"username": self.username, "password": self.password, "forum_login": False},
+            data={"username": self.username, "password": self.password},
             content_type="application/json",
         )
         self.assertEqual(response.status_code, HTTPStatus.OK, response.content)

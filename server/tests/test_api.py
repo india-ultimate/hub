@@ -41,7 +41,7 @@ class TestLogin(ApiBaseTestCase):
         c = Client()
         response = c.post(
             "/api/login",
-            data={"username": self.username, "password": self.password, "forum_login": False},
+            data={"username": self.username, "password": self.password},
             content_type="application/json",
         )
         self.assertEqual(200, response.status_code)
@@ -52,7 +52,7 @@ class TestLogin(ApiBaseTestCase):
         c = Client()
         response = c.post(
             "/api/login",
-            data={"username": self.username, "password": self.password, "forum_login": False},
+            data={"username": self.username, "password": self.password},
             content_type="application/json",
         )
         self.assertEqual(200, response.status_code)
@@ -61,7 +61,7 @@ class TestLogin(ApiBaseTestCase):
 
 
 class TestPasskey(ApiBaseTestCase):
-    def test_enabling_one_tap_does_not_need_forum_login(self) -> None:
+    def test_enabling_one_tap_does_not_need_a_second_login_step(self) -> None:
         self.client.force_login(self.user)
         with mock.patch("server.api.passkey_client.finish_registration") as finish:
             finish.return_value = ClientResponse(data="{}")
