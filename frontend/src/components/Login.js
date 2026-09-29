@@ -20,14 +20,9 @@ const PasswordLogin = props => {
   const [password, setPassword] = createSignal("");
   const [store, { setLoggedIn, setData }] = useStore();
   const [showPassword, setShowPassword] = createSignal(false);
-  const [forumLogin, setForumLogin] = createSignal(false);
 
   createEffect(() => {
     const redirect = new URL(window.location.href).searchParams.get("redirect");
-
-    if (redirect && redirect.includes("forum")) {
-      setForumLogin(true);
-    }
 
     if (store.loggedIn) {
       const navigate = useNavigate();
@@ -48,8 +43,7 @@ const PasswordLogin = props => {
       },
       body: JSON.stringify({
         username: username()?.trim(),
-        password: password(),
-        forum_login: forumLogin()
+        password: password()
       })
     });
 
@@ -152,14 +146,9 @@ const SendEmailOTP = props => {
   const [otpData, setOtpData] = createSignal();
   const [store, { setLoggedIn, setData }] = useStore();
   const [enableRetry, setEnableRetry] = createSignal(false);
-  const [forumLogin, setForumLogin] = createSignal(false);
 
   createEffect(() => {
     const redirect = new URL(window.location.href).searchParams.get("redirect");
-
-    if (redirect && redirect.includes("forum")) {
-      setForumLogin(true);
-    }
 
     if (store.loggedIn) {
       const navigate = useNavigate();
@@ -219,7 +208,6 @@ const SendEmailOTP = props => {
       body: JSON.stringify({
         email: email()?.trim(),
         otp: otp()?.trim(),
-        forum_login: forumLogin(),
         ...otpData()
       })
     });
