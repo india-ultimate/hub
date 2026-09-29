@@ -3,8 +3,6 @@
 import datetime
 from zoneinfo import ZoneInfo
 
-from num2words import num2words
-
 INDIA = ZoneInfo("Asia/Kolkata")
 APRIL = 4
 LAKH_GROUP = 2  # digits per group above the thousands
@@ -36,6 +34,11 @@ def format_inr(paise: int) -> str:
 
 
 def _words(number: int) -> str:
+    # num2words costs ~3.5MB resident per process, and every gunicorn worker,
+    # the task worker and every cron run import this module at startup; only
+    # a rendered receipt spells an amount out, so the import waits for that.
+    from num2words import num2words
+
     # num2words writes "one thousand, five hundred and fifty"; a receipt
     # reads "One Thousand Five Hundred Fifty".
     text = num2words(number, lang="en_IN").replace(",", "").replace(" and ", " ")
