@@ -48,6 +48,23 @@ def check_phonepe_env_vars(app_configs: Any, **kwargs: Any) -> Sequence[Error | 
     return errors
 
 
+@register(Tags.security, deploy=True)
+def check_receipt_tax_ids(app_configs: Any, **kwargs: Any) -> Sequence[Warning]:
+    # Not an Error: a missing line is better than refusing to boot. But every
+    # receipt is a tax document, so the deploy log has to say it.
+    missing = [name for name in ("gstin", "pan") if not settings.RECEIPT_ISSUER.get(name)]
+    if missing:
+        return [
+            Warning(
+                f"Receipts will carry no tax line: {', '.join(missing).upper()} not set",
+                hint="Set RECEIPT_ISSUER_GSTIN and RECEIPT_ISSUER_PAN.",
+                obj=settings,
+                id="settings.W002",
+            )
+        ]
+    return []
+
+
 class ServerConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
     name = "server"

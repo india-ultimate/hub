@@ -59,8 +59,8 @@
       <td valign="top" style="text-align:right; font-size:11.5px; color:#475569; line-height:1.55;">
         <div style="font-size:13.5px; font-weight:700; color:#0F172A; margin-bottom:2px;">{{ issuer.name }}</div>
         {{ issuer.address }}<br>
-        {{ issuer.phones|join:" · " }} · {{ issuer.email }} · {{ issuer.website }}<br>
-        {% if issuer.gstin and issuer.pan %}<span class="mono" style="color:#0F172A;">GSTIN {{ issuer.gstin }} · PAN {{ issuer.pan }}</span>{% endif %}
+        {{ issuer.phones|join:" · " }} · {{ issuer.email }} · {{ issuer.website }}
+        {% if issuer.gstin and issuer.pan %}<br><span class="mono" style="color:#0F172A;">GSTIN {{ issuer.gstin }} · PAN {{ issuer.pan }}</span>{% endif %}
       </td>
     </tr>
   </table>
