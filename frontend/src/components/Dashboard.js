@@ -15,6 +15,7 @@ import {
 import { useStore } from "../store";
 import { registerPasskey, showPlayerStatus } from "../utils";
 import { getCookie } from "../utils";
+import IUIDBadge from "./IUIDBadge";
 import Player from "./Player";
 import ReceiptList from "./receipts/ReceiptList";
 import TransactionList from "./TransactionList";
@@ -337,9 +338,13 @@ const Dashboard = () => {
 
   return (
     <div>
-      <h1 class="mb-4 text-2xl font-bold text-blue-600 md:text-4xl">
-        Welcome <span>{store?.data?.full_name || store?.data?.username}</span>!
-      </h1>
+      <div class="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2">
+        <h1 class="text-2xl font-bold text-blue-600 md:text-4xl">
+          Welcome <span>{store?.data?.full_name || store?.data?.username}</span>
+          !
+        </h1>
+        <IUIDBadge id={store?.data?.player?.iu_id} />
+      </div>
       <Show when={openMergeGroups().length > 0}>
         <div
           id="merge-groups-notice"
