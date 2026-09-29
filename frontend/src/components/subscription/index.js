@@ -11,6 +11,7 @@ import {
   fetchSeasonPlans
 } from "../../queries";
 import { displayDate, getAge } from "../../utils";
+import Error from "../alerts/Error";
 import Info from "../alerts/Info";
 import Breadcrumbs from "../Breadcrumbs";
 import IUIDBadge from "../IUIDBadge";
@@ -126,11 +127,14 @@ const Subscription = () => {
       <Show
         when={season()}
         fallback={
-          <Show when={!seasonQuery.isLoading}>
-            <div class="my-4">
+          <div class="my-4">
+            <Show when={seasonQuery.isError}>
+              <Error text="Could not load the current season. Please try again." />
+            </Show>
+            <Show when={seasonQuery.isSuccess}>
               <Info text="There is no subscription season running right now. Please check back later." />
-            </div>
-          </Show>
+            </Show>
+          </div>
         }
       >
         <h2 class="mt-4 text-lg font-semibold text-gray-900 dark:text-white">
