@@ -1,5 +1,5 @@
 """Every gunicorn worker imports the whole URL conf (there is no --preload), so a
-module-scope import in any router or model file is paid by all six workers, the
+module-scope import in any router or model file is paid by every worker, the
 tmux'd task worker, and every cron run. These subprocess checks are the same
 shape as `server/tests/test_receipts_render.py::TestImportCost`: they do the
 real startup work and assert a package never lands in `sys.modules` unless

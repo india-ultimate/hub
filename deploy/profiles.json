@@ -4,10 +4,10 @@
     "cpu_kind": "shared",
     "cpus": 4,
     "memory": "2gb",
-    "workers": 6,
+    "workers": 4,
     "threads": 6,
-    "soft_limit": 36,
-    "hard_limit": 72
+    "soft_limit": 24,
+    "hard_limit": 48
   },
   "tournament": {
     "description": "Tournament days. Dedicated CPU, so the burst balance cannot run out.",

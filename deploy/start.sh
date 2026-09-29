@@ -37,7 +37,7 @@ export PATH="$HOME/.local/bin:$PATH"
 # cut short - the high request count and the jitter are what make that rare.
 # Not raising graceful-timeout for this: fly.toml's kill_timeout is 30s, so
 # anything past that is moot anyway.
-gunicorn -w "${GUNICORN_WORKERS:-6}" -k gthread --threads "${GUNICORN_THREADS:-6}" \
+gunicorn -w "${GUNICORN_WORKERS:-4}" -k gthread --threads "${GUNICORN_THREADS:-6}" \
   --timeout 300 --graceful-timeout 25 \
   --max-requests "${GUNICORN_MAX_REQUESTS:-1000}" \
   --max-requests-jitter "${GUNICORN_MAX_REQUESTS_JITTER:-100}" hub.wsgi
