@@ -1,13 +1,12 @@
-from typing import Any
+import functools
+from typing import TYPE_CHECKING, Any
 
-import groq
 from django.conf import settings
 from django.http import HttpRequest
 from ninja import Router
 
 from server.core.models import User
 
-from .llm import ChatService
 from .schema import (
     ChatHistorySchema,
     ErrorSchema,
@@ -16,6 +15,11 @@ from .schema import (
     SuccessSchema,
 )
 
+if TYPE_CHECKING:
+    import groq
+
+    from .llm import ChatService
+
 router = Router()
 
 
@@ -23,7 +27,21 @@ class AuthenticatedHttpRequest(HttpRequest):
     user: User
 
 
-groq_client = groq.Client(api_key=settings.GROQ_API_KEY)
+@functools.cache
+def _groq_client() -> "groq.Client":
+    # groq drags in httpx, httpcore, anyio, trio and rich: ~11 MB and 70+
+    # modules that only the chat endpoints need. Every gunicorn worker
+    # imports this router to build the URL conf (there is no --preload), so
+    # it is imported where it is used, not here.
+    import groq
+
+    return groq.Client(api_key=settings.GROQ_API_KEY)
+
+
+def _chat_service(user: User) -> "ChatService":
+    from .llm import ChatService
+
+    return ChatService(_groq_client(), user)
 
 
 @router.post(
@@ -33,7 +51,7 @@ def send_message(
     request: AuthenticatedHttpRequest, data: MessageSchema
 ) -> dict[str, Any] | tuple[int, dict[str, str]]:
     """Send a message to the chat service and get a response."""
-    chat_service = ChatService(groq_client, request.user)
+    chat_service = _chat_service(request.user)
     try:
         response = chat_service.process_message(request.user, data.message)
         return {"response": response}
@@ -44,7 +62,7 @@ def send_message(
 @router.get("/history", response={200: ChatHistorySchema, 500: ErrorSchema})
 def get_history(request: AuthenticatedHttpRequest) -> dict[str, Any] | tuple[int, dict[str, str]]:
     """Get the chat history for the current user."""
-    chat_service = ChatService(groq_client, request.user)
+    chat_service = _chat_service(request.user)
     try:
         history = chat_service.get_session_history(request.user)
         return history
@@ -55,7 +73,7 @@ def get_history(request: AuthenticatedHttpRequest) -> dict[str, Any] | tuple[int
 @router.post("/clear_history", response={200: SuccessSchema, 404: ErrorSchema, 500: ErrorSchema})
 def clear_history(request: AuthenticatedHttpRequest) -> dict[str, Any] | tuple[int, dict[str, str]]:
     """Clear the chat history for the current user."""
-    chat_service = ChatService(groq_client, request.user)
+    chat_service = _chat_service(request.user)
     try:
         success = chat_service.clear_session(request.user)
         if success:
