@@ -2,13 +2,18 @@ import { useParams } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
 import { Icon } from "solid-heroicons";
 import { heart, inboxStack } from "solid-heroicons/solid";
-import { createEffect, createSignal, For, Show } from "solid-js";
+import { createEffect, createSignal, Show } from "solid-js";
 
 import { minAge, minAgeWarning } from "../../constants";
-import { fetchPlayerById, fetchSeasonPlans, fetchSeasons } from "../../queries";
+import {
+  fetchCurrentSeason,
+  fetchPlayerById,
+  fetchSeasonPlans
+} from "../../queries";
 import { displayDate, getAge } from "../../utils";
 import Info from "../alerts/Info";
 import Breadcrumbs from "../Breadcrumbs";
+import IUIDBadge from "../IUIDBadge";
 import PillTabs from "../tabs/PillTabs";
 import GroupSubscription from "./GroupSubscription";
 import ServiceRequestModal from "./ServiceRequestModal";
@@ -18,7 +23,6 @@ const Subscription = () => {
   const [player, setPlayer] = createSignal();
   const [subscription, setSubscription] = createSignal();
 
-  const [season, setSeason] = createSignal();
   const [ageRestricted, setAgeRestricted] = createSignal(false);
 
   const [status, setStatus] = createSignal();
@@ -38,13 +42,8 @@ const Subscription = () => {
     }
   });
 
-  const seasonsQuery = createQuery(() => ["seasons"], fetchSeasons);
-
-  createEffect(() => {
-    if (seasonsQuery.isSuccess && seasonsQuery.data?.length > 0) {
-      setSeason(seasonsQuery.data[0]);
-    }
-  });
+  const seasonQuery = createQuery(() => ["current-season"], fetchCurrentSeason);
+  const season = () => seasonQuery.data ?? undefined;
 
   // Every price and every "can they buy this" comes from here. The page
   // renders the server's answer and never works one out for itself.
@@ -57,14 +56,6 @@ const Subscription = () => {
       }
     }
   );
-
-  const handleSeasonChange = e => {
-    setSeason(
-      seasonsQuery.data?.filter(
-        season => season.id === Number(e.target.value)
-      )[0]
-    );
-  };
 
   createEffect(() => {
     const age = getAge(player()?.date_of_birth, new Date(season()?.end_date));
@@ -82,13 +73,10 @@ const Subscription = () => {
           { name: "Subscription" }
         ]}
       />
-      <h1 class="text-2xl font-bold text-blue-500">Subscription</h1>
-
-      <Show when={player()?.iu_id}>
-        <p id="iu-id" class="mt-1 text-sm text-gray-500">
-          IU ID: {player().iu_id}
-        </p>
-      </Show>
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <h1 class="text-2xl font-bold text-blue-500">Subscription</h1>
+        <IUIDBadge id={player()?.iu_id} />
+      </div>
 
       <div class="my-2 rounded-lg bg-blue-50 p-4 text-sm " role="alert">
         <details>
@@ -135,26 +123,23 @@ const Subscription = () => {
         </details>
       </div>
 
-      <select
-        id="year"
-        class="mt-4 block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900  focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
-        value={season()?.id}
-        onInput={handleSeasonChange}
-        required
-      >
-        <For each={seasonsQuery.data || []}>
-          {season => <option value={season.id}>{season.name}</option>}
-        </For>
-      </select>
-
       <Show
         when={season()}
         fallback={
-          <div class="my-4">
-            <Info text="Please select a season" />
-          </div>
+          <Show when={!seasonQuery.isLoading}>
+            <div class="my-4">
+              <Info text="There is no subscription season running right now. Please check back later." />
+            </div>
+          </Show>
         }
       >
+        <h2 class="mt-4 text-lg font-semibold text-gray-900 dark:text-white">
+          {season().name}
+        </h2>
+        <p class="mb-4 text-sm text-gray-500 dark:text-gray-400">
+          {displayDate(season().start_date)} to {displayDate(season().end_date)}
+        </p>
+
         <PillTabs
           tabs={[
             { id: "individual", label: "Individual Subscription" },
@@ -166,16 +151,10 @@ const Subscription = () => {
 
         <Show when={activeTab() === "individual"}>
           <div>
-            <h1 class="text-lg font-semibold text-blue-500">
+            <h3 class="text-lg font-semibold text-blue-500">
               Individual Subscription
-            </h1>
-            <h3 class="text-sm italic">
-              Subscription for {player()?.full_name}
             </h3>
-            <p class="mt-1 text-sm">
-              Validity: {displayDate(season()?.start_date)} to{" "}
-              {displayDate(season()?.end_date)}
-            </p>
+            <p class="text-sm italic">Subscription for {player()?.full_name}</p>
 
             <Show when={subscription()?.is_active && subscription()?.tier}>
               <div id="subscription-exist" class="mt-4">
@@ -256,10 +235,10 @@ const Subscription = () => {
         <Show when={activeTab() === "group"}>
           <div class="space-y-2">
             <div>
-              <h1 class="text-lg font-semibold text-blue-500">
+              <h3 class="text-lg font-semibold text-blue-500">
                 Group Subscription
-              </h1>
-              <h3 class="text-sm italic">Pay for a group of players</h3>
+              </h3>
+              <p class="text-sm italic">Pay for a group of players</p>
             </div>
 
             <div class="mb-4">

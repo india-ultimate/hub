@@ -111,6 +111,22 @@ export const fetchSeasons = async () => {
   return await response.json();
 };
 
+// null when no season covers today. Don't derive this from fetchSeasons.
+export const fetchCurrentSeason = async () => {
+  const response = await fetch("/api/seasons/current", {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin"
+  });
+  if (response.status === 404) {
+    return null;
+  }
+  if (!response.ok) {
+    throw new Error("Failed to fetch the current season");
+  }
+  return await response.json();
+};
+
 // The tiers on sale for a season, priced by the server. Passing a player
 // also says whether each tier is available to them and, when they are moving
 // up, the difference they owe rather than the full price. Never price a

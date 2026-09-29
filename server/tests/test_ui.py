@@ -343,7 +343,8 @@ class TestIntegration(BaseCase):
         self.assert_text_not_visible("Recommended")
         # Without a grant, the discounted tier is not shown at all.
         self.assert_text_not_visible("Discounted Subscription")
-        self.assert_text("IU-26-0001", "#iu-id")
+        self.assert_text("IU-26-0001", "[data-testid='iu-id']")
+        self.assert_element_absent("select#year")
 
         # With one, it takes Regular's place.
         sponsorship.grant(
@@ -353,6 +354,9 @@ class TestIntegration(BaseCase):
         self.assert_text("Discounted Subscription")
         self.assert_text("Approved for you")
         self.assert_text_not_visible("Regular Subscription")
+
+        self.open(f"{APP_URL}/dashboard")
+        self.assert_text("IU-26-0001", "[data-testid='iu-id']")
 
     def test_login_with_otp(self) -> None:
         username, password, user_id = create_login_user()
