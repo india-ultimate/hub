@@ -358,6 +358,27 @@ class TestIntegration(BaseCase):
         self.open(f"{APP_URL}/dashboard")
         self.assert_text("IU-26-0001", "[data-testid='iu-id']")
 
+    # Breaks if: a gap in the season timeline stops being a real answer and
+    # starts looking like a failure, or starts offering tiers anyway.
+    def test_a_gap_in_the_timeline_offers_nothing(self) -> None:
+        import_module("server.migrations.0146_legacy_seasons").add_seasons(apps, None)
+        import_module("server.migrations.0148_seed_catalog").seed(apps, None)
+        user = make_player("gap@example.com")
+        player_id = Player.objects.get(user=user).id
+
+        # Move every season into the past, so none covers today.
+        for season in Season.objects.all():
+            Season.objects.filter(pk=season.pk).update(
+                start_date=season.start_date - datetime.timedelta(days=365 * 20),
+                end_date=season.end_date - datetime.timedelta(days=365 * 20),
+            )
+
+        self.sign_in_as(user)
+        self.open(f"{APP_URL}/subscription/{player_id}")
+        self.assert_text("no subscription season running")
+        self.assert_text_not_visible("Regular Subscription")
+        self.assert_element_absent("select#year")
+
     def test_login_with_otp(self) -> None:
         username, password, user_id = create_login_user()
 

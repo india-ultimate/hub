@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 from django.test import Client, TestCase
 from django.utils.timezone import now
 
+from server.chat.api import _groq_client
 from server.chat.llm import ChatService
 from server.chat.models import ChatMessage, ChatMessageType, ChatSession
 from server.core.models import Player, User
@@ -18,6 +19,9 @@ TEST_PASSWORD = "test_password_123"  # nosec B105
 class ChatAPITestCase(TestCase):
     def setUp(self) -> None:
         """Set up test data."""
+        # The client is cached per process, so without this the first test to
+        # build one keeps its @patch("groq.Client") alive for all the rest.
+        _groq_client.cache_clear()
         self.client = Client()
         self.user = User.objects.create_user(
             username="testuser", email="test@example.com", password=TEST_PASSWORD
