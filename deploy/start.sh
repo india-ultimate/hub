@@ -2,9 +2,7 @@
 
 set -euo pipefail
 
-# Start services
 sudo nginx
-sudo cron
 
 # Setup env vars for cron jobs
 HERE=$(dirname "$0")
@@ -12,6 +10,10 @@ HERE=$(dirname "$0")
 
 # Migrate DB
 python manage.py migrate
+
+# After migrate: a job firing mid-migration reads a half-applied schema, or
+# holds a lock that ALTER TABLE has to queue behind.
+sudo cron
 
 # Ensure no security check errors
 python manage.py check --deploy
