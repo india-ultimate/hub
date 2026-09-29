@@ -2,7 +2,6 @@ import json
 import logging
 from typing import NamedTuple
 
-import jwt
 import requests
 from django.conf import settings
 
@@ -105,6 +104,10 @@ class PassKeyClient:
                 response.text,
             )
             return ClientResponse(error="Failed to finalize login passkey")
+
+        # jwt drags in cryptography (32 modules): ~5.2 MB that only a token
+        # actually being made or read needs.
+        import jwt
 
         data = response.json()
         decoded = jwt.decode(data["token"], options={"verify_signature": False})
