@@ -33,9 +33,6 @@ class Announcement(models.Model):
     action_text = models.CharField(max_length=100, blank=True, null=True)
     action_url = models.URLField(blank=True, null=True)
 
-    # Flarum discussion ID
-    forum_discussion_id = models.CharField(max_length=50, blank=True, null=True)
-
     class Meta:
         ordering = ["-created_at"]
         indexes = [

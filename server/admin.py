@@ -196,7 +196,6 @@ class UserAdmin(DjangoUserAdmin):
                     "groups",
                     "user_permissions",
                     "is_tournament_admin",
-                    "forum_id",
                 ),
             },
         ),
@@ -1043,7 +1042,6 @@ class AnnouncementAdmin(admin.ModelAdmin[Announcement]):
                     "content",
                     "is_members_only",
                     "is_published",
-                    "forum_discussion_id",
                 )
             },
         ),
