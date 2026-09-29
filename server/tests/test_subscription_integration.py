@@ -182,7 +182,7 @@ class TestSubscriptionIntegration(BaseCase):
         player.refresh_from_db()
         number = player.iu_id
         self.assertRegex(number, NUMBER)
-        self.assert_text(number, "#iu-id")
+        self.assert_text(number, "[data-testid='iu-id']")
         self.assert_text("holds Regular Subscription", "#subscription-exist")
         [mail] = subscription_confirmations(user.email)
         self.assertIn(number, mail)
