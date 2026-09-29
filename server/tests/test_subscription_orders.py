@@ -167,6 +167,26 @@ class TestOrderValidation(ApiBaseTestCase):
         self.assertEqual(response.status_code, 422)
         self.assertEqual(response.json()["message"], "Season does not exist!")
 
+    def test_a_season_that_has_ended_is_refused(self) -> None:
+        # The page no longer offers old seasons, but a tab opened before this
+        # release still does, and their plans stay is_available for ever.
+        over = Season.objects.create(
+            name="Season 2019-2020", start_date="2019-08-01", end_date="2020-07-31"
+        )
+        SubscriptionPlan.objects.create(
+            season=over, type=SubscriptionType.objects.get(slug="regular"), amount=70000
+        )
+        response = self.client.post(
+            "/api/transactions/razorpay",
+            data={
+                "season_id": over.id,
+                "items": [{"player_id": self.player.id, "plan_type": "regular"}],
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 422)
+        self.assertIn("has ended", response.json()["message"])
+
     def test_an_unknown_tier_is_refused(self) -> None:
         response = self.post_order([{"player_id": self.player.id, "plan_type": "gold"}])
         self.assertEqual(response.status_code, 422)
