@@ -15,7 +15,7 @@ from server.subscription.purchase import fulfil
 from server.tournament.models import Event, Registration, Tournament
 from server.tournament.utils import can_register_player_to_series_event, series_role
 from server.types import message_response
-from server.utils import calculate_late_penalty, is_today_in_between_dates
+from server.utils import calculate_late_penalty, is_today_in_between_dates, today
 
 from .client import razorpay
 from .models import (
@@ -56,6 +56,12 @@ def build_subscription_order(
         season = Season.objects.get(id=order.season_id)
     except Season.DoesNotExist as error:
         raise ValidationError("Season does not exist!") from error
+
+    # Plans stay is_available after a season ends, and a tab opened before
+    # the season picker was removed still offers them. Only the page stopped
+    # asking; this is where the money is.
+    if season.end_date < today():
+        raise ValidationError(f"{season.name} has ended.")
 
     if not order.items:
         raise ValidationError("An order needs at least one person in it.")
