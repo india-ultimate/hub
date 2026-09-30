@@ -9,6 +9,7 @@ from ninja import File, Router, UploadedFile
 
 from server.core.models import Player
 from server.lib.manual_transactions import validate_manual_transactions
+from server.payment_account.models import PaymentAccount
 from server.receipts.models import Receipt
 from server.schema import (
     PlayerSchema,
@@ -99,9 +100,23 @@ def handle_razorpay_callback(
 @router.post("/razorpay/webhook", auth=None, response={200: Response})
 @csrf_exempt
 def payment_webhook(request: HttpRequest) -> message_response:
+    return _webhook(request, None)
+
+
+@router.post("/razorpay/webhook/{slug}", auth=None, response={200: Response})
+@csrf_exempt
+def account_payment_webhook(request: HttpRequest, slug: str) -> message_response:
+    """Called by a state's own Razorpay dashboard, signed with its own secret."""
+    account = PaymentAccount.objects.filter(slug=slug).first()
+    if account is None:
+        return {"message": "Signature could not be verified"}
+    return _webhook(request, account)
+
+
+def _webhook(request: HttpRequest, account: PaymentAccount | None) -> message_response:
     body = request.body.decode("utf8")
     signature = request.headers.get("X-Razorpay-Signature", "")
-    if not razorpay.verify_webhook_payload(body, signature):
+    if not razorpay.verify_webhook_payload(body, signature, account):
         return {"message": "Signature could not be verified"}
 
     data = json.loads(body)
@@ -113,7 +128,10 @@ def payment_webhook(request: HttpRequest) -> message_response:
         return {"message": "Ignored webhook"}
     entity = data["payload"]["payment"]["entity"]
 
-    transaction = RazorpayTransaction.objects.filter(order_id=entity["order_id"]).first()
+    # Each account's URL settles only its own orders, and ours only ours.
+    transaction = RazorpayTransaction.objects.filter(
+        order_id=entity["order_id"], account=account
+    ).first()
     if transaction is None:
         return {"message": "No order found."}
     # Razorpay retries a webhook until it sees a 200, and the callback has

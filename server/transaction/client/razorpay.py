@@ -100,8 +100,18 @@ def verify_payment(payment_info: dict[str, str], account: PaymentAccount | None 
         return False
 
 
-def verify_webhook_payload(body: str, signature: str) -> bool:
-    secret = settings.RAZORPAY_WEBHOOK_SECRET
+def verify_webhook_payload(
+    body: str, signature: str, account: PaymentAccount | None = None
+) -> bool:
+    try:
+        secret = account.webhook_secret if account else settings.RAZORPAY_WEBHOOK_SECRET
+    except SecretsUnavailable as error:
+        logger.error("Webhook for %s can't be checked: %s", account, error)
+        return False
+    # A state's webhook without a secret yet accepts nothing, rather than
+    # anything signed with an empty key.
+    if account is not None and not secret:
+        return False
     try:
         return CLIENT.utility.verify_webhook_signature(body, signature, secret)
     except razorpay.errors.SignatureVerificationError as e:
