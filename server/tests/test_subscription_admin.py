@@ -4,7 +4,9 @@ from unittest import mock
 
 from django.contrib.admin.sites import site
 from django.contrib.auth.models import Permission
+from django.db import connection
 from django.test import RequestFactory, TestCase, override_settings
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from server.admin import PlayerAdmin
@@ -589,3 +591,32 @@ class TestApproveSponsorship(TestCase):
         item.refresh_from_db()
         self.assertNotEqual(item.status, ServiceRequestStatus.APPROVED)
         self.assertFalse(SponsorshipGrant.objects.exists())
+
+
+@override_settings(STORAGES=ADMIN_STORAGES)
+class TestOrderPageLoads(RefundAdminTestCase):
+    def queries_to_open_the_order(self) -> int:
+        with CaptureQueriesContext(connection) as queries:
+            response = self.client.get(
+                reverse("admin:server_razorpaytransaction_change", args=[self.transaction.pk])
+            )
+        self.assertEqual(response.status_code, 200)
+        return len(queries)
+
+    def test_the_order_page_does_not_grow_with_the_hub(self) -> None:
+        self.client.force_login(staff_user("boss@example.com", everything=True))
+        before = self.queries_to_open_the_order()
+
+        for n in range(20):
+            other = make_player(f"other{n}@example.com")
+            Subscription.objects.create(
+                player=other,
+                season=self.season,
+                plan=self.plan,
+                start_date=self.season.start_date,
+                end_date=self.season.end_date,
+            )
+
+        # Dropdowns of every player and subscription cost queries per option,
+        # and timed out in production once the Hub had thousands of each.
+        self.assertEqual(self.queries_to_open_the_order(), before)
