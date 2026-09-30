@@ -51,6 +51,7 @@ from server.forms.api import router as forms_router
 from server.passkey_utils import PassKeyClient
 from server.payment_account.api import router as payment_account_router
 from server.receipts.api import router as receipts_router
+from server.registration.api import router as registration_router
 from server.schema import (
     AccreditationFormSchema,
     AccreditationSchema,
@@ -218,6 +219,7 @@ def _deny_unless_manager(user: User, tournament: Tournament) -> tuple[int, messa
 api.add_router("/seasons", season_router)
 api.add_router("/", subscription_router)
 api.add_router("/", receipts_router)
+api.add_router("/registration", registration_router)
 api.add_router("/series/", series_router)
 api.add_router("/transactions", transaction_router)
 api.add_router("/payment-accounts", payment_account_router)
