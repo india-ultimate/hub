@@ -5,12 +5,14 @@ import cloudinary.uploader
 from django.conf import settings
 from django.conf import settings as django_settings
 from django.core.mail import send_mail
-from django.db.models import Count, Exists, OuterRef, Q, QuerySet
+from django.db.models import Count, Exists, IntegerField, OuterRef, Q, QuerySet, Subquery
+from django.db.models.functions import Coalesce
 from django.http import HttpRequest
 from django.shortcuts import get_object_or_404
 from django.template.loader import render_to_string
-from ninja import File, Router
+from ninja import File, Query, Router
 from ninja.files import UploadedFile
+from ninja.pagination import PageNumberPagination, paginate
 
 from server.core.models import User
 from server.ticket.models import Ticket, TicketMessage
@@ -21,6 +23,7 @@ from server.ticket.schema import (
     TicketMessageCreateSchema,
     TicketUpdateSchema,
 )
+from server.ticket.search import ranked, search_words
 from server.types import message_response
 
 # Initialize Cloudinary
@@ -38,16 +41,33 @@ class AuthenticatedHttpRequest(HttpRequest):
 ticket_api = Router()
 
 
+Status = Literal["OPN", "PRG", "RES"]
+Sort = Literal["relevance", "newest", "upvotes"]
+PAGE_SIZE = 20
+
+
+def _count(rows: QuerySet[Any]) -> Coalesce:
+    """How many of `rows`, already filtered to the outer ticket, there are.
+
+    A subquery rather than Count over a join: two joined counts multiply each
+    other, and a subquery is only evaluated for the rows a page returns.
+    """
+    return Coalesce(
+        Subquery(rows.order_by().values("ticket").annotate(n=Count("pk")).values("n")),
+        0,
+        output_field=IntegerField(),
+    )
+
+
 def visible_tickets(user: User) -> QuerySet[Ticket]:
     """The tickets `user` may see: a private one only to its creator and staff.
 
     Each comes with its upvote count and whether `user` is one of them.
     """
+    upvotes = Ticket.upvoters.through.objects.filter(ticket=OuterRef("pk"))
     tickets = Ticket.objects.annotate(
-        upvote_count=Count("upvoters", distinct=True),
-        has_upvoted=Exists(
-            Ticket.upvoters.through.objects.filter(ticket=OuterRef("pk"), user=user)
-        ),
+        upvote_count=_count(upvotes),
+        has_upvoted=Exists(upvotes.filter(user=user)),
     )
     if user.is_staff:
         return tickets
@@ -55,29 +75,46 @@ def visible_tickets(user: User) -> QuerySet[Ticket]:
 
 
 @ticket_api.get("/", response=list[TicketListItemSchema])
+@paginate(PageNumberPagination, page_size=PAGE_SIZE)
 def list_tickets(
     request: AuthenticatedHttpRequest,
-    status: str | None = None,
-    created_by_me: bool = False,
-    sort: Literal["upvotes"] | None = None,
+    q: str = "",
+    status: list[Status] = Query(None),  # noqa: B008  # repeatable: ?status=OPN&status=PRG
+    category: Ticket.Category | None = None,
+    mine: bool = False,
+    upvoted: bool = False,
+    exclude_private: bool = False,
+    sort: Sort | None = None,
 ) -> QuerySet[Ticket]:
-    """Get list of all tickets"""
-    query = visible_tickets(request.user)
+    """One page of the tickets the user may see, searched, filtered and sorted.
 
+    Everything starts from visible_tickets(), so someone else's private ticket
+    is never matched, listed or counted.
+    """
+    query: QuerySet[Ticket] = visible_tickets(request.user).annotate(
+        message_count=_count(TicketMessage.objects.filter(ticket=OuterRef("pk")))
+    )
     if status:
-        query = query.filter(status=status)
-
-    # Filter by tickets created by the current user
-    if created_by_me:
+        query = query.filter(status__in=status)
+    if category:
+        query = query.filter(category=category)
+    if mine:
         query = query.filter(created_by=request.user)
+    if upvoted:
+        query = query.filter(upvoters=request.user)
+    if exclude_private:
+        query = query.filter(is_private=False)
 
-    # Distinct, or the upvote join multiplies the message count
-    # ponytail: both counts join into one upvotes x messages product per ticket,
-    # fine at help-desk sizes; switch each to a Subquery count if lists slow down
-    query = query.annotate(message_count=Count("messages", distinct=True))
+    words = search_words(q)
+    if words:
+        query = ranked(query, words)
+
+    # -id last, so tickets created in the same instant keep one page order
     if sort == "upvotes":
-        return query.order_by("-upvote_count", "-created_at")
-    return query.order_by("-created_at")
+        return query.order_by("-upvote_count", "-created_at", "-id")
+    if words and sort in (None, "relevance"):
+        return query.order_by("-score", "-created_at", "-id")
+    return query.order_by("-created_at", "-id")
 
 
 @ticket_api.get("/{ticket_id}", response=TicketDetailSchema)
