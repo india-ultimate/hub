@@ -4,16 +4,21 @@ import datetime
 import hashlib
 import hmac
 import json
+from io import StringIO
 from typing import Any
 from unittest import mock
 
 from cryptography.fernet import Fernet
 from django.conf import settings
+from django.core.management import call_command
+from django.core.management.base import CommandError
 from django.test import TestCase, override_settings
 from razorpay.resources.order import Order
+from razorpay.resources.payment import Payment
 
 from server.core.models import Team
 from server.payment_account.models import PaymentAccount, SecretsUnavailable
+from server.subscription.refunds import refund_order
 from server.tests.base import ApiBaseTestCase, fake_id, make_account
 from server.tests.test_subscription_model import make_player
 from server.tournament.models import Event, Tournament
@@ -322,3 +327,88 @@ class TestAccountWebhooks(RoutedTestCase):
         order = unpaid_order(self.account, self.event, self.team, self.user)
         self.deliver("/api/transactions/razorpay/webhook/nowhere", order, "state-hook")
         self.assertEqual("created", order.status)
+
+
+SYNC = "server.management.commands.sync_razorpay_transactions"
+
+
+def captured(order: RazorpayTransaction) -> dict[str, Any]:
+    return {"id": f"pay_{fake_id(14)}", "order_id": order.order_id, "status": "captured"}
+
+
+class TestAccountSync(RoutedTestCase):
+    def sync(self, feeds: dict[str | None, Any]) -> str:
+        """Run the sync with each account's payment feed answered locally."""
+
+        def payments(since: Any = None, account: PaymentAccount | None = None) -> Any:
+            feed = feeds.get(account.slug if account else None, [])
+            if isinstance(feed, Exception):
+                raise feed
+            return feed
+
+        self.errors = StringIO()
+        with mock.patch(f"{SYNC}.get_transactions", side_effect=payments), mock.patch(
+            f"{SYNC}.get_refunds", return_value=[]
+        ):
+            call_command(
+                "sync_razorpay_transactions", "--no-email", stdout=StringIO(), stderr=self.errors
+            )
+        return self.errors.getvalue()
+
+    def test_a_state_order_is_settled_from_the_states_feed(self) -> None:
+        order = unpaid_order(self.account, self.event, self.team, self.user)
+        self.sync({"karnataka": [captured(order)]})
+        order.refresh_from_db()
+        self.assertEqual("completed", order.status)
+        self.assertIn(self.team, self.tournament.teams.all())
+
+    def test_our_feed_does_not_touch_a_state_order(self) -> None:
+        order = unpaid_order(self.account, self.event, self.team, self.user)
+        self.sync({None: [captured(order)]})
+        order.refresh_from_db()
+        self.assertEqual("created", order.status)
+
+    def test_one_broken_account_does_not_stop_the_others(self) -> None:
+        other = make_account(slug="goa", name="Goa Ultimate")
+        order = unpaid_order(other, self.event, self.team, self.user)
+        # Cron sees the failure; the other accounts were still synced.
+        with self.assertRaisesMessage(CommandError, "Not synced: Karnataka Ultimate"):
+            self.sync({"karnataka": RuntimeError("bad key"), "goa": [captured(order)]})
+        order.refresh_from_db()
+        self.assertEqual("completed", order.status)
+        self.assertIn("Karnataka Ultimate was not synced", self.errors.getvalue())
+
+    def test_our_broken_account_does_not_stop_the_states(self) -> None:
+        order = unpaid_order(self.account, self.event, self.team, self.user)
+        with self.assertRaisesMessage(CommandError, "Not synced: India Ultimate"):
+            self.sync({None: RuntimeError("bad key"), "karnataka": [captured(order)]})
+        order.refresh_from_db()
+        self.assertEqual("completed", order.status)
+        self.assertIn("India Ultimate was not synced", self.errors.getvalue())
+
+    def test_an_inactive_account_is_still_synced(self) -> None:
+        # Inactive only stops new orders: a payment captured before, or a
+        # dashboard refund after, must still reach the Hub.
+        self.account.is_active = False
+        self.account.save()
+        order = unpaid_order(self.account, self.event, self.team, self.user)
+        self.sync({"karnataka": [captured(order)]})
+        order.refresh_from_db()
+        self.assertEqual("completed", order.status)
+
+
+class TestAccountRefunds(RoutedTestCase):
+    def test_a_staff_refund_goes_through_the_orders_account(self) -> None:
+        order = unpaid_order(self.account, self.event, self.team, self.user)
+        RazorpayTransaction.objects.filter(pk=order.pk).update(
+            status="completed", payment_id="pay_state0000000001"
+        )
+        order.refresh_from_db()
+        with mock.patch.object(
+            Payment, "refund", autospec=True, return_value={"id": "rfnd_x1", "status": "processed"}
+        ) as refund:
+            refund_order(order, by=self.user, reason="Team withdrew")
+        self.assertEqual(STATE_KEYS, refund.call_args.args[0].client.auth)
+        self.assertEqual("pay_state0000000001", refund.call_args.args[1])
+        order.refresh_from_db()
+        self.assertEqual("refunded", order.status)

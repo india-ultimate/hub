@@ -5,6 +5,7 @@ from django.core.management.base import BaseCommand, CommandError, CommandParser
 from django.db import transaction as db_transaction
 from django.utils.timezone import get_current_timezone
 
+from server.payment_account.models import PaymentAccount
 from server.receipts.issue import issue_refund_note
 from server.subscription.refunds import mark_failed, settle
 from server.transaction.client.razorpay import (
@@ -63,8 +64,27 @@ class Command(BaseCommand):
                 raise CommandError("--since wants a date as YYYY-MM-DD.") from error
             since = datetime.datetime.combine(day, datetime.time.min, tzinfo=get_current_timezone())
 
+        # Every account, active or not: is_active only stops new orders, and a
+        # payment captured before, or a dashboard refund after, still lands here.
+        accounts: list[PaymentAccount | None] = [None]
+        accounts += PaymentAccount.objects.order_by("slug")
+        not_synced = []
+        for account in accounts:
+            name = account.name if account else "India Ultimate"
+            self.stdout.write(f"{name}:")
+            try:
+                self.sync_account(account, since, notify)
+            except Exception as error:  # one bad key must not stop the rest
+                self.stderr.write(self.style.ERROR(f"{name} was not synced: {error!r}"))
+                not_synced.append(name)
+        if not_synced:  # a non-zero exit, so cron reports it
+            raise CommandError(f"Not synced: {', '.join(not_synced)}")
+
+    def sync_account(
+        self, account: PaymentAccount | None, since: datetime.datetime | None, notify: bool
+    ) -> None:
         order_ids_by_status: dict[str, set[str]] = {}
-        for payment in get_transactions(since):
+        for payment in get_transactions(since, account=account):
             razorpay_status = payment["status"]
             if razorpay_status == "captured":
                 status_value = "completed"
@@ -89,7 +109,9 @@ class Command(BaseCommand):
                 )
                 continue
             qs = (
-                RazorpayTransaction.objects.filter(order_id__in=order_ids).exclude(status=status)
+                RazorpayTransaction.objects.filter(order_id__in=order_ids, account=account).exclude(
+                    status=status
+                )
                 # A refund is the last word on an order: nothing Razorpay
                 # reports about its payments moves it again.
                 .exclude(status=RazorpayTransaction.TransactionStatusChoices.REFUNDED)
@@ -114,7 +136,7 @@ class Command(BaseCommand):
                 self.style.SUCCESS(f"Updated status of {n} transactions to {status_value}.")
             )
 
-        recorded, failed = self.sync_refunds(since, notify=notify)
+        recorded, failed = self.sync_refunds(since, notify=notify, account=account)
         self.stdout.write(self.style.SUCCESS(f"Recorded {recorded} refunds."))
         if failed:
             self.stderr.write(
@@ -123,7 +145,12 @@ class Command(BaseCommand):
                 )
             )
 
-    def sync_refunds(self, since: datetime.datetime | None, notify: bool = True) -> tuple[int, int]:
+    def sync_refunds(
+        self,
+        since: datetime.datetime | None,
+        notify: bool = True,
+        account: PaymentAccount | None = None,
+    ) -> tuple[int, int]:
         """Bring the Hub's record of refunds in line with Razorpay's.
 
         Returns (recorded, failed). One bad entry must not stop the rest:
@@ -131,9 +158,9 @@ class Command(BaseCommand):
         was and tries again.
         """
         recorded = failed = 0
-        for entry in get_refunds(since):
+        for entry in get_refunds(since, account=account):
             try:
-                recorded += self._sync_refund(entry, notify)
+                recorded += self._sync_refund(entry, notify, account)
             except Exception as error:  # reported here, retried by the next sync
                 failed += 1
                 self.stderr.write(
@@ -141,7 +168,9 @@ class Command(BaseCommand):
                 )
         return recorded, failed
 
-    def _sync_refund(self, entry: dict[str, Any], notify: bool) -> int:
+    def _sync_refund(
+        self, entry: dict[str, Any], notify: bool, account: PaymentAccount | None = None
+    ) -> int:
         """Sync one Razorpay refund entry; 1 if it changed the Hub's record."""
         status = REFUND_STATUSES.get(entry["status"], RazorpayRefund.Status.PENDING)
         existing = RazorpayRefund.objects.filter(razorpay_refund_id=entry["id"]).first()
@@ -175,7 +204,9 @@ class Command(BaseCommand):
 
         # Made in the Razorpay dashboard. Record it and let staff decide;
         # the Hub never changes a subscription for a refund it did not start.
-        transaction = RazorpayTransaction.objects.filter(payment_id=entry["payment_id"]).first()
+        transaction = RazorpayTransaction.objects.filter(
+            payment_id=entry["payment_id"], account=account
+        ).first()
         if transaction is None:
             return 0
         with db_transaction.atomic():
