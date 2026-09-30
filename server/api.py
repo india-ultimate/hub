@@ -49,6 +49,7 @@ from server.duplicates.api import router as merge_router
 from server.election.api import router as election_router
 from server.forms.api import router as forms_router
 from server.passkey_utils import PassKeyClient
+from server.payment_account.api import router as payment_account_router
 from server.receipts.api import router as receipts_router
 from server.schema import (
     AccreditationFormSchema,
@@ -60,6 +61,7 @@ from server.schema import (
     ContactFormSchema,
     Credentials,
     GuardianshipFormSchema,
+    MeSchema,
     NotVaccinatedFormSchema,
     OTPLoginCredentials,
     OTPRequestCredentials,
@@ -82,7 +84,6 @@ from server.schema import (
     UserAccessSchema,
     UserFormSchema,
     UserMinSchema,
-    UserSchema,
     VaccinatedFormSchema,
     VaccinationSchema,
     WaiverFormSchema,
@@ -218,6 +219,7 @@ api.add_router("/", subscription_router)
 api.add_router("/", receipts_router)
 api.add_router("/series/", series_router)
 api.add_router("/transactions", transaction_router)
+api.add_router("/payment-accounts", payment_account_router)
 api.add_router("/forms", forms_router)
 api.add_router("/ticket", ticket_api)
 api.add_router("/merge-accounts", merge_router)
@@ -232,7 +234,7 @@ api.add_router("/wrapped", wrapped_router)
 # User #########
 
 
-@api.get("/me", response={200: UserSchema})
+@api.get("/me", response={200: MeSchema})
 def me(request: AuthenticatedHttpRequest) -> User:
     return request.user
 
@@ -540,7 +542,7 @@ def create_team(
 # Login #########
 
 
-@api.post("/login", auth=None, response={200: UserSchema, 403: Response})
+@api.post("/login", auth=None, response={200: MeSchema, 403: Response})
 def api_login(
     request: HttpRequest, credentials: Credentials
 ) -> tuple[int, AbstractBaseUser | message_response]:
@@ -590,7 +592,7 @@ def get_otp(
     return 200, {"otp_ts": current_ts}
 
 
-@api.post("/otp-login", auth=None, response={200: UserSchema, 403: Response, 404: Response})
+@api.post("/otp-login", auth=None, response={200: MeSchema, 403: Response, 404: Response})
 def otp_login(
     request: HttpRequest, credentials: OTPLoginCredentials
 ) -> tuple[int, User | message_response]:
@@ -644,7 +646,7 @@ def passkey_start_login(request: HttpRequest) -> tuple[int, message_response]:
     return 200, {"passkey_response": data}
 
 
-@api.post("/passkey/login/finish", auth=None, response={200: UserSchema, 400: Response})
+@api.post("/passkey/login/finish", auth=None, response={200: MeSchema, 400: Response})
 def passkey_finish_login(
     request: HttpRequest, body: PasskeyRequestSchema
 ) -> tuple[int, User | message_response]:

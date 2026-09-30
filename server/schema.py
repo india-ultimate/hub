@@ -11,6 +11,7 @@ from server.core.models import (
     User,
     Vaccination,
 )
+from server.payment_account.models import viewable_by
 from server.season.models import Season
 from server.subscription.schema import SubscriptionSchema
 from server.subscription.sponsorship import has_grant
@@ -386,6 +387,16 @@ class UserSchema(ModelSchema):
             "first_name",
             "last_name",
         ]
+
+
+class MeSchema(UserSchema):
+    """The signed-in person's own user, for the frontend's user store. Not for nesting."""
+
+    payment_accounts: list[dict[str, str]]
+
+    @staticmethod
+    def resolve_payment_accounts(user: User) -> list[dict[str, str]]:
+        return [{"slug": a.slug, "name": a.name} for a in viewable_by(user)]
 
 
 class UserOtherFormSchema(ModelSchema):

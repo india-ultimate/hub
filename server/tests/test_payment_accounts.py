@@ -1,11 +1,12 @@
 """Tournament fees paid into a state association's own Razorpay account."""
 
+import csv
 import datetime
 import hashlib
 import hmac
 import json
 from io import StringIO
-from typing import Any
+from typing import Any, cast
 from unittest import mock
 
 from cryptography.fernet import Fernet
@@ -14,18 +15,26 @@ from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.forms.models import model_to_dict
 from django.test import TestCase, override_settings
+from django.utils.timezone import now
 from razorpay.resources.order import Order
 from razorpay.resources.payment import Payment
 
 from server.admin import EventAdminForm
 from server.core.models import Team, User
+from server.duplicates.merge import merge_accounts
 from server.payment_account.models import PaymentAccount, SecretsUnavailable
+from server.schema import UserSchema
 from server.subscription.refunds import refund_order
 from server.tests.base import ApiBaseTestCase, fake_id, make_account
 from server.tests.test_subscription_admin import ADMIN_STORAGES
 from server.tests.test_subscription_model import make_player
 from server.tournament.models import Event, Tournament
-from server.transaction.models import RazorpayTransaction
+from server.tournament.schema import EventSchema
+from server.transaction.models import (
+    RazorpayRefund,
+    RazorpayTransaction,
+    RazorpayTransactionPlayer,
+)
 from server.utils import today
 
 
@@ -572,3 +581,218 @@ class TestEventAccountLock(TestCase):
         form = EventAdminForm(data=data, instance=event)
         self.assertFalse(form.is_valid())
         self.assertIn("payment_account", form.errors)
+
+
+Kind = RazorpayTransaction.TransactionTypeChoices
+
+
+class TestStateView(ApiBaseTestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        self.login()
+        self.account = make_account()
+        self.account.viewers.add(self.user)
+        self.older = open_event(title="KA Open 2025", payment_account=self.account)
+        self.latest = open_event(title="KA Open 2026", payment_account=self.account)
+        self.team = Team.objects.create(name="Bangalore Ultimate")
+
+    def paid(
+        self,
+        event: Event,
+        amount: int = TEAM_FEE,
+        status: str = "completed",
+        kind: str = Kind.TEAM_REGISTRATION,
+        team: Team | None = None,
+        account: PaymentAccount | None | str = "state",
+        days_ago: int = 0,
+    ) -> RazorpayTransaction:
+        order = RazorpayTransaction.objects.create(
+            order_id=f"order_{fake_id(14)}",
+            payment_id=f"pay_{fake_id(14)}",
+            amount=amount,
+            currency="INR",
+            status=status,
+            user=self.user,
+            event=event,
+            team=team or self.team,
+            type=kind,
+            account=self.account if account == "state" else cast(PaymentAccount | None, account),
+        )
+        RazorpayTransaction.objects.filter(pk=order.pk).update(
+            payment_date=now() - datetime.timedelta(days=days_ago)
+        )
+        return order
+
+    def get(self, **params: Any) -> dict[str, Any]:
+        response = self.client.get("/api/payment-accounts/karnataka/transactions", params)
+        self.assertEqual(200, response.status_code, response.content)
+        return dict(response.json())
+
+    def test_a_viewer_sees_only_their_accounts_payments(self) -> None:
+        mine = self.paid(self.latest)
+        self.paid(self.latest, account=None)
+        self.paid(self.latest, account=make_account(slug="goa"))
+        body = self.get()
+        self.assertEqual([mine.order_id], [row["order_id"] for row in body["results"]])
+        self.assertEqual("Bangalore Ultimate", body["results"][0]["team"])
+        self.assertEqual("Team fee", body["results"][0]["for"])
+        self.assertEqual("John Williamson", body["results"][0]["payer"]["name"])
+
+    def test_abandoned_checkouts_are_not_listed(self) -> None:
+        self.paid(self.latest, status="created")
+        self.paid(self.latest, status="failed")
+        self.assertEqual(0, self.get(status="all")["count"])
+
+    def test_the_latest_tournament_is_the_default(self) -> None:
+        self.paid(self.older, days_ago=300)
+        self.paid(self.latest, days_ago=1)
+        body = self.get()
+        self.assertEqual(self.latest.id, body["event"])
+        self.assertEqual(["KA Open 2026", "KA Open 2025"], [e["title"] for e in body["events"]])
+        self.assertEqual(1, self.get(event=self.older.id)["count"])
+
+    def test_the_status_filter(self) -> None:
+        self.paid(self.latest)
+        self.paid(self.latest, status="refunded")
+        self.assertEqual(1, self.get()["count"])
+        self.assertEqual(1, self.get(status="refunded")["count"])
+        self.assertEqual(2, self.get(status="all")["count"])
+
+    def test_the_fee_and_late_penalty_are_shown(self) -> None:
+        order = self.paid(self.latest, 2800000)
+        RazorpayTransaction.objects.filter(pk=order.pk).update(
+            notes={"base_amount": "2500000", "penalty_amount": "300000", "days_late": "2"}
+        )
+        self.paid(self.latest, days_ago=1)  # placed before notes were saved
+        rows = self.get()["results"]
+        self.assertEqual(
+            (2500000, 300000, 2),
+            (rows[0]["base_amount"], rows[0]["penalty_amount"], rows[0]["days_late"]),
+        )
+        self.assertIsNone(rows[1]["base_amount"])
+        csv_rows = list(
+            csv.reader(
+                StringIO(
+                    self.client.get(
+                        "/api/payment-accounts/karnataka/transactions.csv"
+                    ).content.decode()
+                )
+            )
+        )
+        header = csv_rows[0]
+        self.assertEqual("25000.00", csv_rows[1][header.index("Base fee (INR)")])
+        self.assertEqual("3000.00", csv_rows[1][header.index("Late penalty (INR)")])
+        self.assertEqual("", csv_rows[2][header.index("Base fee (INR)")])
+
+    def test_the_csv_defuses_formulas_in_user_typed_text(self) -> None:
+        self.paid(self.latest, team=Team.objects.create(name='=HYPERLINK("http://x")'))
+        response = self.client.get("/api/payment-accounts/karnataka/transactions.csv")
+        rows = list(csv.reader(StringIO(response.content.decode())))
+        self.assertEqual('\'=HYPERLINK("http://x")', rows[1][rows[0].index("Team")])
+
+    def test_search_by_team_payer_and_payment_id(self) -> None:
+        order = self.paid(self.latest)
+        self.paid(self.latest, team=Team.objects.create(name="Chennai Ultimate"))
+        self.assertEqual(1, self.get(q="bangalore")["count"])
+        self.assertEqual(2, self.get(q="williamson")["count"])
+        self.assertEqual(1, self.get(q=order.payment_id)["count"])
+
+    def test_totals_follow_the_tournament_not_the_filters(self) -> None:
+        partial = self.paid(self.latest, 200000, kind=Kind.PARTIAL_TEAM_REGISTRATION)
+        self.paid(self.latest, 300000)  # the rest, same team
+        refunded = self.paid(self.latest, 100000, status="refunded", kind=Kind.PLAYER_REGISTRATION)
+        players = self.paid(self.latest, 200000, kind=Kind.PLAYER_REGISTRATION)
+        for address in ("a@example.com", "b@example.com"):
+            RazorpayTransactionPlayer.objects.create(
+                transaction=players, player=make_player(address)
+            )
+        RazorpayTransactionPlayer.objects.create(
+            transaction=refunded, player=make_player("c@example.com")
+        )
+        RazorpayRefund.objects.create(
+            transaction=refunded, amount=100000, status=RazorpayRefund.Status.PROCESSED, reason="x"
+        )
+        RazorpayRefund.objects.create(  # still pending: not money back yet
+            transaction=partial, amount=5000, status=RazorpayRefund.Status.PENDING, reason="x"
+        )
+        self.paid(self.older, 999900, days_ago=300)
+
+        totals = self.get(status="refunded", q="zzz")["totals"]
+        self.assertEqual(
+            {
+                "collected": 800000,
+                "refunded": 100000,
+                "net": 700000,
+                "teams_paid": 1,
+                "players_paid": 2,
+            },
+            totals,
+        )
+
+    def test_pages_of_fifty(self) -> None:
+        for _ in range(51):
+            self.paid(self.latest)
+        self.assertEqual(50, len(self.get()["results"]))
+        second = self.get(page=2)
+        self.assertEqual(51, second["count"])
+        self.assertEqual(1, len(second["results"]))
+
+    def test_the_csv_has_every_matching_row(self) -> None:
+        for _ in range(51):
+            self.paid(self.latest, 123456)
+        response = self.client.get("/api/payment-accounts/karnataka/transactions.csv")
+        self.assertEqual(200, response.status_code)
+        self.assertIn("attachment", response["Content-Disposition"])
+        rows = list(csv.reader(StringIO(response.content.decode())))
+        self.assertEqual("Date", rows[0][0])
+        self.assertEqual(52, len(rows))
+        self.assertIn("1234.56", rows[1])
+
+    def test_outsiders_get_not_found(self) -> None:
+        outsider = User.objects.create_user("o@example.com", "o@example.com", "pw")
+        self.client.force_login(outsider)
+        self.assertEqual([], self.client.get("/api/payment-accounts/").json())
+        for url in ("transactions", "transactions.csv"):
+            response = self.client.get(f"/api/payment-accounts/karnataka/{url}")
+            self.assertEqual(404, response.status_code)
+
+    def test_staff_see_every_account(self) -> None:
+        make_account(slug="goa", name="Goa Ultimate")
+        staff = User.objects.create_user("s@example.com", "s@example.com", "pw", is_staff=True)
+        self.client.force_login(staff)
+        slugs = [a["slug"] for a in self.client.get("/api/payment-accounts/").json()]
+        self.assertEqual(["goa", "karnataka"], slugs)
+
+    def test_an_inactive_account_stays_visible(self) -> None:
+        self.paid(self.latest)
+        self.account.is_active = False
+        self.account.save()
+        self.assertEqual(1, self.get()["count"])
+
+    def test_me_lists_the_accounts_i_can_see(self) -> None:
+        me = self.client.get("/api/me").json()
+        self.assertEqual(
+            [{"slug": "karnataka", "name": "Karnataka Ultimate"}], me["payment_accounts"]
+        )
+
+    def test_a_nested_user_does_not_carry_accounts(self) -> None:
+        self.assertNotIn("payment_accounts", UserSchema.from_orm(self.user).dict())
+
+    def test_an_event_names_its_payee(self) -> None:
+        self.assertEqual(
+            "Karnataka Ultimate", EventSchema.from_orm(self.latest).dict()["payment_account_name"]
+        )
+        self.assertIsNone(
+            EventSchema.from_orm(open_event(title="Ours")).dict()["payment_account_name"]
+        )
+
+    def test_an_event_without_a_payee_costs_no_query(self) -> None:
+        event = Event.objects.get(pk=open_event(title="Ours").pk)  # nothing cached
+        with self.assertNumQueries(0):
+            self.assertIsNone(EventSchema.from_orm(event).dict()["payment_account_name"])
+
+    def test_a_merge_keeps_the_viewer(self) -> None:
+        duplicate = User.objects.create_user("dup@example.com", "dup@example.com", "pw")
+        self.account.viewers.set([duplicate])
+        merge_accounts(self.user, [duplicate], dry_run=False)
+        self.assertEqual([self.user], list(self.account.viewers.all()))

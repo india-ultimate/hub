@@ -43,6 +43,14 @@ class UCRegistrationSchema(ModelSchema):
 class EventSchema(ModelSchema):
     series: SeriesSchema | None
 
+    payment_account_name: str | None
+
+    @staticmethod
+    def resolve_payment_account_name(event: Event) -> str | None:
+        if event.payment_account_id is None:  # no query for an event of our own
+            return None
+        return event.payment_account.name if event.payment_account else None
+
     class Config:
         model = Event
         model_exclude = ["ultimate_central_id"]
