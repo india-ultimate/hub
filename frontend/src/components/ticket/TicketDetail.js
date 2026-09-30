@@ -6,13 +6,14 @@ import {
 } from "@tanstack/solid-query";
 import { Icon } from "solid-heroicons";
 import { chatBubbleOvalLeftEllipsis } from "solid-heroicons/outline";
-import { lockClosed } from "solid-heroicons/solid";
+import { chevronUp, lockClosed } from "solid-heroicons/solid";
 import { createEffect, createSignal, For, Show } from "solid-js";
 
 import {
   addTicketMessage,
   fetchTicketDetail,
   fetchUser,
+  setTicketUpvote,
   updateTicket
 } from "../../queries";
 import { useStore } from "../../store";
@@ -30,6 +31,7 @@ const TicketDetail = () => {
   const [isAdmin, setIsAdmin] = createSignal(false);
   const [isCreator, setIsCreator] = createSignal(false);
   const [messageError, setMessageError] = createSignal("");
+  const [upvoteError, setUpvoteError] = createSignal("");
   const queryClient = useQueryClient();
   const [attachment, setAttachment] = createSignal(null);
 
@@ -71,6 +73,16 @@ const TicketDetail = () => {
     },
     onError: error => {
       console.error("Error updating ticket:", error);
+      queryClient.invalidateQueries(["tickets"]);
+    }
+  });
+
+  const upvoteMutation = createMutation({
+    mutationFn: upvote => setTicketUpvote(params.id, upvote),
+    onMutate: () => setUpvoteError(""),
+    onError: error => setUpvoteError(error.message),
+    onSuccess: () => {
+      queryClient.invalidateQueries(["ticket", params.id]);
       queryClient.invalidateQueries(["tickets"]);
     }
   });
@@ -256,7 +268,40 @@ const TicketDetail = () => {
                 <h2 class="text-2xl font-bold text-gray-800 dark:text-white">
                   Ticket #{ticketQuery.data.id}: {ticketQuery.data.title}
                 </h2>
+                <button
+                  id="ticket-upvote"
+                  onClick={() =>
+                    upvoteMutation.mutate(!ticketQuery.data.has_upvoted)
+                  }
+                  disabled={
+                    isCreator() ||
+                    ticketQuery.data.is_private ||
+                    upvoteMutation.isLoading
+                  }
+                  title={
+                    isCreator()
+                      ? "You can't upvote your own ticket"
+                      : "Upvote if this affects you too"
+                  }
+                  aria-pressed={ticketQuery.data.has_upvoted}
+                  class={`inline-flex shrink-0 items-center gap-1 rounded-lg border px-3 py-1.5 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60 ${
+                    ticketQuery.data.has_upvoted
+                      ? "border-blue-700 bg-blue-700 text-white dark:border-blue-600 dark:bg-blue-600"
+                      : "border-gray-300 text-gray-800 hover:bg-gray-100 dark:border-gray-600 dark:text-white dark:hover:bg-gray-700"
+                  }`}
+                >
+                  <Icon path={chevronUp} class="h-4 w-4" />
+                  {ticketQuery.data.has_upvoted ? "Upvoted" : "Upvote"}
+                  <span data-testid="upvote-count">
+                    {ticketQuery.data.upvote_count}
+                  </span>
+                </button>
               </div>
+              <Show when={upvoteError()}>
+                <div class="mt-2">
+                  <Error text={upvoteError()} />
+                </div>
+              </Show>
               <div class="mt-2 flex space-x-2">
                 <span
                   class={`rounded px-2.5 py-0.5 text-sm font-medium ${getStatusBadgeClass(

@@ -8,10 +8,11 @@ import { fetchTickets } from "../../queries";
 
 const TicketList = props => {
   const [filter, setFilter] = createSignal("");
+  const [sort, setSort] = createSignal("");
 
   const ticketsQuery = createQuery(
-    () => ["tickets", filter()],
-    () => fetchTickets(filter())
+    () => ["tickets", filter(), sort()],
+    () => fetchTickets(filter(), sort())
   );
 
   const getStatusBadgeClass = status => {
@@ -99,6 +100,17 @@ const TicketList = props => {
               </button>
             )}
           </For>
+          <button
+            id="sort-by-upvotes"
+            onClick={() => setSort(sort() ? "" : "upvotes")}
+            class={`rounded-lg px-4 py-2 text-sm font-medium md:ml-auto ${
+              sort()
+                ? "bg-blue-700 text-white"
+                : "bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-white"
+            }`}
+          >
+            Most upvoted
+          </button>
         </div>
       </div>
 
@@ -142,6 +154,9 @@ const TicketList = props => {
                   </th>
                   <th scope="col" class="px-6 py-3">
                     Messages
+                  </th>
+                  <th scope="col" class="px-6 py-3">
+                    Upvotes
                   </th>
                 </tr>
               </thead>
@@ -197,6 +212,7 @@ const TicketList = props => {
                         {new Date(ticket.created_at).toLocaleDateString()}
                       </td>
                       <td class="px-6 py-4">{ticket.message_count}</td>
+                      <td class="px-6 py-4">{ticket.upvote_count}</td>
                     </tr>
                   )}
                 </For>

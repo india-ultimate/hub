@@ -1744,14 +1744,17 @@ export const matchStatsFullTime = async ({ match_id }) => {
 };
 
 // Ticket API functions
-export const fetchTickets = async (filter = "") => {
-  let queryParams = "";
+export const fetchTickets = async (filter = "", sort = "") => {
+  const queryParams = new URLSearchParams();
 
   // Handle different filter types
   if (filter === "ME") {
-    queryParams = "created_by_me=true";
+    queryParams.set("created_by_me", "true");
   } else if (filter) {
-    queryParams = `status=${filter}`;
+    queryParams.set("status", filter);
+  }
+  if (sort) {
+    queryParams.set("sort", sort);
   }
 
   const response = await fetch(`/api/ticket/?${queryParams}`, {
@@ -1816,6 +1819,20 @@ export const addTicketMessage = async (ticketId, data) => {
   const responseData = await response.json();
   if (!response.ok) {
     throw new Error(responseData?.message || "Failed to add message");
+  }
+  return responseData;
+};
+
+export const setTicketUpvote = async (ticketId, upvote) => {
+  const response = await fetch(`/api/ticket/${ticketId}/upvote`, {
+    method: upvote ? "POST" : "DELETE",
+    headers: { "X-CSRFToken": getCookie("csrftoken") },
+    credentials: "same-origin"
+  });
+
+  const responseData = await response.json();
+  if (!response.ok) {
+    throw new Error(responseData?.message || "Failed to update upvote");
   }
   return responseData;
 };

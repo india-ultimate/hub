@@ -1,11 +1,11 @@
-from typing import Any
+from typing import Any, Literal
 
 import cloudinary
 import cloudinary.uploader
 from django.conf import settings
 from django.conf import settings as django_settings
 from django.core.mail import send_mail
-from django.db.models import Count, Q, QuerySet
+from django.db.models import Count, Exists, OuterRef, Q, QuerySet
 from django.http import HttpRequest
 from django.shortcuts import get_object_or_404
 from django.template.loader import render_to_string
@@ -39,15 +39,27 @@ ticket_api = Router()
 
 
 def visible_tickets(user: User) -> QuerySet[Ticket]:
-    """The tickets `user` may see: a private one only to its creator and staff."""
+    """The tickets `user` may see: a private one only to its creator and staff.
+
+    Each comes with its upvote count and whether `user` is one of them.
+    """
+    tickets = Ticket.objects.annotate(
+        upvote_count=Count("upvoters", distinct=True),
+        has_upvoted=Exists(
+            Ticket.upvoters.through.objects.filter(ticket=OuterRef("pk"), user=user)
+        ),
+    )
     if user.is_staff:
-        return Ticket.objects.all()
-    return Ticket.objects.filter(Q(is_private=False) | Q(created_by=user))
+        return tickets
+    return tickets.filter(Q(is_private=False) | Q(created_by=user))
 
 
 @ticket_api.get("/", response=list[TicketListItemSchema])
 def list_tickets(
-    request: AuthenticatedHttpRequest, status: str | None = None, created_by_me: bool = False
+    request: AuthenticatedHttpRequest,
+    status: str | None = None,
+    created_by_me: bool = False,
+    sort: Literal["upvotes"] | None = None,
 ) -> QuerySet[Ticket]:
     """Get list of all tickets"""
     query = visible_tickets(request.user)
@@ -59,7 +71,13 @@ def list_tickets(
     if created_by_me:
         query = query.filter(created_by=request.user)
 
-    return query.annotate(message_count=Count("messages")).order_by("-created_at")
+    # Distinct, or the upvote join multiplies the message count
+    # ponytail: both counts join into one upvotes x messages product per ticket,
+    # fine at help-desk sizes; switch each to a Subquery count if lists slow down
+    query = query.annotate(message_count=Count("messages", distinct=True))
+    if sort == "upvotes":
+        return query.order_by("-upvote_count", "-created_at")
+    return query.order_by("-created_at")
 
 
 @ticket_api.get("/{ticket_id}", response=TicketDetailSchema)
@@ -120,7 +138,8 @@ def create_ticket(
             # Log the error but don't fail the ticket creation
             print(f"Error sending email notification: {e}")
 
-    return 201, ticket
+    # Read back for the upvote fields the response carries
+    return 201, visible_tickets(request.user).get(id=ticket.id)
 
 
 @ticket_api.put("/{ticket_id}", response={200: TicketDetailSchema, 403: message_response})
@@ -281,3 +300,26 @@ def add_message(
             print(f"Error sending email notification: {e}")
 
     return 201, ticket
+
+
+@ticket_api.post("/{ticket_id}/upvote", response={200: TicketDetailSchema, 400: message_response})
+def upvote_ticket(
+    request: AuthenticatedHttpRequest, ticket_id: int
+) -> tuple[int, Ticket | dict[str, str]]:
+    """Say a ticket matters to you too. Upvoting twice counts once."""
+    ticket = get_object_or_404(visible_tickets(request.user), id=ticket_id)
+    if ticket.created_by == request.user:
+        return 400, {"message": "You can't upvote your own ticket"}
+    if ticket.is_private:
+        return 400, {"message": "A private ticket can't be upvoted"}
+
+    ticket.upvoters.add(request.user)
+    return 200, visible_tickets(request.user).get(id=ticket.id)
+
+
+@ticket_api.delete("/{ticket_id}/upvote", response={200: TicketDetailSchema})
+def remove_upvote(request: AuthenticatedHttpRequest, ticket_id: int) -> tuple[int, Ticket]:
+    """Take an upvote back. Doing so without one is not an error."""
+    ticket = get_object_or_404(visible_tickets(request.user), id=ticket_id)
+    ticket.upvoters.remove(request.user)
+    return 200, visible_tickets(request.user).get(id=ticket.id)
