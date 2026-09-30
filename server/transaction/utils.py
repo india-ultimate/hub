@@ -1,3 +1,4 @@
+import contextlib
 import logging
 import time
 from typing import Any
@@ -9,6 +10,7 @@ from django.db.models import Model, Q, QuerySet
 
 from server.core.models import Player, Team, User
 from server.payment_account.models import PaymentAccount
+from server.registration.models import RosterEntry
 from server.season.models import Season
 from server.series.models import Role, is_playing_role
 from server.subscription import catalog, eligibility
@@ -25,6 +27,7 @@ from .models import (
     ManualTransaction,
     PaymentGateway,
     PhonePeTransaction,
+    RazorpayRefund,
     RazorpayTransaction,
     RazorpayTransactionPlayer,
 )
@@ -35,6 +38,7 @@ from .schema import (
 )
 
 logger = logging.getLogger(__name__)
+Kinds = RazorpayTransaction.TransactionTypeChoices
 
 NOT_SET_UP = "Payments for this tournament aren't set up yet. Please contact the organisers."
 
@@ -112,6 +116,7 @@ def create_transaction(
     # Where the money goes: a registration pays the event's account, if it
     # has one. Subscriptions are always ours.
     account: PaymentAccount | None = None
+    per_player_penalty = 0
 
     if isinstance(order, PlayerRegistrationSchema):
         players = Player.objects.filter(id__in=order.player_ids)
@@ -344,6 +349,11 @@ def create_transaction(
             )
             for player, priced in lines
         )
+    if isinstance(order, PlayerRegistrationSchema) and event is not None:
+        # Each person's share, so one player can be refunded on their own.
+        RazorpayTransactionPlayer.objects.filter(transaction=transaction).update(
+            amount=event.player_fee + per_player_penalty
+        )
 
     transaction_user_name = user.get_full_name()
     if isinstance(order, TeamRegistrationSchema):
@@ -405,9 +415,27 @@ def update_transaction_team_registration(
     except Tournament.DoesNotExist:
         return
 
-    if transaction.team is not None:
-        tournament.partial_teams.remove(transaction.team)
-        tournament.teams.add(transaction.team)
+    team = transaction.team
+    if team is None:
+        return
+    if tournament.teams.filter(pk=team.pk).exists():
+        # Already in: a replayed order changes nothing, and a second full fee
+        # (two admins paying at once) goes back.
+        if _other_team_fee(transaction, Kinds.TEAM_REGISTRATION).exists():
+            _refund_duplicate_team_fee(transaction)
+        return
+    # Priced as the whole fee, so placed before the partial landed: two admins
+    # paying at once. The partial keeps the spot, and the rest is paid as
+    # usual. The remainder is priced lower and moves the team in.
+    if (
+        transaction.event is not None
+        and transaction.notes.get("base_amount") == str(transaction.event.team_fee)
+        and tournament.partial_teams.filter(pk=team.pk).exists()
+    ):
+        _refund_duplicate_team_fee(transaction)
+        return
+    tournament.partial_teams.remove(team)
+    tournament.teams.add(team)
 
 
 def update_transaction_partial_team_registration(
@@ -418,8 +446,48 @@ def update_transaction_partial_team_registration(
     except Tournament.DoesNotExist:
         return
 
-    if transaction.team is not None:
-        tournament.partial_teams.add(transaction.team)
+    team = transaction.team
+    if team is None or transaction.event is None:
+        return
+    in_full = tournament.teams.filter(pk=team.pk).exists()
+    if in_full or tournament.partial_teams.filter(pk=team.pk).exists():
+        # The spot is held. Another partial fee, or a full fee paid outright
+        # (not the remainder after this partial), means this one is extra.
+        full_price = _other_team_fee(transaction, Kinds.TEAM_REGISTRATION).filter(
+            notes__base_amount=str(transaction.event.team_fee)
+        )
+        if _other_team_fee(transaction, Kinds.PARTIAL_TEAM_REGISTRATION).exists() or (
+            full_price.exists()
+        ):
+            _refund_duplicate_team_fee(transaction)
+        return
+    tournament.partial_teams.add(team)
+
+
+def _other_team_fee(transaction: RazorpayTransaction, kind: str) -> QuerySet[RazorpayTransaction]:
+    """Another paid team-fee order of this kind for the same team and event.
+
+    One with any refund against it has already been dealt with, so it never
+    makes the order it was refunded in favour of look like a duplicate.
+    """
+    return RazorpayTransaction.objects.filter(
+        event=transaction.event,
+        team=transaction.team,
+        type=kind,
+        status=RazorpayTransaction.TransactionStatusChoices.COMPLETED,
+        refunds__isnull=True,
+    ).exclude(pk=transaction.pk)
+
+
+def _refund_duplicate_team_fee(transaction: RazorpayTransaction) -> None:
+    # Lazy: refunds imports this module's models and client.
+    from server.subscription.refunds import RefundRefused, refund_order
+
+    try:
+        refund_order(transaction, by=None, reason="Team fee already paid for this tournament.")
+    except RefundRefused as refused:
+        # Razorpay's refusal is kept as a failed refund on the order for staff.
+        logger.error("Duplicate team fee %s not refunded: %s", transaction.order_id, refused)
 
 
 def update_transaction_player_registrations(
@@ -427,22 +495,84 @@ def update_transaction_player_registrations(
 ) -> None:
     event = transaction.event
     team = transaction.team
-    for player in transaction.players.all():
+    if event is None or team is None:
+        return
+    for line in RazorpayTransactionPlayer.objects.filter(transaction=transaction).select_related(
+        "player"
+    ):
+        player = line.player
+        if line.refunds.exclude(status=RazorpayRefund.Status.FAILED).exists():
+            continue  # given back already: a replayed order doesn't roster them again
+        elsewhere = Registration.objects.filter(event=event, player=player).exclude(team=team)
+        if elsewhere.exists():
+            _refund_unrosterable(line)
+            continue
+        if (other := _paid_in_another_order(line)) is not None:
+            _refund_unrosterable(line, f"Already paid for in order {other}.")
+            continue
         role: str = Role.DEFAULT
-        if event is not None and team is not None and event.series:
+        if event.series:
             role = series_role(event, team, player) or Role.DEFAULT
         try:
-            registration = Registration(
+            Registration.objects.get_or_create(
                 event=event,
                 team=team,
                 player=player,
-                is_playing=is_playing_role(role),
-                role=role,
+                defaults={"is_playing": is_playing_role(role), "role": role},
             )
-
-            registration.save()
         except IntegrityError:
-            pass
+            # Another team rostered them after the check above. The create ran
+            # in its own savepoint, so carrying on with the rest is safe.
+            _refund_unrosterable(line)
+    RosterEntry.objects.filter(
+        event=event, team=team, player__in=transaction.players.all()
+    ).delete()
+
+
+def _paid_in_another_order(line: RazorpayTransactionPlayer) -> str | None:
+    """The other paid order already rostering this person here, if there is one.
+
+    Two admins can each pay for the same player. The order whose line still
+    stands keeps them; a line refunded or flagged for review doesn't count,
+    so replaying the order that kept them changes nothing.
+    """
+    transaction = line.transaction
+    if not Registration.objects.filter(
+        event=transaction.event, team=transaction.team, player=line.player
+    ).exists():
+        return None
+    other = (
+        RazorpayTransactionPlayer.objects.filter(
+            player=line.player,
+            needs_review=False,
+            refunds__isnull=True,
+            transaction__event=transaction.event,
+            transaction__team=transaction.team,
+            transaction__type=Kinds.PLAYER_REGISTRATION,
+            transaction__status=RazorpayTransaction.TransactionStatusChoices.COMPLETED,
+        )
+        .exclude(transaction=transaction)
+        .first()
+    )
+    return other.transaction_id if other is not None else None
+
+
+def _refund_unrosterable(
+    line: RazorpayTransactionPlayer,
+    note: str = "Rostered for another team before this payment completed.",
+) -> None:
+    """Someone paid for can't be rostered by this payment, so it goes back."""
+    # Lazy: refunds imports this module's models and client.
+    from server.subscription.refunds import RefundRefused, refund_line
+
+    line.needs_review = True
+    line.review_note = note
+    line.save(update_fields=["needs_review", "review_note"])
+    if not line.amount:
+        return  # an order placed before per-line amounts: staff refund by hand
+    # Refused: stays needs_review for staff; the refund record holds Razorpay's error.
+    with contextlib.suppress(RefundRefused):
+        refund_line(line, by=None, reason=line.review_note)
 
 
 def list_transactions_by_type(
