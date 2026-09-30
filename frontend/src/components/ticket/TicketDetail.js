@@ -1,13 +1,17 @@
-import { useNavigate, useParams } from "@solidjs/router";
+import { A, useParams } from "@solidjs/router";
 import {
   createMutation,
   createQuery,
   useQueryClient
 } from "@tanstack/solid-query";
+import clsx from "clsx";
 import { Icon } from "solid-heroicons";
-import { chatBubbleOvalLeftEllipsis } from "solid-heroicons/outline";
-import { lockClosed } from "solid-heroicons/solid";
-import { createEffect, createSignal, For, Show } from "solid-js";
+import {
+  arrowDownTray,
+  chatBubbleOvalLeftEllipsis,
+  lockClosed
+} from "solid-heroicons/outline";
+import { createSignal, For, Match, Show, Switch } from "solid-js";
 
 import {
   addTicketMessage,
@@ -15,24 +19,61 @@ import {
   fetchUser,
   updateTicket
 } from "../../queries";
-import { useStore } from "../../store";
-import Error from "../alerts/Error";
+import {
+  CategoryChip,
+  formatDate,
+  formatDateTime,
+  PriorityBadge,
+  StatusBadge,
+  STATUSES
+} from "../../tickets";
+import ErrorAlert from "../alerts/Error";
 import Breadcrumbs from "../Breadcrumbs";
 import FileInput from "../FileInput";
-import TextAreaInput from "../TextAreaInput";
 import UpvoteButton from "./UpvoteButton";
+
+const card =
+  "rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800 sm:p-6";
+const primary =
+  "inline-flex min-h-[44px] items-center justify-center rounded-lg bg-blue-700 px-5 text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus-visible:ring-blue-800";
+const secondary =
+  "inline-flex min-h-[44px] w-full items-center justify-center rounded-lg border border-gray-300 bg-white px-4 text-sm font-medium text-gray-900 hover:bg-gray-100 focus:outline-none focus-visible:ring-4 focus-visible:ring-gray-200 disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700";
+const IMAGE = /\.(jpe?g|png|gif|webp|bmp|tiff)$/i;
+
+const fullName = user => `${user.first_name} ${user.last_name}`.trim();
+
+const fileName = url => {
+  try {
+    return new URL(url).pathname.split("/").pop() || "attachment";
+  } catch {
+    return "attachment";
+  }
+};
+
+const download = async url => {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error("Failed to fetch file");
+    const href = window.URL.createObjectURL(await response.blob());
+    const link = document.createElement("a");
+    link.href = href;
+    link.download = fileName(url);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(href);
+  } catch {
+    window.open(url, "_blank");
+  }
+};
 
 const TicketDetail = () => {
   const params = useParams();
-  const navigate = useNavigate();
-  const [store] = useStore();
-  const [message, setMessage] = createSignal("");
-  const [isSubmitting, setIsSubmitting] = createSignal(false);
-  const [isAdmin, setIsAdmin] = createSignal(false);
-  const [isCreator, setIsCreator] = createSignal(false);
-  const [messageError, setMessageError] = createSignal("");
   const queryClient = useQueryClient();
+  const [reply, setReply] = createSignal("");
   const [attachment, setAttachment] = createSignal(null);
+  const [replyError, setReplyError] = createSignal("");
+  const [updateError, setUpdateError] = createSignal("");
 
   const userQuery = createQuery(() => ["me"], fetchUser);
   const ticketQuery = createQuery(
@@ -40,564 +81,455 @@ const TicketDetail = () => {
     () => fetchTicketDetail(params.id)
   );
 
-  createEffect(() => {
-    if (userQuery.data && ticketQuery.data) {
-      setIsAdmin(userQuery.data.is_staff || false);
-      setIsCreator(userQuery.data.id === ticketQuery.data.created_by.id);
-    }
-  });
+  const me = () => userQuery.data;
+  const ticket = () => ticketQuery.data;
+  const isStaff = () => Boolean(me()?.is_staff);
+  const canManage = () =>
+    isStaff() || (me() && me().id === ticket()?.created_by.id);
 
-  const addMessageMutation = createMutation({
+  const refresh = () => {
+    queryClient.invalidateQueries(["ticket", params.id]);
+    queryClient.invalidateQueries(["tickets"]);
+  };
+
+  const replyMutation = createMutation({
     mutationFn: data => addTicketMessage(params.id, data),
     onSuccess: () => {
-      setMessage("");
-      setMessageError("");
-      setIsSubmitting(false);
-      queryClient.invalidateQueries(["ticket", params.id]);
+      setReply("");
+      setAttachment(null);
+      setReplyError("");
+      refresh();
     },
-    onError: error => {
-      console.error("Error adding message:", error);
-      setMessageError(
-        error.message || "Failed to send message. Please try again."
-      );
-      setIsSubmitting(false);
-    }
+    onError: error =>
+      setReplyError(
+        error.message || "Couldn't send your reply. Please try again."
+      )
   });
 
-  const updateTicketMutation = createMutation({
+  const updateMutation = createMutation({
     mutationFn: data => updateTicket(params.id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries(["ticket", params.id]);
-      queryClient.invalidateQueries(["tickets"]);
-    },
-    onError: error => {
-      console.error("Error updating ticket:", error);
-      queryClient.invalidateQueries(["tickets"]);
-    }
+    onMutate: () => setUpdateError(""),
+    onSuccess: refresh,
+    onError: error =>
+      setUpdateError(error.message || "Couldn't update the ticket.")
   });
 
-  const handleSubmitMessage = e => {
+  const send = e => {
     e.preventDefault();
-    if (!message().trim()) return;
-
-    setIsSubmitting(true);
-    addMessageMutation.mutate({ message: message(), attachment: attachment() });
-  };
-
-  const handleStatusChange = status => {
-    updateTicketMutation.mutate({ status });
-  };
-
-  const handleLoginRedirect = () => {
-    navigate("/login");
-  };
-
-  const handleAssignToMe = () => {
-    if (!userQuery.data) return;
-
-    updateTicketMutation.mutate({
-      assigned_to_id: userQuery.data.id
-    });
-  };
-
-  const getStatusBadgeClass = status => {
-    switch (status) {
-      case "OPN":
-        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300";
-      case "PRG":
-        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300";
-      case "RES":
-        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300";
-      default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300";
-    }
-  };
-
-  const getPriorityBadgeClass = priority => {
-    switch (priority) {
-      case "URG":
-        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300";
-      case "HIG":
-        return "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300";
-      case "MED":
-        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300";
-      case "LOW":
-        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300";
-      default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300";
-    }
-  };
-
-  const getStatusText = status => {
-    switch (status) {
-      case "OPN":
-        return "Open";
-      case "PRG":
-        return "In Progress";
-      case "RES":
-        return "Resolved";
-      default:
-        return status;
-    }
-  };
-
-  const getPriorityText = priority => {
-    switch (priority) {
-      case "URG":
-        return "Urgent";
-      case "HIG":
-        return "High";
-      case "MED":
-        return "Medium";
-      case "LOW":
-        return "Low";
-      default:
-        return priority;
-    }
-  };
-
-  const downloadAttachment = async (url, filename) => {
-    try {
-      const response = await fetch(url);
-      if (!response.ok) throw new Error("Failed to fetch file");
-
-      const blob = await response.blob();
-      const downloadUrl = window.URL.createObjectURL(blob);
-
-      const link = document.createElement("a");
-      link.href = downloadUrl;
-      link.download = filename || "attachment";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      // Clean up the object URL
-      window.URL.revokeObjectURL(downloadUrl);
-    } catch (error) {
-      console.error("Download failed:", error);
-      // Fallback: open in new tab
-      window.open(url, "_blank");
-    }
-  };
-
-  const getFilenameFromUrl = url => {
-    try {
-      const urlObj = new URL(url);
-      const pathname = urlObj.pathname;
-      const filename = pathname.split("/").pop();
-      return filename || "attachment";
-    } catch {
-      return "attachment";
-    }
+    if (!reply().trim() || replyMutation.isLoading) return;
+    replyMutation.mutate({ message: reply(), attachment: attachment() });
   };
 
   return (
-    <div class="space-y-4">
-      <Show
-        when={userQuery.data}
-        fallback={
-          <div class="rounded-lg bg-yellow-100 p-6 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">
-            <div class="flex items-center">
-              <svg
-                class="mr-2 h-5 w-5"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  fill-rule="evenodd"
-                  d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                  clip-rule="evenodd"
-                />
-              </svg>
-              <h3 class="text-lg font-medium">Authentication Required</h3>
-            </div>
-            <div class="mt-2">
-              <p>You need to be logged in to view ticket details.</p>
-              <button
-                onClick={handleLoginRedirect}
-                class="mt-3 inline-flex items-center rounded-lg bg-blue-700 px-4 py-2 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
-              >
-                Log In
-              </button>
-            </div>
-          </div>
-        }
-      >
-        {/* Breadcrumb Navigation */}
-        <Breadcrumbs
-          icon={chatBubbleOvalLeftEllipsis}
-          pageList={[
-            { name: "Help", url: "/tickets" },
-            { name: `Ticket #${params.id}`, url: "" }
-          ]}
-        />
+    <div class="mx-auto max-w-6xl space-y-4">
+      <Breadcrumbs
+        icon={chatBubbleOvalLeftEllipsis}
+        pageList={[
+          { name: "Help", url: "/tickets" },
+          { name: `Ticket #${params.id}`, url: "" }
+        ]}
+      />
 
-        <div class="rounded-lg bg-white dark:bg-gray-800 md:shadow">
-          <Show when={ticketQuery.isLoading}>
-            <div class="flex justify-center p-8">
-              <div class="h-12 w-12 animate-spin rounded-full border-b-2 border-t-2 border-blue-600" />
-            </div>
-          </Show>
+      <Show when={!userQuery.isLoading && !me()}>
+        <div class="rounded-xl border border-yellow-300 bg-yellow-50 p-6 text-yellow-900">
+          <h2 class="text-lg font-semibold">Log in to see this ticket</h2>
+          <A href="/login" class={clsx(primary, "mt-4")}>
+            Log in
+          </A>
+        </div>
+      </Show>
 
-          <Show when={ticketQuery.isError}>
-            <div class="md:p-8">
-              <div class="text-center text-red-600 dark:text-red-400">
-                <p class="text-xl font-bold">Error loading ticket</p>
-                <p>
-                  {ticketQuery.error?.message || "An unknown error occurred"}
+      <Show when={me()}>
+        <Switch>
+          <Match when={ticketQuery.isLoading}>
+            <div class={clsx(card, "flex gap-4")} aria-hidden="true">
+              <div class="h-16 w-16 animate-pulse rounded-lg bg-gray-200 motion-reduce:animate-none dark:bg-gray-700" />
+              <div class="flex-1 space-y-3">
+                <div class="h-6 w-2/3 animate-pulse rounded bg-gray-200 motion-reduce:animate-none dark:bg-gray-700" />
+                <div class="h-4 w-1/3 animate-pulse rounded bg-gray-200 motion-reduce:animate-none dark:bg-gray-700" />
+              </div>
+            </div>
+          </Match>
+          <Match when={ticketQuery.isError}>
+            <div class={clsx(card, "text-center")}>
+              <p class="font-semibold text-gray-900 dark:text-white">
+                This ticket doesn't exist, or you can't see it.
+              </p>
+              <A href="/tickets" class={clsx(primary, "mt-4")}>
+                Back to the Help Center
+              </A>
+            </div>
+          </Match>
+          <Match when={ticket()}>
+            <header id="ticket-header" class={clsx(card, "flex gap-4")}>
+              <UpvoteButton ticket={ticket()} userId={me().id} size="lg" />
+              <div class="min-w-0 flex-1">
+                <h1 class="break-words text-2xl font-bold text-gray-900 dark:text-white">
+                  {ticket().title}
+                </h1>
+                <div class="mt-2 flex flex-wrap items-center gap-2">
+                  <StatusBadge status={ticket().status} />
+                  <PriorityBadge priority={ticket().priority} />
+                  <CategoryChip category={ticket().category} />
+                  <Show when={ticket().is_private}>
+                    <span
+                      id="private-badge"
+                      class="inline-flex items-center gap-1 rounded-full bg-gray-800 px-2.5 py-0.5 text-xs font-medium text-white dark:bg-gray-200 dark:text-gray-900"
+                    >
+                      <Icon
+                        path={lockClosed}
+                        class="h-3.5 w-3.5"
+                        aria-hidden="true"
+                      />
+                      Private
+                    </span>
+                  </Show>
+                </div>
+                <p class="mt-3 text-sm text-gray-600 dark:text-gray-400">
+                  {fullName(ticket().created_by)} opened this on{" "}
+                  {formatDate(ticket().created_at)}
+                  <Show when={isStaff()}>
+                    {" "}
+                    (
+                    <a
+                      href={`mailto:${ticket().created_by.username}`}
+                      class="break-all text-blue-700 underline dark:text-blue-300"
+                    >
+                      {ticket().created_by.username}
+                    </a>
+                    )
+                  </Show>
                 </p>
               </div>
-            </div>
-          </Show>
+            </header>
 
-          <Show when={ticketQuery.isSuccess}>
-            <div class="border-gray-200 dark:border-gray-700 md:border-b md:p-6">
-              <div class="flex items-center justify-between">
-                <h2 class="text-2xl font-bold text-gray-800 dark:text-white">
-                  Ticket #{ticketQuery.data.id}: {ticketQuery.data.title}
-                </h2>
-                <UpvoteButton
-                  ticket={ticketQuery.data}
-                  userId={userQuery.data?.id}
-                  size="lg"
-                />
-              </div>
-              <div class="mt-2 flex space-x-2">
-                <span
-                  class={`rounded px-2.5 py-0.5 text-sm font-medium ${getStatusBadgeClass(
-                    ticketQuery.data.status
-                  )}`}
-                >
-                  {getStatusText(ticketQuery.data.status)}
-                </span>
-                <span
-                  class={`rounded px-2.5 py-0.5 text-sm font-medium ${getPriorityBadgeClass(
-                    ticketQuery.data.priority
-                  )}`}
-                >
-                  {getPriorityText(ticketQuery.data.priority)}
-                </span>
-                <Show when={ticketQuery.data.is_private}>
-                  <span class="inline-flex items-center gap-1 rounded bg-gray-100 px-2.5 py-0.5 text-sm font-medium text-gray-800 dark:bg-gray-700 dark:text-gray-300">
-                    <Icon path={lockClosed} class="h-4 w-4" />
-                    Private
-                  </span>
-                </Show>
-              </div>
+            <div class="grid gap-4 lg:grid-cols-3">
+              <aside class="space-y-4 lg:order-2">
+                <section class={card} aria-labelledby="details-heading">
+                  <h2
+                    id="details-heading"
+                    class="text-sm font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-400"
+                  >
+                    Details
+                  </h2>
+                  <dl class="mt-3 space-y-2 text-sm">
+                    <div class="flex justify-between gap-4">
+                      <dt class="text-gray-600 dark:text-gray-400">
+                        Assigned to
+                      </dt>
+                      <dd class="text-right font-medium text-gray-900 dark:text-white">
+                        {ticket().assigned_to
+                          ? fullName(ticket().assigned_to)
+                          : "Unassigned"}
+                      </dd>
+                    </div>
+                    <div class="flex justify-between gap-4">
+                      <dt class="text-gray-600 dark:text-gray-400">Opened</dt>
+                      <dd class="text-right text-gray-900 dark:text-white">
+                        {formatDateTime(ticket().created_at)}
+                      </dd>
+                    </div>
+                    <div class="flex justify-between gap-4">
+                      <dt class="text-gray-600 dark:text-gray-400">
+                        Last updated
+                      </dt>
+                      <dd class="text-right text-gray-900 dark:text-white">
+                        {formatDateTime(ticket().updated_at)}
+                      </dd>
+                    </div>
+                  </dl>
 
-              <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div>
-                  <p class="text-sm text-gray-500 dark:text-gray-400">
-                    Created by:{" "}
-                    <span class="font-medium text-gray-800 dark:text-white">
-                      {ticketQuery.data.created_by.first_name}{" "}
-                      {ticketQuery.data.created_by.last_name}
-                    </span>
-                    <Show
-                      when={isAdmin() && ticketQuery.data.created_by.username}
-                    >
-                      <span class="ml-1 text-sm text-gray-500 dark:text-gray-400">
-                        (
-                        <a
-                          href={`mailto:${ticketQuery.data.created_by.username}`}
-                          class="text-blue-600 hover:underline dark:text-blue-400"
+                  <Show when={canManage()}>
+                    <div class="mt-4 space-y-4 border-t border-gray-200 pt-4 dark:border-gray-700">
+                      <div>
+                        <label
+                          for="ticket-status"
+                          class="mb-1 block text-sm font-medium text-gray-900 dark:text-white"
                         >
-                          {ticketQuery.data.created_by.username}
-                        </a>
-                        )
-                      </span>
-                    </Show>
-                  </p>
-                  <p class="text-sm text-gray-500 dark:text-gray-400">
-                    Created on:{" "}
-                    <span class="font-medium text-gray-800 dark:text-white">
-                      {new Date(ticketQuery.data.created_at).toLocaleString()}
-                    </span>
-                  </p>
-                </div>
-                <div>
-                  <p class="text-sm text-gray-500 dark:text-gray-400">
-                    Assigned to:{" "}
-                    <span class="font-medium text-gray-800 dark:text-white">
-                      {ticketQuery.data.assigned_to
-                        ? `${ticketQuery.data.assigned_to.first_name} ${ticketQuery.data.assigned_to.last_name}`
-                        : "Unassigned"}
-                    </span>
-                    <Show
-                      when={isAdmin() && ticketQuery.data.assigned_to?.email}
-                    >
-                      <span class="ml-1 text-sm text-gray-500 dark:text-gray-400">
-                        (
-                        <a
-                          href={`mailto:${ticketQuery.data.assigned_to.email}`}
-                          class="text-blue-600 hover:underline dark:text-blue-400"
+                          Status
+                        </label>
+                        <select
+                          id="ticket-status"
+                          value={ticket().status}
+                          disabled={updateMutation.isLoading}
+                          onChange={e =>
+                            updateMutation.mutate({
+                              status: e.currentTarget.value
+                            })
+                          }
+                          class="min-h-[44px] w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                         >
-                          {ticketQuery.data.assigned_to.email}
-                        </a>
-                        )
-                      </span>
-                    </Show>
+                          <For each={Object.entries(STATUSES)}>
+                            {([value, status]) => (
+                              <option value={value}>{status.label}</option>
+                            )}
+                          </For>
+                        </select>
+                      </div>
+                      <Show
+                        when={isStaff() && ticket().assigned_to?.id !== me().id}
+                      >
+                        <button
+                          type="button"
+                          id="assign-to-me"
+                          class={secondary}
+                          disabled={updateMutation.isLoading}
+                          onClick={() =>
+                            updateMutation.mutate({ assigned_to_id: me().id })
+                          }
+                        >
+                          Assign to me
+                        </button>
+                      </Show>
+                      <div class="flex items-start justify-between gap-4">
+                        <div>
+                          <p
+                            id="privacy-label"
+                            class="flex items-center gap-1.5 text-sm font-medium text-gray-900 dark:text-white"
+                          >
+                            <Icon
+                              path={lockClosed}
+                              class="h-4 w-4"
+                              aria-hidden="true"
+                            />
+                            Private
+                          </p>
+                          <p
+                            id="privacy-help"
+                            class="mt-1 text-xs text-gray-600 dark:text-gray-400"
+                          >
+                            Only the person who opened it and the India Ultimate
+                            team can see this ticket.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          id="privacy-switch"
+                          role="switch"
+                          aria-checked={ticket().is_private}
+                          aria-labelledby="privacy-label"
+                          aria-describedby="privacy-help"
+                          disabled={updateMutation.isLoading}
+                          onClick={() =>
+                            updateMutation.mutate({
+                              is_private: !ticket().is_private
+                            })
+                          }
+                          class="inline-flex h-11 w-14 shrink-0 items-center justify-center rounded-full focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-300 disabled:opacity-60 dark:focus-visible:ring-blue-800"
+                        >
+                          <span
+                            aria-hidden="true"
+                            class={clsx(
+                              "inline-flex h-7 w-12 items-center rounded-full transition-colors duration-150 motion-reduce:transition-none",
+                              ticket().is_private
+                                ? "bg-blue-700 dark:bg-blue-600"
+                                : "bg-gray-300 dark:bg-gray-600"
+                            )}
+                          >
+                            <span
+                              class={clsx(
+                                "inline-block h-5 w-5 rounded-full bg-white shadow transition-transform duration-150 motion-reduce:transition-none",
+                                ticket().is_private
+                                  ? "translate-x-6"
+                                  : "translate-x-1"
+                              )}
+                            />
+                          </span>
+                        </button>
+                      </div>
+                      <Show when={updateError()}>
+                        <ErrorAlert text={updateError()} />
+                      </Show>
+                    </div>
+                  </Show>
+                </section>
+              </aside>
+
+              <div class="space-y-4 lg:order-1 lg:col-span-2">
+                <section class={card} aria-labelledby="description-heading">
+                  <h2
+                    id="description-heading"
+                    class="text-base font-semibold text-gray-900 dark:text-white"
+                  >
+                    Description
+                  </h2>
+                  <p class="mt-2 whitespace-pre-wrap break-words text-gray-800 dark:text-gray-200">
+                    {ticket().description}
                   </p>
-                  <Show when={ticketQuery.data.category}>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">
-                      Category:{" "}
-                      <span class="font-medium text-gray-800 dark:text-white">
-                        {ticketQuery.data.category}
-                      </span>
+                </section>
+
+                <section class={card} aria-labelledby="conversation-heading">
+                  <h2
+                    id="conversation-heading"
+                    class="text-base font-semibold text-gray-900 dark:text-white"
+                  >
+                    Conversation ({ticket().messages.length})
+                  </h2>
+                  <Show when={ticket().messages.length === 0}>
+                    <p class="mt-3 text-sm text-gray-600 dark:text-gray-400">
+                      No replies yet.
                     </p>
                   </Show>
-                </div>
-              </div>
-
-              <div class="mt-6">
-                <h3 class="mb-2 text-lg font-medium text-gray-800 dark:text-white">
-                  Description
-                </h3>
-                <div class="rounded-lg bg-gray-50 p-4 dark:bg-gray-700">
-                  <p class="whitespace-pre-wrap text-gray-800 dark:text-gray-200">
-                    {ticketQuery.data.description}
-                  </p>
-                </div>
-              </div>
-
-              <Show when={isAdmin() || isCreator()}>
-                <div class="mt-6">
-                  <h3 class="mb-2 text-lg font-medium text-gray-800 dark:text-white">
-                    Status Management
-                  </h3>
-                  <div class="flex flex-wrap gap-2">
-                    <button
-                      onClick={() => handleStatusChange("OPN")}
-                      disabled={ticketQuery.data.status === "OPN"}
-                      class="rounded-lg bg-blue-100 px-4 py-2 text-sm font-medium text-blue-800 hover:bg-blue-200 disabled:opacity-50 dark:bg-blue-900 dark:text-blue-300 dark:hover:bg-blue-800"
-                    >
-                      Mark as Open
-                    </button>
-                    <button
-                      onClick={() => handleStatusChange("PRG")}
-                      disabled={ticketQuery.data.status === "PRG"}
-                      class="rounded-lg bg-yellow-100 px-4 py-2 text-sm font-medium text-yellow-800 hover:bg-yellow-200 disabled:opacity-50 dark:bg-yellow-900 dark:text-yellow-300 dark:hover:bg-yellow-800"
-                    >
-                      Mark as In Progress
-                    </button>
-                    <button
-                      onClick={() => handleStatusChange("RES")}
-                      disabled={ticketQuery.data.status === "RES"}
-                      class="rounded-lg bg-green-100 px-4 py-2 text-sm font-medium text-green-800 hover:bg-green-200 disabled:opacity-50 dark:bg-green-900 dark:text-green-300 dark:hover:bg-green-800"
-                    >
-                      Mark as Resolved
-                    </button>
-                    <Show when={isAdmin() && userQuery.data}>
-                      <button
-                        disabled={
-                          ticketQuery.data.assigned_to?.id === userQuery.data.id
-                        }
-                        onClick={handleAssignToMe}
-                        class="rounded-lg bg-purple-100 px-4 py-2 text-sm font-medium text-purple-800 hover:bg-purple-200 disabled:opacity-50 dark:bg-purple-900 dark:text-purple-300 dark:hover:bg-purple-800"
-                      >
-                        Assign to Myself
-                      </button>
-                    </Show>
-                  </div>
-                  <button
-                    onClick={() =>
-                      updateTicketMutation.mutate({
-                        is_private: !ticketQuery.data.is_private
-                      })
-                    }
-                    class="mt-2 rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-                  >
-                    {ticketQuery.data.is_private
-                      ? "Make Public"
-                      : "Make Private (only the creator and staff can see it)"}
-                  </button>
-                </div>
-              </Show>
-            </div>
-
-            <div class="pt-6 md:p-6">
-              <h3 class="mb-4 text-lg font-medium text-gray-800 dark:text-white">
-                Conversation
-              </h3>
-
-              <div class="mb-6 max-h-[500px] space-y-4 overflow-y-auto border-b border-gray-200 p-2">
-                <Show when={ticketQuery.data.messages.length === 0}>
-                  <div class="py-8 text-center text-gray-500 dark:text-gray-400">
-                    No messages yet. Start the conversation!
-                  </div>
-                </Show>
-
-                <For each={ticketQuery.data.messages}>
-                  {message => (
-                    <div
-                      class={`flex ${
-                        message.sender.id === store.data?.id
-                          ? "justify-end"
-                          : "justify-start"
-                      }`}
-                    >
-                      <div
-                        class={`max-w-[80%] rounded-lg p-4 ${
-                          message.sender.id === store.data?.id
-                            ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-                            : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
-                        }`}
-                      >
-                        <div class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-                          <div class="flex items-center gap-1">
-                            <span class="font-medium">
-                              {message.sender.first_name}{" "}
-                              {message.sender.last_name}
-                            </span>
-                            <Show when={isAdmin() && message.sender.username}>
-                              <span class="text-gray-600 dark:text-gray-400">
-                                (
-                                <a
-                                  href={`mailto:${message.sender.username}`}
-                                  class="text-blue-600 hover:underline dark:text-blue-400"
-                                >
-                                  {message.sender.username}
-                                </a>
-                                )
-                              </span>
-                            </Show>
-                          </div>
-                          <span>
-                            {(() => {
-                              const date = new Date(message.created_at);
-                              const now = new Date();
-                              const diffInHours =
-                                (now - date) / (1000 * 60 * 60);
-
-                              if (diffInHours < 24) {
-                                return date.toLocaleTimeString([], {
-                                  hour: "numeric",
-                                  minute: "2-digit"
-                                });
-                              } else if (diffInHours < 48) {
-                                return `Yesterday ${date.toLocaleTimeString(
-                                  [],
-                                  { hour: "numeric", minute: "2-digit" }
-                                )}`;
-                              } else {
-                                return (
-                                  date.toLocaleDateString([], {
-                                    month: "short",
-                                    day: "numeric"
-                                  }) +
-                                  " " +
-                                  date.toLocaleTimeString([], {
-                                    hour: "numeric",
-                                    minute: "2-digit"
-                                  })
-                                );
-                              }
-                            })()}
-                          </span>
-                        </div>
-                        <p class="mt-2 whitespace-pre-wrap">
-                          {message.message}
-                        </p>
-                        <Show when={message.attachment}>
-                          <div class="mt-2 flex flex-col gap-2">
-                            {/* Preview if image */}
-                            <Show
-                              when={/\.(jpe?g|png|gif|webp|bmp|tiff)$/i.test(
-                                message.attachment
+                  <ol class="mt-4 space-y-4">
+                    <For each={ticket().messages}>
+                      {message => {
+                        const mine = () => message.sender.id === me().id;
+                        return (
+                          <li
+                            class={clsx(
+                              "flex",
+                              mine() ? "justify-end" : "justify-start"
+                            )}
+                          >
+                            <div
+                              class={clsx(
+                                "max-w-[85%] rounded-2xl px-4 py-3",
+                                mine()
+                                  ? "rounded-br-sm bg-blue-700 text-white dark:bg-blue-600"
+                                  : "rounded-bl-sm bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-100"
                               )}
                             >
-                              <img
-                                src={message.attachment}
-                                alt="Attachment preview"
-                                class="max-h-48 rounded border border-gray-300 dark:border-gray-700"
-                                style={{
-                                  "object-fit": "contain",
-                                  "max-width": "100%"
-                                }}
-                              />
-                            </Show>
-                            {/* Download button */}
-                            <button
-                              onClick={() =>
-                                downloadAttachment(
-                                  message.attachment,
-                                  getFilenameFromUrl(message.attachment)
-                                )
-                              }
-                              class="inline-flex cursor-pointer items-center gap-1 border-none bg-transparent p-0 text-sm text-blue-600 hover:underline dark:text-blue-400"
-                            >
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                class="h-4 w-4"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
+                              <p
+                                class={clsx(
+                                  "text-xs",
+                                  mine()
+                                    ? "text-blue-100"
+                                    : "text-gray-600 dark:text-gray-300"
+                                )}
                               >
-                                <path
-                                  stroke-linecap="round"
-                                  stroke-linejoin="round"
-                                  stroke-width="2"
-                                  d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4"
-                                />
-                              </svg>
-                              Download Attachment
-                            </button>
-                          </div>
-                        </Show>
-                      </div>
-                    </div>
-                  )}
-                </For>
-              </div>
+                                <span class="font-semibold">
+                                  {mine() ? "You" : fullName(message.sender)}
+                                </span>{" "}
+                                ·{" "}
+                                <time datetime={message.created_at}>
+                                  {formatDateTime(message.created_at)}
+                                </time>
+                                <Show when={isStaff() && !mine()}>
+                                  {" "}
+                                  (
+                                  <a
+                                    href={`mailto:${message.sender.username}`}
+                                    class="break-all underline"
+                                  >
+                                    {message.sender.username}
+                                  </a>
+                                  )
+                                </Show>
+                              </p>
+                              <p class="mt-1 whitespace-pre-wrap break-words">
+                                {message.message}
+                              </p>
+                              <Show when={message.attachment}>
+                                <div class="mt-2 space-y-2">
+                                  <Show when={IMAGE.test(message.attachment)}>
+                                    <img
+                                      src={message.attachment}
+                                      alt={`Attachment from ${fullName(
+                                        message.sender
+                                      )}`}
+                                      loading="lazy"
+                                      class="max-h-48 max-w-full rounded-lg object-contain"
+                                    />
+                                  </Show>
+                                  <button
+                                    type="button"
+                                    onClick={() => download(message.attachment)}
+                                    class={clsx(
+                                      "inline-flex min-h-[44px] items-center gap-1.5 text-sm font-medium underline",
+                                      mine()
+                                        ? "text-white"
+                                        : "text-blue-700 dark:text-blue-300"
+                                    )}
+                                  >
+                                    <Icon
+                                      path={arrowDownTray}
+                                      class="h-4 w-4"
+                                      aria-hidden="true"
+                                    />
+                                    Download {fileName(message.attachment)}
+                                  </button>
+                                </div>
+                              </Show>
+                            </div>
+                          </li>
+                        );
+                      }}
+                    </For>
+                  </ol>
 
-              <form onSubmit={handleSubmitMessage} class="mt-4">
-                <Show when={messageError()}>
-                  <div class="mb-4">
-                    <Error text={messageError()} />
-                  </div>
-                </Show>
-                <TextAreaInput
-                  name="message"
-                  label="Your message"
-                  value={message()}
-                  onInput={e => setMessage(e.target.value)}
-                  placeholder="Type your message here..."
-                  padding={false}
-                />
-                <div class="mb-4">
-                  <FileInput
-                    name="attachment"
-                    label="Attachment (optional)"
-                    accept="image/*,application/pdf"
-                    value={attachment()}
-                    onInput={e => setAttachment(e.target.files[0])}
-                    subLabel="Allowed: images or PDF, max 20MB"
-                  />
-                  <Show when={attachment()}>
-                    <div class="mt-2 flex items-center gap-2 text-sm">
-                      <span>Selected: {attachment().name}</span>
+                  <form
+                    onSubmit={send}
+                    class="mt-6 border-t border-gray-200 pt-4 dark:border-gray-700"
+                  >
+                    <label
+                      for="reply"
+                      class="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
+                    >
+                      Write a reply
+                    </label>
+                    <textarea
+                      id="reply"
+                      rows="4"
+                      value={reply()}
+                      onInput={e => setReply(e.currentTarget.value)}
+                      onKeyDown={e => {
+                        if (e.key === "Enter" && (e.ctrlKey || e.metaKey))
+                          send(e);
+                      }}
+                      aria-describedby="reply-hint"
+                      placeholder="Type your reply…"
+                      class="block w-full rounded-lg border border-gray-300 bg-white p-3 text-base text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                    />
+                    <p
+                      id="reply-hint"
+                      class="mt-1 text-xs text-gray-600 dark:text-gray-400"
+                    >
+                      Press Ctrl + Enter (⌘ + Enter on a Mac) to send.
+                    </p>
+                    <FileInput
+                      class="mt-3 !px-0"
+                      name="attachment"
+                      label="Attachment (optional)"
+                      accept="image/*,application/pdf"
+                      value={attachment()}
+                      onInput={e => setAttachment(e.target.files[0])}
+                      subLabel="Images or PDF, up to 20MB"
+                    />
+                    <Show when={attachment()}>
+                      <div class="mt-2 flex items-center gap-2 text-sm text-gray-900 dark:text-white">
+                        <span class="truncate">
+                          Selected: {attachment().name}
+                        </span>
+                        <button
+                          type="button"
+                          class="min-h-[44px] px-2 text-red-600 underline"
+                          onClick={() => setAttachment(null)}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </Show>
+                    <Show when={replyError()}>
+                      <div class="mt-3">
+                        <ErrorAlert text={replyError()} />
+                      </div>
+                    </Show>
+                    <div class="mt-4 flex justify-end">
                       <button
-                        type="button"
-                        class="text-red-600 underline"
-                        onClick={() => setAttachment(null)}
+                        type="submit"
+                        id="send-reply"
+                        class={primary}
+                        disabled={replyMutation.isLoading || !reply().trim()}
                       >
-                        Remove
+                        {replyMutation.isLoading ? "Sending…" : "Send reply"}
                       </button>
                     </div>
-                  </Show>
-                </div>
-                <button
-                  type="submit"
-                  disabled={isSubmitting() || !message().trim()}
-                  class="rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 disabled:opacity-50 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
-                >
-                  {isSubmitting() ? "Sending..." : "Send Message"}
-                </button>
-              </form>
+                  </form>
+                </section>
+              </div>
             </div>
-          </Show>
-        </div>
+          </Match>
+        </Switch>
       </Show>
     </div>
   );

@@ -38,7 +38,7 @@ from server.task.models import Task
 from server.tests.localserver import APP_URL, DJANGO_URL, running_test_server
 from server.tests.razorpay_checkout import complete_razorpay_test_payment
 from server.tests.utils import create_empty_directory
-from server.ticket.models import Ticket
+from server.ticket.models import Ticket, TicketMessage
 from server.tournament.models import Event
 
 MAIL_DIR = BASE_DIR.joinpath("tmp")
@@ -1034,7 +1034,8 @@ class TestIntegration(BaseCase):
         self.type("textarea#description", "Please change it to ...")
         self.click("input#is_private")
         self.click('button[type="submit"]')
-        self.assert_text("Make Public")
+        self.assert_attribute("#privacy-switch", "aria-checked", "true")
+        self.assert_element("#private-badge")
         self.open(f"{APP_URL}/tickets")
         self.assert_text("My new address")
 
@@ -1158,3 +1159,49 @@ class TestIntegration(BaseCase):
         self.open(f"{APP_URL}/tickets?category=Payment")
         self.assert_element("#tickets-empty")
         self.assertEqual("Payment", self.get_value("#filter-category"))
+
+    # Breaks if: replying, changing status or the privacy switch stops
+    # reaching the API from the redesigned ticket page.
+    def test_managing_a_ticket(self) -> None:
+        creator = make_player("asker@example.com")
+        ticket = Ticket.objects.create(
+            title="Card declined",
+            description="-",
+            created_by=creator,
+            status=Ticket.Status.IN_PROGRESS,
+        )
+
+        self.sign_in_as(creator)
+        self.open(f"{APP_URL}/tickets/{ticket.id}")
+        # The menu shows the ticket's own status, not its first option
+        self.assertEqual("PRG", self.get_value("#ticket-status"))
+        self.type("#reply", "It happened again today")
+        self.click("#send-reply")
+        self.assert_text("It happened again today")
+        self.select_option_by_value("#ticket-status", "RES")
+        # The header badge changes only once the server has saved it
+        self.assert_text("Resolved", "#ticket-header")
+        self.click("#privacy-switch")
+        self.assert_element("#private-badge")
+        self.refresh()
+        self.assert_attribute("#privacy-switch", "aria-checked", "true")
+
+        ticket.refresh_from_db()
+        self.assertEqual((Ticket.Status.RESOLVED, True), (ticket.status, ticket.is_private))
+
+    # Breaks if: a long email on the ticket page makes a phone scroll sideways
+    # for staff, who see everyone's address.
+    def test_long_emails_fit_on_a_phone(self) -> None:
+        creator = make_player("firstnamemiddlenamelastnamefortesting@someorganisationexample.com")
+        staff = make_player("staff@example.com")
+        User.objects.filter(pk=staff.pk).update(is_staff=True)
+        ticket = Ticket.objects.create(title="Card declined", description="-", created_by=creator)
+        TicketMessage.objects.create(ticket=ticket, sender=creator, message="Still failing")
+
+        self.sign_in_as(staff)
+        self.set_window_size(375, 812)
+        self.open(f"{APP_URL}/tickets/{ticket.id}")
+        self.assert_text("Still failing")
+        self.assertTrue(
+            self.execute_script("return document.documentElement.scrollWidth <= window.innerWidth")
+        )
