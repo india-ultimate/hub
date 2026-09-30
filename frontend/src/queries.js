@@ -2727,3 +2727,63 @@ export const paymentAccountCsvUrl = ({ slug, ...filters }) =>
     ...filters,
     page: 1
   })}`;
+
+const registrationBase = ({ eventSlug, teamSlug }) =>
+  `/api/registration/${eventSlug}/team/${teamSlug}`;
+
+// Every team registration call throws an Error carrying the HTTP status and
+// the parsed body, so the page can tell a 409 quote change from a failure.
+const registrationRequest = async (url, options = {}) => {
+  const response = await fetch(url, {
+    credentials: "same-origin",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    ...options
+  });
+  // A proxy's error page isn't JSON; it still fails with its status.
+  const body =
+    response.status === 204 ? null : await response.json().catch(() => null);
+  if (!response.ok) {
+    const error = new Error(
+      (typeof body === "string" ? body : body?.message) ||
+        "Something went wrong"
+    );
+    error.status = response.status;
+    error.body = body;
+    throw error;
+  }
+  return body;
+};
+
+export const fetchRegistrationStatus = args =>
+  registrationRequest(registrationBase(args), { method: "GET" });
+
+export const addRosterEntry = ({ playerId, ...args }) =>
+  registrationRequest(`${registrationBase(args)}/roster`, {
+    method: "POST",
+    body: JSON.stringify({ player_id: playerId })
+  });
+
+export const removeRosterEntry = ({ playerId, ...args }) =>
+  registrationRequest(`${registrationBase(args)}/roster/${playerId}`, {
+    method: "DELETE"
+  });
+
+export const resendRosterInvite = ({ playerId, ...args }) =>
+  registrationRequest(
+    `${registrationBase(args)}/roster/${playerId}/resend-invite`,
+    { method: "POST" }
+  );
+
+// expectedIds and expectedAmount are what the page showed; the server
+// answers 409 with who dropped out and the new total if either changed.
+export const checkoutRoster = ({ expectedAmount, expectedIds, ...args }) =>
+  registrationRequest(`${registrationBase(args)}/checkout`, {
+    method: "POST",
+    body: JSON.stringify({
+      expected_amount: expectedAmount,
+      expected_ids: expectedIds
+    })
+  });
