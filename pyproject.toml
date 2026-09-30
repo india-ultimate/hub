@@ -28,6 +28,7 @@ cloudinary = "^1.44.1"
 django-ckeditor = "^6.7.3"
 xhtml2pdf = "^0.2.21"
 num2words = "^0.5.14"
+cryptography = "^46.0.0"
 
 [tool.poetry.group.dev.dependencies]
 ipython = "^8.13.2"

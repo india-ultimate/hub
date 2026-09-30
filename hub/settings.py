@@ -182,6 +182,10 @@ RECEIPT_ISSUER = {
 RAZORPAY_KEY_ID = os.environ.get("RAZORPAY_KEY_ID", "")
 RAZORPAY_KEY_SECRET = os.environ.get("RAZORPAY_KEY_SECRET", "")
 RAZORPAY_WEBHOOK_SECRET = os.environ.get("RAZORPAY_WEBHOOK_SECRET", "")
+# Encrypts other organisations' Razorpay secrets at rest (server/payment_account).
+# Make one with:
+# python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+PAYMENT_ACCOUNT_ENCRYPTION_KEY = os.environ.get("PAYMENT_ACCOUNT_ENCRYPTION_KEY", "")
 
 # Phonepe settings
 PHONEPE_MERCHANT_ID = os.environ.get("PHONEPE_MERCHANT_ID", "")

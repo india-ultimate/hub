@@ -7,6 +7,7 @@ from django.utils.translation import gettext_lazy as _
 from django_prometheus.models import ExportModelOperationsMixin
 
 from server.core.models import Player, Team, User
+from server.payment_account.models import PaymentAccount
 from server.season.models import Season
 from server.tournament.models import Event
 
@@ -108,6 +109,20 @@ class RazorpayTransaction(ExportModelOperationsMixin("razorpay_transaction"), mo
         choices=TransactionTypeChoices.choices,
         default=TransactionTypeChoices.ANNUAL_SUBSCRIPTION,
     )
+    # The account the order was placed on, fixed when it is created: every
+    # later call about it (verify, webhook, sync, refund) goes to this one,
+    # even if the event is pointed elsewhere afterwards. None is ours.
+    account = models.ForeignKey(
+        PaymentAccount,
+        on_delete=models.PROTECT,
+        related_name="transactions",
+        blank=True,
+        null=True,
+    )
+    # The notes sent to Razorpay with the order, saved as sent: for a
+    # registration, base_amount, penalty_amount and days_late (strings, in
+    # paise). Empty for orders placed before this field existed.
+    notes = models.JSONField(default=dict, blank=True)
 
     class Meta:
         permissions = [("refund_razorpaytransaction", "Can refund payments")]

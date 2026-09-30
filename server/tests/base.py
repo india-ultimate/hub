@@ -13,6 +13,7 @@ from server.core.models import (
     UCPerson,
     User,
 )
+from server.payment_account.models import PaymentAccount
 from server.season.models import Season
 from server.tournament.models import (
     Event,
@@ -35,6 +36,17 @@ def not_none(value: T | None, message: str = "expected a value, got None") -> T:
     if value is None:
         raise AssertionError(message)
     return value
+
+
+def make_account(slug: str = "karnataka", **fields: Any) -> PaymentAccount:
+    """A state's Razorpay account, with test keys that never reach Razorpay."""
+    defaults: dict[str, Any] = {
+        "name": "Karnataka Ultimate",
+        "key_id": "rzp_test_state0000000001",
+        "key_secret": "state-secret",
+        "webhook_secret": "state-hook",
+    }
+    return PaymentAccount.objects.create(slug=slug, **{**defaults, **fields})
 
 
 def fake_id(n: int) -> str:
