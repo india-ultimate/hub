@@ -182,6 +182,20 @@ class TestMergeKeepsEveryRow(MergeTestCase):
 
 
 class TestMergeMechanics(MergeTestCase):
+    # Breaks if: merge stops walking Ticket.upvoters, so a merged account's
+    # upvotes vanish, or a ticket both accounts upvoted counts them twice.
+    def test_upvotes_follow_the_account_and_count_once(self) -> None:
+        asker = User.objects.create(username="asker@example.com", email="asker@example.com")
+        theirs = Ticket.objects.create(title="Theirs", description="d", created_by=asker)
+        both = Ticket.objects.create(title="Both", description="d", created_by=asker)
+        theirs.upvoters.add(self.duplicate)
+        both.upvoters.add(self.primary, self.duplicate)
+
+        merge_accounts(self.primary, [self.duplicate], dry_run=False)
+
+        self.assertEqual([self.primary], list(theirs.upvoters.all()))
+        self.assertEqual([self.primary], list(both.upvoters.all()))
+
     def test_player_moves_when_the_primary_has_none(self) -> None:
         # The account someone can sign in to is often the emptier one.
         self.primary_player.delete()

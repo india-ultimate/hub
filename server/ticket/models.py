@@ -40,6 +40,8 @@ class Ticket(models.Model):
     )
     # Seen only by its creator and staff, for things not meant for everyone.
     is_private = models.BooleanField(default=False)
+    # People saying this matters to them too, so staff can see what to fix first.
+    upvoters = models.ManyToManyField(User, blank=True, related_name="upvoted_tickets")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

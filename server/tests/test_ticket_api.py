@@ -140,3 +140,77 @@ class TestPrivateTickets(TicketTestCase):
 
         recipients = {address for email in mail.outbox for address in email.to}
         self.assertNotIn(self.outsider.email, recipients)
+
+
+class TestUpvotes(TicketTestCase):
+    def upvote(self, user: User, method: str = "post") -> Any:
+        client = self.as_user(user)
+        return getattr(client, method)(f"/api/ticket/{self.ticket.id}/upvote")
+
+    def test_upvoting_counts_once_per_person(self) -> None:
+        self.assertEqual(200, self.upvote(self.outsider).status_code)
+        response = self.upvote(self.outsider)  # a double click
+
+        self.assertEqual(200, response.status_code)
+        self.assertEqual(1, response.json()["upvote_count"])
+        self.assertTrue(response.json()["has_upvoted"])
+        self.assertEqual(200, self.upvote(self.staff).status_code)
+        self.assertEqual(2, self.ticket.upvoters.count())
+
+    def test_taking_an_upvote_back(self) -> None:
+        self.upvote(self.outsider)
+        response = self.upvote(self.outsider, "delete")
+
+        self.assertEqual(200, response.status_code)
+        self.assertEqual(0, response.json()["upvote_count"])
+        self.assertFalse(response.json()["has_upvoted"])
+        self.assertEqual(200, self.upvote(self.outsider, "delete").status_code)
+
+    def test_cannot_upvote_own_ticket(self) -> None:
+        self.assertEqual(400, self.upvote(self.creator).status_code)
+        self.assertEqual(0, self.ticket.upvoters.count())
+
+    def test_private_ticket_cannot_be_upvoted(self) -> None:
+        self.ticket.is_private = True
+        self.ticket.save()
+
+        self.assertEqual(404, self.upvote(self.outsider).status_code)
+        self.assertEqual(400, self.upvote(self.staff).status_code)
+        self.assertEqual(0, self.ticket.upvoters.count())
+
+    def test_detail_says_whether_you_upvoted(self) -> None:
+        self.upvote(self.outsider)
+
+        mine = self.as_user(self.outsider).get(f"/api/ticket/{self.ticket.id}").json()
+        theirs = self.as_user(self.staff).get(f"/api/ticket/{self.ticket.id}").json()
+
+        self.assertEqual((1, True), (mine["upvote_count"], mine["has_upvoted"]))
+        self.assertEqual((1, False), (theirs["upvote_count"], theirs["has_upvoted"]))
+
+    def test_list_counts_upvotes_and_messages_separately(self) -> None:
+        # Two counts over two joins multiply each other unless kept distinct.
+        for user in (self.outsider, self.staff, make_user("third")):
+            self.ticket.upvoters.add(user)
+        for text in ("One", "Two"):
+            TicketMessage.objects.create(ticket=self.ticket, sender=self.creator, message=text)
+
+        [listed] = self.as_user(self.outsider).get("/api/ticket/").json()
+
+        self.assertEqual(3, listed["upvote_count"])
+        self.assertEqual(2, listed["message_count"])
+        self.assertTrue(listed["has_upvoted"])
+
+    def test_list_sorted_by_upvotes(self) -> None:
+        popular = Ticket.objects.create(title="Popular", description="-", created_by=self.creator)
+        popular.upvoters.add(self.outsider, self.staff)
+        self.ticket.upvoters.add(self.outsider)
+        newest = Ticket.objects.create(title="Newest", description="-", created_by=self.creator)
+
+        ids = self.listed_ids(self.outsider, "?sort=upvotes")
+
+        self.assertEqual([popular.id, self.ticket.id, newest.id], ids)
+        self.assertEqual(newest.id, self.listed_ids(self.outsider)[0])
+
+    def test_unknown_sort_is_rejected(self) -> None:
+        response = self.as_user(self.outsider).get("/api/ticket/?sort=upvote")
+        self.assertEqual(422, response.status_code)

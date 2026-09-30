@@ -48,6 +48,8 @@ class TicketDetailSchema(Schema):
     priority: str
     category: str | None
     is_private: bool
+    upvote_count: int
+    has_upvoted: bool
     created_at: datetime
     updated_at: datetime
     created_by: UserSchema
@@ -62,6 +64,8 @@ class TicketListItemSchema(Schema):
     priority: str
     category: str | None
     is_private: bool
+    upvote_count: int
+    has_upvoted: bool
     created_at: datetime
     created_by: UserSchema
     assigned_to: UserSchema | None = None

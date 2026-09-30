@@ -1041,3 +1041,25 @@ class TestIntegration(BaseCase):
         self.open(f"{APP_URL}/tickets")
         self.assert_text("Scores not updating")
         self.assert_text_not_visible("My new address")
+
+    # Breaks if: the upvote button stops reaching the API, stops showing the
+    # count it gets back, or lets someone upvote their own ticket.
+    def test_upvoting_a_ticket(self) -> None:
+        creator = make_player("asker@example.com")
+        voter = make_player("voter@example.com", first="Asha")
+        ticket = Ticket.objects.create(
+            title="Scores not updating", description="-", created_by=creator
+        )
+
+        self.sign_in_as(voter)
+        self.open(f"{APP_URL}/tickets/{ticket.id}")
+        self.assert_text("0", "[data-testid='upvote-count']")
+        self.click("button#ticket-upvote")
+        self.assert_text("Upvoted", "button#ticket-upvote")
+        self.assert_text("1", "[data-testid='upvote-count']")
+        self.assertEqual([voter], list(ticket.upvoters.all()))
+
+        self.sign_in_as(creator)
+        self.open(f"{APP_URL}/tickets/{ticket.id}")
+        self.assert_text("1", "[data-testid='upvote-count']")
+        self.assert_attribute("button#ticket-upvote", "disabled")
