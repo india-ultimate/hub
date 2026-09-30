@@ -10,6 +10,7 @@ import { createSignal, Show } from "solid-js";
 
 import { createTicket, fetchUser } from "../../queries";
 import Breadcrumbs from "../Breadcrumbs";
+import Checkbox from "../Checkbox";
 
 const CreateTicket = () => {
   const [isSubmitting, setIsSubmitting] = createSignal(false);
@@ -29,7 +30,8 @@ const CreateTicket = () => {
     title: "",
     description: "",
     priority: "MED",
-    category: ""
+    category: "",
+    is_private: false
   };
 
   const formId = "create-ticket";
@@ -229,6 +231,18 @@ const CreateTicket = () => {
                       <p class="mt-1 text-sm text-red-600">{field.error}</p>
                     )}
                   </div>
+                )}
+              </Field>
+
+              <Field name="is_private" type="boolean">
+                {(field, props) => (
+                  <Checkbox
+                    {...props}
+                    checked={field.value}
+                    value={field.value}
+                    label="Private: only you and IU staff can see this ticket"
+                    padding
+                  />
                 )}
               </Field>
 

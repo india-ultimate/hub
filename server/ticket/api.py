@@ -5,7 +5,7 @@ import cloudinary.uploader
 from django.conf import settings
 from django.conf import settings as django_settings
 from django.core.mail import send_mail
-from django.db.models import Count, QuerySet
+from django.db.models import Count, Q, QuerySet
 from django.http import HttpRequest
 from django.shortcuts import get_object_or_404
 from django.template.loader import render_to_string
@@ -38,12 +38,19 @@ class AuthenticatedHttpRequest(HttpRequest):
 ticket_api = Router()
 
 
+def visible_tickets(user: User) -> QuerySet[Ticket]:
+    """The tickets `user` may see: a private one only to its creator and staff."""
+    if user.is_staff:
+        return Ticket.objects.all()
+    return Ticket.objects.filter(Q(is_private=False) | Q(created_by=user))
+
+
 @ticket_api.get("/", response=list[TicketListItemSchema])
 def list_tickets(
     request: AuthenticatedHttpRequest, status: str | None = None, created_by_me: bool = False
 ) -> QuerySet[Ticket]:
     """Get list of all tickets"""
-    query = Ticket.objects.all()
+    query = visible_tickets(request.user)
 
     if status:
         query = query.filter(status=status)
@@ -58,7 +65,7 @@ def list_tickets(
 @ticket_api.get("/{ticket_id}", response=TicketDetailSchema)
 def get_ticket(request: AuthenticatedHttpRequest, ticket_id: int) -> Ticket:
     """Get ticket details and messages"""
-    ticket = get_object_or_404(Ticket, id=ticket_id)
+    ticket = get_object_or_404(visible_tickets(request.user), id=ticket_id)
     return ticket
 
 
@@ -72,6 +79,7 @@ def create_ticket(
         description=data.description,
         priority=data.priority,
         category=data.category,
+        is_private=data.is_private,
         created_by=request.user,
     )
 
@@ -120,7 +128,7 @@ def update_ticket(
     request: AuthenticatedHttpRequest, ticket_id: int, data: TicketUpdateSchema
 ) -> tuple[int, Ticket | dict[str, Any]]:
     """Update ticket details"""
-    ticket = get_object_or_404(Ticket, id=ticket_id)
+    ticket = get_object_or_404(visible_tickets(request.user), id=ticket_id)
 
     # Staff can update any ticket, but regular users can only update status on their own tickets
     if not request.user.is_staff and ticket.created_by != request.user:
@@ -147,6 +155,10 @@ def update_ticket(
         if data.assigned_to_id:
             ticket.assigned_to = get_object_or_404(User, id=data.assigned_to_id)
 
+    # Both the creator and staff can hide a ticket, or show it again
+    if data.is_private is not None:
+        ticket.is_private = data.is_private
+
     ticket.save()
     return 200, ticket
 
@@ -159,7 +171,7 @@ def add_message(
     attachment: UploadedFile | None = File(None),  # noqa: B008
 ) -> tuple[int, Ticket | dict[str, str]]:
     """Add message to ticket (with optional attachment: image or PDF, max 20MB, uploaded to Cloudinary)"""
-    ticket = get_object_or_404(Ticket, id=ticket_id)
+    ticket = get_object_or_404(visible_tickets(request.user), id=ticket_id)
     message = message_details.message
 
     # Validate and upload attachment if present
@@ -211,17 +223,23 @@ def add_message(
     if ticket.created_by.email and ticket.created_by != request.user:
         recipients.add(ticket.created_by.email)
 
-    # Add assigned staff if they have an email and are not the sender
-    if ticket.assigned_to and ticket.assigned_to.email and ticket.assigned_to != request.user:
-        recipients.add(ticket.assigned_to.email)
+    # Add assigned staff if they have an email and are not the sender. Anyone can
+    # be assigned, but only staff can open a private ticket.
+    assignee = ticket.assigned_to
+    if (
+        assignee
+        and assignee.email
+        and assignee != request.user
+        and (assignee.is_staff or not ticket.is_private)
+    ):
+        recipients.add(assignee.email)
 
     # Add all users who have previously sent messages (except the current sender)
-    previous_senders = (
-        TicketMessage.objects.filter(ticket=ticket)
-        .exclude(sender=request.user)
-        .values_list("sender__email", flat=True)
-        .distinct()
-    )
+    previous_messages = TicketMessage.objects.filter(ticket=ticket).exclude(sender=request.user)
+    # Someone who replied while the ticket was public must not keep reading it
+    if ticket.is_private:
+        previous_messages = previous_messages.filter(sender__is_staff=True)
+    previous_senders = previous_messages.values_list("sender__email", flat=True).distinct()
 
     for email in previous_senders:
         if email:  # Make sure email is not None or empty

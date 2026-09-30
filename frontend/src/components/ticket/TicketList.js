@@ -1,5 +1,7 @@
 import { A } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
+import { Icon } from "solid-heroicons";
+import { lockClosed } from "solid-heroicons/solid";
 import { createSignal, For, Show } from "solid-js";
 
 import { fetchTickets } from "../../queries";
@@ -157,6 +159,16 @@ const TicketList = props => {
                         >
                           {ticket.title}
                         </A>
+                        <Show when={ticket.is_private}>
+                          <span title="Private">
+                            <Icon
+                              path={lockClosed}
+                              class="ml-1 inline h-4 w-4 text-gray-400"
+                              aria-hidden="true"
+                            />
+                            <span class="sr-only">Private</span>
+                          </span>
+                        </Show>
                       </td>
                       <td class="px-6 py-4">
                         <span

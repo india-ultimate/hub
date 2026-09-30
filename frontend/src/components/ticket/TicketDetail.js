@@ -4,7 +4,9 @@ import {
   createQuery,
   useQueryClient
 } from "@tanstack/solid-query";
+import { Icon } from "solid-heroicons";
 import { chatBubbleOvalLeftEllipsis } from "solid-heroicons/outline";
+import { lockClosed } from "solid-heroicons/solid";
 import { createEffect, createSignal, For, Show } from "solid-js";
 
 import {
@@ -270,6 +272,12 @@ const TicketDetail = () => {
                 >
                   {getPriorityText(ticketQuery.data.priority)}
                 </span>
+                <Show when={ticketQuery.data.is_private}>
+                  <span class="inline-flex items-center gap-1 rounded bg-gray-100 px-2.5 py-0.5 text-sm font-medium text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+                    <Icon path={lockClosed} class="h-4 w-4" />
+                    Private
+                  </span>
+                </Show>
               </div>
 
               <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -386,6 +394,18 @@ const TicketDetail = () => {
                       </button>
                     </Show>
                   </div>
+                  <button
+                    onClick={() =>
+                      updateTicketMutation.mutate({
+                        is_private: !ticketQuery.data.is_private
+                      })
+                    }
+                    class="mt-2 rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+                  >
+                    {ticketQuery.data.is_private
+                      ? "Make Public"
+                      : "Make Private (only the creator and staff can see it)"}
+                  </button>
                 </div>
               </Show>
             </div>
