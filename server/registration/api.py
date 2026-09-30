@@ -1,23 +1,36 @@
 """The team registration home: one team's registration for one tournament."""
 
-from typing import Any
+import logging
+from http import HTTPStatus
+from typing import Any, cast
 
+from django.db import transaction as db_transaction
 from django.http import Http404
 from ninja import Router
 
 from server.core.models import Player, Team
 from server.registration.models import RosterEntry
-from server.registration.schema import AddEntrySchema
-from server.registration.state import build_context, entry_reasons, status_payload
+from server.registration.schema import AddEntrySchema, CheckoutOrderSchema, CheckoutSchema
+from server.registration.state import (
+    HOLD_MINUTES,
+    build_context,
+    checkout_quote,
+    entry_reasons,
+    status_payload,
+)
 from server.schema import Response
 from server.series.models import Role, SeriesRosterInvitation
 from server.series.utils import invite_to_series
 from server.tournament.models import Event
 from server.tournament.utils import roster_player, series_role
-from server.transaction.models import AuthenticatedHttpRequest
+from server.transaction.client.razorpay import client_for, mark_transaction_completed
+from server.transaction.models import AuthenticatedHttpRequest, RazorpayTransaction
+from server.transaction.schema import PlayerRegistrationSchema
+from server.transaction.utils import apply_transaction, create_transaction
 from server.types import message_response
 from server.utils import is_today_in_between_dates, today
 
+logger = logging.getLogger(__name__)
 router = Router()
 Pending = SeriesRosterInvitation.Status.PENDING
 Revoked = SeriesRosterInvitation.Status.REVOKED
@@ -153,3 +166,100 @@ def resend_invite(
     if error is not None:
         return 400, error
     return 200, {"message": "Invite sent again"}
+
+
+def _settle_if_paid(order: RazorpayTransaction) -> bool:
+    """Whether Razorpay already took the money for this order, settling it if so.
+
+    Its callback and webhook can both be lost, and checking out the same
+    players again would charge them twice.
+    """
+    try:
+        client = client_for(order.account)
+        if client.order.fetch(order.order_id).get("status") != "paid":
+            return False
+        payments = client.order.payments(order.order_id).get("items", [])
+    except Exception:
+        logger.exception("Couldn't ask Razorpay about order %s", order.order_id)
+        return False
+    captured = next((p for p in payments if p.get("status") == "captured"), None)
+    if captured is None:
+        return False
+    order.payment_id = captured["id"]
+    apply_transaction(mark_transaction_completed(order))
+    return True
+
+
+@router.post(
+    "/{event_slug}/team/{team_slug}/checkout",
+    response={
+        200: CheckoutOrderSchema,
+        400: Response,
+        401: Response,
+        403: Response,
+        409: dict[str, Any],
+        422: Response,
+        502: str,
+    },
+)
+def checkout(
+    request: AuthenticatedHttpRequest, event_slug: str, team_slug: str, body: CheckoutSchema
+) -> tuple[int, Any]:
+    event, team = _load(event_slug, team_slug)
+    if not _is_admin(team, request):
+        return 403, ADMINS_ONLY
+    if not event.player_fee:
+        return 400, {"message": "Nothing to pay — this tournament has no player fee"}
+    ctx = build_context(event, team, request.user)
+    reasons = entry_reasons(ctx)
+
+    # A ready row may still be held by an earlier order: a stale one, or
+    # this admin's own. Before paying for them again, ask Razorpay whether
+    # that order was paid after all.
+    earlier: dict[str, RazorpayTransaction] = {
+        e.held_by_order.order_id: e.held_by_order
+        for e in ctx.entries
+        if e.held_by_order is not None
+        and reasons[e.player_id].code == "ready"
+        and e.held_by_order.status not in (*RazorpayTransaction.SETTLED, "failed")
+    }
+    paid = {pk for pk, order in earlier.items() if _settle_if_paid(order)}
+    settled = [e.player_id for e in ctx.entries if e.held_by_order_id in paid]
+
+    with db_transaction.atomic():
+        # A second admin checking out waits here, then finds these players
+        # held and leaves them out, so nobody is charged twice.
+        list(RosterEntry.objects.select_for_update().filter(event=event, team=team))
+        ctx = build_context(event, team, request.user)
+        reasons = entry_reasons(ctx)
+        quote = checkout_quote(ctx, reasons)
+        ready = quote["ready_ids"]
+        if not ready:
+            if settled:
+                return 400, {"message": "Their earlier payment went through; they're rostered now"}
+            return 400, {"message": "No players are ready to pay for yet"}
+        if set(ready) != set(body.expected_ids) or quote["amount"] != body.expected_amount:
+            # The page shows who dropped out and the new total, and asks.
+            gone = {
+                pid: reasons[pid].text if pid in reasons else "No longer on this roster"
+                for pid in body.expected_ids
+                if pid not in ready
+            }
+            gone |= {pid: "Their earlier payment went through" for pid in settled}
+            return 409, {
+                "removed": [{"player_id": pid, "reason": why} for pid, why in gone.items()],
+                "old_amount": body.expected_amount,
+                "new_amount": quote["amount"],
+            }
+
+        # The ordinary player-fee order: windows, eligibility, late fee and
+        # the tournament's payment account are all checked again there.
+        order = PlayerRegistrationSchema(event_id=event.id, team_id=team.id, player_ids=ready)
+        status, data = create_transaction(request, order)
+        if status != HTTPStatus.OK:
+            return status, data
+        RosterEntry.objects.filter(event=event, team=team, player_id__in=ready).update(
+            held_by_order_id=cast(dict[str, Any], data)["order_id"]
+        )
+    # Razorpay stops taking payment once the players are no longer held.
+    return 200, {**cast(dict[str, Any], data), "timeout": HOLD_MINUTES * 60}

@@ -2,17 +2,23 @@
 
 import datetime
 from typing import Any
+from unittest import mock
 
 from django.core import mail
 from django.test import Client, override_settings
+from django.utils.timezone import now
+from razorpay.resources.order import Order
 
 from server.core.models import Player, Team, User
 from server.registration.models import RosterEntry
+from server.registration.state import build_context
 from server.series.models import Role, SeriesRegistration, SeriesRosterInvitation
+from server.subscription.models import Subscription
 from server.tests.base import make_account
+from server.tests.test_payment_accounts import razorpay_order
 from server.tests.test_registration_state import StateTestCase
 from server.tournament.models import Event, Registration, Tournament
-from server.transaction.models import RazorpayTransaction
+from server.transaction.models import RazorpayTransaction, RazorpayTransactionPlayer
 from server.utils import today
 
 
@@ -393,3 +399,219 @@ class TestRosterWrites(ApiCase):
         member = self.as_user(p.user)
         self.assertEqual(403, member.delete(f"{self.base}/roster/{p.id}").status_code)
         self.assertEqual(403, member.post(f"{self.base}/roster/{p.id}/resend-invite").status_code)
+
+
+class TestCheckout(ApiCase):
+    def pay(
+        self,
+        expected: int,
+        razorpay_status: str | Exception = "created",
+        ids: list[int] | None = None,
+    ) -> Any:
+        """Check out, with Razorpay answered locally.
+
+        `ids` are who the page showed as ready, by default what it shows now.
+        `razorpay_status` is what Razorpay says about an earlier order that
+        held these players.
+        """
+        if ids is None:
+            ids = self.status().json()["checkout"]["ready_ids"]
+        fetched: dict[str, Any] = (
+            {"side_effect": razorpay_status}
+            if isinstance(razorpay_status, Exception)
+            else {"return_value": {"status": razorpay_status}}
+        )
+        captured = {"items": [{"id": "pay_earlier", "status": "captured"}]}
+        with (
+            mock.patch.object(
+                Order, "create", autospec=True, return_value=razorpay_order(expected)
+            ) as self.create,
+            mock.patch.object(Order, "fetch", autospec=True, **fetched) as self.fetch,
+            mock.patch.object(Order, "payments", autospec=True, return_value=captured),
+        ):
+            return self.web.post(
+                f"{self.base}/checkout",
+                {"expected_amount": expected, "expected_ids": ids},
+                content_type="application/json",
+            )
+
+    def held(self, player: Player, *, by: User | None = None, minutes_ago: int = 0) -> Any:
+        """An earlier checkout's order holding this player."""
+        by = by or User.objects.create_user("o@x.com", "o@x.com", "pw")
+        order = RazorpayTransaction.objects.create(
+            order_id=f"order_{player.id}",
+            amount=self.event.player_fee,
+            currency="INR",
+            status="created",
+            user=by,
+            event=self.event,
+            team=self.team,
+            type="player-reg",
+        )
+        RazorpayTransactionPlayer.objects.create(
+            transaction=order, player=player, amount=self.event.player_fee
+        )
+        RazorpayTransaction.objects.filter(pk=order.pk).update(
+            payment_date=now() - datetime.timedelta(minutes=minutes_ago)
+        )
+        RosterEntry.objects.filter(player=player).update(held_by_order=order)
+        return order
+
+    def test_pays_only_ready_players_in_one_order(self) -> None:
+        a, b = self.player("a@x.com"), self.player("b@x.com")
+        self.player("w@x.com", waiver=False)
+        response = self.pay(2 * self.event.player_fee)
+        self.assertEqual(200, response.status_code, response.content)
+        order = RazorpayTransaction.objects.get(order_id=response.json()["order_id"])
+        self.assertEqual({a.id, b.id}, set(order.players.values_list("id", flat=True)))
+        self.assertEqual(2, RosterEntry.objects.filter(held_by_order=order).count())
+
+    def test_the_checkout_window_closes_when_the_hold_does(self) -> None:
+        self.player("a@x.com")
+        response = self.pay(self.event.player_fee)
+        self.assertEqual(200, response.status_code, response.content)
+        self.assertEqual(20 * 60, response.json()["timeout"])  # Razorpay's, in seconds
+
+    def test_checkout_refuses_a_changed_amount(self) -> None:
+        self.player("a@x.com")
+        response = self.pay(1)
+        self.assertEqual(409, response.status_code)
+        self.assertEqual(
+            {"removed": [], "old_amount": 1, "new_amount": self.event.player_fee},
+            response.json(),
+        )
+        self.assertFalse(RazorpayTransaction.objects.exists())
+
+    def test_nothing_ready(self) -> None:
+        self.player("w@x.com", waiver=False)
+        self.assertEqual(400, self.pay(0).status_code)
+
+    def test_nothing_to_pay_without_a_player_fee(self) -> None:
+        Event.objects.filter(pk=self.event.pk).update(player_fee=0)
+        self.player("a@x.com")
+        response = self.pay(0, ids=[])
+        self.assertEqual(400, response.status_code)
+        self.assertEqual(
+            "Nothing to pay — this tournament has no player fee", response.json()["message"]
+        )
+        self.create.assert_not_called()
+
+    def test_checkout_refuses_a_changed_set_of_players(self) -> None:
+        a = self.player("a@x.com")
+        b = self.player("b@x.com", waiver=False)
+        at_load = self.status().json()["checkout"]["ready_ids"]
+        self.assertEqual([a.id], at_load)
+        # Same total, different people: A's waiver lapsed, B signed theirs.
+        Subscription.objects.filter(player=a).update(waiver_valid=False)
+        Subscription.objects.filter(player=b).update(waiver_valid=True)
+        response = self.pay(self.event.player_fee, ids=at_load)
+        self.assertEqual(409, response.status_code, response.content)
+        self.assertEqual(
+            [{"player_id": a.id, "reason": "Waiver not signed — only the player can sign it"}],
+            response.json()["removed"],
+        )
+        self.create.assert_not_called()
+
+    def test_the_ready_set_is_counted_again_under_the_lock(self) -> None:
+        a, b = self.player("a@x.com"), self.player("b@x.com")
+        at_load = self.status().json()["checkout"]["ready_ids"]
+        other = User.objects.create_user("o2@x.com", "o2@x.com", "pw")
+        real = build_context
+
+        def then_another_admin_checks_out(*args: Any, **kwargs: Any) -> Any:
+            ctx = real(*args, **kwargs)
+            if not RosterEntry.objects.filter(held_by_order__isnull=False).exists():
+                self.held(b, by=other)  # between the first read and the locked one
+            return ctx
+
+        with mock.patch(
+            "server.registration.api.build_context", side_effect=then_another_admin_checks_out
+        ):
+            response = self.pay(2 * self.event.player_fee, ids=at_load)
+        self.assertEqual(409, response.status_code, response.content)
+        self.assertEqual(
+            [{"player_id": b.id, "reason": "Being paid by another admin"}],
+            response.json()["removed"],
+        )
+        self.assertEqual(self.event.player_fee, response.json()["new_amount"])
+        self.create.assert_not_called()
+        self.assertEqual(
+            {a.id},
+            set(RosterEntry.objects.filter(held_by_order=None).values_list("player_id", flat=True)),
+        )
+
+    def test_admins_only(self) -> None:
+        p = self.player("a@x.com")
+        self.web.force_login(p.user)
+        self.assertEqual(403, self.pay(self.event.player_fee).status_code)
+
+    def test_skips_players_another_admin_is_paying_for(self) -> None:
+        a, b = self.player("a@x.com"), self.player("b@x.com")
+        self.held(b)
+        response = self.pay(self.event.player_fee)
+        self.assertEqual(200, response.status_code, response.content)
+        order = RazorpayTransaction.objects.get(order_id=response.json()["order_id"])
+        self.assertEqual([a.id], list(order.players.values_list("id", flat=True)))
+        self.fetch.assert_not_called()
+
+    def test_a_hold_older_than_twenty_minutes_is_released(self) -> None:
+        p = self.player("a@x.com")
+        stale = self.held(p, minutes_ago=21)
+        response = self.pay(self.event.player_fee)
+        self.assertEqual(200, response.status_code, response.content)
+        self.fetch.assert_called_once()
+        self.assertEqual(stale.order_id, self.fetch.call_args.args[1])
+        order = RazorpayTransaction.objects.get(order_id=response.json()["order_id"])
+        self.assertEqual([p.id], list(order.players.values_list("id", flat=True)))
+        self.assertEqual(order, RosterEntry.objects.get(player=p).held_by_order)
+
+    def test_a_hold_is_released_when_razorpay_cant_be_asked(self) -> None:
+        p = self.player("a@x.com")
+        self.held(p, minutes_ago=21)
+        response = self.pay(self.event.player_fee, razorpay_status=ConnectionError("down"))
+        self.assertEqual(200, response.status_code, response.content)
+        order = RazorpayTransaction.objects.get(order_id=response.json()["order_id"])
+        self.assertEqual([p.id], list(order.players.values_list("id", flat=True)))
+
+    def test_a_stale_hold_razorpay_took_money_for_is_settled_not_charged_again(self) -> None:
+        p = self.player("a@x.com")
+        stale = self.held(p, minutes_ago=21)
+        response = self.pay(self.event.player_fee, razorpay_status="paid")
+        # Nobody left to pay for: they're rostered now.
+        self.assertEqual(400, response.status_code, response.content)
+        self.assertIn("went through", response.json()["message"])
+        self.create.assert_not_called()
+        stale.refresh_from_db()
+        self.assertEqual(("completed", "pay_earlier"), (stale.status, stale.payment_id))
+        self.assertTrue(Registration.objects.filter(team=self.team, player=p).exists())
+        self.assertFalse(RosterEntry.objects.filter(player=p).exists())
+
+    def test_settling_an_earlier_payment_changes_the_total(self) -> None:
+        paid, fresh = self.player("a@x.com"), self.player("b@x.com")
+        self.held(paid, minutes_ago=21)
+        response = self.pay(2 * self.event.player_fee, razorpay_status="paid")
+        self.assertEqual(409, response.status_code, response.content)
+        self.fetch.assert_called_once()
+        body = response.json()
+        self.assertEqual([paid.id], [r["player_id"] for r in body["removed"]])
+        self.assertEqual(self.event.player_fee, body["new_amount"])
+        response = self.pay(self.event.player_fee)
+        self.assertEqual(200, response.status_code, response.content)
+        order = RazorpayTransaction.objects.get(order_id=response.json()["order_id"])
+        self.assertEqual([fresh.id], list(order.players.values_list("id", flat=True)))
+
+    def test_my_own_open_checkout_razorpay_took_money_for_is_not_charged_again(self) -> None:
+        p = self.player("a@x.com")
+        self.held(p, by=self.admin)
+        self.assertEqual(400, self.pay(self.event.player_fee, razorpay_status="paid").status_code)
+        self.create.assert_not_called()
+        self.assertTrue(Registration.objects.filter(team=self.team, player=p).exists())
+
+    def test_routed_to_the_state_account(self) -> None:
+        account = make_account()
+        Event.objects.filter(pk=self.event.pk).update(payment_account=account)
+        self.player("a@x.com")
+        response = self.pay(self.event.player_fee)
+        self.assertEqual(200, response.status_code, response.content)
+        self.assertEqual(account.key_id, self.create.call_args.args[0].client.auth[0])
+        self.assertEqual(account.key_id, response.json()["key"])
