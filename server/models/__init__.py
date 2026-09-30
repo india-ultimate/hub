@@ -45,6 +45,9 @@ from server.receipts.models import (  # noqa: F401
     Receipt,
     ReceiptSequence,
 )
+from server.registration.models import (  # noqa: F401
+    RosterEntry,
+)
 from server.season.models import (  # noqa: F401
     Season,
 )
