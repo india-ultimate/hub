@@ -5,6 +5,7 @@ import { lockClosed } from "solid-heroicons/solid";
 import { createSignal, For, Show } from "solid-js";
 
 import { fetchTickets } from "../../queries";
+import UpvoteButton from "./UpvoteButton";
 
 const TicketList = props => {
   const [filter, setFilter] = createSignal("");
@@ -144,6 +145,9 @@ const TicketList = props => {
             <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
               <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
                 <tr>
+                  <th scope="col" class="px-4 py-3">
+                    <span class="sr-only">Upvotes</span>
+                  </th>
                   <Show when={props.user.is_staff}>
                     <th scope="col" class="px-6 py-3">
                       ID
@@ -167,15 +171,15 @@ const TicketList = props => {
                   <th scope="col" class="px-6 py-3">
                     Messages
                   </th>
-                  <th scope="col" class="px-6 py-3">
-                    Upvotes
-                  </th>
                 </tr>
               </thead>
               <tbody>
                 <For each={ticketsQuery.data.items}>
                   {ticket => (
                     <tr class="border-b bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700">
+                      <td class="px-4 py-2">
+                        <UpvoteButton ticket={ticket} userId={props.user.id} />
+                      </td>
                       <Show when={props.user.is_staff}>
                         <td class="px-6 py-4">{ticket.id}</td>
                       </Show>
@@ -224,7 +228,6 @@ const TicketList = props => {
                         {new Date(ticket.created_at).toLocaleDateString()}
                       </td>
                       <td class="px-6 py-4">{ticket.message_count}</td>
-                      <td class="px-6 py-4">{ticket.upvote_count}</td>
                     </tr>
                   )}
                 </For>
