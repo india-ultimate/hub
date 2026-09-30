@@ -1,11 +1,14 @@
 import json
+from importlib import import_module
 from typing import Any
 
+from django.apps import apps
 from django.core import mail
-from django.test import Client, TestCase
+from django.test import Client, SimpleTestCase, TestCase
 
 from server.core.models import User
 from server.ticket.models import Ticket, TicketMessage
+from server.ticket.search import search_words
 
 
 def make_user(username: str, is_staff: bool = False) -> User:
@@ -36,7 +39,7 @@ class TicketTestCase(TestCase):
     def listed_ids(self, user: User, query: str = "") -> list[int]:
         response = self.as_user(user).get(f"/api/ticket/{query}")
         self.assertEqual(200, response.status_code)
-        return [ticket["id"] for ticket in response.json()]
+        return [ticket["id"] for ticket in response.json()["items"]]
 
 
 class TestPrivateTickets(TicketTestCase):
@@ -194,7 +197,7 @@ class TestUpvotes(TicketTestCase):
         for text in ("One", "Two"):
             TicketMessage.objects.create(ticket=self.ticket, sender=self.creator, message=text)
 
-        [listed] = self.as_user(self.outsider).get("/api/ticket/").json()
+        [listed] = self.as_user(self.outsider).get("/api/ticket/").json()["items"]
 
         self.assertEqual(3, listed["upvote_count"])
         self.assertEqual(2, listed["message_count"])
@@ -214,3 +217,195 @@ class TestUpvotes(TicketTestCase):
     def test_unknown_sort_is_rejected(self) -> None:
         response = self.as_user(self.outsider).get("/api/ticket/?sort=upvote")
         self.assertEqual(422, response.status_code)
+
+
+class TestSearchWords(SimpleTestCase):
+    def test_drops_short_filler_and_repeated_words(self) -> None:
+        self.assertEqual(
+            ["renew", "subscription"],
+            search_words("Can't I renew the subscription, subscription?"),
+        )
+
+    def test_keeps_at_most_eight_words(self) -> None:
+        words = search_words("one1 two2 three3 four4 five5 six6 seven7 eight8 nine9")
+        self.assertEqual(
+            ["one1", "two2", "three3", "four4", "five5", "six6", "seven7", "eight8"], words
+        )
+
+    def test_wildcards_are_split_away(self) -> None:
+        self.assertEqual(["100"], search_words("100% a_b"))
+
+    def test_only_filler_punctuation_or_emoji_is_no_search(self) -> None:
+        for q in ("how can you", "   ", "?!", "\U0001f642\U0001f642"):
+            self.assertEqual([], search_words(q), q)
+
+
+class TestListing(TicketTestCase):
+    def page(self, user: User, query: str = "") -> dict[str, Any]:
+        response = self.as_user(user).get(f"/api/ticket/?{query}")
+        self.assertEqual(200, response.status_code, response.content)
+        return response.json()
+
+    def titles(self, user: User, query: str = "") -> list[str]:
+        return [ticket["title"] for ticket in self.page(user, query)["items"]]
+
+    def make(self, title: str, description: str = "-", **fields: Any) -> Ticket:
+        fields.setdefault("created_by", self.creator)
+        return Ticket.objects.create(title=title, description=description, **fields)
+
+    def test_pages_hold_twenty_and_count_them_all(self) -> None:
+        for n in range(25):
+            self.make(f"Ticket {n}")
+
+        first = self.page(self.outsider)
+        second = self.page(self.outsider, "page=2")
+
+        self.assertEqual((20, 26), (len(first["items"]), first["count"]))
+        self.assertEqual((6, 26), (len(second["items"]), second["count"]))
+
+    def test_a_page_past_the_end_is_empty_not_an_error(self) -> None:
+        page = self.page(self.outsider, "page=99")
+        self.assertEqual(([], 1), (page["items"], page["count"]))
+
+    def test_newest_first_by_default(self) -> None:
+        self.make("Newer")
+        self.assertEqual(["Newer", "My address"], self.titles(self.outsider))
+
+    def test_title_hits_rank_above_description_hits(self) -> None:
+        self.make("Payment failed")
+        self.make("Help", "my payment failed twice")  # newer, but a weaker match
+
+        self.assertEqual(["Payment failed", "Help"], self.titles(self.outsider, "q=payment"))
+
+    def test_score_says_whether_it_was_a_search(self) -> None:
+        # The create page only suggests tickets that actually matched
+        self.make("Payment failed")
+        self.assertEqual(2, self.page(self.outsider, "q=payment")["items"][0]["score"])
+        for query in ("q=How+do+I+get", ""):
+            scores = {t["score"] for t in self.page(self.outsider, query)["items"]}
+            self.assertEqual({None}, scores, query)
+
+    def test_partial_words_match(self) -> None:
+        self.make("Subscription renewal")
+        self.assertEqual(["Subscription renewal"], self.titles(self.outsider, "q=subscr"))
+
+    def test_wildcard_characters_never_reach_the_query(self) -> None:
+        # Words split on anything but letters and digits, so % and _ can't
+        # turn into LIKE wildcards that match every ticket
+        self.make("Refund of 100 rupees")
+
+        self.assertEqual(["Refund of 100 rupees"], self.titles(self.outsider, "q=100%25"))
+        self.assertEqual(self.titles(self.outsider), self.titles(self.outsider, "q=%25%25_"))
+
+    def test_filler_only_search_lists_everything_newest_first(self) -> None:
+        self.make("Newer")
+        self.assertEqual(self.titles(self.outsider), self.titles(self.outsider, "q=how+can+you"))
+
+    def test_search_covers_resolved_tickets(self) -> None:
+        self.make("Old answer", status=Ticket.Status.RESOLVED)
+        self.assertEqual(["Old answer"], self.titles(self.outsider, "q=answer"))
+
+    def test_newest_or_upvotes_overrides_relevance_while_searching(self) -> None:
+        strong = self.make("Payment failed")
+        weak = self.make("Help", "payment")  # newer
+        strong.upvoters.add(self.outsider)
+
+        self.assertEqual(
+            ["Help", "Payment failed"], self.titles(self.outsider, "q=payment&sort=newest")
+        )
+        weak.upvoters.add(self.outsider, self.staff)
+        self.assertEqual(
+            ["Help", "Payment failed"], self.titles(self.outsider, "q=payment&sort=upvotes")
+        )
+
+    def test_status_filter_is_repeatable(self) -> None:
+        self.make("Working on it", status=Ticket.Status.IN_PROGRESS)
+        self.make("Done", status=Ticket.Status.RESOLVED)
+
+        titles = self.titles(self.outsider, "status=OPN&status=PRG")
+
+        self.assertEqual(["Working on it", "My address"], titles)
+
+    def test_unknown_filter_values_are_rejected(self) -> None:
+        for query in ("status=XYZ", "category=Nonsense", "sort=best"):
+            response = self.as_user(self.outsider).get(f"/api/ticket/?{query}")
+            self.assertEqual(422, response.status_code, query)
+
+    def test_category_filter(self) -> None:
+        self.make("Card declined", category=Ticket.Category.PAYMENT)
+        self.assertEqual(["Card declined"], self.titles(self.outsider, "category=Payment"))
+
+    def test_mine(self) -> None:
+        self.make("Theirs", created_by=self.outsider)
+        self.assertEqual(["My address"], self.titles(self.creator, "mine=true"))
+
+    def test_upvoted_by_me(self) -> None:
+        liked = self.make("Liked")
+        liked.upvoters.add(self.outsider)
+        self.assertEqual(["Liked"], self.titles(self.outsider, "upvoted=true"))
+
+
+class TestPrivacyEverywhere(TicketTestCase):
+    """Each rule the spec lists, for someone who is neither creator nor staff."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.ticket.title = "Secret refund"
+        self.ticket.is_private = True
+        self.ticket.save()
+
+    def page(self, user: User, query: str = "") -> dict[str, Any]:
+        response = self.as_user(user).get(f"/api/ticket/?{query}")
+        self.assertEqual(200, response.status_code, response.content)
+        return response.json()
+
+    def test_search_never_matches_it_even_by_exact_title(self) -> None:
+        page = self.page(self.outsider, "q=Secret+refund")
+        self.assertEqual(([], 0), (page["items"], page["count"]))
+        self.assertEqual(1, self.page(self.creator, "q=Secret+refund")["count"])
+
+    def test_it_is_never_counted(self) -> None:
+        Ticket.objects.create(title="Public", description="-", created_by=self.creator)
+        self.assertEqual(1, self.page(self.outsider)["count"])
+        self.assertEqual(2, self.page(self.staff)["count"])
+
+    def test_not_under_upvoted_after_going_private(self) -> None:
+        self.ticket.upvoters.add(self.outsider)  # while it was public
+        self.assertEqual([], self.page(self.outsider, "upvoted=true")["items"])
+
+    def test_exclude_private_leaves_out_own_and_for_staff(self) -> None:
+        for user in (self.creator, self.staff):
+            ids = [t["id"] for t in self.page(user, "exclude_private=true")["items"]]
+            self.assertNotIn(self.ticket.id, ids)
+
+    def test_not_under_any_filter_or_sort(self) -> None:
+        queries = ("category=Other", "status=OPN", "sort=upvotes", "sort=newest")
+        for query in (*queries, "q=refund&sort=upvotes"):
+            ids = [t["id"] for t in self.page(self.outsider, query)["items"]]
+            self.assertNotIn(self.ticket.id, ids, query)
+
+
+class TestCategoryValidation(TicketTestCase):
+    def create(self, category: str) -> Any:
+        return self.as_user(self.outsider).post(
+            "/api/ticket/",
+            data=json.dumps({"title": "T", "description": "D", "category": category}),
+            content_type="application/json",
+        )
+
+    def test_unknown_category_is_rejected_on_create_and_update(self) -> None:
+        self.assertEqual(422, self.create("Nonsense").status_code)
+        self.assertEqual(422, self.put(self.staff, {"category": "Nonsense"}).status_code)
+
+    def test_blank_category_means_none(self) -> None:
+        response = self.create("")
+        self.assertEqual(201, response.status_code)
+        self.assertIsNone(response.json()["category"])
+
+    def test_lowercase_other_is_normalised(self) -> None:
+        Ticket.objects.filter(id=self.ticket.id).update(category="other")
+
+        import_module("server.migrations.0163_ticket_category_case").normalise(apps, None)
+
+        self.ticket.refresh_from_db()
+        self.assertEqual("Other", self.ticket.category)

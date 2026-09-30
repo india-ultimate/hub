@@ -12,7 +12,15 @@ const TicketList = props => {
 
   const ticketsQuery = createQuery(
     () => ["tickets", filter(), sort()],
-    () => fetchTickets(filter(), sort())
+    () =>
+      fetchTickets({
+        ...(filter() === "ME"
+          ? { mine: true }
+          : filter()
+          ? { status: [filter()] }
+          : {}),
+        sort: sort()
+      })
   );
 
   const getStatusBadgeClass = status => {
@@ -121,13 +129,17 @@ const TicketList = props => {
           </div>
         </Show>
 
-        <Show when={ticketsQuery.isSuccess && ticketsQuery.data.length === 0}>
+        <Show
+          when={ticketsQuery.isSuccess && ticketsQuery.data.items.length === 0}
+        >
           <div class="p-4 text-center text-gray-500 dark:text-gray-400">
             No tickets found
           </div>
         </Show>
 
-        <Show when={ticketsQuery.isSuccess && ticketsQuery.data.length > 0}>
+        <Show
+          when={ticketsQuery.isSuccess && ticketsQuery.data.items.length > 0}
+        >
           <div class="overflow-x-auto">
             <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
               <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
@@ -161,7 +173,7 @@ const TicketList = props => {
                 </tr>
               </thead>
               <tbody>
-                <For each={ticketsQuery.data}>
+                <For each={ticketsQuery.data.items}>
                   {ticket => (
                     <tr class="border-b bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700">
                       <Show when={props.user.is_staff}>

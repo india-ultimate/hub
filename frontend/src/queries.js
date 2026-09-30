@@ -1744,18 +1744,25 @@ export const matchStatsFullTime = async ({ match_id }) => {
 };
 
 // Ticket API functions
-export const fetchTickets = async (filter = "", sort = "") => {
+export const fetchTickets = async ({
+  q = "",
+  status = [],
+  category = "",
+  mine = false,
+  upvoted = false,
+  excludePrivate = false,
+  sort = "",
+  page = 1
+} = {}) => {
   const queryParams = new URLSearchParams();
-
-  // Handle different filter types
-  if (filter === "ME") {
-    queryParams.set("created_by_me", "true");
-  } else if (filter) {
-    queryParams.set("status", filter);
-  }
-  if (sort) {
-    queryParams.set("sort", sort);
-  }
+  if (q) queryParams.set("q", q);
+  status.forEach(value => queryParams.append("status", value));
+  if (category) queryParams.set("category", category);
+  if (mine) queryParams.set("mine", "true");
+  if (upvoted) queryParams.set("upvoted", "true");
+  if (excludePrivate) queryParams.set("exclude_private", "true");
+  if (sort) queryParams.set("sort", sort);
+  if (page > 1) queryParams.set("page", String(page));
 
   const response = await fetch(`/api/ticket/?${queryParams}`, {
     method: "GET",

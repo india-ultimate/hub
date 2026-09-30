@@ -1,14 +1,24 @@
 from datetime import datetime
 
 from ninja import Schema
+from pydantic import validator
+
+from server.ticket.models import Ticket
+
+
+def _blank_is_none(cls: object, value: object) -> object:
+    # The create form sends "" for "no category"
+    return value or None
 
 
 class TicketCreateSchema(Schema):
     title: str
     description: str
     priority: str = "MED"
-    category: str | None = None
+    category: Ticket.Category | None = None
     is_private: bool = False
+
+    _category = validator("category", pre=True, allow_reuse=True)(_blank_is_none)
 
 
 class TicketUpdateSchema(Schema):
@@ -16,9 +26,11 @@ class TicketUpdateSchema(Schema):
     description: str | None = None
     status: str | None = None
     priority: str | None = None
-    category: str | None = None
+    category: Ticket.Category | None = None
     assigned_to_id: int | None = None
     is_private: bool | None = None
+
+    _category = validator("category", pre=True, allow_reuse=True)(_blank_is_none)
 
 
 class UserSchema(Schema):
@@ -70,3 +82,5 @@ class TicketListItemSchema(Schema):
     created_by: UserSchema
     assigned_to: UserSchema | None = None
     message_count: int
+    # How well it matched a search; None when there were no words to search for
+    score: int | None = None
