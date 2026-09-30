@@ -1050,16 +1050,46 @@ class TestIntegration(BaseCase):
         ticket = Ticket.objects.create(
             title="Scores not updating", description="-", created_by=creator
         )
+        pill = f"button#ticket-upvote-{ticket.id}"
 
         self.sign_in_as(voter)
         self.open(f"{APP_URL}/tickets/{ticket.id}")
-        self.assert_text("0", "[data-testid='upvote-count']")
-        self.click("button#ticket-upvote")
-        self.assert_text("Upvoted", "button#ticket-upvote")
-        self.assert_text("1", "[data-testid='upvote-count']")
+        self.assert_text("0", f"{pill} [data-testid='upvote-count']")
+        self.click(pill)
+        self.assert_attribute(pill, "aria-pressed", "true")
+        self.assert_text("1", f"{pill} [data-testid='upvote-count']")
+        # The pill changes before the server answers, so reload to see what saved
+        self.refresh()
+        self.assert_attribute(pill, "aria-pressed", "true")
         self.assertEqual([voter], list(ticket.upvoters.all()))
 
         self.sign_in_as(creator)
         self.open(f"{APP_URL}/tickets/{ticket.id}")
-        self.assert_text("1", "[data-testid='upvote-count']")
-        self.assert_attribute("button#ticket-upvote", "disabled")
+        self.assert_text("1", f"{pill} [data-testid='upvote-count']")
+        self.assert_attribute(pill, "disabled")
+
+    # Breaks if: upvoting from a list row opens the ticket instead, a double
+    # click counts twice, or the pill doesn't show the vote.
+    def test_upvoting_from_the_list(self) -> None:
+        creator = make_player("asker@example.com")
+        voter = make_player("voter@example.com", first="Asha")
+        ticket = Ticket.objects.create(
+            title="Scores not updating", description="-", created_by=creator
+        )
+        pill = f"button#ticket-upvote-{ticket.id}"
+
+        self.sign_in_as(voter)
+        self.open(f"{APP_URL}/tickets")
+        self.double_click(pill)
+        self.assert_attribute(pill, "aria-pressed", "true")
+        self.assert_text("1", f"{pill} [data-testid='upvote-count']")
+        self.assertTrue(self.get_current_url().endswith("/tickets"))
+        # The pill changes before the server answers, so reload to see what saved
+        self.refresh()
+        self.assert_text("1", f"{pill} [data-testid='upvote-count']")
+        self.assertEqual([voter], list(ticket.upvoters.all()))
+
+        self.click(pill)
+        self.assert_attribute(pill, "aria-pressed", "false")
+        self.refresh()
+        self.assert_text("0", f"{pill} [data-testid='upvote-count']")
