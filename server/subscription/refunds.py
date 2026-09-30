@@ -9,7 +9,7 @@ from django.utils.timezone import now
 from server.core.models import User
 from server.receipts.issue import issue_refund_note
 from server.subscription.models import Subscription, SubscriptionPlan
-from server.transaction.client.razorpay import CLIENT
+from server.transaction.client.razorpay import client_for
 from server.transaction.models import (
     RazorpayRefund,
     RazorpayTransaction,
@@ -103,7 +103,7 @@ def _send(
         transaction=transaction, line=line, amount=amount, reason=reason, created_by=by
     )
     try:
-        answer: dict[str, Any] = CLIENT.payment.refund(
+        answer: dict[str, Any] = client_for(transaction.account).payment.refund(
             transaction.payment_id,
             {"amount": amount, "notes": {"hub_refund_id": str(refund.pk)}},
         )

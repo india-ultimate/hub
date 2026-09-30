@@ -102,7 +102,7 @@ class TestRefundPermission(RefundAdminTestCase):
 
     def test_staff_with_the_permission_see_the_confirmation(self) -> None:
         self.client.force_login(staff_user("allowed@example.com", refunds=True))
-        with mock.patch("server.subscription.refunds.CLIENT.payment.refund") as gateway:
+        with mock.patch("server.transaction.client.razorpay.CLIENT.payment.refund") as gateway:
             response = self.client.get(reverse("admin:refund_line", args=[self.line.pk]))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "750")
@@ -119,7 +119,9 @@ class TestRefundViews(RefundAdminTestCase):
         self.client.force_login(self.staff)
 
     def test_confirming_refunds_the_line(self) -> None:
-        with mock.patch("server.subscription.refunds.CLIENT.payment.refund", return_value=ACCEPTED):
+        with mock.patch(
+            "server.transaction.client.razorpay.CLIENT.payment.refund", return_value=ACCEPTED
+        ):
             response = self.client.post(
                 reverse("admin:refund_line", args=[self.line.pk]),
                 data={"reason": "left the sport"},
@@ -134,14 +136,18 @@ class TestRefundViews(RefundAdminTestCase):
 
     def test_a_second_refund_of_the_same_line_is_refused(self) -> None:
         url = reverse("admin:refund_line", args=[self.line.pk])
-        with mock.patch("server.subscription.refunds.CLIENT.payment.refund", return_value=ACCEPTED):
+        with mock.patch(
+            "server.transaction.client.razorpay.CLIENT.payment.refund", return_value=ACCEPTED
+        ):
             self.client.post(url, data={"reason": "first"})
             response = self.client.post(url, data={"reason": "second"}, follow=True)
         self.assertEqual(RazorpayRefund.objects.count(), 1)
         self.assertContains(response, "already been refunded")
 
     def test_refunding_a_subscription_reports_what_moved(self) -> None:
-        with mock.patch("server.subscription.refunds.CLIENT.payment.refund", return_value=ACCEPTED):
+        with mock.patch(
+            "server.transaction.client.razorpay.CLIENT.payment.refund", return_value=ACCEPTED
+        ):
             response = self.client.post(
                 reverse("admin:refund_subscription", args=[self.subscription.pk]),
                 data={"reason": "quit"},
@@ -189,7 +195,9 @@ class TestRefundViews(RefundAdminTestCase):
 
     def test_refunding_a_whole_order_goes_back_to_it(self) -> None:
         url = reverse("admin:refund_order", args=[self.transaction.pk])
-        with mock.patch("server.subscription.refunds.CLIENT.payment.refund", return_value=ACCEPTED):
+        with mock.patch(
+            "server.transaction.client.razorpay.CLIENT.payment.refund", return_value=ACCEPTED
+        ):
             response = self.client.post(url, data={"reason": "event cancelled"})
         self.assertRedirects(
             response,
@@ -219,7 +227,7 @@ class TestRefundViews(RefundAdminTestCase):
         self.assertContains(self.client.get(url), "the subscription it paid for stays")
 
         with mock.patch(
-            "server.subscription.refunds.CLIENT.payment.refund", return_value=ACCEPTED
+            "server.transaction.client.razorpay.CLIENT.payment.refund", return_value=ACCEPTED
         ) as gateway:
             self.client.post(url, data={"reason": "duplicate payment"})
         gateway.assert_called_once_with("pay_old", mock.ANY)
@@ -249,7 +257,7 @@ class TestRefundViews(RefundAdminTestCase):
             status=RazorpayTransaction.TransactionStatusChoices.COMPLETED,
         )
         with mock.patch(
-            "server.subscription.refunds.CLIENT.payment.refund",
+            "server.transaction.client.razorpay.CLIENT.payment.refund",
             side_effect=Exception("insufficient balance"),
         ):
             response = self.client.post(
@@ -266,7 +274,9 @@ class TestRefundViews(RefundAdminTestCase):
         self.assertEqual(team_order.status, RazorpayTransaction.TransactionStatusChoices.COMPLETED)
 
     def test_refunding_an_order_whose_lines_are_refunded_is_refused(self) -> None:
-        with mock.patch("server.subscription.refunds.CLIENT.payment.refund", return_value=ACCEPTED):
+        with mock.patch(
+            "server.transaction.client.razorpay.CLIENT.payment.refund", return_value=ACCEPTED
+        ):
             self.client.post(
                 reverse("admin:refund_line", args=[self.line.pk]), data={"reason": "first"}
             )
@@ -288,7 +298,7 @@ class TestRefundViews(RefundAdminTestCase):
             type=RazorpayTransaction.TransactionTypeChoices.TEAM_REGISTRATION,
             status=RazorpayTransaction.TransactionStatusChoices.COMPLETED,
         )
-        with mock.patch("server.subscription.refunds.CLIENT.payment.refund") as gateway:
+        with mock.patch("server.transaction.client.razorpay.CLIENT.payment.refund") as gateway:
             response = self.client.post(
                 reverse("admin:refund_order", args=[team_order.pk]),
                 data={"reason": "   "},
@@ -318,7 +328,7 @@ class TestRefundViews(RefundAdminTestCase):
 
         # The upgrade goes back first, then the gateway fails on the original.
         with mock.patch(
-            "server.subscription.refunds.CLIENT.payment.refund",
+            "server.transaction.client.razorpay.CLIENT.payment.refund",
             side_effect=[ACCEPTED, RuntimeError("gateway is down")],
         ):
             response = self.client.post(
@@ -370,7 +380,9 @@ class TestPartialRefund(TestCase):
 
         gateway.calls = 0  # type: ignore[attr-defined]
 
-        with mock.patch("server.subscription.refunds.CLIENT.payment.refund", side_effect=gateway):
+        with mock.patch(
+            "server.transaction.client.razorpay.CLIENT.payment.refund", side_effect=gateway
+        ):
             response = self.client.post(
                 reverse("admin:refund_order", args=[self.transaction.pk]),
                 data={"reason": "event cancelled"},
@@ -422,7 +434,7 @@ class TestAdminScreens(RefundAdminTestCase):
             end_date=self.season.end_date,
         )
         url = reverse("admin:server_subscription_changelist")
-        with mock.patch("server.subscription.refunds.CLIENT.payment.refund") as gateway:
+        with mock.patch("server.transaction.client.razorpay.CLIENT.payment.refund") as gateway:
             response = self.client.post(
                 url,
                 data={

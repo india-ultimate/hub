@@ -79,12 +79,16 @@ def _all_since(resource: Any, since: datetime.datetime | None) -> list[dict[str,
     return items
 
 
-def get_transactions(since: datetime.datetime | None = None) -> list[dict[str, Any]]:
-    return _all_since(CLIENT.payment, since)
+def get_transactions(
+    since: datetime.datetime | None = None, account: PaymentAccount | None = None
+) -> list[dict[str, Any]]:
+    return _all_since(client_for(account).payment, since)
 
 
-def get_refunds(since: datetime.datetime | None = None) -> list[dict[str, Any]]:
-    return _all_since(CLIENT.refund, since)
+def get_refunds(
+    since: datetime.datetime | None = None, account: PaymentAccount | None = None
+) -> list[dict[str, Any]]:
+    return _all_since(client_for(account).refund, since)
 
 
 def verify_payment(payment_info: dict[str, str], account: PaymentAccount | None = None) -> bool:

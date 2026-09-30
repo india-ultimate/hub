@@ -54,7 +54,9 @@ class TestRefunds(TestCase):
         purchase.fulfil(self.transaction)
 
     def test_a_refund_takes_the_subscription_out_of_use(self) -> None:
-        with mock.patch("server.subscription.refunds.CLIENT.payment.refund", return_value=ACCEPTED):
+        with mock.patch(
+            "server.transaction.client.razorpay.CLIENT.payment.refund", return_value=ACCEPTED
+        ):
             refunds.refund_line(self.line, by=self.staff, reason="left the sport")
 
         subscription = Subscription.objects.get(player=self.player, season=self.season)
@@ -65,20 +67,24 @@ class TestRefunds(TestCase):
     def test_the_number_survives_a_refund(self) -> None:
         self.player.refresh_from_db()
         number = self.player.iu_id
-        with mock.patch("server.subscription.refunds.CLIENT.payment.refund", return_value=ACCEPTED):
+        with mock.patch(
+            "server.transaction.client.razorpay.CLIENT.payment.refund", return_value=ACCEPTED
+        ):
             refunds.refund_line(self.line, by=self.staff, reason="x")
         self.player.refresh_from_db()
         self.assertEqual(self.player.iu_id, number)
 
     def test_refunding_twice_is_refused(self) -> None:
-        with mock.patch("server.subscription.refunds.CLIENT.payment.refund", return_value=ACCEPTED):
+        with mock.patch(
+            "server.transaction.client.razorpay.CLIENT.payment.refund", return_value=ACCEPTED
+        ):
             refunds.refund_line(self.line, by=self.staff, reason="x")
             with self.assertRaises(refunds.RefundRefused):
                 refunds.refund_line(self.line, by=self.staff, reason="x")
 
     def test_razorpay_refusing_changes_nothing_here(self) -> None:
         with mock.patch(
-            "server.subscription.refunds.CLIENT.payment.refund",
+            "server.transaction.client.razorpay.CLIENT.payment.refund",
             side_effect=Exception("gateway said no"),
         ), self.assertRaises(refunds.RefundRefused):
             refunds.refund_line(self.line, by=self.staff, reason="x")
@@ -89,7 +95,9 @@ class TestRefunds(TestCase):
         self.assertEqual(RazorpayRefund.objects.get().status, RazorpayRefund.Status.FAILED)
 
     def test_buying_again_after_a_refund_works(self) -> None:
-        with mock.patch("server.subscription.refunds.CLIENT.payment.refund", return_value=ACCEPTED):
+        with mock.patch(
+            "server.transaction.client.razorpay.CLIENT.payment.refund", return_value=ACCEPTED
+        ):
             refunds.refund_line(self.line, by=self.staff, reason="x")
 
         again = RazorpayTransaction.objects.create(
@@ -118,7 +126,9 @@ class TestRefunds(TestCase):
     def test_reactivating_a_refunded_subscription_at_the_wrong_price_is_flagged(self) -> None:
         # Regular is refunded before an in-flight upgrade to Patron -- priced
         # at just the difference, not Patron's own price -- captures.
-        with mock.patch("server.subscription.refunds.CLIENT.payment.refund", return_value=ACCEPTED):
+        with mock.patch(
+            "server.transaction.client.razorpay.CLIENT.payment.refund", return_value=ACCEPTED
+        ):
             refunds.refund_line(self.line, by=self.staff, reason="x")
 
         upgrade = RazorpayTransaction.objects.create(
@@ -150,7 +160,9 @@ class TestRefunds(TestCase):
 
     def test_a_refunded_line_is_not_applied_again(self) -> None:
         # The nightly sync re-applies every completed order it sees.
-        with mock.patch("server.subscription.refunds.CLIENT.payment.refund", return_value=ACCEPTED):
+        with mock.patch(
+            "server.transaction.client.razorpay.CLIENT.payment.refund", return_value=ACCEPTED
+        ):
             refunds.refund_line(self.line, by=self.staff, reason="x")
 
         self.transaction.status = RazorpayTransaction.TransactionStatusChoices.COMPLETED
@@ -162,7 +174,9 @@ class TestRefunds(TestCase):
         self.assertIsNotNone(subscription.refunded_at)
 
     def test_a_fully_refunded_order_is_marked_refunded(self) -> None:
-        with mock.patch("server.subscription.refunds.CLIENT.payment.refund", return_value=ACCEPTED):
+        with mock.patch(
+            "server.transaction.client.razorpay.CLIENT.payment.refund", return_value=ACCEPTED
+        ):
             refunds.refund_line(self.line, by=self.staff, reason="x")
 
         self.transaction.refresh_from_db()
@@ -179,14 +193,14 @@ class TestRefunds(TestCase):
             source=RazorpayRefund.Source.RAZORPAY_DASHBOARD,
         )
         with mock.patch(
-            "server.subscription.refunds.CLIENT.payment.refund", return_value=ACCEPTED
+            "server.transaction.client.razorpay.CLIENT.payment.refund", return_value=ACCEPTED
         ) as gateway, self.assertRaises(refunds.RefundRefused):
             refunds.refund_line(self.line, by=self.staff, reason="x")
         gateway.assert_not_called()
 
     def test_a_refund_needs_a_reason(self) -> None:
         with mock.patch(
-            "server.subscription.refunds.CLIENT.payment.refund", return_value=ACCEPTED
+            "server.transaction.client.razorpay.CLIENT.payment.refund", return_value=ACCEPTED
         ) as gateway, self.assertRaises(refunds.RefundRefused):
             refunds.refund_line(self.line, by=self.staff, reason="  ")
         gateway.assert_not_called()
@@ -214,7 +228,9 @@ class TestRefunds(TestCase):
         line.refresh_from_db()
         self.assertTrue(line.needs_review)
 
-        with mock.patch("server.subscription.refunds.CLIENT.payment.refund", return_value=ACCEPTED):
+        with mock.patch(
+            "server.transaction.client.razorpay.CLIENT.payment.refund", return_value=ACCEPTED
+        ):
             refunds.refund_line(line, by=self.staff, reason="paid twice")
 
         line.refresh_from_db()
@@ -265,7 +281,9 @@ class TestRefunds(TestCase):
         )
         purchase.fulfil(upgrade_txn)
 
-        with mock.patch("server.subscription.refunds.CLIENT.payment.refund", return_value=ACCEPTED):
+        with mock.patch(
+            "server.transaction.client.razorpay.CLIENT.payment.refund", return_value=ACCEPTED
+        ):
             refunds.refund_line(upgrade_line, by=self.staff, reason="changed mind")
 
         subscription = Subscription.objects.get(player=self.player, season=self.season)
@@ -299,7 +317,7 @@ class TestRefunds(TestCase):
         )
 
         with mock.patch(
-            "server.subscription.refunds.CLIENT.payment.refund", return_value=ACCEPTED
+            "server.transaction.client.razorpay.CLIENT.payment.refund", return_value=ACCEPTED
         ) as gateway, self.assertRaises(refunds.RefundRefused):
             refunds.refund_line(self.line, by=self.staff, reason="x")
         gateway.assert_not_called()
@@ -327,7 +345,7 @@ class TestRefunds(TestCase):
 
         ids = itertools.count()
         with mock.patch(
-            "server.subscription.refunds.CLIENT.payment.refund",
+            "server.transaction.client.razorpay.CLIENT.payment.refund",
             side_effect=lambda *a, **kw: {"id": f"rfnd_{next(ids)}", "status": "processed"},
         ):
             made = refunds.refund_subscription(subscription, by=self.staff, reason="all back")
@@ -353,14 +371,16 @@ class TestRefunds(TestCase):
         )
         RazorpayTransactionPlayer.objects.create(transaction=registration, player=self.player)
 
-        with mock.patch("server.subscription.refunds.CLIENT.payment.refund", return_value=ACCEPTED):
+        with mock.patch(
+            "server.transaction.client.razorpay.CLIENT.payment.refund", return_value=ACCEPTED
+        ):
             made = refunds.refund_order(registration, by=self.staff, reason="withdrew")
 
         self.assertEqual([refund.amount for refund in made], [500000])
         registration.refresh_from_db()
         self.assertEqual(registration.status, RazorpayTransaction.TransactionStatusChoices.REFUNDED)
         with mock.patch(
-            "server.subscription.refunds.CLIENT.payment.refund", return_value=ACCEPTED
+            "server.transaction.client.razorpay.CLIENT.payment.refund", return_value=ACCEPTED
         ), self.assertRaises(refunds.RefundRefused):
             refunds.refund_order(registration, by=self.staff, reason="again")
 
@@ -394,7 +414,9 @@ class TestRefunds(TestCase):
             transaction=upgrade, player=player, plan=patron, amount=patron.amount - amount_paid
         )
         purchase.fulfil(upgrade, notify=False)
-        with mock.patch("server.subscription.refunds.CLIENT.payment.refund", return_value=ACCEPTED):
+        with mock.patch(
+            "server.transaction.client.razorpay.CLIENT.payment.refund", return_value=ACCEPTED
+        ):
             refunds.refund_line(line, by=self.staff, reason="upgraded by mistake")
         line.refresh_from_db()
         return Subscription.objects.get(player=player, season=self.season), line
@@ -580,7 +602,7 @@ class TestRefundSync(TestCase):
     def test_a_pending_refund_that_fails_puts_the_subscription_back(self) -> None:
         purchase.fulfil(self.transaction)
         with mock.patch(
-            "server.subscription.refunds.CLIENT.payment.refund",
+            "server.transaction.client.razorpay.CLIENT.payment.refund",
             return_value={"id": "rfnd_slow", "status": "pending"},
         ):
             refunds.refund_line(self.line, by=self.player.user, reason="asked for it back")
@@ -626,7 +648,7 @@ class TestRefundSync(TestCase):
             RazorpayTransactionPlayer.objects.create(transaction=registration, player=player)
 
         with mock.patch(
-            "server.subscription.refunds.CLIENT.payment.refund",
+            "server.transaction.client.razorpay.CLIENT.payment.refund",
             return_value={"id": "rfnd_reg", "status": "pending"},
         ):
             refunds.refund_order(registration, by=self.player.user, reason="withdrew")
@@ -650,7 +672,7 @@ class TestRefundSync(TestCase):
         )
         # And the order can be refunded afresh, now nothing stands on it.
         with mock.patch(
-            "server.subscription.refunds.CLIENT.payment.refund",
+            "server.transaction.client.razorpay.CLIENT.payment.refund",
             return_value={"id": "rfnd_reg2", "status": "processed"},
         ):
             made = refunds.refund_order(registration, by=None, reason="second try")
@@ -659,7 +681,7 @@ class TestRefundSync(TestCase):
     def test_a_failed_refund_leaves_a_subscription_someone_else_touched(self) -> None:
         purchase.fulfil(self.transaction)
         with mock.patch(
-            "server.subscription.refunds.CLIENT.payment.refund",
+            "server.transaction.client.razorpay.CLIENT.payment.refund",
             return_value={"id": "rfnd_slow2", "status": "pending"},
         ):
             refunds.refund_line(self.line, by=None, reason="asked for it back")
