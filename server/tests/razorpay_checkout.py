@@ -27,6 +27,11 @@ def _wait_for_razorpay_sdk(test_case: BaseCase, timeout: float = 45) -> None:
 
 def _submit_contact_details_if_needed(test_case: BaseCase) -> None:
     contact_selector = 'input[data-testid="contactNumber"]'
+    # Checkout paints the contact prompt a moment after the frame opens, with
+    # the method tabs already visible behind it: give it time to appear.
+    deadline = time.time() + 15
+    while time.time() < deadline and not test_case.is_element_visible(contact_selector):
+        time.sleep(0.5)
     if not test_case.is_element_visible(contact_selector):
         return
 
