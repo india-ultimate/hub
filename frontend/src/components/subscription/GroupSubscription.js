@@ -7,16 +7,25 @@ import {
 import { initFlowbite } from "flowbite";
 import { Icon } from "solid-heroicons";
 import { xMark } from "solid-heroicons/solid";
-import { createEffect, createSignal, For, Match, Show, Switch } from "solid-js";
+import {
+  createEffect,
+  createSignal,
+  For,
+  Match,
+  onMount,
+  Show,
+  Switch
+} from "solid-js";
 
-import { minAge, minAgeWarning } from "../../constants";
+import { majorAge, minAge, minAgeWarning } from "../../constants";
 import { ChevronLeft, ChevronRight, Spinner } from "../../icons";
 import {
+  fetchPlayerById,
   fetchSeasonGrants,
   fetchSeasonPlans,
   searchPlayers
 } from "../../queries";
-import { displayDate } from "../../utils";
+import { displayDate, getAge } from "../../utils";
 import Info from "../alerts/Info";
 import RazorpayPayment from "../RazorpayPayment";
 import SubscriptionPlayerList from "./SubscriptionPlayerList";
@@ -272,6 +281,67 @@ const GroupSubscription = props => {
   const [paymentSuccess, setPaymentSuccess] = createSignal(false);
   // player id -> tier slug. The tier is per person, not per group.
   const [tiers, setTiers] = createSignal({});
+  const [notice, setNotice] = createSignal();
+
+  // A team registration page links here with ?players=12,34 and
+  // &tiers=12:regular,34:regular. They're checked again on load: anyone who
+  // got a subscription since is left out with a notice. A tier no longer
+  // on offer to them falls back to the default one (tierFor).
+  onMount(async () => {
+    const ids = (props.preselect?.players || "")
+      .split(",")
+      .map(Number)
+      .filter(Boolean);
+    if (!ids.length) return;
+    const wanted = Object.fromEntries(
+      (props.preselect?.tiers || "")
+        .split(",")
+        .map(pair => pair.split(":"))
+        .filter(([id, slug]) => Number(id) && slug)
+        .map(([id, slug]) => [Number(id), slug])
+    );
+    const loaded = await Promise.all(
+      ids.map(id => fetchPlayerById(id).catch(() => null))
+    );
+    const found = loaded.filter(Boolean);
+    const covered = found.filter(
+      p =>
+        p.subscription?.is_active && p.subscription?.season === props.season?.id
+    );
+    const needing = found
+      .filter(p => !covered.includes(p))
+      // The search results this list usually holds carry is_minor.
+      .map(p => ({ ...p, is_minor: getAge(p.date_of_birth) < majorAge }));
+    setPayingPlayers([
+      ...payingPlayers().filter(p => !ids.includes(p.id)),
+      ...needing
+    ]);
+    setTiers({
+      ...tiers(),
+      ...Object.fromEntries(
+        needing.filter(p => wanted[p.id]).map(p => [p.id, wanted[p.id]])
+      )
+    });
+    const notes = [];
+    if (covered.length) {
+      const names = covered.map(p => p.full_name).join(", ");
+      const one = covered.length === 1;
+      notes.push(
+        `${names} already ${one ? "holds" : "hold"} a subscription and ${
+          one ? "was" : "were"
+        } left out.`
+      );
+    }
+    if (found.length < ids.length) {
+      const missing = ids.length - found.length;
+      notes.push(
+        `${missing} player${missing === 1 ? "" : "s"} couldn't be loaded and ${
+          missing === 1 ? "was" : "were"
+        } left out.`
+      );
+    }
+    setNotice(notes.join(" ") || undefined);
+  });
 
   const plansQuery = createQuery(
     () => ["season-plans", props.season?.id],
@@ -323,7 +393,14 @@ const GroupSubscription = props => {
       ?.slug;
   };
 
-  const tierFor = playerId => tiers()[playerId] ?? defaultTier(playerId);
+  // A picked tier they can't buy (a link asked for one that's no longer on
+  // offer to them, say) gives way to the default one.
+  const tierFor = playerId => {
+    const picked = tiers()[playerId];
+    return plansFor(playerId).some(plan => plan.slug === picked)
+      ? picked
+      : defaultTier(playerId);
+  };
 
   const planFor = playerId =>
     plans().find(plan => plan.slug === tierFor(playerId));
@@ -379,6 +456,11 @@ const GroupSubscription = props => {
           onPlayerPayingStatusChange={handlePlayerPayingStatus}
         />
       </Show>
+      <Show when={notice()}>
+        <div class="mt-4">
+          <Info text={notice()} />
+        </div>
+      </Show>
       <SubscriptionPlayerList
         players={payingPlayers()}
         fee={getAmount()}
@@ -420,6 +502,7 @@ const GroupSubscription = props => {
                 setPaymentSuccess(false);
                 setPayingPlayers([]);
                 setStatus("");
+                setNotice();
                 initFlowbite();
               }}
               disabled={!paymentSuccess()}

@@ -1,4 +1,4 @@
-import { useParams } from "@solidjs/router";
+import { A, useParams, useSearchParams } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
 import { Icon } from "solid-heroicons";
 import { heart, inboxStack } from "solid-heroicons/solid";
@@ -8,8 +8,11 @@ import { minAge, minAgeWarning } from "../../constants";
 import {
   fetchCurrentSeason,
   fetchPlayerById,
+  fetchRegistrationStatus,
   fetchSeasonPlans
 } from "../../queries";
+import { isSafeReturn, parseReturn } from "../../returnPath";
+import { useStore } from "../../store";
 import { displayDate, getAge } from "../../utils";
 import Error from "../alerts/Error";
 import Info from "../alerts/Info";
@@ -20,6 +23,16 @@ import GroupSubscription from "./GroupSubscription";
 import ServiceRequestModal from "./ServiceRequestModal";
 import TierPicker from "./TierPicker";
 
+// After paying, back to the team registration page that sent them here.
+const BackToTeam = props => (
+  <A
+    href={props.href}
+    class="mt-4 inline-flex min-h-[44px] items-center rounded-lg bg-blue-700 px-5 text-sm font-semibold text-white hover:bg-blue-800 focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus-visible:ring-blue-800"
+  >
+    Back to your team's registration
+  </A>
+);
+
 const Subscription = () => {
   const [player, setPlayer] = createSignal();
   const [subscription, setSubscription] = createSignal();
@@ -27,13 +40,46 @@ const Subscription = () => {
   const [ageRestricted, setAgeRestricted] = createSignal(false);
 
   const [status, setStatus] = createSignal();
-  const [activeTab, setActiveTab] = createSignal("individual");
-
   const params = useParams();
+  const [searchParams] = useSearchParams();
+  const [store] = useStore();
+  // /subscription/group has no player in the path: it's for the signed-in
+  // person's own player, as the dashboard link is.
+  const playerId = () => params.playerId ?? store.data.player?.id;
+
+  const [activeTab, setActiveTab] = createSignal(
+    searchParams.tab || (params.playerId ? "individual" : "group")
+  );
+  // Set when a team registration page sent them here to buy what's missing.
+  const returnTo = () =>
+    isSafeReturn(searchParams.return) ? searchParams.return : null;
+  const [paid, setPaid] = createSignal(false);
+
+  // The banner names the team and tournament from the server, never from
+  // the link, so a crafted link can't put words on the page.
+  const registrationQuery = createQuery(
+    () => ["registration-status", parseReturn(returnTo())],
+    () => fetchRegistrationStatus(parseReturn(returnTo())),
+    {
+      get enabled() {
+        return Boolean(parseReturn(returnTo()));
+      },
+      retry: false
+    }
+  );
+  const forTeam = () => {
+    const data = registrationQuery.data;
+    return data ? `For ${data.team.name} · ${data.event.title} — ` : "";
+  };
 
   const playerQuery = createQuery(
-    () => ["player", params.playerId],
-    () => fetchPlayerById(Number(params.playerId))
+    () => ["player", playerId()],
+    () => fetchPlayerById(Number(playerId())),
+    {
+      get enabled() {
+        return Boolean(playerId());
+      }
+    }
   );
 
   createEffect(() => {
@@ -149,6 +195,32 @@ const Subscription = () => {
           {displayDate(season().start_date)} to {displayDate(season().end_date)}
         </p>
 
+        <Show when={returnTo()}>
+          <div class="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-100">
+            <Show
+              when={forTeam()}
+              fallback={
+                searchParams.players
+                  ? `These players need a ${
+                      season().name
+                    } subscription to be rostered for your team.`
+                  : `${
+                      player()?.full_name ?? "This player"
+                    } needs this tier to be rostered for your team.`
+              }
+            >
+              {forTeam()}
+              {searchParams.players
+                ? `these players need a ${
+                    season().name
+                  } subscription to be rostered.`
+                : `${
+                    player()?.full_name ?? "this player"
+                  } needs this tier to be rostered.`}
+            </Show>
+          </div>
+        </Show>
+
         <PillTabs
           tabs={[
             { id: "individual", label: "Individual Subscription" },
@@ -204,15 +276,20 @@ const Subscription = () => {
                     ? subscription()?.tier
                     : null
                 }
+                tier={searchParams.tier}
                 disabled={ageRestricted()}
                 setStatus={setStatus}
                 onPaid={() => {
+                  setPaid(true);
                   playerQuery.refetch();
                   plansQuery.refetch();
                 }}
               />
             </Show>
             <p class="mt-2 text-sm">{status()}</p>
+            <Show when={paid() && returnTo()}>
+              <BackToTeam href={returnTo()} />
+            </Show>
 
             {/* Open to anyone: a request can cover this person, others, or
                 both, whatever they hold now. */}
@@ -262,10 +339,22 @@ const Subscription = () => {
 
             <GroupSubscription
               season={season()}
+              preselect={{
+                players: searchParams.players,
+                tiers: searchParams.tiers
+              }}
               successCallback={() => {
+                setPaid(true);
                 playerQuery.refetch();
               }}
             />
+            <Show when={paid() && returnTo()}>
+              <p class="mt-4 text-sm text-gray-700 dark:text-gray-300">
+                Each player now needs to sign the waiver before they can be
+                rostered.
+              </p>
+              <BackToTeam href={returnTo()} />
+            </Show>
           </div>
         </Show>
       </Show>
