@@ -15,6 +15,7 @@ from django.apps import apps
 from django.conf import settings
 from django.test import Client
 from django.utils.timezone import now
+from selenium.webdriver.common.keys import Keys
 from seleniumbase import BaseCase
 
 from hub.settings import BASE_DIR
@@ -1093,3 +1094,67 @@ class TestIntegration(BaseCase):
         self.assert_attribute(pill, "aria-pressed", "false")
         self.refresh()
         self.assert_text("0", f"{pill} [data-testid='upvote-count']")
+
+        # A keyboard vote leaves focus on the pill, not lost with its row
+        self.execute_script(f"document.querySelector('{pill}').focus()")
+        self.find_element(pill).send_keys(Keys.ENTER)
+        self.assert_attribute(pill, "aria-pressed", "true")
+        self.sleep(1)  # past the refetch that follows the vote
+        self.assertEqual(
+            f"ticket-upvote-{ticket.id}",
+            self.execute_script("return document.activeElement.id"),
+        )
+
+    # Breaks if: the search box stops reaching the URL or the API, pages stop
+    # at 20, Back loses the page, or a long title makes a phone scroll sideways.
+    def test_searching_and_paging_the_help_center(self) -> None:
+        user = make_player("reader@example.com")
+        for n in range(25):
+            Ticket.objects.create(title=f"Ticket number {n}", description="-", created_by=user)
+        Ticket.objects.create(
+            title="Scores not updating " + "x" * 120, description="-", created_by=user
+        )
+
+        self.sign_in_as(user)
+        self.open(f"{APP_URL}/tickets")
+        self.assert_text("Showing 1\u201320 of 26", "#ticket-count")
+        self.click("#page-2")
+        self.assert_text("Showing 21\u201326 of 26", "#ticket-count")
+        self.assertIn("page=2", self.get_current_url())
+        self.go_back()
+        self.assert_attribute("#page-1", "aria-current", "page")
+
+        self.type("#ticket-search", "scores")
+        self.assert_text("Showing 1\u20131 of 1", "#ticket-count")
+        self.assertIn("q=scores", self.get_current_url())
+        self.assert_text_not_visible("Ticket number 3")
+
+        # The long title is on screen here, so these are the checks that count.
+        # The list clips what overflows it, so each row is checked as well as
+        # the page: clipped text never shows up as the page scrolling.
+        self.set_window_size(375, 812)
+        self.assertTrue(
+            self.execute_script("return document.documentElement.scrollWidth <= window.innerWidth")
+        )
+        self.assertTrue(
+            self.execute_script(
+                "return [...document.querySelectorAll('li')]"
+                ".every(li => li.scrollWidth <= li.clientWidth)"
+            )
+        )
+        self.set_window_size(1280, 900)
+
+        # Back from the first search returns to the list, not out of it
+        self.go_back()
+        self.assert_text("Showing 1\u201320 of 26", "#ticket-count")
+        self.assertNotIn("q=", self.get_current_url())
+
+        # A pause after a space keeps the space
+        self.type("#ticket-search", "ticket ")
+        self.sleep(1)
+        self.add_text("#ticket-search", "number")
+        self.assertEqual("ticket number", self.get_value("#ticket-search"))
+
+        self.open(f"{APP_URL}/tickets?category=Payment")
+        self.assert_element("#tickets-empty")
+        self.assertEqual("Payment", self.get_value("#filter-category"))
