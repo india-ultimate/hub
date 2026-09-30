@@ -619,6 +619,9 @@ class RazorpayTransactionPlayerInline(
     model = RazorpayTransactionPlayer
     extra = 0
     readonly_fields = ["refund_link"]
+    # Dropdowns here list every player and subscription, a query or more per
+    # option, per line: a team order timed out before it rendered.
+    raw_id_fields = ["player", "subscription"]
 
     def get_fields(self, request: HttpRequest, obj: Any = None) -> list[str]:
         fields = ["player", "plan", "amount", "subscription", "needs_review", "review_note"]
@@ -654,6 +657,7 @@ class RazorpayRefundInline(admin.TabularInline[RazorpayRefund, RazorpayTransacti
 class RazorpayTransactionAdmin(admin.ModelAdmin[RazorpayTransaction]):
     change_list_template = "admin/razorpay_transaction.html"
     search_fields = ["user__first_name"]
+    raw_id_fields = ["user"]
     inlines = [RazorpayTransactionPlayerInline, RazorpayRefundInline]
     list_display = [
         "get_name",
