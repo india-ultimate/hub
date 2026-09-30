@@ -1,6 +1,5 @@
 from typing import Any
 
-from django.conf import settings
 from django.db.models import QuerySet
 from django.http import HttpRequest
 from ninja import Router
@@ -23,13 +22,10 @@ from .schema import (
     SeriesTeamRosterSchema,
 )
 from .utils import (
-    can_invite_player_to_series_roster,
-    can_register_player_to_series_roster,
     change_series_role,
-    generate_invitation_token,
     get_details_from_invitation_token,
+    invite_to_series,
     register_player,
-    send_invitation_email,
 )
 
 router = Router()
@@ -221,44 +217,16 @@ def send_series_invitation(
     if role not in Role._value2member_map_:
         return 400, {"message": "Invalid role"}
 
-    can_invite, error = can_invite_player_to_series_roster(
-        series=series, team=team, player=to_player, role=role
-    )
-    if not can_invite and error:
-        return 400, error
-
-    can_register, error = can_register_player_to_series_roster(
-        series=series, team=team, player=to_player, role=role
-    )
-    if not can_register and error:
-        return 400, {"message": "Player has already registered with another team for this series"}
-
-    invitation = SeriesRosterInvitation(
-        series=series, from_user=request.user, to_player=to_player, team=team, role=role
-    )
-
-    if invitation_details.expires_on is not None:
-        invitation.expires_on = invitation_details.expires_on
-
-    invitation.save()
-
-    invitation_token = generate_invitation_token(invitation.id)
-
-    accept_invitation_link = (
-        f"{settings.EMAIL_INVITATION_BASE_URL}/invitation/accept?token={invitation_token}"
-    )
-    decline_invitation_link = (
-        f"{settings.EMAIL_INVITATION_BASE_URL}/invitation/decline?token={invitation_token}"
-    )
-
-    send_invitation_email(
-        from_user=request.user,
-        to_player=to_player,
-        team=team,
+    invitation, error = invite_to_series(
         series=series,
-        accept_invitation_link=accept_invitation_link,
-        decline_invitation_link=decline_invitation_link,
+        team=team,
+        player=to_player,
+        role=role,
+        by=request.user,
+        expires_on=invitation_details.expires_on,
     )
+    if error is not None or invitation is None:
+        return 400, error or {"message": "Couldn't invite player"}
 
     return 200, invitation
 

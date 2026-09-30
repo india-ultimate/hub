@@ -5,13 +5,14 @@ from collections import Counter
 from collections.abc import Callable
 from typing import Any, cast
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 
 from server.core.models import Player, Team, UCPerson, User
-from server.series.models import SeriesRegistration, is_playing_role
+from server.series.models import Role, SeriesRegistration, is_playing_role
+from server.subscription import eligibility
 from server.tournament.models import Event
 from server.types import message_response, validation_error_dict
 from server.utils import ordinal_suffix
@@ -2329,3 +2330,38 @@ def can_register_player_to_series_event(
                 }
 
     return True, None
+
+
+def roster_player(
+    event: Event,
+    team: Team,
+    player: Player,
+    *,
+    role: str | None = None,
+    is_playing: bool | None = None,
+) -> tuple[Registration | None, message_response | None]:
+    """Put someone on a team's roster for an event, if they may be."""
+    if event.series:
+        can_register, error = can_register_player_to_series_event(
+            event=event, team=team, player=player
+        )
+        if not can_register and error:
+            return None, error
+        # On a series event the spot follows the person's series role: staff
+        # are rostered non-playing and cannot be made playing here.
+        playing = is_playing_role(series_role(event, team, player) or Role.DEFAULT)
+    else:
+        playing = is_playing is not False
+
+    error = eligibility.check(player, event, is_playing=playing)
+    if error is not None:
+        return None, error
+
+    registration = Registration(event=event, team=team, player=player, is_playing=playing)
+    if role:
+        registration.role = role
+    try:
+        registration.save()
+    except IntegrityError:
+        return None, {"message": "Player already added to another team for this event"}
+    return registration, None

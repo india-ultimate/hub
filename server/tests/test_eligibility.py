@@ -268,6 +268,18 @@ class TestRosterEligibilityThroughTheApi(TestCase):
         self.assertEqual("Subscription missing", response.json()["message"])
         self.assertFalse(Registration.objects.filter(player=refunded).exists())
 
+    def test_a_player_fee_event_is_rostered_from_the_registration_page(self) -> None:
+        # Rostering here would skip paying the player fee.
+        Event.objects.filter(pk=self.one_off.pk).update(player_fee=100000)
+        nobody = self.member("nobody@example.com", None)
+        response = self.add(self.one_off, nobody, is_playing=True)
+        self.assertEqual(400, response.status_code)
+        self.assertIn("registration page", response.json()["message"])
+        self.assertFalse(Registration.objects.filter(player=nobody).exists())
+        Event.objects.filter(pk=self.one_off.pk).update(player_fee=0)
+        response = self.add(self.one_off, nobody, is_playing=True)
+        self.assertEqual(200, response.status_code, response.content)
+
     def test_editing_a_staff_entry_into_a_player_is_checked(self) -> None:
         self.one_off.is_subscription_needed = True
         self.one_off.save()
