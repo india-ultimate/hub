@@ -49,6 +49,15 @@ class Event(ExportModelOperationsMixin("event"), models.Model):  # type: ignore[
         default=0,
         help_text="Per-day late registration penalty for players, in paise.",
     )
+    # Where this tournament's registration fees are paid. None is India
+    # Ultimate's own account.
+    payment_account = models.ForeignKey(
+        "server.PaymentAccount",
+        on_delete=models.PROTECT,
+        related_name="events",
+        blank=True,
+        null=True,
+    )
     is_subscription_needed = models.BooleanField(default=False)
     tier = models.IntegerField(default=4)
 
