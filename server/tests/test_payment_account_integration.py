@@ -25,7 +25,7 @@ from server.tests import test_ui
 from server.tests.base import make_account
 from server.tests.localserver import APP_URL, running_test_server
 from server.tests.razorpay_checkout import complete_razorpay_test_payment
-from server.tournament.models import Event, Tournament
+from server.tournament.models import Event, Registration, Tournament
 from server.transaction.client.razorpay import client_for
 from server.transaction.models import RazorpayRefund, RazorpayTransaction
 from server.utils import today
@@ -113,29 +113,35 @@ class TestPaymentAccountIntegration(BaseCase):
             self.ours.order.fetch(order.order_id)
 
     def pay_team(self, button: str) -> RazorpayTransaction:
+        """Pay the team fee from the team's registration page."""
+        partial = button.startswith("Pay partial")
         self.sign_in_as(self.captain)
-        self.open(f"{APP_URL}/tournament/{self.event.slug}/register/")
-        self.assert_text("Fees for this tournament are paid to Test State Association")
+        self.open(f"{APP_URL}/tournament/{self.event.slug}/team/{self.team.slug}/registration")
+        self.assert_text(self.team.name, "h1")
         complete_razorpay_test_payment(self, f'button:contains("{button}")')
-        self.assert_text("Paid successfully", timeout=60)
+        if partial:
+            self.assert_text("Part of the team fee paid.", timeout=150)
+        else:
+            self.assert_text("Team fee paid.", timeout=150)
+            self.assert_text("Paid to Test State Association", timeout=30)
         return self.latest(
             RazorpayTransaction.TransactionTypeChoices.PARTIAL_TEAM_REGISTRATION
-            if button.startswith("Pay Partial")
+            if partial
             else RazorpayTransaction.TransactionTypeChoices.TEAM_REGISTRATION
         )
 
     # Flows ####################
 
     def test_a_team_fee_lands_in_the_states_account(self) -> None:
-        order = self.pay_team("Pay Full")
+        order = self.pay_team("Pay ₹1,000")
         self.assert_in_states_account(order)
         self.assertIn(self.team, self.tournament.teams.all())
 
     def test_partial_then_the_rest_both_land_in_the_states_account(self) -> None:
-        partial = self.pay_team("Pay Partial")
+        partial = self.pay_team("Pay partial ₹400")
         self.assert_in_states_account(partial)
-        # A team in partial_teams is offered the rest as "Pay Pending (₹…)".
-        rest = self.pay_team("Pay Pending")
+        # A part-paid team is offered the rest.
+        rest = self.pay_team("Pay ₹600")
         self.assert_in_states_account(rest)
         self.assertIn(self.team, self.tournament.teams.all())
 
@@ -143,19 +149,27 @@ class TestPaymentAccountIntegration(BaseCase):
         self.tournament.teams.add(self.team)
         friend = test_ui.make_player("friend@example.com", first="Ravi", last="M")
         self.sign_in_as(self.captain)
-        self.open(f"{APP_URL}/tournament/{self.event.slug}/team/{self.team.slug}/roster")
-        # With a fee, Add selects the player for the payment below the list.
-        self.type('input[placeholder="Player Name / Email"]', "Ravi")
-        self.click('button:contains("Search")')
-        self.click('//tr[contains(., "Ravi M")]//button[contains(., "Add")]')
-        complete_razorpay_test_payment(self, 'button:contains("Pay")')
-        self.assert_text("Paid successfully", timeout=60)
+        self.open(f"{APP_URL}/tournament/{self.event.slug}/team/{self.team.slug}/registration")
+        self.assert_text(self.team.name, "h1")
+        # With a fee, adding them readies them for the one checkout.
+        self.type("#registration-player-search", "Ravi")
+        self.click('//ul[@aria-label="Search results"]/li[contains(., "Ravi M")]//button')
+        ravi = '//ul[@aria-label="Roster"]/li[contains(., "Ravi M")]'
+        self.assert_text("Ready to pay", ravi, timeout=30)
+        complete_razorpay_test_payment(self, 'button:contains("Pay ₹200")')
+        self.assert_text("Payment received — 1 player rostered.", timeout=150)
+        self.assert_text("Rostered · paid", ravi, timeout=30)
         order = self.latest(RazorpayTransaction.TransactionTypeChoices.PLAYER_REGISTRATION)
         self.assert_in_states_account(order)
         self.assertIn(friend.player_profile, order.players.all())
+        self.assertTrue(
+            Registration.objects.filter(
+                event=self.event, team=self.team, player=friend.player_profile
+            ).exists()
+        )
 
     def test_a_staff_refund_goes_back_through_the_states_account(self) -> None:
-        order = self.pay_team("Pay Full")
+        order = self.pay_team("Pay ₹1,000")
         subscription_flows.make_staff("refunder@example.com", *subscription_flows.REFUND_PERMS)
         self.admin_sign_in("refunder@example.com", "staff-pass")
         self.refund_in_admin(order.order_id, "Refund what is left of this order", "₹1,000")
@@ -208,7 +222,7 @@ class TestPaymentAccountIntegration(BaseCase):
         self.assertEqual(COMPLETED, order.status)
 
     def test_the_sync_records_a_refund_made_in_the_states_dashboard(self) -> None:
-        order = self.pay_team("Pay Full")
+        order = self.pay_team("Pay ₹1,000")
         self.state.payment.refund(order.payment_id, {"amount": 10000})
         call_command("sync_razorpay_transactions", "--no-email")
         refund = RazorpayRefund.objects.get(transaction=order)
@@ -216,7 +230,7 @@ class TestPaymentAccountIntegration(BaseCase):
         self.assertEqual(10000, refund.amount)
 
     def test_the_state_sees_its_payments_and_no_one_else_does(self) -> None:
-        self.pay_team("Pay Full")
+        self.pay_team("Pay ₹1,000")
         viewer = User.objects.create_user("state@example.com", "state@example.com", "pw")
         self.account.viewers.add(viewer)
         self.sign_in_as(viewer)

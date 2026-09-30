@@ -3,7 +3,7 @@ import { Icon } from "solid-heroicons";
 import { check } from "solid-heroicons/solid";
 import { children, Show } from "solid-js";
 
-// One numbered step. Done steps collapse to their title line; the current
+// One numbered step. Done steps collapse to their title line on phones; the current
 // one is outlined in blue; locked ones still show their contents.
 const Step = props => {
   const done = () => props.step.state === "done";
@@ -58,8 +58,15 @@ const Step = props => {
           </Show>
         </div>
       </div>
-      <Show when={content() && !done()}>
-        <div class="space-y-3 px-3 pb-3 sm:pl-[3.25rem]">{content()}</div>
+      <Show when={content()}>
+        <div
+          class={clsx(
+            "space-y-3 px-3 pb-3 sm:pl-[3.25rem]",
+            done() && "hidden sm:block"
+          )}
+        >
+          {content()}
+        </div>
       </Show>
     </section>
   );

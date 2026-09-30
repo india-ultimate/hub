@@ -14,10 +14,13 @@ const ActionButton = props => (
     fallback={
       <button
         type="button"
-        class={button}
-        onClick={() => props.onOp?.(props.action.op)}
+        class={clsx(button, props.busy && "cursor-not-allowed opacity-[0.45]")}
+        aria-disabled={props.busy ? "true" : undefined}
+        onClick={() => !props.busy && props.onOp?.(props.action.op)}
       >
-        {props.action.label}
+        <Show when={props.busy} fallback={props.action.label}>
+          Working…
+        </Show>
       </button>
     }
   >
@@ -52,7 +55,13 @@ const Callout = props => {
       <Show when={actions().length}>
         <div class="flex flex-wrap gap-2">
           <For each={actions()}>
-            {action => <ActionButton action={action} onOp={props.onOp} />}
+            {action => (
+              <ActionButton
+                action={action}
+                onOp={props.onOp}
+                busy={action.op && [props.busyOp].flat().includes(action.op)}
+              />
+            )}
           </For>
         </div>
       </Show>

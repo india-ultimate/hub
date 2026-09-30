@@ -92,10 +92,18 @@ const RosterRow = props => {
           fallback={
             <button
               type="button"
-              class={link}
-              onClick={() => props.onOp?.(s().action.op, player().id)}
+              class={clsx(
+                link,
+                props.busy && "cursor-not-allowed opacity-[0.45]"
+              )}
+              aria-disabled={props.busy ? "true" : undefined}
+              onClick={() =>
+                !props.busy && props.onOp?.(s().action.op, player().id)
+              }
             >
-              {label()}
+              <Show when={props.busy} fallback={label()}>
+                Working…
+              </Show>
             </button>
           }
         >

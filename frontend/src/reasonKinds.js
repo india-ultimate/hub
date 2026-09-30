@@ -63,3 +63,7 @@ export const kindOf = kind => KINDS[kind] ?? KINDS.timing;
 export const actionBase =
   "inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg border border-blue-200 bg-white px-4 text-sm font-semibold text-blue-700 focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-200 motion-reduce:transition-none dark:border-blue-800 dark:bg-gray-800 dark:text-blue-300 dark:focus-visible:ring-blue-800";
 export const actionHover = "hover:bg-blue-50 dark:hover:bg-gray-700";
+
+// Paise as whole rupees, Indian grouping: 1000000 -> "₹10,000".
+export const inr = paise =>
+  `₹${(paise / 100).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
