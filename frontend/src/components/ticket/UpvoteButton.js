@@ -2,7 +2,7 @@ import { createMutation, useQueryClient } from "@tanstack/solid-query";
 import clsx from "clsx";
 import { Icon } from "solid-heroicons";
 import { chevronUp } from "solid-heroicons/solid";
-import { createSignal, Show } from "solid-js";
+import { createEffect, createSignal, on, Show } from "solid-js";
 
 import { setTicketUpvote } from "../../queries";
 
@@ -35,9 +35,17 @@ const UpvoteButton = props => {
       ? "Private tickets can't be upvoted"
       : "";
 
+  // A list row keeps its button when paging shows another ticket in it
+  createEffect(
+    on(
+      () => props.ticket.id,
+      () => setError(""),
+      { defer: true }
+    )
+  );
+
   // Every list, suggestion and detail copy of this ticket, so all agree
-  const apply = upvoted => {
-    const id = props.ticket.id;
+  const apply = (id, upvoted) => {
     queryClient.setQueriesData(
       ["tickets"],
       page =>
@@ -53,19 +61,21 @@ const UpvoteButton = props => {
   };
 
   const mutation = createMutation({
-    mutationFn: upvoted => setTicketUpvote(props.ticket.id, upvoted),
-    onMutate: upvoted => {
+    // The id travels with the vote: by the time it settles, this button may
+    // be showing another ticket
+    mutationFn: ({ id, upvoted }) => setTicketUpvote(id, upvoted),
+    onMutate: ({ id, upvoted }) => {
       setError("");
-      apply(upvoted);
+      apply(id, upvoted);
     },
-    onError: (err, upvoted) => {
-      apply(!upvoted);
+    onError: (err, { id, upvoted }) => {
+      apply(id, !upvoted);
       setError(err.message || "Couldn't save your upvote");
     },
-    onSettled: () => {
-      saving.delete(props.ticket.id);
+    onSettled: (data, err, { id }) => {
+      saving.delete(id);
       queryClient.invalidateQueries(["tickets"]);
-      queryClient.invalidateQueries(["ticket", String(props.ticket.id)]);
+      queryClient.invalidateQueries(["ticket", String(id)]);
     }
   });
 
@@ -74,7 +84,10 @@ const UpvoteButton = props => {
     e.stopPropagation();
     if (blocked() || saving.has(props.ticket.id)) return;
     saving.add(props.ticket.id);
-    mutation.mutate(!props.ticket.has_upvoted);
+    mutation.mutate({
+      id: props.ticket.id,
+      upvoted: !props.ticket.has_upvoted
+    });
   };
 
   return (
