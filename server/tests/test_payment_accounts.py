@@ -3,6 +3,7 @@
 import datetime
 import hashlib
 import hmac
+import json
 from typing import Any
 from unittest import mock
 
@@ -12,7 +13,7 @@ from django.test import TestCase, override_settings
 from razorpay.resources.order import Order
 
 from server.core.models import Team
-from server.payment_account.models import SecretsUnavailable
+from server.payment_account.models import PaymentAccount, SecretsUnavailable
 from server.tests.base import ApiBaseTestCase, fake_id, make_account
 from server.tests.test_subscription_model import make_player
 from server.tournament.models import Event, Tournament
@@ -243,3 +244,81 @@ class TestRoutedCallback(RoutedTestCase):
 
     def test_an_unknown_order_is_not_found(self) -> None:
         self.assertEqual(404, self.callback("order_nothere", "state-secret").status_code)
+
+
+def unpaid_order(
+    account: PaymentAccount | None, event: Event, team: Team, user: Any
+) -> RazorpayTransaction:
+    return RazorpayTransaction.objects.create(
+        order_id=f"order_{fake_id(14)}",
+        amount=TEAM_FEE,
+        currency="INR",
+        status="created",
+        user=user,
+        event=event,
+        team=team,
+        type=RazorpayTransaction.TransactionTypeChoices.TEAM_REGISTRATION,
+        account=account,
+    )
+
+
+@override_settings(RAZORPAY_WEBHOOK_SECRET="our-hook")  # noqa: S106
+class TestAccountWebhooks(RoutedTestCase):
+    def deliver(self, url: str, order: RazorpayTransaction, secret: str) -> None:
+        body = json.dumps(
+            {
+                "event": "payment.captured",
+                "payload": {
+                    "payment": {"entity": {"id": f"pay_{fake_id(14)}", "order_id": order.order_id}}
+                },
+            }
+        )
+        response = self.client.post(
+            url,
+            data=body,
+            content_type="application/json",
+            HTTP_X_RAZORPAY_SIGNATURE=signature(secret, body),
+        )
+        self.assertEqual(200, response.status_code, response.content)
+        order.refresh_from_db()
+
+    def test_a_states_webhook_settles_its_own_order(self) -> None:
+        order = unpaid_order(self.account, self.event, self.team, self.user)
+        self.deliver("/api/transactions/razorpay/webhook/karnataka", order, "state-hook")
+        self.assertEqual("completed", order.status)
+        self.assertIn(self.team, self.tournament.teams.all())
+
+    def test_an_inactive_accounts_webhook_still_settles(self) -> None:
+        # Deactivated after the tournament: a late capture still counts.
+        self.account.is_active = False
+        self.account.save()
+        order = unpaid_order(self.account, self.event, self.team, self.user)
+        self.deliver("/api/transactions/razorpay/webhook/karnataka", order, "state-hook")
+        self.assertEqual("completed", order.status)
+
+    def test_a_states_webhook_cannot_settle_our_order(self) -> None:
+        order = unpaid_order(None, self.event, self.team, self.user)
+        self.deliver("/api/transactions/razorpay/webhook/karnataka", order, "state-hook")
+        self.assertEqual("created", order.status)
+
+    def test_our_secret_is_refused_on_a_states_url(self) -> None:
+        order = unpaid_order(self.account, self.event, self.team, self.user)
+        self.deliver("/api/transactions/razorpay/webhook/karnataka", order, "our-hook")
+        self.assertEqual("created", order.status)
+
+    def test_our_url_cannot_settle_a_states_order(self) -> None:
+        order = unpaid_order(self.account, self.event, self.team, self.user)
+        self.deliver("/api/transactions/razorpay/webhook", order, "our-hook")
+        self.assertEqual("created", order.status)
+
+    def test_without_a_webhook_secret_nothing_is_accepted(self) -> None:
+        self.account.webhook_secret = ""
+        self.account.save()
+        order = unpaid_order(self.account, self.event, self.team, self.user)
+        self.deliver("/api/transactions/razorpay/webhook/karnataka", order, "")
+        self.assertEqual("created", order.status)
+
+    def test_an_unknown_slug_is_refused(self) -> None:
+        order = unpaid_order(self.account, self.event, self.team, self.user)
+        self.deliver("/api/transactions/razorpay/webhook/nowhere", order, "state-hook")
+        self.assertEqual("created", order.status)
