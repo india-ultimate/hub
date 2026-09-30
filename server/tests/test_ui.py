@@ -1032,7 +1032,7 @@ class TestIntegration(BaseCase):
         self.open(f"{APP_URL}/tickets/new")
         self.type("input#title", "My new address")
         self.type("textarea#description", "Please change it to ...")
-        self.click("input#is_private")
+        self.click("label[for='is_private']")
         self.click('button[type="submit"]')
         self.assert_attribute("#privacy-switch", "aria-checked", "true")
         self.assert_element("#private-badge")
@@ -1043,6 +1043,12 @@ class TestIntegration(BaseCase):
         self.open(f"{APP_URL}/tickets")
         self.assert_text("Scores not updating")
         self.assert_text_not_visible("My new address")
+        self.type("#ticket-search", "address")
+        self.assert_element("#tickets-empty")
+        self.open(f"{APP_URL}/tickets/new")
+        self.type("#title", "My new address please")
+        self.sleep(1)  # past the suggestions' 400ms debounce
+        self.assert_element_absent("#ticket-suggestions")
 
     # Breaks if: the upvote button stops reaching the API, stops showing the
     # count it gets back, or lets someone upvote their own ticket.
@@ -1205,3 +1211,30 @@ class TestIntegration(BaseCase):
         self.assertTrue(
             self.execute_script("return document.documentElement.scrollWidth <= window.innerWidth")
         )
+
+    # Breaks if: suggestions stop following the title, stop including resolved
+    # tickets, or stop hiding while the ticket being written is private.
+    def test_similar_tickets_while_writing_one(self) -> None:
+        asker = make_player("asker@example.com")
+        writer = make_player("writer@example.com", first="Asha")
+        Ticket.objects.create(
+            title="Live scores stuck after half time",
+            description="-",
+            created_by=asker,
+            status=Ticket.Status.RESOLVED,
+        )
+
+        self.sign_in_as(writer)
+        self.open(f"{APP_URL}/tickets/new")
+        # The menu shows the form's default, not its first option
+        self.assertEqual("MED", self.get_value("#priority"))
+        # Nothing to match on, so nothing is suggested
+        self.type("#title", "How do I get")
+        self.sleep(1)
+        self.assert_element_absent("#ticket-suggestions")
+        self.type("#title", "live scores")
+        self.assert_text("Live scores stuck after half time", "#ticket-suggestions")
+        self.assert_text("Resolved", "#ticket-suggestions")
+
+        self.click("label[for='is_private']")
+        self.assert_element_absent("#ticket-suggestions")
