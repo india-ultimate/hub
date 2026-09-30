@@ -1,3 +1,4 @@
+import logging
 import time
 from typing import Any
 
@@ -7,6 +8,7 @@ from django.db import transaction as db_transaction
 from django.db.models import Model, Q, QuerySet
 
 from server.core.models import Player, Team, User
+from server.payment_account.models import PaymentAccount
 from server.season.models import Season
 from server.series.models import Role, is_playing_role
 from server.subscription import catalog, eligibility
@@ -31,6 +33,10 @@ from .schema import (
     SubscriptionOrderSchema,
     TeamRegistrationSchema,
 )
+
+logger = logging.getLogger(__name__)
+
+NOT_SET_UP = "Payments for this tournament aren't set up yet. Please contact the organisers."
 
 
 class ValidationError(Exception):
@@ -103,6 +109,9 @@ def create_transaction(
     user = request.user
     ts = round(time.time())
     lines: list[tuple[Player, Quote]] = []
+    # Where the money goes: a registration pays the event's account, if it
+    # has one. Subscriptions are always ours.
+    account: PaymentAccount | None = None
 
     if isinstance(order, PlayerRegistrationSchema):
         players = Player.objects.filter(id__in=order.player_ids)
@@ -156,6 +165,7 @@ def create_transaction(
             tournament = Tournament.objects.get(event=event)
         except Tournament.DoesNotExist:
             return 400, {"message": "Tournament does not exist"}
+        account = event.payment_account
 
         if order.partial:
             partial_end = (
@@ -219,6 +229,7 @@ def create_transaction(
             tournament = Tournament.objects.get(event=event)
         except (Event.DoesNotExist, Team.DoesNotExist, Tournament.DoesNotExist):
             return 400, {"message": "Team/Event/Tournament does not exist"}
+        account = event.payment_account
 
         if not is_today_in_between_dates(
             from_date=tournament.event.player_registration_start_date,
@@ -295,7 +306,12 @@ def create_transaction(
         # NOTE: We should never be here, thanks to request validation!
         pass
 
-    data = razorpay.create_order(amount, receipt=receipt, notes=notes)
+    if account is not None and not account.is_ready():
+        # Never fall back to our account: the money would land in the wrong place.
+        logger.error("Payment account %s can't take orders for event %s", account.slug, event)
+        return 400, {"message": NOT_SET_UP}
+
+    data = razorpay.create_order(amount, receipt=receipt, notes=notes, account=account)
     if data is None:
         return 502, "Failed to connect to Razorpay."
 
@@ -304,6 +320,8 @@ def create_transaction(
             "start_date": start_date,
             "end_date": end_date,
             "user": user,
+            "account": account,
+            "notes": notes,
             # Subscription lines are written below, each with what it bought.
             "players": players if isinstance(order, PlayerRegistrationSchema) else [],
             "event": event,
@@ -341,7 +359,7 @@ def create_transaction(
         description = description[:250] + "..."
     data.update(
         {
-            "name": settings.APP_NAME,
+            "name": account.name if account else settings.APP_NAME,
             "image": settings.LOGO_URL,
             "description": description,
             "prefill": {"name": user.get_full_name(), "email": user.email, "contact": user.phone},

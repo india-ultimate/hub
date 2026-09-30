@@ -220,7 +220,7 @@ class TestOrderValidation(ApiBaseTestCase):
                 content_type="application/json",
             )
         self.assertEqual(response.status_code, 200)
-        create_order.assert_called_once_with(150000, receipt=mock.ANY, notes=mock.ANY)
+        create_order.assert_called_once_with(150000, receipt=mock.ANY, notes=mock.ANY, account=None)
 
     def test_the_discounted_tier_without_a_grant_is_refused(self) -> None:
         response = self.post_order([{"player_id": self.player.id, "plan_type": "discounted"}])
@@ -244,7 +244,9 @@ class TestOrderValidation(ApiBaseTestCase):
     def test_one_order_is_charged_the_plan_price_and_records_its_line(self) -> None:
         response = self.post_order([{"player_id": self.player.id, "plan_type": "regular"}], 75000)
         self.assertEqual(response.status_code, 200)
-        self.create_order.assert_called_once_with(75000, receipt=mock.ANY, notes=mock.ANY)
+        self.create_order.assert_called_once_with(
+            75000, receipt=mock.ANY, notes=mock.ANY, account=None
+        )
         transaction = RazorpayTransaction.objects.get(order_id=response.json()["order_id"])
         self.assertEqual(transaction.season, self.s26)
         self.assertEqual(transaction.start_date, self.s26.start_date)
@@ -273,7 +275,9 @@ class TestOrderValidation(ApiBaseTestCase):
             130000,
         )
         self.assertEqual(response.status_code, 200)
-        self.create_order.assert_called_once_with(130000, receipt=mock.ANY, notes=mock.ANY)
+        self.create_order.assert_called_once_with(
+            130000, receipt=mock.ANY, notes=mock.ANY, account=None
+        )
         lines = RazorpayTransactionPlayer.objects.filter(transaction_id=response.json()["order_id"])
         self.assertEqual(
             set(lines.values_list("player_id", "plan__type__slug", "amount")),
@@ -296,7 +300,9 @@ class TestOrderValidation(ApiBaseTestCase):
         )
         response = self.post_order([{"player_id": self.player.id, "plan_type": "patron"}], 125000)
         self.assertEqual(response.status_code, 200)
-        self.create_order.assert_called_once_with(125000, receipt=mock.ANY, notes=mock.ANY)
+        self.create_order.assert_called_once_with(
+            125000, receipt=mock.ANY, notes=mock.ANY, account=None
+        )
 
     def test_upgrades_are_bought_one_person_at_a_time(self) -> None:
         Subscription.objects.create(
