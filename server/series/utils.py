@@ -1,3 +1,4 @@
+import datetime
 from typing import cast
 
 from django.conf import settings
@@ -260,6 +261,46 @@ def send_invitation_email(
     to = to_player.user.email.strip().lower()
 
     mail.send_mail(subject, plain_message, from_email, [to], html_message=html_message)
+
+
+def invite_to_series(
+    *,
+    series: Series,
+    team: Team,
+    player: Player,
+    role: str,
+    by: User,
+    expires_on: datetime.date | None = None,
+) -> tuple[SeriesRosterInvitation | None, message_response | None]:
+    """Invite someone onto a team's series roster and email them the links."""
+    can_invite, error = can_invite_player_to_series_roster(
+        series=series, team=team, player=player, role=role
+    )
+    if not can_invite and error:
+        return None, error
+    can_register, error = can_register_player_to_series_roster(
+        series=series, team=team, player=player, role=role
+    )
+    if not can_register and error:
+        return None, {"message": "Player has already registered with another team for this series"}
+
+    invitation = SeriesRosterInvitation(
+        series=series, from_user=by, to_player=player, team=team, role=role
+    )
+    if expires_on is not None:
+        invitation.expires_on = expires_on
+    invitation.save()
+
+    token = generate_invitation_token(invitation.id)
+    send_invitation_email(
+        from_user=by,
+        to_player=player,
+        team=team,
+        series=series,
+        accept_invitation_link=f"{settings.EMAIL_INVITATION_BASE_URL}/invitation/accept?token={token}",
+        decline_invitation_link=f"{settings.EMAIL_INVITATION_BASE_URL}/invitation/decline?token={token}",
+    )
+    return invitation, None
 
 
 def send_invitation_acceptation_email(

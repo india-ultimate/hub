@@ -174,6 +174,7 @@ from server.tournament.utils import (
     parse_match_time,
     populate_fixtures,
     rerun_swiss_round,
+    roster_player,
     series_role,
     update_match_score_and_results,
     update_tournament_seeding,
@@ -1288,6 +1289,12 @@ def add_player_to_roster(
     except (Event.DoesNotExist, Team.DoesNotExist, Tournament.DoesNotExist):
         return 400, {"message": "Team/Event/Tournament does not exist"}
 
+    # Rostering here would skip paying the player fee.
+    if event.player_fee:
+        return 400, {
+            "message": "This tournament has a player fee — add players from the team's registration page."
+        }
+
     if not is_today_in_between_dates(
         from_date=tournament.event.player_registration_start_date,
         to_date=tournament.event.player_registration_end_date,
@@ -1311,35 +1318,15 @@ def add_player_to_roster(
     ):
         return 400, {"message": "Invalid role"}
 
-    if event.series:
-        can_register, error = can_register_player_to_series_event(
-            event=event, team=team, player=player
-        )
-        if not can_register and error:
-            return 400, error
-        # On a series event the spot follows the person's series role: staff
-        # are rostered non-playing and cannot be made playing here.
-        is_playing = is_playing_role(series_role(event, team, player) or Role.DEFAULT)
-    else:
-        is_playing = registration_details.is_playing is not False
-
-    subscription_error = eligibility.check(player, event, is_playing=is_playing)
-    if subscription_error is not None:
-        return 400, subscription_error
-
-    registration = Registration(
-        event=event,
-        team=team,
-        player=player,
-        is_playing=is_playing,
+    registration, error = roster_player(
+        event,
+        team,
+        player,
+        role=registration_details.role,
+        is_playing=registration_details.is_playing,
     )
-    if registration_details.role:
-        registration.role = registration_details.role
-    try:
-        registration.save()
-    except IntegrityError:
-        return 400, {"message": "Player already added to another team for this event"}
-
+    if error is not None or registration is None:
+        return 400, error or {"message": "Couldn't register player"}
     return 200, registration
 
 
