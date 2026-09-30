@@ -7,6 +7,8 @@ import razorpay
 from django.conf import settings
 from django.utils.timezone import now
 
+from server.payment_account.models import PaymentAccount, SecretsUnavailable
+
 from ..models import RazorpayTransaction
 from ..schema import RazorpayCallbackSchema
 
@@ -18,11 +20,19 @@ RAZORPAY_DESCRIPTION_MAX = 255
 logger = logging.getLogger(__name__)
 
 
+def client_for(account: PaymentAccount | None) -> razorpay.Client:
+    """India Ultimate's client for None, else one with the account's own keys."""
+    if account is None:
+        return CLIENT
+    return razorpay.Client(auth=(account.key_id, account.key_secret))
+
+
 def create_order(
     amount: int,
     currency: str = "INR",
     receipt: str | None = None,
     notes: dict[str, Any] | None = None,
+    account: PaymentAccount | None = None,
 ) -> dict[str, Any] | None:
     if receipt is None:
         receipt = str(uuid.uuid4())[:8]
@@ -34,12 +44,13 @@ def create_order(
         "notes": notes,
     }
     try:
-        response = CLIENT.order.create(data=data)
+        response = client_for(account).order.create(data=data)
     except Exception as e:
         logger.error("Failed to initiate Razorpay payment: %s", e)
         return None
 
-    response["key"] = settings.RAZORPAY_KEY_ID
+    # Checkout must open on the account the order was placed on.
+    response["key"] = account.key_id if account else settings.RAZORPAY_KEY_ID
     response["order_id"] = response["id"]
     return response
 
@@ -76,11 +87,16 @@ def get_refunds(since: datetime.datetime | None = None) -> list[dict[str, Any]]:
     return _all_since(CLIENT.refund, since)
 
 
-def verify_payment(payment_info: dict[str, str]) -> bool:
+def verify_payment(payment_info: dict[str, str], account: PaymentAccount | None = None) -> bool:
+    # Razorpay signs order_id|payment_id with the key secret of the account
+    # the order was placed on.
     try:
-        return CLIENT.utility.verify_payment_signature(payment_info)
+        return client_for(account).utility.verify_payment_signature(payment_info)
     except razorpay.errors.SignatureVerificationError as e:
         print(e)
+        return False
+    except SecretsUnavailable as error:
+        logger.error("Payment on %s can't be checked: %s", account, error)
         return False
 
 

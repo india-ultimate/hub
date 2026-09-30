@@ -622,7 +622,9 @@ class TestPayment(ApiBaseTestCase):
         player = self.player
         amount = 75000
         response = self.order([{"player_id": player.id, "plan_type": "regular"}], amount)
-        self.create_order.assert_called_once_with(amount, receipt=mock.ANY, notes=mock.ANY)
+        self.create_order.assert_called_once_with(
+            amount, receipt=mock.ANY, notes=mock.ANY, account=None
+        )
         self.assertEqual(200, response.status_code)
         order_data = response.json()
         self.assertIn("amount", order_data)
@@ -643,7 +645,9 @@ class TestPayment(ApiBaseTestCase):
         sponsorship.grant(player, self.on_sale)
         amount = 30000
         response = self.order([{"player_id": player.id, "plan_type": "discounted"}], amount)
-        self.create_order.assert_called_once_with(amount, receipt=mock.ANY, notes=mock.ANY)
+        self.create_order.assert_called_once_with(
+            amount, receipt=mock.ANY, notes=mock.ANY, account=None
+        )
         self.assertEqual(200, response.status_code)
         transaction = RazorpayTransaction.objects.get(order_id=response.json()["order_id"])
         self.assertEqual(amount, transaction.amount)
@@ -671,7 +675,9 @@ class TestPayment(ApiBaseTestCase):
         response = self.order(
             [{"player_id": id_, "plan_type": "regular"} for id_ in player_ids], amount
         )
-        self.create_order.assert_called_once_with(amount, receipt=mock.ANY, notes=mock.ANY)
+        self.create_order.assert_called_once_with(
+            amount, receipt=mock.ANY, notes=mock.ANY, account=None
+        )
         self.assertEqual(200, response.status_code)
         transaction = RazorpayTransaction.objects.get(order_id=response.json()["order_id"])
         self.assertEqual(self.user, transaction.user)

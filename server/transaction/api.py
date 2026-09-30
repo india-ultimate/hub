@@ -68,13 +68,16 @@ def create_razorpay_transaction(
 def handle_razorpay_callback(
     request: AuthenticatedHttpRequest, payment: RazorpayCallbackSchema
 ) -> tuple[int, QuerySet[Player] | message_response | str]:
-    authentic = razorpay.verify_payment(payment.dict())
-    if not authentic:
-        return 422, {"message": "We were unable to ascertain the authenticity of the payment."}
-
-    existing = RazorpayTransaction.objects.filter(order_id=payment.razorpay_order_id).first()
+    # The order first: its account's secret is what the signature is made with.
+    existing = (
+        RazorpayTransaction.objects.select_related("account")
+        .filter(order_id=payment.razorpay_order_id)
+        .first()
+    )
     if existing is None:
         return 404, {"message": "No order found."}
+    if not razorpay.verify_payment(payment.dict(), existing.account):
+        return 422, {"message": "We were unable to ascertain the authenticity of the payment."}
     # The same guard the webhook has. A double-clicked or replayed callback
     # must not run the handlers again: subscription fulfilment is idempotent,
     # but nothing promises the registration handlers are.

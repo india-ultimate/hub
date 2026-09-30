@@ -66,7 +66,7 @@ class TestPaymentFlows(ApiBaseTestCase):
                 "/api/transactions/razorpay", data=data, content_type="application/json"
             )
         self.assertEqual(200, response.status_code, response.content)
-        create_order.assert_called_once_with(amount, receipt=mock.ANY, notes=mock.ANY)
+        create_order.assert_called_once_with(amount, receipt=mock.ANY, notes=mock.ANY, account=None)
         return RazorpayTransaction.objects.get(order_id=response.json()["order_id"])
 
     def pay(self, order_id: str) -> None:
