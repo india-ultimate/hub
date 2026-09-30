@@ -1,6 +1,7 @@
 import csv
 from typing import Any
 
+from django import forms
 from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 from django.db.models import CharField, Q, QuerySet, Sum, Value
@@ -42,6 +43,7 @@ from server.election.models import (
     VoterVerification,
 )
 from server.forms.models import Form, FormResponse
+from server.payment_account.models import PaymentAccount, SecretsUnavailable, encrypt
 from server.receipts.models import Receipt
 from server.receipts.money import format_inr
 from server.season.models import Season
@@ -72,6 +74,7 @@ from server.tournament.models import (
     Tournament,
     TournamentField,
 )
+from server.transaction.client.razorpay import client_for
 from server.transaction.models import (
     ManualTransaction,
     PhonePeTransaction,
@@ -231,8 +234,137 @@ class TeamAdmin(admin.ModelAdmin[Team]):
         return str(obj)
 
 
+class PaymentAccountForm(forms.ModelForm):  # type: ignore[type-arg]
+    # Write-only: the stored secrets are never put back into the page.
+    new_key_secret = forms.CharField(
+        label="Key secret",
+        required=False,
+        widget=forms.PasswordInput,
+        help_text="Leave blank to keep the current secret.",
+    )
+    new_webhook_secret = forms.CharField(
+        label="Webhook secret",
+        required=False,
+        widget=forms.PasswordInput,
+        help_text="The secret typed into the webhook in the state's Razorpay dashboard. "
+        "Leave blank to keep the current one.",
+    )
+
+    class Meta:
+        model = PaymentAccount
+        fields = ["name", "slug", "key_id", "viewers", "is_active"]
+        help_texts = {
+            "key_id": "Rotating keys? Enter the new key ID and its secret together. "
+            "To move a state to a different Razorpay account, add a new payment account instead."
+        }
+
+    def clean(self) -> dict[str, Any]:
+        data = super().clean() or {}
+        if not self.instance.key_secret_encrypted and not data.get("new_key_secret"):
+            self.add_error("new_key_secret", "Required for a new account.")
+        elif "key_id" in self.changed_data and not data.get("new_key_secret"):
+            # The old secret belongs to the old key: every order would fail.
+            self.add_error("new_key_secret", "A new key ID needs its new key secret too.")
+        if data.get("new_key_secret") or data.get("new_webhook_secret"):
+            try:
+                encrypt("check")
+            except SecretsUnavailable:
+                # Refuse here: an unhandled error in save() would put the typed
+                # secret in front of Sentry.
+                raise forms.ValidationError(
+                    "This server can't encrypt secrets: "
+                    "PAYMENT_ACCOUNT_ENCRYPTION_KEY is missing or invalid."
+                ) from None
+        return data
+
+    def save(self, commit: bool = True) -> PaymentAccount:
+        account = super().save(commit=False)
+        if self.cleaned_data.get("new_key_secret"):
+            account.key_secret = self.cleaned_data["new_key_secret"]
+        if self.cleaned_data.get("new_webhook_secret"):
+            account.webhook_secret = self.cleaned_data["new_webhook_secret"]
+        if commit:
+            account.save()
+            self.save_m2m()
+        return account
+
+
+@admin.register(PaymentAccount)
+class PaymentAccountAdmin(admin.ModelAdmin[PaymentAccount]):
+    form = PaymentAccountForm
+    list_display = ["name", "slug", "mode", "is_active"]
+    search_fields = ["name", "slug"]
+    autocomplete_fields = ["viewers"]
+    readonly_fields = ["mode", "secrets", "webhook_path"]
+    actions = ["test_connection"]
+
+    @admin.display(description="Mode")
+    def mode(self, obj: PaymentAccount) -> str:
+        mode = "TEST MODE" if obj.is_test_mode else "LIVE"
+        if obj.keys_match_environment:
+            return mode
+        ours = "live" if obj.is_test_mode else "test"
+        return f"{mode} — does not match this server's {ours} keys"
+
+    @admin.display(description="Secrets")
+    def secrets(self, obj: PaymentAccount) -> str:
+        key = "set" if obj.key_secret_encrypted else "missing"
+        hook = "set" if obj.webhook_secret_encrypted else "missing"
+        return f"Key secret {key} · webhook secret {hook}"
+
+    @admin.display(description="Webhook")
+    def webhook_path(self, obj: PaymentAccount) -> str:
+        if not obj.slug:
+            return "Save first."
+        return format_html(
+            "In the state's Razorpay dashboard, add a webhook for this site's address "
+            "followed by <code>/api/transactions/razorpay/webhook/{}</code>, subscribed "
+            "to <code>payment.captured</code> and <code>order.paid</code>, with the "
+            "webhook secret entered here.",
+            obj.slug,
+        )
+
+    @admin.action(description="Test connection to Razorpay")
+    def test_connection(self, request: HttpRequest, queryset: QuerySet[PaymentAccount]) -> None:
+        for account in queryset:
+            try:
+                client_for(account).order.all({"count": 1})
+            except Exception as error:  # Razorpay's own message is what staff need
+                self.message_user(request, f"{account.name}: {error}", messages.ERROR)
+            else:
+                mode = "test mode" if account.is_test_mode else "live"
+                self.message_user(request, f"{account.name}: connected ({mode}).", messages.SUCCESS)
+
+
+class EventAdminForm(forms.ModelForm):  # type: ignore[type-arg]
+    class Meta:
+        model = Event
+        fields = "__all__"  # noqa: DJ007
+
+    def clean_payment_account(self) -> PaymentAccount | None:
+        chosen = self.cleaned_data.get("payment_account")
+        # Read the stored value from the database, not self.instance: an earlier
+        # validation of a form bound to this same instance (as in the tests) has
+        # already written its choice onto it. Within one validation, _post_clean
+        # only writes onto the instance after clean_<field> has run.
+        stored = Event.objects.filter(pk=self.instance.pk).values_list("payment_account", flat=True)
+        changed = self.instance.pk and stored.first() != (chosen.pk if chosen else None)
+        if (
+            changed
+            and RazorpayTransaction.objects.filter(
+                event=self.instance, status__in=RazorpayTransaction.SETTLED
+            ).exists()
+        ):
+            raise forms.ValidationError(
+                "Payments have already been taken for this event, "
+                "so where its fees go can't change."
+            )
+        return chosen
+
+
 @admin.register(Event)
 class EventAdmin(admin.ModelAdmin[Event]):
+    form = EventAdminForm
     search_fields = ["title"]
     list_display = ["title", "tier"]
 
@@ -530,15 +662,18 @@ class RazorpayTransactionAdmin(admin.ModelAdmin[RazorpayTransaction]):
         "amount",
         "payment_date",
         "status",
+        "account",
     ]
-    list_filter = ["status", "type", NeedsReviewFilter, "payment_date"]
+    list_filter = ["status", "type", NeedsReviewFilter, "payment_date", "account"]
     date_hierarchy = "payment_date"
     actions = [export_as_csv]
 
     def get_readonly_fields(self, request: HttpRequest, obj: Any = None) -> list[str]:
+        # The account is fixed when the order is placed, never changed after.
+        fixed = ["account", "notes"]
         if obj is not None and request.user.has_perm(REFUND_PERM):
-            return ["refund_order_link"]
-        return []
+            return [*fixed, "refund_order_link"]
+        return fixed
 
     @admin.display(description="Refund the whole order")
     def refund_order_link(self, obj: RazorpayTransaction) -> str:

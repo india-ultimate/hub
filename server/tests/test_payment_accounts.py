@@ -12,14 +12,17 @@ from cryptography.fernet import Fernet
 from django.conf import settings
 from django.core.management import call_command
 from django.core.management.base import CommandError
+from django.forms.models import model_to_dict
 from django.test import TestCase, override_settings
 from razorpay.resources.order import Order
 from razorpay.resources.payment import Payment
 
-from server.core.models import Team
+from server.admin import EventAdminForm
+from server.core.models import Team, User
 from server.payment_account.models import PaymentAccount, SecretsUnavailable
 from server.subscription.refunds import refund_order
 from server.tests.base import ApiBaseTestCase, fake_id, make_account
+from server.tests.test_subscription_admin import ADMIN_STORAGES
 from server.tests.test_subscription_model import make_player
 from server.tournament.models import Event, Tournament
 from server.transaction.models import RazorpayTransaction
@@ -412,3 +415,160 @@ class TestAccountRefunds(RoutedTestCase):
         self.assertEqual("pay_state0000000001", refund.call_args.args[1])
         order.refresh_from_db()
         self.assertEqual("refunded", order.status)
+
+
+ADD = "/admin/server/paymentaccount/add/"
+
+
+@override_settings(STORAGES=ADMIN_STORAGES)
+class TestPaymentAccountAdmin(TestCase):
+    def setUp(self) -> None:
+        self.staff = User.objects.create_superuser("staff@example.com", "staff@example.com", "pw")
+        self.client.force_login(self.staff)
+
+    def form(self, **changes: Any) -> dict[str, Any]:
+        return {
+            "name": "Karnataka Ultimate",
+            "slug": "karnataka",
+            "key_id": "rzp_test_state0000000001",
+            "is_active": "on",
+            "new_key_secret": "",
+            "new_webhook_secret": "",
+            **changes,
+        }
+
+    def test_a_new_account_needs_a_key_secret(self) -> None:
+        response = self.client.post(ADD, self.form())
+        self.assertEqual(200, response.status_code)
+        self.assertContains(response, "Required for a new account.")
+        self.assertFalse(PaymentAccount.objects.exists())
+
+    def test_secrets_are_write_only(self) -> None:
+        secrets = self.form(new_key_secret="s3cret", new_webhook_secret="h00k")  # noqa: S106
+        self.client.post(ADD, secrets)
+        account = PaymentAccount.objects.get()
+        page = self.client.get(f"/admin/server/paymentaccount/{account.pk}/change/")
+        self.assertNotContains(page, "s3cret")
+        self.assertNotContains(page, "h00k")
+        self.assertNotContains(page, account.key_secret_encrypted)
+        self.assertContains(page, "/api/transactions/razorpay/webhook/karnataka")
+        self.assertContains(page, "TEST MODE")
+
+    def test_the_mode_warns_when_it_does_not_match_the_server(self) -> None:
+        from django.contrib import admin
+
+        from server.admin import PaymentAccountAdmin
+
+        mode = PaymentAccountAdmin(PaymentAccount, admin.site).mode
+        test, live = make_account(), make_account(slug="live", key_id="rzp_live_abc")
+        with override_settings(RAZORPAY_KEY_ID="rzp_live_ours"):
+            self.assertEqual("TEST MODE — does not match this server's live keys", mode(test))
+            self.assertEqual("LIVE", mode(live))
+        with override_settings(RAZORPAY_KEY_ID="rzp_test_ours"):
+            self.assertEqual("LIVE — does not match this server's test keys", mode(live))
+            self.assertEqual("TEST MODE", mode(test))
+
+    def test_no_encryption_key_refuses_the_form_without_echoing_the_secret(self) -> None:
+        typed = self.form(new_key_secret="typed-secret-xyz")  # noqa: S106
+        with override_settings(PAYMENT_ACCOUNT_ENCRYPTION_KEY=""):
+            response = self.client.post(ADD, typed)
+        self.assertEqual(200, response.status_code)
+        self.assertContains(response, "This server can&#x27;t encrypt secrets")
+        self.assertNotContains(response, "typed-secret-xyz")
+        self.assertFalse(PaymentAccount.objects.exists())
+
+    def test_a_transactions_account_and_notes_are_read_only(self) -> None:
+        from django.contrib import admin
+        from django.test import RequestFactory
+
+        model_admin = admin.site._registry[RazorpayTransaction]
+        order = unpaid_order(
+            make_account(), open_event(), Team.objects.create(name="T"), self.staff
+        )
+        request = RequestFactory().get("/")
+        request.user = self.staff  # superuser: has the refund permission
+        with_perm = model_admin.get_readonly_fields(request, order)
+        self.assertTrue({"account", "notes", "refund_order_link"} <= set(with_perm))
+        request.user = User.objects.create_user(
+            "p@example.com", "p@example.com", "pw", is_staff=True
+        )
+        without = model_admin.get_readonly_fields(request, order)
+        self.assertTrue({"account", "notes"} <= set(without))
+        self.assertNotIn("refund_order_link", without)
+
+    def test_a_blank_secret_keeps_the_old_one(self) -> None:
+        account = make_account()
+        self.client.post(
+            f"/admin/server/paymentaccount/{account.pk}/change/", self.form(name="KUA")
+        )
+        account.refresh_from_db()
+        self.assertEqual("KUA", account.name)
+        self.assertEqual("state-secret", account.key_secret)
+        self.assertEqual("state-hook", account.webhook_secret)
+
+    def test_a_new_secret_replaces_the_old_one(self) -> None:
+        account = make_account()
+        self.client.post(
+            f"/admin/server/paymentaccount/{account.pk}/change/",
+            self.form(new_key_secret="rotated"),  # noqa: S106
+        )
+        account.refresh_from_db()
+        self.assertEqual("rotated", account.key_secret)
+
+    def test_a_new_key_id_needs_its_new_secret(self) -> None:
+        account = make_account()
+        response = self.client.post(
+            f"/admin/server/paymentaccount/{account.pk}/change/",
+            self.form(key_id="rzp_test_rotated00000001"),
+        )
+        self.assertContains(response, "A new key ID needs its new key secret too.")
+        account.refresh_from_db()
+        self.assertEqual("rzp_test_state0000000001", account.key_id)
+        self.assertEqual("state-secret", account.key_secret)
+
+    def test_a_new_key_id_and_secret_are_saved_together(self) -> None:
+        account = make_account()
+        self.client.post(
+            f"/admin/server/paymentaccount/{account.pk}/change/",
+            self.form(key_id="rzp_test_rotated00000001", new_key_secret="rotated"),  # noqa: S106
+        )
+        account.refresh_from_db()
+        self.assertEqual("rzp_test_rotated00000001", account.key_id)
+        self.assertEqual("rotated", account.key_secret)
+
+    def test_a_key_id_must_look_like_razorpays(self) -> None:
+        response = self.client.post(ADD, self.form(key_id="abc", new_key_secret="s"))  # noqa: S106
+        self.assertContains(response, "starts with rzp_test_ or rzp_live_")
+
+    def test_test_connection_reports_each_account(self) -> None:
+        good = make_account()
+        bad = make_account(slug="goa", name="Goa Ultimate", key_id="rzp_test_goa0000000001")
+
+        def answer(resource: Any, data: Any = None) -> dict[str, Any]:
+            if resource.client.auth[0] == bad.key_id:
+                raise RuntimeError("Authentication failed")
+            return {"count": 0, "items": []}
+
+        with mock.patch.object(Order, "all", autospec=True, side_effect=answer):
+            response = self.client.post(
+                "/admin/server/paymentaccount/",
+                {"action": "test_connection", "_selected_action": [good.pk, bad.pk]},
+                follow=True,
+            )
+        self.assertContains(response, "Karnataka Ultimate: connected")
+        self.assertContains(response, "Goa Ultimate: Authentication failed")
+
+
+class TestEventAccountLock(TestCase):
+    def test_the_account_is_locked_once_paid(self) -> None:
+        account, other = make_account(), make_account(slug="goa")
+        event = open_event(payment_account=account)
+        user = User.objects.create_user("payer@example.com", "payer@example.com", "pw")
+        order = unpaid_order(account, event, Team.objects.create(name="T"), user)
+        data = {**model_to_dict(event), "payment_account": other.pk}
+
+        self.assertTrue(EventAdminForm(data=data, instance=event).is_valid())
+        RazorpayTransaction.objects.filter(pk=order.pk).update(status="completed")
+        form = EventAdminForm(data=data, instance=event)
+        self.assertFalse(form.is_valid())
+        self.assertIn("payment_account", form.errors)
