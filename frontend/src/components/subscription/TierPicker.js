@@ -138,13 +138,18 @@ const TierPicker = props => {
 
   const [selected, setSelected] = createSignal();
 
-  // Start on the default tier, or the first one they can buy, and move off
-  // a tier that stops being buyable (after a purchase, say).
+  // Start on the tier a link asked for, else the default tier, else the
+  // first one they can buy, and move off a tier that stops being buyable
+  // (after a purchase, say).
   createEffect(() => {
     const buyable = lineup().filter(p => p.available_to_player);
     if (buyable.some(p => p.slug === selected())) return;
     setSelected(
-      (buyable.find(p => p.slug === defaultSlug()) ?? buyable[0])?.slug
+      (
+        buyable.find(p => p.slug === props.tier) ??
+        buyable.find(p => p.slug === defaultSlug()) ??
+        buyable[0]
+      )?.slug
     );
   });
 

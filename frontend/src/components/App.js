@@ -225,6 +225,10 @@ export default function App() {
                   <Route path="/contact-us" component={ContactUs} />
                   {/* Subscription, vaccination, waiver, etc. */}
                   <UserRoute
+                    path="/subscription/group"
+                    component={Subscription}
+                  />
+                  <UserRoute
                     path="/subscription/:playerId"
                     component={Subscription}
                     matchFilters={filters}
