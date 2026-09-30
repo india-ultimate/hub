@@ -50,6 +50,9 @@ const TournamentRules = lazy(() => import("./TournamentRules"));
 const TournamentSchedule = lazy(() => import("./TournamentSchedule"));
 const TournamentStandings = lazy(() => import("./TournamentStandings"));
 const TournamentLeaderboard = lazy(() => import("./tournament/Leaderboard"));
+const TeamRegistrationHome = lazy(() =>
+  import("./registration/TeamRegistrationHome")
+);
 const TournamentTeam = lazy(() => import("./TournamentTeam"));
 const Error404 = lazy(() => import("./Error404"));
 const CheckSubscriptions = lazy(() => import("./CheckSubscriptions"));
@@ -172,6 +175,10 @@ export default function App() {
                   <Route
                     path={"/tournament/:slug/rules"}
                     component={TournamentRules}
+                  />
+                  <UserRoute
+                    path="/tournament/:slug/team/:team_slug/registration"
+                    component={TeamRegistrationHome}
                   />
                   <Route
                     path={"/tournament/:tournament_slug/team/:team_slug"}

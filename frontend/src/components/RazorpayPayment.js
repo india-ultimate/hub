@@ -1,6 +1,7 @@
 import { createSignal, onMount, Show } from "solid-js";
 
 import { Spinner } from "../icons";
+import { openCheckout } from "../razorpay";
 import { useStore } from "../store";
 import { fetchUserData, getCookie } from "../utils";
 
@@ -51,63 +52,27 @@ const RazorpayPayment = props => {
         if (response.ok) {
           const data = await response.json();
 
-          const paymentObject = new window.Razorpay({
-            ...data,
-            handler: response => {
-              fetch("/api/transactions/razorpay/callback", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  "X-CSRFToken": getCookie("csrftoken")
-                },
-                body: JSON.stringify(response),
-                credentials: "same-origin"
-              }).then(async response => {
-                if (response.ok) {
-                  fetchUserData(userFetchSuccess, userFetchFailure);
-                  if (props.successCallback) {
-                    props.successCallback();
-                  }
-                  props.setStatus(
-                    <span class="text-green-500 dark:text-green-400">
-                      Payment successfully completed! 🎉
-                    </span>
-                  );
-                } else {
-                  if (response.status >= 400 && response.status < 500) {
-                    const error = await response.json();
-                    props.setStatus(`Error: ${error.message}`);
-                    if (props.failureCallback) {
-                      props.failureCallback(error.message);
-                    }
-                  } else {
-                    const body = await response.text();
-                    props.setStatus(
-                      `Error: ${response.statusText} (${response.status}) — ${body}`
-                    );
-                    if (props.failureCallback) {
-                      props.failureCallback(
-                        `${response.statusText} (${response.status}) — ${body}`
-                      );
-                    }
-                  }
-                }
-                setLoading(false);
-              });
-            }
-          });
-          paymentObject.on("payment.failed", response => {
-            props.setStatus(
-              `Error: ${response.error.code}: ${response.error.description}`
-            );
-            if (props.failureCallback) {
-              props.failureCallback(
-                `${response.error.code}: ${response.error.description}`
+          openCheckout(data, {
+            onSuccess: () => {
+              fetchUserData(userFetchSuccess, userFetchFailure);
+              if (props.successCallback) {
+                props.successCallback();
+              }
+              props.setStatus(
+                <span class="text-green-500 dark:text-green-400">
+                  Payment successfully completed! 🎉
+                </span>
               );
+              setLoading(false);
+            },
+            onFailure: message => {
+              props.setStatus(`Error: ${message}`);
+              if (props.failureCallback) {
+                props.failureCallback(message);
+              }
+              setLoading(false);
             }
-            setLoading(false);
           });
-          paymentObject.open();
 
           //   window.location = data.redirect_url;
         } else {

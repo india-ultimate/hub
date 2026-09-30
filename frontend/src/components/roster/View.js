@@ -6,7 +6,7 @@ import {
 } from "@tanstack/solid-query";
 import { Icon } from "solid-heroicons";
 import { star, trophy } from "solid-heroicons/solid";
-import { createEffect, createSignal, For, Match, Show, Switch } from "solid-js";
+import { createEffect, createSignal, For, Show } from "solid-js";
 
 import {
   fetchTeamBySlug,
@@ -27,7 +27,6 @@ import Warning from "../alerts/Warning";
 import Breadcrumbs from "../Breadcrumbs";
 import ErrorPopover from "../popover/ErrorPopover";
 import SuccessPopover from "../popover/SuccessPopover";
-import AddToRoster from "./AddToRoster";
 import Registration from "./Registration";
 
 const Roster = () => {
@@ -259,36 +258,32 @@ const Roster = () => {
         <div class="mt-6">
           <h4 class="mb-2 text-xl font-bold text-blue-500">Add to Roster</h4>
           <Show
-            when={isPlayerRegInProgress()}
-            fallback={<Info text="Player Registrations have closed!" />}
-          >
-            <Switch>
-              <Match when={!store.loggedIn}>
-                <Info text="You must be logged in to add/remove players from the roster!" />
-              </Match>
-              <Match
-                when={
-                  store.loggedIn &&
-                  (!teamQuery.data?.admins || !currentUserIsTeamAdmin())
-                }
+            when={store.loggedIn && currentUserIsTeamAdmin()}
+            fallback={
+              <Show
+                when={isPlayerRegInProgress()}
+                fallback={<Info text="Player Registrations have closed!" />}
               >
-                <Info text="You must be a team admin to perform rostering!" />
-              </Match>
-              <Match when={store.loggedIn && currentUserIsTeamAdmin()}>
-                <AddToRoster
-                  roster={rosterQuery.data}
-                  eventId={tournamentQuery.data.event.id}
-                  teamId={teamQuery.data.id}
-                  tournamentSlug={params.tournament_slug}
-                  teamSlug={params.team_slug}
-                  isPartOfSeries={
-                    tournamentQuery.data?.event?.series ? true : false
+                <Show
+                  when={store.loggedIn}
+                  fallback={
+                    <Info text="You must be logged in to add/remove players from the roster!" />
                   }
-                  playerFee={tournamentQuery.data?.event?.player_fee || 0}
-                  event={tournamentQuery.data?.event}
-                />
-              </Match>
-            </Switch>
+                >
+                  <Info text="You must be a team admin to perform rostering!" />
+                </Show>
+              </Show>
+            }
+          >
+            <p class="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-100">
+              Rostering has moved:{" "}
+              <A
+                href={`/tournament/${params.tournament_slug}/team/${params.team_slug}/registration`}
+                class="inline-flex min-h-[44px] items-center font-semibold text-blue-700 underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 dark:text-blue-300"
+              >
+                open the team's registration page
+              </A>
+            </p>
           </Show>
         </div>
         <div class="mt-4">

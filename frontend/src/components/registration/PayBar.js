@@ -1,7 +1,5 @@
+import { inr } from "../../reasonKinds";
 import ReasonButton from "./ReasonButton";
-
-const inr = paise =>
-  `₹${(paise / 100).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
 
 // Who paying now covers and what it costs. Sticky at the bottom on phones
 // (the page pads for it), inline at the end of the roster step otherwise.
@@ -29,7 +27,7 @@ const PayBar = props => {
       <ReasonButton
         label={`Pay ${inr(c().amount)}`}
         busy={props.busy}
-        busyLabel="Confirming payment…"
+        busyLabel={props.busyLabel || "Confirming payment…"}
         reason={props.disabledReason}
         onClick={props.onPay}
       />
