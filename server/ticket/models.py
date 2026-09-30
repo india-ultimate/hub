@@ -38,6 +38,8 @@ class Ticket(models.Model):
     category = models.CharField(
         max_length=100, choices=Category.choices, blank=True, null=True, default=Category.OTHER
     )
+    # Seen only by its creator and staff, for things not meant for everyone.
+    is_private = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

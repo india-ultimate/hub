@@ -8,6 +8,7 @@ class TicketCreateSchema(Schema):
     description: str
     priority: str = "MED"
     category: str | None = None
+    is_private: bool = False
 
 
 class TicketUpdateSchema(Schema):
@@ -17,6 +18,7 @@ class TicketUpdateSchema(Schema):
     priority: str | None = None
     category: str | None = None
     assigned_to_id: int | None = None
+    is_private: bool | None = None
 
 
 class UserSchema(Schema):
@@ -45,6 +47,7 @@ class TicketDetailSchema(Schema):
     status: str
     priority: str
     category: str | None
+    is_private: bool
     created_at: datetime
     updated_at: datetime
     created_by: UserSchema
@@ -58,6 +61,7 @@ class TicketListItemSchema(Schema):
     status: str
     priority: str
     category: str | None
+    is_private: bool
     created_at: datetime
     created_by: UserSchema
     assigned_to: UserSchema | None = None

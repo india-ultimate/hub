@@ -37,6 +37,7 @@ from server.task.models import Task
 from server.tests.localserver import APP_URL, DJANGO_URL, running_test_server
 from server.tests.razorpay_checkout import complete_razorpay_test_payment
 from server.tests.utils import create_empty_directory
+from server.ticket.models import Ticket
 from server.tournament.models import Event
 
 MAIL_DIR = BASE_DIR.joinpath("tmp")
@@ -1018,3 +1019,25 @@ class TestIntegration(BaseCase):
         self.assert_element("p#merge-finished")
         self.assert_element_absent(f"button#merge-send-code-{ravis.pk}")
         print("The other owner said no, and a request was cancelled!")
+
+    # Breaks if: the private box stops reaching the API, or a private ticket
+    # still shows in someone else's list.
+    def test_a_private_ticket_is_seen_only_by_its_creator(self) -> None:
+        creator = make_player("private@example.com")
+        other = make_player("other@example.com", first="Asha")
+        Ticket.objects.create(title="Scores not updating", description="-", created_by=other)
+
+        self.sign_in_as(creator)
+        self.open(f"{APP_URL}/tickets/new")
+        self.type("input#title", "My new address")
+        self.type("textarea#description", "Please change it to ...")
+        self.click("input#is_private")
+        self.click('button[type="submit"]')
+        self.assert_text("Make Public")
+        self.open(f"{APP_URL}/tickets")
+        self.assert_text("My new address")
+
+        self.sign_in_as(other)
+        self.open(f"{APP_URL}/tickets")
+        self.assert_text("Scores not updating")
+        self.assert_text_not_visible("My new address")
