@@ -249,7 +249,7 @@ const AddToRoster = componentProps => {
 
               <RazorpayPayment
                 disabled={selectedPlayers().length === 0}
-                event={{ id: componentProps.eventId }}
+                event={componentProps.event || { id: componentProps.eventId }}
                 team={{ id: componentProps.teamId }}
                 player_ids={selectedPlayers().map(p => p.id)}
                 amount={feePerPlayer * selectedPlayers().length}

@@ -2700,3 +2700,30 @@ export const clearTournamentAgentHistory = async tournamentId => {
   }
   return data;
 };
+
+const paymentAccountParams = ({ event, status, q, page }) => {
+  const params = new URLSearchParams();
+  if (event) params.set("event", String(event));
+  if (status) params.set("status", status);
+  if (q) params.set("q", q);
+  if (page > 1) params.set("page", String(page));
+  return params;
+};
+
+export const fetchPaymentAccountTransactions = async ({ slug, ...filters }) => {
+  const response = await fetch(
+    `/api/payment-accounts/${slug}/transactions?${paymentAccountParams(
+      filters
+    )}`,
+    { method: "GET", credentials: "same-origin" }
+  );
+  if (response.status === 404) throw new Error("not-found");
+  if (!response.ok) throw new Error("Payments could not be loaded");
+  return await response.json();
+};
+
+export const paymentAccountCsvUrl = ({ slug, ...filters }) =>
+  `/api/payment-accounts/${slug}/transactions.csv?${paymentAccountParams({
+    ...filters,
+    page: 1
+  })}`;

@@ -163,6 +163,12 @@ const RazorpayPayment = props => {
           </div>
         </Show>
       </button>
+      <Show when={props.event?.payment_account_name}>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+          Fees for this tournament are paid to{" "}
+          {props.event.payment_account_name}.
+        </p>
+      </Show>
     </>
   );
 };

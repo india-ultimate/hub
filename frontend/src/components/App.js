@@ -15,6 +15,7 @@ const AnnouncementDetail = lazy(() =>
   import("./announcement/AnnouncementDetail")
 );
 const Dashboard = lazy(() => import("./Dashboard"));
+const PaymentAccount = lazy(() => import("./payments/PaymentAccount"));
 const ReceiptPage = lazy(() => import("./receipts/ReceiptPage"));
 const Home = lazy(() => import("./Home"));
 const Login = lazy(() => import("./Login"));
@@ -127,6 +128,10 @@ export default function App() {
                   />
                   <UserRoute path="/dashboard" component={Dashboard} />
                   <UserRoute path="/receipts/:id" component={ReceiptPage} />
+                  <UserRoute
+                    path="/payments/:slug"
+                    component={PaymentAccount}
+                  />
                   {/* Login related routes */}
                   <Route path="/login" component={Login} />
                   <UserRoute path="/merge-accounts" component={MergeList} />
