@@ -379,3 +379,77 @@ class TestRegistrationIntegration(BaseCase):
         self.click('a:contains("Back to your team\'s registration")')
         self.assert_text(self.team.name, "h1")
         self.assertTrue(self.get_current_url().endswith(self.page))
+
+    def test_add_players_from_the_dialog_including_myself(self) -> None:
+        past = self.player("Pia", "Past", on_series=False, entry=False)
+        old = Event.objects.create(
+            title="Old Cup",
+            start_date=today() - datetime.timedelta(days=40),
+            end_date=today() - datetime.timedelta(days=38),
+            team_registration_start_date=today() - datetime.timedelta(days=80),
+            team_registration_end_date=today() - datetime.timedelta(days=60),
+            player_registration_start_date=today() - datetime.timedelta(days=80),
+            player_registration_end_date=today() - datetime.timedelta(days=60),
+        )
+        Registration.objects.create(event=old, team=self.team, player=past)
+        me = Player.objects.get(user=self.admin)
+        SeriesRegistration.objects.create(
+            series=self.series, team=self.team, player=me, role=Role.DEFAULT
+        )
+
+        self.sign_in_as(self.admin)
+        self.open_page()
+        self.click('button:contains("+ Add players")')
+        # The heading is uppercased on screen; its list carries the title.
+        past_group = f'{ADD_DIALOG}//ul[@aria-label="Played for Home Team before"]'
+        self.assert_text("Last: Old Cup", f'{past_group}/li[contains(., "Pia Past")]')
+        self.click(f'{ADD_DIALOG}//button[@aria-label="Add {me.user.get_full_name()}"]')
+        self.assert_text("✓ Added", ADD_DIALOG)
+        self.click(f'{ADD_DIALOG}//button[@aria-label="Invite Pia Past"]')
+        self.click(f'{ADD_DIALOG}//button[normalize-space()="Done"]')
+        self.assert_element('//ul[@aria-label="Not paid yet"]/li[contains(., "Pia Past")]')
+        self.assert_element('//ul[@aria-label="Not paid yet"]/li[contains(., "Asha Captain")]')
+        self.assertTrue(RosterEntry.objects.filter(event=self.event, player=me).exists())
+        self.assertFalse(SeriesRosterInvitation.objects.filter(to_player=me).exists())
+        self.assertTrue(SeriesRosterInvitation.objects.filter(to_player=past).exists())
+
+    def test_pay_then_swap(self) -> None:
+        ravi = self.player("Ravi", "Ready")
+        self.sign_in_as(self.admin)
+        self.open_page()
+        complete_razorpay_test_payment(self, 'button:contains("Pay ₹1,000")')
+        self.assert_text("Payment received — 1 player rostered.", timeout=PAID)
+        order = self.paid_order(PLAYER_FEE)
+        self.assert_rostered([ravi], order, PLAYER_FEE)
+        self.assert_element('//ul[@aria-label="Rostered and paid"]/li[contains(., "Ravi Ready")]')
+        self.assert_element_absent('//ul[@aria-label="Rostered and paid"]//button')
+
+        kiran = self.player("Kiran", "Extra")
+        self.open_page()
+        self.click('button:contains("Swap a player")')
+        dialog = '//dialog[@aria-label="Swap a player"]'
+        self.click(f'{dialog}//label[contains(., "Ravi Ready")]')
+        self.click(f'{dialog}//label[contains(., "Kiran Extra")]')
+        self.click(f'{dialog}//button[contains(., "Swap Ravi → Kiran")]')
+        self.assert_element(
+            '//ul[@aria-label="Rostered and paid"]/li[contains(., "Swapped in for Ravi Ready")]'
+        )
+        self.assert_element('//ul[@aria-label="Not paid yet"]/li[contains(., "Ravi Ready")]')
+        self.assertTrue(Registration.objects.filter(event=self.event, player=kiran).exists())
+        self.assertFalse(Registration.objects.filter(event=self.event, player=ravi).exists())
+
+    def test_home_card_and_tournament_page_lead_to_registration(self) -> None:
+        self.tournament.status = Tournament.Status.SCHEDULING
+        self.tournament.save()
+        self.sign_in_as(self.admin)
+
+        # One admin team: the registration list goes straight to its page.
+        self.open(APP_URL)
+        self.click(f'a[href="/tournament/{self.event.slug}/register"]')
+        self.assert_text(self.team.name, "h1")
+        self.assert_url_contains(self.page)
+
+        self.open(f"{APP_URL}/tournament/{self.event.slug}")
+        self.click('a:contains("Register your team")')
+        self.assert_text(self.team.name, "h1")
+        self.assert_url_contains(self.page)
