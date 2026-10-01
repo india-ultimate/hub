@@ -56,14 +56,20 @@ const AddPlayersDialog = props => {
   const count = () =>
     (results.data?.groups || []).reduce((n, g) => n + g.players.length, 0);
 
-  const act = async (player, undo) => {
+  const act = async (player, undo, mine) => {
     setBusy(player.id);
     setErrors(e => ({ ...e, [player.id]: null }));
     try {
       if (undo) await removeRosterEntry({ ...props.args, playerId: player.id });
       else await addRosterEntry({ ...props.args, playerId: player.id });
       setAdded(a => ({ ...a, [player.id]: !undo }));
-      props.announce(undo ? `Removed ${player.name}` : `Added ${player.name}`);
+      props.announce(
+        !undo
+          ? `Added ${player.name}`
+          : mine && props.series
+          ? "Removed you from this list — you stay on the series roster"
+          : `Removed ${player.name}`
+      );
       props.onChanged();
     } catch (e) {
       const message =
@@ -123,7 +129,9 @@ const AddPlayersDialog = props => {
                 type="button"
                 class={clsx(btn, "text-blue-700 underline dark:text-blue-400")}
                 aria-label={`Undo adding ${p().name}`}
-                onClick={() => busy() !== p().id && act(p(), true)}
+                onClick={() =>
+                  busy() !== p().id && act(p(), true, rowProps.mine)
+                }
               >
                 Undo
               </button>
@@ -246,6 +254,7 @@ const AddPlayersDialog = props => {
                 <Row
                   player={results.data.me}
                   title="Add myself"
+                  mine
                   class="border-t-0"
                 />
               </ul>

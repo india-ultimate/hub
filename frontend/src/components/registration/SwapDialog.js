@@ -12,10 +12,9 @@ const ROLES = {
   MNGR: "Manager"
 };
 const first = name => (name || "").split(" ")[0];
-// Ready rows can take a place; "Roster full" alone doesn't stop a swap,
-// since the roster stays the same size.
-const swappable = entry =>
-  entry.state.kind === "ready" || entry.state.code === "limit.total";
+// The server judges each row as a swap would: a full roster alone
+// doesn't stop one, since the roster stays the same size.
+const swappable = entry => entry.swap_state?.kind === "ready";
 const option =
   "flex min-h-[44px] cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm";
 const legend =
@@ -135,7 +134,7 @@ const SwapDialog = props => {
                     entry={e}
                     checked={into() === e.player.id}
                     disabled={!swappable(e)}
-                    hint={swappable(e) ? "Ready" : e.state.text}
+                    hint={swappable(e) ? "Ready" : e.swap_state?.text}
                     onPick={setInto}
                   />
                 )}

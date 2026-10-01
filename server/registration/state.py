@@ -436,10 +436,10 @@ def preview(ctx: Context, players: Iterable[Player]) -> dict[int, Reason]:
     return out
 
 
-def preview_swap(ctx: Context, out_player_id: int, in_player_id: int) -> Reason:
-    """Whether in can take out's paid place: judged with out already gone."""
-    out = next(r for r in ctx.paid if r.player_id == out_player_id)
-    entry = next(e for e in ctx.entries if e.player_id == in_player_id)
+def _swap_in_reason(
+    ctx: Context, entry: RosterEntry, out_player_id: int | None = None, *, total: bool = False
+) -> Reason:
+    """Whether this unpaid row could take a paid place, with out's gone."""
     early = _early_reason(ctx, entry)
     if early is not None:
         return early
@@ -450,8 +450,17 @@ def preview_swap(ctx: Context, out_player_id: int, in_player_id: int) -> Reason:
         hold = _open_hold(other)
         if other is not entry and hold is not None and _is_playing(ctx, other.player_id):
             _take(counts, other.player)
-    # The roster stays the same size, so only the gender caps apply.
-    reason = _unpaid_reason(ctx, entry, counts, None, total=False)
+    return _unpaid_reason(ctx, entry, counts, None, total=total)
+
+
+def preview_swap(ctx: Context, out_player_id: int, in_player_id: int) -> Reason:
+    """Whether in can take out's paid place: judged with out already gone."""
+    out = next(r for r in ctx.paid if r.player_id == out_player_id)
+    entry = next(e for e in ctx.entries if e.player_id == in_player_id)
+    # Same size roster, so only the gender caps apply, unless a player
+    # takes a staff member's place and the playing count grows.
+    grows = not out.is_playing and _is_playing(ctx, in_player_id)
+    reason = _swap_in_reason(ctx, entry, out_player_id, total=grows)
     series = ctx.event.series
     if reason.kind != "ready" or series is None or not out.is_playing:
         return reason
@@ -792,8 +801,17 @@ def status_payload(ctx: Context, page_path: str) -> dict[str, Any]:
             {"name": s.out_player.user.get_full_name(), "on": localdate(s.at, INDIA).isoformat()},
         )
 
+    # What the swap dialog offers each unpaid row: past a full roster,
+    # which a swap doesn't grow, to whatever else stands in the way.
+    swap_states = {
+        e.player_id: _swap_in_reason(ctx, e)
+        for e in ctx.entries
+        if reasons[e.player_id].kind != "done"
+    }
+
     def row(pid: int) -> dict[str, Any]:
         p = players[pid]
+        swap = swap_states.get(pid)
         state = reasons[pid].as_dict()
         if state["action"] and state["action"]["href"]:
             state["action"]["href"] = state["action"]["href"].replace("__RETURN__", page_path)
@@ -809,6 +827,7 @@ def status_payload(ctx: Context, page_path: str) -> dict[str, Any]:
             "state": state,
             "paid_on": paid_on.get(pid),
             "swapped_for": swapped_for.get(pid),
+            "swap_state": swap and {"code": swap.code, "kind": swap.kind, "text": swap.text},
         }
 
     return {
