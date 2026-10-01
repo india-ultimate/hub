@@ -152,13 +152,19 @@ class TestPaymentAccountIntegration(BaseCase):
         self.open(f"{APP_URL}/tournament/{self.event.slug}/team/{self.team.slug}/registration")
         self.assert_text(self.team.name, "h1")
         # With a fee, adding them readies them for the one checkout.
-        self.type("#registration-player-search", "Ravi")
-        self.click('//ul[@aria-label="Search results"]/li[contains(., "Ravi M")]//button')
-        ravi = '//ul[@aria-label="Roster"]/li[contains(., "Ravi M")]'
+        dialog = '//dialog[@aria-label="Add players"]'
+        self.click('button:contains("+ Add players")')
+        self.type("#add-players-search", "Ravi")
+        self.click(f'{dialog}//button[@aria-label="Add Ravi M"]')
+        self.assert_text("✓ Added", dialog)
+        self.click(f'{dialog}//button[normalize-space()="Done"]')
+        ravi = '//ul[@aria-label="Not paid yet"]/li[contains(., "Ravi M")]'
         self.assert_text("Ready to pay", ravi, timeout=30)
         complete_razorpay_test_payment(self, 'button:contains("Pay ₹200")')
         self.assert_text("Payment received — 1 player rostered.", timeout=150)
-        self.assert_text("Rostered · paid", ravi, timeout=30)
+        self.assert_element(
+            '//ul[@aria-label="Rostered and paid"]/li[contains(., "Ravi M")]', timeout=30
+        )
         order = self.latest(RazorpayTransaction.TransactionTypeChoices.PLAYER_REGISTRATION)
         self.assert_in_states_account(order)
         self.assertIn(friend.player_profile, order.players.all())
