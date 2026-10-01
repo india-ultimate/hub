@@ -5,7 +5,9 @@ from typing import Any
 from unittest import mock
 
 from django.core import mail
+from django.db import connection
 from django.test import Client, override_settings
+from django.test.utils import CaptureQueriesContext
 from django.utils.timezone import now
 from razorpay.resources.order import Order
 from razorpay.resources.payment import Payment
@@ -1032,3 +1034,49 @@ class TestSwap(ApiCase):
         unsubscribed = self.player("u@x.com", tier=None)
         rows = {r["player"]["id"]: r for r in self.status().json()["roster"]["entries"]}
         self.assertEqual("action.subscription", rows[unsubscribed.id]["swap_state"]["code"])
+
+    def test_swap_state_for_staff_spares_a_gender_at_its_minimum(self) -> None:
+        self.series.event_min_players_female = 2
+        self.series.save()
+        self.rostered("f1@x.com")
+        self.rostered("f2@x.com")  # women 2/2, at the minimum
+        self.rostered("m1@x.com", Player.MatchupTypes.MALE)
+        coach = self.player("c@x.com")  # female
+        SeriesRegistration.objects.filter(player=coach).update(role=Role.COACH)
+        rows = {r["player"]["id"]: r for r in self.status().json()["roster"]["entries"]}
+        self.assertEqual("ready", rows[coach.id]["swap_state"]["kind"])
+
+    def test_swap_state_looks_past_staff_to_a_playing_player(self) -> None:
+        self.series.event_max_players_total = 1
+        self.series.save()
+        staff = self.rostered("s@x.com", Player.MatchupTypes.MALE)  # paid first
+        SeriesRegistration.objects.filter(player=staff).update(role=Role.COACH)
+        Registration.objects.filter(player=staff).update(is_playing=False)
+        self.rostered("m1@x.com", Player.MatchupTypes.MALE)  # playing 1/1, no women
+        ready = self.player("r@x.com")
+        rows = {r["player"]["id"]: r for r in self.status().json()["roster"]["entries"]}
+        self.assertEqual("ready", rows[ready.id]["swap_state"]["kind"])
+
+    def test_swap_state_same_gender_at_its_minimum_stays_ready(self) -> None:
+        self.series.event_min_players_female = 2
+        self.series.save()
+        self.rostered("f1@x.com")
+        self.rostered("f2@x.com")  # women 2/2, at the minimum
+        ready = self.player("r@x.com")
+        rows = {r["player"]["id"]: r for r in self.status().json()["roster"]["entries"]}
+        self.assertEqual("ready", rows[ready.id]["swap_state"]["kind"])
+
+    def test_swap_states_take_few_queries_with_many_paid(self) -> None:
+        self.series.event_min_players_female = self.series.event_min_players_male = 6
+        self.series.save()
+        for i in range(6):
+            self.rostered(f"f{i}@x.com")
+            self.rostered(f"m{i}@x.com", Player.MatchupTypes.MALE)
+        for i in range(3):
+            coach = self.player(f"c{i}@x.com")
+            SeriesRegistration.objects.filter(player=coach).update(role=Role.COACH)
+        with CaptureQueriesContext(connection) as queries:
+            self.assertEqual(200, self.status().status_code)
+        # 55 measured: at most one try per (playing, gender) pair of paid
+        # players; trying every paid player took 175.
+        self.assertLessEqual(len(queries), 60)
