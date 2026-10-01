@@ -706,3 +706,14 @@ class TestRoundTwoReasons(StateTestCase):
         RosterEntry.objects.filter(player=new).update(held_by_order=order)
         ctx = build_context(self.event, self.team, self.admin)
         self.assertEqual("progress.held", preview_swap(ctx, out.id, new.id).code)
+
+    def test_swapping_staff_out_for_a_player_respects_the_total_cap(self) -> None:
+        staff = self.rostered("c@x.com")
+        SeriesRegistration.objects.filter(player=staff).update(role=Role.COACH)
+        Registration.objects.filter(player=staff).update(is_playing=False)
+        self.rostered("f1@x.com")
+        self.rostered("m1@x.com", Player.MatchupTypes.MALE)
+        self.rostered("m2@x.com", Player.MatchupTypes.MALE)  # playing 3/3
+        new = self.player("n@x.com")  # female, playing
+        ctx = build_context(self.event, self.team, self.admin)
+        self.assertEqual("limit.total", preview_swap(ctx, staff.id, new.id).code)

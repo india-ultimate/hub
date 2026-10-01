@@ -30,7 +30,7 @@ from server.registration.state import (
 from server.schema import Response
 from server.series.models import Role, SeriesRosterInvitation
 from server.series.utils import invite_to_series, register_player
-from server.tournament.models import Event
+from server.tournament.models import Event, Registration
 from server.tournament.utils import roster_player, series_role
 from server.transaction.client.razorpay import client_for, mark_transaction_completed
 from server.transaction.models import AuthenticatedHttpRequest, RazorpayTransaction
@@ -64,6 +64,14 @@ def _is_admin(team: Team, request: AuthenticatedHttpRequest) -> bool:
 
 def _page(event: Event, team: Team) -> str:
     return f"/tournament/{event.slug}/team/{team.slug}/registration"
+
+
+def _rostering_open(event: Event) -> bool:
+    """Through the late window too, as the state has it."""
+    last = max(
+        filter(None, [event.player_late_penalty_end_date, event.player_registration_end_date])
+    )
+    return is_today_in_between_dates(event.player_registration_start_date, last)
 
 
 def _state(event: Event, team: Team, request: AuthenticatedHttpRequest, player: Player) -> Any:
@@ -136,12 +144,8 @@ def add_entry(
                 if error is not None:
                     return 400, error
     elif not event.player_fee:
-        # Nothing to pay, so they are rostered now, in the window the row
-        # offers it: through the late window too, as the state has it.
-        last = max(
-            filter(None, [event.player_late_penalty_end_date, event.player_registration_end_date])
-        )
-        if not is_today_in_between_dates(event.player_registration_start_date, last):
+        # Nothing to pay, so they are rostered now, in the window the row offers it.
+        if not _rostering_open(event):
             return 400, {"message": "Rostering has closed, you can't roster players now !"}
         if not event.tournament.teams.filter(pk=team.pk).exists():
             return 400, {"message": f"{team.name} is not registered for {event.title}"}
@@ -170,8 +174,12 @@ def remove_entry(
     reason = entry_reasons(build_context(event, team, request.user)).get(player_id)
     if reason is None:
         return 404, {"message": "Not on this roster"}
-    if reason.kind in ("done", "progress"):
+    # Nothing was paid on a free tournament, so taking them off is an undo.
+    undo = reason.kind == "done" and not event.player_fee and _rostering_open(event)
+    if reason.kind in ("done", "progress") and not undo:
         return 409, {"message": "Already paid, or being paid — request a change instead"}
+    if undo:
+        Registration.objects.filter(event=event, team=team, player_id=player_id).delete()
     if event.series is not None:
         SeriesRosterInvitation.objects.filter(
             series=event.series, team=team, to_player_id=player_id, status=Pending
@@ -241,6 +249,25 @@ def swap(
         return 400, {"message": "Rostering hasn't opened yet"}
     if today() > last:
         return 400, {"message": f"Swaps closed {last:%b %-d}"}
+    if body.out_player_id == body.in_player_id:
+        return 400, {"message": "Pick two different players"}
+
+    # A stale checkout for the in-player may have been paid after all, its
+    # callback and webhook lost. Swapping them in too would keep both payments.
+    held = (
+        RosterEntry.objects.filter(
+            event=event, team=team, player_id=body.in_player_id, held_by_order__isnull=False
+        )
+        .select_related("held_by_order")
+        .first()
+    )
+    order = held.held_by_order if held is not None else None
+    if (
+        order is not None
+        and order.status not in (*RazorpayTransaction.SETTLED, "failed")
+        and _settle_if_paid(order)
+    ):
+        return 409, {"message": "Their earlier payment went through; they're rostered now"}
 
     with db_transaction.atomic():
         # The checkout's lock: a swap and a payment for this team never interleave.
@@ -258,12 +285,16 @@ def swap(
             return 409, {"message": f"{new_name} can't take the place: {reason.text}"}
 
         out.delete()
-        _, error = roster_player(event, team, entry.player)
+        role = series_role(event, team, entry.player)
+        _, error = roster_player(event, team, entry.player, role=role)
         if error is not None:
             db_transaction.set_rollback(True)
             return 409, {"message": f"{new_name} can't take the place: {error['message']}"}
         entry.delete()
-        RosterEntry.objects.create(event=event, team=team, player=out.player, added_by=request.user)
+        # Old pages and the admin may have rostered them without clearing it.
+        RosterEntry.objects.get_or_create(
+            event=event, team=team, player=out.player, defaults={"added_by": request.user}
+        )
         RosterSwap.objects.create(
             event=event, team=team, out_player=out.player, in_player=entry.player, by=request.user
         )

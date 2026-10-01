@@ -498,7 +498,10 @@ const TeamRegistrationHome = () => {
     const entry = removing();
     removeRef.close();
     await runOp("remove", entry.player.id);
-    if (!opError()) announce(`Removed ${entry.player.name}`);
+    if (opError()) return;
+    announce(`Removed ${entry.player.name}`);
+    // The row is gone; land keyboard users on its list, not the page.
+    document.getElementById("unpaid-heading")?.focus();
   };
   const invitePending = entry => entry?.state.code === "waiting.invite";
 
@@ -696,9 +699,10 @@ const TeamRegistrationHome = () => {
                       <div class="mb-1 flex items-center justify-between gap-2">
                         <h3
                           id="unpaid-heading"
+                          tabindex="-1"
                           class="text-xs font-bold uppercase tracking-wide text-gray-700 dark:text-gray-300"
                         >
-                          Not paid yet{" "}
+                          {free() ? "Not rostered yet" : "Not paid yet"}{" "}
                           <span class="font-semibold normal-case tracking-normal text-gray-600 dark:text-gray-400">
                             · {unpaidRows().length}
                           </span>
@@ -726,7 +730,9 @@ const TeamRegistrationHome = () => {
                         }
                       >
                         <ul
-                          aria-label="Not paid yet"
+                          aria-label={
+                            free() ? "Not rostered yet" : "Not paid yet"
+                          }
                           class="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700"
                         >
                           <For each={unpaidRows()}>
@@ -837,6 +843,7 @@ const TeamRegistrationHome = () => {
           }}
           open={addOpen()}
           teamName={d().team.name}
+          series={d().event.series}
           meter={d().roster.meter}
           args={args()}
           onChanged={refresh}

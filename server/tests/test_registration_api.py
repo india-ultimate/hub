@@ -44,6 +44,28 @@ class ApiCase(StateTestCase):
     def step(self, key: str) -> dict[str, Any]:
         return next(s for s in self.status().json()["steps"] if s["key"] == key)
 
+    def held(self, player: Player, *, by: User | None = None, minutes_ago: int = 0) -> Any:
+        """An earlier checkout's order holding this player."""
+        by = by or User.objects.create_user("o@x.com", "o@x.com", "pw")
+        order = RazorpayTransaction.objects.create(
+            order_id=f"order_{player.id}",
+            amount=self.event.player_fee,
+            currency="INR",
+            status="created",
+            user=by,
+            event=self.event,
+            team=self.team,
+            type="player-reg",
+        )
+        RazorpayTransactionPlayer.objects.create(
+            transaction=order, player=player, amount=self.event.player_fee
+        )
+        RazorpayTransaction.objects.filter(pk=order.pk).update(
+            payment_date=now() - datetime.timedelta(minutes=minutes_ago)
+        )
+        RosterEntry.objects.filter(player=player).update(held_by_order=order)
+        return order
+
 
 class TestStatus(ApiCase):
     def test_rows_waiting_for_the_team_fee_are_not_waiting_on_the_player(self) -> None:
@@ -383,6 +405,24 @@ class TestRosterWrites(ApiCase):
         self.assertEqual(409, self.web.delete(f"{self.base}/roster/{paid.id}").status_code)
         self.assertEqual(404, self.web.delete(f"{self.base}/roster/99999").status_code)
 
+    def test_undo_on_a_free_tournament_takes_them_off_the_roster(self) -> None:
+        # Nothing was paid, so the Add dialog's Undo works after rostering.
+        Event.objects.filter(pk=self.event.pk).update(player_fee=0)
+        p = self.player("a@x.com", entry=False)
+        self.assertEqual(201, self.add(p.id).status_code)
+        self.assertEqual(204, self.web.delete(f"{self.base}/roster/{p.id}").status_code)
+        self.assertFalse(Registration.objects.filter(player=p).exists())
+        self.assertFalse(RosterEntry.objects.filter(player=p).exists())
+
+    def test_free_tournament_roster_is_kept_once_rostering_closed(self) -> None:
+        Event.objects.filter(pk=self.event.pk).update(
+            player_fee=0, player_registration_end_date=today() - datetime.timedelta(days=1)
+        )
+        p = self.player("a@x.com", entry=False)
+        Registration.objects.create(event=self.event, team=self.team, player=p)
+        self.assertEqual(409, self.web.delete(f"{self.base}/roster/{p.id}").status_code)
+        self.assertTrue(Registration.objects.filter(player=p).exists())
+
     def test_resend_invite(self) -> None:
         p = self.player("a@x.com", on_series=False)
         SeriesRosterInvitation.objects.create(
@@ -439,28 +479,6 @@ class TestCheckout(ApiCase):
                 {"expected_amount": expected, "expected_ids": ids},
                 content_type="application/json",
             )
-
-    def held(self, player: Player, *, by: User | None = None, minutes_ago: int = 0) -> Any:
-        """An earlier checkout's order holding this player."""
-        by = by or User.objects.create_user("o@x.com", "o@x.com", "pw")
-        order = RazorpayTransaction.objects.create(
-            order_id=f"order_{player.id}",
-            amount=self.event.player_fee,
-            currency="INR",
-            status="created",
-            user=by,
-            event=self.event,
-            team=self.team,
-            type="player-reg",
-        )
-        RazorpayTransactionPlayer.objects.create(
-            transaction=order, player=player, amount=self.event.player_fee
-        )
-        RazorpayTransaction.objects.filter(pk=order.pk).update(
-            payment_date=now() - datetime.timedelta(minutes=minutes_ago)
-        )
-        RosterEntry.objects.filter(player=player).update(held_by_order=order)
-        return order
 
     def test_pays_only_ready_players_in_one_order(self) -> None:
         a, b = self.player("a@x.com"), self.player("b@x.com")
@@ -946,3 +964,57 @@ class TestSwap(ApiCase):
         self.assertTrue(
             Registration.objects.filter(event=self.event, team=self.team, player=out).exists()
         )
+
+    def test_in_player_paid_for_by_a_lost_order_is_settled_not_swapped(self) -> None:
+        # Razorpay took the money for a stale checkout; callback and webhook lost.
+        out, new = self.rostered("o@x.com"), self.player("n@x.com")
+        stale = self.held(new, by=self.admin, minutes_ago=21)
+        captured = {"items": [{"id": "pay_earlier", "status": "captured"}]}
+        with (
+            mock.patch.object(Order, "fetch", autospec=True, return_value={"status": "paid"}),
+            mock.patch.object(Order, "payments", autospec=True, return_value=captured),
+            mock.patch.object(Payment, "refund", autospec=True) as refund,
+        ):
+            r = self.swap(out, new)
+        self.assertEqual(409, r.status_code, r.content)
+        self.assertEqual(
+            "Their earlier payment went through; they're rostered now", r.json()["message"]
+        )
+        stale.refresh_from_db()
+        self.assertEqual("completed", stale.status)
+        refund.assert_not_called()
+        self.assertFalse(RosterSwap.objects.exists())
+        # Each keeps exactly the one place paid for.
+        for p in (out, new):
+            self.assertEqual(1, Registration.objects.filter(event=self.event, player=p).count())
+
+    def test_swapped_in_player_keeps_their_series_role(self) -> None:
+        out, new = self.rostered("o@x.com"), self.player("n@x.com")
+        SeriesRegistration.objects.filter(player=new).update(role=Role.CAPTAIN)
+        self.assertEqual(200, self.swap(out, new).status_code)
+        self.assertEqual(Role.CAPTAIN, Registration.objects.get(player=new).role)
+
+    def test_out_player_still_on_the_list_can_be_swapped(self) -> None:
+        # Old pages and the admin roster without clearing the list entry.
+        out, new = self.rostered("o@x.com"), self.player("n@x.com")
+        RosterEntry.objects.create(event=self.event, team=self.team, player=out)
+        r = self.swap(out, new)
+        self.assertEqual(200, r.status_code, r.content)
+        self.assertEqual(1, RosterEntry.objects.filter(player=out).count())
+
+    def test_a_player_cannot_be_swapped_for_themselves(self) -> None:
+        out = self.rostered("o@x.com")
+        r = self.swap(out, out)
+        self.assertEqual(400, r.status_code)
+        self.assertEqual("Pick two different players", r.json()["message"])
+
+    def test_swap_state_looks_past_a_full_roster(self) -> None:
+        self.rostered("f1@x.com")
+        self.rostered("m1@x.com", Player.MatchupTypes.MALE)
+        self.rostered("m2@x.com", Player.MatchupTypes.MALE)  # total 3/3
+        ready, unsubscribed = self.player("r@x.com"), self.player("u@x.com", tier=None)
+        rows = {r["player"]["id"]: r for r in self.status().json()["roster"]["entries"]}
+        self.assertEqual("limit.total", rows[ready.id]["state"]["code"])
+        self.assertEqual("ready", rows[ready.id]["swap_state"]["kind"])
+        self.assertEqual("action.subscription", rows[unsubscribed.id]["swap_state"]["code"])
+        self.assertEqual({"code", "kind", "text"}, set(rows[ready.id]["swap_state"]))
