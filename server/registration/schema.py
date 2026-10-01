@@ -16,3 +16,8 @@ class CheckoutSchema(Schema):
 
 class CheckoutOrderSchema(RazorpayOrderSchema):
     timeout: int  # seconds Razorpay keeps the window payable
+
+
+class SwapSchema(Schema):
+    out_player_id: int
+    in_player_id: int
