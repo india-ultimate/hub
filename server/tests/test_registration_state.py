@@ -12,7 +12,14 @@ from razorpay.resources.payment import Payment
 
 from server.core.models import Player, Team, User
 from server.registration.models import RosterEntry
-from server.registration.state import build_context, entry_reasons, meter, suggested_tier
+from server.registration.state import (
+    build_context,
+    entry_reasons,
+    meter,
+    preview,
+    preview_swap,
+    suggested_tier,
+)
 from server.season.models import Season
 from server.series.models import Role, SeriesRegistration, SeriesRosterInvitation
 from server.servicerequests.models import ServiceRequest, ServiceRequestStatus, ServiceRequestType
@@ -20,7 +27,7 @@ from server.subscription.models import Scope, Subscription, SubscriptionPlan
 from server.tests.test_eligibility import make_series
 from server.tests.test_payment_accounts import PLAYER_FEE, RoutedTestCase, open_event
 from server.tests.test_subscription_model import make_player
-from server.tournament.models import Event, Registration
+from server.tournament.models import Event, Registration, Tournament
 from server.transaction.models import (
     RazorpayRefund,
     RazorpayTransaction,
@@ -281,6 +288,8 @@ class StateTestCase(TestCase):
         self.series.teams.add(self.team)
         self.admin = User.objects.create_user("admin@x.com", "admin@x.com", "pw")
         self.team.admins.add(self.admin)
+        self.tournament = Tournament.objects.create(event=self.event)
+        self.tournament.teams.add(self.team)
 
     def player(
         self,
@@ -427,6 +436,15 @@ class TestEntryReasons(StateTestCase):
             (2, 1, 1, 3),
             (m["total"], m["female_matching"], m["male_matching"], m["max_total"]),
         )
+
+    def test_meter_counts_rows_waiting_for_the_team_fee(self) -> None:
+        # They take a spot against the caps, so the meter shows them too.
+        self.tournament.teams.remove(self.team)
+        self.player("a@x.com")
+        ctx = build_context(self.event, self.team, self.admin)
+        reasons = entry_reasons(ctx)
+        self.assertEqual(["ready.after_team_fee"], [r.code for r in reasons.values()])
+        self.assertEqual(1, meter(ctx, reasons)["total"])
 
     def hold(self, player: Player) -> RazorpayTransaction:
         other = User.objects.create_user("o@x.com", "o@x.com", "pw")
@@ -579,3 +597,112 @@ class TestEntryReasons(StateTestCase):
             ),
             (r.code, r.kind, r.text, r.action),
         )
+
+
+class TestRoundTwoReasons(StateTestCase):
+    def test_ready_waits_for_the_full_team_fee(self) -> None:
+        self.tournament.teams.remove(self.team)
+        p = self.player("a@x.com")
+        reason = self.reasons()[p.id]
+        self.assertEqual("ready.after_team_fee", reason.code)
+        self.assertEqual("waiting", reason.kind)
+        self.assertEqual("Ready · pay the full team fee first", reason.text)
+
+    def test_part_paid_team_still_waits(self) -> None:
+        self.tournament.teams.remove(self.team)
+        self.tournament.partial_teams.add(self.team)
+        p = self.player("a@x.com")
+        self.assertEqual("ready.after_team_fee", self.reasons()[p.id].code)
+
+    def test_other_reasons_show_before_the_team_fee(self) -> None:
+        self.tournament.teams.remove(self.team)
+        p = self.player("a@x.com", tier=None)
+        self.assertEqual("action.subscription", self.reasons()[p.id].code)
+
+    def test_paid_and_ready_rows_have_no_action(self) -> None:
+        paid = self.player("a@x.com", entry=False)
+        Registration.objects.create(event=self.event, team=self.team, player=paid)
+        ready = self.player("b@x.com")
+        reasons = self.reasons()
+        self.assertIsNone(reasons[paid.id].action)
+        self.assertIsNone(reasons[ready.id].action)
+
+    def test_preview_a_player_not_on_the_list(self) -> None:
+        p = self.player("a@x.com", entry=False)
+        ctx = build_context(self.event, self.team, self.admin, extra_player_ids=[p.id])
+        self.assertEqual("ready", preview(ctx, [p])[p.id].code)
+
+    def test_preview_counts_current_rows_against_the_caps(self) -> None:
+        for i in range(3):  # event_max_players_total is 3
+            self.player(
+                f"r{i}@x.com", Player.MatchupTypes.MALE if i else Player.MatchupTypes.FEMALE
+            )
+        p = self.player("new@x.com", entry=False)
+        ctx = build_context(self.event, self.team, self.admin, extra_player_ids=[p.id])
+        self.assertEqual("limit.total", preview(ctx, [p])[p.id].code)
+
+    def test_preview_skips_people_already_on_the_list(self) -> None:
+        p = self.player("a@x.com")
+        ctx = build_context(self.event, self.team, self.admin)
+        self.assertEqual({}, preview(ctx, [p]))
+
+    def test_preview_not_on_series_roster_is_an_invite(self) -> None:
+        p = self.player("a@x.com", on_series=False, entry=False)
+        ctx = build_context(self.event, self.team, self.admin, extra_player_ids=[p.id])
+        self.assertEqual("action.invite", preview(ctx, [p])[p.id].code)
+
+    def rostered(self, email: str, match_up: str = Player.MatchupTypes.FEMALE) -> Player:
+        p = self.player(email, match_up, entry=False)
+        Registration.objects.create(event=self.event, team=self.team, player=p)
+        return p
+
+    def test_swap_ignores_the_total_cap(self) -> None:
+        out = self.rostered("o@x.com")
+        self.rostered("f2@x.com")
+        self.rostered("m1@x.com", Player.MatchupTypes.MALE)  # total 3/3
+        new = self.player("n@x.com")  # female, on the list
+        ctx = build_context(self.event, self.team, self.admin)
+        self.assertEqual("ready", preview_swap(ctx, out.id, new.id).code)
+
+    def test_swap_respects_the_gender_cap(self) -> None:
+        out = self.rostered("m@x.com", Player.MatchupTypes.MALE)
+        self.rostered("f1@x.com")
+        self.rostered("f2@x.com")  # female 2/2
+        new = self.player("n@x.com")  # female
+        ctx = build_context(self.event, self.team, self.admin)
+        self.assertEqual("limit.female", preview_swap(ctx, out.id, new.id).code)
+
+    def test_swap_cannot_break_a_met_minimum(self) -> None:
+        self.series.event_min_players_female = 1
+        self.series.save()
+        out = self.rostered("f@x.com")
+        new = self.player("m@x.com", Player.MatchupTypes.MALE)
+        ctx = build_context(self.event, self.team, self.admin)
+        reason = preview_swap(ctx, out.id, new.id)
+        self.assertEqual("limit.minimum", reason.code)
+        self.assertEqual("Would leave female-matching below the minimum (0/1)", reason.text)
+
+    def test_swap_may_keep_an_unmet_minimum_unmet(self) -> None:
+        self.series.event_min_players_female = 3
+        self.series.save()
+        out = self.rostered("f@x.com")  # 1/3 already short
+        new = self.player("m@x.com", Player.MatchupTypes.MALE)
+        ctx = build_context(self.event, self.team, self.admin)
+        self.assertEqual("ready", preview_swap(ctx, out.id, new.id).code)
+
+    def test_swap_in_player_being_paid_for(self) -> None:
+        out = self.rostered("o@x.com")
+        new = self.player("n@x.com")
+        order = RazorpayTransaction.objects.create(
+            order_id="order_hold1",
+            amount=1,
+            currency="INR",
+            status="created",
+            user=self.admin,
+            event=self.event,
+            team=self.team,
+            payment_date=now(),
+        )
+        RosterEntry.objects.filter(player=new).update(held_by_order=order)
+        ctx = build_context(self.event, self.team, self.admin)
+        self.assertEqual("progress.held", preview_swap(ctx, out.id, new.id).code)
