@@ -38,6 +38,7 @@ import ReasonButton from "./ReasonButton";
 import RosterMeter from "./RosterMeter";
 import RosterRow from "./RosterRow";
 import Step from "./Step";
+import SwapDialog from "./SwapDialog";
 
 const NOT_PAID = "Payment wasn't completed — nothing was charged.";
 const UNAVAILABLE = "Payments are unavailable right now; nothing was charged.";
@@ -195,6 +196,8 @@ const TeamRegistrationHome = () => {
   const [addOpen, setAddOpen] = createSignal(false);
   let addDialog;
   let addOpener;
+  let swapDialog;
+  let swapOpener;
   let poll;
 
   const status = createQuery(
@@ -469,6 +472,21 @@ const TeamRegistrationHome = () => {
   };
   const free = () => !d().checkout.per_player;
 
+  // Swaps are open from when rostering opens until it closes.
+  const swapUntil = () =>
+    latestDate(
+      d().event.player_late_penalty_end_date,
+      d().event.player_registration_end_date
+    );
+  const swapReason = () => {
+    const today = todayIST();
+    if (today < parseLocalDate(d().event.player_registration_start_date))
+      return "Rostering hasn't opened yet";
+    if (today > swapUntil())
+      return `Swaps closed ${shortDate(new Date(swapUntil()))}`;
+    return null;
+  };
+
   // Removing asks first, and says when it also withdraws a series invite.
   const [removing, setRemoving] = createSignal(null); // the entry to confirm
   let removeRef;
@@ -650,7 +668,19 @@ const TeamRegistrationHome = () => {
                               · {capLabel()}
                             </span>
                           </h3>
-                          {/* data-slot="swap": Task 6 puts "⇄ Swap a player" here */}
+                          <Show when={!readOnly()}>
+                            <ReasonButton
+                              ref={swapOpener}
+                              primary={false}
+                              label="⇄ Swap a player"
+                              reason={
+                                swapReason()
+                                  ? { kind: "timing", text: swapReason() }
+                                  : null
+                              }
+                              onClick={() => swapDialog.showModal()}
+                            />
+                          </Show>
                         </div>
                         <ul
                           aria-label={free() ? "Rostered" : "Rostered and paid"}
@@ -808,6 +838,20 @@ const TeamRegistrationHome = () => {
           open={addOpen()}
           teamName={d().team.name}
           meter={d().roster.meter}
+          args={args()}
+          onChanged={refresh}
+          announce={announce}
+        />
+        <SwapDialog
+          setRef={el => {
+            swapDialog = el;
+            el.addEventListener("close", () => swapOpener?.focus());
+          }}
+          paid={paidRows()}
+          unpaid={unpaidRows()}
+          until={
+            Number.isNaN(swapUntil()) ? null : shortDate(new Date(swapUntil()))
+          }
           args={args()}
           onChanged={refresh}
           announce={announce}

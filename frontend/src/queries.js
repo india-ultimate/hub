@@ -2757,6 +2757,12 @@ export const removeRosterEntry = ({ playerId, ...args }) =>
     method: "DELETE"
   });
 
+export const swapRosterPlayer = ({ outId, inId, ...args }) =>
+  registrationRequest(`${registrationBase(args)}/swap`, {
+    method: "POST",
+    body: JSON.stringify({ out_player_id: outId, in_player_id: inId })
+  });
+
 export const resendRosterInvite = ({ playerId, ...args }) =>
   registrationRequest(
     `${registrationBase(args)}/roster/${playerId}/resend-invite`,

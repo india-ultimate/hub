@@ -17,6 +17,7 @@ const ReasonButton = props => {
   return (
     <div>
       <button
+        ref={props.ref}
         type="button"
         class={clsx(
           isPrimary() ? primary : actionBase,
