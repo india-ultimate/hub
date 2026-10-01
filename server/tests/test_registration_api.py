@@ -17,7 +17,7 @@ from server.subscription.models import Subscription
 from server.tests.base import make_account
 from server.tests.test_payment_accounts import razorpay_order
 from server.tests.test_registration_state import StateTestCase
-from server.tournament.models import Event, Registration, Tournament
+from server.tournament.models import Event, Registration
 from server.transaction.models import RazorpayTransaction, RazorpayTransactionPlayer
 from server.utils import today
 
@@ -27,8 +27,6 @@ from server.utils import today
 class ApiCase(StateTestCase):
     def setUp(self) -> None:
         super().setUp()
-        self.tournament = Tournament.objects.create(event=self.event)
-        self.tournament.teams.add(self.team)
         self.web = Client()
         self.web.force_login(self.admin)
         self.base = f"/api/registration/{self.event.slug}/team/{self.team.slug}"
@@ -46,6 +44,11 @@ class ApiCase(StateTestCase):
 
 
 class TestStatus(ApiCase):
+    def test_rows_waiting_for_the_team_fee_are_not_waiting_on_the_player(self) -> None:
+        self.tournament.teams.remove(self.team)
+        self.player("a@x.com")
+        self.assertIsNone(self.step("roster")["callout"])
+
     def test_shape(self) -> None:
         self.player("a@x.com")
         body = self.status().json()
