@@ -2,9 +2,8 @@ import { Icon } from "solid-heroicons";
 import { check, checkCircle, xMark } from "solid-heroicons/solid";
 import { createEffect, createSignal, For, Show } from "solid-js";
 
+import { inr } from "../../money";
 import RazorpayPayment from "../RazorpayPayment";
-
-const rupees = paise => (paise / 100).toLocaleString("en-IN");
 
 // The tier selected to start with, and the one a granted tier stands in for.
 const DEFAULT_TIER = "regular";
@@ -93,13 +92,13 @@ const TierCard = props => {
 
       <p class="mt-5 flex items-baseline gap-1">
         <span class="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-          ₹{rupees(plan().amount)}
+          {inr(plan().amount)}
         </span>
         <span class="text-sm text-gray-500 dark:text-gray-400">/ season</span>
       </p>
       <Show when={plan().upgrade_amount}>
         <p class="mt-1 text-sm font-medium text-blue-700 dark:text-blue-400">
-          Upgrade for ₹{rupees(plan().upgrade_amount)}
+          Upgrade for {inr(plan().upgrade_amount)}
         </p>
       </Show>
 
@@ -190,10 +189,10 @@ const TierPicker = props => {
               items={[{ player_id: props.playerId, plan_type: plan.slug }]}
               buttonText={
                 plan.upgrade_amount
-                  ? `Upgrade from ${plan.upgrade_from} — pay ₹ ${rupees(
+                  ? `Upgrade from ${plan.upgrade_from} — pay ${inr(
                       plan.upgrade_amount
                     )}`
-                  : `Pay ₹ ${rupees(plan.amount)}`
+                  : `Pay ${inr(plan.amount)}`
               }
               setStatus={props.setStatus}
               successCallback={props.onPaid}

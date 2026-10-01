@@ -1,4 +1,4 @@
-import { inr } from "../../reasonKinds";
+import { inr } from "../../money";
 import ReasonButton from "./ReasonButton";
 
 // Who paying now covers and what it costs. Sticky at the bottom on phones

@@ -33,6 +33,16 @@ def format_inr(paise: int) -> str:
     return ",".join([*groups, tail]) + f".{cents:02d}"
 
 
+def rupees(paise: int) -> str:
+    """₹7,500, or ₹749.50 when there are paise: how a screen shows money.
+
+    A receipt prints every amount with its paise; see format_inr.
+    """
+    sign = "-" if paise < 0 else ""
+    text = format_inr(abs(paise))
+    return f"{sign}₹{text.removesuffix('.00')}"
+
+
 def _words(number: int) -> str:
     # num2words costs ~3.5MB resident per process, and every gunicorn worker,
     # the task worker and every cron run import this module at startup; only

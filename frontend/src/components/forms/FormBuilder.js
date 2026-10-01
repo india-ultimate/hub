@@ -3,6 +3,7 @@ import { documentText } from "solid-heroicons/solid";
 import { createSignal, For, onMount, Show } from "solid-js";
 import { createStore, produce } from "solid-js/store";
 
+import { toPaise, toRupees } from "../../money";
 import { createForm, fetchForm, updateForm } from "../../queries";
 import Breadcrumbs from "../Breadcrumbs";
 
@@ -76,7 +77,7 @@ const FormBuilder = () => {
           editorRef.innerHTML = form.description || "";
         }
         setPaymentAmount(
-          form.payment_amount ? String(form.payment_amount / 100) : ""
+          form.payment_amount ? String(toRupees(form.payment_amount)) : ""
         );
         setIsActive(form.is_active !== false);
         setFields(
@@ -104,9 +105,7 @@ const FormBuilder = () => {
     const payload = {
       title: title(),
       description: description(),
-      payment_amount: paymentAmount()
-        ? Math.round(Number(paymentAmount()) * 100)
-        : null,
+      payment_amount: paymentAmount() ? toPaise(paymentAmount()) : null,
       is_active: isActive(),
       fields: fields.map(f => ({
         key: f.key,

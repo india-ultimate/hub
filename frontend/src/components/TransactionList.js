@@ -3,6 +3,7 @@ import { createQuery } from "@tanstack/solid-query";
 import { createEffect, createSignal, For, Show, Suspense } from "solid-js";
 
 import { transactionTypes } from "../constants";
+import { inr } from "../money";
 import {
   fetchAllInvalidManualTransactions,
   fetchAllManualTransactions,
@@ -116,7 +117,7 @@ const TransactionList = props => {
                       >
                         {date}
                       </th>
-                      <td class="px-6 py-4">₹ {transaction.amount / 100}</td>
+                      <td class="px-6 py-4">{inr(transaction.amount)}</td>
                       <td class="px-6 py-4">{getPaidBy(transaction.user)}</td>
                       <td class="px-6 py-4">
                         <Show

@@ -15,6 +15,7 @@ import {
   Switch
 } from "solid-js";
 
+import { inr } from "../../money";
 import {
   addRosterEntry,
   addTeamRegistration,
@@ -26,7 +27,7 @@ import {
   resendRosterInvite
 } from "../../queries";
 import { openCheckout } from "../../razorpay";
-import { inr, KINDS } from "../../reasonKinds";
+import { KINDS } from "../../reasonKinds";
 import { useStore } from "../../store";
 import { getCookie, latestDate, parseLocalDate, todayIST } from "../../utils";
 import Breadcrumbs from "../Breadcrumbs";

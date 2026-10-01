@@ -168,7 +168,7 @@ class TestSubscriptionIntegration(BaseCase):
         self.assertEqual(self.checked_tier(), "regular")
         self.assert_text("Selected", 'label:contains("Regular Subscription")')
         self.assert_text_not_visible("Discounted Subscription")
-        self.assert_text("Pay ₹ 750", 'button:contains("Pay ₹")')
+        self.assert_text("Pay ₹750", 'button:contains("Pay ₹")')
         self.pay()
 
         held = self.subscription(player)
@@ -206,7 +206,7 @@ class TestSubscriptionIntegration(BaseCase):
         self.assert_text("Upgrade for ₹750", 'label:contains("Patron Subscription")')
         self.assertEqual(self.checked_tier(), "patron")
         upgrade = 'button:contains("Upgrade from Regular Subscription")'
-        self.assert_text("pay ₹ 750", upgrade)
+        self.assert_text("pay ₹750", upgrade)
         self.pay(upgrade)
 
         upgraded = self.subscription(player)
@@ -257,7 +257,7 @@ class TestSubscriptionIntegration(BaseCase):
         self.click('label:contains("Patron Subscription")')
         self.assertEqual(self.checked_tier(), "patron")
         self.assert_text("Selected", 'label:contains("Patron Subscription")')
-        self.assert_text("Pay ₹ 1,500", 'button:contains("Pay ₹")')
+        self.assert_text("Pay ₹1,500", 'button:contains("Pay ₹")')
         self.pay()
 
         held = self.subscription(player)
@@ -271,7 +271,7 @@ class TestSubscriptionIntegration(BaseCase):
         # 7: one person's line, refunded by staff who hold the permission.
         make_staff("refunds@example.com", *REFUND_PERMS)
         self.admin_sign_in("refunds@example.com", "staff-pass")
-        self.refund_in_admin(order.pk, "Refund ₹1500", "₹1,500")
+        self.refund_in_admin(order.pk, "Refund ₹1,500", "₹1,500")
         [refund] = RazorpayRefund.objects.all()
         self.assert_refund_taken(refund, 150000)
         held.refresh_from_db()
@@ -286,7 +286,7 @@ class TestSubscriptionIntegration(BaseCase):
         self.open_subscription(player)
         self.assert_element_absent("#subscription-exist")
         self.assertEqual(self.checked_tier(), "regular")
-        self.assert_text("Pay ₹ 750", 'button:contains("Pay ₹")')
+        self.assert_text("Pay ₹750", 'button:contains("Pay ₹")')
 
         # 11: the sync reads Razorpay's real payments and refunds since today.
         mails = len(queued_mail())
@@ -322,7 +322,7 @@ class TestSubscriptionIntegration(BaseCase):
         self.open_subscription(player)
         self.click('label:contains("Community Subscription")')
         self.assertEqual(self.checked_tier(), "community")
-        self.assert_text("Pay ₹ 250", 'button:contains("Pay ₹")')
+        self.assert_text("Pay ₹250", 'button:contains("Pay ₹")')
         self.pay()
 
         held = self.subscription(player)
@@ -416,7 +416,7 @@ class TestSubscriptionIntegration(BaseCase):
         self.assert_text("Approved for you", 'label:contains("Discounted Subscription")')
         self.assert_text_not_visible("Regular Subscription")
         self.assertEqual(self.checked_tier(), "discounted")
-        self.assert_text("Pay ₹ 300", 'button:contains("Pay ₹")')
+        self.assert_text("Pay ₹300", 'button:contains("Pay ₹")')
         self.pay()
 
         held = self.subscription(player)
@@ -455,18 +455,18 @@ class TestSubscriptionIntegration(BaseCase):
 
         self.assertEqual(shown(kiran_row), "discounted")
         self.assertEqual(shown(meera_row), "regular")
-        self.assert_text("₹ 300", f"{kiran_row}/td[2]")
-        self.assert_text("₹ 750", f"{meera_row}/td[2]")
+        self.assert_text("₹300", f"{kiran_row}/td[2]")
+        self.assert_text("₹750", f"{meera_row}/td[2]")
         # The total is printed unformatted, unlike the fees and the button.
-        self.assert_text("Total Amount: ₹1050")
+        self.assert_text("Total Amount: ₹1,050")
 
         self.select_option_by_value(f"{meera_row}//select", "community")
         self.assertEqual(shown(meera_row), "community")
         self.assertEqual(shown(kiran_row), "discounted")
-        self.assert_text("₹ 250", f"{meera_row}/td[2]")
-        self.assert_text("₹ 300", f"{kiran_row}/td[2]")
+        self.assert_text("₹250", f"{meera_row}/td[2]")
+        self.assert_text("₹300", f"{kiran_row}/td[2]")
         self.assert_text("Total Amount: ₹550")
-        self.assert_text("Pay ₹ 550", 'button:contains("Pay ₹")')
+        self.assert_text("Pay ₹550", 'button:contains("Pay ₹")')
         self.pay('button:contains("Pay ₹")')
 
         [order] = RazorpayTransaction.objects.filter(user=payer)

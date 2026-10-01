@@ -5,14 +5,12 @@ import { Icon } from "solid-heroicons";
 import { arrowDownTray, magnifyingGlass } from "solid-heroicons/outline";
 import { createSignal, For, Match, onCleanup, Show, Switch } from "solid-js";
 
+import { inr } from "../../money";
 import {
   fetchPaymentAccountTransactions,
   paymentAccountCsvUrl
 } from "../../queries";
 import Pagination from "../ticket/Pagination";
-
-const inr = paise =>
-  `₹${(paise / 100).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
 
 const day = iso =>
   new Date(iso).toLocaleDateString("en-IN", {

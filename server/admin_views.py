@@ -12,6 +12,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
 from server.core.models import Team
+from server.receipts.money import rupees
 from server.series.models import Series
 from server.subscription.models import Subscription
 from server.subscription.refunds import (
@@ -160,10 +161,6 @@ SUBSCRIPTION_CHANGES = [
 ]
 
 
-def _money(paise: int | None) -> str:
-    return f"₹{(paise or 0) / 100:,.0f}"
-
-
 def _untouched_subscription_warning(transaction: RazorpayTransaction, player_ids: list[int]) -> str:
     """What to say when the money goes back but the subscription it bought stays."""
     held = Subscription.objects.filter(
@@ -194,7 +191,7 @@ def _report_partial(
     if moved:
         messages.warning(
             request,
-            f"Stopped after refunding {_money(sum(refund.amount for refund in moved))} "
+            f"Stopped after refunding {rupees(sum(refund.amount for refund in moved))} "
             f"on {len(moved)} payment(s). The rest was not refunded: {error}",
         )
     else:
@@ -225,7 +222,8 @@ def refund_line_view(request: HttpRequest, line_id: int) -> HttpResponse:
             messages.error(request, str(error))
         else:
             messages.success(
-                request, f"Refunded {_money(line.amount)} to {line.player.user.get_full_name()}."
+                request,
+                f"Refunded {rupees(line.amount or 0)} to {line.player.user.get_full_name()}.",
             )
             return redirect(back)
 
@@ -252,8 +250,8 @@ def refund_line_view(request: HttpRequest, line_id: int) -> HttpResponse:
         request,
         "admin/refund_confirmation.html",
         {
-            "title": f"Refund {_money(line.amount)}?",
-            "amount": _money(line.amount),
+            "title": f"Refund {rupees(line.amount or 0)}?",
+            "amount": rupees(line.amount or 0),
             "person": line.player.user.get_full_name(),
             "changes": changes,
             "warning": warning,
@@ -290,7 +288,7 @@ def refund_subscription_view(request: HttpRequest, subscription_id: int) -> Http
         else:
             messages.success(
                 request,
-                f"Refunded {_money(sum(refund.amount for refund in refunds))} to "
+                f"Refunded {rupees(sum(refund.amount for refund in refunds))} to "
                 f"{subscription.player.user.get_full_name()}."
                 if refunds
                 else "There was nothing left to refund.",
@@ -301,8 +299,8 @@ def refund_subscription_view(request: HttpRequest, subscription_id: int) -> Http
         request,
         "admin/refund_confirmation.html",
         {
-            "title": f"Refund {_money(left)}?",
-            "amount": _money(left),
+            "title": f"Refund {rupees(left)}?",
+            "amount": rupees(left),
             "person": subscription.player.user.get_full_name(),
             "changes": [
                 f"Every payment still standing on their {subscription.season.name} subscription "
@@ -342,7 +340,7 @@ def refund_order_view(request: HttpRequest, order_id: str) -> HttpResponse:
             _report_partial(request, error, made, before)
         else:
             messages.success(
-                request, f"Refunded {_money(sum(refund.amount for refund in refunds))}."
+                request, f"Refunded {rupees(sum(refund.amount for refund in refunds))}."
             )
             return redirect(back)
 
@@ -372,8 +370,8 @@ def refund_order_view(request: HttpRequest, order_id: str) -> HttpResponse:
         request,
         "admin/refund_confirmation.html",
         {
-            "title": f"Refund {_money(left)}?",
-            "amount": _money(left),
+            "title": f"Refund {rupees(left)}?",
+            "amount": rupees(left),
             "person": transaction.user.get_full_name(),
             "changes": changes,
             "warning": warning,

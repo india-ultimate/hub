@@ -1,5 +1,6 @@
 import csv
-from typing import Any
+from decimal import Decimal
+from typing import Any, ClassVar
 
 from django import forms
 from django.contrib import admin, messages
@@ -11,6 +12,7 @@ from django.shortcuts import redirect
 from django.template.response import TemplateResponse
 from django.urls import reverse
 from django.utils.html import format_html
+from django.utils.text import capfirst
 
 from server.admin_views import REFUND_PERM
 from server.announcements.models import Announcement
@@ -45,7 +47,7 @@ from server.election.models import (
 from server.forms.models import Form, FormResponse
 from server.payment_account.models import PaymentAccount, SecretsUnavailable, encrypt
 from server.receipts.models import Receipt
-from server.receipts.money import format_inr
+from server.receipts.money import rupees
 from server.registration.models import RosterSwap
 from server.season.models import Season
 from server.series.models import Series, SeriesRegistration, SeriesRosterInvitation
@@ -100,11 +102,98 @@ def export_as_csv(
     response["Content-Disposition"] = f"attachment; filename={meta}.csv"
     writer = csv.writer(response)
 
-    writer.writerow(field_names)
+    money = set(getattr(self, "money_fields", ()))
+    writer.writerow([f"{name} (₹)" if name in money else name for name in field_names])
     for obj in queryset:
-        writer.writerow([getattr(obj, field) for field in field_names])
+        writer.writerow(
+            [
+                _rupee_number(getattr(obj, name)) if name in money else getattr(obj, name)
+                for name in field_names
+            ]
+        )
 
     return response
+
+
+def _rupee_number(paise: int | None) -> str:
+    """749.50 for 74950: a plain number a spreadsheet can add up."""
+    return "" if paise is None else f"{Decimal(paise) / 100:.2f}"
+
+
+class RupeeField(forms.DecimalField):
+    """Rupees on the form, paise in the database."""
+
+    def __init__(self, **kwargs: Any) -> None:
+        # The columns are 32-bit: 2,147,483,647 paise at most.
+        super().__init__(min_value=0, max_value=Decimal("21474836.47"), decimal_places=2, **kwargs)
+
+    def prepare_value(self, value: Any) -> Any:
+        # Stored paise open as rupees; what someone typed comes back as typed.
+        if isinstance(value, int):
+            return rupees(value).removeprefix("₹").replace(",", "")
+        return value
+
+    def clean(self, value: Any) -> int | None:
+        amount = super().clean(value)
+        return None if amount is None else int(amount * 100)
+
+    def has_changed(self, initial: Any, data: Any) -> bool:
+        try:
+            return self.clean(data) != initial
+        except forms.ValidationError:
+            return True
+
+
+def _rupee_column(name: str) -> Any:
+    @admin.display(description=f"{capfirst(name.replace('_', ' '))} (₹)", ordering=name)
+    def column(self: Any, obj: Any) -> str:
+        paise = getattr(obj, name)
+        return "—" if paise is None else rupees(paise)
+
+    return column
+
+
+class Rupees:
+    """Money is kept in paise; staff read and type rupees.
+
+    Each money field is a rupee input on the form and gets a `<field>_inr`
+    column for lists. On a page nobody may edit, the column stands in for
+    the field, which would otherwise print its paise.
+    """
+
+    money_fields: ClassVar[tuple[str, ...]] = ()
+
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        super().__init_subclass__(**kwargs)
+        for name in cls.money_fields:
+            if f"{name}_inr" not in cls.__dict__:
+                setattr(cls, f"{name}_inr", _rupee_column(name))
+
+    def formfield_for_dbfield(self, db_field: Any, request: HttpRequest, **kwargs: Any) -> Any:
+        if db_field.name in self.money_fields:
+            return RupeeField(
+                required=not db_field.blank,
+                label=f"{capfirst(db_field.verbose_name)} (₹)",
+                help_text="In rupees, e.g. 750 or 749.50.",
+            )
+        return super().formfield_for_dbfield(db_field, request, **kwargs)  # type: ignore[misc]
+
+    def _read_only(self, request: HttpRequest, obj: Any) -> bool:
+        # As Django decides it: only an existing object's page is read-only.
+        return obj is not None and not self.has_change_permission(request, obj)  # type: ignore[attr-defined]
+
+    def get_exclude(self, request: HttpRequest, obj: Any = None) -> Any:
+        exclude = super().get_exclude(request, obj)  # type: ignore[misc]
+        if not self._read_only(request, obj):
+            # None, not [], lets a custom form's Meta.exclude still apply.
+            return exclude
+        return [*(exclude or ()), *(n for n in self.money_fields if n not in (exclude or ()))]
+
+    def get_readonly_fields(self, request: HttpRequest, obj: Any = None) -> Any:
+        fields = list(super().get_readonly_fields(request, obj))  # type: ignore[misc]
+        if self._read_only(request, obj):
+            fields += [f"{name}_inr" for name in self.money_fields]
+        return fields
 
 
 class ReadOnly:
@@ -396,7 +485,14 @@ class EventAdminForm(forms.ModelForm):  # type: ignore[type-arg]
 
 
 @admin.register(Event)
-class EventAdmin(admin.ModelAdmin[Event]):
+class EventAdmin(Rupees, admin.ModelAdmin[Event]):
+    money_fields = (
+        "team_fee",
+        "partial_team_fee",
+        "team_late_penalty",
+        "player_fee",
+        "player_late_penalty",
+    )
     form = EventAdminForm
     search_fields = ["title", "slug", "location"]
     list_display = ["title", "tier"]
@@ -592,7 +688,8 @@ class MatchEventAdmin(admin.ModelAdmin[MatchEvent]):
 
 
 @admin.register(Subscription)
-class SubscriptionAdmin(admin.ModelAdmin[Subscription]):
+class SubscriptionAdmin(Rupees, admin.ModelAdmin[Subscription]):
+    money_fields = ("amount_paid",)
     search_fields = [
         "player__user__first_name",
         "player__user__last_name",
@@ -604,7 +701,7 @@ class SubscriptionAdmin(admin.ModelAdmin[Subscription]):
         "get_name",
         "season",
         "get_tier",
-        "amount_paid",
+        "amount_paid_inr",
         "is_active",
         "refunded_at",
     ]
@@ -665,9 +762,10 @@ class NeedsReviewFilter(admin.SimpleListFilter):
 
 
 class RazorpayTransactionPlayerInline(
-    admin.TabularInline[RazorpayTransactionPlayer, RazorpayTransaction]
+    Rupees, admin.TabularInline[RazorpayTransactionPlayer, RazorpayTransaction]
 ):
     model = RazorpayTransactionPlayer
+    money_fields = ("amount",)
     extra = 0
     readonly_fields = ["refund_link"]
     # Dropdowns here list every player and subscription, a query or more per
@@ -675,7 +773,8 @@ class RazorpayTransactionPlayerInline(
     raw_id_fields = ["player", "subscription"]
 
     def get_fields(self, request: HttpRequest, obj: Any = None) -> list[str]:
-        fields = ["player", "plan", "amount", "subscription", "needs_review", "review_note"]
+        amount = "amount_inr" if self._read_only(request, obj) else "amount"
+        fields = ["player", "plan", amount, "subscription", "needs_review", "review_note"]
         # The button is only shown to staff who may actually refund; the view
         # refuses anyone else anyway.
         if request.user.has_perm(REFUND_PERM):
@@ -687,16 +786,17 @@ class RazorpayTransactionPlayerInline(
         if not obj.pk or not obj.amount:
             return "—"
         return format_html(
-            '<a class="button" href="{}">Refund ₹{}</a>',
+            '<a class="button" href="{}">Refund {}</a>',
             reverse("admin:refund_line", args=[obj.pk]),
-            obj.amount // 100,
+            rupees(obj.amount),
         )
 
 
-class RazorpayRefundInline(admin.TabularInline[RazorpayRefund, RazorpayTransaction]):
+class RazorpayRefundInline(Rupees, admin.TabularInline[RazorpayRefund, RazorpayTransaction]):
     model = RazorpayRefund
+    money_fields = ("amount",)
     extra = 0
-    fields = ("amount", "status", "source", "reason", "created_by", "created_at")
+    fields = ("amount_inr", "status", "source", "reason", "created_by", "created_at")
     readonly_fields = fields
     can_delete = False
 
@@ -705,7 +805,8 @@ class RazorpayRefundInline(admin.TabularInline[RazorpayRefund, RazorpayTransacti
 
 
 @admin.register(RazorpayTransaction)
-class RazorpayTransactionAdmin(admin.ModelAdmin[RazorpayTransaction]):
+class RazorpayTransactionAdmin(Rupees, admin.ModelAdmin[RazorpayTransaction]):
+    money_fields = ("amount",)
     change_list_template = "admin/razorpay_transaction.html"
     search_fields = [
         "order_id",
@@ -725,7 +826,7 @@ class RazorpayTransactionAdmin(admin.ModelAdmin[RazorpayTransaction]):
         "type",
         "order_id",
         "payment_id",
-        "amount",
+        "amount_inr",
         "payment_date",
         "status",
         "account",
@@ -736,7 +837,7 @@ class RazorpayTransactionAdmin(admin.ModelAdmin[RazorpayTransaction]):
 
     def get_readonly_fields(self, request: HttpRequest, obj: Any = None) -> list[str]:
         # The account is fixed when the order is placed, never changed after.
-        fixed = ["account", "notes"]
+        fixed = [*super().get_readonly_fields(request, obj), "account", "notes"]
         if obj is not None and request.user.has_perm(REFUND_PERM):
             return [*fixed, "refund_order_link"]
         return fixed
@@ -765,7 +866,7 @@ class RazorpayTransactionAdmin(admin.ModelAdmin[RazorpayTransaction]):
 
                     context_data.update(
                         {
-                            "total_completed_amount": metrics["total_completed"] / 100,
+                            "total_completed_amount": rupees(metrics["total_completed"]),
                         }
                     )
             except (AttributeError, KeyError):
@@ -792,14 +893,16 @@ class SubscriptionTypeAdmin(admin.ModelAdmin[SubscriptionType]):
     inlines = [SubscriptionTypeScopeInline]
 
 
-class SubscriptionPlanInline(admin.TabularInline[SubscriptionPlan, Season]):
+class SubscriptionPlanInline(Rupees, admin.TabularInline[SubscriptionPlan, Season]):
     model = SubscriptionPlan
+    money_fields = ("amount",)
     extra = 0
 
 
 @admin.register(SubscriptionPlan)
-class SubscriptionPlanAdmin(admin.ModelAdmin[SubscriptionPlan]):
-    list_display = ["season", "type", "amount", "is_available"]
+class SubscriptionPlanAdmin(Rupees, admin.ModelAdmin[SubscriptionPlan]):
+    money_fields = ("amount",)
+    list_display = ["season", "type", "amount_inr", "is_available"]
     list_filter = ["season", "type", "is_available"]
 
 
@@ -818,10 +921,11 @@ class SponsorshipGrantAdmin(admin.ModelAdmin[SponsorshipGrant]):
 
 
 @admin.register(PhonePeTransaction)
-class PhonePeTransactionAdmin(Retired, admin.ModelAdmin[PhonePeTransaction]):
+class PhonePeTransactionAdmin(Rupees, Retired, admin.ModelAdmin[PhonePeTransaction]):
+    money_fields = ("amount",)
     # Payments moved to Razorpay; these are the 2023-24 records.
     search_fields = ["transaction_id", "user__first_name", "user__last_name", "user__email"]
-    list_display = ["get_name", "transaction_id", "amount", "transaction_date", "status"]
+    list_display = ["get_name", "transaction_id", "amount_inr", "transaction_date", "status"]
     actions = [export_as_csv]
 
     @admin.display(description="User Name", ordering="user__first_name")
@@ -830,10 +934,11 @@ class PhonePeTransactionAdmin(Retired, admin.ModelAdmin[PhonePeTransaction]):
 
 
 @admin.register(ManualTransaction)
-class ManualTransactionAdmin(Retired, admin.ModelAdmin[ManualTransaction]):
+class ManualTransactionAdmin(Rupees, Retired, admin.ModelAdmin[ManualTransaction]):
+    money_fields = ("amount",)
     # No manual payments since 2024; these are the old records.
     search_fields = ["transaction_id", "user__first_name", "user__last_name", "user__email"]
-    list_display = ["get_name", "transaction_id", "amount", "payment_date"]
+    list_display = ["get_name", "transaction_id", "amount_inr", "payment_date"]
     actions = [export_as_csv]
 
     @admin.display(description="User Name", ordering="user__first_name")
@@ -842,7 +947,12 @@ class ManualTransactionAdmin(Retired, admin.ModelAdmin[ManualTransaction]):
 
 
 @admin.register(Season)
-class SeasonAdmin(admin.ModelAdmin[Season]):
+class SeasonAdmin(Rupees, admin.ModelAdmin[Season]):
+    money_fields = (
+        "annual_subscription_amount",
+        "sponsored_annual_subscription_amount",
+        "supporter_annual_subscription_amount",
+    )
     search_fields = ["name"]
     list_display = ["name", "start_date", "end_date"]
     inlines = [SubscriptionPlanInline]
@@ -1493,8 +1603,9 @@ class EmailAliasAdmin(ReadOnly, admin.ModelAdmin[EmailAlias]):
 
 
 @admin.register(Form)
-class FormAdmin(admin.ModelAdmin[Form]):
-    list_display = ["title", "slug", "payment_amount", "is_active", "created_at"]
+class FormAdmin(Rupees, admin.ModelAdmin[Form]):
+    money_fields = ("payment_amount",)
+    list_display = ["title", "slug", "payment_amount_inr", "is_active", "created_at"]
     search_fields = ["title", "slug"]
     list_filter = ["is_active"]
     autocomplete_fields = ["created_by"]
@@ -1515,10 +1626,19 @@ class FormResponseAdmin(admin.ModelAdmin[FormResponse]):
 
 
 @admin.register(RazorpayRefund)
-class RazorpayRefundAdmin(ReadOnly, admin.ModelAdmin[RazorpayRefund]):
+class RazorpayRefundAdmin(Rupees, ReadOnly, admin.ModelAdmin[RazorpayRefund]):
     """Every refund: who, when, why, how much, and how it went."""
 
-    list_display = ["transaction", "line", "amount", "status", "source", "created_by", "created_at"]
+    money_fields = ("amount",)
+    list_display = [
+        "transaction",
+        "line",
+        "amount_inr",
+        "status",
+        "source",
+        "created_by",
+        "created_at",
+    ]
     list_filter = ["status", "source", "created_at"]
     search_fields = ["transaction__order_id", "razorpay_refund_id"]
     list_select_related = ["transaction", "created_by"]
@@ -1526,14 +1646,11 @@ class RazorpayRefundAdmin(ReadOnly, admin.ModelAdmin[RazorpayRefund]):
 
 
 @admin.register(Receipt)
-class ReceiptAdmin(ReadOnly, admin.ModelAdmin[Receipt]):
+class ReceiptAdmin(Rupees, ReadOnly, admin.ModelAdmin[Receipt]):
+    money_fields = ("total",)
     list_display = ["number", "kind", "issued_at", "payer_name", "total_inr", "open_link"]
     list_filter = ["kind", "financial_year"]
     search_fields = ["number", "payer_name", "payer_email", "order_id", "reference"]
-
-    @admin.display(description="Total (INR)")
-    def total_inr(self, receipt: Receipt) -> str:
-        return format_inr(receipt.total)
 
     @admin.display(description="Document")
     def open_link(self, receipt: Receipt) -> str:

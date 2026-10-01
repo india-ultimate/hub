@@ -15,7 +15,7 @@ from django.conf import settings
 from django.utils.timezone import localdate, now
 
 from server.core.models import Player, Team, User
-from server.receipts.money import INDIA
+from server.receipts.money import INDIA, rupees
 from server.registration.models import RosterEntry, RosterSwap
 from server.season.models import Season
 from server.series.models import (
@@ -250,7 +250,7 @@ def _subscription_reason(ctx: Context, entry: RosterEntry) -> Reason | None:
             "action",
             error["description"],
             Action(
-                f"Upgrade ₹{amount // 100:,}",
+                f"Upgrade {rupees(amount)}",
                 href=f"/subscription/{player.id}?tab=individual&tier={slug}&return=__RETURN__",
             ),
         )
@@ -536,10 +536,6 @@ def meter(ctx: Context, reasons: dict[int, Reason]) -> dict[str, int]:
     }
 
 
-def _rupees(paise: int) -> str:
-    return f"₹{paise // 100:,}"
-
-
 def _plural(n: int, word: str) -> str:
     return f"{n} {word}{'s' if n != 1 else ''}"
 
@@ -575,7 +571,7 @@ def _team_fee_step(ctx: Context) -> dict[str, Any]:
         return {
             **step,
             "state": "done",
-            "title": f"Team fee · {_rupees(e.team_fee)}",
+            "title": f"Team fee · {rupees(e.team_fee)}",
             "detail": f"Paid to {checkout_payee(e)}",
         }
     if e.series is not None and not e.series.teams.filter(pk=team.pk).exists():
@@ -599,7 +595,7 @@ def _team_fee_step(ctx: Context) -> dict[str, Any]:
         .first()
     )
     if refunded is not None and not tournament.partial_teams.filter(pk=team.pk).exists():
-        step["detail"] = f"Withdrawn · refunded {_rupees(refunded)}"
+        step["detail"] = f"Withdrawn · refunded {rupees(refunded)}"
     opens = e.team_registration_start_date
     last = max(filter(None, [e.team_late_penalty_end_date, e.team_registration_end_date]))
     if step["detail"] and not opens <= ctx.today <= last:
@@ -638,32 +634,30 @@ def _team_fee_step(ctx: Context) -> dict[str, Any]:
     days_late, penalty = calculate_late_penalty(
         e.team_registration_end_date, e.team_late_penalty, e.team_late_penalty_end_date
     )
-    by_day = f" + {_plural(days_late, 'day')} × {_rupees(e.team_late_penalty)}"  # noqa: RUF001
+    by_day = f" + {_plural(days_late, 'day')} × {rupees(e.team_late_penalty)}"  # noqa: RUF001
     if tournament.partial_teams.filter(pk=team.pk).exists():
         rest = e.team_fee - e.partial_team_fee
         due = e.team_registration_end_date if e.team_late_penalty else last
-        owed = (
-            f"{_rupees(rest)}{by_day}" if penalty else f"{_rupees(rest)} remaining by {due:%b %-d}"
-        )
-        pay = Action(f"Pay {_rupees(rest + penalty)}", op="pay_team_rest").as_dict()
-        text = f"Pay the remaining {_rupees(rest + penalty)}"
+        owed = f"{rupees(rest)}{by_day}" if penalty else f"{rupees(rest)} remaining by {due:%b %-d}"
+        pay = Action(f"Pay {rupees(rest + penalty)}", op="pay_team_rest").as_dict()
+        text = f"Pay the remaining {rupees(rest + penalty)}"
         return {
             **step,
             "detail": f"Partial paid · {owed}",
             "callout": _payments_blocked(e) or {"kind": "action", "text": text, "action": pay},
         }
     total = e.team_fee + penalty
-    detail = f"{_rupees(e.team_fee)}{by_day}" if penalty else ""
-    pay = Action(f"Pay {_rupees(total)}", op="pay_team").as_dict()
+    detail = f"{rupees(e.team_fee)}{by_day}" if penalty else ""
+    pay = Action(f"Pay {rupees(total)}", op="pay_team").as_dict()
     callout: dict[str, Any] = {
         "kind": "action",
-        "text": f"Team fee {_rupees(total)}",
+        "text": f"Team fee {rupees(total)}",
         "action": pay,
     }
     partial_end = e.team_partial_registration_end_date or e.team_registration_end_date
     if e.partial_team_fee and ctx.today <= partial_end:
         # The one callout with a second button: part now, the rest later.
-        label = f"Pay partial {_rupees(e.partial_team_fee)}"
+        label = f"Pay partial {rupees(e.partial_team_fee)}"
         callout["secondary_action"] = Action(label, op="pay_team_partial").as_dict()
     callout = _payments_blocked(e) or callout
     return {**step, "detail": detail or step["detail"], "callout": callout}
@@ -716,7 +710,7 @@ def _handoff(ctx: Context, reasons: dict[int, Reason], page_path: str) -> dict[s
         "text": f"{_plural(n, 'player')} {need_s} a {ctx.season.name} subscription"
         " before you can pay for them",
         "action": Action(
-            f"Pay {_plural(n, 'subscription')} · {_rupees(total)}",
+            f"Pay {_plural(n, 'subscription')} · {rupees(total)}",
             href=f"/subscription/group?{query}",
         ).as_dict(),
     }
