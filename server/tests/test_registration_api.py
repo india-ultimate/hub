@@ -1018,3 +1018,17 @@ class TestSwap(ApiCase):
         self.assertEqual("ready", rows[ready.id]["swap_state"]["kind"])
         self.assertEqual("action.subscription", rows[unsubscribed.id]["swap_state"]["code"])
         self.assertEqual({"code", "kind", "text"}, set(rows[ready.id]["swap_state"]))
+
+    def test_swap_state_offers_a_woman_for_a_woman_when_women_are_full(self) -> None:
+        self.rostered("f1@x.com")
+        self.rostered("f2@x.com")  # women 2/2
+        ready = self.player("r@x.com")
+        rows = {r["player"]["id"]: r for r in self.status().json()["roster"]["entries"]}
+        self.assertEqual("ready", rows[ready.id]["swap_state"]["kind"])
+
+    def test_swap_state_for_a_full_gender_still_asks_for_a_subscription(self) -> None:
+        self.rostered("f1@x.com")
+        self.rostered("f2@x.com")  # women 2/2
+        unsubscribed = self.player("u@x.com", tier=None)
+        rows = {r["player"]["id"]: r for r in self.status().json()["roster"]["entries"]}
+        self.assertEqual("action.subscription", rows[unsubscribed.id]["swap_state"]["code"])
