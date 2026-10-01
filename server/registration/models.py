@@ -35,3 +35,22 @@ class RosterEntry(models.Model):
 
     def __str__(self) -> str:
         return f"{self.player} for {self.team} at {self.event}"
+
+
+class RosterSwap(models.Model):
+    """A paid place passed from one player to another. No money moves."""
+
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="roster_swaps")
+    team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name="roster_swaps")
+    out_player = models.ForeignKey(Player, on_delete=models.CASCADE, related_name="swapped_out")
+    in_player = models.ForeignKey(Player, on_delete=models.CASCADE, related_name="swapped_in")
+    by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, blank=True, null=True, related_name="roster_swaps_made"
+    )
+    at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-at", "-id"]
+
+    def __str__(self) -> str:
+        return f"{self.out_player} → {self.in_player} for {self.team} at {self.event}"

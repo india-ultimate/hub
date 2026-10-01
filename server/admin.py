@@ -46,6 +46,7 @@ from server.forms.models import Form, FormResponse
 from server.payment_account.models import PaymentAccount, SecretsUnavailable, encrypt
 from server.receipts.models import Receipt
 from server.receipts.money import format_inr
+from server.registration.models import RosterSwap
 from server.season.models import Season
 from server.series.models import Series, SeriesRegistration, SeriesRosterInvitation
 from server.servicerequests.models import ServiceRequest, ServiceRequestStatus, ServiceRequestType
@@ -1437,3 +1438,13 @@ class ReceiptAdmin(ReadOnly, admin.ModelAdmin[Receipt]):
     @admin.display(description="Document")
     def open_link(self, receipt: Receipt) -> str:
         return format_html('<a href="/receipts/{}" target="_blank">View</a>', receipt.pk)
+
+
+@admin.register(RosterSwap)
+class RosterSwapAdmin(ReadOnly, admin.ModelAdmin[RosterSwap]):
+    """Every paid place a team passed from one player to another."""
+
+    list_display = ("event", "team", "out_player", "in_player", "by", "at")
+    readonly_fields = list_display
+    list_select_related = ("event", "team", "out_player__user", "in_player__user", "by")
+    date_hierarchy = "at"

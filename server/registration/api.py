@@ -4,19 +4,27 @@ import logging
 from http import HTTPStatus
 from typing import Any, cast
 
+from django.conf import settings
+from django.core import mail
 from django.db import transaction as db_transaction
 from django.http import Http404
 from ninja import Router
 
-from server.core.models import Player, Team
+from server.core.models import Player, Team, User
 from server.registration.candidates import candidate_payload
-from server.registration.models import RosterEntry
-from server.registration.schema import AddEntrySchema, CheckoutOrderSchema, CheckoutSchema
+from server.registration.models import RosterEntry, RosterSwap
+from server.registration.schema import (
+    AddEntrySchema,
+    CheckoutOrderSchema,
+    CheckoutSchema,
+    SwapSchema,
+)
 from server.registration.state import (
     HOLD_MINUTES,
     build_context,
     checkout_quote,
     entry_reasons,
+    preview_swap,
     status_payload,
 )
 from server.schema import Response
@@ -198,6 +206,70 @@ def resend_invite(
     if error is not None:
         return 400, error
     return 200, {"message": "Invite sent again"}
+
+
+def _tell_swapped_out(player: Player, team: Team, event: Event, by: User) -> None:
+    subject = f"You've been taken off {team.name}'s roster for {event.title}"
+    body = (
+        f"Hi {player.user.first_name or 'there'},\n\n"
+        f"{by.get_full_name() or by.username} took you off {team.name}'s roster for "
+        f"{event.title} on {today():%b %-d}. Your place was passed to another player.\n\n"
+        "If this is a surprise, contact your captain.\n"
+    )
+    try:
+        mail.send_mail(subject, body, settings.EMAIL_HOST_USER, [player.user.email])
+    except Exception:
+        logger.exception("Couldn't email %s about a roster swap", player.user.email)
+
+
+@router.post(
+    "/{event_slug}/team/{team_slug}/swap",
+    response={200: Response, 400: Response, 403: Response, 409: Response},
+)
+def swap(
+    request: AuthenticatedHttpRequest, event_slug: str, team_slug: str, body: SwapSchema
+) -> tuple[int, message_response]:
+    event, team = _load(event_slug, team_slug)
+    if not _is_admin(team, request):
+        return 403, ADMINS_ONLY
+    if event.tournament.use_uc_registrations:
+        return 400, {"message": "This tournament's rosters come from Ultimate Central"}
+    last = max(
+        filter(None, [event.player_late_penalty_end_date, event.player_registration_end_date])
+    )
+    if today() < event.player_registration_start_date:
+        return 400, {"message": "Rostering hasn't opened yet"}
+    if today() > last:
+        return 400, {"message": f"Swaps closed {last:%b %-d}"}
+
+    with db_transaction.atomic():
+        # The checkout's lock: a swap and a payment for this team never interleave.
+        list(RosterEntry.objects.select_for_update().filter(event=event, team=team))
+        ctx = build_context(event, team, request.user)
+        out = next((r for r in ctx.paid if r.player_id == body.out_player_id), None)
+        if out is None:
+            return 409, {"message": "That player is no longer rostered — refresh and try again"}
+        entry = next((e for e in ctx.entries if e.player_id == body.in_player_id), None)
+        if entry is None:
+            return 409, {"message": "That player is no longer on the list — refresh and try again"}
+        new_name = entry.player.user.get_full_name()
+        reason = preview_swap(ctx, out.player_id, entry.player_id)
+        if reason.kind != "ready":
+            return 409, {"message": f"{new_name} can't take the place: {reason.text}"}
+
+        out.delete()
+        _, error = roster_player(event, team, entry.player)
+        if error is not None:
+            db_transaction.set_rollback(True)
+            return 409, {"message": f"{new_name} can't take the place: {error['message']}"}
+        entry.delete()
+        RosterEntry.objects.create(event=event, team=team, player=out.player, added_by=request.user)
+        RosterSwap.objects.create(
+            event=event, team=team, out_player=out.player, in_player=entry.player, by=request.user
+        )
+        gone, by = out.player, request.user
+        db_transaction.on_commit(lambda: _tell_swapped_out(gone, team, event, by))
+    return 200, {"message": f"Swapped {gone.user.get_full_name()} for {new_name}"}
 
 
 def _settle_if_paid(order: RazorpayTransaction) -> bool:

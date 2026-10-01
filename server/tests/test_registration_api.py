@@ -8,17 +8,19 @@ from django.core import mail
 from django.test import Client, override_settings
 from django.utils.timezone import now
 from razorpay.resources.order import Order
+from razorpay.resources.payment import Payment
 
 from server.core.models import Player, Team, User
-from server.registration.models import RosterEntry
+from server.registration.models import RosterEntry, RosterSwap
 from server.registration.state import build_context
 from server.series.models import Role, SeriesRegistration, SeriesRosterInvitation
 from server.subscription.models import Subscription
 from server.tests.base import make_account
-from server.tests.test_payment_accounts import razorpay_order
+from server.tests.test_payment_accounts import PLAYER_FEE, razorpay_order
 from server.tests.test_registration_state import StateTestCase
 from server.tournament.models import Event, Registration
 from server.transaction.models import RazorpayTransaction, RazorpayTransactionPlayer
+from server.transaction.utils import apply_transaction
 from server.utils import today
 
 
@@ -772,3 +774,175 @@ class TestAddMyselfAndRemove(ApiCase):
         p = self.player("s@x.com")
         self.assertEqual(204, self.web.delete(f"{self.base}/roster/{p.id}").status_code)
         self.assertTrue(SeriesRegistration.objects.filter(player=p).exists())
+
+
+class TestSwap(ApiCase):
+    def rostered(self, email: str, match_up: str = Player.MatchupTypes.FEMALE) -> Player:
+        p = self.player(email, match_up, entry=False)
+        Registration.objects.create(event=self.event, team=self.team, player=p)
+        return p
+
+    def swap(self, out: Player, new: Player, client: Client | None = None) -> Any:
+        return (client or self.web).post(
+            f"{self.base}/swap",
+            {"out_player_id": out.id, "in_player_id": new.id},
+            content_type="application/json",
+        )
+
+    def paid_order(self, order_id: str, player: Player) -> RazorpayTransaction:
+        order = RazorpayTransaction.objects.create(
+            order_id=order_id,
+            payment_id=f"pay_{order_id}",
+            amount=PLAYER_FEE,
+            currency="INR",
+            status=RazorpayTransaction.TransactionStatusChoices.COMPLETED,
+            type=RazorpayTransaction.TransactionTypeChoices.PLAYER_REGISTRATION,
+            user=self.admin,
+            event=self.event,
+            team=self.team,
+        )
+        RazorpayTransactionPlayer.objects.create(
+            transaction=order, player=player, amount=PLAYER_FEE
+        )
+        return order
+
+    def test_swap_moves_the_place(self) -> None:
+        out, new = self.rostered("o@x.com"), self.player("n@x.com")
+        r = self.swap(out, new)
+        self.assertEqual(200, r.status_code, r.content)
+        self.assertTrue(
+            Registration.objects.filter(event=self.event, team=self.team, player=new).exists()
+        )
+        self.assertFalse(Registration.objects.filter(event=self.event, player=out).exists())
+        self.assertTrue(
+            RosterEntry.objects.filter(event=self.event, team=self.team, player=out).exists()
+        )
+        self.assertFalse(RosterEntry.objects.filter(player=new).exists())
+        swap = RosterSwap.objects.get()
+        self.assertEqual((out, new, self.admin), (swap.out_player, swap.in_player, swap.by))
+
+    def test_swapped_out_player_is_emailed(self) -> None:
+        out, new = self.rostered("o@x.com"), self.player("n@x.com")
+        with self.captureOnCommitCallbacks(execute=True):
+            self.swap(out, new)
+        self.assertEqual(["o@x.com"], mail.outbox[-1].to)
+        self.assertIn(f"taken off {self.team.name}'s roster", mail.outbox[-1].subject)
+
+    def test_email_failure_keeps_the_swap(self) -> None:
+        out, new = self.rostered("o@x.com"), self.player("n@x.com")
+        with (
+            mock.patch("server.registration.api.mail.send_mail", side_effect=OSError("smtp")),
+            self.captureOnCommitCallbacks(execute=True),
+        ):
+            self.assertEqual(200, self.swap(out, new).status_code)
+        self.assertTrue(RosterSwap.objects.exists())
+
+    def test_admins_only(self) -> None:
+        out, new = self.rostered("o@x.com"), self.player("n@x.com")
+        outsider = User.objects.create_user("x@x.com", "x@x.com", "pw")
+        self.assertEqual(403, self.swap(out, new, self.as_user(outsider)).status_code)
+
+    def test_out_player_must_be_rostered(self) -> None:
+        out, new = self.player("o@x.com"), self.player("n@x.com")
+        r = self.swap(out, new)
+        self.assertEqual(409, r.status_code)
+        self.assertIn("no longer rostered", r.json()["message"])
+
+    def test_in_player_must_be_on_the_list(self) -> None:
+        out, new = self.rostered("o@x.com"), self.player("n@x.com", entry=False)
+        self.assertEqual(409, self.swap(out, new).status_code)
+
+    def test_in_player_must_be_ready(self) -> None:
+        out, new = self.rostered("o@x.com"), self.player("n@x.com", tier=None)
+        r = self.swap(out, new)
+        self.assertEqual(409, r.status_code)
+        self.assertFalse(RosterSwap.objects.exists())
+
+    def test_second_swap_of_the_same_player_is_refused(self) -> None:
+        out = self.rostered("o@x.com")
+        a, b = self.player("a@x.com"), self.player("b@x.com")
+        self.assertEqual(200, self.swap(out, a).status_code)
+        self.assertEqual(409, self.swap(out, b).status_code)
+
+    def test_swap_back(self) -> None:
+        out, new = self.rostered("o@x.com"), self.player("n@x.com")
+        self.swap(out, new)
+        self.assertEqual(200, self.swap(new, out).status_code)
+        self.assertEqual(2, RosterSwap.objects.count())
+
+    def test_admin_can_swap_themselves_out(self) -> None:
+        me = self.rostered("me@x.com")
+        me.user = self.admin
+        me.save()
+        self.assertEqual(200, self.swap(me, self.player("n@x.com")).status_code)
+
+    def test_closed_window(self) -> None:
+        out, new = self.rostered("o@x.com"), self.player("n@x.com")
+        self.event.player_registration_end_date = today() - datetime.timedelta(days=1)
+        self.event.player_late_penalty_end_date = None
+        self.event.save()
+        r = self.swap(out, new)
+        self.assertEqual(400, r.status_code)
+        self.assertIn("Swaps closed", r.json()["message"])
+
+    def test_uc_registration_tournaments_cannot_swap(self) -> None:
+        self.tournament.use_uc_registrations = True
+        self.tournament.save()
+        out, new = self.rostered("o@x.com"), self.player("n@x.com")
+        self.assertEqual(400, self.swap(out, new).status_code)
+
+    def test_old_page_rosterings_can_be_swapped(self) -> None:
+        # Rostered without ever being on the list, as the old pages did.
+        out = self.rostered("o@x.com")
+        self.assertFalse(RosterEntry.objects.filter(player=out).exists())
+        self.assertEqual(200, self.swap(out, self.player("n@x.com")).status_code)
+
+    def test_refused_rostering_rolls_back(self) -> None:
+        out, new = self.rostered("o@x.com"), self.player("n@x.com")
+        with mock.patch(
+            "server.registration.api.roster_player", return_value=(None, {"message": "nope"})
+        ):
+            self.assertEqual(409, self.swap(out, new).status_code)
+        self.assertTrue(Registration.objects.filter(player=out).exists())
+        self.assertTrue(RosterEntry.objects.filter(player=new).exists())
+
+    def test_payload_says_who_was_swapped_and_when_paid(self) -> None:
+        out, new = self.rostered("o@x.com"), self.player("n@x.com")
+        self.swap(out, new)
+        rows = {r["player"]["id"]: r for r in self.status().json()["roster"]["entries"]}
+        self.assertEqual(out.user.get_full_name(), rows[new.id]["swapped_for"]["name"])
+        self.assertEqual(today().isoformat(), rows[new.id]["swapped_for"]["on"])
+        self.assertIsNone(rows[out.id]["swapped_for"])
+        self.assertIsNone(rows[new.id]["paid_on"])
+
+    def test_paid_on_comes_from_the_completed_line(self) -> None:
+        p = self.rostered("p@x.com")
+        self.paid_order("order_paid1", p)
+        rows = {r["player"]["id"]: r for r in self.status().json()["roster"]["entries"]}
+        self.assertEqual(today().isoformat(), rows[p.id]["paid_on"])
+
+    def test_dates_are_indian_dates(self) -> None:
+        # 20:00 UTC is already the next day in India.
+        late = datetime.datetime(2026, 9, 30, 20, 0, tzinfo=datetime.timezone.utc)
+        out, new = self.rostered("o@x.com"), self.player("n@x.com")
+        self.swap(out, new)
+        RosterSwap.objects.update(at=late)
+        RazorpayTransaction.objects.filter(pk=self.paid_order("order_late", new).pk).update(
+            payment_date=late
+        )
+        row = next(
+            r for r in self.status().json()["roster"]["entries"] if r["player"]["id"] == new.id
+        )
+        self.assertEqual(("2026-10-01", "2026-10-01"), (row["paid_on"], row["swapped_for"]["on"]))
+
+    def test_paying_again_for_a_swapped_out_player_is_not_refunded(self) -> None:
+        out, new = self.rostered("o@x.com"), self.player("n@x.com")
+        self.paid_order("order_first", out)
+        self.assertEqual(200, self.swap(out, new).status_code)
+        second = self.paid_order("order_second", out)
+        with mock.patch.object(Payment, "refund", autospec=True) as refund:
+            apply_transaction(second)
+        refund.assert_not_called()
+        self.assertTrue(
+            Registration.objects.filter(event=self.event, team=self.team, player=out).exists()
+        )

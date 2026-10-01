@@ -12,10 +12,11 @@ from typing import Any
 from urllib.parse import urlencode
 
 from django.conf import settings
-from django.utils.timezone import now
+from django.utils.timezone import localdate, now
 
 from server.core.models import Player, Team, User
-from server.registration.models import RosterEntry
+from server.receipts.money import INDIA
+from server.registration.models import RosterEntry, RosterSwap
 from server.season.models import Season
 from server.series.models import (
     PLAYING_ROLES,
@@ -29,7 +30,7 @@ from server.subscription import catalog, eligibility
 from server.subscription.models import Scope
 from server.subscription.pricing import NeedsGrant, NotForSale, quote
 from server.tournament.models import Event, Registration, Tournament
-from server.transaction.models import RazorpayTransaction
+from server.transaction.models import RazorpayTransaction, RazorpayTransactionPlayer
 from server.utils import calculate_late_penalty
 from server.utils import today as today_ist
 
@@ -767,6 +768,29 @@ def status_payload(ctx: Context, page_path: str) -> dict[str, Any]:
     players = {r.player_id: r.player for r in ctx.paid} | {
         e.player_id: e.player for e in ctx.entries
     }
+    e = ctx.event
+    rostered = [r.player_id for r in ctx.paid]
+    paid_on: dict[int, str] = {}
+    for pid, when in (
+        RazorpayTransactionPlayer.objects.filter(
+            player_id__in=rostered,
+            refunds__isnull=True,
+            transaction__event=e,
+            transaction__team=ctx.team,
+            transaction__type=RazorpayTransaction.TransactionTypeChoices.PLAYER_REGISTRATION,
+            transaction__status=RazorpayTransaction.TransactionStatusChoices.COMPLETED,
+        )
+        .order_by("transaction__payment_date")
+        .values_list("player_id", "transaction__payment_date")
+    ):
+        paid_on[pid] = localdate(when, INDIA).isoformat()  # the latest wins
+    swapped_for: dict[int, dict[str, str]] = {}
+    swaps = RosterSwap.objects.filter(event=e, team=ctx.team, in_player_id__in=rostered)
+    for s in swaps.select_related("out_player__user"):  # newest first
+        swapped_for.setdefault(
+            s.in_player_id,
+            {"name": s.out_player.user.get_full_name(), "on": localdate(s.at, INDIA).isoformat()},
+        )
 
     def row(pid: int) -> dict[str, Any]:
         p = players[pid]
@@ -783,9 +807,10 @@ def status_payload(ctx: Context, page_path: str) -> dict[str, Any]:
             },
             "role": ctx.series_roles.get(pid, "DFLT"),
             "state": state,
+            "paid_on": paid_on.get(pid),
+            "swapped_for": swapped_for.get(pid),
         }
 
-    e = ctx.event
     return {
         "team": {"id": ctx.team.id, "name": ctx.team.name, "slug": ctx.team.slug},
         "event": {
