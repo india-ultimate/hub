@@ -107,11 +107,33 @@ def export_as_csv(
     return response
 
 
+class ReadOnly:
+    """History: nothing here is added, edited or deleted by hand."""
+
+    def has_add_permission(self, request: HttpRequest, obj: Any = None) -> bool:
+        return False
+
+    def has_change_permission(self, request: HttpRequest, obj: Any = None) -> bool:
+        return False
+
+    def has_delete_permission(self, request: HttpRequest, obj: Any = None) -> bool:
+        return False
+
+
+class Retired(ReadOnly):
+    """A feature the Hub no longer uses: off the admin menu, but an old row
+    can still be looked up by its direct link."""
+
+    def has_module_permission(self, request: HttpRequest) -> bool:
+        return False
+
+
 class SponsorshipGrantInline(admin.TabularInline[SponsorshipGrant, Player]):
     model = SponsorshipGrant
     extra = 0
     fields = ["season", "granted_at", "granted_by", "request", "note"]
     readonly_fields = ["granted_at"]
+    autocomplete_fields = ["granted_by"]
 
 
 @admin.register(Player)
@@ -130,6 +152,9 @@ class PlayerAdmin(admin.ModelAdmin[Player]):
     # waivers and certificates, so a typo here could not be taken back and
     # a repeat would break the unique column. Readable, not editable.
     readonly_fields = ["iu_id"]
+    autocomplete_fields = ["user"]
+    # Pickers page through players, so the order must be stable.
+    ordering = ["user__first_name", "user__last_name", "id"]
 
     @admin.display(description="Name", ordering="user__first_name")
     def get_name(self, obj: Player) -> str:
@@ -154,7 +179,10 @@ class PlayerAdmin(admin.ModelAdmin[Player]):
         # Add full name to search
         if search_term:
             queryset = queryset.filter(
-                Q(full_name__icontains=search_term) | Q(user__email__icontains=search_term)
+                Q(full_name__icontains=search_term)
+                | Q(user__email__icontains=search_term)
+                | Q(user__phone__icontains=search_term)
+                | Q(iu_id__icontains=search_term)
             )
         return (
             queryset.annotate(
@@ -177,7 +205,7 @@ class PlayerAdmin(admin.ModelAdmin[Player]):
 
 @admin.register(User)
 class UserAdmin(DjangoUserAdmin):
-    search_fields = ["first_name", "last_name", "username"]
+    search_fields = ["first_name", "last_name", "username", "email", "phone"]
     list_display = [
         "first_name",
         "last_name",
@@ -209,8 +237,10 @@ class UserAdmin(DjangoUserAdmin):
 
 @admin.register(Team)
 class TeamAdmin(admin.ModelAdmin[Team]):
-    search_fields = ["name", "slug"]
+    search_fields = ["name", "slug", "city"]
     list_display = ["name", "slug"]
+    autocomplete_fields = ["admins"]
+    ordering = ["name", "id"]
 
     def get_search_results(
         self,
@@ -220,7 +250,9 @@ class TeamAdmin(admin.ModelAdmin[Team]):
     ) -> tuple[QuerySet[Team], bool]:
         if search_term:
             queryset = queryset.filter(
-                Q(name__icontains=search_term) | Q(slug__icontains=search_term)
+                Q(name__icontains=search_term)
+                | Q(slug__icontains=search_term)
+                | Q(city__icontains=search_term)
             )
         return (
             queryset.annotate(
@@ -294,7 +326,7 @@ class PaymentAccountForm(forms.ModelForm):  # type: ignore[type-arg]
 class PaymentAccountAdmin(admin.ModelAdmin[PaymentAccount]):
     form = PaymentAccountForm
     list_display = ["name", "slug", "mode", "is_active"]
-    search_fields = ["name", "slug"]
+    search_fields = ["name", "slug", "key_id"]
     autocomplete_fields = ["viewers"]
     readonly_fields = ["mode", "secrets", "webhook_path"]
     actions = ["test_connection"]
@@ -366,15 +398,16 @@ class EventAdminForm(forms.ModelForm):  # type: ignore[type-arg]
 @admin.register(Event)
 class EventAdmin(admin.ModelAdmin[Event]):
     form = EventAdminForm
-    search_fields = ["title"]
+    search_fields = ["title", "slug", "location"]
     list_display = ["title", "tier"]
 
 
 @admin.register(Tournament)
 class TournamentAdmin(admin.ModelAdmin[Tournament]):
-    search_fields = ["event__title"]
+    search_fields = ["event__title", "event__slug"]
     list_display = ["get_name"]
-    filter_horizontal = ("volunteers", "directors", "teams", "partial_teams")
+    filter_horizontal = ("teams", "partial_teams")
+    autocomplete_fields = ["volunteers", "directors"]
 
     @admin.display(description="Name", ordering="event__title")
     def get_name(self, obj: Tournament) -> str:
@@ -461,7 +494,7 @@ class TournamentFilter(admin.SimpleListFilter):
 
 @admin.register(Match)
 class MatchAdmin(admin.ModelAdmin[Match]):
-    search_fields = ["tournament__event__title"]
+    search_fields = ["tournament__event__title", "name", "team_1__name", "team_2__name"]
     list_display = ["get_name", "name"]
 
     @admin.display(description="Tournament Name", ordering="tournament__event__title")
@@ -471,8 +504,20 @@ class MatchAdmin(admin.ModelAdmin[Match]):
 
 @admin.register(MatchStats)
 class MatchStatsAdmin(admin.ModelAdmin[MatchStats]):
-    search_fields = ["tournament__event__title"]
+    search_fields = [
+        "tournament__event__title",
+        "match__name",
+        "match__team_1__name",
+        "match__team_2__name",
+    ]
     list_display = ["get_tournament_name", "get_match_name"]
+    # A stats row's match never changes, and its list of every match is
+    # labelled "Match object (n)". Stats rows are made when a match is
+    # scored, never here.
+    readonly_fields = ["match"]
+
+    def has_add_permission(self, request: HttpRequest) -> bool:
+        return False
 
     @admin.display(description="Tournament Name", ordering="tournament__event__title")
     def get_tournament_name(self, obj: MatchStats) -> str:
@@ -548,7 +593,13 @@ class MatchEventAdmin(admin.ModelAdmin[MatchEvent]):
 
 @admin.register(Subscription)
 class SubscriptionAdmin(admin.ModelAdmin[Subscription]):
-    search_fields = ["player__user__first_name"]
+    search_fields = [
+        "player__user__first_name",
+        "player__user__last_name",
+        "player__user__email",
+        "player__user__username",
+    ]
+    autocomplete_fields = ["player", "waiver_signed_by"]
     list_display = [
         "get_name",
         "season",
@@ -656,8 +707,18 @@ class RazorpayRefundInline(admin.TabularInline[RazorpayRefund, RazorpayTransacti
 @admin.register(RazorpayTransaction)
 class RazorpayTransactionAdmin(admin.ModelAdmin[RazorpayTransaction]):
     change_list_template = "admin/razorpay_transaction.html"
-    search_fields = ["user__first_name"]
+    search_fields = [
+        "order_id",
+        "payment_id",
+        "user__first_name",
+        "user__last_name",
+        "user__email",
+        "user__username",
+        "team__name",
+        "event__title",
+    ]
     raw_id_fields = ["user"]
+    ordering = ["-payment_date", "-pk"]
     inlines = [RazorpayTransactionPlayerInline, RazorpayRefundInline]
     list_display = [
         "get_name",
@@ -746,13 +807,20 @@ class SubscriptionPlanAdmin(admin.ModelAdmin[SubscriptionPlan]):
 class SponsorshipGrantAdmin(admin.ModelAdmin[SponsorshipGrant]):
     list_display = ["player", "season", "granted_at", "granted_by"]
     list_filter = ["season"]
-    search_fields = ["player__user__email", "player__user__first_name"]
+    search_fields = [
+        "player__user__email",
+        "player__user__first_name",
+        "player__user__last_name",
+        "player__user__username",
+    ]
     list_select_related = ["player__user", "season", "granted_by"]
+    autocomplete_fields = ["player", "granted_by"]
 
 
 @admin.register(PhonePeTransaction)
-class PhonePeTransactionAdmin(admin.ModelAdmin[PhonePeTransaction]):
-    search_fields = ["user__first_name"]
+class PhonePeTransactionAdmin(Retired, admin.ModelAdmin[PhonePeTransaction]):
+    # Payments moved to Razorpay; these are the 2023-24 records.
+    search_fields = ["transaction_id", "user__first_name", "user__last_name", "user__email"]
     list_display = ["get_name", "transaction_id", "amount", "transaction_date", "status"]
     actions = [export_as_csv]
 
@@ -762,8 +830,9 @@ class PhonePeTransactionAdmin(admin.ModelAdmin[PhonePeTransaction]):
 
 
 @admin.register(ManualTransaction)
-class ManualTransactionAdmin(admin.ModelAdmin[ManualTransaction]):
-    search_fields = ["user__first_name"]
+class ManualTransactionAdmin(Retired, admin.ModelAdmin[ManualTransaction]):
+    # No manual payments since 2024; these are the old records.
+    search_fields = ["transaction_id", "user__first_name", "user__last_name", "user__email"]
     list_display = ["get_name", "transaction_id", "amount", "payment_date"]
     actions = [export_as_csv]
 
@@ -809,8 +878,12 @@ class SeriesRosterInvitationAdmin(admin.ModelAdmin[SeriesRosterInvitation]):
         "from_user__username",
         "to_player__user__first_name",
         "to_player__user__last_name",
+        "to_player__user__email",
+        "team__name",
+        "series__name",
     ]
     list_display = ["get_name", "get_email", "get_team"]
+    autocomplete_fields = ["from_user", "to_player"]
 
     @admin.display(description="From", ordering="from_user__username")
     def get_name(self, obj: SeriesRosterInvitation) -> str:
@@ -870,6 +943,8 @@ class RegistrationAdmin(RosterRowAdmin, admin.ModelAdmin[Registration]):
         "player__user__first_name",
         "player__user__last_name",
         "player__user__username",
+        "player__user__email",
+        "event__title",
     ]
     list_display = ["get_name", "get_email", "get_team"]
     autocomplete_fields = ["player", "team"]
@@ -893,11 +968,14 @@ class GuardianshipAdmin(admin.ModelAdmin[Guardianship]):
         "user__first_name",
         "user__last_name",
         "user__username",
+        "user__email",
         "player__user__first_name",
         "player__user__last_name",
         "player__user__username",
+        "player__user__email",
     ]
     list_display = ["get_name", "get_email"]
+    autocomplete_fields = ["user", "player"]
 
     @admin.display(description="User", ordering="user__first_name")
     def get_name(self, obj: Guardianship) -> str:
@@ -914,8 +992,10 @@ class AccreditationAdmin(admin.ModelAdmin[Accreditation]):
         "player__user__first_name",
         "player__user__last_name",
         "player__user__username",
+        "player__user__email",
     ]
     list_display = ["get_email", "is_valid", "level"]
+    autocomplete_fields = ["player"]
     list_filter = ["is_valid", "level"]
 
     @admin.display(description="Player", ordering="player__user__first_name")
@@ -935,6 +1015,7 @@ class ElectionAdmin(admin.ModelAdmin[Election]):
 class CandidateAdmin(admin.ModelAdmin[Candidate]):
     search_fields = ["user__first_name", "user__last_name", "user__email", "election__title"]
     list_display = ["get_name", "get_election", "created_at"]
+    autocomplete_fields = ["user"]
     list_filter = ["election", "created_at"]
 
     @admin.display(description="Name", ordering="user__first_name")
@@ -981,6 +1062,7 @@ class RankedVoteChoiceAdmin(admin.ModelAdmin[RankedVoteChoice]):
 class VoterVerificationAdmin(admin.ModelAdmin[VoterVerification]):
     search_fields = ["election__title", "user__email", "verification_token"]
     list_display = ["get_election", "get_user", "is_used", "created_at"]
+    autocomplete_fields = ["user"]
     list_filter = ["election", "is_used", "created_at"]
     date_hierarchy = "created_at"
 
@@ -997,6 +1079,7 @@ class VoterVerificationAdmin(admin.ModelAdmin[VoterVerification]):
 class EligibleVoterAdmin(admin.ModelAdmin[EligibleVoter]):
     search_fields = ["election__title", "user__email"]
     list_display = ["get_election", "get_user", "created_at"]
+    autocomplete_fields = ["user"]
     list_filter = ["election", "created_at"]
     date_hierarchy = "created_at"
 
@@ -1034,7 +1117,15 @@ class ElectionResultAdmin(admin.ModelAdmin[ElectionResult]):
 
 @admin.register(SpiritScore)
 class SpiritScoreAdmin(admin.ModelAdmin[SpiritScore]):
-    pass
+    search_fields = [
+        "mvp_v2__user__first_name",
+        "mvp_v2__user__last_name",
+        "msp_v2__user__first_name",
+        "msp_v2__user__last_name",
+    ]
+    autocomplete_fields = ["mvp_v2", "msp_v2"]
+    # From Ultimate Central, before players lived in the Hub: kept, not edited.
+    readonly_fields = ["mvp", "msp"]
 
 
 def _describe(move: RelationMove) -> str:
@@ -1050,11 +1141,19 @@ def _describe(move: RelationMove) -> str:
 
 @admin.register(ServiceRequest)
 class ServiceRequestAdmin(admin.ModelAdmin[ServiceRequest]):
-    search_fields = ["user__first_name", "user__last_name", "user__email"]
+    search_fields = [
+        "user__first_name",
+        "user__last_name",
+        "user__email",
+        "user__username",
+        "service_players__user__first_name",
+        "service_players__user__last_name",
+        "service_players__user__email",
+    ]
     list_display = ["get_user", "type", "status", "season", "created_at"]
     list_filter = ["type", "status", "season", "created_at"]
     date_hierarchy = "created_at"
-    filter_horizontal = ("service_players",)
+    autocomplete_fields = ["user", "service_players"]
     actions = ["approve_sponsorship", "approve_and_merge", "reject_merge"]
 
     @admin.action(description="Sponsorship requests: approve", permissions=["change"])
@@ -1164,8 +1263,10 @@ class ServiceRequestAdmin(admin.ModelAdmin[ServiceRequest]):
 @admin.register(Announcement)
 class AnnouncementAdmin(admin.ModelAdmin[Announcement]):
     list_display = ["title", "type", "slug", "author", "created_at", "has_action"]
-    list_filter = ["type", "created_at", "author"]
+    # Only people who have written one, not every user in the Hub.
+    list_filter = ["type", "created_at", ("author", admin.RelatedOnlyFieldListFilter)]
     search_fields = ["title", "slug", "content", "author__first_name", "author__last_name"]
+    autocomplete_fields = ["author"]
     date_hierarchy = "created_at"
     ordering = ["-created_at"]
     readonly_fields = ["slug"]
@@ -1342,19 +1443,6 @@ class TaskAdmin(admin.ModelAdmin[Task]):
         return super().changelist_view(request, extra_context)
 
 
-class ReadOnly:
-    """History: nothing here is added, edited or deleted by hand."""
-
-    def has_add_permission(self, request: HttpRequest, obj: Any = None) -> bool:
-        return False
-
-    def has_change_permission(self, request: HttpRequest, obj: Any = None) -> bool:
-        return False
-
-    def has_delete_permission(self, request: HttpRequest, obj: Any = None) -> bool:
-        return False
-
-
 @admin.register(AccountMerge)
 class AccountMergeAdmin(ReadOnly, admin.ModelAdmin[AccountMerge]):
     list_display = ["id", "created_at", "primary_email", "cluster", "actor_email", "matched_by"]
@@ -1409,13 +1497,21 @@ class FormAdmin(admin.ModelAdmin[Form]):
     list_display = ["title", "slug", "payment_amount", "is_active", "created_at"]
     search_fields = ["title", "slug"]
     list_filter = ["is_active"]
+    autocomplete_fields = ["created_by"]
 
 
 @admin.register(FormResponse)
 class FormResponseAdmin(admin.ModelAdmin[FormResponse]):
     list_display = ["form", "user", "is_paid", "submitted_at"]
-    search_fields = ["form__title", "user__first_name", "user__last_name", "user__email"]
+    search_fields = [
+        "form__title",
+        "user__first_name",
+        "user__last_name",
+        "user__email",
+        "transaction__order_id",
+    ]
     list_filter = ["form", "is_paid"]
+    autocomplete_fields = ["user", "transaction"]
 
 
 @admin.register(RazorpayRefund)
@@ -1450,5 +1546,13 @@ class RosterSwapAdmin(ReadOnly, admin.ModelAdmin[RosterSwap]):
 
     list_display = ("event", "team", "out_player", "in_player", "by", "at")
     readonly_fields = list_display
+    search_fields = [
+        "team__name",
+        "event__title",
+        "out_player__user__first_name",
+        "out_player__user__last_name",
+        "in_player__user__first_name",
+        "in_player__user__last_name",
+    ]
     list_select_related = ("event", "team", "out_player__user", "in_player__user", "by")
     date_hierarchy = "at"
