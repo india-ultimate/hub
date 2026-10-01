@@ -2,13 +2,8 @@ import { A } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
 import { For, Show, Suspense } from "solid-js";
 
+import { inr } from "../../money";
 import { fetchReceipts } from "../../queries";
-
-const inr = paise =>
-  (paise / 100).toLocaleString("en-IN", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  });
 
 const day = iso =>
   new Date(iso).toLocaleDateString("en-IN", {

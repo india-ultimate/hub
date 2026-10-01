@@ -10,6 +10,7 @@ import { trophy } from "solid-heroicons/solid";
 import { arrowRight, bolt, plus } from "solid-heroicons/solid";
 import { createEffect, createSignal, For, Match, Show, Switch } from "solid-js";
 
+import { inr } from "../money";
 import {
   fetchTournamentBySlug,
   fetchUser,
@@ -215,8 +216,7 @@ const TeamRegistration = () => {
             timeZone: "UTC"
           });
 
-        const formatFee = amount =>
-          amount > 0 ? `₹${(amount / 100).toLocaleString()}` : "Free";
+        const formatFee = amount => (amount > 0 ? inr(amount) : "Free");
 
         return (
           <div class="mx-auto my-4 grid max-w-screen-md grid-cols-1 gap-3 md:grid-cols-2">

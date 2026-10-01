@@ -206,8 +206,8 @@ class TestRegistrationIntegration(BaseCase):
         self.assert_text(f"For Home Team · {self.event.title}")
         for name in names:
             self.assert_element(subscription_flows.selected_row(name))
-        self.assert_text("Pay ₹ 1,500", 'button:contains("Pay ₹")')
-        complete_razorpay_test_payment(self, 'button:contains("Pay ₹ 1,500")')
+        self.assert_text("Pay ₹1,500", 'button:contains("Pay ₹")')
+        complete_razorpay_test_payment(self, 'button:contains("Pay ₹1,500")')
         self.assert_text("Payment successfully completed", timeout=60)
         for p in players:
             self.assertTrue(Subscription.objects.get(player=p, season=self.season).is_active)
@@ -362,7 +362,7 @@ class TestRegistrationIntegration(BaseCase):
         )
         self.assert_element(subscription_flows.selected_row("Kiran Iyer"))
         self.assert_text_not_visible("to be rostered")
-        complete_razorpay_test_payment(self, 'button:contains("Pay ₹ 750")')
+        complete_razorpay_test_payment(self, 'button:contains("Pay ₹750")')
         self.assert_text("Payment successfully completed", timeout=60)
         self.assert_element_absent('a:contains("Back to your team\'s registration")')
         self.assert_text_not_visible("to be rostered")
@@ -374,7 +374,7 @@ class TestRegistrationIntegration(BaseCase):
         )
         self.assert_element(subscription_flows.selected_row("Meera Iyer"))
         self.assert_text(f"For Home Team · {self.event.title}")
-        complete_razorpay_test_payment(self, 'button:contains("Pay ₹ 750")')
+        complete_razorpay_test_payment(self, 'button:contains("Pay ₹750")')
         self.assert_text("Payment successfully completed", timeout=60)
         self.click('a:contains("Back to your team\'s registration")')
         self.assert_text(self.team.name, "h1")

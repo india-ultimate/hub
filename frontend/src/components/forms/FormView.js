@@ -13,6 +13,7 @@ import {
 } from "solid-js";
 import { createStore } from "solid-js/store";
 
+import { inr } from "../../money";
 import {
   fetchForm,
   fetchMyFormResponses,
@@ -304,7 +305,7 @@ const FormView = () => {
                   >
                     {submitting()
                       ? "Processing..."
-                      : `Pay ₹${formQuery.data.payment_amount / 100} & Submit`}
+                      : `Pay ${inr(formQuery.data.payment_amount)} & Submit`}
                   </Show>
                 </button>
               </form>

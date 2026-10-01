@@ -8,6 +8,7 @@ import { createMutation, useQueryClient } from "@tanstack/solid-query";
 import { createEffect, createSignal, Show } from "solid-js";
 
 import { tournamentTypeChoices } from "../../constants";
+import { toPaise } from "../../money";
 import { createTournament } from "../../queries";
 import FileInput from "../FileInput";
 import Select from "../Select";
@@ -58,7 +59,7 @@ const CreateTournamentForm = () => {
       ) {
         const intValue = parseInt(data[field], 10);
         if (!Number.isNaN(intValue)) {
-          data[field] = intValue * 100;
+          data[field] = toPaise(intValue);
         }
       }
     });

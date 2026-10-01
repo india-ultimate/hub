@@ -8,6 +8,7 @@ from django.utils.timezone import now
 
 from server.core.models import User
 from server.receipts.issue import issue_refund_note
+from server.receipts.money import rupees
 from server.subscription.models import Subscription, SubscriptionPlan
 from server.transaction.client.razorpay import client_for
 from server.transaction.models import (
@@ -208,7 +209,7 @@ def _undo(subscription: Subscription, line: RazorpayTransactionPlayer) -> None:
         else:
             line.needs_review = True
             line.review_note = (
-                f"Refunded, but {remaining / 100:.2f} paid earlier still stands and matches "
+                f"Refunded, but {rupees(remaining)} paid earlier still stands and matches "
                 "no single tier this season. The subscription keeps its tier; set it by hand."
             )
             line.save(update_fields=["needs_review", "review_note"])

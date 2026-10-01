@@ -4,6 +4,7 @@ import DOMPurify from "dompurify";
 import { documentText } from "solid-heroicons/solid";
 import { For, Show, Suspense } from "solid-js";
 
+import { inr } from "../../money";
 import { fetchForms } from "../../queries";
 import { useStore } from "../../store";
 import Breadcrumbs from "../Breadcrumbs";
@@ -58,7 +59,7 @@ const FormsList = () => {
                       </A>
                       <Show when={form.payment_amount}>
                         <span class="ml-2 rounded bg-amber-100 px-2 py-0.5 text-xs text-amber-800 dark:bg-amber-900 dark:text-amber-200">
-                          ₹{form.payment_amount / 100}
+                          {inr(form.payment_amount)}
                         </span>
                       </Show>
                       <Show when={!form.is_active}>

@@ -19,6 +19,7 @@ import {
 
 import { majorAge, minAge, minAgeWarning } from "../../constants";
 import { ChevronLeft, ChevronRight, Spinner } from "../../icons";
+import { inr } from "../../money";
 import {
   fetchPlayerById,
   fetchSeasonGrants,
@@ -442,11 +443,12 @@ const GroupSubscription = props => {
 
   // Every rupee here is a price the server sent back for the tier that was
   // picked; nothing is worked out in the browser.
+  // In paise.
   const getAmount = () =>
     payingPlayers().reduce(
       (acc, player) => acc + (planFor(player.id)?.amount ?? 0),
       0
-    ) / 100;
+    );
 
   return (
     <div>
@@ -488,7 +490,7 @@ const GroupSubscription = props => {
               disabled={payDisabled() || items().length === 0}
               season={props.season}
               items={items()}
-              buttonText={`Pay ₹ ${getAmount().toLocaleString("en-IN")}`}
+              buttonText={`Pay ${inr(getAmount())}`}
               setStatus={setStatus}
               successCallback={paymentSuccessCallback}
             />
