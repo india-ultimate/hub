@@ -571,6 +571,42 @@ const TeamRegistrationHome = () => {
 
   const adminTeams = () => store.data?.admin_teams || [];
 
+  // Paid players apart; mid-payment rows first among the rest.
+  const paidRows = () =>
+    d().roster.entries.filter(e => e.state.kind === "done");
+  const unpaidRows = () =>
+    d()
+      .roster.entries.filter(e => e.state.kind !== "done")
+      .sort(
+        (a, b) => (b.state.kind === "progress") - (a.state.kind === "progress")
+      );
+  const removeReason = entry =>
+    entry.state.kind === "progress"
+      ? "Being paid for — try again in a few minutes"
+      : entry.state.code === "timing.closed"
+      ? entry.state.text.replace("Not rostered — r", "R")
+      : null;
+  const capLabel = () => {
+    const max = d().roster.meter.max_total;
+    return max ? `${paidRows().length} of ${max}` : `${paidRows().length}`;
+  };
+  const free = () => !d().checkout.per_player;
+
+  // Removing asks first, and says when it also withdraws a series invite.
+  const [removing, setRemoving] = createSignal(null); // the entry to confirm
+  let removeRef;
+  const askRemove = player => {
+    setRemoving(d().roster.entries.find(e => e.player.id === player.id));
+    removeRef.showModal();
+  };
+  const confirmRemove = async () => {
+    const entry = removing();
+    removeRef.close();
+    await runOp("remove", entry.player.id);
+    if (!opError()) announce(`Removed ${entry.player.name}`);
+  };
+  const invitePending = entry => entry?.state.code === "waiting.invite";
+
   return (
     // Bottom padding so the phone's fixed pay bar never covers the page.
     <div class="mx-auto max-w-3xl pb-32 pt-2 sm:pb-8">
@@ -725,32 +761,88 @@ const TeamRegistrationHome = () => {
                       meter={d().roster.meter}
                       hasSeries={Boolean(d().event.series)}
                     />
-                    <Show when={d().roster.entries.length}>
-                      <ul aria-label="Roster">
-                        <For each={d().roster.entries}>
-                          {entry => (
-                            <>
-                              <RosterRow
-                                entry={withAction(entry)}
-                                readOnly={readOnly()}
-                                busy={
-                                  busy() ===
-                                  keyOf(entry.state.action?.op, entry.player.id)
-                                }
-                                onOp={runOp}
-                              />
-                              <Show
-                                when={opError()?.playerId === entry.player.id}
-                              >
-                                <li class="px-2 py-1">
-                                  <OpError when={true} />
-                                </li>
-                              </Show>
-                            </>
-                          )}
-                        </For>
-                      </ul>
+                    <Show when={paidRows().length}>
+                      <section aria-labelledby="paid-heading" class="mt-3">
+                        <div class="mb-1 flex items-center justify-between gap-2">
+                          <h3
+                            id="paid-heading"
+                            class="text-xs font-bold uppercase tracking-wide text-green-800 dark:text-green-300"
+                          >
+                            ✓ {free() ? "Rostered" : "Rostered & paid"}{" "}
+                            <span class="font-semibold normal-case tracking-normal text-gray-600 dark:text-gray-400">
+                              · {capLabel()}
+                            </span>
+                          </h3>
+                          {/* data-slot="swap": Task 6 puts "⇄ Swap a player" here */}
+                        </div>
+                        <ul
+                          aria-label={free() ? "Rostered" : "Rostered and paid"}
+                          class="overflow-hidden rounded-lg border border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/40"
+                        >
+                          <For each={paidRows()}>
+                            {entry => <RosterRow entry={entry} paid readOnly />}
+                          </For>
+                        </ul>
+                      </section>
                     </Show>
+                    <section aria-labelledby="unpaid-heading" class="mt-3">
+                      <div class="mb-1 flex items-center justify-between gap-2">
+                        <h3
+                          id="unpaid-heading"
+                          class="text-xs font-bold uppercase tracking-wide text-gray-700 dark:text-gray-300"
+                        >
+                          Not paid yet{" "}
+                          <span class="font-semibold normal-case tracking-normal text-gray-600 dark:text-gray-400">
+                            · {unpaidRows().length}
+                          </span>
+                        </h3>
+                        {/* data-slot="add-players": Task 5 puts "+ Add players" here */}
+                      </div>
+                      <Show
+                        when={unpaidRows().length}
+                        fallback={
+                          <p class="text-sm text-gray-600 dark:text-gray-400">
+                            No one waiting — add players to build your roster.
+                          </p>
+                        }
+                      >
+                        <ul
+                          aria-label="Not paid yet"
+                          class="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700"
+                        >
+                          <For each={unpaidRows()}>
+                            {entry => (
+                              <>
+                                <RosterRow
+                                  entry={withAction(entry)}
+                                  readOnly={readOnly()}
+                                  busy={
+                                    busy() ===
+                                    keyOf(
+                                      entry.state.action?.op,
+                                      entry.player.id
+                                    )
+                                  }
+                                  onOp={runOp}
+                                  removeReason={removeReason(entry)}
+                                  removing={
+                                    busy() === keyOf("remove", entry.player.id)
+                                  }
+                                  onRemove={askRemove}
+                                />
+                                <Show
+                                  when={opError()?.playerId === entry.player.id}
+                                >
+                                  <li class="px-2 py-1">
+                                    <OpError when={true} />
+                                  </li>
+                                </Show>
+                              </>
+                            )}
+                          </For>
+                        </ul>
+                      </Show>
+                    </section>
                     <Show when={!readOnly()}>
                       <PlayerSearch
                         hasSeries={Boolean(d().event.series)}
@@ -862,6 +954,36 @@ const TeamRegistrationHome = () => {
             />
           </div>
         </Show>
+      </Modal>
+
+      <Modal
+        ref={removeRef}
+        title={
+          <span class="font-semibold text-gray-900 dark:text-white">
+            Remove {removing()?.player.name}?
+          </span>
+        }
+        close={() => removeRef.close()}
+      >
+        <p class="text-sm">
+          {invitePending(removing())
+            ? "This also withdraws their series invite."
+            : "They'll come off this team's list for the tournament."}
+        </p>
+        <div class="mt-4 flex flex-wrap justify-end gap-2">
+          <ReasonButton
+            primary={false}
+            label="Cancel"
+            onClick={() => removeRef.close()}
+          />
+          <button
+            type="button"
+            class="inline-flex min-h-[44px] items-center rounded-lg bg-red-700 px-4 text-sm font-semibold text-white hover:bg-red-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-600"
+            onClick={confirmRemove}
+          >
+            Remove
+          </button>
+        </div>
       </Modal>
     </div>
   );

@@ -41,8 +41,9 @@ PAID = 150
 
 
 def row(name: str) -> str:
-    """A player's line in the roster list."""
-    return f'//ul[@aria-label="Roster"]/li[contains(., "{name}")]'
+    """A player's line in either roster section, paid or not."""
+    sections = '@aria-labelledby="paid-heading" or @aria-labelledby="unpaid-heading"'
+    return f'//section[{sections}]//li[contains(., "{name}")]'
 
 
 @pytest.mark.skipif(
@@ -185,7 +186,7 @@ class TestRegistrationIntegration(BaseCase):
         order = self.paid_order(4 * PLAYER_FEE)
         self.assert_rostered([*on_roster, newcomer], order, PLAYER_FEE)
         for p in [*on_roster, newcomer]:
-            self.assert_state(p.user.get_full_name(), "Rostered · paid")
+            self.assert_state(p.user.get_full_name(), "Paid ")
 
     def test_subscription_handoff_round_trip(self) -> None:
         players = [self.player(n, "Iyer", tier=None) for n in ("Kiran", "Meera")]
@@ -296,7 +297,7 @@ class TestRegistrationIntegration(BaseCase):
 
         self.sign_in_as(self.admin)
         self.open_page()
-        self.assert_state("Arjun Paid", "Rostered · paid")
+        self.assert_state("Arjun Paid", "Rostered")
         self.assert_state("Lata Full", "Roster full · 1/1")
         self.assert_state("Kiran Waits", "Invited to series")
         self.assert_state("Meera Elsewhere", "On Rivals's series roster")
@@ -321,6 +322,19 @@ class TestRegistrationIntegration(BaseCase):
             "No players ready yet — 1 waiting on the player", reasons.get("Pay ₹0"), greyed
         )
         self.assertIn("Already on your list", reasons.values(), greyed)
+
+        # Paid rows can't be removed; the others ask first, and say when
+        # removing also withdraws a series invite.
+        self.assert_element_absent('button[aria-label="Remove Arjun Paid"]')
+        self.click('button[aria-label="Remove Kiran Waits"]')
+        self.assert_text("This also withdraws their series invite.", "dialog[open]")
+        self.click('//dialog[@open]//button[normalize-space()="Remove"]')
+        self.assert_text("Removed Kiran Waits", '[role="status"]')
+        self.assert_element_absent(row("Kiran Waits"))
+        self.assertEqual(
+            SeriesRosterInvitation.Status.REVOKED,
+            SeriesRosterInvitation.objects.get(to_player=invited).status,
+        )
 
     def test_a_foreign_return_link_is_ignored(self) -> None:
         stranger, member = (self.player(n, "Iyer", tier=None) for n in ("Kiran", "Meera"))
