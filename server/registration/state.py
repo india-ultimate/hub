@@ -479,6 +479,19 @@ def preview_swap(ctx: Context, out_player_id: int, in_player_id: int) -> Reason:
     return reason
 
 
+def _best_swap_state(ctx: Context, entry: RosterEntry) -> Reason:
+    """Swap state for an unpaid row, judged against the paid player it could
+    best replace: a playing one of the same gender, so a full gender cap
+    doesn't block a like-for-like swap; else any paid player."""
+    out = next(
+        (r for r in ctx.paid if r.is_playing and r.player.match_up == entry.player.match_up),
+        ctx.paid[0] if ctx.paid else None,
+    )
+    if out is None:
+        return _swap_in_reason(ctx, entry)  # nobody to swap out; the dialog can't open
+    return preview_swap(ctx, out.player_id, entry.player_id)
+
+
 def meter(ctx: Context, reasons: dict[int, Reason]) -> dict[str, int]:
     series = ctx.event.series
     players = {r.player_id: r.player for r in ctx.paid} | {
@@ -804,7 +817,7 @@ def status_payload(ctx: Context, page_path: str) -> dict[str, Any]:
     # What the swap dialog offers each unpaid row: past a full roster,
     # which a swap doesn't grow, to whatever else stands in the way.
     swap_states = {
-        e.player_id: _swap_in_reason(ctx, e)
+        e.player_id: _best_swap_state(ctx, e)
         for e in ctx.entries
         if reasons[e.player_id].kind != "done"
     }
