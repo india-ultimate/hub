@@ -9,6 +9,7 @@ from django.http import Http404
 from ninja import Router
 
 from server.core.models import Player, Team
+from server.registration.candidates import candidate_payload
 from server.registration.models import RosterEntry
 from server.registration.schema import AddEntrySchema, CheckoutOrderSchema, CheckoutSchema
 from server.registration.state import (
@@ -20,7 +21,7 @@ from server.registration.state import (
 )
 from server.schema import Response
 from server.series.models import Role, SeriesRosterInvitation
-from server.series.utils import invite_to_series
+from server.series.utils import invite_to_series, register_player
 from server.tournament.models import Event
 from server.tournament.utils import roster_player, series_role
 from server.transaction.client.razorpay import client_for, mark_transaction_completed
@@ -72,6 +73,23 @@ def registration_status(
     return payload
 
 
+@router.get(
+    "/{event_slug}/team/{team_slug}/candidates",
+    response={200: dict[str, Any], 403: Response, 404: Response},
+)
+def candidates(
+    request: AuthenticatedHttpRequest,
+    event_slug: str,
+    team_slug: str,
+    text: str = "",
+    page: int = 1,
+) -> tuple[int, Any]:
+    event, team = _load(event_slug, team_slug)
+    if not _is_admin(team, request):
+        return 403, ADMINS_ONLY
+    return 200, candidate_payload(event, team, request.user, text.strip(), page)
+
+
 @router.post(
     "/{event_slug}/team/{team_slug}/roster",
     response={201: dict[str, Any], 400: Response, 403: Response},
@@ -87,18 +105,28 @@ def add_entry(
         return 400, {"message": "Player does not exist"}
 
     if event.series and series_role(event, team, player) is None:
-        # Invite only. An expired invite still reads as pending, and would
-        # refuse "Invite again" as a second invite, so it is revoked first.
-        invites = SeriesRosterInvitation.objects.filter(
-            series=event.series, team=team, to_player=player, status=Pending
-        )
-        invites.filter(expires_on__lt=today()).update(status=Revoked)
-        if not invites.exists():
-            _, error = invite_to_series(
-                series=event.series, team=team, player=player, role=Role.DEFAULT, by=request.user
-            )
+        if player.user_id == request.user.id:
+            # Adding oneself: join the series roster directly, no invite to oneself.
+            _, error = register_player(series=event.series, team=team, player=player)
             if error is not None:
                 return 400, error
+        else:
+            # Invite only. An expired invite still reads as pending, and would
+            # refuse "Invite again" as a second invite, so it is revoked first.
+            invites = SeriesRosterInvitation.objects.filter(
+                series=event.series, team=team, to_player=player, status=Pending
+            )
+            invites.filter(expires_on__lt=today()).update(status=Revoked)
+            if not invites.exists():
+                _, error = invite_to_series(
+                    series=event.series,
+                    team=team,
+                    player=player,
+                    role=Role.DEFAULT,
+                    by=request.user,
+                )
+                if error is not None:
+                    return 400, error
     elif not event.player_fee:
         # Nothing to pay, so they are rostered now, in the window the row
         # offers it: through the late window too, as the state has it.
@@ -136,6 +164,10 @@ def remove_entry(
         return 404, {"message": "Not on this roster"}
     if reason.kind in ("done", "progress"):
         return 409, {"message": "Already paid, or being paid — request a change instead"}
+    if event.series is not None:
+        SeriesRosterInvitation.objects.filter(
+            series=event.series, team=team, to_player_id=player_id, status=Pending
+        ).update(status=Revoked)
     RosterEntry.objects.filter(event=event, team=team, player_id=player_id).delete()
     return 204, None
 

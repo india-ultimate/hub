@@ -618,3 +618,157 @@ class TestCheckout(ApiCase):
         self.assertEqual(200, response.status_code, response.content)
         self.assertEqual(account.key_id, self.create.call_args.args[0].client.auth[0])
         self.assertEqual(account.key_id, response.json()["key"])
+
+
+class TestCandidates(ApiCase):
+    def get(self, text: str = "", page: int = 1) -> Any:
+        return self.web.get(f"{self.base}/candidates", {"text": text, "page": str(page)})
+
+    def past_event(self, title: str, days_ago: int) -> Event:
+        return Event.objects.create(
+            title=title,
+            start_date=today() - datetime.timedelta(days=days_ago + 2),
+            end_date=today() - datetime.timedelta(days=days_ago),
+            team_registration_start_date=today() - datetime.timedelta(days=days_ago + 30),
+            team_registration_end_date=today() - datetime.timedelta(days=days_ago + 10),
+            player_registration_start_date=today() - datetime.timedelta(days=days_ago + 30),
+            player_registration_end_date=today() - datetime.timedelta(days=days_ago + 10),
+        )
+
+    def test_admins_only(self) -> None:
+        outsider = User.objects.create_user("o@x.com", "o@x.com", "pw")
+        self.assertEqual(403, self.as_user(outsider).get(f"{self.base}/candidates").status_code)
+
+    def test_browse_lists_series_then_past_teammates_newest_first(self) -> None:
+        on_series = self.player("s@x.com", entry=False)
+        older = self.player("old@x.com", on_series=False, entry=False)
+        newer = self.player("new@x.com", on_series=False, entry=False)
+        Registration.objects.create(
+            event=self.past_event("Old Cup", 300), team=self.team, player=older
+        )
+        Registration.objects.create(
+            event=self.past_event("New Cup", 30), team=self.team, player=newer
+        )
+        Registration.objects.create(
+            event=self.past_event("Mid Cup", 100), team=self.team, player=newer
+        )
+        body = self.get().json()
+        self.assertEqual(["series", "past"], [g["key"] for g in body["groups"]])
+        self.assertEqual([on_series.id], [p["id"] for p in body["groups"][0]["players"]])
+        past = body["groups"][1]["players"]
+        self.assertEqual([newer.id, older.id], [p["id"] for p in past])
+        self.assertEqual("New Cup", past[0]["last_event"])
+        self.assertEqual(2, past[0]["events"])
+        self.assertEqual("Played for Home before", body["groups"][1]["title"])
+
+    def test_browse_leaves_out_people_already_on_the_list(self) -> None:
+        listed = self.player("l@x.com")
+        body = self.get().json()
+        ids = [p["id"] for g in body["groups"] for p in g["players"]]
+        self.assertNotIn(listed.id, ids)
+
+    def test_search_puts_teammates_first(self) -> None:
+        stranger = self.player("zed.alpha@x.com", on_series=False, entry=False)
+        mate = self.player("zed.beta@x.com", entry=False)
+        body = self.get("zed").json()
+        self.assertEqual(["matches", "others"], [g["key"] for g in body["groups"]])
+        self.assertEqual([mate.id], [p["id"] for p in body["groups"][0]["players"]])
+        self.assertEqual([stranger.id], [p["id"] for p in body["groups"][1]["players"]])
+
+    def test_search_marks_people_on_the_list(self) -> None:
+        listed = self.player("zed@x.com")
+        players = [p for g in self.get("zed").json()["groups"] for p in g["players"]]
+        self.assertEqual([True], [p["on_list"] for p in players if p["id"] == listed.id])
+
+    def test_hints_and_buttons(self) -> None:
+        invitee = self.player("i@x.com", on_series=False, entry=False)
+        no_sub = self.player("n@x.com", tier=None, entry=False)
+        rows = {p["id"]: p for g in self.get().json()["groups"] for p in g["players"]}
+        rows |= {p["id"]: p for g in self.get("i@x").json()["groups"] for p in g["players"]}
+        self.assertEqual("invite", rows[invitee.id]["button"])
+        self.assertEqual(
+            "Not on the series roster — they'll get an invite", rows[invitee.id]["hint"]["text"]
+        )
+        self.assertEqual("Needs a subscription after adding", rows[no_sub.id]["hint"]["text"])
+
+    def test_me_when_not_on_the_list(self) -> None:
+        me = self.player("admin-player@x.com", entry=False)
+        me.user = self.admin
+        me.save()
+        body = self.get().json()
+        self.assertEqual(me.id, body["me"]["id"])
+        ids = [p["id"] for g in body["groups"] for p in g["players"]]
+        self.assertNotIn(me.id, ids)
+
+    def test_me_off_the_series_roster_will_join_it(self) -> None:
+        me = self.player("admin-player@x.com", on_series=False, entry=False)
+        me.user = self.admin
+        me.save()
+        mine = self.get().json()["me"]
+        self.assertEqual(("ready.self", "add"), (mine["hint"]["code"], mine["button"]))
+
+    def test_me_who_cannot_join_the_series_roster_is_told_why(self) -> None:
+        me = self.player("admin-player@x.com", on_series=False, entry=False, tier=None)
+        me.user = self.admin
+        me.save()
+        mine = self.get().json()["me"]
+        self.assertEqual("blocked.self_subscription", mine["hint"]["code"])
+        self.assertIsNone(mine["button"])
+
+    def test_no_me_without_a_profile(self) -> None:
+        self.assertIsNone(self.get().json()["me"])
+
+    def test_search_pages(self) -> None:
+        for i in range(12):
+            self.player(f"many{i:02}@x.com", on_series=False, entry=False)
+        first = self.get("many").json()
+        self.assertTrue(first["has_more"])
+        self.assertEqual(10, sum(len(g["players"]) for g in first["groups"]))
+        second = self.get("many", page=2).json()
+        self.assertFalse(second["has_more"])
+        self.assertEqual(2, sum(len(g["players"]) for g in second["groups"]))
+
+
+class TestAddMyselfAndRemove(ApiCase):
+    def own_player(self) -> Player:
+        p = self.player("me@x.com", on_series=False, entry=False)
+        p.user = self.admin
+        p.save()
+        return p
+
+    def test_adding_myself_joins_the_series_roster_without_an_invite(self) -> None:
+        me = self.own_player()
+        r = self.web.post(
+            f"{self.base}/roster", {"player_id": me.id}, content_type="application/json"
+        )
+        self.assertEqual(201, r.status_code, r.content)
+        self.assertTrue(
+            SeriesRegistration.objects.filter(
+                series=self.series, team=self.team, player=me
+            ).exists()
+        )
+        self.assertFalse(SeriesRosterInvitation.objects.filter(to_player=me).exists())
+        self.assertEqual(0, len(mail.outbox))
+
+    def test_adding_myself_respects_the_series_roster_cap(self) -> None:
+        self.series.series_roster_max_players = 0
+        self.series.save()
+        me = self.own_player()
+        r = self.web.post(
+            f"{self.base}/roster", {"player_id": me.id}, content_type="application/json"
+        )
+        self.assertEqual(400, r.status_code)
+        self.assertFalse(RosterEntry.objects.filter(player=me).exists())
+
+    def test_removing_withdraws_a_pending_invite(self) -> None:
+        p = self.player("i@x.com", on_series=False, entry=False)
+        self.web.post(f"{self.base}/roster", {"player_id": p.id}, content_type="application/json")
+        invite = SeriesRosterInvitation.objects.get(to_player=p)
+        self.assertEqual(204, self.web.delete(f"{self.base}/roster/{p.id}").status_code)
+        invite.refresh_from_db()
+        self.assertEqual(SeriesRosterInvitation.Status.REVOKED, invite.status)
+
+    def test_removing_keeps_an_existing_series_place(self) -> None:
+        p = self.player("s@x.com")
+        self.assertEqual(204, self.web.delete(f"{self.base}/roster/{p.id}").status_code)
+        self.assertTrue(SeriesRegistration.objects.filter(player=p).exists())
