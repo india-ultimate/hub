@@ -109,7 +109,11 @@ def build_context(
             "player__user", "held_by_order"
         )
     )
-    paid = list(Registration.objects.filter(event=event, team=team).select_related("player__user"))
+    paid = list(
+        Registration.objects.filter(event=event, team=team)
+        .select_related("player__user")
+        .order_by("pk")
+    )
     ids = [e.player_id for e in entries] + [r.player_id for r in paid] + list(extra_player_ids)
     ctx = Context(
         event=event,
@@ -480,16 +484,29 @@ def preview_swap(ctx: Context, out_player_id: int, in_player_id: int) -> Reason:
 
 
 def _best_swap_state(ctx: Context, entry: RosterEntry) -> Reason:
-    """Swap state for an unpaid row, judged against the paid player it could
-    best replace: a playing one of the same gender, so a full gender cap
-    doesn't block a like-for-like swap; else any paid player."""
-    out = next(
-        (r for r in ctx.paid if r.is_playing and r.player.match_up == entry.player.match_up),
-        ctx.paid[0] if ctx.paid else None,
-    )
-    if out is None:
-        return _swap_in_reason(ctx, entry)  # nobody to swap out; the dialog can't open
-    return preview_swap(ctx, out.player_id, entry.player_id)
+    """Swap state for an unpaid row: ready if swapping out any paid player
+    works. Tries the likeliest out-players first -- like for like (a player
+    of the same gender, or staff for staff) -- and stops at any reason that
+    isn't a limit, as only limits depend on who goes out."""
+    playing, mu = _is_playing(ctx, entry.player_id), entry.player.match_up
+
+    def rank(r: Registration) -> int:
+        if not r.is_playing:
+            return 1 if playing else 0
+        return 0 if playing and r.player.match_up == mu else 2
+
+    # preview_swap sees the out-player only through these two fields, so one
+    # try per pair gives the same answer as trying everyone, in <= 4 tries.
+    outs: dict[tuple[bool, str], Registration] = {}
+    for r in sorted(ctx.paid, key=rank):
+        outs.setdefault((r.is_playing, r.player.match_up), r)
+    first: Reason | None = None
+    for out in outs.values():
+        reason = preview_swap(ctx, out.player_id, entry.player_id)
+        if reason.kind != "limit":
+            return reason
+        first = first or reason
+    return first or _swap_in_reason(ctx, entry)  # nobody paid; the dialog can't open
 
 
 def meter(ctx: Context, reasons: dict[int, Reason]) -> dict[str, int]:
