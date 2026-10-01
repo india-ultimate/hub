@@ -23,8 +23,7 @@ import {
   fetchRegistrationStatus,
   fetchTournamentBySlug,
   removeRosterEntry,
-  resendRosterInvite,
-  searchPlayers
+  resendRosterInvite
 } from "../../queries";
 import { openCheckout } from "../../razorpay";
 import { inr, KINDS } from "../../reasonKinds";
@@ -32,6 +31,7 @@ import { useStore } from "../../store";
 import { getCookie, latestDate, parseLocalDate, todayIST } from "../../utils";
 import Breadcrumbs from "../Breadcrumbs";
 import Modal from "../Modal";
+import AddPlayersDialog from "./AddPlayersDialog";
 import Callout from "./Callout";
 import PayBar from "./PayBar";
 import ReasonButton from "./ReasonButton";
@@ -173,127 +173,6 @@ const teamOrder = async body => {
   throw new Error((response.status < 500 && data?.message) || UNAVAILABLE);
 };
 
-// Find someone to add. In a series, anyone not on the series roster is
-// invited to it by adding them.
-const PlayerSearch = props => {
-  const [text, setText] = createSignal("");
-  const [query, setQuery] = createSignal("");
-  const [adding, setAdding] = createSignal(null);
-  const [error, setError] = createSignal(null);
-  let timer;
-  onCleanup(() => clearTimeout(timer));
-
-  const results = createQuery(
-    () => ["registration-search", query()],
-    () => searchPlayers(query(), { pageIndex: 0 }),
-    {
-      keepPreviousData: true,
-      get enabled() {
-        return query().length >= 3;
-      }
-    }
-  );
-
-  const add = async player => {
-    setAdding(player.id);
-    setError(null);
-    try {
-      await props.onAdd(player.id);
-    } catch (e) {
-      setError({ player, message: e.message });
-    } finally {
-      setAdding(null);
-    }
-  };
-
-  return (
-    <div>
-      <label
-        for="registration-player-search"
-        class="mb-1 block text-sm font-medium text-gray-900 dark:text-white"
-      >
-        Add players
-      </label>
-      <input
-        id="registration-player-search"
-        type="search"
-        autocomplete="off"
-        class="block min-h-[44px] w-full rounded-lg border border-gray-300 bg-gray-50 px-3 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
-        placeholder={
-          props.hasSeries
-            ? "Search your series roster, or anyone by name / email"
-            : "Search by name / email"
-        }
-        value={text()}
-        onInput={e => {
-          setText(e.currentTarget.value);
-          clearTimeout(timer);
-          timer = setTimeout(() => setQuery(text().trim()), 300);
-        }}
-      />
-      <Show when={query().length >= 3}>
-        <Show
-          when={results.data?.items?.length}
-          fallback={
-            <Show when={results.isSuccess}>
-              <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                No one found. They need a Hub account before you can add them.
-              </p>
-            </Show>
-          }
-        >
-          <ul class="mt-2" aria-label="Search results">
-            <For each={results.data.items}>
-              {player => (
-                <li class="flex items-center gap-3 border-b border-gray-100 px-2 py-2 dark:border-gray-800">
-                  <div class="min-w-0 flex-1">
-                    <p class="truncate font-medium text-gray-900 dark:text-white">
-                      {player.full_name}
-                    </p>
-                    <p class="text-xs text-gray-600 dark:text-gray-400">
-                      {[player.city, player.state_ut]
-                        .filter(Boolean)
-                        .join(", ")}
-                    </p>
-                    <Show when={error()?.player.id === player.id}>
-                      <p role="alert" class={errorText}>
-                        {error().message}
-                        <button
-                          type="button"
-                          class={tryAgain}
-                          onClick={() => add(player)}
-                        >
-                          Try again
-                        </button>
-                      </p>
-                    </Show>
-                  </div>
-                  <ReasonButton
-                    primary={false}
-                    label={
-                      <>
-                        Add<span class="sr-only"> {player.full_name}</span>
-                      </>
-                    }
-                    busy={adding() === player.id}
-                    busyLabel="Adding…"
-                    reason={
-                      props.onList(player.id)
-                        ? { kind: "done", text: "Already on your list" }
-                        : null
-                    }
-                    onClick={() => add(player)}
-                  />
-                </li>
-              )}
-            </For>
-          </ul>
-        </Show>
-      </Show>
-    </div>
-  );
-};
-
 // One team's registration for one tournament: the steps, the roster, and
 // one payment for every ready player.
 const TeamRegistrationHome = () => {
@@ -313,6 +192,9 @@ const TeamRegistrationHome = () => {
   const [busy, setBusy] = createSignal(null);
   const [opError, setOpError] = createSignal(null);
   let changedRef;
+  const [addOpen, setAddOpen] = createSignal(false);
+  let addDialog;
+  let addOpener;
   let poll;
 
   const status = createQuery(
@@ -498,11 +380,6 @@ const TeamRegistrationHome = () => {
         body: { team_slug: d().team.slug }
       });
     }
-  };
-
-  const addPlayer = async playerId => {
-    await addRosterEntry({ ...args(), playerId });
-    refresh();
   };
 
   const keyOf = (op, playerId) => (playerId ? `${op}:${playerId}` : op);
@@ -748,7 +625,7 @@ const TeamRegistrationHome = () => {
           </Show>
 
           {/* Index, not For: each refetch brings new step objects, and the
-              roster step's search box must keep what was typed. */}
+              roster step must stay mounted across them. */}
           <Index each={d().steps}>
             {(step, i) => (
               <Step step={step()} index={i + 1}>
@@ -796,7 +673,19 @@ const TeamRegistrationHome = () => {
                             · {unpaidRows().length}
                           </span>
                         </h3>
-                        {/* data-slot="add-players": Task 5 puts "+ Add players" here */}
+                        <Show when={!readOnly()}>
+                          <button
+                            type="button"
+                            ref={addOpener}
+                            class="inline-flex min-h-[44px] items-center rounded-lg border border-blue-700 px-3 text-sm font-semibold text-blue-700 hover:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 dark:border-blue-400 dark:text-blue-400 dark:hover:bg-gray-700"
+                            onClick={() => {
+                              setAddOpen(true);
+                              addDialog.showModal();
+                            }}
+                          >
+                            + Add players
+                          </button>
+                        </Show>
                       </div>
                       <Show
                         when={unpaidRows().length}
@@ -843,15 +732,6 @@ const TeamRegistrationHome = () => {
                         </ul>
                       </Show>
                     </section>
-                    <Show when={!readOnly()}>
-                      <PlayerSearch
-                        hasSeries={Boolean(d().event.series)}
-                        onList={id =>
-                          d().roster.entries.some(e => e.player.id === id)
-                        }
-                        onAdd={addPlayer}
-                      />
-                    </Show>
                     <Show
                       when={
                         !readOnly() &&
@@ -915,6 +795,24 @@ const TeamRegistrationHome = () => {
           <p class="text-sm text-gray-600 dark:text-gray-400">Loading…</p>
         </Match>
       </Switch>
+
+      <Show when={d() && !readOnly()}>
+        <AddPlayersDialog
+          setRef={el => {
+            addDialog = el;
+            el.addEventListener("close", () => {
+              setAddOpen(false);
+              addOpener?.focus();
+            });
+          }}
+          open={addOpen()}
+          teamName={d().team.name}
+          meter={d().roster.meter}
+          args={args()}
+          onChanged={refresh}
+          announce={announce}
+        />
+      </Show>
 
       <Modal
         ref={changedRef}
