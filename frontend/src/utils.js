@@ -411,6 +411,17 @@ export const ifTodayInBetweenDates = (start, end) => {
   return currentDate >= startDate && currentDate <= endDate;
 };
 
+// Teams can still sign up (late window included).
+export const isTeamRegistrationOpen = event =>
+  Boolean(event?.team_registration_start_date) &&
+  ifTodayInBetweenDates(
+    event.team_registration_start_date,
+    latestDate(
+      event.team_late_penalty_end_date,
+      event.team_registration_end_date
+    )
+  );
+
 export const calculateLatePenalty = (
   regEndDate,
   penaltyPerDay,

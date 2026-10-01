@@ -20,7 +20,11 @@ import {
   SpiritStandings as SpiritStandingsSkeleton,
   Standings as StandingsSkeleton
 } from "../skeletons/Standings";
-import { ifTodayInBetweenDates, latestDate } from "../utils";
+import {
+  ifTodayInBetweenDates,
+  isTeamRegistrationOpen,
+  latestDate
+} from "../utils";
 import Breadcrumbs from "./Breadcrumbs";
 import PillTabs from "./tabs/PillTabs";
 
@@ -262,6 +266,19 @@ const Tournament = () => {
           </h5>
           <p class="text-center text-sm capitalize">
             View the detailed rules and format of the tournament
+          </p>
+        </A>
+      </Show>
+      <Show when={isTeamRegistrationOpen(tournamentQuery.data?.event)}>
+        <A
+          href={`/tournament/${params.slug}/register`}
+          class="mt-5 block w-full rounded-lg border border-blue-600 bg-white p-4 shadow-md dark:border-blue-400 dark:bg-gray-800"
+        >
+          <h5 class="mb-2 text-center text-xl font-bold capitalize tracking-tight text-blue-600 dark:text-blue-400">
+            Register your team
+          </h5>
+          <p class="text-center text-sm">
+            Team fee, roster and payments in one place
           </p>
         </A>
       </Show>
