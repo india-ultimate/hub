@@ -38,6 +38,7 @@ COMPLETED = RazorpayTransaction.TransactionStatusChoices.COMPLETED
 PLAYER_REGISTRATION = RazorpayTransaction.TransactionTypeChoices.PLAYER_REGISTRATION
 # Payment confirmed can take up to the page's two minutes of polling.
 PAID = 150
+ADD_DIALOG = '//dialog[@aria-label="Add players"]'
 
 
 def row(name: str) -> str:
@@ -166,8 +167,11 @@ class TestRegistrationIntegration(BaseCase):
         self.assert_element('button:contains("Pay ₹3,000")')
 
         # Not on the series roster: adding them invites them to it.
-        self.type("#registration-player-search", "Vikram")
-        self.click('//ul[@aria-label="Search results"]/li[contains(., "Vikram Singh")]//button')
+        self.click('button:contains("+ Add players")')
+        self.type("#add-players-search", "Vikram")
+        self.click(f'{ADD_DIALOG}//button[@aria-label="Invite Vikram Singh"]')
+        self.assert_text("✓ Added", ADD_DIALOG)
+        self.click(f'{ADD_DIALOG}//button[text()="Done"]')
         self.assert_state("Vikram Singh", "Invited to series")
         self.assert_element('button:contains("Pay ₹3,000")')
         invite = SeriesRosterInvitation.objects.get(to_player=newcomer, team=self.team)
@@ -301,9 +305,21 @@ class TestRegistrationIntegration(BaseCase):
         self.assert_state("Lata Full", "Roster full · 1/1")
         self.assert_state("Kiran Waits", "Invited to series")
         self.assert_state("Meera Elsewhere", "On Rivals's series roster")
-        # Someone already on the list greys their Add button in the search too.
-        self.type("#registration-player-search", "Lata")
-        self.assert_element('//ul[@aria-label="Search results"]/li[contains(., "Lata Full")]')
+        # Someone already on the list has no Add button in the search.
+        self.click('button:contains("+ Add players")')
+        self.type("#add-players-search", "Lata")
+        self.assert_text("On the list", f'{ADD_DIALOG}//li[contains(., "Lata Full")]')
+        # Its first fetch stays inside the dialog: the page doesn't suspend
+        # and drop it out of the top layer.
+        self.assertTrue(
+            self.execute_script(
+                """return document.querySelector('dialog[aria-label="Add players"]')
+                .matches(":modal")"""
+            )
+        )
+        self.assert_text(self.team.name, "h1")
+        self.assert_element_absent('button[aria-label="Add Lata Full"]')
+        self.click(f'{ADD_DIALOG}//button[text()="Done"]')
 
         greyed = self.execute_script(
             """
@@ -321,7 +337,6 @@ class TestRegistrationIntegration(BaseCase):
         self.assertEqual(
             "No players ready yet — 1 waiting on the player", reasons.get("Pay ₹0"), greyed
         )
-        self.assertIn("Already on your list", reasons.values(), greyed)
 
         # Paid rows can't be removed; the others ask first, and say when
         # removing also withdraws a series invite.

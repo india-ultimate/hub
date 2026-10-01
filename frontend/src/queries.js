@@ -2743,6 +2743,15 @@ export const addRosterEntry = ({ playerId, ...args }) =>
     body: JSON.stringify({ player_id: playerId })
   });
 
+export const fetchRosterCandidates = ({ text = "", page = 1, ...args }) =>
+  registrationRequest(
+    `${registrationBase(args)}/candidates?${new URLSearchParams({
+      text,
+      page
+    })}`,
+    { method: "GET" }
+  );
+
 export const removeRosterEntry = ({ playerId, ...args }) =>
   registrationRequest(`${registrationBase(args)}/roster/${playerId}`, {
     method: "DELETE"
