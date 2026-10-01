@@ -4,7 +4,7 @@ import { createEffect, createSignal, For, Show } from "solid-js";
 
 import { ChevronRight } from "../../icons";
 import { fetchTournaments } from "../../queries";
-import { parseLocalDate, todayIST } from "../../utils";
+import { isTeamRegistrationOpen, parseLocalDate, todayIST } from "../../utils";
 
 const TournamentSection = () => {
   const tournamentsQuery = createQuery(() => ["tournaments"], fetchTournaments);
@@ -99,7 +99,8 @@ const TournamentCard = props => (
   <A
     class="my-2 flex items-center gap-3 rounded-md bg-gray-100 p-3 md:gap-6"
     href={
-      props.tournament.status === "SCH"
+      !["LIV", "COM"].includes(props.tournament.status) &&
+      isTeamRegistrationOpen(props.tournament.event)
         ? `/tournament/${props.tournament.event.slug}/register`
         : `/tournament/${props.tournament.event.slug}`
     }

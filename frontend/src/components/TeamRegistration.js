@@ -1,4 +1,4 @@
-import { A, useParams } from "@solidjs/router";
+import { A, useNavigate, useParams } from "@solidjs/router";
 import {
   createMutation,
   createQuery,
@@ -40,6 +40,17 @@ const TeamRegistration = () => {
     () => fetchTournamentBySlug(params.slug)
   );
   const userQuery = createQuery(() => ["me"], fetchUser);
+
+  const navigate = useNavigate();
+  createEffect(() => {
+    const user = userQuery.data;
+    if (user && !user.is_staff && user.admin_teams?.length === 1) {
+      navigate(
+        `/tournament/${params.slug}/team/${user.admin_teams[0].slug}/registration`,
+        { replace: true }
+      );
+    }
+  });
 
   const deRegisterTeamMutation = createMutation({
     mutationFn: removeTeamRegistration,
