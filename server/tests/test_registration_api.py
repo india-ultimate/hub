@@ -79,9 +79,8 @@ class TestStatus(ApiCase):
         self.player("a@x.com")
         body = self.status().json()
         self.assertEqual("admin", body["viewer"])
-        self.assertEqual(
-            ["series", "team_fee", "roster", "game_day"], [s["key"] for s in body["steps"]]
-        )
+        self.assertEqual(["series", "team_fee", "roster"], [s["key"] for s in body["steps"]])
+        self.assertFalse(body["all_set"])
         self.assertEqual("ready", body["roster"]["entries"][0]["state"]["code"])
         self.assertEqual(1, len(body["checkout"]["ready_ids"]))
         self.assertEqual(self.event.player_fee, body["checkout"]["amount"])
@@ -169,11 +168,43 @@ class TestStatus(ApiCase):
         self.assertIn(f"return=/tournament/{self.event.slug}/team/{self.team.slug}/", href)
         self.assertNotIn("__RETURN__", href)
 
-    def test_game_day_is_done_when_everyone_is_paid(self) -> None:
+    def test_all_set_when_everyone_is_paid(self) -> None:
         p = self.player("a@x.com", entry=False)
         Registration.objects.create(event=self.event, team=self.team, player=p)
+        body = self.status().json()
         self.assertEqual("done", self.step("roster")["state"])
-        self.assertEqual("done", self.step("game_day")["state"])
+        self.assertTrue(body["all_set"])
+
+    def test_not_all_set_below_a_minimum(self) -> None:
+        self.series.event_min_players_male = 1
+        self.series.save()
+        p = self.player("a@x.com", entry=False)  # female-matching
+        Registration.objects.create(event=self.event, team=self.team, player=p)
+        self.assertFalse(self.status().json()["all_set"])
+
+    def test_rows_carry_the_players_photo(self) -> None:
+        p = self.player("a@x.com")
+        p.profile_pic_url = "https://example.com/a.png"
+        p.save()
+        q = self.player("b@x.com")
+        photos = {
+            e["player"]["id"]: e["player"]["photo"]
+            for e in self.status().json()["roster"]["entries"]
+        }
+        self.assertEqual({p.id: "https://example.com/a.png", q.id: None}, photos)
+
+    def test_payee_is_named_only_for_another_account(self) -> None:
+        self.player("a@x.com")
+        self.assertIsNone(self.status().json()["checkout"]["payee_name"])
+        account = make_account()
+        Event.objects.filter(pk=self.event.pk).update(payment_account=account)
+        self.assertEqual(account.name, self.status().json()["checkout"]["payee_name"])
+
+    def test_a_fee_due_is_not_a_warning(self) -> None:
+        self.tournament.teams.remove(self.team)
+        self.assertEqual("timing", self.step("team_fee")["callout"]["kind"])
+        self.tournament.partial_teams.add(self.team)
+        self.assertEqual("timing", self.step("team_fee")["callout"]["kind"])
 
     def test_team_fee_offers_the_partial_fee_while_its_window_is_open(self) -> None:
         self.tournament.teams.remove(self.team)
@@ -289,7 +320,11 @@ class TestStatus(ApiCase):
         blocked = {
             "kind": "blocked",
             "text": "Payments for this tournament aren't set up yet — contact organisers",
-            "action": None,
+            "action": {
+                "label": "Ask organisers",
+                "op": None,
+                "href": "/tickets/new?category=Tournament",
+            },
         }
         self.tournament.teams.remove(self.team)
         self.assertEqual(blocked, self.step("team_fee")["callout"])
@@ -701,6 +736,13 @@ class TestCandidates(ApiCase):
         listed = self.player("zed@x.com")
         players = [p for g in self.get("zed").json()["groups"] for p in g["players"]]
         self.assertEqual([True], [p["on_list"] for p in players if p["id"] == listed.id])
+
+    def test_rows_carry_the_players_photo(self) -> None:
+        p = self.player("pic@x.com", entry=False)
+        p.profile_pic_url = "https://example.com/p.png"
+        p.save()
+        rows = {r["id"]: r for g in self.get("pic@x").json()["groups"] for r in g["players"]}
+        self.assertEqual("https://example.com/p.png", rows[p.id]["photo"])
 
     def test_hints_and_buttons(self) -> None:
         invitee = self.player("i@x.com", on_series=False, entry=False)

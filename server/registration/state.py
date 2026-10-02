@@ -551,7 +551,8 @@ def _payments_blocked(event: Event) -> dict[str, Any] | None:
     if account is None or account.is_ready():
         return None
     text = "Payments for this tournament aren't set up yet — contact organisers"
-    return {"kind": "blocked", "text": text, "action": None}
+    ask = Action("Ask organisers", href="/tickets/new?category=Tournament").as_dict()
+    return {"kind": "blocked", "text": text, "action": ask}
 
 
 def _team_fee_step(ctx: Context) -> dict[str, Any]:
@@ -628,7 +629,7 @@ def _team_fee_step(ctx: Context) -> dict[str, Any]:
     if not e.team_fee:
         free = Action("Register", op="register_free").as_dict()
         text = "This tournament is free to enter"
-        return {**step, "callout": {"kind": "action", "text": text, "action": free}}
+        return {**step, "callout": {"kind": "timing", "text": text, "action": free}}
     # The late fee goes on the full fee or on the rest, never on a partial,
     # as create_transaction charges it.
     days_late, penalty = calculate_late_penalty(
@@ -644,13 +645,13 @@ def _team_fee_step(ctx: Context) -> dict[str, Any]:
         return {
             **step,
             "detail": f"Partial paid · {owed}",
-            "callout": _payments_blocked(e) or {"kind": "action", "text": text, "action": pay},
+            "callout": _payments_blocked(e) or {"kind": "timing", "text": text, "action": pay},
         }
     total = e.team_fee + penalty
     detail = f"{rupees(e.team_fee)}{by_day}" if penalty else ""
     pay = Action(f"Pay {rupees(total)}", op="pay_team").as_dict()
     callout: dict[str, Any] = {
-        "kind": "action",
+        "kind": "timing",
         "text": f"Team fee {rupees(total)}",
         "action": pay,
     }
@@ -676,7 +677,8 @@ def checkout_quote(ctx: Context, reasons: dict[int, Reason]) -> dict[str, Any]:
         "penalty_per_player": penalty,
         "penalty_from": e.player_registration_end_date.isoformat(),
         "amount": (e.player_fee + penalty) * len(ready),
-        "payee_name": checkout_payee(e),
+        # Named only when it isn't India Ultimate: no account means ours.
+        "payee_name": e.payment_account.name if e.payment_account else None,
         "held_by_other_admin_ids": [pid for pid, r in reasons.items() if r.code == "progress.held"],
     }
 
@@ -763,17 +765,6 @@ def step_states(ctx: Context, reasons: dict[int, Reason], page_path: str) -> lis
             "callout": callout,
         }
     )
-    m = meter(ctx, reasons)
-    minimums = m["female_matching"] >= m["min_female"] and m["male_matching"] >= m["min_male"]
-    steps.append(
-        {
-            "key": "game_day",
-            "title": "Ready for game day",
-            "detail": "Every rostered player paid and minimums met",
-            "state": "done" if fee["state"] == roster_state == "done" and minimums else "locked",
-            "callout": None,
-        }
-    )
     return steps
 
 
@@ -793,6 +784,16 @@ def viewer_role(ctx: Context) -> str | None:
     if user.is_staff:
         return "staff"
     return None
+
+
+def all_set(steps: list[dict[str, Any]], m: dict[str, int]) -> bool:
+    """Team fee and roster done, and both gender minimums met."""
+    done = {s["key"] for s in steps if s["state"] == "done"}
+    return (
+        {"team_fee", "roster"} <= done
+        and m["female_matching"] >= m["min_female"]
+        and m["male_matching"] >= m["min_male"]
+    )
 
 
 def status_payload(ctx: Context, page_path: str) -> dict[str, Any]:
@@ -846,6 +847,7 @@ def status_payload(ctx: Context, page_path: str) -> dict[str, Any]:
                 "iu_id": p.iu_id,
                 "city": p.city,
                 "match_up": p.match_up,
+                "photo": p.profile_pic_url or None,
             },
             "role": ctx.series_roles.get(pid, "DFLT"),
             "state": state,
@@ -854,6 +856,8 @@ def status_payload(ctx: Context, page_path: str) -> dict[str, Any]:
             "swap_state": swap and {"code": swap.code, "kind": swap.kind, "text": swap.text},
         }
 
+    steps = step_states(ctx, reasons, page_path)
+    m = meter(ctx, reasons)
     return {
         "team": {"id": ctx.team.id, "name": ctx.team.name, "slug": ctx.team.slug},
         "event": {
@@ -870,7 +874,8 @@ def status_payload(ctx: Context, page_path: str) -> dict[str, Any]:
             "player_late_penalty": e.player_late_penalty,
         },
         "viewer": viewer_role(ctx),
-        "steps": step_states(ctx, reasons, page_path),
-        "roster": {"entries": [row(pid) for pid in reasons], "meter": meter(ctx, reasons)},
+        "steps": steps,
+        "all_set": all_set(steps, m),
+        "roster": {"entries": [row(pid) for pid in reasons], "meter": m},
         "checkout": checkout_quote(ctx, reasons),
     }
