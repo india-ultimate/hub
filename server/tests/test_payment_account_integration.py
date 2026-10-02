@@ -121,8 +121,8 @@ class TestPaymentAccountIntegration(BaseCase):
         if partial:
             self.assert_text("Part of the team fee paid.", timeout=150)
         else:
+            # Whose account it landed in is checked on the order itself.
             self.assert_text("Team fee paid.", timeout=150)
-            self.assert_text("Paid to Test State Association", timeout=30)
         return self.latest(
             RazorpayTransaction.TransactionTypeChoices.PARTIAL_TEAM_REGISTRATION
             if partial

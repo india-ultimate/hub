@@ -13,8 +13,10 @@ PHONE = (390, 844)
 PIXEL = "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=="
 
 
+# "Integration" in the name puts it in CI's browser job, which builds the
+# frontend; the unit job runs `-k 'not Integration'` with no frontend.
 @pytest.mark.django_db(transaction=True)
-class TestRegistrationPage(RegistrationPageCase):
+class TestRegistrationPageIntegration(RegistrationPageCase):
     def paid(self, first: str, last: str, **fields: bool | str | None) -> Player:
         p = self.player(first, last, entry=False, **fields)  # type: ignore[arg-type]
         Registration.objects.create(event=self.event, team=self.team, player=p)
