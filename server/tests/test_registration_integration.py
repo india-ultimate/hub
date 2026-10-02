@@ -188,7 +188,8 @@ class TestRegistrationIntegration(RegistrationPageCase):
         self.open_page()
         for p in [*on_roster, newcomer]:
             self.assert_state(p.user.get_full_name(), "Ready to pay")
-        self.assert_text("4 ready · ₹4,000")
+        self.assert_text("4 players ready", "[data-pay-bar]")
+        self.assert_element('[data-pay-bar] button:contains("Pay ₹4,000")')
 
         complete_razorpay_test_payment(self, 'button:contains("Pay ₹4,000")')
         self.assert_text("Paid. 4 players rostered.", timeout=PAID)
@@ -231,13 +232,15 @@ class TestRegistrationIntegration(RegistrationPageCase):
         self.open_page()
         for name in names:
             self.assert_state(name, "Ready to pay")
-        self.assert_text("2 ready · ₹2,000")
+        self.assert_text("2 players ready", "[data-pay-bar]")
+        self.assert_element('[data-pay-bar] button:contains("Pay ₹2,000")')
 
     def test_late_fee_change_asks_first(self) -> None:
         p = self.player("Kiran", "Rao")
         self.sign_in_as(self.admin)
         self.open_page()
-        self.assert_text("1 ready · ₹1,000")
+        self.assert_text("1 player ready", "[data-pay-bar]")
+        self.assert_element('[data-pay-bar] button:contains("Pay ₹1,000")')
 
         # A late fee starts while the page is open.
         day = today()
