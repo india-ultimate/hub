@@ -592,7 +592,7 @@ class TestEntryReasons(StateTestCase):
             (
                 "waiting.approval",
                 "waiting",
-                "Needs a discounted subscription — the player must request it",
+                "Needs a discounted subscription",
                 None,
             ),
             (r.code, r.kind, r.text, r.action),
@@ -606,7 +606,7 @@ class TestRoundTwoReasons(StateTestCase):
         reason = self.reasons()[p.id]
         self.assertEqual("ready.after_team_fee", reason.code)
         self.assertEqual("waiting", reason.kind)
-        self.assertEqual("Ready · pay the full team fee first", reason.text)
+        self.assertEqual("Ready once the team fee is paid", reason.text)
 
     def test_part_paid_team_still_waits(self) -> None:
         self.tournament.teams.remove(self.team)
@@ -680,7 +680,7 @@ class TestRoundTwoReasons(StateTestCase):
         ctx = build_context(self.event, self.team, self.admin)
         reason = preview_swap(ctx, out.id, new.id)
         self.assertEqual("limit.minimum", reason.code)
-        self.assertEqual("Would leave female-matching below the minimum (0/1)", reason.text)
+        self.assertEqual("Would leave too few female-matching", reason.text)
 
     def test_swap_may_keep_an_unmet_minimum_unmet(self) -> None:
         self.series.event_min_players_female = 3

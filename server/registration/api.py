@@ -177,7 +177,7 @@ def remove_entry(
     # Nothing was paid on a free tournament, so taking them off is an undo.
     undo = reason.kind == "done" and not event.player_fee and _rostering_open(event)
     if reason.kind in ("done", "progress") and not undo:
-        return 409, {"message": "Already paid, or being paid — request a change instead"}
+        return 409, {"message": "Already paid, or being paid. Request a change instead."}
     if undo:
         Registration.objects.filter(event=event, team=team, player_id=player_id).delete()
     if event.series is not None:
@@ -248,7 +248,7 @@ def swap(
     if today() < event.player_registration_start_date:
         return 400, {"message": "Rostering hasn't opened yet"}
     if today() > last:
-        return 400, {"message": f"Swaps closed {last:%b %-d}"}
+        return 400, {"message": f"Swaps closed {last:%-d %b}"}
     if body.out_player_id == body.in_player_id:
         return 400, {"message": "Pick two different players"}
 
@@ -275,10 +275,10 @@ def swap(
         ctx = build_context(event, team, request.user)
         out = next((r for r in ctx.paid if r.player_id == body.out_player_id), None)
         if out is None:
-            return 409, {"message": "That player is no longer rostered — refresh and try again"}
+            return 409, {"message": "That player is no longer rostered. Refresh and try again."}
         entry = next((e for e in ctx.entries if e.player_id == body.in_player_id), None)
         if entry is None:
-            return 409, {"message": "That player is no longer on the list — refresh and try again"}
+            return 409, {"message": "That player is no longer on the list. Refresh and try again."}
         new_name = entry.player.user.get_full_name()
         reason = preview_swap(ctx, out.player_id, entry.player_id)
         if reason.kind != "ready":
@@ -344,7 +344,7 @@ def checkout(
     if not _is_admin(team, request):
         return 403, ADMINS_ONLY
     if not event.player_fee:
-        return 400, {"message": "Nothing to pay — this tournament has no player fee"}
+        return 400, {"message": "This tournament has no player fee"}
     ctx = build_context(event, team, request.user)
     reasons = entry_reasons(ctx)
 

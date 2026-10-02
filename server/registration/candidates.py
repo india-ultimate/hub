@@ -14,19 +14,19 @@ from server.tournament.models import Event, Registration
 BROWSE_LIMIT = 20
 PAGE_SIZE = 10
 MIN_SEARCH = 2  # shorter text browses instead
-INVITE = "Not on the series roster — they'll get an invite"
+INVITE = "Gets a series invite"
 HINTS: dict[str, tuple[str | None, str | None]] = {
     # code: (text, or None for the reason's own text; button)
     "ready": ("Ready to pay", "add"),
     "ready.free": ("Ready", "add"),
     "ready.after_team_fee": (None, "add"),
-    "action.subscription": ("Needs a subscription after adding", "add"),
-    "action.upgrade": ("Needs a subscription after adding", "add"),
-    "waiting.approval": ("Needs a subscription after adding", "add"),
-    "waiting.waiver": ("Needs to sign the waiver", "add"),
+    "action.subscription": ("Needs a subscription", "add"),
+    "action.upgrade": ("Needs a subscription", "add"),
+    "waiting.approval": ("Needs a subscription", "add"),
+    "waiting.waiver": ("Waiver not signed", "add"),
     "action.invite": (INVITE, "invite"),
     "waiting.invite_expired": (INVITE, "invite"),
-    "waiting.declined": ("Declined the series invite — adding invites them again", "invite"),
+    "waiting.declined": ("Declined before · adding re-invites", "invite"),
     "waiting.invite": ("Series invite pending", "add"),
     "blocked.elsewhere": (None, None),
     "blocked.series_other": (None, None),
@@ -160,7 +160,9 @@ def candidate_payload(
             else Reason(
                 "blocked.self_subscription",
                 "blocked",
-                f"{error['message']} — sort that out before joining the series roster",
+                "Needs a subscription"
+                if error["message"] == "Subscription missing"
+                else error["message"],
             )
         )
     return {

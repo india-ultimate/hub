@@ -172,7 +172,7 @@ class TestRegistrationIntegration(BaseCase):
         self.click(f'{ADD_DIALOG}//button[@aria-label="Invite Vikram Singh"]')
         self.assert_text("✓ Added", ADD_DIALOG)
         self.click(f'{ADD_DIALOG}//button[text()="Done"]')
-        self.assert_state("Vikram Singh", "Invited to series")
+        self.assert_state("Vikram Singh", "Invite sent")
         self.assert_element('button:contains("Pay ₹3,000")')
         invite = SeriesRosterInvitation.objects.get(to_player=newcomer, team=self.team)
         self.assertEqual(SeriesRosterInvitation.Status.PENDING, invite.status)
@@ -199,8 +199,8 @@ class TestRegistrationIntegration(BaseCase):
         self.sign_in_as(self.admin)
         self.open_page()
         for name in names:
-            self.assert_state(name, "No Season 2026-2027 subscription")
-        self.click('a:contains("Pay 2 subscriptions · ₹1,500")')
+            self.assert_state(name, "No subscription")
+        self.click('a:contains("Pay ₹1,500")')
 
         # Both picked, for this team, and paid for together.
         self.assert_text(f"For Home Team · {self.event.title}")
@@ -302,8 +302,8 @@ class TestRegistrationIntegration(BaseCase):
         self.sign_in_as(self.admin)
         self.open_page()
         self.assert_state("Arjun Paid", "Rostered")
-        self.assert_state("Lata Full", "Roster full · 1/1")
-        self.assert_state("Kiran Waits", "Invited to series")
+        self.assert_state("Lata Full", "Roster full")
+        self.assert_state("Kiran Waits", "Invite sent")
         self.assert_state("Meera Elsewhere", "On Rivals's series roster")
         # Someone already on the list has no Add button in the search.
         self.click('button:contains("+ Add players")')
