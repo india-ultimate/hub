@@ -2,6 +2,7 @@ import clsx from "clsx";
 import { createSignal, For, Show } from "solid-js";
 
 import { swapRosterPlayer } from "../../queries";
+import Avatar from "./Avatar";
 import ReasonButton from "./ReasonButton";
 
 const ROLES = {
@@ -20,7 +21,7 @@ const option =
 const legend =
   "mb-2 text-xs font-bold uppercase tracking-wide text-gray-600 dark:text-gray-400";
 
-// A paid place moves from one player to another: no refund, no charge.
+// A paid spot moves from one player to another; no money moves.
 const SwapDialog = props => {
   let dialog;
   const [out, setOut] = createSignal(null);
@@ -69,6 +70,11 @@ const SwapDialog = props => {
         disabled={p.disabled}
         onChange={() => p.onPick(p.entry.player.id)}
       />
+      <Avatar
+        name={p.entry.player.name}
+        photo={p.entry.player.photo}
+        paid={p.name === "swap-out"}
+      />
       <span class="min-w-0 flex-1">
         <span class="block truncate font-medium">{p.entry.player.name}</span>
         <Show when={p.hint}>
@@ -105,12 +111,12 @@ const SwapDialog = props => {
           </button>
         </div>
         <p class="px-4 text-xs text-gray-600 dark:text-gray-400">
-          The paid place moves across: no refund, no charge.
-          <Show when={props.until}> Open until {props.until}.</Show>
+          Give a paid spot to someone else. Free
+          <Show when={props.until}>, until {props.until}</Show>.
         </p>
         <div class="grid flex-1 gap-4 overflow-y-auto px-4 py-3 sm:grid-cols-2">
           <fieldset>
-            <legend class={legend}>Take off (paid)</legend>
+            <legend class={legend}>Taking off</legend>
             <div class="space-y-2">
               <For each={props.paid}>
                 {e => (
@@ -125,7 +131,7 @@ const SwapDialog = props => {
             </div>
           </fieldset>
           <fieldset>
-            <legend class={legend}>Put on (not paid)</legend>
+            <legend class={legend}>Putting on</legend>
             <div class="space-y-2">
               <For each={props.unpaid}>
                 {e => (
@@ -141,7 +147,7 @@ const SwapDialog = props => {
               </For>
               <Show when={!props.unpaid.length}>
                 <p class="text-sm text-gray-600 dark:text-gray-400">
-                  Add someone first — they'll show here once they're ready.
+                  Add someone first.
                 </p>
               </Show>
             </div>

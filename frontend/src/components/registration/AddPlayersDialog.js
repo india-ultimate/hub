@@ -7,6 +7,7 @@ import {
   fetchRosterCandidates,
   removeRosterEntry
 } from "../../queries";
+import Avatar from "./Avatar";
 
 const HINT_TONE = {
   ready: "text-green-800 dark:text-green-300",
@@ -18,15 +19,6 @@ const HINT_TONE = {
 };
 const btn =
   "inline-flex min-h-[44px] flex-none items-center rounded-lg px-3 text-sm font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600";
-
-const initials = name =>
-  (name || "?")
-    .split(" ")
-    .filter(Boolean)
-    .map(w => w[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
 
 // Yourself, your series roster and past teammates first; search finds
 // anyone. Adding takes effect at once, with an undo.
@@ -67,7 +59,7 @@ const AddPlayersDialog = props => {
         !undo
           ? `Added ${player.name}`
           : mine && props.series
-          ? "Removed you from this list — you stay on the series roster"
+          ? "Removed. You're still on the series roster."
           : `Removed ${player.name}`
       );
       props.onChanged();
@@ -90,12 +82,7 @@ const AddPlayersDialog = props => {
           rowProps.class
         )}
       >
-        <span
-          aria-hidden="true"
-          class="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-        >
-          {initials(p().name)}
-        </span>
+        <Avatar name={p().name} photo={p().photo} />
         <div class="min-w-0 flex-1">
           <p class="truncate font-medium text-gray-900 dark:text-white">
             {rowProps.title || p().name}
@@ -280,7 +267,7 @@ const AddPlayersDialog = props => {
             >
               <p class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
                 {query().length < 2
-                  ? "No past teammates yet — search anyone by name or email."
+                  ? "No past teammates. Search by name or email."
                   : "No one found. They need a Hub account before you can add them."}
               </p>
             </Show>

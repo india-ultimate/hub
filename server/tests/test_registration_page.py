@@ -6,7 +6,7 @@ No payments happen here, so these run without a Razorpay key.
 import pytest
 
 from server.core.models import Player
-from server.tests.test_registration_integration import RegistrationPageCase, row
+from server.tests.test_registration_integration import ADD_DIALOG, RegistrationPageCase, row
 from server.tournament.models import Registration
 
 PHONE = (390, 844)
@@ -144,3 +144,25 @@ class TestRegistrationPage(RegistrationPageCase):
         self.assert_text("No players ready yet", "[data-pay-bar]")
         help_button = 'a[title="Access Help Center"]'
         self.assertLessEqual(self.rect(help_button, "bottom"), self.rect("[data-pay-bar]", "top"))
+
+    def test_add_dialog_shows_photos(self) -> None:
+        pia = self.player("Pia", "Pic", entry=False)  # on the series roster
+        pia.profile_pic_url = PIXEL
+        pia.save()
+        self.open_phone()
+        self.click('button:contains("+ Add players")')
+        self.assert_element(f'{ADD_DIALOG}//li[contains(., "Pia Pic")]//img')
+
+    def test_swap_dialog_wording(self) -> None:
+        self.paid("Meera", "Paid")
+        self.player("Ravi", "Ready")
+        self.open_phone()
+        self.click('button:contains("Swap a player")')
+        dialog = '//dialog[@aria-label="Swap a player"]'
+        self.assert_text("Give a paid spot to someone else. Free, until", dialog)
+        # The legends are upper-cased by CSS, so match their source text.
+        self.assert_element(f'{dialog}//legend[normalize-space()="Taking off"]')
+        self.assert_element(f'{dialog}//legend[normalize-space()="Putting on"]')
+        self.assert_element(
+            f'{dialog}//label[contains(., "Ravi Ready")]//span[@aria-hidden="true"]'
+        )
