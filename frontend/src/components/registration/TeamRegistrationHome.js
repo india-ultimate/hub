@@ -748,7 +748,8 @@ const TeamRegistrationHome = () => {
                           when={
                             !readOnly() &&
                             d().checkout.per_player > 0 &&
-                            step().state !== "locked"
+                            step().state !== "locked" &&
+                            unpaidRows().length > 0
                           }
                         >
                           <PayBar
