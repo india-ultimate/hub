@@ -1,8 +1,10 @@
 import clsx from "clsx";
+import { Icon } from "solid-heroicons";
+import { xMark } from "solid-heroicons/outline";
 import { createUniqueId, Show } from "solid-js";
 
-// The square ✕ on every unpaid row. Greyed with a reason, never hidden.
-// The button is the 44px target; the pastel square inside it is what shows.
+// A quiet grey ✕ on every unpaid row; red only on hover or focus.
+// Greyed with a reason, never hidden. The button is the 44px target.
 const RemoveButton = props => {
   const id = createUniqueId();
   const off = () => Boolean(props.disabledReason) || props.busy;
@@ -20,18 +22,16 @@ const RemoveButton = props => {
         title={props.disabledReason || `Remove ${props.name}`}
         onClick={() => !off() && props.onClick()}
       >
-        <span
+        <Icon
+          path={xMark}
           aria-hidden="true"
           class={clsx(
-            "inline-flex h-8 w-8 items-center justify-center rounded-md border text-base font-bold",
-            "border-red-200 bg-red-100 text-red-700 dark:border-red-800 dark:bg-red-900/40 dark:text-red-300",
+            "h-5 w-5 text-gray-400 dark:text-gray-500",
             off()
               ? "opacity-[0.45]"
-              : "group-hover:bg-red-200 dark:group-hover:bg-red-900/60"
+              : "group-hover:text-red-700 group-focus-visible:text-red-700 dark:group-hover:text-red-400"
           )}
-        >
-          ✕
-        </span>
+        />
       </button>
       <Show when={props.disabledReason}>
         <span id={id} class="sr-only">

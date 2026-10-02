@@ -467,9 +467,12 @@ const TeamRegistrationHome = () => {
       : entry.state.code === "timing.closed"
       ? entry.state.text.replace("Not rostered — r", "R")
       : null;
-  const capLabel = () => {
-    const max = d().roster.meter.max_total;
-    return max ? `${paidRows().length} of ${max}` : `${paidRows().length}`;
+  // How many rows share each name; only then do rows show city and IU ID.
+  const shared = () => {
+    const counts = {};
+    for (const e of d().roster.entries)
+      counts[e.player.name] = (counts[e.player.name] || 0) + 1;
+    return counts;
   };
   const free = () => !d().checkout.per_player;
 
@@ -650,90 +653,60 @@ const TeamRegistrationHome = () => {
               roster step must stay mounted across them. */}
           <Index each={d().steps}>
             {(step, i) => (
-              <Step step={step()} index={i + 1}>
+              <Step
+                step={step()}
+                index={i + 1}
+                meta={
+                  step().key === "roster" && (
+                    <RosterMeter
+                      meter={d().roster.meter}
+                      hasSeries={Boolean(d().event.series)}
+                    />
+                  )
+                }
+                aside={
+                  step().key === "roster" &&
+                  !readOnly() && (
+                    <button
+                      type="button"
+                      ref={addOpener}
+                      class="inline-flex min-h-[44px] flex-none items-center rounded-lg border border-blue-700 px-3 text-sm font-semibold text-blue-700 hover:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 dark:border-blue-400 dark:text-blue-400 dark:hover:bg-gray-700"
+                      onClick={() => {
+                        setAddOpen(true);
+                        addDialog.showModal();
+                      }}
+                    >
+                      + Add players
+                    </button>
+                  )
+                }
+              >
                 {step().key === "roster" ? (
                   <>
                     <Show when={step().callout}>
                       <Callout callout={withActions(step().callout)} />
                     </Show>
-                    <RosterMeter
-                      meter={d().roster.meter}
-                      hasSeries={Boolean(d().event.series)}
-                    />
-                    <Show when={paidRows().length}>
-                      <section aria-labelledby="paid-heading" class="mt-3">
-                        <div class="mb-1 flex items-center justify-between gap-2">
-                          <h3
-                            id="paid-heading"
-                            class="text-xs font-bold uppercase tracking-wide text-green-800 dark:text-green-300"
-                          >
-                            ✓ {free() ? "Rostered" : "Rostered & paid"}{" "}
-                            <span class="font-semibold normal-case tracking-normal text-gray-600 dark:text-gray-400">
-                              · {capLabel()}
-                            </span>
-                          </h3>
-                          <Show when={!readOnly()}>
-                            <ReasonButton
-                              ref={swapOpener}
-                              primary={false}
-                              label="⇄ Swap a player"
-                              reason={
-                                swapReason()
-                                  ? { kind: "timing", text: swapReason() }
-                                  : null
-                              }
-                              onClick={() => swapDialog.showModal()}
-                            />
-                          </Show>
-                        </div>
-                        <ul
-                          aria-label={free() ? "Rostered" : "Rostered and paid"}
-                          class="overflow-hidden rounded-lg border border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/40"
-                        >
-                          <For each={paidRows()}>
-                            {entry => <RosterRow entry={entry} paid readOnly />}
-                          </For>
-                        </ul>
-                      </section>
-                    </Show>
-                    <section aria-labelledby="unpaid-heading" class="mt-3">
-                      <div class="mb-1 flex items-center justify-between gap-2">
-                        <h3
-                          id="unpaid-heading"
-                          tabindex="-1"
-                          class="text-xs font-bold uppercase tracking-wide text-gray-700 dark:text-gray-300"
-                        >
-                          {free() ? "Not rostered yet" : "Not paid yet"}{" "}
-                          <span class="font-semibold normal-case tracking-normal text-gray-600 dark:text-gray-400">
-                            · {unpaidRows().length}
-                          </span>
-                        </h3>
-                        <Show when={!readOnly()}>
-                          <button
-                            type="button"
-                            ref={addOpener}
-                            class="inline-flex min-h-[44px] items-center rounded-lg border border-blue-700 px-3 text-sm font-semibold text-blue-700 hover:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 dark:border-blue-400 dark:text-blue-400 dark:hover:bg-gray-700"
-                            onClick={() => {
-                              setAddOpen(true);
-                              addDialog.showModal();
-                            }}
-                          >
-                            + Add players
-                          </button>
-                        </Show>
-                      </div>
+                    <section aria-labelledby="unpaid-heading">
+                      <h3
+                        id="unpaid-heading"
+                        tabindex="-1"
+                        class="mb-1 text-xs font-bold uppercase tracking-wide text-gray-700 dark:text-gray-300"
+                      >
+                        {free() ? "Not rostered" : "Not paid"}{" "}
+                        <span class="font-semibold normal-case tracking-normal text-gray-600 dark:text-gray-400">
+                          · {unpaidRows().length}
+                        </span>
+                      </h3>
                       <Show
                         when={unpaidRows().length}
                         fallback={
                           <p class="text-sm text-gray-600 dark:text-gray-400">
-                            No one waiting — add players to build your roster.
+                            No players yet
                           </p>
                         }
                       >
                         <ul
-                          aria-label={
-                            free() ? "Not rostered yet" : "Not paid yet"
-                          }
+                          aria-label={free() ? "Not rostered" : "Not paid"}
                           class="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700"
                         >
                           <For each={unpaidRows()}>
@@ -742,6 +715,7 @@ const TeamRegistrationHome = () => {
                                 <RosterRow
                                   entry={withAction(entry)}
                                   readOnly={readOnly()}
+                                  showDetail={shared()[entry.player.name] > 1}
                                   busy={
                                     busy() ===
                                     keyOf(
@@ -769,6 +743,49 @@ const TeamRegistrationHome = () => {
                         </ul>
                       </Show>
                     </section>
+                    <Show when={paidRows().length}>
+                      <section aria-labelledby="paid-heading" class="mt-4">
+                        <div class="mb-1 flex items-center justify-between gap-2">
+                          <h3
+                            id="paid-heading"
+                            class="text-xs font-bold uppercase tracking-wide text-green-800 dark:text-green-300"
+                          >
+                            {free() ? "Rostered" : "Paid"}{" "}
+                            <span class="font-semibold normal-case tracking-normal text-gray-600 dark:text-gray-400">
+                              · {paidRows().length}
+                            </span>
+                          </h3>
+                          <Show when={!readOnly()}>
+                            <ReasonButton
+                              ref={swapOpener}
+                              link
+                              label="Swap a player"
+                              reason={
+                                swapReason()
+                                  ? { kind: "timing", text: swapReason() }
+                                  : null
+                              }
+                              onClick={() => swapDialog.showModal()}
+                            />
+                          </Show>
+                        </div>
+                        <ul
+                          aria-label={free() ? "Rostered" : "Paid"}
+                          class="overflow-hidden rounded-lg border border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/40"
+                        >
+                          <For each={paidRows()}>
+                            {entry => (
+                              <RosterRow
+                                entry={entry}
+                                paid
+                                readOnly
+                                showDetail={shared()[entry.player.name] > 1}
+                              />
+                            )}
+                          </For>
+                        </ul>
+                      </section>
+                    </Show>
                     <Show
                       when={
                         !readOnly() &&

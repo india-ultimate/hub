@@ -3,8 +3,9 @@ import { Icon } from "solid-heroicons";
 import { check } from "solid-heroicons/solid";
 import { children, Show } from "solid-js";
 
-// One numbered step. Done steps collapse to their title line on phones; the current
-// one is outlined in blue; locked ones still show their contents.
+// One step's card. Done steps are listed on one line by the page; only the
+// roster's card stays once done. The current one is outlined in blue;
+// locked ones still show their contents.
 const Step = props => {
   const done = () => props.step.state === "done";
   const current = () => props.step.state === "current";
@@ -12,6 +13,8 @@ const Step = props => {
   // Resolved once: reading props.children in Show's condition would build
   // a second, never-attached copy of the contents whose effects still run.
   const content = children(() => props.children);
+  const meta = children(() => props.meta);
+  const aside = children(() => props.aside);
   return (
     <section
       aria-labelledby={titleId()}
@@ -51,22 +54,16 @@ const Step = props => {
               {done() ? "done" : current() ? "to do now" : "not available yet"}
             </span>
           </h2>
-          <Show when={props.step.detail}>
-            <p class="text-xs text-gray-600 dark:text-gray-400">
-              {props.step.detail}
-            </p>
+          <Show when={meta() || props.step.detail}>
+            <div class="text-xs text-gray-600 dark:text-gray-400">
+              {meta() || props.step.detail}
+            </div>
           </Show>
         </div>
+        <Show when={aside()}>{aside()}</Show>
       </div>
       <Show when={content()}>
-        <div
-          class={clsx(
-            "space-y-3 px-3 pb-3 sm:pl-[3.25rem]",
-            done() && "hidden sm:block"
-          )}
-        >
-          {content()}
-        </div>
+        <div class="space-y-3 px-3 pb-3 sm:pl-[3.25rem]">{content()}</div>
       </Show>
     </section>
   );
