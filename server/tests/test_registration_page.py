@@ -117,6 +117,8 @@ class TestRegistrationPage(RegistrationPageCase):
         self.open_phone()
         self.assert_text("You're all set. 2 players paid.")
         self.assert_text("Roster paid")
+        # Nobody left to pay for, so no pay bar saying "Pay ₹0".
+        self.assert_element_absent("[data-pay-bar]")
 
     def test_fee_due(self) -> None:
         self.tournament.teams.remove(self.team)
