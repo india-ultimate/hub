@@ -112,9 +112,8 @@ class TestPaymentAccountIntegration(BaseCase):
         with self.assertRaises(razorpay.errors.BadRequestError):
             self.ours.order.fetch(order.order_id)
 
-    def pay_team(self, button: str) -> RazorpayTransaction:
+    def pay_team(self, button: str, *, partial: bool = False) -> RazorpayTransaction:
         """Pay the team fee from the team's registration page."""
-        partial = button.startswith("Pay partial")
         self.sign_in_as(self.captain)
         self.open(f"{APP_URL}/tournament/{self.event.slug}/team/{self.team.slug}/registration")
         self.assert_text(self.team.name, "h1")
@@ -138,7 +137,7 @@ class TestPaymentAccountIntegration(BaseCase):
         self.assertIn(self.team, self.tournament.teams.all())
 
     def test_partial_then_the_rest_both_land_in_the_states_account(self) -> None:
-        partial = self.pay_team("Pay partial ₹400")
+        partial = self.pay_team("Pay ₹400", partial=True)
         self.assert_in_states_account(partial)
         # A part-paid team is offered the rest.
         rest = self.pay_team("Pay ₹600")

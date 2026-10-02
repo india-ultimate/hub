@@ -136,7 +136,8 @@ class TestStatus(ApiCase):
         )
         step = self.step("team_fee")
         self.assertEqual(("locked", "timing"), (step["state"], step["callout"]["kind"]))
-        self.assertIn("in 3 days", step["callout"]["text"])
+        opens = today() + datetime.timedelta(days=3)
+        self.assertEqual(f"Opens {opens:%-d %b}", step["callout"]["text"])
         self.assertEqual("locked", self.step("roster")["state"])
 
     def test_team_fee_step_open_and_paid(self) -> None:
@@ -167,6 +168,24 @@ class TestStatus(ApiCase):
         href = self.status().json()["roster"]["entries"][0]["state"]["action"]["href"]
         self.assertIn(f"return=/tournament/{self.event.slug}/team/{self.team.slug}/", href)
         self.assertNotIn("__RETURN__", href)
+
+    def test_step_titles_say_what_is_done(self) -> None:
+        self.tournament.teams.remove(self.team)
+        titles = {s["key"]: (s["title"], s["detail"]) for s in self.status().json()["steps"]}
+        self.assertEqual(
+            {
+                "series": ("In Club series", ""),
+                "team_fee": ("Team fee", ""),
+                "roster": ("Roster", ""),
+            },
+            titles,
+        )
+        self.tournament.teams.add(self.team)
+        p = self.player("a@x.com", entry=False)
+        Registration.objects.create(event=self.event, team=self.team, player=p)
+        titles = {s["key"]: s["title"] for s in self.status().json()["steps"]}
+        self.assertEqual("Team fee paid", titles["team_fee"])
+        self.assertEqual("Roster paid", titles["roster"])
 
     def test_all_set_when_everyone_is_paid(self) -> None:
         p = self.player("a@x.com", entry=False)
@@ -210,8 +229,9 @@ class TestStatus(ApiCase):
         self.tournament.teams.remove(self.team)
         callout = self.step("team_fee")["callout"]
         self.assertEqual("pay_team", callout["action"]["op"])
+        self.assertEqual("₹5,000, or ₹2,000 now and the rest later", callout["text"])
         self.assertEqual(
-            {"label": "Pay partial ₹2,000", "op": "pay_team_partial", "href": None},
+            {"label": "Pay ₹2,000", "op": "pay_team_partial", "href": None},
             callout["secondary_action"],
         )
         Event.objects.filter(pk=self.event.pk).update(
@@ -264,7 +284,7 @@ class TestStatus(ApiCase):
         step = self.step("series")
         self.assertEqual(("locked", "timing"), (step["state"], step["callout"]["kind"]))
         self.assertEqual(
-            f"Series registration closed on {self.series.end_date:%b %-d}", step["callout"]["text"]
+            f"Series registration closed {self.series.end_date:%-d %b}", step["callout"]["text"]
         )
         self.assertEqual("Ask organisers", step["callout"]["action"]["label"])
 
@@ -294,9 +314,8 @@ class TestStatus(ApiCase):
     def test_part_paid_before_the_deadline_pays_the_rest(self) -> None:
         self.part_paid()
         step = self.step("team_fee")
-        end = self.event.team_registration_end_date
-        self.assertEqual(f"Partial paid · ₹3,000 remaining by {end:%b %-d}", step["detail"])
-        self.assertEqual("Pay the remaining ₹3,000", step["callout"]["text"])
+        self.assertEqual("₹2,000 paid · ₹3,000 left", step["detail"])
+        self.assertEqual("₹3,000 left", step["callout"]["text"])
         self.assertEqual(
             {"label": "Pay ₹3,000", "op": "pay_team_rest", "href": None},
             step["callout"]["action"],
@@ -311,15 +330,15 @@ class TestStatus(ApiCase):
             team_late_penalty=10000,
         )
         step = self.step("team_fee")
-        self.assertEqual("Partial paid · ₹3,000 + 2 days × ₹100", step["detail"])  # noqa: RUF001
-        self.assertEqual("Pay the remaining ₹3,200", step["callout"]["text"])
+        self.assertEqual("₹2,000 paid · ₹3,000 + 2 days × ₹100", step["detail"])  # noqa: RUF001
+        self.assertEqual("₹3,200 left", step["callout"]["text"])
         self.assertEqual("Pay ₹3,200", step["callout"]["action"]["label"])
 
     def test_no_team_fee_is_taken_until_payments_are_set_up(self) -> None:
         Event.objects.filter(pk=self.event.pk).update(payment_account=make_account(is_active=False))
         blocked = {
             "kind": "blocked",
-            "text": "Payments for this tournament aren't set up yet — contact organisers",
+            "text": "Payments aren't open yet",
             "action": {
                 "label": "Ask organisers",
                 "op": None,
@@ -551,9 +570,7 @@ class TestCheckout(ApiCase):
         self.player("a@x.com")
         response = self.pay(0, ids=[])
         self.assertEqual(400, response.status_code)
-        self.assertEqual(
-            "Nothing to pay — this tournament has no player fee", response.json()["message"]
-        )
+        self.assertEqual("This tournament has no player fee", response.json()["message"])
         self.create.assert_not_called()
 
     def test_checkout_refuses_a_changed_set_of_players(self) -> None:
@@ -567,7 +584,7 @@ class TestCheckout(ApiCase):
         response = self.pay(self.event.player_fee, ids=at_load)
         self.assertEqual(409, response.status_code, response.content)
         self.assertEqual(
-            [{"player_id": a.id, "reason": "Waiver not signed — only the player can sign it"}],
+            [{"player_id": a.id, "reason": "Waiver not signed"}],
             response.json()["removed"],
         )
         self.create.assert_not_called()
@@ -750,10 +767,8 @@ class TestCandidates(ApiCase):
         rows = {p["id"]: p for g in self.get().json()["groups"] for p in g["players"]}
         rows |= {p["id"]: p for g in self.get("i@x").json()["groups"] for p in g["players"]}
         self.assertEqual("invite", rows[invitee.id]["button"])
-        self.assertEqual(
-            "Not on the series roster — they'll get an invite", rows[invitee.id]["hint"]["text"]
-        )
-        self.assertEqual("Needs a subscription after adding", rows[no_sub.id]["hint"]["text"])
+        self.assertEqual("Gets a series invite", rows[invitee.id]["hint"]["text"])
+        self.assertEqual("Needs a subscription", rows[no_sub.id]["hint"]["text"])
 
     def test_me_when_not_on_the_list(self) -> None:
         me = self.player("admin-player@x.com", entry=False)

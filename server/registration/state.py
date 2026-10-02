@@ -11,7 +11,6 @@ from dataclasses import asdict, dataclass, field
 from typing import Any
 from urllib.parse import urlencode
 
-from django.conf import settings
 from django.utils.timezone import localdate, now
 
 from server.core.models import Player, Team, User
@@ -194,7 +193,7 @@ def _closed(ctx: Context) -> Reason | None:
         return Reason(
             "timing.closed",
             "timing",
-            f"Not rostered — rostering closed {last:%b %-d}",
+            f"Rostering closed {last:%-d %b}",
             Action("Request a late change", href="/tickets/new?category=Tournament"),
         )
     return None
@@ -206,7 +205,7 @@ def _not_open(ctx: Context) -> Reason | None:
         return Reason(
             "timing.not_open",
             "timing",
-            f"Rostering opens {opens:%b %-d} · {_days((opens - ctx.today).days)}",
+            f"Rostering opens {opens:%-d %b}",
         )
     return None
 
@@ -222,28 +221,25 @@ def _subscription_reason(ctx: Context, entry: RosterEntry) -> Reason | None:
         return Reason(
             "waiting.waiver",
             "waiting",
-            "Waiver not signed — only the player can sign it",
+            "Waiver not signed",
             Action("Remind", op="remind"),
         )
     scope = Scope.PLAY_CHAMPIONSHIPS if playing else Scope.STAFF_CHAMPIONSHIPS
     if message == "Subscription missing":
         if player.id in ctx.awaiting_approval:
-            return Reason(
-                "waiting.approval", "waiting", "Discounted subscription awaiting approval"
-            )
+            return Reason("waiting.approval", "waiting", "Subscription awaiting approval")
         if ctx.season is not None and suggested_tier(player, ctx.season, scope) is None:
             # Nothing on sale they may buy, so nobody can pay for one yet.
             return Reason(
                 "waiting.approval",
                 "waiting",
-                "Needs a discounted subscription — the player must request it",
+                "Needs a discounted subscription",
             )
-        season = ctx.season.name if ctx.season else "this season's"
-        return Reason("action.subscription", "action", f"No {season} subscription")
+        return Reason("action.subscription", "action", "No subscription")
     if message.startswith("Subscription does not cover") and ctx.season is not None:
         tier = suggested_tier(player, ctx.season, scope)
         if tier is None:
-            return Reason("waiting.approval", "waiting", "Needs a tier only staff can approve")
+            return Reason("waiting.approval", "waiting", "Waiting on staff approval")
         slug, amount = tier
         return Reason(
             "action.upgrade",
@@ -284,23 +280,23 @@ def _series_reason(ctx: Context, entry: RosterEntry) -> Reason | None:
         return Reason(
             "action.invite",
             "action",
-            "Not on your series roster",
-            Action("Invite to series", op="invite"),
+            "Not on series roster",
+            Action("Invite", op="invite"),
         )
     if invite.status == InviteStatus.DECLINED:
-        return Reason("waiting.declined", "waiting", "Declined the series invite")
+        return Reason("waiting.declined", "waiting", "Declined the invite")
     if invite.status == InviteStatus.EXPIRED or invite.expires_on < ctx.today:
         return Reason(
             "waiting.invite_expired",
             "waiting",
-            f"Invite expired {invite.expires_on:%b %-d}",
+            f"Invite expired {invite.expires_on:%-d %b}",
             Action("Invite again", op="invite"),
         )
     if invite.status == InviteStatus.PENDING:
         return Reason(
             "waiting.invite",
             "waiting",
-            f"Invited to series · expires {_days((invite.expires_on - ctx.today).days)}",
+            f"Invite sent · expires {_days((invite.expires_on - ctx.today).days)}",
             Action("Resend", op="resend_invite"),
         )
     return None
@@ -340,14 +336,14 @@ def _cap_reason(
         return Reason(
             "limit.total",
             "limit",
-            f"Roster full · {counts['total']}/{series.event_max_players_total}",
+            "Roster full",
         )
     if cap is not None and counts.get(mu, 0) + 1 > cap:
         label = "Female" if mu == "F" else "Male"
         return Reason(
             f"limit.{'female' if mu == 'F' else 'male'}",
             "limit",
-            f"{label}-matching limit reached ({counts.get(mu, 0)}/{cap})",
+            f"{label}-matching limit reached",
         )
     return None
 
@@ -355,17 +351,15 @@ def _cap_reason(
 def _ready_reason(ctx: Context) -> Reason:
     if not ctx.team_paid:
         text = (
-            "Ready · pay the full team fee first"
+            "Ready once the team fee is paid"
             if ctx.event.team_fee
-            else "Ready · register the team first"
+            else "Ready once the team is registered"
         )
         return Reason("ready.after_team_fee", "waiting", text)
     if ctx.event.player_fee:
         return Reason("ready", "ready", "Ready to pay")
     # Nothing to pay, so it is rostered straight away, not checked out.
-    return Reason(
-        "ready.free", "ready", "Accepted — add to roster", Action("Add to roster", op="roster")
-    )
+    return Reason("ready.free", "ready", "Accepted", Action("Add", op="roster"))
 
 
 def _unpaid_reason(
@@ -383,7 +377,7 @@ def _unpaid_reason(
         reason = Reason(
             "waiting.profile",
             "waiting",
-            "Profile incomplete — gender matching missing",
+            "Profile missing gender matching",
             Action("Remind", op="remind"),
         )
     if reason is None:
@@ -448,7 +442,7 @@ def _swap_in_reason(
     if early is not None:
         return early
     if _open_hold(entry) is not None:
-        return Reason("progress.held", "progress", "Being paid for — try again in a few minutes")
+        return Reason("progress.held", "progress", "Being paid for. Try again in a few minutes.")
     counts = _paid_counts(ctx, exclude=out_player_id)
     for other in ctx.entries:
         hold = _open_hold(other)
@@ -478,7 +472,7 @@ def preview_swap(ctx: Context, out_player_id: int, in_player_id: int) -> Reason:
         return Reason(
             "limit.minimum",
             "limit",
-            f"Would leave {label}-matching below the minimum ({before - 1}/{minimum})",
+            f"Would leave too few {label}-matching",
         )
     return reason
 
@@ -540,17 +534,12 @@ def _plural(n: int, word: str) -> str:
     return f"{n} {word}{'s' if n != 1 else ''}"
 
 
-def checkout_payee(event: Event) -> str:
-    """Who the player-fee payment goes to, as create_transaction names it."""
-    return event.payment_account.name if event.payment_account else settings.APP_NAME
-
-
 def _payments_blocked(event: Event) -> dict[str, Any] | None:
     """The callout in place of any pay button while the account can't take orders."""
     account = event.payment_account
     if account is None or account.is_ready():
         return None
-    text = "Payments for this tournament aren't set up yet — contact organisers"
+    text = "Payments aren't open yet"
     ask = Action("Ask organisers", href="/tickets/new?category=Tournament").as_dict()
     return {"kind": "blocked", "text": text, "action": ask}
 
@@ -569,12 +558,7 @@ def _team_fee_step(ctx: Context) -> dict[str, Any]:
     if tournament.teams.filter(pk=team.pk).exists():
         if not e.team_fee:
             return {**step, "state": "done", "title": "Team registered"}
-        return {
-            **step,
-            "state": "done",
-            "title": f"Team fee · {rupees(e.team_fee)}",
-            "detail": f"Paid to {checkout_payee(e)}",
-        }
+        return {**step, "state": "done", "title": "Team fee paid"}
     if e.series is not None and not e.series.teams.filter(pk=team.pk).exists():
         text = f"Register for {e.series.name} first"
         return {
@@ -604,7 +588,7 @@ def _team_fee_step(ctx: Context) -> dict[str, Any]:
         withdrawn = {"kind": "timing", "text": step["detail"], "action": None}
         return {**step, "state": "locked", "callout": withdrawn}
     if ctx.today < opens:
-        text = f"Team registration opens {opens:%b %-d} · {_days((opens - ctx.today).days)}"
+        text = f"Opens {opens:%-d %b}"
         return {
             **step,
             "state": "locked",
@@ -612,7 +596,7 @@ def _team_fee_step(ctx: Context) -> dict[str, Any]:
         }
     if ctx.today > last:
         late = Action("Request late entry", href="/tickets/new?category=Tournament").as_dict()
-        text = f"Team registration closed {last:%b %-d}"
+        text = f"Closed {last:%-d %b}"
         return {
             **step,
             "state": "locked",
@@ -620,7 +604,7 @@ def _team_fee_step(ctx: Context) -> dict[str, Any]:
         }
     registered = tournament.teams.count()
     if e.max_num_teams and registered >= e.max_num_teams:
-        text = f"Tournament full · {registered}/{e.max_num_teams}"
+        text = f"Full ({e.max_num_teams} teams)"
         return {
             **step,
             "state": "locked",
@@ -628,7 +612,7 @@ def _team_fee_step(ctx: Context) -> dict[str, Any]:
         }
     if not e.team_fee:
         free = Action("Register", op="register_free").as_dict()
-        text = "This tournament is free to enter"
+        text = "Free entry"
         return {**step, "callout": {"kind": "timing", "text": text, "action": free}}
     # The late fee goes on the full fee or on the rest, never on a partial,
     # as create_transaction charges it.
@@ -638,13 +622,13 @@ def _team_fee_step(ctx: Context) -> dict[str, Any]:
     by_day = f" + {_plural(days_late, 'day')} × {rupees(e.team_late_penalty)}"  # noqa: RUF001
     if tournament.partial_teams.filter(pk=team.pk).exists():
         rest = e.team_fee - e.partial_team_fee
-        due = e.team_registration_end_date if e.team_late_penalty else last
-        owed = f"{rupees(rest)}{by_day}" if penalty else f"{rupees(rest)} remaining by {due:%b %-d}"
+        paid = rupees(e.partial_team_fee)
+        owed = f"{rupees(rest)}{by_day}" if penalty else f"{rupees(rest)} left"
         pay = Action(f"Pay {rupees(rest + penalty)}", op="pay_team_rest").as_dict()
-        text = f"Pay the remaining {rupees(rest + penalty)}"
+        text = f"{rupees(rest + penalty)} left"
         return {
             **step,
-            "detail": f"Partial paid · {owed}",
+            "detail": f"{paid} paid · {owed}",
             "callout": _payments_blocked(e) or {"kind": "timing", "text": text, "action": pay},
         }
     total = e.team_fee + penalty
@@ -652,13 +636,14 @@ def _team_fee_step(ctx: Context) -> dict[str, Any]:
     pay = Action(f"Pay {rupees(total)}", op="pay_team").as_dict()
     callout: dict[str, Any] = {
         "kind": "timing",
-        "text": f"Team fee {rupees(total)}",
+        "text": rupees(total),
         "action": pay,
     }
     partial_end = e.team_partial_registration_end_date or e.team_registration_end_date
     if e.partial_team_fee and ctx.today <= partial_end:
         # The one callout with a second button: part now, the rest later.
-        label = f"Pay partial {rupees(e.partial_team_fee)}"
+        label = f"Pay {rupees(e.partial_team_fee)}"
+        callout["text"] = f"{rupees(total)}, or {rupees(e.partial_team_fee)} now and the rest later"
         callout["secondary_action"] = Action(label, op="pay_team_partial").as_dict()
     callout = _payments_blocked(e) or callout
     return {**step, "detail": detail or step["detail"], "callout": callout}
@@ -709,10 +694,9 @@ def _handoff(ctx: Context, reasons: dict[int, Reason], page_path: str) -> dict[s
     need_s = "needs" if n == 1 else "need"
     return {
         "kind": "action",
-        "text": f"{_plural(n, 'player')} {need_s} a {ctx.season.name} subscription"
-        " before you can pay for them",
+        "text": f"{_plural(n, 'player')} {need_s} a subscription",
         "action": Action(
-            f"Pay {_plural(n, 'subscription')} · {rupees(total)}",
+            f"Pay {rupees(total)}",
             href=f"/subscription/group?{query}",
         ).as_dict(),
     }
@@ -725,19 +709,24 @@ def step_states(ctx: Context, reasons: dict[int, Reason], page_path: str) -> lis
         in_series = series.teams.filter(pk=ctx.team.pk).exists()
         step: dict[str, Any] = {
             "key": "series",
-            "title": "Team in series",
-            "detail": series.name,
+            "title": f"In {series.name}",
+            "detail": "",
             "state": "done",
             "callout": None,
         }
         if not in_series and series.end_date < ctx.today:
             ask = Action("Ask organisers", href="/tickets/new?category=Tournament").as_dict()
-            text = f"Series registration closed on {series.end_date:%b %-d}"
-            step |= {"state": "locked", "callout": {"kind": "timing", "text": text, "action": ask}}
+            text = f"Series registration closed {series.end_date:%-d %b}"
+            step |= {
+                "title": f"Join {series.name}",
+                "state": "locked",
+                "callout": {"kind": "timing", "text": text, "action": ask},
+            }
         elif not in_series:
             join = Action(f"Register for {series.name}", op="register_series").as_dict()
             text = f"Register for {series.name}"
             step |= {
+                "title": f"Join {series.name}",
                 "state": "current",
                 "callout": {"kind": "action", "text": text, "action": join},
             }
@@ -751,16 +740,17 @@ def step_states(ctx: Context, reasons: dict[int, Reason], page_path: str) -> lis
     )
     callout = _handoff(ctx, reasons, page_path)
     if callout is None and not ready and waiting:
-        text = f"No players ready — {waiting} waiting on the player"
+        text = f"Waiting on {_plural(waiting, 'player')}"
         callout = {"kind": "waiting", "text": text, "action": None}
     callout = _payments_blocked(ctx.event) or callout
     roster_done = bool(reasons) and all(r.kind == "done" for r in reasons.values())
     roster_state = "done" if roster_done else "current"
+    done_title = "Roster paid" if ctx.event.player_fee else "Roster done"
     steps.append(
         {
             "key": "roster",
-            "title": "Build your roster",
-            "detail": "Add players, sort out anything flagged, then pay",
+            "title": done_title if roster_state == "done" else "Roster",
+            "detail": "",
             "state": roster_state if fee["state"] == "done" else "locked",
             "callout": callout,
         }
