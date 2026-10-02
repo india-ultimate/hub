@@ -191,7 +191,7 @@ class TestRegistrationIntegration(RegistrationPageCase):
         self.assert_text("4 ready · ₹4,000")
 
         complete_razorpay_test_payment(self, 'button:contains("Pay ₹4,000")')
-        self.assert_text("Payment received — 4 players rostered.", timeout=PAID)
+        self.assert_text("Paid. 4 players rostered.", timeout=PAID)
         order = self.paid_order(4 * PLAYER_FEE)
         self.assert_rostered([*on_roster, newcomer], order, PLAYER_FEE)
         for p in [*on_roster, newcomer]:
@@ -253,7 +253,7 @@ class TestRegistrationIntegration(RegistrationPageCase):
         self.assertFalse(RazorpayTransaction.objects.exists())
 
         complete_razorpay_test_payment(self, 'dialog[open] button:contains("Pay ₹1,200")')
-        self.assert_text("Payment received — 1 player rostered.", timeout=PAID)
+        self.assert_text("Paid. 1 player rostered.", timeout=PAID)
         order = self.paid_order(120000)
         self.assert_rostered([p], order, 120000)
 
@@ -275,7 +275,7 @@ class TestRegistrationIntegration(RegistrationPageCase):
         self.open_page()
         self.assert_text("Paid to Test State Association")
         complete_razorpay_test_payment(self, 'button:contains("Pay ₹1,000")')
-        self.assert_text("Payment received — 1 player rostered.", timeout=PAID)
+        self.assert_text("Paid. 1 player rostered.", timeout=PAID)
 
         order = self.paid_order(PLAYER_FEE)
         self.assert_rostered([p], order, PLAYER_FEE)
@@ -339,9 +339,7 @@ class TestRegistrationIntegration(RegistrationPageCase):
         self.assertEqual(len(greyed), len(reasons), greyed)
         for label, reason in greyed:
             self.assertTrue(reason, f"{label!r} is greyed with no reason")
-        self.assertEqual(
-            "No players ready yet — 1 waiting on the player", reasons.get("Pay ₹0"), greyed
-        )
+        self.assertEqual("Waiting on 1 player", reasons.get("Pay ₹0"), greyed)
 
         # Paid rows can't be removed; the others ask first, and say when
         # removing also withdraws a series invite.
@@ -423,7 +421,7 @@ class TestRegistrationIntegration(RegistrationPageCase):
         self.sign_in_as(self.admin)
         self.open_page()
         complete_razorpay_test_payment(self, 'button:contains("Pay ₹1,000")')
-        self.assert_text("Payment received — 1 player rostered.", timeout=PAID)
+        self.assert_text("Paid. 1 player rostered.", timeout=PAID)
         order = self.paid_order(PLAYER_FEE)
         self.assert_rostered([ravi], order, PLAYER_FEE)
         self.assert_element('//ul[@aria-label="Paid"]/li[contains(., "Ravi Ready")]')

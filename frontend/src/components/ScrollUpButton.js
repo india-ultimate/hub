@@ -35,6 +35,7 @@ const ScrollUpButton = () => {
   return (
     <button
       type="button"
+      data-floating
       onClick={scrollToTop}
       class={clsx(
         visible() ? "visible opacity-100" : "invisible opacity-0",
