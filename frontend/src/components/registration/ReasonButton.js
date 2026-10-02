@@ -7,6 +7,8 @@ import { actionBase, actionHover, kindOf, KINDS } from "../../reasonKinds";
 const primary =
   "inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg bg-blue-700 px-4 text-sm font-semibold text-white focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-300 motion-reduce:transition-none dark:bg-blue-600 dark:focus-visible:ring-blue-800";
 const primaryHover = "hover:bg-blue-800 dark:hover:bg-blue-700";
+const link =
+  "inline-flex min-h-[44px] items-center px-2 text-sm font-semibold text-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 dark:text-blue-400";
 
 // Greyed buttons stay focusable (aria-disabled, not disabled) so a screen
 // reader still reaches the reason line that says why.
@@ -20,10 +22,12 @@ const ReasonButton = props => {
         ref={props.ref}
         type="button"
         class={clsx(
-          isPrimary() ? primary : actionBase,
+          props.link ? link : isPrimary() ? primary : actionBase,
           // Hover only when it can be pressed.
           blocked()
             ? "cursor-not-allowed opacity-[0.45]"
+            : props.link
+            ? "hover:underline"
             : isPrimary()
             ? primaryHover
             : actionHover

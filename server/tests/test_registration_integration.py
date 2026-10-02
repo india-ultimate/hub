@@ -306,7 +306,7 @@ class TestRegistrationIntegration(RegistrationPageCase):
 
         self.sign_in_as(self.admin)
         self.open_page()
-        self.assert_state("Arjun Paid", "Rostered")
+        self.assert_element('//ul[@aria-label="Paid"]/li[contains(., "Arjun Paid")]')
         self.assert_state("Lata Full", "Roster full")
         self.assert_state("Kiran Waits", "Invite sent")
         self.assert_state("Meera Elsewhere", "On Rivals's series roster")
@@ -412,8 +412,8 @@ class TestRegistrationIntegration(RegistrationPageCase):
         self.assert_text("✓ Added", ADD_DIALOG)
         self.click(f'{ADD_DIALOG}//button[@aria-label="Invite Pia Past"]')
         self.click(f'{ADD_DIALOG}//button[normalize-space()="Done"]')
-        self.assert_element('//ul[@aria-label="Not paid yet"]/li[contains(., "Pia Past")]')
-        self.assert_element('//ul[@aria-label="Not paid yet"]/li[contains(., "Asha Captain")]')
+        self.assert_element('//ul[@aria-label="Not paid"]/li[contains(., "Pia Past")]')
+        self.assert_element('//ul[@aria-label="Not paid"]/li[contains(., "Asha Captain")]')
         self.assertTrue(RosterEntry.objects.filter(event=self.event, player=me).exists())
         self.assertFalse(SeriesRosterInvitation.objects.filter(to_player=me).exists())
         self.assertTrue(SeriesRosterInvitation.objects.filter(to_player=past).exists())
@@ -426,8 +426,8 @@ class TestRegistrationIntegration(RegistrationPageCase):
         self.assert_text("Payment received — 1 player rostered.", timeout=PAID)
         order = self.paid_order(PLAYER_FEE)
         self.assert_rostered([ravi], order, PLAYER_FEE)
-        self.assert_element('//ul[@aria-label="Rostered and paid"]/li[contains(., "Ravi Ready")]')
-        self.assert_element_absent('//ul[@aria-label="Rostered and paid"]//button')
+        self.assert_element('//ul[@aria-label="Paid"]/li[contains(., "Ravi Ready")]')
+        self.assert_element_absent('//ul[@aria-label="Paid"]//button')
 
         kiran = self.player("Kiran", "Extra")
         self.open_page()
@@ -436,10 +436,8 @@ class TestRegistrationIntegration(RegistrationPageCase):
         self.click(f'{dialog}//label[contains(., "Ravi Ready")]')
         self.click(f'{dialog}//label[contains(., "Kiran Extra")]')
         self.click(f'{dialog}//button[contains(., "Swap Ravi → Kiran")]')
-        self.assert_element(
-            '//ul[@aria-label="Rostered and paid"]/li[contains(., "Swapped in for Ravi Ready")]'
-        )
-        self.assert_element('//ul[@aria-label="Not paid yet"]/li[contains(., "Ravi Ready")]')
+        self.assert_element('//ul[@aria-label="Paid"]/li[contains(., "Swapped in for Ravi Ready")]')
+        self.assert_element('//ul[@aria-label="Not paid"]/li[contains(., "Ravi Ready")]')
         self.assertTrue(Registration.objects.filter(event=self.event, player=kiran).exists())
         self.assertFalse(Registration.objects.filter(event=self.event, player=ravi).exists())
 
