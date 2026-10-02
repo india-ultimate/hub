@@ -201,6 +201,13 @@ class TestStatus(ApiCase):
         Registration.objects.create(event=self.event, team=self.team, player=p)
         self.assertFalse(self.status().json()["all_set"])
 
+    def test_not_all_set_below_the_series_total_minimum(self) -> None:
+        self.series.event_min_players_total = 2
+        self.series.save()
+        p = self.player("a@x.com", entry=False)
+        Registration.objects.create(event=self.event, team=self.team, player=p)
+        self.assertFalse(self.status().json()["all_set"])
+
     def test_rows_carry_the_players_photo(self) -> None:
         p = self.player("a@x.com")
         p.profile_pic_url = "https://example.com/a.png"

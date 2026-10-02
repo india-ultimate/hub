@@ -523,6 +523,7 @@ def meter(ctx: Context, reasons: dict[int, Reason]) -> dict[str, int]:
         "female_matching": sum(1 for p in counted if p.match_up == "F"),
         "male_matching": sum(1 for p in counted if p.match_up == "M"),
         "max_total": series.event_max_players_total if series else 0,
+        "min_total": series.event_min_players_total if series else 0,
         "min_female": series.event_min_players_female if series else 0,
         "max_female": series.event_max_players_female if series else 0,
         "min_male": series.event_min_players_male if series else 0,
@@ -777,10 +778,11 @@ def viewer_role(ctx: Context) -> str | None:
 
 
 def all_set(steps: list[dict[str, Any]], m: dict[str, int]) -> bool:
-    """Team fee and roster done, and both gender minimums met."""
+    """Team fee and roster done, and the series' minimums met."""
     done = {s["key"] for s in steps if s["state"] == "done"}
     return (
         {"team_fee", "roster"} <= done
+        and m["total"] >= m["min_total"]
         and m["female_matching"] >= m["min_female"]
         and m["male_matching"] >= m["min_male"]
     )
