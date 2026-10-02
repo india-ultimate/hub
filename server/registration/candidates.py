@@ -77,6 +77,7 @@ def _row(player: Player, reason: Reason | None, history: History, on_list: bool)
         "id": player.id,
         "name": _name(player),
         "city": player.city,
+        "photo": player.profile_pic_url or None,
         "match_up": player.match_up,
         "last_event": last[1] if last else None,
         "events": len(last[2]) if last else 0,
