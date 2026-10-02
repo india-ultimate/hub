@@ -47,12 +47,10 @@ def row(name: str) -> str:
     return f'//section[{sections}]//li[contains(., "{name}")]'
 
 
-@pytest.mark.skipif(
-    not os.environ.get("RAZORPAY_KEY_ID", "").startswith("rzp_test_"),
-    reason="needs a Razorpay test-mode key",
-)
 @pytest.mark.django_db(transaction=True)
-class TestRegistrationIntegration(BaseCase):
+class RegistrationPageCase(BaseCase):
+    """The page against a real server; seeds a series team an admin can roster."""
+
     sign_in_as = test_ui.TestIntegration.sign_in_as
 
     @classmethod
@@ -154,6 +152,13 @@ class TestRegistrationIntegration(BaseCase):
             sorted(lines.values_list("player_id", "amount")),
         )
 
+
+@pytest.mark.skipif(
+    not os.environ.get("RAZORPAY_KEY_ID", "").startswith("rzp_test_"),
+    reason="needs a Razorpay test-mode key",
+)
+@pytest.mark.django_db(transaction=True)
+class TestRegistrationIntegration(RegistrationPageCase):
     # Flows ####################
 
     def test_a_series_team_builds_and_pays_its_roster(self) -> None:
