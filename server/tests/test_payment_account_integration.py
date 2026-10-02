@@ -160,7 +160,7 @@ class TestPaymentAccountIntegration(BaseCase):
         ravi = '//ul[@aria-label="Not paid"]/li[contains(., "Ravi M")]'
         self.assert_text("Ready to pay", ravi, timeout=30)
         complete_razorpay_test_payment(self, 'button:contains("Pay ₹200")')
-        self.assert_text("Payment received — 1 player rostered.", timeout=150)
+        self.assert_text("Paid. 1 player rostered.", timeout=150)
         self.assert_element('//ul[@aria-label="Paid"]/li[contains(., "Ravi M")]', timeout=30)
         order = self.latest(RazorpayTransaction.TransactionTypeChoices.PLAYER_REGISTRATION)
         self.assert_in_states_account(order)

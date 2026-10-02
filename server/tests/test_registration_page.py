@@ -90,3 +90,57 @@ class TestRegistrationPage(RegistrationPageCase):
         self.open_phone()
         meta = 'section[aria-labelledby="step-roster"] [data-roster-totals]'
         self.assertNotIn("F", self.get_text(meta))
+
+    def test_players_show_on_the_first_screen(self) -> None:
+        self.paid("Meera", "Paid")
+        self.paid("Kavya", "Paid")
+        self.player("Ravi", "Ready")
+        self.player("Arjun", "Kumar", tier=None)
+        self.open_phone()
+        first = 'section[aria-labelledby="unpaid-heading"] li'
+        self.assertLess(self.rect(first, "bottom"), self.rect("[data-pay-bar]", "top"))
+
+    def test_done_steps_share_one_line(self) -> None:
+        self.player("Ravi", "Ready")
+        self.open_phone()
+        self.assert_text("In Club series")
+        self.assert_text("Team fee paid")
+        self.assert_element_absent('section[aria-labelledby="step-series"]')
+        self.assert_element_absent('section[aria-labelledby="step-team_fee"]')
+        self.assert_element('section[aria-labelledby="step-roster"]')
+        self.assert_element_absent('[role="progressbar"]')
+        self.assert_element_absent('ul[aria-label="Deadlines"]')
+
+    def test_all_set(self) -> None:
+        self.paid("Meera", "Paid")
+        self.paid("Kavya", "Paid")
+        self.open_phone()
+        self.assert_text("You're all set. 2 players paid.")
+        self.assert_text("Roster paid")
+
+    def test_fee_due(self) -> None:
+        self.tournament.teams.remove(self.team)
+        self.open_phone()
+        self.assert_text("₹5,000, or ₹2,000 now and the rest later")
+        self.assert_element('button:contains("Pay ₹2,000")')
+        # Captains add players before paying the fee.
+        self.assert_element(
+            'section[aria-labelledby="step-roster"] button:contains("+ Add players")'
+        )
+
+    def test_pay_bar_says_it_once(self) -> None:
+        self.player("Ravi", "Ready")
+        self.open_phone()
+        bar = "[data-pay-bar]"
+        self.assert_text("1 player ready", bar)
+        self.assertNotIn("each", self.get_text(bar))
+        self.assertNotIn("Paid to", self.get_text(bar))
+        self.assert_element(f'{bar} button:contains("Pay ₹1,000")')
+
+    def test_help_button_clears_the_pay_bar(self) -> None:
+        # Nobody ready: the bar is at its tallest, with its reason line.
+        self.player("Arjun", "Kumar", tier=None)
+        self.open_phone()
+        self.assert_text("No players ready yet", "[data-pay-bar]")
+        help_button = 'a[title="Access Help Center"]'
+        self.assertLessEqual(self.rect(help_button, "bottom"), self.rect("[data-pay-bar]", "top"))
