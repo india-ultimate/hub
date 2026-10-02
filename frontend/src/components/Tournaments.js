@@ -94,11 +94,7 @@ const Tournaments = () => {
           {tournament => (
             <Show when={tournament.status !== "DFT"}>
               <A
-                href={
-                  tournament.status === "SCH"
-                    ? `/tournament/${tournament.event?.slug}/register`
-                    : `/tournament/${tournament.event?.slug}`
-                }
+                href={`/tournament/${tournament.event?.slug}`}
                 class="block w-full rounded-lg border border-blue-600 bg-white p-4 shadow dark:border-blue-400 dark:bg-gray-800"
               >
                 <Show when={tournament.event?.type}>

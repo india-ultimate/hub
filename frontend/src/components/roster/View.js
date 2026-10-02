@@ -127,10 +127,7 @@ const Roster = () => {
         pageList={[
           { url: "/tournaments", name: "All Tournaments" },
           {
-            url:
-              tournamentQuery.data?.status === "SCH"
-                ? `/tournament/${params.tournament_slug}/register`
-                : `/tournament/${params.tournament_slug}`,
+            url: `/tournament/${params.tournament_slug}`,
             name: getTournamentBreadcrumbName(
               tournamentQuery.data?.event?.slug || ""
             )
