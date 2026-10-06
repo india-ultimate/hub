@@ -74,6 +74,14 @@ def check(player: Player, target: Event | Series, is_playing: bool) -> message_r
             "action_href": f"/waiver/{player.id}",
         }
 
+    if not subscription.coc_agreed:
+        return {
+            "message": "Code of conduct not agreed",
+            "description": "You need to agree to the code of conduct to be added here.",
+            "action_name": "Agree to code of conduct",
+            "action_href": f"/code-of-conduct/{player.id}",
+        }
+
     scope = Scope.PLAY_CHAMPIONSHIPS if is_playing else Scope.STAFF_CHAMPIONSHIPS
     if not subscription.allows(scope):
         # Tier names already say "subscription", e.g. "Community Subscription".

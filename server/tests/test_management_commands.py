@@ -313,6 +313,8 @@ class TestAddToSeriesRoster(TestCase):
     def test_add_to_series_roster(self) -> None:
         call_command("import_players", self.fixture, "--date-format", "%d-%m-%Y")
         call_command("activate_subscriptions", self.fixture)
+        # Bulk activation doesn't agree to the code of conduct; they do that themselves.
+        Subscription.objects.update(coc_agreed=True)
         call_command(
             "add_to_series_roster",
             self.fixture,
@@ -378,6 +380,8 @@ class TestAddToEventRoster(TestCase):
     def test_add_to_event_roster(self) -> None:
         call_command("import_players", self.fixture, "--date-format", "%d-%m-%Y")
         call_command("activate_subscriptions", self.fixture)
+        # Bulk activation doesn't agree to the code of conduct; they do that themselves.
+        Subscription.objects.update(coc_agreed=True)
         call_command(
             "add_to_series_roster",
             self.fixture,

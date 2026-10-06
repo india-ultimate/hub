@@ -24,6 +24,7 @@ HINTS: dict[str, tuple[str | None, str | None]] = {
     "action.upgrade": ("Needs a subscription", "add"),
     "waiting.approval": ("Needs a subscription", "add"),
     "waiting.waiver": ("Waiver not signed", "add"),
+    "waiting.coc": ("Code of conduct not agreed", "add"),
     "action.invite": (INVITE, "invite"),
     "waiting.invite_expired": (INVITE, "invite"),
     "waiting.declined": ("Declined before · adding re-invites", "invite"),

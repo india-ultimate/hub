@@ -299,6 +299,7 @@ class StateTestCase(TestCase):
         on_series: bool = True,
         tier: str | None = "regular",
         waiver: bool = True,
+        coc: bool = True,
         entry: bool = True,
     ) -> Player:
         p = make_player(email)
@@ -315,6 +316,7 @@ class StateTestCase(TestCase):
                 plan=SubscriptionPlan.objects.get(season=self.season, type__slug=tier),
                 is_active=True,
                 waiver_valid=waiver,
+                coc_agreed=coc,
                 start_date=self.season.start_date,
                 end_date=self.season.end_date,
             )
@@ -327,6 +329,14 @@ class StateTestCase(TestCase):
 
 
 class TestEntryReasons(StateTestCase):
+    def test_an_unagreed_code_of_conduct_waits_on_the_player(self) -> None:
+        p = self.player("a@x.com", coc=False)
+        reason = self.reasons()[p.id]
+        self.assertEqual(
+            ("waiting.coc", "waiting", "Code of conduct not agreed"),
+            (reason.code, reason.kind, reason.text),
+        )
+
     def test_ready(self) -> None:
         p = self.player("a@x.com")
         self.assertEqual("ready", self.reasons()[p.id].code)

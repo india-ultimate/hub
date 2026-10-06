@@ -66,6 +66,7 @@ class TestEligibility(TestCase):
         defaults = {
             "is_active": True,
             "waiver_valid": True,
+            "coc_agreed": True,
             "start_date": season.start_date,
             "end_date": season.end_date,
         }
@@ -113,6 +114,24 @@ class TestEligibility(TestCase):
     def test_an_unsigned_waiver_is_refused(self) -> None:
         self.hold("regular", waiver_valid=False)
         self.assertEqual(self.action(self.gated), "Sign waiver")
+
+    def test_an_unagreed_code_of_conduct_is_refused(self) -> None:
+        self.hold("regular", coc_agreed=False)
+        self.assertEqual(self.action(self.gated), "Agree to code of conduct")
+        error = eligibility.check(self.player, self.gated, is_playing=True)
+        assert error is not None  # noqa: S101
+        self.assertEqual("Code of conduct not agreed", error["message"])
+        self.assertEqual(f"/code-of-conduct/{self.player.id}", error["action_href"])
+
+    def test_the_waiver_comes_before_the_code_of_conduct(self) -> None:
+        self.hold("regular", waiver_valid=False, coc_agreed=False)
+        self.assertEqual(self.action(self.gated), "Sign waiver")
+
+    def test_staff_need_it_too(self) -> None:
+        self.hold("community", coc_agreed=False)
+        error = eligibility.check(self.player, self.gated, is_playing=False)
+        assert error is not None  # noqa: S101
+        self.assertEqual("Code of conduct not agreed", error["message"])
 
     def test_last_season_does_not_cover_this_season_s_event(self) -> None:
         self.hold(None, season=self.last_season)
@@ -221,6 +240,7 @@ class TestRosterEligibilityThroughTheApi(TestCase):
                 **{
                     "is_active": True,
                     "waiver_valid": True,
+                    "coc_agreed": True,
                     "start_date": self.season.start_date,
                     "end_date": self.season.end_date,
                     **fields,

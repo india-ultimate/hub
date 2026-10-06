@@ -52,6 +52,7 @@ class TestPaymentFlows(ApiBaseTestCase):
             plan=SubscriptionPlan.objects.get(season=self.season, type__slug=slug),
             is_active=True,
             waiver_valid=True,
+            coc_agreed=True,
             start_date=self.season.start_date,
             end_date=self.season.end_date,
         )
@@ -161,6 +162,7 @@ class TestPaymentFlows(ApiBaseTestCase):
             plan=SubscriptionPlan.objects.get(season=season, type__slug="regular"),
             is_active=True,
             waiver_valid=True,
+            coc_agreed=True,
             start_date=season.start_date,
             end_date=season.end_date,
         )
