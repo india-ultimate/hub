@@ -275,6 +275,28 @@ class TestActivateSubscriptions(TestCase):
         self.assertEqual(n_players, Player.objects.count())
         self.assertEqual(n_players, Subscription.objects.count())
 
+    def test_activation_counts_the_code_of_conduct_agreed_offline(self) -> None:
+        call_command("import_players", self.fixture, "--date-format", "%d-%m-%Y")
+        call_command("activate_subscriptions", self.fixture)
+        for sub in Subscription.objects.all():
+            self.assertTrue(sub.coc_agreed)
+            self.assertIsNotNone(sub.coc_agreed_at)
+            self.assertIsNone(sub.coc_agreed_by)  # nobody agreed on the Hub
+
+    def test_activating_again_keeps_an_agreement_made_on_the_hub(self) -> None:
+        call_command("import_players", self.fixture, "--date-format", "%d-%m-%Y")
+        call_command("activate_subscriptions", self.fixture)
+        sub = Subscription.objects.select_related("player__user").first()
+        assert sub is not None  # noqa: S101
+        agreed_at = datetime.datetime(2026, 8, 2, tzinfo=datetime.timezone.utc)
+        Subscription.objects.filter(pk=sub.pk).update(
+            coc_agreed_by=sub.player.user, coc_agreed_at=agreed_at
+        )
+        call_command("activate_subscriptions", self.fixture)
+        sub.refresh_from_db()
+        self.assertEqual(agreed_at, sub.coc_agreed_at)
+        self.assertEqual(sub.player.user, sub.coc_agreed_by)
+
     def tearDown(self) -> None:
         # Clean up test data. Subscriptions protect their season, so go
         # first; delete only the season this test created, not the ones
@@ -317,8 +339,6 @@ class TestAddToSeriesRoster(TestCase):
     def test_add_to_series_roster(self) -> None:
         call_command("import_players", self.fixture, "--date-format", "%d-%m-%Y")
         call_command("activate_subscriptions", self.fixture)
-        # Bulk activation doesn't agree to the code of conduct; they do that themselves.
-        Subscription.objects.update(coc_agreed=True)
         call_command(
             "add_to_series_roster",
             self.fixture,
@@ -384,8 +404,6 @@ class TestAddToEventRoster(TestCase):
     def test_add_to_event_roster(self) -> None:
         call_command("import_players", self.fixture, "--date-format", "%d-%m-%Y")
         call_command("activate_subscriptions", self.fixture)
-        # Bulk activation doesn't agree to the code of conduct; they do that themselves.
-        Subscription.objects.update(coc_agreed=True)
         call_command(
             "add_to_series_roster",
             self.fixture,

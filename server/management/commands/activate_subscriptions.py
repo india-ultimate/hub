@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Any
 
 from django.core.management.base import BaseCommand, CommandParser
+from django.utils.timezone import now
 
 from server.core.models import Player, User
 from server.season.models import Season
@@ -12,7 +13,13 @@ from server.subscription.numbers import assign_number
 
 
 class Command(BaseCommand):
-    help = "Activate subscriptions from CSV file with player details"
+    # Only for people who signed the waiver and agreed to the code of conduct
+    # offline: both are marked done for everyone in the sheet.
+    help = (
+        "Activate subscriptions from CSV file with player details. Marks the waiver "
+        "signed and the code of conduct agreed, so use it only for people who did both "
+        "offline."
+    )
 
     def add_arguments(self, parser: CommandParser) -> None:
         parser.add_argument("csv_file", type=Path, help="Path to the CSV file")
@@ -68,5 +75,11 @@ class Command(BaseCommand):
                     for key, value in subscription_defaults.items():
                         setattr(subscription, key, value)
                     subscription.save()
+                if not subscription.coc_agreed:
+                    # Agreed offline: a date, but no one who agreed on the Hub.
+                    # An agreement already made on the Hub is left as it is.
+                    subscription.coc_agreed = True
+                    subscription.coc_agreed_at = now()
+                    subscription.save(update_fields=["coc_agreed", "coc_agreed_at"])
 
                 assign_number(player, season)
