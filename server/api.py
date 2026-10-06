@@ -55,6 +55,7 @@ from server.registration.api import router as registration_router
 from server.schema import (
     AccreditationFormSchema,
     AccreditationSchema,
+    CodeOfConductFormSchema,
     CollegeIdFormSchema,
     CollegeIdSchema,
     CommentaryInfoFormSchema,
@@ -1093,12 +1094,51 @@ def waiver(
             return 400, {
                 "message": f"Only Guardian - {guardianship.user.username} can sign this player's waiver"
             }
+    elif request.user != player.user:
+        return 400, {"message": f"Only {player.user.get_full_name()} can sign their waiver"}
 
     subscription.waiver_signed_by = request.user
     subscription.waiver_signed_at = now()
     subscription.waiver_valid = True
     subscription.save(update_fields=["waiver_signed_by", "waiver_signed_at", "waiver_valid"])
 
+    return 200, player
+
+
+@api.post("/code-of-conduct", response={200: PlayerSchema, 400: Response})
+def code_of_conduct(
+    request: AuthenticatedHttpRequest, form: CodeOfConductFormSchema
+) -> tuple[int, Player] | tuple[int, message_response]:
+    """Agree to the code of conduct for the current season, as the waiver is
+    signed: an adult for themselves, a minor's guardian on their behalf."""
+    try:
+        player = Player.objects.get(id=form.player_id)
+    except Player.DoesNotExist:
+        return 400, {"message": "Player does not exist"}
+
+    subscription = player.current_subscription
+    if subscription is None:
+        return 400, {"message": "Get this season's subscription first"}
+
+    if player.is_minor:
+        if request.user == player.user:
+            return 400, {"message": "Only your guardian can agree for you"}
+        try:
+            guardianship = player.guardianship
+        except Guardianship.DoesNotExist:
+            return 400, {"message": "Guardian does not exist for player"}
+        if guardianship.user.id != request.user.id:
+            return 400, {"message": f"Only {guardianship.user.username} can agree for this player"}
+    elif request.user != player.user:
+        return 400, {
+            "message": f"Only {player.user.get_full_name()} can agree to their code of conduct"
+        }
+
+    if not subscription.coc_agreed:  # the first agreement is the record
+        subscription.coc_agreed = True
+        subscription.coc_agreed_by = request.user
+        subscription.coc_agreed_at = now()
+        subscription.save(update_fields=["coc_agreed", "coc_agreed_by", "coc_agreed_at"])
     return 200, player
 
 

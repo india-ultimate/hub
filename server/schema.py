@@ -486,6 +486,10 @@ class WaiverFormSchema(Schema):
     player_id: int
 
 
+class CodeOfConductFormSchema(Schema):
+    player_id: int
+
+
 class RegistrationSchema(UserFormSchema, PlayerFormSchema):
     player_id: int | None
 
