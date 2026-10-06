@@ -60,3 +60,25 @@ class TestCodeOfConductPageIntegration(RegistrationPageCase):
         self.open_page(kid)
         self.assert_text("Your guardian needs to agree to this for you")
         self.assert_element_absent('button:contains("I agree")')
+
+    def test_the_profile_step_turns_green(self) -> None:
+        p = self.member("Ravi")
+        self.sign_in_as(p.user)
+        self.set_window_size(390, 844)
+        self.open(f"{APP_URL}/dashboard")
+        step = f'//li[a[@href="/code-of-conduct/{p.id}"]]'
+        self.assert_element(f'{step}[contains(@class, "text-red-600")]')
+        self.open_page(p)
+        self.click('label:contains("I have read, understood and agree")')
+        self.click('button:contains("I agree")')
+        self.assert_element("#coc-agreed")
+        self.open(f"{APP_URL}/dashboard")
+        self.assert_element(f'{step}[contains(@class, "text-green-600")]')
+
+    def test_the_waiver_points_to_the_code_of_conduct(self) -> None:
+        p = self.member("Ravi")  # the helper signs the waiver
+        self.sign_in_as(p.user)
+        self.open(f"{APP_URL}/waiver/{p.id}")
+        self.assert_element(
+            f'//a[@href="/code-of-conduct/{p.id}"][contains(., "Next: agree to the code of conduct")]'
+        )
