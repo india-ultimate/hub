@@ -101,7 +101,10 @@ const CodeOfConduct = () => {
             tabindex="-1"
             class="mt-3 rounded-lg bg-green-50 p-3 text-base text-green-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-green-600 dark:bg-green-900/30 dark:text-green-100"
           >
-            Agreed by {sub().coc_agreed_by} on{" "}
+            {/* Agreed offline (bulk activation): a date, no name. */}
+            {sub().coc_agreed_by
+              ? `Agreed by ${sub().coc_agreed_by} on`
+              : "Agreed on"}{" "}
             {displayDate(sub().coc_agreed_at)} for {sub().season_name}.
           </p>
           <details class="mt-4">

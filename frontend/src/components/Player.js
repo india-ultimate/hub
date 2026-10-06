@@ -203,7 +203,9 @@ const Player = props => {
               <td class="px-6 py-4">
                 <Switch>
                   <Match when={props.player?.subscription.coc_agreed}>
-                    Agreed by {props.player?.subscription.coc_agreed_by} on{" "}
+                    {props.player?.subscription.coc_agreed_by
+                      ? `Agreed by ${props.player.subscription.coc_agreed_by} on`
+                      : "Agreed on"}{" "}
                     {displayDate(props.player?.subscription.coc_agreed_at)}
                   </Match>
                   <Match when={!props.player?.subscription.coc_agreed}>

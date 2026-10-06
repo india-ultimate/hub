@@ -4,6 +4,7 @@ it in CI's browser job."""
 import datetime
 
 import pytest
+from django.utils.timezone import now
 
 from server.core.models import Guardianship, Player
 from server.subscription.models import Subscription
@@ -84,3 +85,11 @@ class TestCodeOfConductPageIntegration(RegistrationPageCase):
         self.assert_element(
             f'//a[@href="/code-of-conduct/{p.id}"][contains(., "Next: agree to the code of conduct")]'
         )
+
+    def test_an_offline_agreement_shows_the_date_without_a_name(self) -> None:
+        p = self.member("Ravi")
+        Subscription.objects.filter(player=p).update(coc_agreed=True, coc_agreed_at=now())
+        self.sign_in_as(p.user)
+        self.open_page(p)
+        self.assert_text("Agreed on", "#coc-agreed")
+        self.assertNotIn("Agreed by", self.get_text("#coc-agreed"))
