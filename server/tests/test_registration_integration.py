@@ -196,8 +196,10 @@ class TestRegistrationIntegration(RegistrationPageCase):
         self.assert_text("Paid. 4 players rostered.", timeout=PAID)
         order = self.paid_order(4 * PLAYER_FEE)
         self.assert_rostered([*on_roster, newcomer], order, PLAYER_FEE)
+        # Paid rows carry no status line now; being in the Paid list says it.
         for p in [*on_roster, newcomer]:
-            self.assert_state(p.user.get_full_name(), "Paid ")
+            name = p.user.get_full_name()
+            self.assert_element(f'//ul[@aria-label="Paid"]/li[contains(., "{name}")]')
 
     def test_subscription_handoff_round_trip(self) -> None:
         players = [self.player(n, "Iyer", tier=None) for n in ("Kiran", "Meera")]
