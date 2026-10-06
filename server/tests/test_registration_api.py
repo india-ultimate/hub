@@ -587,7 +587,7 @@ class TestCheckout(ApiCase):
         self.assertEqual([a.id], at_load)
         # Same total, different people: A's waiver lapsed, B signed theirs.
         Subscription.objects.filter(player=a).update(waiver_valid=False)
-        Subscription.objects.filter(player=b).update(waiver_valid=True)
+        Subscription.objects.filter(player=b).update(waiver_valid=True, coc_agreed=True)
         response = self.pay(self.event.player_fee, ids=at_load)
         self.assertEqual(409, response.status_code, response.content)
         self.assertEqual(
@@ -760,6 +760,12 @@ class TestCandidates(ApiCase):
         listed = self.player("zed@x.com")
         players = [p for g in self.get("zed").json()["groups"] for p in g["players"]]
         self.assertEqual([True], [p["on_list"] for p in players if p["id"] == listed.id])
+
+    def test_an_unagreed_code_of_conduct_shows_in_the_hint(self) -> None:
+        p = self.player("coc@x.com", entry=False)
+        Subscription.objects.filter(player=p).update(coc_agreed=False)
+        rows = {r["id"]: r for g in self.get("coc@x").json()["groups"] for r in g["players"]}
+        self.assertEqual("Code of conduct not agreed", rows[p.id]["hint"]["text"])
 
     def test_rows_carry_the_players_photo(self) -> None:
         p = self.player("pic@x.com", entry=False)

@@ -34,6 +34,7 @@ class TestSeriesRoles(TestCase):
             ),
             is_active=True,
             waiver_valid=True,
+            coc_agreed=True,
             start_date=self.season.start_date,
             end_date=self.season.end_date,
         )
@@ -171,6 +172,7 @@ class TestEventCapOnRoleChange(TestCase):
             ),
             is_active=True,
             waiver_valid=True,
+            coc_agreed=True,
             start_date=self.season.start_date,
             end_date=self.season.end_date,
         )
@@ -238,6 +240,7 @@ class TestSeriesRoleEndpoint(TestCase):
             plan=SubscriptionPlan.objects.get(season=self.season, type__slug=slug),
             is_active=True,
             waiver_valid=True,
+            coc_agreed=True,
             start_date=self.season.start_date,
             end_date=self.season.end_date,
         )

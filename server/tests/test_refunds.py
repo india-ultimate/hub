@@ -398,6 +398,7 @@ class TestRefunds(TestCase):
             end_date=self.season.end_date,
             is_active=True,
             waiver_valid=True,
+            coc_agreed=True,
         )
         upgrade = RazorpayTransaction.objects.create(
             order_id=f"o_{email}",

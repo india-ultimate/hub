@@ -110,6 +110,7 @@ class RegistrationPageCase(BaseCase):
                 plan=SubscriptionPlan.objects.get(season=self.season, type__slug=tier),
                 is_active=True,
                 waiver_valid=True,
+                coc_agreed=True,
                 start_date=self.season.start_date,
                 end_date=self.season.end_date,
             )
@@ -227,6 +228,10 @@ class TestRegistrationIntegration(RegistrationPageCase):
         for p in players:
             response = self.as_user(p.user).post(
                 "/api/waiver", {"player_id": p.id}, content_type="application/json"
+            )
+            self.assertEqual(200, response.status_code, response.content)
+            response = self.as_user(p.user).post(
+                "/api/code-of-conduct", {"player_id": p.id}, content_type="application/json"
             )
             self.assertEqual(200, response.status_code, response.content)
         self.open_page()

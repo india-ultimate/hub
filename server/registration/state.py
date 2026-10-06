@@ -224,6 +224,10 @@ def _subscription_reason(ctx: Context, entry: RosterEntry) -> Reason | None:
             "Waiver not signed",
             Action("Remind", op="remind"),
         )
+    if message == "Code of conduct not agreed":
+        return Reason(
+            "waiting.coc", "waiting", "Code of conduct not agreed", Action("Remind", op="remind")
+        )
     scope = Scope.PLAY_CHAMPIONSHIPS if playing else Scope.STAFF_CHAMPIONSHIPS
     if message == "Subscription missing":
         if player.id in ctx.awaiting_approval:
