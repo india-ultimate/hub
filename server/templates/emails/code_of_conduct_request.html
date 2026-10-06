@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        max-width: 600px;
+        margin: 0 auto;
+      }
+      .container {
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        padding: 20px;
+        margin: 20px 0;
+      }
+      .header {
+        background-color: #3b82f6;
+        color: white;
+        padding: 10px 20px;
+        border-radius: 5px 5px 0 0;
+        margin: -20px -20px 20px;
+      }
+      .number {
+        font-size: 20px;
+        font-weight: bold;
+        letter-spacing: 1px;
+      }
+      .detail-row {
+        padding: 6px 0;
+        border-bottom: 1px solid #eee;
+      }
+      .detail-label {
+        color: #666;
+        display: inline-block;
+        width: 180px;
+      }
+      .btn {
+        display: inline-block;
+        background-color: #3b82f6;
+        color: white;
+        padding: 10px 20px;
+        text-decoration: none;
+        border-radius: 5px;
+        margin-top: 15px;
+      }
+      .footer {
+        font-size: 12px;
+        color: #666;
+        margin-top: 20px;
+        padding-top: 10px;
+        border-top: 1px solid #ddd;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <p>Hi {{ first_name }},</p>
+      <p>
+        From this season everyone needs to agree to India Ultimate's
+        Safeguarding Code of Conduct before they can be added to a tournament
+        roster. It takes two minutes.
+      </p>
+      {% if for_minor %}
+      <p>
+        As {{ player_name }}'s guardian, you agree on their behalf. Please read
+        it with them first.
+      </p>
+      {% endif %}
+      <a class="btn" href="{{ coc_url }}">Read and agree</a>
+
+      <div class="footer">
+        <p>
+          This is an automated message from the India Ultimate Hub. Please do
+          not reply directly to this email.
+        </p>
+      </div>
+    </div>
+  </body>
+</html>
