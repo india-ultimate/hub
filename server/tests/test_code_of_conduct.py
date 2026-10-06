@@ -7,12 +7,13 @@ from unittest import mock
 
 from django.core.mail import EmailMultiAlternatives
 from django.core.management import call_command
-from django.test import Client, TestCase
+from django.test import Client, TestCase, override_settings
 
 from server.core.models import Guardianship, Player, User
 from server.season.models import Season
 from server.subscription.emails import build_code_of_conduct_request, build_confirmation
 from server.subscription.models import Subscription
+from server.tests.test_subscription_admin import ADMIN_STORAGES
 from server.utils import today
 
 URL = "/api/code-of-conduct"
@@ -99,9 +100,9 @@ class TestAgreeing(TestCase):
         other = person("dev@example.com", born=ADULT, first="Dev")
         status, body = self.post(other.user, minor)
         self.assertEqual(400, status)
-        self.assertEqual(
-            f"Only {self.adult.user.username} can agree for this player", body["message"]
-        )
+        # Never the guardian's username: that's their email address.
+        self.assertEqual("Only this player's guardian can agree for them", body["message"])
+        self.assertNotIn(self.adult.user.username, body["message"])
 
     def test_no_subscription_is_refused(self) -> None:
         self.subscription.delete()
@@ -192,3 +193,33 @@ class TestRolloutEmail(TestCase):
         self.assertEqual("Please agree to the India Ultimate code of conduct", message.subject)
         self.assertIn("Tara Kumar", html(message))
         self.assertIn(f"/code-of-conduct/{self.minor.id}", html(message))
+
+
+class TestWaiverGuardianMessage(TestCase):
+    def test_a_minors_waiver_refusal_does_not_reveal_the_guardian(self) -> None:
+        guardian = person("mum@example.com", born=ADULT, first="Asha")
+        minor = person("kid@example.com", born=minor_dob(), first="Tara")
+        subscribe(minor)
+        Guardianship.objects.create(user=guardian.user, player=minor, relation="MO")
+        other = person("dev@example.com", born=ADULT, first="Dev")
+        client = Client()
+        client.force_login(other.user)
+        response = client.post(
+            "/api/waiver", {"player_id": minor.id}, content_type="application/json"
+        )
+        self.assertEqual(400, response.status_code)
+        self.assertEqual(
+            "Only this player's guardian can sign their waiver", response.json()["message"]
+        )
+
+
+@override_settings(STORAGES=ADMIN_STORAGES)
+class TestAdminLeavesAgreementToMembers(TestCase):
+    def test_staff_cannot_tick_the_agreement_in_the_admin(self) -> None:
+        staff = User.objects.create_superuser("staff@x.com", "staff@x.com", "pw")
+        sub = subscribe(person("ravi@example.com", born=ADULT))
+        client = Client()
+        client.force_login(staff)
+        page = client.get(f"/admin/server/subscription/{sub.pk}/change/")
+        self.assertEqual(200, page.status_code)
+        self.assertNotIn('name="coc_agreed"', page.content.decode())
