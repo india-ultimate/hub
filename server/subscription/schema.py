@@ -23,6 +23,7 @@ class SubscriptionPlanSchema(Schema):
 
 class SubscriptionSchema(ModelSchema):
     waiver_signed_by: str | None
+    coc_agreed_by: str | None
     tier: str | None
     tier_name: str | None
     scopes: list[str]
@@ -41,6 +42,11 @@ class SubscriptionSchema(ModelSchema):
     @staticmethod
     def resolve_waiver_signed_by(subscription: Subscription) -> str | None:
         user = subscription.waiver_signed_by
+        return user.get_full_name() if user is not None else None
+
+    @staticmethod
+    def resolve_coc_agreed_by(subscription: Subscription) -> str | None:
+        user = subscription.coc_agreed_by
         return user.get_full_name() if user is not None else None
 
     @staticmethod

@@ -119,6 +119,18 @@ class Subscription(ExportModelOperationsMixin("subscription"), models.Model):  #
     waiver_valid = models.BooleanField(default=False)
     waiver_signed_by = models.ForeignKey(User, on_delete=models.SET_NULL, blank=True, null=True)
     waiver_signed_at = models.DateTimeField(blank=True, null=True)
+    # Agreed once a season, like the waiver; for a minor, by their guardian.
+    coc_agreed = models.BooleanField(default=False)
+    coc_agreed_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        # A real name: the merge engine finds relations through get_fields(),
+        # which skips hidden ("+") ones.
+        related_name="coc_agreed_subscriptions",
+    )
+    coc_agreed_at = models.DateTimeField(blank=True, null=True)
 
     objects = SubscriptionQuerySet.as_manager()
 

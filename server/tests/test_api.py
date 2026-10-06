@@ -1040,6 +1040,18 @@ class TestWaiver(ApiBaseTestCase):
         self.player.date_of_birth = today() - datetime.timedelta(days=30 * 30 * 12)  # 30 years
         self.player.save()
 
+    def test_nobody_else_signs_an_adults_waiver(self) -> None:
+        other = User.objects.create(username="other@x.com", email="other@x.com")
+        self.client.force_login(other)
+        response = self.client.post(
+            "/api/waiver", data={"player_id": self.player.id}, content_type="application/json"
+        )
+        self.assertEqual(400, response.status_code)
+        self.assertEqual(
+            f"Only {self.user.get_full_name()} can sign their waiver", response.json()["message"]
+        )
+        self.assertFalse(Subscription.objects.get(player=self.player).waiver_valid)
+
 
 class TestUPAI(ApiBaseTestCase):
     def test_get_upai_person_success(self) -> None:

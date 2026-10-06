@@ -697,18 +697,21 @@ class SubscriptionAdmin(Rupees, admin.ModelAdmin[Subscription]):
         "player__user__username",
     ]
     autocomplete_fields = ["player", "waiver_signed_by"]
+    readonly_fields = ["coc_agreed_by", "coc_agreed_at"]
     list_display = [
         "get_name",
         "season",
         "get_tier",
         "amount_paid_inr",
         "is_active",
+        "coc_agreed",
         "refunded_at",
     ]
     list_filter = [
         "season",
         "plan__type",
         "is_active",
+        "coc_agreed",
         ("refunded_at", admin.EmptyFieldListFilter),
     ]
     list_select_related = ["player__user", "season", "plan__type"]
