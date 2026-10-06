@@ -63,11 +63,15 @@ class TestInvalidateSubscriptions(TestCase):
                 waiver_signed_by=user,
                 waiver_signed_at=now(),
                 waiver_valid=True,
+                coc_agreed=True,
+                coc_agreed_by=user,
             )
         call_command("invalidate_subscriptions")
         for subscription in Subscription.objects.filter():
             self.assertFalse(subscription.is_active)
             self.assertFalse(subscription.waiver_valid)
+            self.assertFalse(subscription.coc_agreed)
+            self.assertIsNotNone(subscription.coc_agreed_by)
             self.assertIsNotNone(subscription.waiver_signed_at)
             self.assertIsNotNone(subscription.waiver_signed_by)
 

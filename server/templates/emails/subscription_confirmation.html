@@ -95,6 +95,14 @@
       <a class="btn" href="{{ waiver_url }}">Sign the waiver</a>
       {% endif %}
 
+      {% if not coc_agreed %}
+      <p>
+        Please also agree to this season's code of conduct. You need it
+        before you can be added to a tournament roster.
+      </p>
+      <a class="btn" href="{{ coc_url }}">Read and agree</a>
+      {% endif %}
+
       <div class="footer">
         <p>
           This is an automated message from the India Ultimate Hub. Please do

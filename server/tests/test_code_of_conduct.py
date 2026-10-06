@@ -3,10 +3,12 @@
 import datetime
 from typing import Any
 
+from django.core.mail import EmailMultiAlternatives
 from django.test import Client, TestCase
 
 from server.core.models import Guardianship, Player, User
 from server.season.models import Season
+from server.subscription.emails import build_confirmation
 from server.subscription.models import Subscription
 from server.utils import today
 
@@ -31,6 +33,10 @@ def subscribe(player: Player, season: Season | None = None) -> Subscription:
 
 
 ADULT = datetime.date(1995, 6, 15)
+
+
+def html(message: EmailMultiAlternatives) -> str:
+    return str(message.alternatives[0][0])
 
 
 def minor_dob() -> datetime.date:
@@ -117,3 +123,13 @@ class TestAgreeing(TestCase):
         self.assertFalse(old.coc_agreed)
         self.subscription.refresh_from_db()
         self.assertTrue(self.subscription.coc_agreed)
+
+
+class TestConfirmationEmail(TestCase):
+    def test_the_confirmation_asks_for_the_code_of_conduct(self) -> None:
+        player = person("ravi@example.com", born=ADULT)
+        sub = subscribe(player)
+        self.assertIn(f"/code-of-conduct/{player.id}", html(build_confirmation(sub)))
+        sub.coc_agreed = True
+        sub.save()
+        self.assertNotIn("/code-of-conduct/", html(build_confirmation(sub)))

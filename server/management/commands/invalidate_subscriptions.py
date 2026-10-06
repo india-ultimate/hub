@@ -14,7 +14,7 @@ class Command(BaseCommand):
         stale_subscriptions = Subscription.objects.filter(end_date__lt=today)
         n = stale_subscriptions.count()
         if n > 0:
-            stale_subscriptions.update(is_active=False, waiver_valid=False)
+            stale_subscriptions.update(is_active=False, waiver_valid=False, coc_agreed=False)
             self.stdout.write(self.style.SUCCESS(f"Invalidated {n} subscriptions"))
         else:
             self.stdout.write(self.style.NOTICE("No outdated subscriptions found"))

@@ -91,7 +91,7 @@ Key Data Structures and Concepts:
 
 1. Players:
    - Basic info: name, gender
-   - Subscription: current tier and status, IU ID, waiver info,
+   - Subscription: current tier and status, IU ID, waiver and code of conduct info,
      and the per-season history
    - Accreditation: WFDF accreditation level and validity
    - Analytics: player participation trends, gender ratios
@@ -1133,6 +1133,13 @@ Available Tools:
                 else None,
                 "waiver_signed_by": subscription.waiver_signed_by.get_full_name()
                 if subscription.waiver_signed_by
+                else None,
+                "coc_agreed": subscription.coc_agreed,
+                "coc_agreed_at": subscription.coc_agreed_at.isoformat()
+                if subscription.coc_agreed_at
+                else None,
+                "coc_agreed_by": subscription.coc_agreed_by.get_full_name()
+                if subscription.coc_agreed_by
                 else None,
                 "season": subscription.season.name,
                 "event": subscription.event.name if subscription.event else None,

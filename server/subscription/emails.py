@@ -25,6 +25,8 @@ def build_confirmation(subscription: Subscription) -> EmailMultiAlternatives:
         "end_date": subscription.end_date,
         "waiver_signed": subscription.waiver_valid,
         "waiver_url": f"{settings.EMAIL_INVITATION_BASE_URL}/waiver/{player.id}",
+        "coc_agreed": subscription.coc_agreed,
+        "coc_url": f"{settings.EMAIL_INVITATION_BASE_URL}/code-of-conduct/{player.id}",
     }
     html = render_to_string("emails/subscription_confirmation.html", context)
     message = EmailMultiAlternatives(
