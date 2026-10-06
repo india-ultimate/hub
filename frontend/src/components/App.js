@@ -33,6 +33,7 @@ const Vaccination = lazy(() => import("./Vaccination"));
 const Accreditation = lazy(() => import("./Accreditation"));
 const CommentaryInfo = lazy(() => import("./CommentaryInfo"));
 const Waiver = lazy(() => import("./Waiver"));
+const CodeOfConduct = lazy(() => import("./CodeOfConduct"));
 const UltimateCentralLogin = lazy(() => import("./UltimateCentralLogin"));
 const RegisteredPlayerList = lazy(() => import("./RegisteredPlayerList"));
 const ValidateRoster = lazy(() => import("./ValidateRoster"));
@@ -258,6 +259,11 @@ export default function App() {
                   <UserRoute
                     path="/waiver/:playerId"
                     component={Waiver}
+                    matchFilters={filters}
+                  />
+                  <UserRoute
+                    path="/code-of-conduct/:playerId"
+                    component={CodeOfConduct}
                     matchFilters={filters}
                   />
                   <UserRoute
