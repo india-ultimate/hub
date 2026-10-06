@@ -9,6 +9,8 @@ import {
   handThumbDown,
   handThumbUp,
   identification,
+  shieldCheck,
+  shieldExclamation,
   videoCamera,
   xCircle
 } from "solid-heroicons/solid-mini";
@@ -108,6 +110,12 @@ const StatusStepper = props => {
           icon={status.waiver ? handThumbUp : handThumbDown}
           color={status.waiver ? "green" : "red"}
           link={`/waiver/${props.player.id}`}
+        />
+        <Step
+          title="Code of conduct"
+          icon={status.coc ? shieldCheck : shieldExclamation}
+          color={status.coc ? "green" : "red"}
+          link={`/code-of-conduct/${props.player.id}`}
         />
         <Step
           title="Accreditation"

@@ -32,6 +32,11 @@ const Player = props => {
     navigate(`/waiver/${playerId}`);
   };
 
+  const navCoc = (e, playerId) => {
+    e.preventDefault();
+    navigate(`/code-of-conduct/${playerId}`);
+  };
+
   // const navVaccination = (e, playerId) => {
   //   e.preventDefault();
   //   navigate(`/vaccination/${playerId}`);
@@ -183,6 +188,31 @@ const Player = props => {
                       onClick={e => navWaiver(e, props.player?.id)}
                     >
                       Sign Waiver
+                    </button>
+                  </Match>
+                </Switch>
+              </td>
+            </tr>
+            <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
+              <th
+                scope="row"
+                class="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white"
+              >
+                Code of conduct
+              </th>
+              <td class="px-6 py-4">
+                <Switch>
+                  <Match when={props.player?.subscription.coc_agreed}>
+                    Agreed by {props.player?.subscription.coc_agreed_by} on{" "}
+                    {displayDate(props.player?.subscription.coc_agreed_at)}
+                  </Match>
+                  <Match when={!props.player?.subscription.coc_agreed}>
+                    <button
+                      type="button"
+                      class="min-h-[44px] w-full rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 sm:w-auto"
+                      onClick={e => navCoc(e, props.player?.id)}
+                    >
+                      Agree
                     </button>
                   </Match>
                 </Switch>

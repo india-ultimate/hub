@@ -180,6 +180,7 @@ export const getStatusAndPercent = player => {
     // ucLink: !!player?.ultimate_central_id,
     subscription: player?.subscription?.is_active,
     waiver: player?.subscription?.waiver_valid,
+    coc: player?.subscription?.coc_agreed,
     accreditation: player?.accreditation?.is_valid,
     commentary_info: !!player?.commentary_info,
     college_id:
