@@ -697,7 +697,8 @@ class SubscriptionAdmin(Rupees, admin.ModelAdmin[Subscription]):
         "player__user__username",
     ]
     autocomplete_fields = ["player", "waiver_signed_by"]
-    readonly_fields = ["coc_agreed_by", "coc_agreed_at"]
+    # Members agree on the Hub themselves; staff can see it, not tick it.
+    readonly_fields = ["coc_agreed", "coc_agreed_by", "coc_agreed_at"]
     list_display = [
         "get_name",
         "season",

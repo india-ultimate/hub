@@ -39,6 +39,8 @@ class TestCodeOfConductPageIntegration(RegistrationPageCase):
         self.click(button)
         self.assert_element("#coc-agreed")
         self.assert_text("Agreed by Ravi Kumar", "#coc-agreed")
+        # Focus lands on the confirmation, not lost with the button.
+        self.assertEqual("coc-agreed", self.execute_script("return document.activeElement.id"))
         self.assertTrue(Subscription.objects.get(player=p).coc_agreed)
 
     def test_guardian_sees_their_wards_wording(self) -> None:

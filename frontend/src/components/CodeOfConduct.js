@@ -97,6 +97,7 @@ const CodeOfConduct = () => {
         <Match when={sub()?.coc_agreed}>
           <p
             id="coc-agreed"
+            ref={confirmation}
             tabindex="-1"
             class="mt-3 rounded-lg bg-green-50 p-3 text-base text-green-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-green-600 dark:bg-green-900/30 dark:text-green-100"
           >

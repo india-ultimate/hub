@@ -1091,9 +1091,8 @@ def waiver(
             return 400, {"message": "Guardian does not exist for player"}
 
         if guardianship.user.id != request.user.id:
-            return 400, {
-                "message": f"Only Guardian - {guardianship.user.username} can sign this player's waiver"
-            }
+            # Not their username: that's the guardian's email address.
+            return 400, {"message": "Only this player's guardian can sign their waiver"}
     elif request.user != player.user:
         return 400, {"message": f"Only {player.user.get_full_name()} can sign their waiver"}
 
@@ -1128,7 +1127,8 @@ def code_of_conduct(
         except Guardianship.DoesNotExist:
             return 400, {"message": "Guardian does not exist for player"}
         if guardianship.user.id != request.user.id:
-            return 400, {"message": f"Only {guardianship.user.username} can agree for this player"}
+            # Not their username: that's the guardian's email address.
+            return 400, {"message": "Only this player's guardian can agree for them"}
     elif request.user != player.user:
         return 400, {
             "message": f"Only {player.user.get_full_name()} can agree to their code of conduct"
