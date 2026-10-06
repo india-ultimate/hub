@@ -5,13 +5,14 @@ from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 
-from server.core.models import Player
+from server.core.models import Player, User
 from server.season.models import Season
 from server.subscription.models import Subscription
 from server.task.helpers import queue_emails
 
 CONFIRMATION_SUBJECT = "Your India Ultimate subscription"
 SPONSORSHIP_RESET_SUBJECT = "Your discounted subscription now renews each season"
+CODE_OF_CONDUCT_SUBJECT = "Please agree to the India Ultimate code of conduct"
 
 
 def build_confirmation(subscription: Subscription) -> EmailMultiAlternatives:
@@ -60,6 +61,29 @@ def build_sponsorship_reset(player: Player, season: Season) -> EmailMultiAlterna
         body=strip_tags(html),
         from_email=settings.EMAIL_HOST_USER,
         to=[player.user.email],
+    )
+    message.attach_alternative(html, "text/html")
+    return message
+
+
+def build_code_of_conduct_request(
+    player: Player, season: Season, to: User
+) -> EmailMultiAlternatives:
+    """Asks someone to agree to this season's code of conduct: the player,
+    or a minor's guardian on their behalf."""
+    context = {
+        "first_name": to.first_name or "there",
+        "player_name": player.user.get_full_name(),
+        "for_minor": to != player.user,
+        "season": season.name,
+        "coc_url": f"{settings.EMAIL_INVITATION_BASE_URL}/code-of-conduct/{player.id}",
+    }
+    html = render_to_string("emails/code_of_conduct_request.html", context)
+    message = EmailMultiAlternatives(
+        subject=CODE_OF_CONDUCT_SUBJECT,
+        body=strip_tags(html),
+        from_email=settings.EMAIL_HOST_USER,
+        to=[to.email],
     )
     message.attach_alternative(html, "text/html")
     return message

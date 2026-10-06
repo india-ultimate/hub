@@ -1,14 +1,17 @@
 """Agreeing to the code of conduct, once a season, like the waiver."""
 
 import datetime
+from io import StringIO
 from typing import Any
+from unittest import mock
 
 from django.core.mail import EmailMultiAlternatives
+from django.core.management import call_command
 from django.test import Client, TestCase
 
 from server.core.models import Guardianship, Player, User
 from server.season.models import Season
-from server.subscription.emails import build_confirmation
+from server.subscription.emails import build_code_of_conduct_request, build_confirmation
 from server.subscription.models import Subscription
 from server.utils import today
 
@@ -133,3 +136,59 @@ class TestConfirmationEmail(TestCase):
         sub.coc_agreed = True
         sub.save()
         self.assertNotIn("/code-of-conduct/", html(build_confirmation(sub)))
+
+
+class TestRolloutEmail(TestCase):
+    def setUp(self) -> None:
+        self.adult = person("ravi@example.com", born=ADULT)
+        subscribe(self.adult)
+        self.guardian = person("mum@example.com", born=ADULT, first="Asha")
+        self.minor = person("kid@example.com", born=minor_dob(), first="Tara")
+        subscribe(self.minor)
+        Guardianship.objects.create(user=self.guardian.user, player=self.minor, relation="MO")
+        done = person("done@example.com", born=ADULT, first="Done")
+        Subscription.objects.filter(pk=subscribe(done).pk).update(coc_agreed=True)
+
+    def run_command(self, *args: str) -> tuple[str, mock.MagicMock]:
+        out = StringIO()
+        with mock.patch(
+            "server.management.commands.send_code_of_conduct_emails.queue_emails"
+        ) as queued:
+            call_command("send_code_of_conduct_emails", *args, stdout=out)
+        return out.getvalue(), queued
+
+    def sent_to(self, queued: mock.MagicMock) -> list[str]:
+        return sorted(m.to[0] for call in queued.call_args_list for m in call.args[0])
+
+    def test_dry_run_lists_adults_and_guardians_and_sends_nothing(self) -> None:
+        out, queued = self.run_command("--dry-run")
+        queued.assert_not_called()
+        self.assertIn("ravi@example.com", out)
+        self.assertIn("mum@example.com", out)  # the minor's guardian
+        self.assertNotIn("kid@example.com", out)
+        self.assertNotIn("done@example.com", out)
+        self.assertIn("2 to send", out)
+
+    def test_a_run_queues_one_email_each(self) -> None:
+        _, queued = self.run_command()
+        self.assertEqual(["mum@example.com", "ravi@example.com"], self.sent_to(queued))
+
+    def test_a_second_run_skips_people_who_have_agreed(self) -> None:
+        Subscription.objects.filter(player=self.adult).update(coc_agreed=True)
+        _, queued = self.run_command()
+        self.assertEqual(["mum@example.com"], self.sent_to(queued))
+
+    def test_bad_addresses_are_skipped_and_listed(self) -> None:
+        User.objects.filter(pk=self.guardian.user.pk).update(email="")
+        out, queued = self.run_command()
+        self.assertEqual(["ravi@example.com"], self.sent_to(queued))
+        self.assertIn("Skipped", out)
+        self.assertIn("Tara", out)
+
+    def test_the_guardian_email_names_the_minor(self) -> None:
+        season = Season.current()
+        assert season is not None  # noqa: S101
+        message = build_code_of_conduct_request(self.minor, season, self.guardian.user)
+        self.assertEqual("Please agree to the India Ultimate code of conduct", message.subject)
+        self.assertIn("Tara Kumar", html(message))
+        self.assertIn(f"/code-of-conduct/{self.minor.id}", html(message))
