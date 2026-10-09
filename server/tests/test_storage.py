@@ -1,13 +1,18 @@
 """Uploaded files on Cloudinary: how names map, and the storage class."""
 
+import json
+from typing import Any
 from unittest import mock
 
 import cloudinary.exceptions
 from django.core.files.base import ContentFile
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import SimpleTestCase, override_settings
+from django.test.client import MULTIPART_CONTENT
 
 from server.storage import kinds
 from server.storage.cloudinary import CloudinaryStorage
+from server.tests.base import ApiBaseTestCase
 
 CLOUD = "https://res.cloudinary.com/india-ultimate"
 
@@ -104,3 +109,43 @@ class TestCloudinaryStorage(SimpleTestCase):
         get.assert_called_once_with(
             f"{CLOUD}/image/upload/media/ckeditor_uploads/a.png", timeout=30
         )
+
+
+CLOUDINARY_STORAGES = {
+    "default": {"BACKEND": "server.storage.cloudinary.CloudinaryStorage"},
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+}
+
+
+@override_settings(STORAGES=CLOUDINARY_STORAGES, CLOUDINARY_CLOUD_NAME="india-ultimate")
+class TestUploadsThroughTheApi(ApiBaseTestCase):
+    def post_certificate(self) -> Any:
+        self.client.force_login(self.user)
+        cert = SimpleUploadedFile("cert.pdf", b"%PDF", content_type="application/pdf")
+        data = {"date": "2026-01-01", "level": "ADV", "player_id": self.player.id, "wfdf_id": 7}
+        return self.client.post(
+            "/api/accreditation",
+            data={"accreditation": json.dumps(data), "certificate": cert},
+            content_type=MULTIPART_CONTENT,
+        )
+
+    @mock.patch("cloudinary.api.resource", side_effect=cloudinary.exceptions.NotFound)
+    @mock.patch("cloudinary.uploader.upload")
+    def test_an_upload_comes_back_as_a_cloudinary_url(
+        self, _u: mock.MagicMock, _r: mock.MagicMock
+    ) -> None:
+        response = self.post_certificate()
+        self.assertEqual(200, response.status_code, response.content)
+        self.assertEqual(
+            f"{CLOUD}/image/upload/media/accreditation_certificates/cert.pdf",
+            response.json()["certificate"],
+        )
+
+    @mock.patch("cloudinary.api.resource", side_effect=cloudinary.exceptions.NotFound)
+    @mock.patch("cloudinary.uploader.upload", side_effect=cloudinary.exceptions.Error("down"))
+    def test_a_cloudinary_failure_is_a_clear_400(
+        self, _u: mock.MagicMock, _r: mock.MagicMock
+    ) -> None:
+        response = self.post_certificate()
+        self.assertEqual(400, response.status_code)
+        self.assertEqual("Couldn't save the file. Try again.", response.json()["message"])
