@@ -28,7 +28,8 @@ class CloudinaryStorage(Storage):
         return os.path.join(folder, self.get_valid_name(base))
 
     def _save(self, name: str, content: File[Any]) -> str:
-        upload = shrink.shrunk(content) or content
+        # Images only: raw files have no pixel limit.
+        upload = (kinds.resource_type(name) == "image" and shrink.shrunk(content)) or content
         for _ in range(TRIES):
             upload.seek(0)
             result = cloudinary.uploader.upload(

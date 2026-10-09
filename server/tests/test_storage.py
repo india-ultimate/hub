@@ -182,6 +182,38 @@ class TestShrink(SimpleTestCase):
         self.assertIsNone(shrink.shrunk(io.BytesIO(png(5, 5))))
         self.assertIsNone(shrink.shrunk(io.BytesIO(b"%PDF-1.4")))
 
+    def test_a_compressed_tiff_is_shrunk(self) -> None:
+        # The JPEG quality option is passed only to JPEG and WebP: a TIFF
+        # with it raised "quality setting only supported for 'jpeg'".
+        tiff = io.BytesIO()
+        Image.new("RGB", (20, 20)).save(tiff, format="TIFF", compression="tiff_lzw")
+        self.assertIsNotNone(shrink.shrunk(tiff))
+
+    def test_what_pillow_cant_save_is_left_as_it_is(self) -> None:
+        # The upload goes ahead with the original, as before shrinking.
+        f = io.BytesIO(png(20, 20))
+        with mock.patch("PIL.Image.Image.save", side_effect=KeyError("PSD")):
+            self.assertIsNone(shrink.shrunk(f))
+        self.assertEqual(0, f.tell())
+
+    def test_a_phone_photo_stays_upright(self) -> None:
+        photo = io.BytesIO()
+        exif = Image.Exif()
+        exif[0x0112] = 6  # orientation: rotate 90 degrees
+        Image.new("RGB", (20, 10)).save(photo, format="JPEG", exif=exif)
+        small = shrink.shrunk(photo)
+        if small is None:
+            self.fail("not shrunk")
+        with Image.open(small) as image:
+            self.assertGreater(image.height, image.width)
+
+    @mock.patch("cloudinary.uploader.upload", return_value={"existing": False})
+    def test_a_raw_file_is_never_shrunk(self, upload: mock.MagicMock) -> None:
+        # .tif is stored raw, with no pixel limit: a big scan uploads as it is.
+        data = png(20, 20)
+        CloudinaryStorage().save("contact-form-attachments/scan.tif", ContentFile(data, name="x"))
+        self.assertEqual(data, upload.call_args.args[0].read())
+
     @mock.patch("cloudinary.uploader.upload", return_value={"existing": False})
     def test_the_storage_uploads_the_shrunk_image(self, upload: mock.MagicMock) -> None:
         CloudinaryStorage().save("team_logos/big.png", ContentFile(png(20, 20), name="big.png"))
@@ -385,9 +417,14 @@ class TestCopyMedia(TestCase):
         _, upload, _ = self.run_command()
         with Image.open(upload.call_args_list[-1].args[0]) as image:
             self.assertLessEqual(image.width * image.height, 100)
-        # Shrunk, it's a different size there: that alone isn't a reason to copy.
-        _, upload, _ = self.run_command(on_cloudinary={"media/team_logos/t_png": 1})
+        # Shrunk, it can't match the disk's size, but matches the shrunk size.
+        upload.call_args_list[-1].args[0].seek(0)
+        copied = len(upload.call_args_list[-1].args[0].read())
+        _, upload, _ = self.run_command(on_cloudinary={"media/team_logos/t_png": copied})
         self.assertNotIn("media/team_logos/t_png", self.uploaded(upload))
+        # Any other size is someone else's file under a reused name.
+        _, upload, _ = self.run_command(on_cloudinary={"media/team_logos/t_png": copied + 1})
+        self.assertIn("media/team_logos/t_png", self.uploaded(upload))
 
     def test_a_skipped_file_that_wont_serve_still_counts_as_failed(self) -> None:
         # Already there from an earlier run whose serve check failed.
