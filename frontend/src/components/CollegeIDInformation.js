@@ -1,4 +1,6 @@
-import { displayDate } from "../utils";
+import { Show } from "solid-js";
+
+import { displayDate, isCollegeIdActive } from "../utils";
 
 const CollegeIDInformation = props => {
   const urls = (
@@ -64,7 +66,21 @@ const CollegeIDInformation = props => {
             >
               ID Card
             </th>
-            <td class="px-6 py-4">{urls}</td>
+            <td class="px-6 py-4">
+              <Show
+                when={!props?.college_id?.images_removed_at}
+                fallback={`Expired ${displayDate(
+                  props?.college_id?.expiry
+                )} · images removed`}
+              >
+                <Show when={!isCollegeIdActive(props?.college_id)}>
+                  <span class="mr-2 font-semibold text-red-700 dark:text-red-400">
+                    Expired
+                  </span>
+                </Show>
+                {urls}
+              </Show>
+            </td>
           </tr>
         </tbody>
       </table>

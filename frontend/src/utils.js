@@ -173,6 +173,13 @@ export const getAge = (value, on = today) => {
   return yearDiff + monthDiff / 12 + dayDiff / 365;
 };
 
+// Images still there and not past expiry. An expired card counts as missing,
+// so a student is asked for this year's.
+export const isCollegeIdActive = collegeId =>
+  Boolean(collegeId) &&
+  !collegeId.images_removed_at &&
+  parseLocalDate(collegeId.expiry) >= todayIST();
+
 export const getStatusAndPercent = player => {
   const status = {
     profile: !!player?.id,
@@ -184,7 +191,9 @@ export const getStatusAndPercent = player => {
     accreditation: player?.accreditation?.is_valid,
     commentary_info: !!player?.commentary_info,
     college_id:
-      player?.occupation === "College-Student" ? player.college_id : true
+      player?.occupation === "College-Student"
+        ? isCollegeIdActive(player.college_id)
+        : true
   };
   const percent = Math.round(
     (Object.values(status).filter(x => x).length * 100) /
