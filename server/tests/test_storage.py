@@ -2,6 +2,7 @@
 
 import datetime
 import importlib.util
+import io
 import json
 import shutil
 import tempfile
@@ -17,9 +18,10 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
 from django.test import Client, SimpleTestCase, TestCase, override_settings
 from django.test.client import MULTIPART_CONTENT
+from PIL import Image
 
 from server.core.models import Accreditation, CollegeId, Player, Team, User, Vaccination
-from server.storage import kinds
+from server.storage import kinds, shrink
 from server.storage.cloudinary import CloudinaryStorage
 from server.tests.base import ApiBaseTestCase
 from server.utils import today
@@ -156,6 +158,35 @@ class TestCloudinaryStorage(SimpleTestCase):
         get.assert_called_once_with(
             f"{CLOUD}/image/upload/media/ckeditor_uploads/a_png.png", timeout=30
         )
+
+
+def png(width: int, height: int) -> bytes:
+    out = io.BytesIO()
+    Image.new("RGB", (width, height), "red").save(out, format="PNG")
+    return out.getvalue()
+
+
+@mock.patch.object(shrink, "MAX_PIXELS", 100)
+class TestShrink(SimpleTestCase):
+    # The free plan refuses images over 25 megapixels or 10 MB: 12 on the
+    # disk are, among them team logos of 8334 x 8334.
+    def test_an_image_over_the_limit_is_shrunk(self) -> None:
+        small = shrink.shrunk(io.BytesIO(png(20, 20)))
+        if small is None:
+            self.fail("not shrunk")
+        with Image.open(small) as image:
+            self.assertEqual("PNG", image.format)
+            self.assertLessEqual(image.width * image.height, 100)
+
+    def test_an_image_within_the_limit_or_not_an_image_is_left(self) -> None:
+        self.assertIsNone(shrink.shrunk(io.BytesIO(png(5, 5))))
+        self.assertIsNone(shrink.shrunk(io.BytesIO(b"%PDF-1.4")))
+
+    @mock.patch("cloudinary.uploader.upload", return_value={"existing": False})
+    def test_the_storage_uploads_the_shrunk_image(self, upload: mock.MagicMock) -> None:
+        CloudinaryStorage().save("team_logos/big.png", ContentFile(png(20, 20), name="big.png"))
+        with Image.open(upload.call_args.args[0]) as image:
+            self.assertLessEqual(image.width * image.height, 100)
 
 
 CLOUDINARY_STORAGES = {
@@ -347,6 +378,16 @@ class TestCopyMedia(TestCase):
         _, upload, _ = self.run_command(on_cloudinary={"media/team_logos/t_png": 999})
         self.assertNotIn("media/team_logos/t_png", self.uploaded(upload))
         self.assertFalse(any(c.kwargs["overwrite"] for c in upload.call_args_list))
+
+    @mock.patch.object(shrink, "MAX_PIXELS", 100)
+    def test_an_image_over_the_limit_is_copied_shrunk_once(self) -> None:
+        self.write("team_logos/t.png", png(20, 20))
+        _, upload, _ = self.run_command()
+        with Image.open(upload.call_args_list[-1].args[0]) as image:
+            self.assertLessEqual(image.width * image.height, 100)
+        # Shrunk, it's a different size there: that alone isn't a reason to copy.
+        _, upload, _ = self.run_command(on_cloudinary={"media/team_logos/t_png": 1})
+        self.assertNotIn("media/team_logos/t_png", self.uploaded(upload))
 
     def test_a_skipped_file_that_wont_serve_still_counts_as_failed(self) -> None:
         # Already there from an earlier run whose serve check failed.
