@@ -2,8 +2,9 @@
 
 Copies what the database or content points at; skips vaccination
 certificates (archived instead), college IDs past their 30 days, and files
-nothing points at. Safe to re-run: a file already there at the same size is
-skipped. Every file, copied or skipped, is checked by fetching its URL.
+nothing points at. Safe to re-run: a file already there is skipped (at the
+same size, until uploads switch to Cloudinary; after that, never replaced).
+Every file, copied or skipped, is checked by fetching its URL.
 
 What is already on Cloudinary is listed once up front (a few calls), not
 looked up per file: the Admin API allows 500 calls an hour on the free plan.
@@ -82,16 +83,14 @@ class Command(BaseCommand):
         if response.status_code != HTTP_OK:
             raise RuntimeError(f"Cloudinary serves it as {response.status_code}")
 
-    def copy(self, path: Path, name: str) -> None:
+    def copy(self, path: Path, name: str, overwrite: bool) -> None:
         with path.open("rb") as f:
             cloudinary.uploader.upload(
                 f,
                 public_id=kinds.public_id(name),
                 resource_type=kinds.resource_type(name),
-                # Ids are unique per name (see kinds.public_id), so this only
-                # ever replaces an earlier copy of this same file.
-                overwrite=True,
-                invalidate=True,
+                overwrite=overwrite,
+                invalidate=overwrite,
                 unique_filename=False,
                 use_filename=False,
             )
@@ -100,6 +99,11 @@ class Command(BaseCommand):
         root = Path(settings.MEDIA_ROOT)
         names = sorted(set(referenced_names()) | set(folder_names(root)))
         stored = self.stored_sizes()
+        # Before the switch the disk holds the current file under each name;
+        # after it, Cloudinary does, and a name still on the disk may be an
+        # older file that a new upload reused.
+        switched = settings.STORAGES["default"]["BACKEND"].endswith("CloudinaryStorage")
+        self.stdout.write(f"Uploads go to Cloudinary: {'yes' if switched else 'no'}")
         counts: Counter[tuple[str, str]] = Counter()
         sizes: Counter[str] = Counter()
         missing: list[str] = []
@@ -111,7 +115,8 @@ class Command(BaseCommand):
                 missing.append(name)
                 continue
             size = path.stat().st_size
-            there = stored.get((kinds.resource_type(name), kinds.public_id(name))) == size
+            on_cloudinary = stored.get((kinds.resource_type(name), kinds.public_id(name)))
+            there = on_cloudinary is not None and (switched or on_cloudinary == size)
             if not there:
                 counts[(folder, "to copy")] += 1
                 sizes[folder] += size
@@ -119,7 +124,7 @@ class Command(BaseCommand):
                 continue
             try:
                 if not there:
-                    self.copy(path, name)
+                    self.copy(path, name, overwrite=not switched)
                 # Copied or skipped, it has to be served: an earlier run's
                 # copy may have been refused or cut short.
                 self.check_served(name)

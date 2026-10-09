@@ -78,6 +78,10 @@ class TestKinds(SimpleTestCase):
                 self.assertNotEqual(kinds.public_id(one), kinds.public_id(other))
                 self.assertNotEqual(kinds.url(one), kinds.url(other))
 
+    def test_a_college_id_that_isnt_an_image_isnt_resized(self) -> None:
+        # Cloudinary refuses a transformation on a raw file.
+        self.assertEqual({}, kinds.upload_options("college_ids/card.jfif"))
+
     def test_only_college_ids_are_resized(self) -> None:
         self.assertIn("transformation", kinds.upload_options("college_ids/a.jpg"))
         self.assertEqual({}, kinds.upload_options("team_logos/a.jpg"))
@@ -329,6 +333,20 @@ class TestCopyMedia(TestCase):
         _, upload, code = self.run_command(on_cloudinary=stored)
         self.assertEqual(["media/contact-form-attachments/note.docx"], self.uploaded(upload))
         self.assertEqual(0, code)
+
+    def test_before_the_switch_a_different_file_there_is_replaced(self) -> None:
+        # The disk is the truth: a name freed and reused there since the last
+        # run holds someone else's file now.
+        _, upload, _ = self.run_command(on_cloudinary={"media/team_logos/t_png": 999})
+        self.assertIn("media/team_logos/t_png", self.uploaded(upload))
+
+    @override_settings(STORAGES=CLOUDINARY_STORAGES)
+    def test_after_the_switch_a_file_there_is_never_replaced(self) -> None:
+        # Cloudinary is the truth: a new upload can take a name that's still on
+        # the disk, and the disk's older file mustn't win.
+        _, upload, _ = self.run_command(on_cloudinary={"media/team_logos/t_png": 999})
+        self.assertNotIn("media/team_logos/t_png", self.uploaded(upload))
+        self.assertFalse(any(c.kwargs["overwrite"] for c in upload.call_args_list))
 
     def test_a_skipped_file_that_wont_serve_still_counts_as_failed(self) -> None:
         # Already there from an earlier run whose serve check failed.

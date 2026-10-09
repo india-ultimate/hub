@@ -51,4 +51,6 @@ def url(name: str) -> str:
 
 
 def upload_options(name: str) -> dict[str, Any]:
-    return {"transformation": COLLEGE_ID_RESIZE} if name.startswith("college_ids/") else {}
+    # Images only: Cloudinary refuses a transformation on a raw file.
+    resize = name.startswith("college_ids/") and resource_type(name) == "image"
+    return {"transformation": COLLEGE_ID_RESIZE} if resize else {}
