@@ -10,6 +10,7 @@ from typing import Any
 from unittest import mock
 
 import cloudinary.exceptions
+from django.core import mail
 from django.core.files.base import ContentFile
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
@@ -31,18 +32,18 @@ class TestKinds(SimpleTestCase):
         cases = {
             "team_logos/a.png": (
                 "image",
-                "media/team_logos/a",
-                f"{CLOUD}/image/upload/media/team_logos/a.png",
+                "media/team_logos/a_png",
+                f"{CLOUD}/image/upload/media/team_logos/a_png.png",
             ),
             "accreditation_certificates/c.PDF": (
                 "image",
-                "media/accreditation_certificates/c",
-                f"{CLOUD}/image/upload/media/accreditation_certificates/c.pdf",
+                "media/accreditation_certificates/c_PDF",
+                f"{CLOUD}/image/upload/media/accreditation_certificates/c_PDF.pdf",
             ),
             "team_logos/l.svg": (
                 "image",
-                "media/team_logos/l",
-                f"{CLOUD}/image/upload/media/team_logos/l.svg",
+                "media/team_logos/l_svg",
+                f"{CLOUD}/image/upload/media/team_logos/l_svg.svg",
             ),
             "contact-form-attachments/x.docx": (
                 "raw",
@@ -61,6 +62,14 @@ class TestKinds(SimpleTestCase):
                 self.assertEqual(public_id, kinds.public_id(name))
                 self.assertEqual(url, kinds.url(name))
 
+    def test_names_differing_only_by_extension_get_their_own_files(self) -> None:
+        # 16 such pairs in production, e.g. back.jpeg and back.jpg, x.pdf and x.PDF.
+        pairs = [("college_ids/back.jpeg", "college_ids/back.jpg"), ("a/x.pdf", "a/x.PDF")]
+        for one, other in pairs:
+            with self.subTest(one=one):
+                self.assertNotEqual(kinds.public_id(one), kinds.public_id(other))
+                self.assertNotEqual(kinds.url(one), kinds.url(other))
+
     def test_only_college_ids_are_resized(self) -> None:
         self.assertIn("transformation", kinds.upload_options("college_ids/a.jpg"))
         self.assertEqual({}, kinds.upload_options("team_logos/a.jpg"))
@@ -71,29 +80,34 @@ class TestCloudinaryStorage(SimpleTestCase):
     def setUp(self) -> None:
         self.storage = CloudinaryStorage()
 
-    @mock.patch("cloudinary.api.resource", side_effect=cloudinary.exceptions.NotFound)
-    @mock.patch("cloudinary.uploader.upload")
-    def test_save_uploads_under_the_name(self, upload: mock.MagicMock, _: mock.MagicMock) -> None:
+    @mock.patch("cloudinary.api.resource")
+    @mock.patch("cloudinary.uploader.upload", return_value={"existing": False})
+    def test_save_uploads_under_the_name(
+        self, upload: mock.MagicMock, resource: mock.MagicMock
+    ) -> None:
         name = self.storage.save("team_logos/a.png", ContentFile(b"png", name="a.png"))
         self.assertEqual("team_logos/a.png", name)
         kwargs = upload.call_args.kwargs
-        self.assertEqual("media/team_logos/a", kwargs["public_id"])
+        self.assertEqual("media/team_logos/a_png", kwargs["public_id"])
         self.assertEqual("image", kwargs["resource_type"])
         self.assertFalse(kwargs["overwrite"])
+        # No Admin API call on upload: it's rate-limited (500 an hour on free).
+        resource.assert_not_called()
 
     @mock.patch("cloudinary.uploader.upload")
     def test_a_taken_name_gets_a_new_one(self, upload: mock.MagicMock) -> None:
-        taken = iter([True, False])
-        with mock.patch.object(CloudinaryStorage, "exists", side_effect=lambda _: next(taken)):
-            name = self.storage.save("team_logos/a.png", ContentFile(b"png", name="a.png"))
+        # overwrite=False: Cloudinary answers "existing" instead of replacing.
+        upload.side_effect = [{"existing": True}, {"existing": False}]
+        name = self.storage.save("team_logos/a.png", ContentFile(b"png", name="a.png"))
         self.assertNotEqual("team_logos/a.png", name)
         self.assertTrue(name.startswith("team_logos/a_") and name.endswith(".png"))
+        self.assertEqual(2, upload.call_count)
 
     @mock.patch("cloudinary.uploader.destroy", return_value={"result": "not found"})
     def test_deleting_a_missing_file_is_fine(self, destroy: mock.MagicMock) -> None:
         self.storage.delete("team_logos/gone.png")
         destroy.assert_called_once_with(
-            "media/team_logos/gone", resource_type="image", invalidate=True
+            "media/team_logos/gone_png", resource_type="image", invalidate=True
         )
 
     @mock.patch("cloudinary.api.resource", side_effect=cloudinary.exceptions.NotFound)
@@ -115,7 +129,7 @@ class TestCloudinaryStorage(SimpleTestCase):
         with self.storage.open("ckeditor_uploads/a.png") as f:
             self.assertEqual(b"bytes", f.read())
         get.assert_called_once_with(
-            f"{CLOUD}/image/upload/media/ckeditor_uploads/a.png", timeout=30
+            f"{CLOUD}/image/upload/media/ckeditor_uploads/a_png.png", timeout=30
         )
 
 
@@ -138,15 +152,33 @@ class TestUploadsThroughTheApi(ApiBaseTestCase):
         )
 
     @mock.patch("cloudinary.api.resource", side_effect=cloudinary.exceptions.NotFound)
-    @mock.patch("cloudinary.uploader.upload")
+    @mock.patch("cloudinary.uploader.upload", return_value={"existing": False})
     def test_an_upload_comes_back_as_a_cloudinary_url(
         self, _u: mock.MagicMock, _r: mock.MagicMock
     ) -> None:
         response = self.post_certificate()
         self.assertEqual(200, response.status_code, response.content)
         self.assertEqual(
-            f"{CLOUD}/image/upload/media/accreditation_certificates/cert.pdf",
+            f"{CLOUD}/image/upload/media/accreditation_certificates/cert_pdf.pdf",
             response.json()["certificate"],
+        )
+
+    @mock.patch("cloudinary.uploader.upload", return_value={"existing": False})
+    def test_a_contact_attachment_link_points_at_cloudinary(self, _: mock.MagicMock) -> None:
+        # Built from the storage's URL, not MEDIA_URL: /media/ on the machine
+        # wouldn't have the file once uploads go to Cloudinary.
+        self.client.force_login(self.user)
+        form = json.dumps({"subject": "Help", "description": "See attached"})
+        attachment = SimpleUploadedFile("note.pdf", b"%PDF", content_type="application/pdf")
+        response = self.client.post(
+            "/api/contact",
+            data={"contact_form": form, "attachment": attachment},
+            content_type=MULTIPART_CONTENT,
+        )
+        self.assertEqual(200, response.status_code, response.content)
+        self.assertIn(
+            f"{CLOUD}/image/upload/media/contact-form-attachments/note_pdf.pdf",
+            mail.outbox[0].body,
         )
 
     @mock.patch("cloudinary.api.resource", side_effect=cloudinary.exceptions.NotFound)
@@ -197,16 +229,26 @@ class TestCopyMedia(TestCase):
         """on_cloudinary: public id -> byte size already stored there."""
         stored = on_cloudinary or {}
 
-        def resource(public_id: str, resource_type: str) -> dict[str, int]:
-            if public_id not in stored:
-                raise cloudinary.exceptions.NotFound
-            return {"bytes": stored[public_id]}
+        def resources(**options: Any) -> dict[str, Any]:
+            # Two pages, to prove the listing follows next_cursor.
+            items = [
+                {"public_id": i, "bytes": b}
+                for i, b in stored.items()
+                if (options["resource_type"] == "raw") == ("." in i.rpartition("/")[2])
+            ]
+            if not options.get("next_cursor"):
+                return {"resources": items[:1], "next_cursor": "more" if items[1:] else None}
+            return {"resources": items[1:]}
 
         out = StringIO()
         code = 0
         with mock.patch("cloudinary.uploader.upload") as upload, mock.patch(
-            "cloudinary.api.resource", side_effect=resource
-        ), mock.patch("requests.head", return_value=mock.Mock(status_code=head_status)):
+            "cloudinary.api.resources", side_effect=resources
+        ), mock.patch(
+            "cloudinary.api.resource", side_effect=AssertionError("per-file Admin API call")
+        ), mock.patch(
+            "requests.head", return_value=mock.Mock(status_code=head_status)
+        ):
             try:
                 call_command("copy_media_to_cloudinary", *args, stdout=out)
             except SystemExit as e:
@@ -227,9 +269,9 @@ class TestCopyMedia(TestCase):
         self.assertEqual(0, code)
         self.assertEqual(
             [
-                "media/accreditation_certificates/a",
+                "media/accreditation_certificates/a_PDF",
                 "media/contact-form-attachments/note.docx",
-                "media/team_logos/t",
+                "media/team_logos/t_png",
             ],
             self.uploaded(upload),
         )
@@ -237,8 +279,29 @@ class TestCopyMedia(TestCase):
     def test_a_second_run_skips_what_is_already_there(self) -> None:
         # Same id and byte size already on Cloudinary: skipped, even if the
         # name's extension is upper case.
-        _, upload, _ = self.run_command(on_cloudinary={"media/team_logos/t": len(b"logo")})
-        self.assertNotIn("media/team_logos/t", self.uploaded(upload))
+        stored = {
+            "media/team_logos/t_png": len(b"logo"),
+            "media/accreditation_certificates/a_PDF": 6,
+        }
+        _, upload, code = self.run_command(on_cloudinary=stored)
+        self.assertEqual(["media/contact-form-attachments/note.docx"], self.uploaded(upload))
+        self.assertEqual(0, code)
+
+    def test_a_skipped_file_that_wont_serve_still_counts_as_failed(self) -> None:
+        # Already there from an earlier run whose serve check failed.
+        out, upload, code = self.run_command(
+            on_cloudinary={"media/team_logos/t_png": len(b"logo")}, head_status=401
+        )
+        self.assertEqual(1, code)
+        self.assertIn("team_logos/t.png", out)
+
+    def test_names_differing_only_by_extension_are_both_copied(self) -> None:
+        self.write("team_logos/t.jpg", b"jpeg logo")
+        Team.objects.create(name="T2", image="team_logos/t.jpg")
+        _, upload, _ = self.run_command()
+        ids = self.uploaded(upload)
+        self.assertIn("media/team_logos/t_png", ids)
+        self.assertIn("media/team_logos/t_jpg", ids)
 
     def test_expired_college_ids_are_left_out(self) -> None:
         self.write("college_ids/old_f.jpg", b"f")
@@ -279,7 +342,8 @@ class TestOldMediaLinks(TestCase):
         response = Client().get("/media/accreditation_certificates/a.PDF")
         self.assertEqual(301, response.status_code)
         self.assertEqual(
-            f"{CLOUD}/image/upload/media/accreditation_certificates/a.pdf", response["Location"]
+            f"{CLOUD}/image/upload/media/accreditation_certificates/a_PDF.pdf",
+            response["Location"],
         )
 
     def test_a_raw_file_keeps_its_name(self) -> None:
