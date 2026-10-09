@@ -59,24 +59,29 @@ class Command(BaseCommand):
     def add_arguments(self, parser: CommandParser) -> None:
         parser.add_argument("--dry-run", action="store_true", help="List and size; upload nothing")
 
-    def stored_sizes(self) -> dict[tuple[str, str], int]:
-        """(type, public id) -> bytes, for everything under media/."""
-        sizes: dict[tuple[str, str], int] = {}
+    def stored(self) -> dict[tuple[str, str], tuple[int, str | None]]:
+        """(type, public id) -> (its size on the disk, format), under media/."""
+        stored: dict[tuple[str, str], tuple[int, str | None]] = {}
         for kind in ("image", "raw"):
             options: dict[str, Any] = {
                 "type": "upload",
                 "resource_type": kind,
                 "prefix": kinds.PREFIX,
                 "max_results": 500,
+                "context": True,
             }
             while True:
                 page = cloudinary.api.resources(**options)
                 for found in page.get("resources", []):
-                    sizes[(kind, found["public_id"])] = int(found["bytes"])
+                    # Shrunk or converted, it's kept with the size it had on
+                    # the disk; copied as it was, its own size is that.
+                    custom = found.get("context", {}).get("custom", {})
+                    disk_bytes = int(custom.get("disk_bytes", found["bytes"]))
+                    stored[(kind, found["public_id"])] = (disk_bytes, found.get("format"))
                 if not page.get("next_cursor"):
                     break
                 options["next_cursor"] = page["next_cursor"]
-        return sizes
+        return stored
 
     def check_served(self, name: str) -> None:
         response = requests.head(kinds.url(name), timeout=30, allow_redirects=True)
@@ -85,12 +90,6 @@ class Command(BaseCommand):
 
     def shrunk(self, f: IO[bytes], name: str) -> IO[bytes] | None:
         return shrink.shrunk(f) if kinds.resource_type(name) == "image" else None
-
-    def shrunk_size(self, path: Path, name: str) -> int | None:
-        # Copied shrunk, it matches the shrunk size, not the disk's.
-        with path.open("rb") as f:
-            small = self.shrunk(f, name)
-            return len(small.read()) if small else None
 
     def copy(self, path: Path, name: str, overwrite: bool) -> None:
         with path.open("rb") as f:
@@ -102,12 +101,14 @@ class Command(BaseCommand):
                 invalidate=overwrite,
                 unique_filename=False,
                 use_filename=False,
+                context={"disk_bytes": path.stat().st_size},
+                **kinds.format_option(name),
             )
 
     def handle(self, *args: Any, **options: Any) -> None:
         root = Path(settings.MEDIA_ROOT)
         names = sorted(set(referenced_names()) | set(folder_names(root)))
-        stored = self.stored_sizes()
+        stored = self.stored()
         # Before the switch the disk holds the current file under each name;
         # after it, Cloudinary does, and a name still on the disk may be an
         # older file that a new upload reused.
@@ -126,7 +127,7 @@ class Command(BaseCommand):
             size = path.stat().st_size
             on_cloudinary = stored.get((kinds.resource_type(name), kinds.public_id(name)))
             there = on_cloudinary is not None and (
-                switched or on_cloudinary == size or on_cloudinary == self.shrunk_size(path, name)
+                switched or on_cloudinary == (size, kinds.stored_format(name) or on_cloudinary[1])
             )
             if not there:
                 counts[(folder, "to copy")] += 1
