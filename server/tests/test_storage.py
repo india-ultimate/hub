@@ -13,7 +13,7 @@ import cloudinary.exceptions
 from django.core.files.base import ContentFile
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
-from django.test import SimpleTestCase, TestCase, override_settings
+from django.test import Client, SimpleTestCase, TestCase, override_settings
 from django.test.client import MULTIPART_CONTENT
 
 from server.core.models import Accreditation, CollegeId, Player, Team, User, Vaccination
@@ -271,3 +271,24 @@ class TestCopyMedia(TestCase):
         out, _, code = self.run_command(head_status=401)
         self.assertEqual(1, code)
         self.assertIn("failed", out)
+
+
+@override_settings(CLOUDINARY_CLOUD_NAME="india-ultimate")
+class TestOldMediaLinks(TestCase):
+    def test_an_old_link_goes_to_cloudinary(self) -> None:
+        response = Client().get("/media/accreditation_certificates/a.PDF")
+        self.assertEqual(301, response.status_code)
+        self.assertEqual(
+            f"{CLOUD}/image/upload/media/accreditation_certificates/a.pdf", response["Location"]
+        )
+
+    def test_a_raw_file_keeps_its_name(self) -> None:
+        response = Client().get("/media/contact-form-attachments/x.docx")
+        self.assertEqual(
+            f"{CLOUD}/raw/upload/media/contact-form-attachments/x.docx", response["Location"]
+        )
+
+    def test_archived_and_odd_paths_are_404(self) -> None:
+        for path in ("/media/vaccination_certificates/v.pdf", "/media/../etc/passwd"):
+            with self.subTest(path=path):
+                self.assertEqual(404, Client().get(path).status_code)

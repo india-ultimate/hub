@@ -25,6 +25,7 @@ from server.admin_views import (
     refund_order_view,
     refund_subscription_view,
 )
+from server.storage.views import old_media_link
 
 _admin_urls = admin.site.get_urls()
 
@@ -54,6 +55,8 @@ def _admin_get_urls() -> list[URLPattern | URLResolver]:
 admin.site.get_urls = _admin_get_urls  # type: ignore[method-assign]
 
 urlpatterns = [
+    # Before server.urls, whose catch-all would serve the app for /media/.
+    path("media/<path:name>", old_media_link),
     path("", include("server.urls")),
     path("", include("django_prometheus.urls")),
     path("ckeditor/", include("ckeditor_uploader.urls")),
