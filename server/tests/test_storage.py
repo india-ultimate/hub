@@ -196,6 +196,18 @@ class TestShrink(SimpleTestCase):
             self.assertIsNone(shrink.shrunk(f))
         self.assertEqual(0, f.tell())
 
+    def test_an_animated_gif_is_left_as_it_is(self) -> None:
+        # Shrinking would keep only the first frame.
+        gif = io.BytesIO()
+        frames = [Image.new("RGB", (20, 20), c) for c in ("red", "blue")]
+        frames[0].save(gif, format="GIF", save_all=True, append_images=frames[1:])
+        self.assertIsNone(shrink.shrunk(gif))
+
+    def test_one_too_large_to_decode_is_left_as_it_is(self) -> None:
+        # A tiny file can claim huge dimensions: decoding it would take GBs.
+        with mock.patch.object(shrink, "MAX_DECODE_BYTES", 20 * 20 * 3 - 1):
+            self.assertIsNone(shrink.shrunk(io.BytesIO(png(20, 20))))
+
     def test_a_phone_photo_stays_upright(self) -> None:
         photo = io.BytesIO()
         exif = Image.Exif()
