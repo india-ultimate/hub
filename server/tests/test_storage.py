@@ -1,6 +1,7 @@
 """Uploaded files on Cloudinary: how names map, and the storage class."""
 
 import datetime
+import importlib.util
 import json
 import shutil
 import tempfile
@@ -62,6 +63,13 @@ class TestKinds(SimpleTestCase):
                 self.assertEqual(public_id, kinds.public_id(name))
                 self.assertEqual(url, kinds.url(name))
 
+    def test_urls_are_percent_encoded(self) -> None:
+        # Old contact attachments have spaces; '#' would cut an emailed link.
+        self.assertEqual(
+            f"{CLOUD}/raw/upload/media/contact-form-attachments/a%20b%23c.docx",
+            kinds.url("contact-form-attachments/a b#c.docx"),
+        )
+
     def test_names_differing_only_by_extension_get_their_own_files(self) -> None:
         # 16 such pairs in production, e.g. back.jpeg and back.jpg, x.pdf and x.PDF.
         pairs = [("college_ids/back.jpeg", "college_ids/back.jpg"), ("a/x.pdf", "a/x.PDF")]
@@ -102,6 +110,19 @@ class TestCloudinaryStorage(SimpleTestCase):
         self.assertNotEqual("team_logos/a.png", name)
         self.assertTrue(name.startswith("team_logos/a_") and name.endswith(".png"))
         self.assertEqual(2, upload.call_count)
+
+    @mock.patch("cloudinary.uploader.upload", return_value={"existing": False})
+    def test_unsafe_names_are_cleaned(self, upload: mock.MagicMock) -> None:
+        # The contact form saves the attachment's own name; Cloudinary refuses
+        # ids with ? & # % and the like.
+        name = self.storage.save(
+            "contact-form-attachments/Invoice #3 & co?.pdf", ContentFile(b"%PDF", name="x")
+        )
+        self.assertEqual("contact-form-attachments/Invoice_3__co.pdf", name)
+        self.assertEqual(
+            "media/contact-form-attachments/Invoice_3__co_pdf",
+            upload.call_args.kwargs["public_id"],
+        )
 
     @mock.patch("cloudinary.uploader.destroy", return_value={"result": "not found"})
     def test_deleting_a_missing_file_is_fine(self, destroy: mock.MagicMock) -> None:
@@ -186,9 +207,31 @@ class TestUploadsThroughTheApi(ApiBaseTestCase):
     def test_a_cloudinary_failure_is_a_clear_400(
         self, _u: mock.MagicMock, _r: mock.MagicMock
     ) -> None:
-        response = self.post_certificate()
+        with self.assertLogs("server.api", "ERROR"):  # so Sentry sees it
+            response = self.post_certificate()
         self.assertEqual(400, response.status_code)
         self.assertEqual("Couldn't save the file. Try again.", response.json()["message"])
+
+
+class TestCronEnv(SimpleTestCase):
+    def test_the_nightly_jobs_get_the_storage_settings(self) -> None:
+        # Without these, remove_expired_college_ids deletes from the disk and
+        # leaves the Cloudinary copies for good.
+        spec = importlib.util.spec_from_file_location(
+            "make_cron_env", Path(__file__).parents[2] / "deploy/make_cron_env.py"
+        )
+        if spec is None or spec.loader is None:
+            self.fail("deploy/make_cron_env.py not found")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, root)
+        env = {"MEDIA_STORAGE": "cloudinary", "CLOUDINARY_API_SECRET": "s3cret"}
+        with mock.patch.object(module, "ROOT", root), mock.patch.dict("os.environ", env):
+            module.main()
+        written = (root / "cron/env").read_text()
+        self.assertIn("export MEDIA_STORAGE=cloudinary", written)
+        self.assertIn("export CLOUDINARY_API_SECRET=s3cret", written)
 
 
 @override_settings(CLOUDINARY_CLOUD_NAME="india-ultimate")

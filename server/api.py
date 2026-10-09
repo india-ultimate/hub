@@ -3,6 +3,7 @@ import csv
 import datetime
 import hashlib
 import io
+import logging
 import re
 from base64 import b32encode
 from io import StringIO
@@ -204,12 +205,14 @@ cloudinary.config(
     api_secret=settings.CLOUDINARY_API_SECRET,
 )
 
+logger = logging.getLogger(__name__)
 api = NinjaAPI(auth=django_auth, csrf=True)
 
 
 @api.exception_handler(cloudinary.exceptions.Error)
 def cloudinary_failed(request: HttpRequest, exc: cloudinary.exceptions.Error) -> HttpResponse:
     """A file couldn't reach Cloudinary: say so, instead of a 500."""
+    logger.error("Cloudinary upload failed", exc_info=exc)
     return api.create_response(
         request, {"message": "Couldn't save the file. Try again."}, status=400
     )
@@ -1006,6 +1009,7 @@ def college_id(
     except CollegeId.DoesNotExist:
         edit = False
 
+    old_images: set[str] = set()
     college_id_data = college_id.dict()
     college_id_data["card_front"] = card_front
     college_id_data["card_back"] = card_back
@@ -1041,6 +1045,7 @@ def college_id(
     if not edit:
         c_id = CollegeId(**college_id_data)
     else:
+        old_images = {c_id.card_front.name, c_id.card_back.name} - {""}
         c_id.card_front = card_front
         c_id.card_back = card_back
         c_id.expiry = college_id_data.get("expiry", None)
@@ -1054,6 +1059,12 @@ def college_id(
         return 400, {"message": " ".join(e.messages)}
 
     c_id.save()
+    # Nothing else would delete the old card's scans.
+    for name in old_images - {c_id.card_front.name, c_id.card_back.name}:
+        try:
+            default_storage.delete(name)  # type: ignore[attr-defined]
+        except (OSError, cloudinary.exceptions.Error):
+            logger.exception("Couldn't delete the old college ID image %s", name)
     return 200, c_id
 
 

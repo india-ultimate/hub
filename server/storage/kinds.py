@@ -5,6 +5,7 @@ so a name always lands in, and is served from, the same place.
 """
 
 from typing import Any
+from urllib.parse import quote
 
 from django.conf import settings
 
@@ -44,7 +45,9 @@ def url(name: str) -> str:
     path = public_id(name)
     if kind == "image":
         path += "." + _split(name)[1].lower()
-    return f"https://res.cloudinary.com/{settings.CLOUDINARY_CLOUD_NAME}/{kind}/upload/{path}"
+    return (
+        f"https://res.cloudinary.com/{settings.CLOUDINARY_CLOUD_NAME}/{kind}/upload/{quote(path)}"
+    )
 
 
 def upload_options(name: str) -> dict[str, Any]:
