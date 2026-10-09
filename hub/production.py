@@ -19,6 +19,10 @@ else:
     DATABASES["default"]["NAME"] = DATA_DIR / "production.db.sqlite"  # noqa: F405
 MEDIA_ROOT = DATA_DIR / "media"
 MEDIA_URL = "/media/"
+# Uploaded files on Cloudinary rather than the machine's disk. Switched on by
+# a Fly secret once the existing files are copied (copy_media_to_cloudinary).
+if os.environ.get("MEDIA_STORAGE") == "cloudinary":
+    STORAGES["default"] = {"BACKEND": "server.storage.cloudinary.CloudinaryStorage"}  # noqa: F405
 
 SENTRY_DSN = os.environ.get("SENTRY_DSN")
 if SENTRY_DSN:

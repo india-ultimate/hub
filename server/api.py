@@ -9,6 +9,7 @@ from io import StringIO
 from typing import Any, cast
 
 import cloudinary
+import cloudinary.exceptions
 import cloudinary.uploader
 import pyotp
 from django.conf import settings
@@ -21,7 +22,7 @@ from django.db import transaction
 from django.db.models import Count, F, Q, QuerySet, Value
 from django.db.models.functions import Concat
 from django.db.utils import IntegrityError
-from django.http import HttpRequest
+from django.http import HttpRequest, HttpResponse
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from django.utils.text import slugify
@@ -204,6 +205,14 @@ cloudinary.config(
 )
 
 api = NinjaAPI(auth=django_auth, csrf=True)
+
+
+@api.exception_handler(cloudinary.exceptions.Error)
+def cloudinary_failed(request: HttpRequest, exc: cloudinary.exceptions.Error) -> HttpResponse:
+    """A file couldn't reach Cloudinary: say so, instead of a 500."""
+    return api.create_response(
+        request, {"message": "Couldn't save the file. Try again."}, status=400
+    )
 
 
 class AuthenticatedHttpRequest(HttpRequest):
