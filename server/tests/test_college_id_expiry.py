@@ -86,6 +86,25 @@ class TestRemoveExpiredCollegeIds(ApiBaseTestCase):
         card.refresh_from_db()
         self.assertIsNone(card.images_removed_at)  # not expired, so the job leaves it
 
+    def test_reuploading_deletes_the_old_card(self) -> None:
+        # Nothing else would: the old scans would stay public for good.
+        self.card(-10)
+        self.client.force_login(self.user)
+        expiry = str(today() + datetime.timedelta(days=365))
+        with mock.patch("django.core.files.storage.FileSystemStorage.delete") as delete:
+            response = self.client.post(
+                "/api/college-id",
+                data={
+                    "college_id": f'{{"player_id": {self.player.id}, "expiry": "{expiry}"}}',
+                    "card_front": SimpleUploadedFile("f2.jpg", b"f", content_type="image/jpeg"),
+                    "card_back": SimpleUploadedFile("b2.jpg", b"b", content_type="image/jpeg"),
+                },
+                content_type=MULTIPART_CONTENT,
+            )
+        self.assertEqual(200, response.status_code, response.content)
+        deleted = sorted(call.args[0] for call in delete.call_args_list)
+        self.assertEqual(["college_ids/b.jpg", "college_ids/f.jpg"], deleted)
+
     def test_a_cleared_card_still_loads_the_players_profile(self) -> None:
         # Empty file fields used to fail the response schema: /api/me 500'd and
         # the player looked logged out everywhere.

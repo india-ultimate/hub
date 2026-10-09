@@ -22,7 +22,10 @@ class CloudinaryStorage(Storage):
     def get_available_name(self, name: str, max_length: int | None = None) -> str:
         # Django would call exists() here, one rate-limited Admin API call per
         # upload. _save finds a free name through the upload itself instead.
-        return name
+        # Cleaned, as the contact form saves the attachment's own name and
+        # Cloudinary refuses ids with ? & # % and the like.
+        folder, base = os.path.split(name)
+        return os.path.join(folder, self.get_valid_name(base))
 
     def _save(self, name: str, content: File[Any]) -> str:
         for _ in range(TRIES):
