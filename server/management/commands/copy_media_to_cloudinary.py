@@ -25,7 +25,7 @@ from django.conf import settings
 from django.core.management.base import BaseCommand, CommandParser
 
 from server.core.models import Accreditation, CollegeId, Team
-from server.storage import kinds
+from server.storage import kinds, shrink
 from server.tournament.models import Tournament
 from server.utils import today
 
@@ -83,10 +83,15 @@ class Command(BaseCommand):
         if response.status_code != HTTP_OK:
             raise RuntimeError(f"Cloudinary serves it as {response.status_code}")
 
+    def shrunk_there(self, path: Path) -> bool:
+        # Copied shrunk, it can't match the disk's size.
+        with path.open("rb") as f:
+            return shrink.too_big(f)
+
     def copy(self, path: Path, name: str, overwrite: bool) -> None:
         with path.open("rb") as f:
             cloudinary.uploader.upload(
-                f,
+                shrink.shrunk(f) or f,
                 public_id=kinds.public_id(name),
                 resource_type=kinds.resource_type(name),
                 overwrite=overwrite,
@@ -116,7 +121,9 @@ class Command(BaseCommand):
                 continue
             size = path.stat().st_size
             on_cloudinary = stored.get((kinds.resource_type(name), kinds.public_id(name)))
-            there = on_cloudinary is not None and (switched or on_cloudinary == size)
+            there = on_cloudinary is not None and (
+                switched or on_cloudinary == size or self.shrunk_there(path)
+            )
             if not there:
                 counts[(folder, "to copy")] += 1
                 sizes[folder] += size
