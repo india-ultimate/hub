@@ -98,6 +98,7 @@ from server.series.api import router as series_router
 from server.series.models import Role, SeriesRegistration, is_playing_role
 from server.servicerequests.api import router as servicerequests_router
 from server.subscription import eligibility
+from server.subscription.api import may_see
 from server.subscription.api import router as subscription_router
 from server.subscription.bulk_check import get_subscription_status
 from server.subscription.models import SponsorshipGrant, Subscription
@@ -1002,6 +1003,9 @@ def college_id(
         player = Player.objects.get(id=college_id.player_id)
     except Player.DoesNotExist:
         return 400, {"message": "Player does not exist"}
+    # A replaced card's images are deleted, so not just anyone may replace it.
+    if not may_see(request.user, player):
+        return 400, {"message": "Only this player or their guardian can upload their college ID"}
 
     try:
         c_id = player.college_id
