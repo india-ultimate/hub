@@ -1,4 +1,5 @@
-FROM python:3.11
+# AWS's copy of the official image: Docker Hub rate-limits CI's shared runners.
+FROM public.ecr.aws/docker/library/python:3.11
 
 RUN apt-get update \
     && apt-get install --no-install-recommends --assume-yes nginx yarnpkg sudo cron htop tmux nano\

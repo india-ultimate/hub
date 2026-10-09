@@ -2,9 +2,11 @@
 
 import datetime
 import importlib.util
+import io
 import json
 import shutil
 import tempfile
+from collections.abc import Mapping
 from io import StringIO
 from pathlib import Path
 from typing import Any
@@ -17,9 +19,10 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
 from django.test import Client, SimpleTestCase, TestCase, override_settings
 from django.test.client import MULTIPART_CONTENT
+from PIL import Image
 
 from server.core.models import Accreditation, CollegeId, Player, Team, User, Vaccination
-from server.storage import kinds
+from server.storage import kinds, shrink
 from server.storage.cloudinary import CloudinaryStorage
 from server.tests.base import ApiBaseTestCase
 from server.utils import today
@@ -82,6 +85,14 @@ class TestKinds(SimpleTestCase):
         # Cloudinary refuses a transformation on a raw file.
         self.assertEqual({}, kinds.upload_options("college_ids/card.jfif"))
 
+    def test_images_are_kept_in_their_names_format(self) -> None:
+        # Cloudinary keeps an image in its real format: a "Certificate.pdf"
+        # that's a PNG would answer 401 at .pdf. Converted on upload, it can't.
+        cases = {"a.PDF": "pdf", "a.jpeg": "jpg", "a.JPG": "jpg", "a.png": "png", "a.docx": None}
+        for name, stored in cases.items():
+            with self.subTest(name=name):
+                self.assertEqual(stored, kinds.stored_format(f"team_logos/{name}"))
+
     def test_only_college_ids_are_resized(self) -> None:
         self.assertIn("transformation", kinds.upload_options("college_ids/a.jpg"))
         self.assertEqual({}, kinds.upload_options("team_logos/a.jpg"))
@@ -102,6 +113,7 @@ class TestCloudinaryStorage(SimpleTestCase):
         kwargs = upload.call_args.kwargs
         self.assertEqual("media/team_logos/a_png", kwargs["public_id"])
         self.assertEqual("image", kwargs["resource_type"])
+        self.assertEqual("png", kwargs["format"])
         self.assertFalse(kwargs["overwrite"])
         # No Admin API call on upload: it's rate-limited (500 an hour on free).
         resource.assert_not_called()
@@ -156,6 +168,79 @@ class TestCloudinaryStorage(SimpleTestCase):
         get.assert_called_once_with(
             f"{CLOUD}/image/upload/media/ckeditor_uploads/a_png.png", timeout=30
         )
+
+
+def png(width: int, height: int) -> bytes:
+    out = io.BytesIO()
+    Image.new("RGB", (width, height), "red").save(out, format="PNG")
+    return out.getvalue()
+
+
+@mock.patch.object(shrink, "MAX_PIXELS", 100)
+class TestShrink(SimpleTestCase):
+    # The free plan refuses images over 25 megapixels or 10 MB: 12 on the
+    # disk are, among them team logos of 8334 x 8334.
+    def test_an_image_over_the_limit_is_shrunk(self) -> None:
+        small = shrink.shrunk(io.BytesIO(png(20, 20)))
+        if small is None:
+            self.fail("not shrunk")
+        with Image.open(small) as image:
+            self.assertEqual("PNG", image.format)
+            self.assertLessEqual(image.width * image.height, 100)
+
+    def test_an_image_within_the_limit_or_not_an_image_is_left(self) -> None:
+        self.assertIsNone(shrink.shrunk(io.BytesIO(png(5, 5))))
+        self.assertIsNone(shrink.shrunk(io.BytesIO(b"%PDF-1.4")))
+
+    def test_a_compressed_tiff_is_shrunk(self) -> None:
+        # The JPEG quality option is passed only to JPEG and WebP: a TIFF
+        # with it raised "quality setting only supported for 'jpeg'".
+        tiff = io.BytesIO()
+        Image.new("RGB", (20, 20)).save(tiff, format="TIFF", compression="tiff_lzw")
+        self.assertIsNotNone(shrink.shrunk(tiff))
+
+    def test_what_pillow_cant_save_is_left_as_it_is(self) -> None:
+        # The upload goes ahead with the original, as before shrinking.
+        f = io.BytesIO(png(20, 20))
+        with mock.patch("PIL.Image.Image.save", side_effect=KeyError("PSD")):
+            self.assertIsNone(shrink.shrunk(f))
+        self.assertEqual(0, f.tell())
+
+    def test_an_animated_gif_is_left_as_it_is(self) -> None:
+        # Shrinking would keep only the first frame.
+        gif = io.BytesIO()
+        frames = [Image.new("RGB", (20, 20), c) for c in ("red", "blue")]
+        frames[0].save(gif, format="GIF", save_all=True, append_images=frames[1:])
+        self.assertIsNone(shrink.shrunk(gif))
+
+    def test_one_too_large_to_decode_is_left_as_it_is(self) -> None:
+        # A tiny file can claim huge dimensions: decoding it would take GBs.
+        with mock.patch.object(shrink, "MAX_DECODE_BYTES", 20 * 20 * 3 - 1):
+            self.assertIsNone(shrink.shrunk(io.BytesIO(png(20, 20))))
+
+    def test_a_phone_photo_stays_upright(self) -> None:
+        photo = io.BytesIO()
+        exif = Image.Exif()
+        exif[0x0112] = 6  # orientation: rotate 90 degrees
+        Image.new("RGB", (20, 10)).save(photo, format="JPEG", exif=exif)
+        small = shrink.shrunk(photo)
+        if small is None:
+            self.fail("not shrunk")
+        with Image.open(small) as image:
+            self.assertGreater(image.height, image.width)
+
+    @mock.patch("cloudinary.uploader.upload", return_value={"existing": False})
+    def test_a_raw_file_is_never_shrunk(self, upload: mock.MagicMock) -> None:
+        # .tif is stored raw, with no pixel limit: a big scan uploads as it is.
+        data = png(20, 20)
+        CloudinaryStorage().save("contact-form-attachments/scan.tif", ContentFile(data, name="x"))
+        self.assertEqual(data, upload.call_args.args[0].read())
+
+    @mock.patch("cloudinary.uploader.upload", return_value={"existing": False})
+    def test_the_storage_uploads_the_shrunk_image(self, upload: mock.MagicMock) -> None:
+        CloudinaryStorage().save("team_logos/big.png", ContentFile(png(20, 20), name="big.png"))
+        with Image.open(upload.call_args.args[0]) as image:
+            self.assertLessEqual(image.width * image.height, 100)
 
 
 CLOUDINARY_STORAGES = {
@@ -271,15 +356,25 @@ class TestCopyMedia(TestCase):
         path.write_bytes(data)
 
     def run_command(
-        self, *args: str, on_cloudinary: dict[str, int] | None = None, head_status: int = 200
+        self,
+        *args: str,
+        on_cloudinary: Mapping[str, int | dict[str, Any]] | None = None,
+        head_status: int = 200,
     ) -> tuple[str, mock.MagicMock, int]:
-        """on_cloudinary: public id -> byte size already stored there."""
+        """on_cloudinary: public id -> byte size stored there, or the resource."""
         stored = on_cloudinary or {}
 
+        def resource(public_id: str, found: int | dict[str, Any]) -> dict[str, Any]:
+            # As stored by default: the format of the name's extension.
+            ext = public_id.rpartition("_")[2].lower()
+            listed = {"public_id": public_id, "format": "jpg" if ext == "jpeg" else ext}
+            return listed | (found if isinstance(found, dict) else {"bytes": found})
+
         def resources(**options: Any) -> dict[str, Any]:
+            self.assertTrue(options["context"])
             # Two pages, to prove the listing follows next_cursor.
             items = [
-                {"public_id": i, "bytes": b}
+                resource(i, b)
                 for i, b in stored.items()
                 if (options["resource_type"] == "raw") == ("." in i.rpartition("/")[2])
             ]
@@ -347,6 +442,34 @@ class TestCopyMedia(TestCase):
         _, upload, _ = self.run_command(on_cloudinary={"media/team_logos/t_png": 999})
         self.assertNotIn("media/team_logos/t_png", self.uploaded(upload))
         self.assertFalse(any(c.kwargs["overwrite"] for c in upload.call_args_list))
+
+    @mock.patch.object(shrink, "MAX_PIXELS", 100)
+    def test_an_image_over_the_limit_is_copied_shrunk_once(self) -> None:
+        self.write("team_logos/t.png", png(20, 20))
+        _, upload, _ = self.run_command()
+        with Image.open(upload.call_args_list[-1].args[0]) as image:
+            self.assertLessEqual(image.width * image.height, 100)
+        # Shrunk, it can't match the disk's size: the size it had there is
+        # kept with it instead.
+        disk = len(png(20, 20))
+        self.assertEqual({"disk_bytes": disk}, upload.call_args_list[-1].kwargs["context"])
+        shrunk = {"bytes": 1, "context": {"custom": {"disk_bytes": str(disk)}}}
+        _, upload, _ = self.run_command(on_cloudinary={"media/team_logos/t_png": shrunk})
+        self.assertNotIn("media/team_logos/t_png", self.uploaded(upload))
+        # Any other is someone else's file under a reused name.
+        other = {"bytes": 1, "context": {"custom": {"disk_bytes": str(disk + 1)}}}
+        _, upload, _ = self.run_command(on_cloudinary={"media/team_logos/t_png": other})
+        self.assertIn("media/team_logos/t_png", self.uploaded(upload))
+
+    def test_one_kept_in_another_format_is_copied_again(self) -> None:
+        # Copied before uploads were converted: a .png that's a JPEG answers
+        # 401 at its .png URL.
+        wrong = {"bytes": len(b"logo"), "format": "jpg"}
+        _, upload, _ = self.run_command(on_cloudinary={"media/team_logos/t_png": wrong})
+        call = next(
+            c for c in upload.call_args_list if c.kwargs["public_id"] == "media/team_logos/t_png"
+        )
+        self.assertEqual("png", call.kwargs["format"])
 
     def test_a_skipped_file_that_wont_serve_still_counts_as_failed(self) -> None:
         # Already there from an earlier run whose serve check failed.

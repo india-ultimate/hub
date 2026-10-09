@@ -11,7 +11,7 @@ from django.core.files.base import ContentFile, File
 from django.core.files.storage import Storage
 from django.utils.deconstruct import deconstructible
 
-from server.storage import kinds
+from server.storage import kinds, shrink
 
 # Each try at a free name is one upload; five clashes in a row won't happen.
 TRIES = 5
@@ -28,15 +28,18 @@ class CloudinaryStorage(Storage):
         return os.path.join(folder, self.get_valid_name(base))
 
     def _save(self, name: str, content: File[Any]) -> str:
+        # Images only: raw files have no pixel limit.
+        upload = (kinds.resource_type(name) == "image" and shrink.shrunk(content)) or content
         for _ in range(TRIES):
-            content.seek(0)
+            upload.seek(0)
             result = cloudinary.uploader.upload(
-                content,
+                upload,
                 public_id=kinds.public_id(name),
                 resource_type=kinds.resource_type(name),
                 overwrite=False,  # a taken id answers "existing" instead
                 unique_filename=False,
                 use_filename=False,
+                **kinds.format_option(name),
                 **kinds.upload_options(name),
             )
             if not result.get("existing"):
