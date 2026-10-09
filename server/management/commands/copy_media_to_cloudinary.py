@@ -126,7 +126,7 @@ class Command(BaseCommand):
             size = path.stat().st_size
             on_cloudinary = stored.get((kinds.resource_type(name), kinds.public_id(name)))
             there = on_cloudinary is not None and (
-                switched or on_cloudinary in (size, self.shrunk_size(path, name))
+                switched or on_cloudinary == size or on_cloudinary == self.shrunk_size(path, name)
             )
             if not there:
                 counts[(folder, "to copy")] += 1
