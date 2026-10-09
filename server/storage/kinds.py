@@ -50,6 +50,23 @@ def url(name: str) -> str:
     )
 
 
+def stored_format(name: str) -> str | None:
+    """The format to keep an image in: its name's, so its URL always works.
+
+    Cloudinary keeps an image in its real format, and a .pdf that's a PNG
+    then answers 401 at its .pdf URL (strict transformations are on).
+    """
+    if resource_type(name) != "image":
+        return None
+    ext = _split(name)[1].lower()
+    return "jpg" if ext == "jpeg" else ext
+
+
+def format_option(name: str) -> dict[str, str]:
+    stored = stored_format(name)
+    return {"format": stored} if stored else {}
+
+
 def upload_options(name: str) -> dict[str, Any]:
     # Images only: Cloudinary refuses a transformation on a raw file.
     resize = name.startswith("college_ids/") and resource_type(name) == "image"

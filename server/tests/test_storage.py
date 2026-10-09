@@ -6,6 +6,7 @@ import io
 import json
 import shutil
 import tempfile
+from collections.abc import Mapping
 from io import StringIO
 from pathlib import Path
 from typing import Any
@@ -84,6 +85,14 @@ class TestKinds(SimpleTestCase):
         # Cloudinary refuses a transformation on a raw file.
         self.assertEqual({}, kinds.upload_options("college_ids/card.jfif"))
 
+    def test_images_are_kept_in_their_names_format(self) -> None:
+        # Cloudinary keeps an image in its real format: a "Certificate.pdf"
+        # that's a PNG would answer 401 at .pdf. Converted on upload, it can't.
+        cases = {"a.PDF": "pdf", "a.jpeg": "jpg", "a.JPG": "jpg", "a.png": "png", "a.docx": None}
+        for name, stored in cases.items():
+            with self.subTest(name=name):
+                self.assertEqual(stored, kinds.stored_format(f"team_logos/{name}"))
+
     def test_only_college_ids_are_resized(self) -> None:
         self.assertIn("transformation", kinds.upload_options("college_ids/a.jpg"))
         self.assertEqual({}, kinds.upload_options("team_logos/a.jpg"))
@@ -104,6 +113,7 @@ class TestCloudinaryStorage(SimpleTestCase):
         kwargs = upload.call_args.kwargs
         self.assertEqual("media/team_logos/a_png", kwargs["public_id"])
         self.assertEqual("image", kwargs["resource_type"])
+        self.assertEqual("png", kwargs["format"])
         self.assertFalse(kwargs["overwrite"])
         # No Admin API call on upload: it's rate-limited (500 an hour on free).
         resource.assert_not_called()
@@ -346,15 +356,25 @@ class TestCopyMedia(TestCase):
         path.write_bytes(data)
 
     def run_command(
-        self, *args: str, on_cloudinary: dict[str, int] | None = None, head_status: int = 200
+        self,
+        *args: str,
+        on_cloudinary: Mapping[str, int | dict[str, Any]] | None = None,
+        head_status: int = 200,
     ) -> tuple[str, mock.MagicMock, int]:
-        """on_cloudinary: public id -> byte size already stored there."""
+        """on_cloudinary: public id -> byte size stored there, or the resource."""
         stored = on_cloudinary or {}
 
+        def resource(public_id: str, found: int | dict[str, Any]) -> dict[str, Any]:
+            # As stored by default: the format of the name's extension.
+            ext = public_id.rpartition("_")[2].lower()
+            listed = {"public_id": public_id, "format": "jpg" if ext == "jpeg" else ext}
+            return listed | (found if isinstance(found, dict) else {"bytes": found})
+
         def resources(**options: Any) -> dict[str, Any]:
+            self.assertTrue(options["context"])
             # Two pages, to prove the listing follows next_cursor.
             items = [
-                {"public_id": i, "bytes": b}
+                resource(i, b)
                 for i, b in stored.items()
                 if (options["resource_type"] == "raw") == ("." in i.rpartition("/")[2])
             ]
@@ -429,14 +449,27 @@ class TestCopyMedia(TestCase):
         _, upload, _ = self.run_command()
         with Image.open(upload.call_args_list[-1].args[0]) as image:
             self.assertLessEqual(image.width * image.height, 100)
-        # Shrunk, it can't match the disk's size, but matches the shrunk size.
-        upload.call_args_list[-1].args[0].seek(0)
-        copied = len(upload.call_args_list[-1].args[0].read())
-        _, upload, _ = self.run_command(on_cloudinary={"media/team_logos/t_png": copied})
+        # Shrunk, it can't match the disk's size: the size it had there is
+        # kept with it instead.
+        disk = len(png(20, 20))
+        self.assertEqual({"disk_bytes": disk}, upload.call_args_list[-1].kwargs["context"])
+        shrunk = {"bytes": 1, "context": {"custom": {"disk_bytes": str(disk)}}}
+        _, upload, _ = self.run_command(on_cloudinary={"media/team_logos/t_png": shrunk})
         self.assertNotIn("media/team_logos/t_png", self.uploaded(upload))
-        # Any other size is someone else's file under a reused name.
-        _, upload, _ = self.run_command(on_cloudinary={"media/team_logos/t_png": copied + 1})
+        # Any other is someone else's file under a reused name.
+        other = {"bytes": 1, "context": {"custom": {"disk_bytes": str(disk + 1)}}}
+        _, upload, _ = self.run_command(on_cloudinary={"media/team_logos/t_png": other})
         self.assertIn("media/team_logos/t_png", self.uploaded(upload))
+
+    def test_one_kept_in_another_format_is_copied_again(self) -> None:
+        # Copied before uploads were converted: a .png that's a JPEG answers
+        # 401 at its .png URL.
+        wrong = {"bytes": len(b"logo"), "format": "jpg"}
+        _, upload, _ = self.run_command(on_cloudinary={"media/team_logos/t_png": wrong})
+        call = next(
+            c for c in upload.call_args_list if c.kwargs["public_id"] == "media/team_logos/t_png"
+        )
+        self.assertEqual("png", call.kwargs["format"])
 
     def test_a_skipped_file_that_wont_serve_still_counts_as_failed(self) -> None:
         # Already there from an earlier run whose serve check failed.

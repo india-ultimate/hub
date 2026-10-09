@@ -39,6 +39,7 @@ class CloudinaryStorage(Storage):
                 overwrite=False,  # a taken id answers "existing" instead
                 unique_filename=False,
                 use_filename=False,
+                **kinds.format_option(name),
                 **kinds.upload_options(name),
             )
             if not result.get("existing"):
