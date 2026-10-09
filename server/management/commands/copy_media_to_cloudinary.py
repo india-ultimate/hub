@@ -15,7 +15,7 @@ import sys
 from collections import Counter
 from collections.abc import Iterator
 from pathlib import Path
-from typing import Any
+from typing import IO, Any
 
 import cloudinary.api
 import cloudinary.exceptions
@@ -83,15 +83,19 @@ class Command(BaseCommand):
         if response.status_code != HTTP_OK:
             raise RuntimeError(f"Cloudinary serves it as {response.status_code}")
 
-    def shrunk_there(self, path: Path) -> bool:
-        # Copied shrunk, it can't match the disk's size.
+    def shrunk(self, f: IO[bytes], name: str) -> IO[bytes] | None:
+        return shrink.shrunk(f) if kinds.resource_type(name) == "image" else None
+
+    def shrunk_size(self, path: Path, name: str) -> int | None:
+        # Copied shrunk, it matches the shrunk size, not the disk's.
         with path.open("rb") as f:
-            return shrink.too_big(f)
+            small = self.shrunk(f, name)
+            return len(small.read()) if small else None
 
     def copy(self, path: Path, name: str, overwrite: bool) -> None:
         with path.open("rb") as f:
             cloudinary.uploader.upload(
-                shrink.shrunk(f) or f,
+                self.shrunk(f, name) or f,
                 public_id=kinds.public_id(name),
                 resource_type=kinds.resource_type(name),
                 overwrite=overwrite,
@@ -122,7 +126,7 @@ class Command(BaseCommand):
             size = path.stat().st_size
             on_cloudinary = stored.get((kinds.resource_type(name), kinds.public_id(name)))
             there = on_cloudinary is not None and (
-                switched or on_cloudinary == size or self.shrunk_there(path)
+                switched or on_cloudinary in (size, self.shrunk_size(path, name))
             )
             if not there:
                 counts[(folder, "to copy")] += 1
