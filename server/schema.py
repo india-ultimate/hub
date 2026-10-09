@@ -75,6 +75,10 @@ class AccreditationSchema(ModelSchema):
 
 
 class CollegeIdSchema(ModelSchema):
+    # Empty once the images are removed after expiry (images_removed_at).
+    card_front: str | None
+    card_back: str | None
+
     class Config:
         model = CollegeId
         model_fields = "__all__"

@@ -1046,6 +1046,7 @@ def college_id(
         c_id.expiry = college_id_data.get("expiry", None)
         c_id.ocr_name = college_id_data.get("ocr_name", None)
         c_id.ocr_college = college_id_data.get("ocr_college", None)
+        c_id.images_removed_at = None  # a new card is active again
 
     try:
         c_id.full_clean()
