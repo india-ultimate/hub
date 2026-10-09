@@ -19,7 +19,7 @@ import { onMount } from "solid-js";
 
 import { accreditationChoices, matchUpChoices, minAge } from "../constants";
 import { useStore } from "../store";
-import { fetchUrl, getAge, getLabel } from "../utils";
+import { fetchUrl, getAge, getLabel, isCollegeIdActive } from "../utils";
 import AccreditationInformation from "./AccreditationInformation";
 import CollegeIDInformation from "./CollegeIDInformation";
 import Modal from "./Modal";
@@ -602,7 +602,9 @@ const ValidateRoster = () => {
                                             title="College ID Card Added?"
                                             class={clsx(
                                               "mx-1",
-                                              registration?.player?.college_id
+                                              isCollegeIdActive(
+                                                registration?.player?.college_id
+                                              )
                                                 ? greenText
                                                 : redText
                                             )}
