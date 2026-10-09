@@ -1,18 +1,26 @@
 """Uploaded files on Cloudinary: how names map, and the storage class."""
 
+import datetime
 import json
+import shutil
+import tempfile
+from io import StringIO
+from pathlib import Path
 from typing import Any
 from unittest import mock
 
 import cloudinary.exceptions
 from django.core.files.base import ContentFile
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import SimpleTestCase, override_settings
+from django.core.management import call_command
+from django.test import SimpleTestCase, TestCase, override_settings
 from django.test.client import MULTIPART_CONTENT
 
+from server.core.models import Accreditation, CollegeId, Player, Team, User, Vaccination
 from server.storage import kinds
 from server.storage.cloudinary import CloudinaryStorage
 from server.tests.base import ApiBaseTestCase
+from server.utils import today
 
 CLOUD = "https://res.cloudinary.com/india-ultimate"
 
@@ -149,3 +157,117 @@ class TestUploadsThroughTheApi(ApiBaseTestCase):
         response = self.post_certificate()
         self.assertEqual(400, response.status_code)
         self.assertEqual("Couldn't save the file. Try again.", response.json()["message"])
+
+
+@override_settings(CLOUDINARY_CLOUD_NAME="india-ultimate")
+class TestCopyMedia(TestCase):
+    def setUp(self) -> None:
+        self.root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.root)
+        self.settings_override = override_settings(MEDIA_ROOT=self.root)
+        self.settings_override.enable()
+        self.addCleanup(self.settings_override.disable)
+        user = User.objects.create(username="p@x.com", email="p@x.com")
+        self.player = Player.objects.create(user=user, date_of_birth="1995-01-01")
+        self.write("team_logos/t.png", b"logo")
+        Team.objects.create(name="T", image="team_logos/t.png")
+        self.write("team_logos/orphan.png", b"nobody")
+        self.write("accreditation_certificates/a.PDF", b"%PDF-1")
+        Accreditation.objects.create(
+            player=self.player,
+            date="2026-01-01",
+            level="ADV",
+            is_valid=True,
+            certificate="accreditation_certificates/a.PDF",
+        )
+        self.write("vaccination_certificates/v.pdf", b"vax")
+        Vaccination.objects.create(
+            player=self.player, is_vaccinated=True, certificate="vaccination_certificates/v.pdf"
+        )
+        self.write("contact-form-attachments/note.docx", b"doc")
+
+    def write(self, name: str, data: bytes) -> None:
+        path = self.root / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(data)
+
+    def run_command(
+        self, *args: str, on_cloudinary: dict[str, int] | None = None, head_status: int = 200
+    ) -> tuple[str, mock.MagicMock, int]:
+        """on_cloudinary: public id -> byte size already stored there."""
+        stored = on_cloudinary or {}
+
+        def resource(public_id: str, resource_type: str) -> dict[str, int]:
+            if public_id not in stored:
+                raise cloudinary.exceptions.NotFound
+            return {"bytes": stored[public_id]}
+
+        out = StringIO()
+        code = 0
+        with mock.patch("cloudinary.uploader.upload") as upload, mock.patch(
+            "cloudinary.api.resource", side_effect=resource
+        ), mock.patch("requests.head", return_value=mock.Mock(status_code=head_status)):
+            try:
+                call_command("copy_media_to_cloudinary", *args, stdout=out)
+            except SystemExit as e:
+                code = int(e.code or 0)
+        return out.getvalue(), upload, code
+
+    def uploaded(self, upload: mock.MagicMock) -> list[str]:
+        return sorted(c.kwargs["public_id"] for c in upload.call_args_list)
+
+    def test_dry_run_uploads_nothing(self) -> None:
+        out, upload, _ = self.run_command("--dry-run")
+        upload.assert_not_called()
+        self.assertIn("team_logos", out)
+        self.assertIn("to copy", out)
+
+    def test_copies_only_what_rows_and_content_point_at(self) -> None:
+        _, upload, code = self.run_command()
+        self.assertEqual(0, code)
+        self.assertEqual(
+            [
+                "media/accreditation_certificates/a",
+                "media/contact-form-attachments/note.docx",
+                "media/team_logos/t",
+            ],
+            self.uploaded(upload),
+        )
+
+    def test_a_second_run_skips_what_is_already_there(self) -> None:
+        # Same id and byte size already on Cloudinary: skipped, even if the
+        # name's extension is upper case.
+        _, upload, _ = self.run_command(on_cloudinary={"media/team_logos/t": len(b"logo")})
+        self.assertNotIn("media/team_logos/t", self.uploaded(upload))
+
+    def test_expired_college_ids_are_left_out(self) -> None:
+        self.write("college_ids/old_f.jpg", b"f")
+        self.write("college_ids/old_b.jpg", b"b")
+        CollegeId.objects.create(
+            player=self.player,
+            expiry=today() - datetime.timedelta(days=31),
+            card_front="college_ids/old_f.jpg",
+            card_back="college_ids/old_b.jpg",
+        )
+        _, upload, _ = self.run_command()
+        self.assertFalse(any("college_ids" in i for i in self.uploaded(upload)))
+
+    def test_missing_files_are_listed(self) -> None:
+        Accreditation.objects.create(
+            player=Player.objects.create(
+                user=User.objects.create(username="q@x.com", email="q@x.com"),
+                date_of_birth="1995-01-01",
+            ),
+            date="2026-01-01",
+            level="STD",
+            is_valid=True,
+            certificate="accreditation_certificates/missing.pdf",
+        )
+        out, _, _ = self.run_command()
+        self.assertIn("Missing on disk", out)
+        self.assertIn("accreditation_certificates/missing.pdf", out)
+
+    def test_a_file_that_wont_serve_counts_as_failed(self) -> None:
+        out, _, code = self.run_command(head_status=401)
+        self.assertEqual(1, code)
+        self.assertIn("failed", out)
