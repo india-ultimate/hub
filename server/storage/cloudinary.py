@@ -1,5 +1,6 @@
 """Django storage that keeps uploaded files on Cloudinary, not the machine."""
 
+import os
 from typing import Any
 
 import cloudinary.api
@@ -12,21 +13,33 @@ from django.utils.deconstruct import deconstructible
 
 from server.storage import kinds
 
+# Each try at a free name is one upload; five clashes in a row won't happen.
+TRIES = 5
+
 
 @deconstructible
 class CloudinaryStorage(Storage):
-    def _save(self, name: str, content: File[Any]) -> str:
-        content.seek(0)
-        cloudinary.uploader.upload(
-            content,
-            public_id=kinds.public_id(name),
-            resource_type=kinds.resource_type(name),
-            overwrite=False,
-            unique_filename=False,
-            use_filename=False,
-            **kinds.upload_options(name),
-        )
+    def get_available_name(self, name: str, max_length: int | None = None) -> str:
+        # Django would call exists() here, one rate-limited Admin API call per
+        # upload. _save finds a free name through the upload itself instead.
         return name
+
+    def _save(self, name: str, content: File[Any]) -> str:
+        for _ in range(TRIES):
+            content.seek(0)
+            result = cloudinary.uploader.upload(
+                content,
+                public_id=kinds.public_id(name),
+                resource_type=kinds.resource_type(name),
+                overwrite=False,  # a taken id answers "existing" instead
+                unique_filename=False,
+                use_filename=False,
+                **kinds.upload_options(name),
+            )
+            if not result.get("existing"):
+                return name
+            name = self.get_alternative_name(*os.path.splitext(name))
+        raise cloudinary.exceptions.Error(f"No free name for {name}")
 
     def _open(self, name: str, mode: str = "rb") -> File[bytes]:
         # CKEditor's uploader reads images back to make thumbnails.

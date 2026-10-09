@@ -2989,8 +2989,8 @@ def contact(
     if attachment:
         name = f"contact-form-attachments/{attachment.name}"
         path = default_storage.save(name, attachment)  # type: ignore[attr-defined]
-        location = f"{settings.MEDIA_URL}{path}"
-        url = request.build_absolute_uri(location)
+        # The storage's URL: on Cloudinary, the file isn't under MEDIA_URL.
+        url = request.build_absolute_uri(default_storage.url(path))  # type: ignore[attr-defined]
         message += f"\n\nAttachment: {url}"
 
     try:

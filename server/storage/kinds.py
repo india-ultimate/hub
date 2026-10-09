@@ -18,29 +18,33 @@ COLLEGE_ID_RESIZE = [{"width": 1600, "height": 1600, "crop": "limit"}, {"quality
 
 
 def _split(name: str) -> tuple[str, str]:
-    """(stem, extension in lower case), with "" for no extension."""
+    """(stem, extension as written), with "" for no extension."""
     if "." not in name.rpartition("/")[2]:
         return name, ""
     stem, _, ext = name.rpartition(".")
-    return stem, ext.lower()
+    return stem, ext
 
 
 def resource_type(name: str) -> str:
-    return "image" if _split(name)[1] in IMAGE_EXTENSIONS else "raw"
+    return "image" if _split(name)[1].lower() in IMAGE_EXTENSIONS else "raw"
 
 
 def public_id(name: str) -> str:
-    stem, _ = _split(name)
-    return PREFIX + (stem if resource_type(name) == "image" else name)
+    """The extension stays in the id (back.jpeg -> back_jpeg) so names that
+    differ only by extension, like back.jpg and back.jpeg, never share a file.
+    Image extensions have no "_", so the mapping can't collide."""
+    if resource_type(name) == "raw":
+        return PREFIX + name
+    stem, ext = _split(name)
+    return f"{PREFIX}{stem}_{ext}"
 
 
 def url(name: str) -> str:
-    stem, ext = _split(name)
     kind = resource_type(name)
-    path = f"{stem}.{ext}" if kind == "image" else name
-    return (
-        f"https://res.cloudinary.com/{settings.CLOUDINARY_CLOUD_NAME}/{kind}/upload/{PREFIX}{path}"
-    )
+    path = public_id(name)
+    if kind == "image":
+        path += "." + _split(name)[1].lower()
+    return f"https://res.cloudinary.com/{settings.CLOUDINARY_CLOUD_NAME}/{kind}/upload/{path}"
 
 
 def upload_options(name: str) -> dict[str, Any]:

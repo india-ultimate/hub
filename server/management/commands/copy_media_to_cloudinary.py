@@ -3,7 +3,10 @@
 Copies what the database or content points at; skips vaccination
 certificates (archived instead), college IDs past their 30 days, and files
 nothing points at. Safe to re-run: a file already there at the same size is
-skipped. Each copy is checked by fetching its Cloudinary URL.
+skipped. Every file, copied or skipped, is checked by fetching its URL.
+
+What is already on Cloudinary is listed once up front (a few calls), not
+looked up per file: the Admin API allows 500 calls an hour on the free plan.
 """
 
 import datetime
@@ -55,14 +58,29 @@ class Command(BaseCommand):
     def add_arguments(self, parser: CommandParser) -> None:
         parser.add_argument("--dry-run", action="store_true", help="List and size; upload nothing")
 
-    def already_there(self, name: str, size: int) -> bool:
-        try:
-            found = cloudinary.api.resource(
-                kinds.public_id(name), resource_type=kinds.resource_type(name)
-            )
-        except cloudinary.exceptions.NotFound:
-            return False
-        return int(found.get("bytes", -1)) == size
+    def stored_sizes(self) -> dict[tuple[str, str], int]:
+        """(type, public id) -> bytes, for everything under media/."""
+        sizes: dict[tuple[str, str], int] = {}
+        for kind in ("image", "raw"):
+            options: dict[str, Any] = {
+                "type": "upload",
+                "resource_type": kind,
+                "prefix": kinds.PREFIX,
+                "max_results": 500,
+            }
+            while True:
+                page = cloudinary.api.resources(**options)
+                for found in page.get("resources", []):
+                    sizes[(kind, found["public_id"])] = int(found["bytes"])
+                if not page.get("next_cursor"):
+                    break
+                options["next_cursor"] = page["next_cursor"]
+        return sizes
+
+    def check_served(self, name: str) -> None:
+        response = requests.head(kinds.url(name), timeout=30, allow_redirects=True)
+        if response.status_code != HTTP_OK:
+            raise RuntimeError(f"Cloudinary serves it as {response.status_code}")
 
     def copy(self, path: Path, name: str) -> None:
         with path.open("rb") as f:
@@ -70,17 +88,18 @@ class Command(BaseCommand):
                 f,
                 public_id=kinds.public_id(name),
                 resource_type=kinds.resource_type(name),
-                overwrite=True,  # a half-finished earlier upload is replaced
+                # Ids are unique per name (see kinds.public_id), so this only
+                # ever replaces an earlier copy of this same file.
+                overwrite=True,
+                invalidate=True,
                 unique_filename=False,
                 use_filename=False,
             )
-        response = requests.head(kinds.url(name), timeout=30, allow_redirects=True)
-        if response.status_code != HTTP_OK:
-            raise RuntimeError(f"Cloudinary serves it as {response.status_code}")
 
     def handle(self, *args: Any, **options: Any) -> None:
         root = Path(settings.MEDIA_ROOT)
         names = sorted(set(referenced_names()) | set(folder_names(root)))
+        stored = self.stored_sizes()
         counts: Counter[tuple[str, str]] = Counter()
         sizes: Counter[str] = Counter()
         missing: list[str] = []
@@ -92,16 +111,19 @@ class Command(BaseCommand):
                 missing.append(name)
                 continue
             size = path.stat().st_size
-            if self.already_there(name, size):
-                counts[(folder, "skipped")] += 1
-                continue
-            counts[(folder, "to copy")] += 1
-            sizes[folder] += size
+            there = stored.get((kinds.resource_type(name), kinds.public_id(name))) == size
+            if not there:
+                counts[(folder, "to copy")] += 1
+                sizes[folder] += size
             if options["dry_run"]:
                 continue
             try:
-                self.copy(path, name)
-                counts[(folder, "copied")] += 1
+                if not there:
+                    self.copy(path, name)
+                # Copied or skipped, it has to be served: an earlier run's
+                # copy may have been refused or cut short.
+                self.check_served(name)
+                counts[(folder, "skipped" if there else "copied")] += 1
             except Exception as error:  # one bad file mustn't stop the rest
                 counts[(folder, "failed")] += 1
                 failed.append(f"{name}: {error}")
