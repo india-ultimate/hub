@@ -271,6 +271,9 @@ class CollegeId(ExportModelOperationsMixin("college_id"), models.Model):  # type
     card_back = models.FileField(upload_to="college_ids/", max_length=256)
     ocr_name = models.PositiveIntegerField(null=True, blank=True)
     ocr_college = models.PositiveIntegerField(null=True, blank=True)
+    # Set when the card images are deleted, 30 days after expiry: the row
+    # stays so people can see a card was uploaded, but it's inactive.
+    images_removed_at = models.DateField(null=True, blank=True)
 
 
 class CommentaryInfo(ExportModelOperationsMixin("commentary_info"), models.Model):  # type: ignore[misc]
