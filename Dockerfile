@@ -42,8 +42,6 @@ USER root
 RUN mkdir -p /var/www/hub/
 RUN cp -a $APP/staticfiles/ /var/www/hub/static/
 COPY deploy/nginx.conf /etc/nginx/sites-enabled/hub.conf
-RUN mkdir -p /data
-RUN chown -hR user:users /data
 
 COPY --chown=user:users deploy deploy
 USER user

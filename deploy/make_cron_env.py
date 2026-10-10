@@ -22,8 +22,7 @@ ENV = [
     "RAZORPAY_KEY_SECRET",
     "RAZORPAY_WEBHOOK_SECRET",
     "PAYMENT_ACCOUNT_ENCRYPTION_KEY",
-    # Or the nightly jobs would delete college IDs from the disk, not Cloudinary.
-    "MEDIA_STORAGE",
+    # Or the nightly jobs couldn't delete expired college IDs from Cloudinary.
     "CLOUDINARY_API_SECRET",
 ]
 
