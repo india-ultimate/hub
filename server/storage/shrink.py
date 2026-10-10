@@ -13,7 +13,7 @@ from PIL import Image, ImageOps
 MAX_PIXELS = 25_000_000
 MAX_BYTES = 10_000_000
 # Past this, decoding takes over a GB: left to Cloudinary to refuse. Fits the
-# largest logos on the disk (8334 x 8334 RGBA, 278 MB).
+# largest logos we had (8334 x 8334 RGBA, 278 MB).
 MAX_DECODE_BYTES = 280_000_000
 # Others (EPS runs Ghostscript) are left to Cloudinary, whatever the extension.
 # JPEG covers MPO, the format many phones save their photos in.

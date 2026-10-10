@@ -1,13 +1,10 @@
 """Uploaded files on Cloudinary: how names map, and the storage class."""
 
-import datetime
 import importlib.util
 import io
 import json
 import shutil
 import tempfile
-from collections.abc import Mapping
-from io import StringIO
 from pathlib import Path
 from typing import Any
 from unittest import mock
@@ -16,16 +13,13 @@ import cloudinary.exceptions
 from django.core import mail
 from django.core.files.base import ContentFile
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.core.management import call_command
 from django.test import Client, SimpleTestCase, TestCase, override_settings
 from django.test.client import MULTIPART_CONTENT
 from PIL import Image
 
-from server.core.models import Accreditation, CollegeId, Player, Team, User, Vaccination
 from server.storage import kinds, shrink
 from server.storage.cloudinary import CloudinaryStorage
 from server.tests.base import ApiBaseTestCase
-from server.utils import today
 
 CLOUD = "https://res.cloudinary.com/india-ultimate"
 
@@ -303,9 +297,8 @@ class TestUploadsThroughTheApi(ApiBaseTestCase):
 
 
 class TestCronEnv(SimpleTestCase):
-    def test_the_nightly_jobs_get_the_storage_settings(self) -> None:
-        # Without these, remove_expired_college_ids deletes from the disk and
-        # leaves the Cloudinary copies for good.
+    def test_the_nightly_jobs_get_the_cloudinary_secret(self) -> None:
+        # Without it, remove_expired_college_ids can't delete the Cloudinary copies.
         spec = importlib.util.spec_from_file_location(
             "make_cron_env", Path(__file__).parents[2] / "deploy/make_cron_env.py"
         )
@@ -315,209 +308,11 @@ class TestCronEnv(SimpleTestCase):
         spec.loader.exec_module(module)
         root = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, root)
-        env = {"MEDIA_STORAGE": "cloudinary", "CLOUDINARY_API_SECRET": "s3cret"}
+        env = {"CLOUDINARY_API_SECRET": "s3cret"}
         with mock.patch.object(module, "ROOT", root), mock.patch.dict("os.environ", env):
             module.main()
         written = (root / "cron/env").read_text()
-        self.assertIn("export MEDIA_STORAGE=cloudinary", written)
         self.assertIn("export CLOUDINARY_API_SECRET=s3cret", written)
-
-
-@override_settings(CLOUDINARY_CLOUD_NAME="india-ultimate")
-class TestCopyMedia(TestCase):
-    def setUp(self) -> None:
-        self.root = Path(tempfile.mkdtemp())
-        self.addCleanup(shutil.rmtree, self.root)
-        self.settings_override = override_settings(MEDIA_ROOT=self.root)
-        self.settings_override.enable()
-        self.addCleanup(self.settings_override.disable)
-        user = User.objects.create(username="p@x.com", email="p@x.com")
-        self.player = Player.objects.create(user=user, date_of_birth="1995-01-01")
-        self.write("team_logos/t.png", b"logo")
-        Team.objects.create(name="T", image="team_logos/t.png")
-        self.write("team_logos/orphan.png", b"nobody")
-        self.write("accreditation_certificates/a.PDF", b"%PDF-1")
-        Accreditation.objects.create(
-            player=self.player,
-            date="2026-01-01",
-            level="ADV",
-            is_valid=True,
-            certificate="accreditation_certificates/a.PDF",
-        )
-        self.write("vaccination_certificates/v.pdf", b"vax")
-        Vaccination.objects.create(
-            player=self.player, is_vaccinated=True, certificate="vaccination_certificates/v.pdf"
-        )
-        self.write("contact-form-attachments/note.docx", b"doc")
-
-    def write(self, name: str, data: bytes) -> None:
-        path = self.root / name
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(data)
-
-    def run_command(
-        self,
-        *args: str,
-        on_cloudinary: Mapping[str, int | dict[str, Any]] | None = None,
-        head_status: int = 200,
-    ) -> tuple[str, mock.MagicMock, int]:
-        """on_cloudinary: public id -> byte size stored there, or the resource."""
-        stored = on_cloudinary or {}
-
-        def resource(public_id: str, found: int | dict[str, Any]) -> dict[str, Any]:
-            # As stored by default: the format of the name's extension.
-            ext = public_id.rpartition("_")[2].lower()
-            listed = {"public_id": public_id, "format": "jpg" if ext == "jpeg" else ext}
-            return listed | (found if isinstance(found, dict) else {"bytes": found})
-
-        def resources(**options: Any) -> dict[str, Any]:
-            self.assertTrue(options["context"])
-            # Two pages, to prove the listing follows next_cursor.
-            items = [
-                resource(i, b)
-                for i, b in stored.items()
-                if (options["resource_type"] == "raw") == ("." in i.rpartition("/")[2])
-            ]
-            if not options.get("next_cursor"):
-                return {"resources": items[:1], "next_cursor": "more" if items[1:] else None}
-            return {"resources": items[1:]}
-
-        out = StringIO()
-        code = 0
-        with mock.patch("cloudinary.uploader.upload") as upload, mock.patch(
-            "cloudinary.api.resources", side_effect=resources
-        ), mock.patch(
-            "cloudinary.api.resource", side_effect=AssertionError("per-file Admin API call")
-        ), mock.patch(
-            "requests.head", return_value=mock.Mock(status_code=head_status)
-        ):
-            try:
-                call_command("copy_media_to_cloudinary", *args, stdout=out)
-            except SystemExit as e:
-                code = int(e.code or 0)
-        return out.getvalue(), upload, code
-
-    def uploaded(self, upload: mock.MagicMock) -> list[str]:
-        return sorted(c.kwargs["public_id"] for c in upload.call_args_list)
-
-    def test_dry_run_uploads_nothing(self) -> None:
-        out, upload, _ = self.run_command("--dry-run")
-        upload.assert_not_called()
-        self.assertIn("team_logos", out)
-        self.assertIn("to copy", out)
-
-    def test_copies_only_what_rows_and_content_point_at(self) -> None:
-        _, upload, code = self.run_command()
-        self.assertEqual(0, code)
-        self.assertEqual(
-            [
-                "media/accreditation_certificates/a_PDF",
-                "media/contact-form-attachments/note.docx",
-                "media/team_logos/t_png",
-            ],
-            self.uploaded(upload),
-        )
-
-    def test_a_second_run_skips_what_is_already_there(self) -> None:
-        # Same id and byte size already on Cloudinary: skipped, even if the
-        # name's extension is upper case.
-        stored = {
-            "media/team_logos/t_png": len(b"logo"),
-            "media/accreditation_certificates/a_PDF": 6,
-        }
-        _, upload, code = self.run_command(on_cloudinary=stored)
-        self.assertEqual(["media/contact-form-attachments/note.docx"], self.uploaded(upload))
-        self.assertEqual(0, code)
-
-    def test_before_the_switch_a_different_file_there_is_replaced(self) -> None:
-        # The disk is the truth: a name freed and reused there since the last
-        # run holds someone else's file now.
-        _, upload, _ = self.run_command(on_cloudinary={"media/team_logos/t_png": 999})
-        self.assertIn("media/team_logos/t_png", self.uploaded(upload))
-
-    @override_settings(STORAGES=CLOUDINARY_STORAGES)
-    def test_after_the_switch_a_file_there_is_never_replaced(self) -> None:
-        # Cloudinary is the truth: a new upload can take a name that's still on
-        # the disk, and the disk's older file mustn't win.
-        _, upload, _ = self.run_command(on_cloudinary={"media/team_logos/t_png": 999})
-        self.assertNotIn("media/team_logos/t_png", self.uploaded(upload))
-        self.assertFalse(any(c.kwargs["overwrite"] for c in upload.call_args_list))
-
-    @mock.patch.object(shrink, "MAX_PIXELS", 100)
-    def test_an_image_over_the_limit_is_copied_shrunk_once(self) -> None:
-        self.write("team_logos/t.png", png(20, 20))
-        _, upload, _ = self.run_command()
-        with Image.open(upload.call_args_list[-1].args[0]) as image:
-            self.assertLessEqual(image.width * image.height, 100)
-        # Shrunk, it can't match the disk's size: the size it had there is
-        # kept with it instead.
-        disk = len(png(20, 20))
-        self.assertEqual({"disk_bytes": disk}, upload.call_args_list[-1].kwargs["context"])
-        shrunk = {"bytes": 1, "context": {"custom": {"disk_bytes": str(disk)}}}
-        _, upload, _ = self.run_command(on_cloudinary={"media/team_logos/t_png": shrunk})
-        self.assertNotIn("media/team_logos/t_png", self.uploaded(upload))
-        # Any other is someone else's file under a reused name.
-        other = {"bytes": 1, "context": {"custom": {"disk_bytes": str(disk + 1)}}}
-        _, upload, _ = self.run_command(on_cloudinary={"media/team_logos/t_png": other})
-        self.assertIn("media/team_logos/t_png", self.uploaded(upload))
-
-    def test_one_kept_in_another_format_is_copied_again(self) -> None:
-        # Copied before uploads were converted: a .png that's a JPEG answers
-        # 401 at its .png URL.
-        wrong = {"bytes": len(b"logo"), "format": "jpg"}
-        _, upload, _ = self.run_command(on_cloudinary={"media/team_logos/t_png": wrong})
-        call = next(
-            c for c in upload.call_args_list if c.kwargs["public_id"] == "media/team_logos/t_png"
-        )
-        self.assertEqual("png", call.kwargs["format"])
-
-    def test_a_skipped_file_that_wont_serve_still_counts_as_failed(self) -> None:
-        # Already there from an earlier run whose serve check failed.
-        out, upload, code = self.run_command(
-            on_cloudinary={"media/team_logos/t_png": len(b"logo")}, head_status=401
-        )
-        self.assertEqual(1, code)
-        self.assertIn("team_logos/t.png", out)
-
-    def test_names_differing_only_by_extension_are_both_copied(self) -> None:
-        self.write("team_logos/t.jpg", b"jpeg logo")
-        Team.objects.create(name="T2", image="team_logos/t.jpg")
-        _, upload, _ = self.run_command()
-        ids = self.uploaded(upload)
-        self.assertIn("media/team_logos/t_png", ids)
-        self.assertIn("media/team_logos/t_jpg", ids)
-
-    def test_expired_college_ids_are_left_out(self) -> None:
-        self.write("college_ids/old_f.jpg", b"f")
-        self.write("college_ids/old_b.jpg", b"b")
-        CollegeId.objects.create(
-            player=self.player,
-            expiry=today() - datetime.timedelta(days=31),
-            card_front="college_ids/old_f.jpg",
-            card_back="college_ids/old_b.jpg",
-        )
-        _, upload, _ = self.run_command()
-        self.assertFalse(any("college_ids" in i for i in self.uploaded(upload)))
-
-    def test_missing_files_are_listed(self) -> None:
-        Accreditation.objects.create(
-            player=Player.objects.create(
-                user=User.objects.create(username="q@x.com", email="q@x.com"),
-                date_of_birth="1995-01-01",
-            ),
-            date="2026-01-01",
-            level="STD",
-            is_valid=True,
-            certificate="accreditation_certificates/missing.pdf",
-        )
-        out, _, _ = self.run_command()
-        self.assertIn("Missing on disk", out)
-        self.assertIn("accreditation_certificates/missing.pdf", out)
-
-    def test_a_file_that_wont_serve_counts_as_failed(self) -> None:
-        out, _, code = self.run_command(head_status=401)
-        self.assertEqual(1, code)
-        self.assertIn("failed", out)
 
 
 @override_settings(CLOUDINARY_CLOUD_NAME="india-ultimate")
