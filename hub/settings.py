@@ -259,6 +259,8 @@ TOURNAMENT_AGENT_MAX_DAILY_TOKENS = int(
 CLOUDINARY_CLOUD_NAME = os.environ.get("CLOUDINARY_CLOUD_NAME", "india-ultimate")
 CLOUDINARY_API_KEY = os.environ.get("CLOUDINARY_API_KEY", "711243792862544")
 CLOUDINARY_API_SECRET = os.environ.get("CLOUDINARY_API_SECRET", "")
+# Staging shares the cloud, so it keeps its uploads under its own prefix.
+CLOUDINARY_MEDIA_PREFIX = os.environ.get("CLOUDINARY_MEDIA_PREFIX", "media/")
 
 # CKEditor settings
 CKEDITOR_UPLOAD_PATH = "ckeditor_uploads/"

@@ -22,8 +22,9 @@ ENV = [
     "RAZORPAY_KEY_SECRET",
     "RAZORPAY_WEBHOOK_SECRET",
     "PAYMENT_ACCOUNT_ENCRYPTION_KEY",
-    # Or the nightly jobs couldn't delete expired college IDs from Cloudinary.
     "CLOUDINARY_API_SECRET",
+    "CLOUDINARY_MEDIA_PREFIX",
+    "FLY_APP_NAME",
 ]
 
 
@@ -33,7 +34,8 @@ def main() -> None:
     with open(cron_dir / "env", "w") as f:
         for var in ENV:
             value = os.environ.get(var)
-            f.write(f"export {var}={value}\n")
+            if value is not None:
+                f.write(f"export {var}={value}\n")
         f.write("cd $HOME/app\n")
 
 

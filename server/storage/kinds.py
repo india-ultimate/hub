@@ -1,6 +1,6 @@
 """How a Django file name maps to a Cloudinary id, type and URL.
 
-The storage class, the copy command and the old-link redirect all use these,
+The storage class and the old-link redirect both use these,
 so a name always lands in, and is served from, the same place.
 """
 
@@ -9,7 +9,6 @@ from urllib.parse import quote
 
 from django.conf import settings
 
-PREFIX = "media/"
 # Stored as Cloudinary "image" (which also serves PDFs and SVGs); the rest raw.
 IMAGE_EXTENSIONS = frozenset(
     {"jpg", "jpeg", "png", "gif", "webp", "bmp", "tiff", "heic", "svg", "pdf"}
@@ -35,9 +34,9 @@ def public_id(name: str) -> str:
     differ only by extension, like back.jpg and back.jpeg, never share a file.
     Image extensions have no "_", so the mapping can't collide."""
     if resource_type(name) == "raw":
-        return PREFIX + name
+        return settings.CLOUDINARY_MEDIA_PREFIX + name
     stem, ext = _split(name)
-    return f"{PREFIX}{stem}_{ext}"
+    return f"{settings.CLOUDINARY_MEDIA_PREFIX}{stem}_{ext}"
 
 
 def url(name: str) -> str:

@@ -3,6 +3,7 @@
 import importlib.util
 import io
 import json
+import os
 import shutil
 import tempfile
 from pathlib import Path
@@ -74,6 +75,15 @@ class TestKinds(SimpleTestCase):
             with self.subTest(one=one):
                 self.assertNotEqual(kinds.public_id(one), kinds.public_id(other))
                 self.assertNotEqual(kinds.url(one), kinds.url(other))
+
+    @override_settings(CLOUDINARY_MEDIA_PREFIX="staging/media/")
+    def test_staging_files_live_apart_from_productions(self) -> None:
+        # Same cloud: a staging delete must never reach a production file.
+        self.assertEqual("staging/media/college_ids/a_jpg", kinds.public_id("college_ids/a.jpg"))
+        self.assertEqual(
+            f"{CLOUD}/raw/upload/staging/media/contact-form-attachments/x.docx",
+            kinds.url("contact-form-attachments/x.docx"),
+        )
 
     def test_a_college_id_that_isnt_an_image_isnt_resized(self) -> None:
         # Cloudinary refuses a transformation on a raw file.
@@ -269,8 +279,7 @@ class TestUploadsThroughTheApi(ApiBaseTestCase):
 
     @mock.patch("cloudinary.uploader.upload", return_value={"existing": False})
     def test_a_contact_attachment_link_points_at_cloudinary(self, _: mock.MagicMock) -> None:
-        # Built from the storage's URL, not MEDIA_URL: /media/ on the machine
-        # wouldn't have the file once uploads go to Cloudinary.
+        # Built from the storage's URL, not MEDIA_URL, which nothing serves.
         self.client.force_login(self.user)
         form = json.dumps({"subject": "Help", "description": "See attached"})
         attachment = SimpleUploadedFile("note.pdf", b"%PDF", content_type="application/pdf")
@@ -308,11 +317,22 @@ class TestCronEnv(SimpleTestCase):
         spec.loader.exec_module(module)
         root = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, root)
-        env = {"CLOUDINARY_API_SECRET": "s3cret"}
+        env = {
+            "CLOUDINARY_API_SECRET": "s3cret",
+            "CLOUDINARY_MEDIA_PREFIX": "staging/media/",
+            "FLY_APP_NAME": "upai-hub",
+        }
         with mock.patch.object(module, "ROOT", root), mock.patch.dict("os.environ", env):
+            os.environ.pop("TOPSCORE_PASSWORD", None)
             module.main()
         written = (root / "cron/env").read_text()
         self.assertIn("export CLOUDINARY_API_SECRET=s3cret", written)
+        # Or staging's nightly deletes would reach production's files.
+        self.assertIn("export CLOUDINARY_MEDIA_PREFIX=staging/media/", written)
+        # Or cron would run on SQLite, not refuse, when DATABASE_URL is missing.
+        self.assertIn("export FLY_APP_NAME=upai-hub", written)
+        # Unset stays unset: an exported "None" would become the id prefix.
+        self.assertNotIn("TOPSCORE_PASSWORD", written)
 
 
 @override_settings(CLOUDINARY_CLOUD_NAME="india-ultimate")
