@@ -20,6 +20,7 @@ swap_size_mb = 512
 [env]
   DJANGO_SETTINGS_MODULE = "hub.production"
   PORT = "8000"
+  CLOUDINARY_MEDIA_PREFIX = "staging/media/"
 
 [[services]]
   protocol = "tcp"
