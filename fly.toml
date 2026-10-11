@@ -33,8 +33,7 @@ kill_timeout = "30s"
   GUNICORN_WORKERS = "2"
   GUNICORN_THREADS = "8"
 
-# Scale out, not up: five machines of this size (`fly scale count app=5`), which
-# the proxy starts and suspends as needed. Each holds up to 16 DB connections.
+# Scale out, not up: deploy.yml keeps three of these.
 [[vm]]
   processes = ["app"]
   cpu_kind = "shared"
