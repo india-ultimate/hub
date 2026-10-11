@@ -1,4 +1,4 @@
-"""Where a tournament's card on /tournaments takes you."""
+"""A tournament's card on /tournaments: where it takes you, and its badge."""
 
 import datetime
 from contextlib import ExitStack
@@ -56,6 +56,20 @@ class TestTournamentLinksIntegration(BaseCase):
         event = open_event(title="Nationals", type="MXD")
         tournament = Tournament.objects.create(event=event, status=Tournament.Status.LIVE)
         self.assertEqual(f"/tournament/{event.slug}", self.card_link(tournament))
+
+    def test_a_live_tournament_that_hasnt_started_says_upcoming(self) -> None:
+        # Live means its schedule is out; the badge said "Live" weeks ahead.
+        event = open_event(title="Nationals", type="OPN")  # starts in 20 days
+        tournament = Tournament.objects.create(event=event, status=Tournament.Status.LIVE)
+        self.assert_text("Upcoming", self.card(tournament))
+
+    def test_one_that_has_started_says_live(self) -> None:
+        day = today()
+        event = open_event(title="Nationals", type="OPN", start_date=day, end_date=day)
+        tournament = Tournament.objects.create(event=event, status=Tournament.Status.LIVE)
+        card = self.card(tournament)
+        self.assert_text("Live", card)
+        self.assert_text_not_visible("Upcoming", card)
 
     def test_a_draft_on_the_home_page_is_not_sent_to_registration(self) -> None:
         # The home page lists drafts too; their registration isn't published.

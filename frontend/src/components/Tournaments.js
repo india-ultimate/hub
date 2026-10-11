@@ -171,12 +171,13 @@ const Tournaments = () => {
                     <span
                       class={clsx(
                         "h-fit rounded px-2.5 py-0.5 text-sm font-medium",
-                        new Date(Date.now()) < Date.parse(tournament.start_date)
+                        todayIST() <
+                          parseLocalDate(tournament.event?.start_date)
                           ? "bg-blue-200 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
                           : "bg-red-200 text-red-800 dark:bg-red-900 dark:text-red-300"
                       )}
                     >
-                      {new Date(Date.now()) < Date.parse(tournament.start_date)
+                      {todayIST() < parseLocalDate(tournament.event?.start_date)
                         ? "Upcoming"
                         : "Live"}
                     </span>
