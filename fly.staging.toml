@@ -47,6 +47,5 @@ swap_size_mb = 512
     method = "GET"
     path = "/api/health"
     [services.http_checks.headers]
-      X-Forwarded-Proto = "https"
-      # Fly sends the machine's IP, which nginx and ALLOWED_HOSTS refuse.
+      # Fly sends the machine's IP, which Debian's default nginx site would answer.
       Host = "upai-hub-staging.fly.dev"

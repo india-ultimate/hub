@@ -1,9 +1,4 @@
-from pathlib import Path
-
-import tomllib
 from django.test import Client, TestCase, override_settings
-
-ROOT = Path(__file__).parents[2]
 
 
 class TestHealth(TestCase):
@@ -15,9 +10,8 @@ class TestHealth(TestCase):
         self.assertEqual({"status": "ok"}, response.json())
 
     @override_settings(SECURE_SSL_REDIRECT=True)
-    def test_health_answers_fly_s_check(self) -> None:
-        # As Fly sends it: gunicorn turns X-Forwarded-Proto from nginx into https.
-        with (ROOT / "fly.toml").open("rb") as f:
-            (check,) = tomllib.load(f)["services"][0]["http_checks"]
-        response = Client().get(check["path"], HTTP_HOST=check["headers"]["Host"], secure=True)
+    def test_health_answers_start_sh_s_readiness_check(self) -> None:
+        # curl to 127.0.0.1:8000 with X-Forwarded-Proto: https, which gunicorn
+        # trusts from 127.0.0.1 and turns into an https request.
+        response = Client().get("/api/health", HTTP_HOST="127.0.0.1", secure=True)
         self.assertEqual(200, response.status_code)
