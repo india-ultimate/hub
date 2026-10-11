@@ -68,7 +68,7 @@ swap_size_mb = 512
     hard_limit = 32
     soft_limit = 12
 
-  # Through nginx to gunicorn, so a machine still starting gets no traffic.
+  # Answered by nginx, which start.sh starts only once gunicorn answers.
   [[services.http_checks]]
     interval = "15s"
     timeout = "2s"
@@ -76,6 +76,11 @@ swap_size_mb = 512
     method = "GET"
     path = "/api/health"
     [services.http_checks.headers]
-      X-Forwarded-Proto = "https"
-      # Fly sends the machine's IP, which nginx and ALLOWED_HOSTS refuse.
+      # Fly sends the machine's IP, which Debian's default nginx site would answer.
       Host = "hub.indiaultimate.org"
+
+# Fly's default gives up after 10 failures, e.g. through a long Postgres
+# outage, and then no emails go out and no nightly jobs run.
+[[restart]]
+  policy = "always"
+  processes = ["worker"]

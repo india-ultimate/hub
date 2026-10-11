@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Any
 
 import tomllib
-from django.conf import settings
 from django.test import SimpleTestCase
 
 ROOT = Path(__file__).parents[2]
@@ -52,12 +51,28 @@ class TestFlyConfig(SimpleTestCase):
                 self.assertNotIn("tcp_checks", service)
                 (check,) = service["http_checks"]
                 self.assertEqual("/api/health", check["path"])
-                # Or SECURE_SSL_REDIRECT answers Fly's plain-HTTP check with a 301.
-                self.assertEqual("https", check["headers"]["X-Forwarded-Proto"])
-                # Fly sends the machine's IP: nginx and ALLOWED_HOSTS would refuse it.
-                host = check["headers"]["Host"]
-                self.assertIn(host, server_names)
-                self.assertIn(host, settings.ALLOWED_HOSTS)
+                # Fly sends the machine's IP, which Debian's default site would answer.
+                self.assertIn(check["headers"]["Host"], server_names)
+
+    def test_nginx_answers_the_health_check_itself(self) -> None:
+        # Or the check waits behind gunicorn's busy threads, and a busy machine
+        # is taken out of rotation just when it's needed.
+        nginx = (ROOT / "deploy/nginx.conf").read_text()
+        self.assertRegex(nginx, r"location = /api/health \{[^}]*return 200")
+
+    def test_the_worker_always_restarts(self) -> None:
+        # Fly's default gives up after 10 failures, e.g. a long Postgres outage,
+        # and then no emails go out and no nightly jobs run.
+        restarts = {tuple(r["processes"]): r["policy"] for r in load("fly.toml")["restart"]}
+        self.assertEqual({("worker",): "always"}, restarts)
+
+    def test_ci_tests_on_the_python_the_image_runs(self) -> None:
+        image = re.search(r"^FROM python:(\S+)", (ROOT / "Dockerfile").read_text(), re.M)
+        if image is None:
+            self.fail("Dockerfile has no FROM python:<version>")
+        workflow = (ROOT / ".github/workflows/test.yml").read_text()
+        versions = set(re.findall(r'python-version: "([^"]+)"', workflow))
+        self.assertEqual({image.group(1)}, versions)
 
 
 class TestAppStart(SimpleTestCase):
@@ -66,23 +81,36 @@ class TestAppStart(SimpleTestCase):
         folder = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, folder)
         log = folder / "log"
-        for command in ("sudo", "python", "gunicorn"):
+        stubs = {
+            "sudo": 'echo "sudo $*" >> "$LOG"',
+            "python": 'echo "python $*" >> "$LOG"',
+            # Answers only once gunicorn is up, as the real one would.
+            "curl": 'grep -q "^gunicorn" "$LOG" || exit 7\necho "curl $*" >> "$LOG"',
+            # Runs until nginx is started, so the script's waiting is exercised.
+            "gunicorn": (
+                'echo "gunicorn $*" >> "$LOG"\n'
+                'for i in $(seq 100); do grep -q "^sudo nginx" "$LOG" && exit 0; sleep 0.1; done\n'
+                "exit 1"
+            ),
+        }
+        for command, body in stubs.items():
             stub = folder / command
-            stub.write_text(f'#!/bin/sh\necho "{command} $*" >> "$LOG"\n')
+            stub.write_text(f"#!/bin/sh\n{body}\n")
             stub.chmod(0o755)
         subprocess.run(
             ["/bin/bash", str(ROOT / "deploy/start.sh")],  # noqa: S603
             env={"PATH": f"{folder}:/usr/bin:/bin", "HOME": str(folder), "LOG": str(log), **env},
             check=True,
         )
-        # gunicorn's flags aren't the point here.
+        # gunicorn's and curl's flags aren't the point here.
         lines = log.read_text().splitlines()
-        return ["gunicorn" if line.startswith("gunicorn ") else line for line in lines]
+        flagged = ("gunicorn ", "curl ")
+        return [line.split(" ")[0] if line.startswith(flagged) else line for line in lines]
 
-    def test_nginx_takes_traffic_only_once_django_has_loaded(self) -> None:
+    def test_nginx_takes_traffic_only_once_gunicorn_answers(self) -> None:
         # A machine the proxy just started would otherwise answer 502 meanwhile.
         self.assertEqual(
-            ["python manage.py check --deploy", "sudo nginx", "gunicorn"],
+            ["python manage.py check --deploy", "gunicorn", "curl", "sudo nginx"],
             self.start(DATABASE_URL="postgres://u:p@h:5432/db"),
         )
 
@@ -91,8 +119,9 @@ class TestAppStart(SimpleTestCase):
             [
                 "python manage.py migrate",
                 "python manage.py check --deploy",
-                "sudo nginx",
                 "gunicorn",
+                "curl",
+                "sudo nginx",
             ],
             self.start(),
         )
