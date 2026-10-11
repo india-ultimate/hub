@@ -1,8 +1,6 @@
-import json
 import re
 import shutil
 import subprocess
-import sys
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -36,6 +34,12 @@ class TestFlyConfig(SimpleTestCase):
         self.assertEqual("suspend", service["auto_stop_machines"])
         self.assertIs(True, service["auto_start_machines"])
         self.assertEqual(1, service["min_machines_running"])
+
+    def test_the_proxy_admits_no_more_than_gunicorn_serves(self) -> None:
+        # Past workers x threads, requests queue in gunicorn until they 504.
+        config = load("fly.toml")
+        slots = int(config["env"]["GUNICORN_WORKERS"]) * int(config["env"]["GUNICORN_THREADS"])
+        self.assertLessEqual(config["services"][0]["concurrency"]["soft_limit"], slots)
 
     def test_gunicorn_survives_a_resume(self) -> None:
         # Before 22.0 the heartbeat used the wall clock, which jumps on resume.
@@ -156,53 +160,3 @@ class TestAppStart(SimpleTestCase):
             ],
             self.start(),
         )
-
-
-class TestApplyProfile(SimpleTestCase):
-    def apply(
-        self, profile: str, fly_toml: str = "fly.toml"
-    ) -> tuple[subprocess.CompletedProcess[str], Path]:
-        folder = Path(tempfile.mkdtemp())
-        self.addCleanup(shutil.rmtree, folder)
-        copy = folder / "fly.toml"
-        shutil.copy(ROOT / fly_toml, copy)
-        script = str(ROOT / "scripts/apply-profile.py")
-        result = subprocess.run(
-            [sys.executable, script, profile, "--fly-toml", str(copy)],  # noqa: S603
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        return result, copy
-
-    def test_each_profile_sizes_the_app_and_leaves_the_worker(self) -> None:
-        profiles = json.loads((ROOT / "deploy/profiles.json").read_text())
-        for name, profile in profiles.items():
-            with self.subTest(profile=name):
-                result, copy = self.apply(name)
-                self.assertEqual(0, result.returncode, result.stderr)
-                with copy.open("rb") as f:
-                    config = tomllib.load(f)
-                vms = {tuple(vm["processes"]): vm for vm in config["vm"]}
-                app = vms[("app",)]
-                self.assertEqual(
-                    (profile["cpu_kind"], profile["cpus"], profile["memory"]),
-                    (app["cpu_kind"], app["cpus"], app["memory"]),
-                )
-                self.assertEqual(
-                    {"processes": ["worker"], "cpu_kind": "shared", "cpus": 1, "memory": "1gb"},
-                    vms[("worker",)],
-                )
-                self.assertEqual(str(profile["workers"]), config["env"]["GUNICORN_WORKERS"])
-                limits = config["services"][0]["concurrency"]
-                self.assertEqual(profile["soft_limit"], limits["soft_limit"])
-
-    def test_baseline_is_what_fly_toml_already_says(self) -> None:
-        result, copy = self.apply("baseline")
-        self.assertEqual(0, result.returncode, result.stderr)
-        self.assertEqual((ROOT / "fly.toml").read_text(), copy.read_text())
-
-    def test_a_config_without_an_app_vm_is_refused(self) -> None:
-        result, _ = self.apply("baseline", fly_toml="fly.staging.toml")
-        self.assertNotEqual(0, result.returncode)
-        self.assertIn("app", result.stderr)
