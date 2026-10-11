@@ -29,10 +29,11 @@ class TestFlyConfig(SimpleTestCase):
         self.assertEqual(("shared", 2, "1gb"), tuple(vms[("app",)][k] for k in size))
         self.assertEqual(("shared", 1, "1gb"), tuple(vms[("worker",)][k] for k in size))
 
-    def test_only_app_machines_serve_and_stop_when_idle(self) -> None:
+    def test_only_app_machines_serve_and_suspend_when_idle(self) -> None:
         (service,) = load("fly.toml")["services"]
         self.assertEqual(["app"], service["processes"])
-        self.assertEqual("stop", service["auto_stop_machines"])
+        # Resumes in under a second; a stopped machine boots Django again.
+        self.assertEqual("suspend", service["auto_stop_machines"])
         self.assertIs(True, service["auto_start_machines"])
         self.assertEqual(1, service["min_machines_running"])
 
@@ -42,6 +43,10 @@ class TestFlyConfig(SimpleTestCase):
         if pin is None:
             self.fail("requirements.txt doesn't pin gunicorn")
         self.assertGreaterEqual(int(pin.group(1)), 22)
+
+    def test_no_swap_so_machines_can_suspend(self) -> None:
+        # Fly can't suspend a machine with swap; it would fall back to a full stop.
+        self.assertNotIn("swap_size_mb", load("fly.toml"))
 
     def test_production_migrates_on_release(self) -> None:
         self.assertEqual("python manage.py migrate", load("fly.toml")["deploy"]["release_command"])
