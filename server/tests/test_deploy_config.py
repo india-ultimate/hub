@@ -76,20 +76,23 @@ class TestFlyConfig(SimpleTestCase):
 
 
 class TestAppStart(SimpleTestCase):
-    def start(self, **env: str) -> list[str]:
-        """What deploy/start.sh runs, in order, with sudo, python and gunicorn stubbed."""
+    def start(self, sudo: str = "", **env: str) -> list[str]:
+        """What deploy/start.sh runs, in order, with sudo, python and gunicorn stubbed.
+
+        `sudo` is extra shell run first in the sudo stub, e.g. to fail a command.
+        """
         folder = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, folder)
         log = folder / "log"
         stubs = {
-            "sudo": 'echo "sudo $*" >> "$LOG"',
+            "sudo": f'{sudo}\necho "sudo $*" >> "$LOG"',
             "python": 'echo "python $*" >> "$LOG"',
             # Answers only once gunicorn is up, as the real one would.
             "curl": 'grep -q "^gunicorn" "$LOG" || exit 7\necho "curl $*" >> "$LOG"',
             # Runs until nginx is started, so the script's waiting is exercised.
             "gunicorn": (
                 'echo "gunicorn $*" >> "$LOG"\n'
-                'for i in $(seq 100); do grep -q "^sudo nginx" "$LOG" && exit 0; sleep 0.1; done\n'
+                'for i in $(seq 100); do grep -qx "sudo nginx" "$LOG" && exit 0; sleep 0.1; done\n'
                 "exit 1"
             ),
         }
@@ -97,11 +100,11 @@ class TestAppStart(SimpleTestCase):
             stub = folder / command
             stub.write_text(f"#!/bin/sh\n{body}\n")
             stub.chmod(0o755)
-        subprocess.run(
+        self.exit_code = subprocess.run(
             ["/bin/bash", str(ROOT / "deploy/start.sh")],  # noqa: S603
             env={"PATH": f"{folder}:/usr/bin:/bin", "HOME": str(folder), "LOG": str(log), **env},
-            check=True,
-        )
+            check=False,
+        ).returncode
         # gunicorn's and curl's flags aren't the point here.
         lines = log.read_text().splitlines()
         flagged = ("gunicorn ", "curl ")
@@ -110,15 +113,31 @@ class TestAppStart(SimpleTestCase):
     def test_nginx_takes_traffic_only_once_gunicorn_answers(self) -> None:
         # A machine the proxy just started would otherwise answer 502 meanwhile.
         self.assertEqual(
-            ["python manage.py check --deploy", "gunicorn", "curl", "sudo nginx"],
+            [
+                "python manage.py check --deploy",
+                "sudo nginx -t",
+                "gunicorn",
+                "curl",
+                "sudo nginx",
+            ],
             self.start(DATABASE_URL="postgres://u:p@h:5432/db"),
         )
+        self.assertEqual(0, self.exit_code)
+
+    def test_a_bad_nginx_config_fails_the_boot(self) -> None:
+        # A non-zero exit restarts the machine; gunicorn stopped later exits 0
+        # and leaves it stopped.
+        fail_check = '[ "$*" = "nginx -t" ] && exit 1'
+        lines = self.start(sudo=fail_check, DATABASE_URL="postgres://u:p@h:5432/db")
+        self.assertEqual(["python manage.py check --deploy"], lines)
+        self.assertNotEqual(0, self.exit_code)
 
     def test_a_machine_with_its_own_sqlite_migrates_at_boot(self) -> None:
         self.assertEqual(
             [
                 "python manage.py migrate",
                 "python manage.py check --deploy",
+                "sudo nginx -t",
                 "gunicorn",
                 "curl",
                 "sudo nginx",

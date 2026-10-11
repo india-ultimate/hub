@@ -13,9 +13,13 @@ fi
 # Ensure no security check errors
 python manage.py check --deploy
 
+# A bad config fails the boot here, which restarts the machine; found only
+# after gunicorn is up, it would leave the machine stopped instead.
+sudo nginx -t
+
 # Take traffic only once gunicorn answers: until then nginx would answer 502,
-# and Fly's check (answered by nginx) would already pass. If nginx won't
-# start, stop gunicorn ($$, after the exec below) so the machine restarts.
+# and Fly's check (answered by nginx) would already pass. If nginx still
+# won't start, stop gunicorn ($$, after the exec below).
 (
   until curl -sf -o /dev/null --max-time 30 -H "X-Forwarded-Proto: https" \
     http://127.0.0.1:8000/api/health; do
