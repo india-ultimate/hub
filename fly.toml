@@ -77,3 +77,5 @@ swap_size_mb = 512
     path = "/api/health"
     [services.http_checks.headers]
       X-Forwarded-Proto = "https"
+      # Fly sends the machine's IP, which nginx and ALLOWED_HOSTS refuse.
+      Host = "hub.indiaultimate.org"
