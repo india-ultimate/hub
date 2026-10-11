@@ -25,6 +25,7 @@ from server.admin_views import (
     refund_order_view,
     refund_subscription_view,
 )
+from server.storage.ckeditor import upload as ckeditor_upload
 from server.storage.views import old_media_link
 
 _admin_urls = admin.site.get_urls()
@@ -59,6 +60,7 @@ urlpatterns = [
     path("media/<path:name>", old_media_link),
     path("", include("server.urls")),
     path("", include("django_prometheus.urls")),
+    path("ckeditor/upload/", ckeditor_upload),
     path("ckeditor/", include("ckeditor_uploader.urls")),
     path("admin/", admin.site.urls),
     *static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT),
