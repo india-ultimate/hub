@@ -56,8 +56,6 @@ class RegistrationPageCase(BaseCase):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
-        # Series invites are emailed with a signed link; the server needs a key.
-        os.environ.setdefault("EMAIL_SECRET_KEY", "test-invite-key")
         cls.servers = ExitStack()
         cls.servers.enter_context(running_test_server())
 
