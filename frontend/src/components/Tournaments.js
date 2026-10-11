@@ -4,7 +4,7 @@ import clsx from "clsx";
 import { createSignal, For, Match, Show, Switch } from "solid-js";
 
 import { fetchTournaments } from "../queries";
-import { parseLocalDate, todayIST } from "../utils";
+import { parseLocalDate, todayIST, tournamentLink } from "../utils";
 
 const Tournaments = () => {
   const tournamentsQuery = createQuery(() => ["tournaments"], fetchTournaments);
@@ -94,7 +94,7 @@ const Tournaments = () => {
           {tournament => (
             <Show when={tournament.status !== "DFT"}>
               <A
-                href={`/tournament/${tournament.event?.slug}`}
+                href={tournamentLink(tournament)}
                 class="block w-full rounded-lg border border-blue-600 bg-white p-4 shadow dark:border-blue-400 dark:bg-gray-800"
               >
                 <Show when={tournament.event?.type}>
