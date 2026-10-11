@@ -2,13 +2,19 @@
 
 set -euo pipefail
 
-sudo nginx
-
-# Migrations run once per release (fly.toml release_command); cron and the
-# task queue run on the worker machine (deploy/start-worker.sh).
+# Migrations run once per release (fly.toml release_command), except where
+# the database is a SQLite file in this machine (staging): the release
+# machine's copy would be thrown away. Cron and the task queue run on the
+# worker machine (deploy/start-worker.sh).
+if [ -z "${DATABASE_URL:-}" ]; then
+  python manage.py migrate
+fi
 
 # Ensure no security check errors
 python manage.py check --deploy
+
+# Only now take traffic: until Django has loaded, nginx would answer 502.
+sudo nginx
 
 # Start the server using gunicorn
 export PATH="$HOME/.local/bin:$PATH"

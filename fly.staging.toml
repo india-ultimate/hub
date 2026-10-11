@@ -17,9 +17,6 @@ swap_size_mb = 512
   [build.args]
     DJANGO_SETTINGS_MODULE = "hub.production"
 
-[deploy]
-  release_command = "python manage.py migrate"
-
 [env]
   DJANGO_SETTINGS_MODULE = "hub.production"
   PORT = "8000"
@@ -51,3 +48,5 @@ swap_size_mb = 512
     path = "/api/health"
     [services.http_checks.headers]
       X-Forwarded-Proto = "https"
+      # Fly sends the machine's IP, which nginx and ALLOWED_HOSTS refuse.
+      Host = "upai-hub-staging.fly.dev"
