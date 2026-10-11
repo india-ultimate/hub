@@ -10,6 +10,7 @@ import time
 from typing import Any
 
 from django.core.management.base import BaseCommand, CommandParser
+from django.db import close_old_connections
 from django.utils import timezone
 
 from server.task.manager import TaskManager
@@ -34,6 +35,8 @@ class Command(BaseCommand):
 
         try:
             while True:
+                # Applies CONN_MAX_AGE and CONN_HEALTH_CHECKS, as a request would.
+                close_old_connections()
                 task = TaskManager.get_next_task()
 
                 if not task:
