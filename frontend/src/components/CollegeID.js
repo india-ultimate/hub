@@ -6,6 +6,7 @@ import { createEffect, createSignal, Show } from "solid-js";
 
 import { Spinner } from "../icons";
 import { useStore } from "../store";
+import { withinUploadLimits } from "../uploads";
 import { getCookie, getPlayer } from "../utils";
 import Breadcrumbs from "./Breadcrumbs";
 import CollegeIDInformation from "./CollegeIDInformation";
@@ -116,9 +117,12 @@ const CollegeID = () => {
                 <Field
                   name="card_front"
                   type="File"
-                  validate={required(
-                    "Please upload your College ID Card's Front Side."
-                  )}
+                  validate={[
+                    required(
+                      "Please upload your College ID Card's Front Side."
+                    ),
+                    withinUploadLimits
+                  ]}
                 >
                   {(field, props) => (
                     <FileInput
@@ -135,9 +139,10 @@ const CollegeID = () => {
                 <Field
                   name="card_back"
                   type="File"
-                  validate={required(
-                    "Please upload your College ID Card's Back Side."
-                  )}
+                  validate={[
+                    required("Please upload your College ID Card's Back Side."),
+                    withinUploadLimits
+                  ]}
                 >
                   {(field, props) => (
                     <FileInput

@@ -119,6 +119,18 @@ class TestFlyConfig(SimpleTestCase):
         (step,) = gate["steps"]
         self.assertIn("needs.integration-tests.result", step["run"])
 
+    def test_nginx_takes_a_form_with_two_full_size_files(self) -> None:
+        # The college ID and tournament forms send two files, each up to the
+        # 10 MB the browser allows; one request over the limit is a bare 413.
+        nginx = (ROOT / "deploy/nginx.conf").read_text()
+        block = re.search(r"location ~ \^/\(api\|admin\|ckeditor\|media\)/ \{[^}]*\}", nginx)
+        if block is None:
+            self.fail("no location for the API in nginx.conf")
+        limit = re.search(r"client_max_body_size (\d+)M;", block.group(0))
+        if limit is None:
+            self.fail("the API location sets no client_max_body_size")
+        self.assertGreaterEqual(int(limit.group(1)), 2 * 10 + 1)
+
     def test_ci_tests_on_the_python_the_image_runs(self) -> None:
         image = re.search(r"^FROM python:(\S+)", (ROOT / "Dockerfile").read_text(), re.M)
         if image is None:

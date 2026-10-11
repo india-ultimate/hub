@@ -6,6 +6,7 @@ import {
 import { createSignal, For, Show } from "solid-js";
 
 import { fetchEligibleVoters, importEligibleVoters } from "../../queries";
+import { uploadError } from "../../uploads";
 import Error from "../alerts/Error";
 import Info from "../alerts/Info";
 
@@ -40,11 +41,12 @@ const EligibleVotersManager = props => {
     }
   });
 
-  const handleFileChange = e => {
+  const handleFileChange = async e => {
     const selectedFile = e.target.files[0];
     if (selectedFile && selectedFile.type === "text/csv") {
-      setFile(selectedFile);
-      setError("");
+      const tooBig = await uploadError(selectedFile);
+      setFile(tooBig ? null : selectedFile);
+      setError(tooBig);
     } else {
       setError("Please select a valid CSV file");
       setFile(null);

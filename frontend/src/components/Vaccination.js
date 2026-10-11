@@ -7,6 +7,7 @@ import { createEffect, createSignal, Match, Show, Switch } from "solid-js";
 
 import { vaccinationChoices } from "../constants";
 import { useStore } from "../store";
+import { withinUploadLimits } from "../uploads";
 import { getCookie, getPlayer } from "../utils";
 import Breadcrumbs from "./Breadcrumbs";
 import Checkbox from "./Checkbox";
@@ -150,9 +151,10 @@ const Vaccination = () => {
                     <Field
                       name="certificate"
                       type="File"
-                      validate={required(
-                        "Please add your vaccination certificate."
-                      )}
+                      validate={[
+                        required("Please add your vaccination certificate."),
+                        withinUploadLimits
+                      ]}
                     >
                       {(field, props) => (
                         <FileInput

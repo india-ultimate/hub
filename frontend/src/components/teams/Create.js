@@ -6,6 +6,7 @@ import { createSignal, Show } from "solid-js";
 
 import { stateChoices, teamCategoryChoices } from "../../constants";
 import { createTeam } from "../../queries";
+import { withinUploadLimits } from "../../uploads";
 import Breadcrumbs from "../Breadcrumbs";
 import FileInput from "../FileInput";
 import DefaultSelect from "../Select";
@@ -117,7 +118,10 @@ const Create = () => {
         <Field
           name="image"
           type="File"
-          validate={required("Please add your team's logo.")}
+          validate={[
+            required("Please add your team's logo."),
+            withinUploadLimits
+          ]}
         >
           {(field, props) => (
             <FileInput

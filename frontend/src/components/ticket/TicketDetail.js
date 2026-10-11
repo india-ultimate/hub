@@ -27,6 +27,7 @@ import {
   StatusBadge,
   STATUSES
 } from "../../tickets";
+import { MAX_CLOUDINARY_PIXELS, uploadError } from "../../uploads";
 import ErrorAlert from "../alerts/Error";
 import Breadcrumbs from "../Breadcrumbs";
 import FileInput from "../FileInput";
@@ -72,6 +73,16 @@ const TicketDetail = () => {
   const queryClient = useQueryClient();
   const [reply, setReply] = createSignal("");
   const [attachment, setAttachment] = createSignal(null);
+  const [attachmentError, setAttachmentError] = createSignal("");
+  // Attachments go to Cloudinary as they are, so its own photo limit applies.
+  let latestPick;
+  const chooseAttachment = async file => {
+    latestPick = file;
+    const error = await uploadError(file, MAX_CLOUDINARY_PIXELS);
+    if (file !== latestPick) return; // a newer pick has taken over
+    setAttachmentError(error);
+    setAttachment(error ? null : file);
+  };
   const [replyError, setReplyError] = createSignal("");
   const [updateError, setUpdateError] = createSignal("");
 
@@ -492,8 +503,9 @@ const TicketDetail = () => {
                       label="Attachment (optional)"
                       accept="image/*,application/pdf"
                       value={attachment()}
-                      onInput={e => setAttachment(e.target.files[0])}
-                      subLabel="Images or PDF, up to 20MB"
+                      onInput={e => chooseAttachment(e.target.files[0])}
+                      error={attachmentError()}
+                      subLabel="Images or PDF, up to 10 MB"
                     />
                     <Show when={attachment()}>
                       <div class="mt-2 flex items-center gap-2 text-sm text-gray-900 dark:text-white">
