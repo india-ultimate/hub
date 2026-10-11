@@ -14,6 +14,9 @@ EMAIL_INVITATION_BASE_URL = "https://hub.indiaultimate.org"
 
 if os.environ.get("DATABASE_URL"):
     DATABASES["default"] = dj_database_url.config()  # type: ignore[assignment]  # noqa: F405
+    # Reused for a minute, and checked first, rather than a new one per request.
+    DATABASES["default"]["CONN_MAX_AGE"] = 60  # noqa: F405
+    DATABASES["default"]["CONN_HEALTH_CHECKS"] = True  # noqa: F405
 elif os.environ.get("FLY_APP_NAME") == "upai-hub":
     # Or it would run on a SQLite file that the next deploy throws away.
     raise ImproperlyConfigured("DATABASE_URL is not set")
