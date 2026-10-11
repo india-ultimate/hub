@@ -37,11 +37,24 @@ def _replace_once(text: str, key: str, value: str, *, quoted: bool) -> str:
     return new_text
 
 
+def _app_vm_span(text: str) -> tuple[int, int]:
+    """Where the [[vm]] block that sizes the app machines starts and ends.
+
+    The worker has its own [[vm]], which a profile must never touch.
+    """
+    for match in re.finditer(r"^\[\[vm\]\][ \t]*\n", text, flags=re.MULTILINE):
+        rest = re.search(r"^\[", text[match.end() :], flags=re.MULTILINE)
+        end = match.end() + rest.start() if rest else len(text)
+        if re.search(r'^[ \t]*processes[ \t]*=[ \t]*\["app"\]', text[match.start() : end], re.M):
+            return match.start(), end
+    sys.exit('error: no [[vm]] with processes = ["app"] in fly.toml')
+
+
 def _verify(path: Path, profile: dict[str, Any]) -> None:
     with path.open("rb") as handle:
         data = tomllib.load(handle)
 
-    vm = data["vm"][0]
+    vm = next(vm for vm in data["vm"] if vm.get("processes") == ["app"])
     concurrency = data["services"][0]["concurrency"]
     env = data["env"]
     actual = {
@@ -79,10 +92,12 @@ def main() -> None:
     profile = profiles[args.profile]
 
     text = args.fly_toml.read_text()
+    start, end = _app_vm_span(text)
+    vm_block = text[start:end]
+    for key in ("cpu_kind", "cpus", "memory"):
+        vm_block = _replace_once(vm_block, key, str(profile[key]), quoted=key != "cpus")
+    text = text[:start] + vm_block + text[end:]
     for key, toml_key, quoted in (
-        ("cpu_kind", "cpu_kind", True),
-        ("cpus", "cpus", False),
-        ("memory", "memory", True),
         ("workers", "GUNICORN_WORKERS", True),
         ("threads", "GUNICORN_THREADS", True),
         ("soft_limit", "soft_limit", False),

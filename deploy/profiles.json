@@ -1,13 +1,13 @@
 {
   "baseline": {
-    "description": "Everyday traffic. Shared CPU, bursts to 4 cores for spikes.",
+    "description": "Everyday traffic. Up to three shared-CPU app machines; the proxy starts the extra two when busy.",
     "cpu_kind": "shared",
-    "cpus": 4,
-    "memory": "2gb",
-    "workers": 4,
-    "threads": 6,
-    "soft_limit": 24,
-    "hard_limit": 48
+    "cpus": 2,
+    "memory": "1gb",
+    "workers": 2,
+    "threads": 8,
+    "soft_limit": 12,
+    "hard_limit": 32
   },
   "tournament": {
     "description": "Tournament days. Dedicated CPU, so the burst balance cannot run out.",
