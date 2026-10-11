@@ -432,6 +432,27 @@ export const isTeamRegistrationOpen = event =>
     )
   );
 
+// Players can still sign up (late window included).
+export const isPlayerRegistrationOpen = event =>
+  Boolean(event?.player_registration_start_date) &&
+  ifTodayInBetweenDates(
+    event.player_registration_start_date,
+    latestDate(
+      event.player_late_penalty_end_date,
+      event.player_registration_end_date
+    )
+  );
+
+// Registration while a scheduled tournament is signing up; its page otherwise.
+export const tournamentLink = tournament => {
+  const slug = tournament.event?.slug;
+  const registering =
+    tournament.status === "SCH" &&
+    (isTeamRegistrationOpen(tournament.event) ||
+      isPlayerRegistrationOpen(tournament.event));
+  return registering ? `/tournament/${slug}/register` : `/tournament/${slug}`;
+};
+
 export const calculateLatePenalty = (
   regEndDate,
   penaltyPerDay,

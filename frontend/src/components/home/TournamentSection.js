@@ -4,7 +4,7 @@ import { createEffect, createSignal, For, Show } from "solid-js";
 
 import { ChevronRight } from "../../icons";
 import { fetchTournaments } from "../../queries";
-import { isTeamRegistrationOpen, parseLocalDate, todayIST } from "../../utils";
+import { parseLocalDate, todayIST, tournamentLink } from "../../utils";
 
 const TournamentSection = () => {
   const tournamentsQuery = createQuery(() => ["tournaments"], fetchTournaments);
@@ -98,12 +98,7 @@ const TournamentSection = () => {
 const TournamentCard = props => (
   <A
     class="my-2 flex items-center gap-3 rounded-md bg-gray-100 p-3 md:gap-6"
-    href={
-      !["LIV", "COM"].includes(props.tournament.status) &&
-      isTeamRegistrationOpen(props.tournament.event)
-        ? `/tournament/${props.tournament.event.slug}/register`
-        : `/tournament/${props.tournament.event.slug}`
-    }
+    href={tournamentLink(props.tournament)}
   >
     <Show when={props.tournament.logo_light}>
       <img src={props.tournament.logo_light} class="w-12 rounded-sm md:w-24" />

@@ -20,11 +20,7 @@ import {
   SpiritStandings as SpiritStandingsSkeleton,
   Standings as StandingsSkeleton
 } from "../skeletons/Standings";
-import {
-  ifTodayInBetweenDates,
-  isTeamRegistrationOpen,
-  latestDate
-} from "../utils";
+import { isPlayerRegistrationOpen, isTeamRegistrationOpen } from "../utils";
 import Breadcrumbs from "./Breadcrumbs";
 import PillTabs from "./tabs/PillTabs";
 
@@ -100,15 +96,8 @@ const Tournament = () => {
     }
   });
 
-  const isPlayerRegInProgress = () => {
-    return ifTodayInBetweenDates(
-      tournamentQuery.data?.event?.player_registration_start_date,
-      latestDate(
-        tournamentQuery.data?.event?.player_late_penalty_end_date,
-        tournamentQuery.data?.event?.player_registration_end_date
-      )
-    );
-  };
+  const isPlayerRegInProgress = () =>
+    isPlayerRegistrationOpen(tournamentQuery.data?.event);
 
   const currentLabel = () => {
     if (tournamentQuery.data?.status === "COM") return "Final";
