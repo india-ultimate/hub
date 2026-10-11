@@ -446,6 +446,12 @@ def recommend_players(
 
 
 # Teams #########
+@api.get("/health", auth=None)
+def health(request: HttpRequest) -> dict[str, str]:
+    # Fly's HTTP check. No DB query, so a Postgres blip doesn't fail every machine.
+    return {"status": "ok"}
+
+
 @api.get("/teams", auth=None, response={200: list[TeamSchema]})
 def list_teams(request: AuthenticatedHttpRequest) -> QuerySet[Team]:
     return Team.objects.all().order_by("name")
