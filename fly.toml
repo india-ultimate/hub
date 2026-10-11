@@ -18,22 +18,42 @@ swap_size_mb = 512
 [build.args]
   DJANGO_SETTINGS_MODULE = "hub.production"
 
+[deploy]
+  # Once per release, before any machine gets the new code.
+  release_command = "python manage.py migrate"
+
+[processes]
+  app = "deploy/start.sh"
+  worker = "deploy/start-worker.sh"
+
 [env]
   PORT = "8000"
   DJANGO_SETTINGS_MODULE = "hub.production"
   # Set by scripts/apply-profile.py; workers x threads must track the limits below.
-  GUNICORN_WORKERS = "4"
-  GUNICORN_THREADS = "6"
+  GUNICORN_WORKERS = "2"
+  GUNICORN_THREADS = "8"
+
+# Set by scripts/apply-profile.py.
+[[vm]]
+  processes = ["app"]
+  cpu_kind = "shared"
+  cpus = 2
+  memory = "1gb"
 
 [[vm]]
+  processes = ["worker"]
   cpu_kind = "shared"
-  cpus = 4
-  memory = "2gb"
+  cpus = 1
+  memory = "1gb"
 
 [[services]]
   protocol = "tcp"
   internal_port = 80
   processes = ["app"]
+  # The proxy starts a stopped machine when the running ones pass soft_limit.
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 1
 
   [[services.ports]]
     port = 80
@@ -45,11 +65,15 @@ swap_size_mb = 512
     handlers = ["tls", "http"]
   [services.concurrency]
     type = "connections"
-    hard_limit = 48
-    soft_limit = 24
+    hard_limit = 32
+    soft_limit = 12
 
-  [[services.tcp_checks]]
+  # Through nginx to gunicorn, so a machine still starting gets no traffic.
+  [[services.http_checks]]
     interval = "15s"
     timeout = "2s"
-    grace_period = "1s"
-    restart_limit = 0
+    grace_period = "10s"
+    method = "GET"
+    path = "/api/health"
+    [services.http_checks.headers]
+      X-Forwarded-Proto = "https"
