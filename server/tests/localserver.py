@@ -1,3 +1,4 @@
+import atexit
 import os
 import subprocess
 import sys
@@ -12,7 +13,8 @@ import requests
 HERE = Path(__file__).parent
 ROOT = HERE.parent.parent
 FRONTEND_DIR = ROOT / "frontend"
-MAX_SERVER_WAIT = 30
+# A cold webpack compile alone can take over 30 s, and it happens once a run.
+MAX_SERVER_WAIT = 120
 PORT = 9981
 WEBPACK_SERVER_PORT = 9982
 HTTP_SUCCESS = 200
@@ -67,23 +69,21 @@ def wait_server_start(
     print("\n\n--- SERVER IS UP! ---\n", flush=True)
 
 
-@contextmanager
-def running_test_server(
-    log_file: str | None = None,
-    dots: bool = False,
-) -> Iterator[str]:
+# Started once per test run and shared by every class: starting them, the
+# webpack compile above all, was most of each class's time.
+_servers: "list[subprocess.Popen[bytes]] | None" = None
+
+
+def _start_servers(log_file: str | None, dots: bool) -> "list[subprocess.Popen[bytes]]":
     log = sys.stdout
     set_up_django()
-    # subprocess.run(["./manage.py", "migrate", "--no-input"])
+    # Series invites are emailed with a signed link; the server needs a key.
+    os.environ.setdefault("EMAIL_SECRET_KEY", "test-invite-key")
 
-    # Start Django server
-    dev_server_command = ["./manage.py", "runserver", str(PORT)]
     django_server = subprocess.Popen(
-        dev_server_command, stdout=log, stderr=log, cwd=ROOT  # noqa: S603
+        ["./manage.py", "runserver", str(PORT)], stdout=log, stderr=log, cwd=ROOT  # noqa: S603
     )
-    django_base_url = f"http://localhost:{PORT}"
-
-    dev_server_command = [
+    webpack_command = [
         str(FRONTEND_DIR / "node_modules/.bin/webpack-dev-server"),
         "--config",
         str(HERE / "tests.webpack.config.js"),
@@ -91,26 +91,37 @@ def running_test_server(
         "development",
     ]
     webpack_server = subprocess.Popen(
-        dev_server_command, stdout=log, stderr=log, cwd=FRONTEND_DIR  # noqa: S603
+        webpack_command, stdout=log, stderr=log, cwd=FRONTEND_DIR  # noqa: S603
     )
-    webpack_base_url = f"http://localhost:{WEBPACK_SERVER_PORT}"
-
+    servers = [webpack_server, django_server]
     try:
-        wait_server_start(django_server, f"{django_base_url}/api/docs", log_file, dots)
-        wait_server_start(webpack_server, webpack_base_url, log_file, dots)
+        wait_server_start(django_server, f"{DJANGO_URL}/api/docs", log_file, dots)
+        wait_server_start(webpack_server, APP_URL, log_file, dots)
+    except BaseException:
+        _stop_servers(servers)  # or they keep their ports for the next run
+        raise
+    return servers
 
-        # DO OUR ACTUAL TESTING HERE!!!
-        yield django_base_url
 
-    finally:
-        assert_server_running(webpack_server, log_file)
-        webpack_server.terminate()
+def _stop_servers(servers: "list[subprocess.Popen[bytes]]") -> None:
+    for server in servers:
+        server.terminate()
+    for server in servers:
+        server.wait()
 
-        assert_server_running(django_server, log_file)
-        django_server.terminate()
 
-        webpack_server.wait()
-        django_server.wait()
+@contextmanager
+def running_test_server(
+    log_file: str | None = None,
+    dots: bool = False,
+) -> Iterator[str]:
+    global _servers  # noqa: PLW0603
+    if _servers is None:
+        _servers = _start_servers(log_file, dots)
+        atexit.register(_stop_servers, _servers)
+    for server in _servers:
+        assert_server_running(server, log_file)
+    yield DJANGO_URL
 
 
 if __name__ == "__main__":
