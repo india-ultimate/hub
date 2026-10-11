@@ -1,6 +1,9 @@
+from unittest import mock
+
 from django.core import mail
 from django.core.mail import EmailMultiAlternatives
-from django.test import TestCase
+from django.core.management import call_command
+from django.test import SimpleTestCase, TestCase
 
 from server.task.helpers import queue_emails
 from server.task.manager import TaskManager
@@ -172,3 +175,18 @@ class TestTaskQueue(TestCase):
         task.save()
         task_str = str(task)
         self.assertIn("completed", task_str)
+
+
+class TestTaskWorkerConnections(SimpleTestCase):
+    def test_the_worker_refreshes_its_connection_before_each_task(self) -> None:
+        # Outside requests Django never does this: after a Postgres restart
+        # every task would fail on the dead connection.
+        command = "server.management.commands.run_task_worker"
+        with (
+            mock.patch(f"{command}.close_old_connections") as refresh,
+            mock.patch(f"{command}.TaskManager.get_next_task", return_value=None),
+            mock.patch(f"{command}.time.sleep", side_effect=KeyboardInterrupt),
+            self.assertRaises(SystemExit),
+        ):
+            call_command("run_task_worker", "--sleep-seconds", "1")
+        refresh.assert_called_once()
