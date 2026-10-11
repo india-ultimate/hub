@@ -36,6 +36,13 @@ class TestFlyConfig(SimpleTestCase):
         self.assertIs(True, service["auto_start_machines"])
         self.assertEqual(1, service["min_machines_running"])
 
+    def test_gunicorn_survives_a_resume(self) -> None:
+        # Before 22.0 the heartbeat used the wall clock, which jumps on resume.
+        pin = re.search(r"^gunicorn==(\d+)\.", (ROOT / "requirements.txt").read_text(), re.M)
+        if pin is None:
+            self.fail("requirements.txt doesn't pin gunicorn")
+        self.assertGreaterEqual(int(pin.group(1)), 22)
+
     def test_production_migrates_on_release(self) -> None:
         self.assertEqual("python manage.py migrate", load("fly.toml")["deploy"]["release_command"])
 
