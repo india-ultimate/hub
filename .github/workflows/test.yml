@@ -78,8 +78,13 @@ jobs:
         run: |
           poetry run pytest --disable-warnings -k 'not Integration'
 
-  run-integration-tests:
+  integration-tests:
     runs-on: ubuntu-latest
+    # Three runners, each with a third of the browser tests by .test_durations.
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [1, 2, 3]
     steps:
       - uses: actions/checkout@v3
 
@@ -119,15 +124,23 @@ jobs:
           RAZORPAY_KEY_SECRET: ${{ secrets.RAZORPAY_KEY_SECRET }}
           RAZORPAY_WEBHOOK_SECRET: ${{ secrets.RAZORPAY_WEBHOOK_SECRET }}
         run: |
-          poetry run pytest --disable-warnings -k Integration --firefox
+          poetry run pytest --disable-warnings -k Integration --firefox --splits 3 --group ${{ matrix.group }}
 
       - name: Upload selenium base logs as artifacts
         if: failure() # Upload the artifact even if a previous step fails
         uses: actions/upload-artifact@v4
         with:
-          name: sbase-logs-${{ matrix.runs-on }}
+          name: sbase-logs-${{ matrix.group }}
           path: latest_logs/
           retention-days: 1
+
+  # The check main's branch protection requires: passes only if every group did.
+  run-integration-tests:
+    needs: [integration-tests]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - run: test "${{ needs.integration-tests.result }}" = success
 
   frontend-build:
     runs-on: ubuntu-latest

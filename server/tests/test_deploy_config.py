@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 import tomllib
+import yaml
 from django.test import SimpleTestCase
 
 ROOT = Path(__file__).parents[2]
@@ -94,6 +95,29 @@ class TestFlyConfig(SimpleTestCase):
         # and then no emails go out and no nightly jobs run.
         restarts = {tuple(r["processes"]): r["policy"] for r in load("fly.toml")["restart"]}
         self.assertEqual({("worker",): "always"}, restarts)
+
+    def test_ci_splits_the_browser_tests_across_every_group(self) -> None:
+        # Split by .test_durations; a group missing from the matrix never runs.
+        workflow = yaml.safe_load((ROOT / ".github/workflows/test.yml").read_text())
+        job = workflow["jobs"]["integration-tests"]
+        command = next(s["run"] for s in job["steps"] if "-k Integration" in s.get("run", ""))
+        splits = re.search(r"--splits (\d+) --group \$\{\{ matrix\.group \}\}", command)
+        if splits is None:
+            self.fail("the browser tests aren't split")
+        self.assertEqual(
+            list(range(1, int(splits.group(1)) + 1)), job["strategy"]["matrix"]["group"]
+        )
+        self.assertIs(False, job["strategy"]["fail-fast"])
+
+    def test_the_required_check_still_reports(self) -> None:
+        # main's branch protection requires "run-integration-tests"; the matrix
+        # reports "integration-tests (1)" and so on, so this job answers for all.
+        jobs = yaml.safe_load((ROOT / ".github/workflows/test.yml").read_text())["jobs"]
+        gate = jobs["run-integration-tests"]
+        self.assertEqual(["integration-tests"], gate["needs"])
+        self.assertEqual("always()", gate["if"])
+        (step,) = gate["steps"]
+        self.assertIn("needs.integration-tests.result", step["run"])
 
     def test_ci_tests_on_the_python_the_image_runs(self) -> None:
         image = re.search(r"^FROM python:(\S+)", (ROOT / "Dockerfile").read_text(), re.M)
