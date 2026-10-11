@@ -11,6 +11,7 @@ from typing import Any
 from unittest import mock
 
 import cloudinary.exceptions
+import tomllib
 from django.core import mail
 from django.core.files.base import ContentFile
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -219,8 +220,53 @@ class TestShrink(SimpleTestCase):
 
     def test_one_too_large_to_decode_is_left_as_it_is(self) -> None:
         # A tiny file can claim huge dimensions: decoding it would take GBs.
-        with mock.patch.object(shrink, "MAX_DECODE_BYTES", 20 * 20 * 3 - 1):
+        with mock.patch.object(shrink, "MAX_PEAK_BYTES", shrink.peak_bytes("RGB", 20 * 20) - 1):
             self.assertIsNone(shrink.shrunk(io.BytesIO(png(20, 20))))
+
+    def test_the_largest_shrink_fits_an_app_machine(self) -> None:
+        # No swap: a shrink that doesn't fit beside ~500 MB of workers kills one.
+        with (Path(__file__).parents[2] / "fly.toml").open("rb") as f:
+            (app,) = (vm for vm in tomllib.load(f)["vm"] if vm["processes"] == ["app"])
+        memory = app["memory"].lower()
+        mib = (
+            int(memory.removesuffix("gb")) * 1024
+            if memory.endswith("gb")
+            else int(memory.removesuffix("mb"))
+        )
+        self.assertLessEqual(shrink.MAX_PEAK_BYTES + 500_000_000, mib * 1024 * 1024 * 0.9)
+
+    def test_what_is_shrunk_is_counted_as_pillow_holds_it(self) -> None:
+        # Measured peaks: a 145 KB LA PNG (75 MP) took 809 MB, an F TIFF 642 MB.
+        fits = shrink.MAX_PEAK_BYTES
+        cases = {
+            ("RGB", 50_000_000): True,  # a 50 MP phone photo: college IDs
+            ("L", 100_000_000): True,
+            ("RGBA", 37_500_000): False,  # copied premultiplied before resizing
+            ("RGBA", 32_500_000): False,  # measured 472 MB: 3.6x what it decodes to
+            ("LA", 29_700_000): False,  # measured 445 MB: too close for Linux
+            ("RGBA", 28_000_000): True,
+            ("LA", 75_000_000): False,  # 4 bytes a pixel, not 2
+            ("P", 150_000_000): True,  # resized a byte a pixel: measured 183 MB
+            ("F", 144_000_000): False,  # 4 bytes a pixel, not 1
+            ("I;16", 150_000_000): False,
+        }
+        for (mode, pixels), shrinkable in cases.items():
+            with self.subTest(mode=mode, pixels=pixels):
+                self.assertEqual(shrinkable, shrink.peak_bytes(mode, pixels) <= fits)
+
+    def test_a_webp_is_never_decoded(self) -> None:
+        # Pillow's WEBP decoder needs ~1 GB for one over 25 MP, whatever its mode.
+        webp = io.BytesIO()
+        Image.new("RGB", (20, 20)).save(webp, format="WEBP")
+        with mock.patch.object(shrink, "MAX_PIXELS", 100):
+            self.assertIsNone(shrink.shrunk(webp))
+
+    def test_16_bit_grey_is_left_without_decoding(self) -> None:
+        # Pillow can't resize I;16: decoding it would only waste memory.
+        grey = io.BytesIO()
+        Image.new("I;16", (20, 20)).save(grey, format="PNG")
+        with mock.patch.object(shrink, "MAX_PIXELS", 100), self.assertNoLogs(shrink.logger):
+            self.assertIsNone(shrink.shrunk(grey))
 
     def test_a_phone_photo_stays_upright(self) -> None:
         photo = io.BytesIO()
