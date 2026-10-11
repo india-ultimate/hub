@@ -7,7 +7,7 @@ app = "upai-hub"
 primary_region = "ams"
 kill_signal = "SIGTERM"
 kill_timeout = "30s"
-swap_size_mb = 512
+# No swap_size_mb: Fly can't suspend a machine with swap (see auto_stop_machines).
 
 [experimental]
   auto_rollback = true
@@ -50,8 +50,8 @@ swap_size_mb = 512
   protocol = "tcp"
   internal_port = 80
   processes = ["app"]
-  # The proxy starts a stopped machine when the running ones pass soft_limit.
-  auto_stop_machines = "stop"
+  # Idle machines are suspended: they resume in under a second, for storage only.
+  auto_stop_machines = "suspend"
   auto_start_machines = true
   min_machines_running = 1
 
