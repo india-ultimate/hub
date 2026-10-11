@@ -41,6 +41,19 @@ class TestFlyConfig(SimpleTestCase):
         slots = int(config["env"]["GUNICORN_WORKERS"]) * int(config["env"]["GUNICORN_THREADS"])
         self.assertLessEqual(config["services"][0]["concurrency"]["soft_limit"], slots)
 
+    def test_each_deploy_keeps_three_app_machines(self) -> None:
+        # Fly has no count in fly.toml; the proxy only starts machines that exist.
+        workflow = (ROOT / ".github/workflows/deploy.yml").read_text()
+        count = re.search(r"flyctl scale count app=(\d+) --yes", workflow)
+        if count is None:
+            self.fail("deploy.yml doesn't set the app machine count")
+        machines = int(count.group(1))
+        self.assertEqual(3, machines)
+        # Each thread holds a DB connection: keep well inside max_connections 300.
+        env = load("fly.toml")["env"]
+        threads = int(env["GUNICORN_WORKERS"]) * int(env["GUNICORN_THREADS"])
+        self.assertLessEqual(machines * threads, 150)
+
     def test_gunicorn_survives_a_resume(self) -> None:
         # Before 22.0 the heartbeat used the wall clock, which jumps on resume.
         pin = re.search(r"^gunicorn==(\d+)\.", (ROOT / "requirements.txt").read_text(), re.M)
