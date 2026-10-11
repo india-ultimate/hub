@@ -46,6 +46,8 @@ import {
 } from "../../queries";
 import ScheduleSkeleton from "../../skeletons/Schedule";
 import { useStore } from "../../store";
+// Aliased: this component has its own uploadError signal.
+import { uploadError as checkUpload } from "../../uploads";
 import {
   canManageTournaments,
   filterManageableTournaments,
@@ -2010,9 +2012,11 @@ const TournamentManager = props => {
                   type="file"
                   id="schedule-file"
                   accept=".csv"
-                  onChange={e => {
-                    setScheduleFile(e.target.files[0]);
-                    setUploadError("");
+                  onChange={async e => {
+                    const file = e.target.files[0];
+                    const tooBig = await checkUpload(file);
+                    setScheduleFile(tooBig ? null : file);
+                    setUploadError(tooBig);
                   }}
                   class="block w-full cursor-pointer rounded-lg border border-gray-300 bg-gray-50 text-sm text-gray-900 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-gray-400 dark:placeholder-gray-400"
                 />

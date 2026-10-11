@@ -1,6 +1,7 @@
 import { createForm, required } from "@modular-forms/solid";
 import { createSignal, For } from "solid-js";
 
+import { withinUploadLimits } from "../uploads";
 import { getCookie } from "../utils";
 import FileInput from "./FileInput";
 
@@ -106,7 +107,7 @@ const CheckSubscriptions = () => {
         <Field
           name="info_csv"
           type="File"
-          validate={required("Please upload a CSV file.")}
+          validate={[required("Please upload a CSV file."), withinUploadLimits]}
         >
           {(field, props) => (
             <FileInput

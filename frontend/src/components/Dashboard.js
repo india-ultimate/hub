@@ -13,6 +13,8 @@ import {
   uploadProfilePicture
 } from "../queries";
 import { useStore } from "../store";
+// Aliased: this component has its own uploadError signal.
+import { MAX_CLOUDINARY_PIXELS, uploadError as checkUpload } from "../uploads";
 import { registerPasskey, showPlayerStatus } from "../utils";
 import { getCookie } from "../utils";
 import IUIDBadge from "./IUIDBadge";
@@ -46,9 +48,10 @@ const ProfilePicture = props => {
       return;
     }
 
-    // Validate file size (10MB max)
-    if (file.size > 10 * 1024 * 1024) {
-      setUploadError("File size must be less than 10MB");
+    // Profile pictures go to Cloudinary as they are, so its photo limit applies.
+    const tooBig = await checkUpload(file, MAX_CLOUDINARY_PIXELS);
+    if (tooBig) {
+      setUploadError(tooBig);
       return;
     }
 

@@ -13,6 +13,7 @@ import { createEffect, createSignal, Show } from "solid-js";
 
 import { stateChoices, teamCategoryChoices } from "../../constants";
 import { fetchTeamBySlug, searchUsers, updateTeam } from "../../queries";
+import { withinUploadLimits } from "../../uploads";
 import Breadcrumbs from "../Breadcrumbs";
 import FileInput from "../FileInput";
 import InputError from "../InputError";
@@ -164,8 +165,8 @@ const Edit = () => {
             type="File"
             validate={
               getValue(updateTeamForm, "image")
-                ? null
-                : required("Please add your team's logo.")
+                ? withinUploadLimits
+                : [required("Please add your team's logo."), withinUploadLimits]
             }
           >
             {(field, props) => (

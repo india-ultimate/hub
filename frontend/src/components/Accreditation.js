@@ -7,6 +7,7 @@ import { createEffect, createSignal, Show } from "solid-js";
 
 import { accreditationChoices } from "../constants";
 import { useStore } from "../store";
+import { withinUploadLimits } from "../uploads";
 import { getCookie, getPlayer } from "../utils";
 import AccreditationInformation from "./AccreditationInformation";
 import Breadcrumbs from "./Breadcrumbs";
@@ -146,9 +147,10 @@ const Accreditation = () => {
                 <Field
                   name="certificate"
                   type="File"
-                  validate={required(
-                    "Please upload your accreditation certificate."
-                  )}
+                  validate={[
+                    required("Please upload your accreditation certificate."),
+                    withinUploadLimits
+                  ]}
                 >
                   {(field, props) => (
                     <FileInput

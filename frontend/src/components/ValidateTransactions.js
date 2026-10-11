@@ -1,6 +1,7 @@
 import { createForm, required } from "@modular-forms/solid";
 import { createSignal } from "solid-js";
 
+import { withinUploadLimits } from "../uploads";
 import { getCookie } from "../utils";
 import FileInput from "./FileInput";
 import TransactionList from "./TransactionList";
@@ -91,7 +92,10 @@ const ValidateTransactions = () => {
           <Field
             name="bank_statement"
             type="File"
-            validate={required("Please upload a bank statement.")}
+            validate={[
+              required("Please upload a bank statement."),
+              withinUploadLimits
+            ]}
           >
             {(field, props) => (
               <FileInput

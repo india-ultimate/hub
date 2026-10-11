@@ -7,6 +7,7 @@ import {
 import { createEffect, createSignal, Show } from "solid-js";
 
 import { createTournamentFromEvent, fetchEvents } from "../../queries";
+import { withinUploadLimits } from "../../uploads";
 import FileInput from "../FileInput";
 import Select from "../Select";
 
@@ -86,7 +87,7 @@ const CreateTournamentFromEventForm = () => {
               />
             )}
           </Field>
-          <Field name="logo_light" type="File">
+          <Field name="logo_light" type="File" validate={withinUploadLimits}>
             {(field, fieldProps) => (
               <FileInput
                 {...fieldProps}
@@ -97,7 +98,7 @@ const CreateTournamentFromEventForm = () => {
               />
             )}
           </Field>
-          <Field name="logo_dark" type="File">
+          <Field name="logo_dark" type="File" validate={withinUploadLimits}>
             {(field, fieldProps) => (
               <FileInput
                 {...fieldProps}

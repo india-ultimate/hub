@@ -10,6 +10,7 @@ import { createEffect, createSignal, Show } from "solid-js";
 import { tournamentTypeChoices } from "../../constants";
 import { toPaise } from "../../money";
 import { createTournament } from "../../queries";
+import { withinUploadLimits } from "../../uploads";
 import FileInput from "../FileInput";
 import Select from "../Select";
 import TextInput from "../TextInput";
@@ -653,7 +654,7 @@ const CreateTournamentForm = () => {
               />
             )}
           </Field>
-          <Field name="logo_light" type="File">
+          <Field name="logo_light" type="File" validate={withinUploadLimits}>
             {(field, fieldProps) => (
               <FileInput
                 {...fieldProps}
@@ -664,7 +665,7 @@ const CreateTournamentForm = () => {
               />
             )}
           </Field>
-          <Field name="logo_dark" type="File">
+          <Field name="logo_dark" type="File" validate={withinUploadLimits}>
             {(field, fieldProps) => (
               <FileInput
                 {...fieldProps}
