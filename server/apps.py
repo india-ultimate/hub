@@ -68,3 +68,8 @@ def check_receipt_tax_ids(app_configs: Any, **kwargs: Any) -> Sequence[Warning]:
 class ServerConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
     name = "server"
+
+    def ready(self) -> None:
+        from server import public_cache
+
+        public_cache.connect()
