@@ -1,5 +1,10 @@
+import datetime
+import json
+
 from django.test import TestCase
 
+from server.announcements.access import can_read_members_only, members_only_readers
+from server.announcements.emails import send_announcement_to_all_users, send_announcement_to_email
 from server.announcements.models import Announcement
 from server.core.models import Player, User
 from server.season.models import Season
@@ -123,3 +128,108 @@ class AnnouncementAccessTestCase(TestCase):
         user = self._user("staff@example.com", staff=True)
         self.assertIn(draft.slug, self._listed(user))
         self.assertEqual("<p>Not yet</p>", self._detail(user, draft.slug)["content"])
+
+
+class AnnouncementEmailTestCase(TestCase):
+    def setUp(self) -> None:
+        self.author = User.objects.create(username="author@example.com", is_staff=True)
+        user = User.objects.create(username="player@example.com", email="player@example.com")
+        Player.objects.create(user=user, date_of_birth="1990-01-01")
+
+    def _announcement(self, *, members_only: bool) -> Announcement:
+        return Announcement.objects.create(
+            title="Trials",
+            content=SECRET,
+            author=self.author,
+            is_members_only=members_only,
+            is_published=True,
+        )
+
+    def test_email_to_all_users_leaves_out_members_only_text(self) -> None:
+        tasks = send_announcement_to_all_users(self._announcement(members_only=True))
+        self.assertEqual(1, len(tasks))
+        email = json.dumps(tasks[0].data)
+        self.assertNotIn("Selection trials", email)
+        self.assertIn("for India Ultimate members", email)
+
+    def test_email_to_all_users_quotes_members_only_text_to_members(self) -> None:
+        member = User.objects.create(username="member@example.com", email="member@example.com")
+        player = Player.objects.create(user=member, date_of_birth="1990-01-01")
+        season = Season.current()
+        assert season is not None  # noqa: S101 - the seeded seasons cover today
+        Subscription.objects.create(
+            player=player,
+            season=season,
+            start_date=season.start_date,
+            end_date=season.end_date,
+            is_active=True,
+        )
+
+        tasks = send_announcement_to_all_users(self._announcement(members_only=True))
+
+        emails = {t.data["to"][0]: json.dumps(t.data) for t in tasks}
+        self.assertEqual({"member@example.com", "player@example.com"}, set(emails))
+        self.assertIn("Selection trials", emails["member@example.com"])
+        self.assertNotIn("Selection trials", emails["player@example.com"])
+
+    def test_email_to_all_users_quotes_public_text(self) -> None:
+        tasks = send_announcement_to_all_users(self._announcement(members_only=False))
+        self.assertIn("Selection trials", json.dumps(tasks[0].data))
+
+    def test_single_test_email_quotes_members_only_text(self) -> None:
+        tasks = send_announcement_to_email(self._announcement(members_only=True), "m@example.com")
+        self.assertIn("Selection trials", json.dumps(tasks[0].data))
+
+    def test_email_to_all_users_quotes_members_only_text_to_staff(self) -> None:
+        staff = User.objects.create(
+            username="staff@example.com", email="staff@example.com", is_staff=True
+        )
+        Player.objects.create(user=staff, date_of_birth="1990-01-01")
+
+        tasks = send_announcement_to_all_users(self._announcement(members_only=True))
+
+        emails = {t.data["to"][0]: json.dumps(t.data) for t in tasks}
+        self.assertIn("Selection trials", emails["staff@example.com"])
+        self.assertNotIn("Selection trials", emails["player@example.com"])
+
+
+class MembersOnlyReadersTestCase(TestCase):
+    def test_bulk_rule_matches_per_user_rule(self) -> None:
+        season = Season.current()
+        assert season is not None  # noqa: S101 - the seeded seasons cover today
+        later = Season.objects.create(
+            name="Next season",
+            start_date=season.end_date + datetime.timedelta(days=1),
+            end_date=season.end_date + datetime.timedelta(days=365),
+        )
+
+        def player(name: str, *, staff: bool = False) -> User:
+            user = User.objects.create(username=name, email=f"{name}@example.com", is_staff=staff)
+            Player.objects.create(user=user, date_of_birth="1990-01-01")
+            return user
+
+        def subscribe(user: User, on: Season, *, active: bool) -> None:
+            Subscription.objects.create(
+                player=user.player_profile,
+                season=on,
+                start_date=on.start_date,
+                end_date=on.end_date,
+                is_active=active,
+            )
+
+        subscribe(player("active"), season, active=True)
+        subscribe(player("lapsed"), season, active=False)
+        subscribe(player("next_season"), later, active=True)
+        lapsed_with_next = player("lapsed_with_next")
+        subscribe(lapsed_with_next, season, active=False)
+        subscribe(lapsed_with_next, later, active=True)
+        player("none")
+        player("staff", staff=True)
+        User.objects.create(username="staff_no_profile", is_staff=True)
+        User.objects.create(username="no_profile")
+
+        users = User.objects.all()
+        expected = {u.username for u in users if can_read_members_only(u)}
+        actual = set(members_only_readers(users).values_list("username", flat=True))
+        self.assertEqual(expected, actual)
+        self.assertEqual({"active", "next_season", "staff", "staff_no_profile"}, expected)
