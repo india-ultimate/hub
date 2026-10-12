@@ -20,6 +20,7 @@ import {
 } from "../../colors";
 import { fetchSubscriptionStatus } from "../../queries";
 import { useStore } from "../../store";
+import { canReadAnnouncement } from "../../utils";
 
 const fetchAnnouncement = async slug => {
   const response = await fetch(`/api/announcements/${slug}`);
@@ -170,10 +171,11 @@ export default function AnnouncementDetail() {
             </div>
 
             <Show
-              when={
-                !query.data.is_members_only ||
-                (subscriptionQuery.data?.is_active ?? false)
-              }
+              when={canReadAnnouncement(
+                query.data,
+                store.data,
+                () => subscriptionQuery.data
+              )}
               fallback={
                 <div class="py-12 text-center">
                   <Icon

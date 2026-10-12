@@ -24,6 +24,16 @@ export const hasAuthHint = () => getCookie("hub_auth") === "1";
 export const canManageTournaments = user =>
   Boolean(user?.is_staff || (user?.directed_tournament_ids || []).length);
 
+// getSubscription is called only for members-only announcements read by
+// non-staff, so staff never wait on the subscription query.
+export const canReadAnnouncement = (announcement, user, getSubscription) =>
+  Boolean(
+    announcement &&
+      (!announcement.is_members_only ||
+        user?.is_staff ||
+        getSubscription()?.is_active)
+  );
+
 export const filterManageableTournaments = (tournaments, user) => {
   if (!user) return [];
   if (user.is_staff) return tournaments || [];
