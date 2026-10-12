@@ -3152,7 +3152,10 @@ def parse_match_name(name: str) -> tuple[str | None, list[str | int] | None]:
     return None, None
 
 
-@api.post("/tournament/{tournament_id}/update-schedule", response={200: Response, 400: Response})
+@api.post(
+    "/tournament/{tournament_id}/update-schedule",
+    response={200: Response, 400: Response, 401: Response},
+)
 def update_tournament_schedule(
     request: AuthenticatedHttpRequest,
     tournament_id: int,
