@@ -5,7 +5,14 @@ module.exports = {
     extend: {
       fontFamily: {
         serif: ["DM Serif Text", "serif"]
-      }
+      },
+      keyframes: {
+        "dialog-in": {
+          from: { opacity: "0", transform: "translateY(0.5rem)" },
+          to: { opacity: "1", transform: "none" }
+        }
+      },
+      animation: { "dialog-in": "dialog-in 200ms ease-out" }
     }
   },
   plugins: [require("flowbite/plugin"), require("@tailwindcss/typography")],

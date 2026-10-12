@@ -31,6 +31,7 @@ const ValidateTransactions = () => {
   const [ts, setTs] = createSignal(new Date());
 
   const [transaction, setTransaction] = createSignal();
+  let dialog;
 
   const initialValues = {};
   const [_bankStatementForm, { Form, Field }] = createForm({
@@ -121,9 +122,16 @@ const ValidateTransactions = () => {
         admin={true}
         onlyInvalid={invalid()}
         ts={ts()}
-        setTransaction={setTransaction}
+        onValidate={t => {
+          setTransaction(t);
+          dialog.showModal();
+        }}
       />
-      <ValidateTransaction transaction={transaction()} setTs={setTs} />
+      <ValidateTransaction
+        ref={el => (dialog = el)}
+        transaction={transaction()}
+        setTs={setTs}
+      />
     </>
   );
 };

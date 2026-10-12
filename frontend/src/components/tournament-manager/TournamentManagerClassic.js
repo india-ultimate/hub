@@ -4,7 +4,6 @@ import {
   useQueryClient
 } from "@tanstack/solid-query";
 import clsx from "clsx";
-import { initFlowbite } from "flowbite";
 import {
   createEffect,
   createSignal,
@@ -54,6 +53,7 @@ import {
   getCookie
 } from "../../utils";
 import MatchHeader from "../match/MatchHeader";
+import Modal from "../Modal";
 import CreateTournamentForm from "../tournament/CreateTournamentForm";
 import ReorderTeams from "../tournament/ReorderTeams";
 import RulesMarkdownEditor from "../tournament/RulesMarkdownEditor";
@@ -164,8 +164,35 @@ function downloadScheduleCsv(matches, fields, tournamentName) {
   URL.revokeObjectURL(url);
 }
 
+const SpiritModal = props => {
+  let dialog;
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => dialog.showModal()}
+        class="block min-h-[44px] rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+      >
+        Add Spirit Score
+      </button>
+      <Modal
+        ref={el => (dialog = el)}
+        fullWidth
+        flush
+        title={<span class="font-semibold">Add Spirit Score</span>}
+      >
+        <UpdateSpiritScoreForm
+          match={props.match}
+          tournament={props.tournament}
+        />
+      </Modal>
+    </>
+  );
+};
+
 const TournamentManager = props => {
   const queryClient = useQueryClient();
+  let rulesDialog;
   const [store] = useStore();
   const [selectedTournament, setSelectedTournament] = createSignal();
   const [selectedTournamentID, setSelectedTournamentID] = createSignal(
@@ -237,8 +264,6 @@ const TournamentManager = props => {
         newDatesList.push(new Date(d));
       }
       setDatesList(newDatesList);
-
-      setTimeout(() => initFlowbite(), 500);
     }
   });
 
@@ -249,8 +274,6 @@ const TournamentManager = props => {
         newTeamsMap[team.id] = team.name;
       });
       setTeamsMap(newTeamsMap);
-
-      setTimeout(() => initFlowbite(), 500);
     }
   });
 
@@ -296,8 +319,6 @@ const TournamentManager = props => {
           setDayFieldMap(day, match.field?.id, true);
         }
       });
-
-      setTimeout(() => initFlowbite(), 500);
     }
   });
 
@@ -712,56 +733,22 @@ const TournamentManager = props => {
             </button>
 
             <button
-              data-modal-target={`rules-modal-${selectedTournamentID()}`}
-              data-modal-toggle={`rules-modal-${selectedTournamentID()}`}
-              class="rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
               type="button"
+              onClick={() => rulesDialog.showModal()}
+              class="min-h-[44px] rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
             >
               Edit Format & Rules
             </button>
-
-            <div
-              id={`rules-modal-${selectedTournamentID()}`}
-              data-modal-backdrop="static"
-              tabIndex="-1"
-              aria-hidden="true"
-              class="fixed left-0 right-0 top-0 z-50 hidden h-[calc(100%-1rem)] max-h-full w-full items-center justify-center overflow-y-auto overflow-x-hidden md:inset-0"
+            <Modal
+              ref={el => (rulesDialog = el)}
+              fullWidth
+              flush
+              wide
+              staticBackdrop
+              title={<span class="font-semibold">Rules Editor & Preview</span>}
             >
-              <div class="relative max-h-full w-full p-4">
-                <div class="relative rounded-lg bg-white shadow dark:bg-gray-700">
-                  <div class="flex items-center justify-between rounded-t border-b p-4 dark:border-gray-600 md:p-5">
-                    <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
-                      Rules Editor & Preview
-                    </h3>
-                    <button
-                      type="button"
-                      class="ms-auto inline-flex h-8 w-8 items-center justify-center rounded-lg bg-transparent text-sm text-gray-400 hover:bg-gray-200 hover:text-gray-900 dark:hover:bg-gray-600 dark:hover:text-white"
-                      data-modal-hide={`rules-modal-${selectedTournamentID()}`}
-                    >
-                      <svg
-                        class="h-3 w-3"
-                        aria-hidden="true"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 14 14"
-                      >
-                        <path
-                          stroke="currentColor"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"
-                        />
-                      </svg>
-                      <span class="sr-only">Close modal</span>
-                    </button>
-                  </div>
-                  <div class="space-y-4 p-4 md:p-5">
-                    <RulesMarkdownEditor tournament={selectedTournament()} />
-                  </div>
-                </div>
-              </div>
-            </div>
+              <RulesMarkdownEditor tournament={selectedTournament()} />
+            </Modal>
           </div>
           <h2 class="mb-5 text-xl font-bold text-blue-500">Initial Stage</h2>
           <div class="flex items-start gap-4">
@@ -1804,58 +1791,10 @@ const TournamentManager = props => {
                               </p>
                             </Show>
 
-                            <button
-                              data-modal-target={`spiritModal-${match.id}`}
-                              data-modal-toggle={`spiritModal-${match.id}`}
-                              class="block rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
-                              type="button"
-                            >
-                              Add Spirit Score
-                            </button>
-                            <div
-                              id={`spiritModal-${match.id}`}
-                              tabIndex="-1"
-                              aria-hidden="true"
-                              class="fixed left-0 right-0 top-0 z-50 hidden h-[calc(100%-1rem)] max-h-full w-full overflow-y-auto overflow-x-hidden p-4 md:inset-0"
-                            >
-                              <div class="relative max-h-full w-full max-w-2xl">
-                                <div class="relative rounded-lg bg-white shadow dark:bg-gray-700">
-                                  <div class="flex items-start justify-between rounded-t border-b p-4 dark:border-gray-600">
-                                    <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
-                                      Add Spirit Score
-                                    </h3>
-                                    <button
-                                      type="button"
-                                      class="ml-auto inline-flex h-8 w-8 items-center justify-center rounded-lg bg-transparent text-sm text-gray-400 hover:bg-gray-200 hover:text-gray-900 dark:hover:bg-gray-600 dark:hover:text-white"
-                                      data-modal-hide={`spiritModal-${match.id}`}
-                                    >
-                                      <svg
-                                        class="h-3 w-3"
-                                        aria-hidden="true"
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        fill="none"
-                                        viewBox="0 0 14 14"
-                                      >
-                                        <path
-                                          stroke="currentColor"
-                                          stroke-linecap="round"
-                                          stroke-linejoin="round"
-                                          stroke-width="2"
-                                          d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"
-                                        />
-                                      </svg>
-                                      <span class="sr-only">Close modal</span>
-                                    </button>
-                                  </div>
-                                  <div class="space-y-6 p-6">
-                                    <UpdateSpiritScoreForm
-                                      match={match}
-                                      tournament={selectedTournament()}
-                                    />
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
+                            <SpiritModal
+                              match={match}
+                              tournament={selectedTournament()}
+                            />
                           </Match>
                         </Switch>
                       </td>
