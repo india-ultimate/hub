@@ -50,9 +50,13 @@ INSTALLED_APPS = [
     "server",
 ]
 
+# Production sets Redis; elsewhere nothing is cached.
+CACHES = {"default": {"BACKEND": "django.core.cache.backends.dummy.DummyCache"}}
+
 MIDDLEWARE = [
     "django_prometheus.middleware.PrometheusBeforeMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "server.public_cache.PublicCacheMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
