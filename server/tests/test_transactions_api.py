@@ -1,3 +1,5 @@
+from django.core.files.uploadedfile import SimpleUploadedFile
+
 from server.tests.base import ApiBaseTestCase
 from server.transaction.models import ManualTransaction, RazorpayTransaction
 
@@ -27,3 +29,14 @@ class TestTransactionsApi(ApiBaseTestCase):
         response = self.client.get("/api/transactions/?user_only=false&only_invalid=true")
         self.assertEqual(200, response.status_code, response.content)
         self.assertEqual([], response.json())
+
+    def test_a_statement_without_the_expected_columns_is_refused(self) -> None:
+        response = self.client.post(
+            "/api/transactions/bulk-validate",
+            {"bank_statement": SimpleUploadedFile("s.csv", b"Date,Amount\n1,2\n")},
+        )
+
+        self.assertEqual(400, response.status_code, response.content)
+        message = response.json()["message"]
+        self.assertIn("Chq/Ref Number", message)
+        self.assertIn("Credit Amount", message)

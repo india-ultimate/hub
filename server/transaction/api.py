@@ -9,7 +9,7 @@ from ninja import Router, UploadedFile
 from ninja.params.functions import File
 
 from server.core.models import Player
-from server.lib.manual_transactions import validate_manual_transactions
+from server.lib.manual_transactions import BankStatementError, validate_manual_transactions
 from server.payment_account.models import PaymentAccount
 from server.receipts.models import Receipt
 from server.schema import (
@@ -211,7 +211,10 @@ def validate_transactions(
         return 400, {"message": "Please upload a CSV file!"}
 
     text = bank_statement.read().decode("utf-8")
-    stats = validate_manual_transactions(io.StringIO(text))
+    try:
+        stats = validate_manual_transactions(io.StringIO(text))
+    except BankStatementError as e:
+        return 400, {"message": str(e)}
     return 200, stats
 
 

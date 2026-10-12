@@ -5,6 +5,12 @@ from typing import Any
 
 from server.transaction.models import ManualTransaction
 
+REQUIRED_COLUMNS = ("Chq/Ref Number", "Credit Amount")
+
+
+class BankStatementError(ValueError):
+    pass
+
 
 def read_bank_statement(bank_statement: Path | StringIO) -> dict[str, Any]:
     data = {}
@@ -21,6 +27,11 @@ def read_bank_statement(bank_statement: Path | StringIO) -> dict[str, Any]:
         csvfile.seek(seek)
 
         reader = csv.DictReader(csvfile, skipinitialspace=True)
+        columns = {name.strip() for name in reader.fieldnames or []}
+        if missing := [name for name in REQUIRED_COLUMNS if name not in columns]:
+            raise BankStatementError(
+                f"The statement is missing these columns: {', '.join(missing)}"
+            )
         for row_ in reader:
             row = {
                 key.strip(): val.strip() if val is not None else ""
