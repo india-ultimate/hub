@@ -1081,10 +1081,12 @@
   resolved "https://registry.yarnpkg.com/@leichtgewicht/ip-codec/-/ip-codec-2.0.5.tgz#4fc56c15c580b9adb7dc3c333a134e540b44bfb1"
   integrity sha512-Vo+PSpZG2/fmgmiNzYK9qWRh8h/CHrwD0mo1h1DzL4yzHNSfWYujGTYsWGreD000gcgmZ7K4Ys6Tx9TxtsKdDw==
 
-"@modular-forms/solid@^0.19.2":
-  version "0.19.2"
-  resolved "https://registry.yarnpkg.com/@modular-forms/solid/-/solid-0.19.2.tgz#10a84a83628900f09ee1d8b2891f4e8d7558d146"
-  integrity sha512-ikOqWUUw2U8ShyYUQSQm7tNj1JLL+2wDhU4j9K/U0KKk3lIMJKwZEPb+jMIXVI/1yytwcg1cnVtulmhBAA10UA==
+"@modular-forms/solid@^0.25.1":
+  version "0.25.1"
+  resolved "https://registry.yarnpkg.com/@modular-forms/solid/-/solid-0.25.1.tgz#b00884040e68d12b44e7b63af2c7f94501b00dcb"
+  integrity sha512-issNZ3xl4tj+1K7KT4dNTQaRq5SmVUXgUPeGTMjtrAzCeTnwM/u6vUxSuTY2bcMw4GzTxreFXLx1xMMhrFkt0A==
+  dependencies:
+    valibot "^1.0.0-beta.6"
 
 "@noble/hashes@1.8.0":
   version "1.8.0"
@@ -1288,10 +1290,10 @@
   resolved "https://registry.yarnpkg.com/@thisbeyond/solid-dnd/-/solid-dnd-0.7.5.tgz#c7585511bc83b5b973315f956296431124b6562c"
   integrity sha512-DfI5ff+yYGpK9M21LhYwIPlbP2msKxN2ARwuu6GF8tT1GgNVDTI8VCQvH4TJFoVApP9d44izmAcTh/iTCH2UUw==
 
-"@thisbeyond/solid-select@^0.14.0":
-  version "0.14.0"
-  resolved "https://registry.yarnpkg.com/@thisbeyond/solid-select/-/solid-select-0.14.0.tgz#1f6ed9e2c54818a13943624f4a66e32d5c933062"
-  integrity sha512-ecq4U3Vnc/nJbU84ARuPg2scNuYt994ljF5AmBlzuZW87x43mWiGJ5hEWufIJJMpDT6CcnCIx/xbrdDkaDEHQw==
+"@thisbeyond/solid-select@^0.16.0":
+  version "0.16.0"
+  resolved "https://registry.yarnpkg.com/@thisbeyond/solid-select/-/solid-select-0.16.0.tgz#2a1af342eaa11b4fe000bd761cd836e62c2ff68d"
+  integrity sha512-Ig4qTISjVJBBJK4yvxhHIO8rDr0ujmhcChF1ot3fHOM8K4fWrwXBSKLJ1npAUO504x+Ig0MKNPO6y6iS2NPJsA==
 
 "@types/body-parser@*":
   version "1.19.6"
@@ -6071,6 +6073,11 @@ uuid@^8.3.2:
   version "8.3.2"
   resolved "https://registry.yarnpkg.com/uuid/-/uuid-8.3.2.tgz#80d5b5ced271bb9af6c445f21a1a04c606cefbe2"
   integrity sha512-+NYs2QeMWy+GWFOEm9xnn6HCDp0l7QBD7ml8zLUmJ+93Q5NF0NocErnwkTkXVFNiX3/fpC6afS8Dhb/gz7R7eg==
+
+valibot@^1.0.0-beta.6:
+  version "1.5.0"
+  resolved "https://registry.yarnpkg.com/valibot/-/valibot-1.5.0.tgz#c05adda6b2823807bb0248e2952c35e1a50046fd"
+  integrity sha512-nil6AkP2TChWL43Z5uJ6GTxX01CUA+g8LWUM+N/rB9NBbkUMaUsi9PUNzlUPgoKASgmx9f7eGOYpJ04/fSa6FQ==
 
 vary@~1.1.2:
   version "1.1.2"

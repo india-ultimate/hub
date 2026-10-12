@@ -8,7 +8,7 @@
     "@babel/core": "^7.29.7",
     "@babel/preset-env": "^7.29.7",
     "@github/webauthn-json": "^2.1.1",
-    "@modular-forms/solid": "^0.19.2",
+    "@modular-forms/solid": "^0.25.1",
     "@solidjs/router": "^0.8.4",
     "@tailwindcss/typography": "^0.5.20",
     "autoprefixer": "^10.6.1",
@@ -48,7 +48,7 @@
     "@tanstack/solid-query": "^4.44.0",
     "@tanstack/solid-table": "^8.21.3",
     "@thisbeyond/solid-dnd": "^0.7.5",
-    "@thisbeyond/solid-select": "^0.14.0",
+    "@thisbeyond/solid-select": "^0.16.0",
     "modern-screenshot": "^4.7.0"
   },
   "prettier": {
