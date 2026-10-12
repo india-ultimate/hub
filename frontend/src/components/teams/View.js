@@ -117,7 +117,7 @@ const View = () => {
             </dt>
             <dd class="text-lg font-semibold">
               {teamQuery.data?.admins
-                .map(admin => admin.full_name + ` (${admin.username})`)
+                .map(admin => admin.full_name)
                 .join("\n") || "-"}
             </dd>
           </div>

@@ -6,6 +6,7 @@ from typing import cast
 from django.test import TestCase
 
 from server.core.models import Team, User
+from server.schema import TeamSchema
 
 
 def user(name: str) -> User:
@@ -85,3 +86,48 @@ class TestTeamAdmins(TestCase):
         self.assertIn("city", self.response.json()["message"].lower())
         self.team.refresh_from_db()
         self.assertEqual(("Coimbatore", "Club"), (self.team.city, self.team.category))
+
+
+class TestAdminsArePrivate(TestCase):
+    """Who administers a team is public; their email addresses are not."""
+
+    def setUp(self) -> None:
+        self.admin = user("admin")
+        self.team = Team.objects.create(
+            name="No Fly Zone", slug="no-fly-zone", category="Club", state_ut="TN", city="Kovai"
+        )
+        self.team.admins.add(self.admin)
+
+    def assert_no_addresses(self, content: bytes) -> None:
+        self.assertNotIn(b"admin@x.com", content)
+
+    def test_anyone_sees_admins_names_but_not_their_addresses(self) -> None:
+        for viewer in (None, user("other")):
+            if viewer is not None:
+                self.client.force_login(viewer)
+            for url in ("/api/teams", "/api/team/no-fly-zone", "/api/teams/search?text=fly"):
+                response = self.client.get(url)
+                self.assertEqual(response.status_code, 200, url)
+                self.assert_no_addresses(response.content)
+            team = self.client.get("/api/team/no-fly-zone").json()
+            self.assertEqual(team["admins"], [{"id": self.admin.id, "full_name": "admin"}])
+
+    def test_every_schema_that_embeds_a_team_sends_only_id_and_name(self) -> None:
+        # Matches, match events and UC registrations embed TeamSchema too.
+        admins = TeamSchema.from_orm(self.team).dict()["admins"]
+        self.assertEqual(admins, [{"id": self.admin.id, "full_name": "admin"}])
+
+    def test_the_admin_can_still_edit_the_team_and_its_admins(self) -> None:
+        self.client.force_login(self.admin)
+        other = user("other")
+        body = {
+            "team_details": json.dumps(
+                {"id": str(self.team.id), "admin_ids": [self.admin.id, other.id]}
+            )
+        }
+        response = self.client.post("/api/teams/edit", body)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            sorted(a["id"] for a in response.json()["admins"]), sorted([self.admin.id, other.id])
+        )
+        self.assert_no_addresses(response.content)

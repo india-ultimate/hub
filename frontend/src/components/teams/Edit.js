@@ -55,8 +55,11 @@ const Edit = () => {
     setSelectedValues(selected);
   };
   const selectProps = createAsyncOptions(searchUsers);
+  // A team's current admins come without a username; search results have one.
   const selectFormat = item =>
-    item.full_name ? item.full_name + ` (${item.username})` : item.username;
+    item.full_name && item.username
+      ? `${item.full_name} (${item.username})`
+      : item.full_name || item.username;
 
   const queryClient = useQueryClient();
   const updateTeamMutation = createMutation({
