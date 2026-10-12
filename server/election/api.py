@@ -471,7 +471,7 @@ def get_election_results(
         if current_round is None:
             # First round
             current_round = result.round_number
-        elif result.round_number != current_round:  # type: ignore[unreachable]
+        elif result.round_number != current_round:
             # Round change - save previous results and start new round
             round_results.append({"candidates": current_candidates})
             current_candidates = []

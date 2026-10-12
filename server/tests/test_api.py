@@ -1533,7 +1533,7 @@ class TestContactForm(ApiBaseTestCase):
 
         attachment_name = "certificate.pdf"
         path = f"contact-form-attachments/{attachment_name}"
-        default_storage.delete(path)  # type: ignore[attr-defined]
+        default_storage.delete(path)
         attachment = SimpleUploadedFile(
             attachment_name, b"file content", content_type="application/pdf"
         )
@@ -1552,5 +1552,5 @@ class TestContactForm(ApiBaseTestCase):
         email = mail.outbox[0]
         self.assertEqual(data["subject"], email.subject)
         self.assertIn(self.user.email, str(email.message()))
-        self.assertTrue(default_storage.exists(path))  # type: ignore[attr-defined]
+        self.assertTrue(default_storage.exists(path))
         self.assertIn(path, str(email.message()))

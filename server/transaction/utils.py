@@ -307,10 +307,6 @@ def create_transaction(
         }
         receipt = f"player:{event.id}:{team.id}:{ts}"
 
-    else:
-        # NOTE: We should never be here, thanks to request validation!
-        pass
-
     if account is not None and not account.is_ready():
         # Never fall back to our account: the money would land in the wrong place.
         logger.error("Payment account %s can't take orders for event %s", account.slug, event)
@@ -584,7 +580,9 @@ def _refund_unrosterable(
 def list_transactions_by_type(
     user: User, payment_type: PaymentGateway, user_only: bool = True, only_invalid: bool = False
 ) -> QuerySet[Model]:
-    transaction_classes = {
+    transaction_classes: dict[
+        PaymentGateway, type[ManualTransaction | RazorpayTransaction | PhonePeTransaction]
+    ] = {
         PaymentGateway.MANUAL: ManualTransaction,
         PaymentGateway.RAZORPAY: RazorpayTransaction,
         PaymentGateway.PHONEPE: PhonePeTransaction,
@@ -597,7 +595,13 @@ def list_transactions_by_type(
     )
 
     if not user_only and user.is_staff:
-        transactions = Cls.objects.filter(validated=False) if only_invalid else Cls.objects.all()
+        # Only manual transactions have `validated`: only_invalid with another
+        # gateway raises FieldError, as it always has.
+        transactions = (
+            Cls.objects.filter(validated=False)  # type: ignore[misc]
+            if only_invalid
+            else Cls.objects.all()
+        )
 
     else:
         # Get ids of all associated players of a user (player + wards)
@@ -608,6 +612,6 @@ def list_transactions_by_type(
         query = Q(user=user) | Q(players__in=player_ids)
         transactions = Cls.objects.filter(query)
         if only_invalid:
-            transactions = transactions.filter(validated=False)
+            transactions = transactions.filter(validated=False)  # type: ignore[misc]
 
     return transactions.distinct().order_by(order_by)

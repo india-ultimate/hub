@@ -132,7 +132,7 @@ class ServiceRequestSignalTest(TestCase):
         self.assertEqual(email.to, [self.user.email])
         self.assertIn("Service Request Approved", email.subject)
         self.assertIn("🎉 Great news! Your service request has been approved", email.body)
-        self.assertIn("text/html", email.alternatives[0][1])  # type: ignore[attr-defined]
+        self.assertIn("text/html", email.alternatives[0][1])  # type: ignore[union-attr]
 
     def test_email_sent_on_rejection(self) -> None:
         """Test that an email is sent when a service request is rejected"""
@@ -166,7 +166,7 @@ class ServiceRequestSignalTest(TestCase):
             "📋 We have reviewed your service request and unfortunately, it has not been approved at this time",
             email.body,
         )
-        self.assertIn("text/html", email.alternatives[0][1])  # type: ignore[attr-defined]
+        self.assertIn("text/html", email.alternatives[0][1])  # type: ignore[union-attr]
 
     def test_no_email_sent_on_creation(self) -> None:
         """Test that no email is sent when a service request is created"""

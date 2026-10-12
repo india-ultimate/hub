@@ -293,7 +293,7 @@ class PlayerAdmin(admin.ModelAdmin[Player]):
 
 
 @admin.register(User)
-class UserAdmin(DjangoUserAdmin):
+class UserAdmin(DjangoUserAdmin[User]):
     search_fields = ["first_name", "last_name", "username", "email", "phone"]
     list_display = [
         "first_name",
@@ -576,15 +576,15 @@ class TournamentFilter(admin.SimpleListFilter):
 
     def lookups(
         self, request: HttpRequest, model_admin: admin.ModelAdmin[MatchEvent]
-    ) -> list[tuple[int, str]]:
+    ) -> list[tuple[str, str]]:
         tournaments = Tournament.objects.all().order_by("event__title")
-        return [(t.id, t.event.title) for t in tournaments]
+        return [(str(t.id), t.event.title) for t in tournaments]
 
     def queryset(
         self, request: HttpRequest, queryset: QuerySet[MatchEvent]
     ) -> QuerySet[MatchEvent]:
-        if self.value():
-            return queryset.filter(stats__match__tournament_id=self.value())
+        if tournament_id := self.value():
+            return queryset.filter(stats__match__tournament_id=tournament_id)
         return queryset
 
 
@@ -776,14 +776,14 @@ class RazorpayTransactionPlayerInline(
     # option, per line: a team order timed out before it rendered.
     raw_id_fields = ["player", "subscription"]
 
-    def get_fields(self, request: HttpRequest, obj: Any = None) -> list[str]:
+    def get_fields(self, request: HttpRequest, obj: Any = None) -> tuple[str, ...]:
         amount = "amount_inr" if self._read_only(request, obj) else "amount"
         fields = ["player", "plan", amount, "subscription", "needs_review", "review_note"]
         # The button is only shown to staff who may actually refund; the view
         # refuses anyone else anyway.
         if request.user.has_perm(REFUND_PERM):
             fields.append("refund_link")
-        return fields
+        return tuple(fields)
 
     @admin.display(description="Refund")
     def refund_link(self, obj: RazorpayTransactionPlayer) -> str:
@@ -1418,7 +1418,7 @@ class AnnouncementAdmin(admin.ModelAdmin[Announcement]):
         """Display whether announcement has CTA"""
         if obj.action_text and obj.action_url:
             return format_html('<span style="color: green;">✓ {}</span>', obj.action_text)
-        return format_html('<span style="color: gray;">No CTA</span>')
+        return format_html('<span style="color: {};">{}</span>', "gray", "No CTA")
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[Announcement]:
         return super().get_queryset(request).select_related("author")
@@ -1502,13 +1502,13 @@ class TaskAdmin(admin.ModelAdmin[Task]):
     def get_status(self, obj: Task) -> str:
         """Display the current status of the task"""
         if obj.failed_at:
-            return format_html('<span style="color: red;">Failed</span>')
+            return format_html('<span style="color: {};">{}</span>', "red", "Failed")
         elif obj.completed_at:
-            return format_html('<span style="color: green;">Completed</span>')
+            return format_html('<span style="color: {};">{}</span>', "green", "Completed")
         elif obj.started_at:
-            return format_html('<span style="color: orange;">Running</span>')
+            return format_html('<span style="color: {};">{}</span>', "orange", "Running")
         else:
-            return format_html('<span style="color: blue;">Pending</span>')
+            return format_html('<span style="color: {};">{}</span>', "blue", "Pending")
 
     def has_add_permission(self, request: HttpRequest) -> bool:
         # Prevent adding tasks through admin - they should be added programmatically

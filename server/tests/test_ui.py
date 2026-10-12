@@ -8,7 +8,7 @@ from contextlib import ExitStack
 from email.utils import getaddresses
 from importlib import import_module
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pytest
 from django.apps import apps
@@ -70,7 +70,9 @@ def mail_to(address: str) -> list[str]:
                 continue
             found.append(
                 "".join(
-                    part.get_payload(decode=True).decode(part.get_content_charset() or "utf-8")
+                    cast(bytes, part.get_payload(decode=True)).decode(
+                        part.get_content_charset() or "utf-8"
+                    )
                     for part in message.walk()
                     if not part.is_multipart()
                     and part.get_content_type() in ("text/plain", "text/html")

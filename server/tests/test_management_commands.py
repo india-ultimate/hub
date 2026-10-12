@@ -9,7 +9,7 @@ from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.test import TestCase
-from django.utils.timezone import now, utc
+from django.utils.timezone import now
 
 from server.core.models import Accreditation, Guardianship, Player, Team, Vaccination
 from server.duplicates.models import EmailAlias
@@ -511,7 +511,7 @@ class TestGenerateWrappedData(TestCase):
             tournament=self.tournament,
             team_1=self.team,
             team_2=self.opponent_team,
-            time=datetime.datetime(2024, 6, 1, 10, 0, 0, tzinfo=utc),
+            time=datetime.datetime(2024, 6, 1, 10, 0, 0, tzinfo=datetime.UTC),
             status=Match.Status.COMPLETED,
             placeholder_seed_1=1,
             placeholder_seed_2=2,
@@ -521,7 +521,7 @@ class TestGenerateWrappedData(TestCase):
             tournament=self.tournament,
             team_1=self.team,
             team_2=self.opponent_team,
-            time=datetime.datetime(2024, 6, 2, 10, 0, 0, tzinfo=utc),
+            time=datetime.datetime(2024, 6, 2, 10, 0, 0, tzinfo=datetime.UTC),
             status=Match.Status.COMPLETED,
             placeholder_seed_1=1,
             placeholder_seed_2=2,

@@ -708,10 +708,10 @@ nonstaff@example.com,Non Staff User"""
         from server.election.api import get_election_results
 
         # Create a request with non-staff user
-        request = AuthenticatedHttpRequest()
+        request = cast(AuthenticatedHttpRequest, AuthenticatedHttpRequest())
         request.user = self.non_staff_user
         # Create a request with staff user
-        request = AuthenticatedHttpRequest()
+        request = cast(AuthenticatedHttpRequest, AuthenticatedHttpRequest())
         request.user = self.staff_user
         # Verify staff user can access results
         results = get_election_results(request, self.election.id)
