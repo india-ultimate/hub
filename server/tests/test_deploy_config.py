@@ -56,11 +56,12 @@ class TestFlyConfig(SimpleTestCase):
         self.assertLessEqual(machines * threads, 150)
 
     def test_gunicorn_survives_a_resume(self) -> None:
-        # Before 22.0 the heartbeat used the wall clock, which jumps on resume.
+        # Before 22.0 the heartbeat used the wall clock, which jumps on resume. On 23,
+        # recycling under max-requests drops accepted requests as 502s; 26 serves them first.
         pin = re.search(r"^gunicorn==(\d+)\.", (ROOT / "requirements.txt").read_text(), re.M)
         if pin is None:
             self.fail("requirements.txt doesn't pin gunicorn")
-        self.assertGreaterEqual(int(pin.group(1)), 22)
+        self.assertGreaterEqual(int(pin.group(1)), 26)
 
     def test_no_swap_so_machines_can_suspend(self) -> None:
         # Fly can't suspend a machine with swap; it would fall back to a full stop.
