@@ -14,6 +14,7 @@ from server.core.models import (
     User,
     Vaccination,
 )
+from server.duplicates.identity import mask_email
 from server.payment_account.models import viewable_by
 from server.season.models import Season
 from server.subscription.models import Subscription
@@ -305,7 +306,8 @@ class PlayerTinySchema(ModelSchema):
 
     @staticmethod
     def resolve_email(player: Player) -> str:
-        return player.user.email
+        """Masked: enough for a picker to tell two namesakes apart."""
+        return mask_email(player.user.email)
 
     phone: str
 

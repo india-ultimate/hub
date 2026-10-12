@@ -9,7 +9,7 @@ import datetime
 from django.test import TestCase
 from django.utils.timezone import now
 
-from server.core.models import Guardianship, Player, Team, User
+from server.core.models import Guardianship, Player, Team, UCPerson, User
 from server.registration.models import RosterEntry
 from server.season.models import Season
 from server.tests.base import create_event
@@ -178,3 +178,67 @@ class TestPlayerList(PlayerPrivacyTestCase):
         self.client.force_login(self.staff)
         [player] = self.client.get("/api/players?full_schema=1").json()
         self.assertEqual((EMAIL, PHONE), (player["email"], player["phone"]))
+
+
+class TestPlayersInOtherResponses(PlayerPrivacyTestCase):
+    def test_player_search_masks_the_email(self) -> None:
+        # The service request picker shows it to tell people apart.
+        self.client.force_login(self.stranger)
+        response = self.client.get("/api/players/search?text=secret")
+        self.assert_no_secrets(response, self.stranger)
+        [found] = response.json()["items"]
+        self.assertEqual("hixxxxxxxxxet@example.org", found["email"])
+
+    def test_matches_name_their_players_and_nothing_more(self) -> None:
+        from server.tournament.models import (
+            Match,
+            MatchEvent,
+            MatchScore,
+            MatchStats,
+            SpiritScore,
+            Tournament,
+        )
+        from server.tournament.schema import MatchSchema, MatchStatsSchema
+
+        person = UCPerson.objects.create(
+            email=EMAIL, slug="secret", first_name="Secret", last_name="Keeper"
+        )
+        self.player.ultimate_central_id = person.id
+        self.player.save()
+        teams = [Team.objects.create(name=n, slug=n) for n in ("one", "two")]
+        tournament = Tournament.objects.create(event=create_event("Regionals"))
+        spirit = {"rules": 2, "fouls": 2, "fair": 2, "positive": 2, "communication": 2}
+        match = Match.objects.create(
+            tournament=tournament,
+            sequence_number=1,
+            team_1=teams[0],
+            team_2=teams[1],
+            placeholder_seed_1=1,
+            placeholder_seed_2=2,
+            suggested_score_team_1=MatchScore.objects.create(entered_by=self.player),
+            spirit_score_team_1=SpiritScore.objects.create(
+                **spirit, mvp=person, msp=person, mvp_v2=self.player, msp_v2=self.player
+            ),
+        )
+        stats = MatchStats.objects.create(
+            match=match,
+            tournament=tournament,
+            initial_possession=teams[0],
+            current_possession=teams[0],
+        )
+        event = MatchEvent.objects.create(
+            stats=stats, team=teams[0], started_on="OFF", type="SC", scored_by=self.player
+        )
+        event.players.add(self.player)
+
+        for body in (
+            MatchSchema.model_validate(match).model_dump_json(),
+            MatchStatsSchema.model_validate(stats).model_dump_json(),
+        ):
+            for secret in (EMAIL, PHONE, DOB.isoformat()):
+                self.assertNotIn(secret, body)
+        # What the match card reads.
+        card = MatchSchema.model_validate(match).model_dump()
+        self.assertEqual("Secret Keeper", card["suggested_score_team_1"]["entered_by"]["full_name"])
+        self.assertEqual("Secret Keeper", card["spirit_score_team_1"]["mvp_v2"]["full_name"])
+        self.assertEqual("Secret", card["spirit_score_team_1"]["msp"]["first_name"])

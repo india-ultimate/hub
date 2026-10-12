@@ -7,7 +7,6 @@ from server.core.models import CommentaryInfo, Player, Team, UCPerson
 from server.schema import (
     PersonSchema,
     PlayerSchema,
-    PlayerTinySchema,
     RegistrationCount,
     TeamMinSchema,
     TeamSchema,
@@ -280,19 +279,38 @@ class PositionPoolCreateSchema(Schema):
     name: str
 
 
-class MatchScoreModelSchema(ModelSchema):
-    entered_by: PlayerTinySchema
+# Who entered a score, or was named in one, by name only: everyone sees
+# these, and pages read nothing else.
+
+
+class PublicPlayerSchema(Schema):
+    id: int
+    full_name: str
+
+    @staticmethod
+    def resolve_full_name(player: Player) -> str:
+        return player.user.get_full_name()
+
+
+class PublicPersonSchema(ModelSchema):
+    class Meta:
+        model = UCPerson
+        fields = ["first_name", "last_name", "image_url"]
+
+
+class PublicMatchScoreSchema(ModelSchema):
+    entered_by: PublicPlayerSchema
 
     class Meta:
         model = MatchScore
         fields = "__all__"
 
 
-class SpiritScoreSchema(ModelSchema):
-    mvp: PersonSchema | None = None
-    msp: PersonSchema | None = None
-    mvp_v2: PlayerTinySchema | None = None
-    msp_v2: PlayerTinySchema | None = None
+class PublicSpiritScoreSchema(ModelSchema):
+    mvp: PublicPersonSchema | None = None
+    msp: PublicPersonSchema | None = None
+    mvp_v2: PublicPlayerSchema | None = None
+    msp_v2: PublicPlayerSchema | None = None
 
     class Meta:
         model = SpiritScore
@@ -320,17 +338,17 @@ class TournamentFieldUpdateSchema(Schema):
 
 class MatchEventSchema(ModelSchema):
     team: TeamSchema | None = None
-    players: list[PlayerTinySchema]
+    players: list[PublicPlayerSchema]
 
     @staticmethod
     def resolve_players(match_event: MatchEvent) -> QuerySet[Player]:
         return match_event.players.all().order_by("user__first_name")
 
-    scored_by: PlayerTinySchema | None = None
-    assisted_by: PlayerTinySchema | None = None
-    drop_by: PlayerTinySchema | None = None
-    throwaway_by: PlayerTinySchema | None = None
-    block_by: PlayerTinySchema | None = None
+    scored_by: PublicPlayerSchema | None = None
+    assisted_by: PublicPlayerSchema | None = None
+    drop_by: PublicPlayerSchema | None = None
+    throwaway_by: PublicPlayerSchema | None = None
+    block_by: PublicPlayerSchema | None = None
 
     class Meta:
         model = MatchEvent
@@ -385,12 +403,12 @@ class MatchSchema(ModelSchema):
     swiss_round: SwissRoundSchema | None = None
     team_1: TeamSchema | None = None
     team_2: TeamSchema | None = None
-    spirit_score_team_1: SpiritScoreSchema | None = None
-    spirit_score_team_2: SpiritScoreSchema | None = None
-    self_spirit_score_team_1: SpiritScoreSchema | None = None
-    self_spirit_score_team_2: SpiritScoreSchema | None = None
-    suggested_score_team_1: MatchScoreModelSchema | None = None
-    suggested_score_team_2: MatchScoreModelSchema | None = None
+    spirit_score_team_1: PublicSpiritScoreSchema | None = None
+    spirit_score_team_2: PublicSpiritScoreSchema | None = None
+    self_spirit_score_team_1: PublicSpiritScoreSchema | None = None
+    self_spirit_score_team_2: PublicSpiritScoreSchema | None = None
+    suggested_score_team_1: PublicMatchScoreSchema | None = None
+    suggested_score_team_2: PublicMatchScoreSchema | None = None
     field: TournamentFieldSchema | None = None
     stats: MatchStatsMinSchema | None = None
 
@@ -407,21 +425,6 @@ class MatchSchema(ModelSchema):
 
 
 # Public GET endpoints: only what a page reads, and nothing personal.
-
-
-class PublicPlayerSchema(Schema):
-    id: int
-    full_name: str
-
-    @staticmethod
-    def resolve_full_name(player: Player) -> str:
-        return player.user.get_full_name()
-
-
-class PublicPersonSchema(ModelSchema):
-    class Meta:
-        model = UCPerson
-        fields = ["first_name", "last_name", "image_url"]
 
 
 class PublicUCPersonSchema(Schema):
@@ -460,25 +463,6 @@ class PublicStageSchema(Schema):
 
 class PublicCrossPoolSchema(Schema):
     id: int
-
-
-class PublicSpiritScoreSchema(ModelSchema):
-    mvp: PublicPersonSchema | None = None
-    msp: PublicPersonSchema | None = None
-    mvp_v2: PublicPlayerSchema | None = None
-    msp_v2: PublicPlayerSchema | None = None
-
-    class Meta:
-        model = SpiritScore
-        fields = "__all__"
-
-
-class PublicMatchScoreSchema(ModelSchema):
-    entered_by: PublicPlayerSchema
-
-    class Meta:
-        model = MatchScore
-        fields = "__all__"
 
 
 class PublicMatchStatsMinSchema(ModelSchema):
