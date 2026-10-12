@@ -909,10 +909,17 @@ def list_events(request: AuthenticatedHttpRequest, include_all: bool = False) ->
 
 # Registrations ##########
 
+REGISTRATIONS_STAFF_ONLY = "Only staff and the tournament's directors can see its registrations"
+
 
 @api.get(
     "/registrations/tournament/{tournament_id}",
-    response={200: list[TournamentPlayerRegistrationSchema], 400: Response, 404: Response},
+    response={
+        200: list[TournamentPlayerRegistrationSchema],
+        400: Response,
+        403: Response,
+        404: Response,
+    },
 )
 def list_registrations_for_tournament(
     request: AuthenticatedHttpRequest, tournament_id: int
@@ -920,16 +927,25 @@ def list_registrations_for_tournament(
     try:
         tournament = Tournament.objects.get(id=tournament_id)
     except Tournament.DoesNotExist:
-        return 404, {"message": f"Tournament with {tournament} not found."}
+        return 404, {"message": f"Tournament with {tournament_id} not found."}
 
     registrations = Registration.objects.filter(event=tournament.event)
+    if can_manage_tournament(request.user, tournament):
+        return 200, registrations
 
-    return 200, registrations
+    # Players' email, phone, DOB, guardian and college ID: a team's admins
+    # see their own team's, to validate its roster.
+    own_teams = request.user.admin_teams.filter(
+        Q(tournaments=tournament) | Q(partial_reg_tournaments=tournament)
+    )
+    if not own_teams.exists():
+        return 403, {"message": "Only staff, directors and team admins can see registrations"}
+    return 200, registrations.filter(team__in=own_teams)
 
 
 @api.get(
     "/registrations/{event_id}",
-    response={200: list[UCRegistrationSchema], 400: Response, 404: Response},
+    response={200: list[UCRegistrationSchema], 400: Response, 403: Response, 404: Response},
 )
 def list_registrations(
     request: AuthenticatedHttpRequest, event_id: int
@@ -938,6 +954,13 @@ def list_registrations(
         event = Event.objects.get(id=event_id)
     except Event.DoesNotExist:
         return 404, {"message": f"Event with {event_id} not found."}
+
+    tournament = Tournament.objects.filter(event=event).first()
+    allowed = request.user.is_staff or (
+        tournament is not None and can_manage_tournament(request.user, tournament)
+    )
+    if not allowed:
+        return 403, {"message": REGISTRATIONS_STAFF_ONLY}
 
     registrations = UCRegistration.objects.filter(event=event)
 
