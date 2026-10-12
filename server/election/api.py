@@ -590,11 +590,12 @@ def send_election_notification(
         )
 
     # Calculate days remaining for voting
-    import pytz
+    from zoneinfo import ZoneInfo
+
     from django.utils import timezone
 
     now = timezone.now()
-    ist_tz = pytz.timezone("Asia/Kolkata")
+    ist_tz = ZoneInfo("Asia/Kolkata")
 
     # Convert times to IST for display
     now_ist = now.astimezone(ist_tz)
