@@ -149,10 +149,8 @@ const TransactionList = props => {
                       <Show when={props.admin}>
                         <td class="px-6 py-4">
                           <button
-                            data-modal-target="validationModal"
-                            data-modal-toggle="validationModal"
                             class="w-full rounded-lg bg-gray-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-gray-800 focus:outline-none focus:ring-4 focus:ring-gray-300 dark:bg-gray-600 dark:hover:bg-gray-700 dark:focus:ring-gray-800 sm:w-auto"
-                            onClick={() => props.setTransaction(transaction)}
+                            onClick={() => props.onValidate(transaction)}
                           >
                             Validate
                           </button>

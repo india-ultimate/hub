@@ -1,8 +1,8 @@
 import { createForm, required } from "@modular-forms/solid";
-import { initFlowbite } from "flowbite";
 import { createSignal } from "solid-js";
 
 import { getCookie } from "../utils";
+import Modal from "./Modal";
 import TextInput from "./TextInput";
 
 const ValidateTransaction = props => {
@@ -15,7 +15,7 @@ const ValidateTransaction = props => {
     revalidateOn: "touched"
   });
 
-  let closeRef;
+  let dialog;
 
   const handleSubmit = async values => {
     const data = {
@@ -36,9 +36,8 @@ const ValidateTransaction = props => {
         setStatus("Successfully validated transaction! 🎉");
         props.setTs(new Date());
         setTimeout(() => {
-          closeRef.click();
+          dialog.close();
           setStatus("");
-          initFlowbite();
         }, 500);
       } else {
         const message = await response.json();
@@ -51,83 +50,55 @@ const ValidateTransaction = props => {
   };
 
   return (
-    <div
-      id="validationModal"
-      tabindex="-1"
-      aria-hidden="true"
-      class="fixed left-0 right-0 top-0 z-50 hidden h-[calc(100%-1rem)] max-h-full w-full overflow-y-auto overflow-x-hidden p-4 md:inset-0"
+    <Modal
+      ref={el => {
+        dialog = el;
+        props.ref?.(el);
+      }}
+      fullWidth
+      flush
+      title={
+        <span class="font-semibold">
+          Validate Transaction &mdash; {props.transaction?.transaction_id}
+        </span>
+      }
     >
-      <div class="relative max-h-full w-full max-w-2xl">
-        <div class="relative rounded-lg bg-white shadow dark:bg-gray-700">
-          <div class="flex items-start justify-between rounded-t border-b p-4 dark:border-gray-600">
-            <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
-              Validate Transaction &mdash; {props.transaction?.transaction_id}
-            </h3>
-            <button
-              type="button"
-              class="ml-auto inline-flex h-8 w-8 items-center justify-center rounded-lg bg-transparent text-sm text-gray-400 hover:bg-gray-200 hover:text-gray-900 dark:hover:bg-gray-600 dark:hover:text-white"
-              data-modal-hide="validationModal"
-            >
-              <svg
-                class="h-3 w-3"
-                aria-hidden="true"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 14 14"
-              >
-                <path
-                  stroke="currentColor"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"
-                />
-              </svg>
-              <span class="sr-only">Close modal</span>
-            </button>
-          </div>
-          <Form
-            class="my-6 space-y-6 md:space-y-7 lg:space-y-8"
-            onSubmit={values => handleSubmit(values)}
+      <Form class="space-y-4" onSubmit={values => handleSubmit(values)}>
+        <Field
+          name="validation_comment"
+          validate={required("Enter a comment for validation.")}
+        >
+          {(field, props) => (
+            <TextInput
+              {...props}
+              value={field.value}
+              error={field.error}
+              type="text"
+              label="Type comment for validation"
+              required
+            />
+          )}
+        </Field>
+        <div class="flex items-center gap-2">
+          <button
+            type="submit"
+            class="min-h-[44px] rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
           >
-            <div class="space-y-8">
-              <Field
-                name="validation_comment"
-                validate={required("Enter a comment for validation.")}
-              >
-                {(field, props) => (
-                  <TextInput
-                    {...props}
-                    value={field.value}
-                    error={field.error}
-                    type="text"
-                    label="Type comment for validation"
-                    required
-                  />
-                )}
-              </Field>
-              <div class="flex items-center space-x-2 rounded-b border-t border-gray-200 p-6 dark:border-gray-600">
-                <button
-                  type="submit"
-                  class="rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
-                >
-                  Accept
-                </button>
-                <button
-                  data-modal-hide="validationModal"
-                  ref={closeRef}
-                  type="button"
-                  class="rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-900 focus:z-10 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:border-gray-500 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 dark:hover:text-white dark:focus:ring-gray-600"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </Form>
-          <div class="flex items-center space-x-2 px-6 pb-6">{status()}</div>
+            Accept
+          </button>
+          <button
+            type="button"
+            onClick={() => dialog.close()}
+            class="min-h-[44px] rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-900 focus:z-10 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:border-gray-500 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 dark:hover:text-white dark:focus:ring-gray-600"
+          >
+            Cancel
+          </button>
         </div>
-      </div>
-    </div>
+        <p role="status" class="text-sm">
+          {status()}
+        </p>
+      </Form>
+    </Modal>
   );
 };
 export default ValidateTransaction;
