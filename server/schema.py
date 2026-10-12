@@ -139,7 +139,7 @@ class TeamUpdateSchema(Schema):
     category: str | None
     state_ut: str | None
     city: str | None
-    admin_ids: list[str] | None
+    admin_ids: list[int] | None
 
 
 class PersonTinySchema(ModelSchema):
