@@ -2,9 +2,10 @@ from django.db.models import BooleanField, Case, QuerySet, Value, When
 from django.http import HttpRequest
 from ninja import Router
 
+from server.announcements.access import can_read_members_only
 from server.announcements.models import Announcement
 from server.announcements.schema import AnnouncementSchema
-from server.core.models import Player, User
+from server.core.models import User
 
 # Create announcements router
 router = Router()
@@ -12,19 +13,6 @@ router = Router()
 
 class AuthenticatedHttpRequest(HttpRequest):
     user: User
-
-
-def can_read_members_only(user: User) -> bool:
-    """Staff, and anyone with an active membership, read members-only posts."""
-    if user.is_staff:
-        return True
-    try:
-        player = user.player_profile
-    except Player.DoesNotExist:
-        return False
-    # Same rule as /api/me/subscription, which the dashboard shows.
-    subscription = player.current_subscription
-    return subscription is not None and subscription.is_active
 
 
 def _with_access(request: AuthenticatedHttpRequest) -> QuerySet[Announcement]:
