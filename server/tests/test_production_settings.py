@@ -55,7 +55,9 @@ class TestProductionSettings(SimpleTestCase):
     def cache(self, **env: str) -> str:
         script = (
             "import hub.production as s; c = s.CACHES['default']; "
-            "print(c['BACKEND'], c.get('LOCATION'), c.get('OPTIONS'))"
+            "o = c.get('OPTIONS') or {}; r = o.get('retry'); "
+            "print(c['BACKEND'], c.get('LOCATION'), o.get('socket_connect_timeout'), o.get('socket_timeout'), "
+            "getattr(r, '_retries', None), [e.__module__ + '.' + e.__name__ for e in o.get('retry_on_error', [])])"
         )
         clean = {k: v for k, v in os.environ.items() if k not in {"DATABASE_URL", "REDIS_HOST"}}
         result = subprocess.run(
@@ -73,13 +75,13 @@ class TestProductionSettings(SimpleTestCase):
         self.assertEqual(
             "django.core.cache.backends.redis.RedisCache "
             f"redis://:{password('s')}@{host}:6379/0 "
-            "{'socket_connect_timeout': 0.1, 'socket_timeout': 0.2}",
+            "0.1 0.2 1 ['redis.exceptions.ConnectionError']",
             self.cache(REDIS_HOST=host, SECRET_KEY="s"),  # noqa: S106
         )
 
     def test_without_redis_nothing_is_cached(self) -> None:
         self.assertEqual(
-            "django.core.cache.backends.dummy.DummyCache None None",
+            "django.core.cache.backends.dummy.DummyCache None None None None []",
             self.cache(SECRET_KEY="s"),  # noqa: S106
         )
 
