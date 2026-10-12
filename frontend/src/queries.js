@@ -1,15 +1,43 @@
 import { getCookie, hasAuthHint } from "./utils";
 
+// AI coding agents whose GitHub accounts are typed "User", not "Bot".
+const AI_CONTRIBUTOR_LOGINS = new Set([
+  "claude",
+  "copilot",
+  "copilot-swe-agent",
+  "devin-ai-integration",
+  "cursoragent",
+  "codex",
+  "openai-codex",
+  "chatgpt-codex-connector",
+  "google-labs-jules",
+  "sweep-ai",
+  "coderabbitai"
+]);
+
+const isHumanContributor = contributor =>
+  contributor.type === "User" &&
+  !contributor.login.toLowerCase().endsWith("[bot]") &&
+  !AI_CONTRIBUTOR_LOGINS.has(contributor.login.toLowerCase());
+
 export const fetchContributors = async () => {
   const repoResp = await fetch(
-    "https://api.github.com/repos/india-ultimate/hub/contributors"
+    "https://api.github.com/repos/india-ultimate/hub/contributors?per_page=100"
   );
   const repoContributors = await repoResp.json();
+  if (!Array.isArray(repoContributors)) {
+    throw new Error(
+      repoContributors?.message || "Failed to fetch contributors"
+    );
+  }
 
   let contributors = [];
 
-  for await (const repoContributor of repoContributors) {
+  for await (const repoContributor of repoContributors.filter(
+    isHumanContributor
+  )) {
     const contributorResp = await fetch(repoContributor.url);
+    if (!contributorResp.ok) continue;
     const contributor = await contributorResp.json();
     contributors.push(contributor);
   }
