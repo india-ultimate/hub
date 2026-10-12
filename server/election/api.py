@@ -73,7 +73,7 @@ def list_elections(request: HttpRequest) -> list[dict[str, Any]]:
     ]
 
 
-@router.post("/", response=ElectionSchema)
+@router.post("/", response={200: ElectionSchema, 403: ErrorSchema})
 def create_election(
     request: AuthenticatedHttpRequest, data: ElectionCreateSchema
 ) -> Election | tuple[int, dict[str, str]]:
@@ -153,7 +153,7 @@ def list_candidates(request: HttpRequest, election_id: int) -> list[dict[str, An
     ]
 
 
-@router.post("/{election_id}/candidates/", response=CandidateSchema)
+@router.post("/{election_id}/candidates/", response={200: CandidateSchema, 403: ErrorSchema})
 def create_candidate(
     request: AuthenticatedHttpRequest, election_id: int, data: CandidateCreateSchema
 ) -> dict[str, Any] | tuple[int, dict[str, str]]:
@@ -179,7 +179,9 @@ def create_candidate(
     }
 
 
-@router.post("/{election_id}/eligible-voters/", response=list[EligibleVoterSchema])
+@router.post(
+    "/{election_id}/eligible-voters/", response={200: list[EligibleVoterSchema], 403: ErrorSchema}
+)
 def import_eligible_voters(
     request: AuthenticatedHttpRequest,
     election_id: int,
@@ -188,9 +190,6 @@ def import_eligible_voters(
     """Import eligible voters from a CSV file"""
     if error := check_staff(request):
         return error
-
-    if not file:
-        return 400, {"message": "No file provided"}
 
     election = get_object_or_404(Election, id=election_id)
 
@@ -536,7 +535,10 @@ def get_my_wards_for_election(
     return eligible_wards
 
 
-@router.post("/{election_id}/send-notification/", response={200: dict[str, str], 403: ErrorSchema})
+@router.post(
+    "/{election_id}/send-notification/",
+    response={200: dict[str, str], 400: ErrorSchema, 403: ErrorSchema, 500: ErrorSchema},
+)
 def send_election_notification(
     request: AuthenticatedHttpRequest, election_id: int
 ) -> dict[str, str] | tuple[int, dict[str, str]]:
