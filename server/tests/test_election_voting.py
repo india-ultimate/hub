@@ -736,3 +736,25 @@ nonstaff@example.com,Non Staff User"""
         self.assertTrue(db_results.exists())
         # Should have exactly one result per candidate per round
         self.assertEqual(db_results.count(), len(self.election.candidates.all()))
+
+
+class TestElectionNotification(TestCase):
+    def test_staff_can_email_the_voters(self) -> None:
+        staff = User.objects.create_user(
+            username="staff@example.com", email="staff@example.com", is_staff=True
+        )
+        voter = User.objects.create_user(username="voter@example.com", email="voter@example.com")
+        election = Election.objects.create(
+            title="Test Election",
+            description="Test Description",
+            start_date=timezone.now(),
+            end_date=timezone.now() + timedelta(days=7),
+            voting_method="IRV",
+        )
+        EligibleVoter.objects.create(election=election, user=voter)
+        self.client.force_login(staff)
+
+        response = self.client.post(f"/api/election/{election.id}/send-notification/")
+
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertIn("queued for sending to 1 eligible voters", response.json()["message"])
