@@ -27,6 +27,11 @@ LIMITS = {
         (("email",), 30, HOUR),
         (("ip",), 50, HOUR),
     ],
+    # Failed passwords only: a success is withdrawn. The "email" is the username.
+    OTPAttempt.Kind.PASSWORD: [
+        (("email", "ip"), 10, 10 * MINUTE),
+        (("email",), 50, HOUR),
+    ],
 }
 
 
@@ -82,6 +87,12 @@ def attempt(kind: OTPAttempt.Kind, email: str, ip: str) -> int:
         if len(times) == limit:
             wait = max(wait, times[-1] + window - current)
     return max(1, math.ceil(wait / MINUTE))
+
+
+def withdraw(kind: OTPAttempt.Kind, email: str, ip: str) -> None:
+    """Uncount one attempt, as `attempt` recorded it."""
+    rows = OTPAttempt.objects.filter(kind=kind, email=normalize_email(email)[:254], ip=ip)
+    OTPAttempt.objects.filter(id__in=rows.order_by("-id").values("id")[:1]).delete()
 
 
 def too_many(minutes: int) -> dict[str, str]:
