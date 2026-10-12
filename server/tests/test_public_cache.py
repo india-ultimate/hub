@@ -1,10 +1,12 @@
 """The shared cache for public tournament pages."""
 
+import time
 from collections.abc import Callable
+from contextlib import ExitStack
 from typing import Any
 from unittest.mock import patch
 
-from django.core.cache import cache
+from django.core.cache import cache, caches
 from django.db import connection
 from django.db.models import Model
 from django.http import HttpRequest, HttpResponse
@@ -29,6 +31,7 @@ def saving(row: Model | None) -> Callable[[], None]:
 class TestPublicCache(TournamentApiTestCase):
     def setUp(self) -> None:
         super().setUp()
+        public_cache.reset()
         cache.clear()
         self.match = self.make_match()
         slug = self.tournament.event.slug
@@ -244,6 +247,48 @@ class TestPublicCache(TournamentApiTestCase):
             Client().get(url)  # Its own client, so self.client's views stay unpatched.
         self.assertGreater(self.count_queries(url), 0)
 
+    def test_a_recreated_tournament_is_not_followed_by_its_dead_id(self) -> None:
+        url = self.pages["slug"]
+        self.client.get(url)
+        event = self.tournament.event
+        self.tournament.delete()
+        new = Tournament.objects.create(event=event)
+        # The lookup may point at the dead id for one page TTL, not longer.
+        with patch("time.time", return_value=time.time() + public_cache.TTL + 1):
+            self.assertEqual(200, self.client.get(url).status_code)
+            with self.captureOnCommitCallbacks(execute=True):
+                new.save()
+            self.assertGreater(self.count_queries(url), 0)
+
+    def test_one_bump_is_one_cache_call(self) -> None:
+        calls: list[str] = []
+        backend = type(caches["default"])
+        names = ("get", "set", "add", "incr", "get_many", "set_many", "delete")
+        patches = [
+            patch.object(backend, n, autospec=True, side_effect=self.recorder(backend, n, calls))
+            for n in names
+        ]
+        with ExitStack() as stack:
+            for p in patches:
+                stack.enter_context(p)
+            with self.captureOnCommitCallbacks(execute=True):
+                public_cache.bump("7")
+        self.assertEqual(["set"], calls)
+        self.assertEqual(1, len(self.version_keys()))
+
+    @staticmethod
+    def recorder(backend: Any, name: str, calls: list[str]) -> Callable[..., Any]:
+        real = getattr(backend, name)
+
+        def call(*args: Any, **kwargs: Any) -> Any:
+            calls.append(name)
+            return real(*args, **kwargs)
+
+        return call
+
+    def version_keys(self) -> list[str]:
+        return [k for k in cache._cache if "tver:" in k]  # type: ignore[attr-defined]
+
     def test_a_failing_lookup_never_fails_the_save(self) -> None:
         with (
             patch("server.public_cache.transaction.on_commit", side_effect=RuntimeError),
@@ -269,6 +314,11 @@ class TestPublicCacheOff(TournamentApiTestCase):
     }
 )
 class TestRedisDown(TournamentApiTestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        public_cache.reset()
+        self.addCleanup(public_cache.reset)
+
     def test_pages_load_when_redis_is_down(self) -> None:
         url = f"/api/match/{self.make_match().id}"
         with self.assertLogs("server.public_cache", "WARNING"):
@@ -281,3 +331,33 @@ class TestRedisDown(TournamentApiTestCase):
         with self.assertLogs("server.public_cache", "WARNING") as logs:
             self.assertEqual(200, self.client.get(url).status_code)
         self.assertEqual(1, len(logs.records))
+
+    def test_after_a_failure_the_cache_is_skipped_for_five_seconds(self) -> None:
+        url = f"/api/tournament/{self.tournament.id}/matches"
+        backend = type(caches["default"])
+        with self.assertLogs("server.public_cache", "WARNING"):
+            first = self.client.get(url)
+        with (
+            patch.object(backend, "get", side_effect=AssertionError) as get,
+            patch.object(backend, "set", side_effect=AssertionError) as put,
+            self.assertNoLogs("server.public_cache", "WARNING"),
+        ):
+            second = self.client.get(url)
+            self.assertFalse(public_cache.enabled())
+            with self.captureOnCommitCallbacks(execute=True):
+                public_cache.bump("1")
+        self.assertEqual(200, second.status_code)
+        self.assertEqual(first.content, second.content)
+        self.assertEqual(0, get.call_count + put.call_count)
+
+    def test_the_cache_is_tried_again_after_five_seconds(self) -> None:
+        url = f"/api/tournament/{self.tournament.id}/matches"
+        now = time.monotonic()
+        with self.assertLogs("server.public_cache", "WARNING"):
+            self.client.get(url)
+        with (
+            patch("server.public_cache.time.monotonic", return_value=now + 6),
+            self.assertLogs("server.public_cache", "WARNING"),
+        ):
+            self.assertTrue(public_cache.enabled())
+            self.assertEqual(200, self.client.get(url).status_code)

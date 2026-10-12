@@ -7,6 +7,7 @@ Redis unreachable every page is served from the database, as before.
 """
 
 import logging
+import time
 from collections.abc import Callable, Iterable
 from http import HTTPStatus
 from typing import Any, TypeVar
@@ -23,7 +24,10 @@ log = logging.getLogger(__name__)
 T = TypeVar("T")
 
 TTL = 30
-LOOKUP_TTL = 24 * 60 * 60
+# A match never changes tournament, so its lookup can last. A slug can be
+# recreated under a new id, so its lookup lasts no longer than a page.
+MATCH_LOOKUP_TTL = 24 * 60 * 60
+PAUSE = 5
 ALL = "all"
 
 # Every public tournament GET: none reads request.user, so every viewer
@@ -51,15 +55,28 @@ ROUTES = {
 }
 
 
+_state = {"down_until": 0.0}
+
+
+def reset() -> None:
+    _state["down_until"] = 0.0
+
+
 def enabled() -> bool:
     # `cache` is a proxy that isinstance() can't see through.
-    return not isinstance(caches["default"], DummyCache)
+    return time.monotonic() >= _state["down_until"] and not isinstance(
+        caches["default"], DummyCache
+    )
 
 
 def safe(call: Callable[[], T], default: T) -> T:
+    if time.monotonic() < _state["down_until"]:
+        return default
     try:
         return call()
     except Exception:
+        # One slow or dead cache costs one timeout per process per PAUSE, not one per call.
+        _state["down_until"] = time.monotonic() + PAUSE
         log.warning("Public page cache unavailable", exc_info=True)
         return default
 
@@ -68,14 +85,14 @@ def version_key(tid: str) -> str:
     return f"tver:{tid}"
 
 
-def _looked_up(key: str, find: Callable[[], int | None]) -> str | None:
+def _looked_up(key: str, ttl: int, find: Callable[[], int | None]) -> str | None:
     found = cache.get(key)
     if found is None:
         tid = find()
         if tid is None:
             return None
         found = str(tid)
-        cache.set(key, found, LOOKUP_TTL)
+        cache.set(key, found, ttl)
     return str(found)
 
 
@@ -105,6 +122,7 @@ def tournament_of(match: ResolverMatch, request: HttpRequest) -> str | None:
         match_id: str = found_id
         return _looked_up(
             f"tmatch:{match_id}",
+            MATCH_LOOKUP_TTL,
             lambda: Match.objects.filter(id=match_id)
             .values_list("tournament_id", flat=True)
             .first(),
@@ -124,6 +142,7 @@ def tournament_of(match: ResolverMatch, request: HttpRequest) -> str | None:
     name: str = slug
     return _looked_up(
         f"tslug:{name}",
+        TTL,
         lambda: Tournament.objects.filter(event__slug=name).values_list("id", flat=True).first(),
     )
 
@@ -171,9 +190,8 @@ def bump(tid: str) -> None:
         return
 
     def go() -> None:
-        key = version_key(tid)
-        safe(lambda: cache.add(key, 0, None), None)
-        safe(lambda: cache.incr(key), None)
+        # A version only has to change, so one set does it.
+        safe(lambda: cache.set(version_key(tid), time.time_ns(), None), None)
 
     transaction.on_commit(go)
 
