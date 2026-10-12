@@ -1209,7 +1209,7 @@ const TournamentAgentTab = props => {
                 style={{ color: "var(--agent-ink-muted)" }}
               >
                 Awaiting your confirmation
-                <span class="min-w-4 inline-flex h-4 items-center justify-center rounded-full bg-blue-600 px-1 text-[10px] font-semibold text-white">
+                <span class="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-blue-600 px-1 text-[10px] font-semibold text-white">
                   {pendingProposals().length}
                 </span>
               </h3>

@@ -216,7 +216,7 @@ const CreatedFields = props => {
         {field => (
           <div>
             <div class="relative overflow-x-auto rounded-md">
-              <div class="flex w-full items-center justify-between bg-gray-300 p-4 text-left text-lg font-semibold text-gray-900 rtl:text-right dark:bg-gray-700 dark:text-white">
+              <div class="flex w-full items-center justify-between bg-gray-300 p-4 text-left text-lg font-semibold text-gray-900 dark:bg-gray-700 dark:text-white rtl:text-right">
                 <span>{field.name}</span>
                 <div class="flex items-center gap-2">
                   <button
