@@ -46,6 +46,7 @@ from server.core.models import (
     CommentaryInfo,
     Guardianship,
     Player,
+    StatesUTs,
     Team,
     UCPerson,
     User,
@@ -553,6 +554,16 @@ def update_team(
         admins = list(User.objects.filter(id__in=team_details.admin_ids))
         if len(admins) != len(set(team_details.admin_ids)):
             return 400, {"message": "Some of those admins don't exist"}
+
+    # Checked before anything is saved: the column rejects these (or the
+    # response does), and the row would already be changed by then.
+    if team_details.category is not None and team_details.category not in Team.CategoryTypes:
+        return 400, {"message": "That team category doesn't exist"}
+    if team_details.state_ut is not None and team_details.state_ut not in StatesUTs:
+        return 400, {"message": "That state or UT doesn't exist"}
+    max_city = cast(int, Team._meta.get_field("city").max_length)
+    if team_details.city is not None and len(team_details.city) > max_city:
+        return 400, {"message": "That city name is too long"}
 
     if team_details.category is not None:
         team.category = team_details.category
