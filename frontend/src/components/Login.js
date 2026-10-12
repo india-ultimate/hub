@@ -186,7 +186,9 @@ const SendEmailOTP = props => {
     } else {
       try {
         const data = await response.json();
-        props.setStatus(`OTP sending failed with error: ${data.message}`);
+        props.setStatus(
+          data.message || "Something went wrong. Please try again."
+        );
       } catch {
         props.setStatus(
           `OTP sending failed with error: ${response.statusText} (${response.status})`
@@ -221,7 +223,9 @@ const SendEmailOTP = props => {
       setLoggedIn(false);
       try {
         const data = await response.json();
-        props.setStatus(`Login failed with error: ${data.message}`);
+        props.setStatus(
+          data.message || "Something went wrong. Please try again."
+        );
       } catch {
         props.setStatus(
           `Login failed with error: ${response.statusText} (${response.status})`

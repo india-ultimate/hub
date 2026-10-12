@@ -12,6 +12,7 @@ from server.core.models import (  # noqa: F401
     CollegeId,
     CommentaryInfo,
     Guardianship,
+    OTPAttempt,
     Player,
     Team,
     UCPerson,

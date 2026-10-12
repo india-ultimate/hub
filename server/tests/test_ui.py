@@ -19,7 +19,7 @@ from selenium.webdriver.common.keys import Keys
 from seleniumbase import BaseCase
 
 from hub.settings import BASE_DIR
-from server.core.models import Player, User
+from server.core.models import OTPAttempt, Player, User
 from server.duplicates.clusters import close_finished, detect_and_create
 from server.duplicates.emails import notify
 from server.duplicates.flow import dismiss, merge_pair, request_merge, request_staff
@@ -398,6 +398,48 @@ class TestIntegration(BaseCase):
         self.assert_element('a[href="/registration/me"]')
 
         print("Successfully logged in!")
+
+    def test_login_shows_why_a_code_was_refused(self) -> None:
+        username, _password, _user_id = create_login_user()
+        too_many = "Too many attempts. Try again in 60 minutes."
+        # From elsewhere, up to each per-email ceiling.
+        for _ in range(10):
+            OTPAttempt.objects.create(kind=OTPAttempt.Kind.SEND, email="sent@x.com", ip="1.2.3.4")
+        for _ in range(30):
+            OTPAttempt.objects.create(kind=OTPAttempt.Kind.GUESS, email=username, ip="1.2.3.4")
+
+        self.open(DJANGO_URL)
+        self.click_link("Login")
+        self.click("button#email-otp-tab")
+        self.type("input#otp-email", "sent@x.com")
+        self.click("button#send-otp-button")
+        self.assert_text(too_many)
+        self.assert_element_absent("input#email-otp-number")
+
+        self.type("input#otp-email", username)
+        self.click("button#send-otp-button")
+        self.assert_element("input#email-otp-number")
+        self.type("input#email-otp-number", latest_code(username))
+        self.click("button#validate-otp-button")
+        self.assert_text(too_many)
+        self.assert_element_absent('a[href="/registration/me"]')
+
+    def test_login_explains_a_request_the_server_could_not_read(self) -> None:
+        username, _password, _user_id = create_login_user()
+        self.open(DJANGO_URL)
+        self.click_link("Login")
+        self.click("button#email-otp-tab")
+        self.type("input#otp-email", username)
+        self.click("button#send-otp-button")
+        self.assert_element("input#email-otp-number")
+        # A 422 carries {"detail": ...} and no message.
+        self.execute_script("""const fetch = window.fetch;
+            window.fetch = (url, options) => url === "/api/otp-login"
+              ? Promise.resolve(new Response('{"detail": []}', {status: 422}))
+              : fetch(url, options);""")
+        self.type("input#email-otp-number", latest_code(username))
+        self.click("button#validate-otp-button")
+        self.assert_text("Something went wrong. Please try again.")
 
     # Breaks if: same-inbox verification, the per-keeper code check, the
     # resend wait, or attempt counting; the default field choice, or

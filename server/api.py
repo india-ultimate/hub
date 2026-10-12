@@ -39,12 +39,14 @@ from ninja.utils import check_csrf
 
 from server.announcements.api import router as announcements_router
 from server.chat.api import router as chat_router
+from server.core import otp as otp_limits
 from server.core.accounts import find_user, resolve_login_user
 from server.core.models import (
     Accreditation,
     CollegeId,
     CommentaryInfo,
     Guardianship,
+    OTPAttempt,
     Player,
     StatesUTs,
     Team,
@@ -637,11 +639,14 @@ def get_email_hash(email: str) -> str:
     return b32encode(email_hash.hexdigest().encode("utf-8")).decode("utf-8")
 
 
-@api.post("/send-otp", auth=None, response={200: OTPRequestResponse})
+@api.post("/send-otp", auth=None, response={200: OTPRequestResponse, 429: Response})
 def get_otp(
     request: HttpRequest, credentials: OTPRequestCredentials
-) -> tuple[int, dict[str, int | str]]:
+) -> tuple[int, dict[str, int] | message_response]:
     credentials.email = credentials.email.strip().lower()
+    ip = otp_limits.client_ip(request)
+    if wait := otp_limits.attempt(OTPAttempt.Kind.SEND, credentials.email, ip):
+        return 429, otp_limits.too_many(wait)
     email_hash = get_email_hash(credentials.email)
     totp = pyotp.TOTP(email_hash)
     current_ts = int(now().timestamp())
@@ -658,11 +663,24 @@ def get_otp(
     return 200, {"otp_ts": current_ts}
 
 
-@api.post("/otp-login", auth=None, response={200: MeSchema, 403: Response, 404: Response})
+# How old an emailed code may be, and how far ahead a client's clock may run.
+OTP_MAX_AGE = 10 * 60
+OTP_MAX_SKEW = 30
+
+
+@api.post(
+    "/otp-login", auth=None, response={200: MeSchema, 403: Response, 404: Response, 429: Response}
+)
 def otp_login(
     request: HttpRequest, credentials: OTPLoginCredentials
 ) -> tuple[int, User | message_response]:
     credentials.email = credentials.email.strip().lower()
+    ip = otp_limits.client_ip(request)
+    if wait := otp_limits.attempt(OTPAttempt.Kind.GUESS, credentials.email, ip):
+        return 429, otp_limits.too_many(wait)
+    age = now().timestamp() - credentials.otp_ts
+    if not -OTP_MAX_SKEW <= age <= OTP_MAX_AGE:
+        return 403, {"message": "This code has expired. Ask for a new one."}
     email_hash = get_email_hash(credentials.email)
     totp = pyotp.TOTP(email_hash)
     actual_otp = totp.generate_otp(credentials.otp_ts)
