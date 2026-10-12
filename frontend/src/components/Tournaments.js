@@ -1,14 +1,27 @@
-import { A } from "@solidjs/router";
+import { A, useSearchParams } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
 import clsx from "clsx";
-import { createSignal, For, Match, Show, Switch } from "solid-js";
+import { Icon } from "solid-heroicons";
+import { check } from "solid-heroicons/solid-mini";
+import { createEffect, createSignal, For, Match, Show, Switch } from "solid-js";
 
 import { fetchTournamentCards } from "../queries";
 import { parseLocalDate, todayIST, tournamentLink } from "../utils";
 
 const Tournaments = () => {
   // "" is this year and anything upcoming; otherwise one year's tournaments.
-  const [year, setYear] = createSignal("");
+  // The year lives in the URL (?year=2025) so it survives back and sharing.
+  const [searchParams, setSearchParams] = useSearchParams();
+  // Anything but 1-4 digits above zero (?year=abc, 0, 10000) is the default view.
+  const year = () => {
+    const y = searchParams.year;
+    return typeof y === "string" && /^\d{1,4}$/.test(y) && +y > 0
+      ? String(+y)
+      : "";
+  };
+  // A pill click replaces the entry: Back isn't a stack of years.
+  const setYear = y =>
+    setSearchParams({ year: y || undefined }, { replace: true, scroll: false });
   const tournamentsQuery = createQuery(
     () => ["tournament-cards", year()],
     () => fetchTournamentCards(year() ? `?year=${year()}` : ""),
@@ -19,6 +32,64 @@ const Tournaments = () => {
   const [showOpens, setShowOpens] = createSignal(true);
   const [showWomens, setShowWomens] = createSignal(true);
 
+  // Newest first, whatever order the API sends.
+  const yearOptions = () => [
+    { value: "", label: "This year & upcoming" },
+    ...[...(tournamentsQuery.data?.years ?? [])]
+      .sort((x, y) => y - x)
+      .map(y => ({ value: String(y), label: String(y) }))
+  ];
+
+  // The checked pill is the one tab stop; with none checked (an unlisted
+  // year) it is the first, so the group can still be focused.
+  const isTabStop = (o, i) =>
+    year() === o.value ||
+    (i === 0 && !yearOptions().some(x => x.value === year()));
+
+  let pillsRef;
+  // A deep-linked old year can start off-screen in the scrolling row.
+  createEffect(() => {
+    if (!tournamentsQuery.data?.years) return;
+    pillsRef
+      ?.querySelector(`[data-year="${year()}"]`)
+      ?.scrollIntoView({ inline: "center", block: "nearest" });
+  });
+
+  const shown = () =>
+    (tournamentsQuery.data?.tournaments ?? []).filter(t => {
+      if (t.status === "DFT") return false;
+      if (t.event?.type === "OPN" && showOpens()) return true;
+      if (t.event?.type === "MXD" && showMixed()) return true;
+      if (t.event?.type === "WMN" && showWomens()) return true;
+      return false;
+    });
+
+  const pill =
+    "inline-flex min-h-[44px] shrink-0 snap-start items-center justify-center whitespace-nowrap rounded-full border px-4 text-sm font-medium transition-colors duration-200 motion-reduce:transition-none focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900";
+  const on = "border-blue-600 bg-blue-600 text-white hover:bg-blue-700";
+  const off =
+    "border-gray-300 bg-white text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700";
+
+  // Radiogroup: arrows move the selection, and only the selected pill is a tab stop.
+  const onKeyDown = e => {
+    const keys = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 };
+    if (!(e.key in keys)) return;
+    e.preventDefault();
+    const opts = yearOptions();
+    const i = opts.findIndex(o => o.value === year());
+    const next = opts[(i + keys[e.key] + opts.length) % opts.length];
+    setYear(next.value);
+    e.currentTarget
+      .querySelector(`[data-year="${next.value}"]`)
+      ?.focus({ preventScroll: false });
+  };
+
+  const categories = [
+    { label: "Mixed", on: showMixed, set: setShowMixed },
+    { label: "Opens", on: showOpens, set: setShowOpens },
+    { label: "Womens", on: showWomens, set: setShowWomens }
+  ];
+
   return (
     <div>
       <h1 class="mb-5 text-center">
@@ -27,88 +98,94 @@ const Tournaments = () => {
         </span>
       </h1>
 
-      <ul class="flex w-full items-center rounded-lg border border-blue-500 bg-white text-sm font-medium text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
-        <li class="w-full border-b-0 border-r border-blue-500 dark:border-gray-600">
-          <div class="flex items-center ps-3">
-            <input
-              id="mixed-checkbox"
-              type="checkbox"
-              value="mixed"
-              checked={showMixed()}
-              onChange={e => setShowMixed(e.target.checked)}
-              class="h-4 w-4 rounded border-gray-300 bg-gray-100 text-blue-600 focus:ring-2 focus:ring-blue-500 dark:border-gray-500 dark:bg-gray-600 dark:ring-offset-gray-700 dark:focus:ring-blue-600 dark:focus:ring-offset-gray-700"
-            />
-            <label
-              for="mixed-checkbox"
-              class="ms-2 w-full py-3 text-sm font-medium text-blue-600 dark:text-gray-300"
-            >
-              Mixed
-            </label>
+      <div class="space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/50">
+        <div>
+          <span
+            id="year-label"
+            class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400"
+          >
+            Year
+          </span>
+          <div
+            ref={pillsRef}
+            role="radiogroup"
+            aria-labelledby="year-label"
+            onKeyDown={onKeyDown}
+            class="-mx-1 flex snap-x gap-2 overflow-x-auto px-1 py-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            <For each={yearOptions()}>
+              {(o, i) => (
+                <button
+                  type="button"
+                  role="radio"
+                  data-year={o.value}
+                  aria-checked={year() === o.value}
+                  tabindex={isTabStop(o, i()) ? 0 : -1}
+                  onClick={() => setYear(o.value)}
+                  class={clsx(pill, year() === o.value ? on : off)}
+                >
+                  {o.label}
+                </button>
+              )}
+            </For>
           </div>
-        </li>
-        <li class="w-full border-b-0 border-r border-blue-500 dark:border-gray-600">
-          <div class="flex items-center ps-3">
-            <input
-              id="opens-checkbox"
-              type="checkbox"
-              value="mens"
-              checked={showOpens()}
-              onChange={e => setShowOpens(e.target.checked)}
-              class="h-4 w-4 rounded border-gray-300 bg-gray-100 text-blue-600 focus:ring-2 focus:ring-blue-500 dark:border-gray-500 dark:bg-gray-600 dark:ring-offset-gray-700 dark:focus:ring-blue-600 dark:focus:ring-offset-gray-700"
-            />
-            <label
-              for="opens-checkbox"
-              class="ms-2 w-full py-3 text-sm font-medium text-blue-600 dark:text-gray-300"
-            >
-              Opens
-            </label>
+        </div>
+        <div>
+          <span
+            id="category-label"
+            class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400"
+          >
+            Category
+          </span>
+          <div
+            class="flex flex-wrap gap-2"
+            role="group"
+            aria-labelledby="category-label"
+          >
+            <For each={categories}>
+              {c => (
+                <button
+                  type="button"
+                  aria-pressed={c.on()}
+                  onClick={() => c.set(!c.on())}
+                  class={clsx(
+                    pill,
+                    "gap-1.5",
+                    c.on()
+                      ? "border-blue-600 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:border-blue-400 dark:bg-blue-900/40 dark:text-blue-200"
+                      : off
+                  )}
+                >
+                  <Show when={c.on()}>
+                    <Icon path={check} aria-hidden="true" class="h-4 w-4" />
+                  </Show>
+                  {c.label}
+                </button>
+              )}
+            </For>
           </div>
-        </li>
-        <li class="w-full border-b-0 border-blue-500 dark:border-gray-600">
-          <div class="flex items-center ps-3">
-            <input
-              id="womens-checkbox"
-              type="checkbox"
-              value="womens"
-              checked={showWomens()}
-              onChange={e => setShowWomens(e.target.checked)}
-              class="h-4 w-4 rounded border-gray-300 bg-gray-100 text-blue-600 focus:ring-2 focus:ring-blue-500 dark:border-gray-500 dark:bg-gray-600 dark:ring-offset-gray-700 dark:focus:ring-blue-600 dark:focus:ring-offset-gray-700"
-            />
-            <label
-              for="womens-checkbox"
-              class="ms-2 w-full py-3 text-sm font-medium text-blue-600 dark:text-gray-300"
-            >
-              Womens
-            </label>
-          </div>
-        </li>
-      </ul>
+        </div>
+      </div>
 
-      <select
-        aria-label="Year"
-        value={year()}
-        onChange={e => setYear(e.target.value)}
-        class="mb-3 rounded-lg border border-blue-500 bg-white p-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-      >
-        <option value="">{todayIST().getFullYear()} and upcoming</option>
-        <For each={tournamentsQuery.data?.years}>
-          {y => <option value={y}>{y}</option>}
-        </For>
-      </select>
-
+      <Show when={tournamentsQuery.isError}>
+        <p role="alert" class="mt-8 text-center text-red-600 dark:text-red-400">
+          Couldn't load the tournaments. Check your connection and try again.
+        </p>
+      </Show>
+      <Show when={tournamentsQuery.data && shown().length === 0}>
+        <p class="mt-8 text-center text-gray-600 dark:text-gray-300">
+          No tournaments match these filters
+          {year() ? ` in ${year()}` : " yet"}. Try another year or category.
+        </p>
+      </Show>
       <div
-        class={
-          "mt-5 grid grid-cols-1 justify-items-center gap-5 md:grid-cols-2 lg:grid-cols-3"
-        }
+        aria-busy={tournamentsQuery.isFetching}
+        class={clsx(
+          "mt-5 grid grid-cols-1 justify-items-center gap-5 transition-opacity duration-200 motion-reduce:transition-none md:grid-cols-2 lg:grid-cols-3",
+          tournamentsQuery.isFetching && "opacity-50"
+        )}
       >
-        <For
-          each={tournamentsQuery.data?.tournaments.filter(t => {
-            if (t.event?.type === "OPN" && showOpens()) return true;
-            if (t.event?.type === "MXD" && showMixed()) return true;
-            if (t.event?.type === "WMN" && showWomens()) return true;
-            return false;
-          })}
-        >
+        <For each={shown()}>
           {tournament => (
             <Show when={tournament.status !== "DFT"}>
               <A
