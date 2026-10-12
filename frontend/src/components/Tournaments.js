@@ -3,11 +3,17 @@ import { createQuery } from "@tanstack/solid-query";
 import clsx from "clsx";
 import { createSignal, For, Match, Show, Switch } from "solid-js";
 
-import { fetchTournaments } from "../queries";
+import { fetchTournamentCards } from "../queries";
 import { parseLocalDate, todayIST, tournamentLink } from "../utils";
 
 const Tournaments = () => {
-  const tournamentsQuery = createQuery(() => ["tournaments"], fetchTournaments);
+  // "" is this year and anything upcoming; otherwise one year's tournaments.
+  const [year, setYear] = createSignal("");
+  const tournamentsQuery = createQuery(
+    () => ["tournament-cards", year()],
+    () => fetchTournamentCards(year() ? `?year=${year()}` : ""),
+    { keepPreviousData: true }
+  );
 
   const [showMixed, setShowMixed] = createSignal(true);
   const [showOpens, setShowOpens] = createSignal(true);
@@ -78,13 +84,25 @@ const Tournaments = () => {
         </li>
       </ul>
 
+      <select
+        aria-label="Year"
+        value={year()}
+        onChange={e => setYear(e.target.value)}
+        class="mb-3 rounded-lg border border-blue-500 bg-white p-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+      >
+        <option value="">{todayIST().getFullYear()} and upcoming</option>
+        <For each={tournamentsQuery.data?.years}>
+          {y => <option value={y}>{y}</option>}
+        </For>
+      </select>
+
       <div
         class={
           "mt-5 grid grid-cols-1 justify-items-center gap-5 md:grid-cols-2 lg:grid-cols-3 "
         }
       >
         <For
-          each={tournamentsQuery.data?.filter(t => {
+          each={tournamentsQuery.data?.tournaments.filter(t => {
             if (t.event?.type === "OPN" && showOpens()) return true;
             if (t.event?.type === "MXD" && showMixed()) return true;
             if (t.event?.type === "WMN" && showWomens()) return true;

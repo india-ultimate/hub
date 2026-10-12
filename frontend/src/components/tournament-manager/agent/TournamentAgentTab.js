@@ -539,6 +539,7 @@ const TournamentAgentTab = props => {
       queryClient.invalidateQueries({ queryKey: [key, tid] });
     }
     queryClient.invalidateQueries({ queryKey: ["tournaments"] });
+    queryClient.invalidateQueries({ queryKey: ["tournament-cards"] });
     queryClient.invalidateQueries({
       queryKey: ["tournament-agent", "history", tid]
     });

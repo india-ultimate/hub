@@ -3,11 +3,14 @@ import { createQuery } from "@tanstack/solid-query";
 import { createEffect, createSignal, For, Show } from "solid-js";
 
 import { ChevronRight } from "../../icons";
-import { fetchTournaments } from "../../queries";
+import { fetchTournamentCards } from "../../queries";
 import { parseLocalDate, todayIST, tournamentLink } from "../../utils";
 
 const TournamentSection = () => {
-  const tournamentsQuery = createQuery(() => ["tournaments"], fetchTournaments);
+  const tournamentsQuery = createQuery(
+    () => ["tournament-cards", "recent"],
+    () => fetchTournamentCards("?recent=1")
+  );
   const [upcoming, setUpcoming] = createSignal([]);
   const [past, setPast] = createSignal([]);
   const [live, setLive] = createSignal([]);
@@ -18,7 +21,7 @@ const TournamentSection = () => {
     let liveTournaments = [];
     const today = todayIST();
 
-    tournamentsQuery.data?.forEach(tournament => {
+    tournamentsQuery.data?.tournaments.forEach(tournament => {
       const startDate = parseLocalDate(tournament.event.start_date);
       const endDate = parseLocalDate(tournament.event.end_date);
 
