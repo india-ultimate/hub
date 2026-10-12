@@ -309,7 +309,7 @@ const SeriesRoster = () => {
                           )}
                         >
                           <div class="flex w-full items-center justify-between gap-x-4">
-                            <div class="flex items-center  font-medium">
+                            <div class="flex items-center font-medium">
                               <span>{invitation.to_player?.full_name}</span>
                               <Show
                                 when={invitation.to_player?.match_up}

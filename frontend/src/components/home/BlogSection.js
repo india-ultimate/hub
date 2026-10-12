@@ -67,13 +67,7 @@ const BlogCard = props => {
           "background-size": "cover",
           "background-repeat": "no-repeat"
         }}
-        class="relative z-10 hidden h-full items-center p-20 before:absolute before:inset-0
-            before:z-[-5]
-            before:block
-            before:bg-black
-            before:opacity-50
-            before:content-['']
-            md:flex"
+        class="relative z-10 hidden h-full items-center p-20 before:absolute before:inset-0 before:z-[-5] before:block before:bg-black before:opacity-50 before:content-[''] md:flex"
       >
         <div class="w-1/2">
           <h3 class="text-md mt-2 text-white">{props.category}</h3>

@@ -47,7 +47,7 @@ const ChatInput = props => {
       <button
         type="submit"
         disabled={props.loading || !message().trim()}
-        class="inline-flex items-center rounded-lg bg-blue-700 px-4 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800  disabled:cursor-not-allowed disabled:opacity-50 "
+        class="inline-flex items-center rounded-lg bg-blue-700 px-4 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {props.loading ? (
           <Spinner noMargin height="16" width="16" />

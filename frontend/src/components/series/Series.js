@@ -59,10 +59,10 @@ const TeamRow = props => {
         <A
           href={`/series/${props.seriesSlug}/team/${props.team.slug}`}
           class={clsx(
-            "inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium  focus:outline-none focus:ring-4",
+            "inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium focus:outline-none focus:ring-4",
             userIsTeamAdmin()
               ? "bg-blue-600 text-white hover:bg-blue-600 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
-              : "border border-blue-700 bg-transparent text-blue-600  focus:ring-blue-300 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+              : "border border-blue-700 bg-transparent text-blue-600 focus:ring-blue-300 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
           )}
         >
           <span class="inline-flex items-center gap-2">
@@ -96,7 +96,7 @@ const AdminTeamRow = props => {
             type="button"
             class={clsx(
               "group justify-self-end rounded-lg px-4 py-2 text-sm font-medium text-white focus:outline-none focus:ring-4",
-              "dark:focus:ring-blue-800,  bg-blue-600 hover:bg-blue-700 focus:ring-blue-300 disabled:bg-gray-300 disabled:text-gray-600 dark:bg-blue-600 dark:hover:bg-blue-700"
+              "dark:focus:ring-blue-800, bg-blue-600 hover:bg-blue-700 focus:ring-blue-300 disabled:bg-gray-300 disabled:text-gray-600 dark:bg-blue-600 dark:hover:bg-blue-700"
             )}
             disabled={props.registerTeamMutation.isLoading}
             onClick={() =>
@@ -413,7 +413,7 @@ const Series = () => {
                 <div
                   class={clsx(
                     "text-md flex w-full items-center justify-start gap-2 px-4 py-4 font-medium underline",
-                    "border-b border-gray-300 bg-gray-100 text-gray-800 "
+                    "border-b border-gray-300 bg-gray-100 text-gray-800"
                   )}
                 >
                   Click to create, edit or view all teams

@@ -390,7 +390,7 @@ const ValidateRoster = () => {
                             }
                             )
                           </h4>
-                          <ul class="w-200 my-4 rounded-lg border border-gray-200 bg-white text-sm font-medium dark:border-gray-600 dark:bg-gray-700 ">
+                          <ul class="w-200 my-4 rounded-lg border border-gray-200 bg-white text-sm font-medium dark:border-gray-600 dark:bg-gray-700">
                             <For
                               each={teamRegistrations.filter(
                                 r =>

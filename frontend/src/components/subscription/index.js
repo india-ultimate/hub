@@ -125,7 +125,7 @@ const Subscription = () => {
         <IUIDBadge id={player()?.iu_id} />
       </div>
 
-      <div class="my-2 rounded-lg bg-blue-50 p-4 text-sm " role="alert">
+      <div class="my-2 rounded-lg bg-blue-50 p-4 text-sm" role="alert">
         <details>
           <summary class="text-blue-600">
             More Information about India Ultimate Subscription

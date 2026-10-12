@@ -185,7 +185,7 @@ const EditStats = () => {
         </div>
       </div>
 
-      <div class="my-2 rounded-lg bg-gray-50 p-4 text-sm " role="alert">
+      <div class="my-2 rounded-lg bg-gray-50 p-4 text-sm" role="alert">
         <details>
           <summary class="text-gray-600">Match Info</summary>
           <div class="mt-4 space-y-2">
@@ -227,7 +227,7 @@ const EditStats = () => {
         </details>
       </div>
 
-      <div class="my-2 rounded-lg bg-blue-50 p-4 text-sm " role="alert">
+      <div class="my-2 rounded-lg bg-blue-50 p-4 text-sm" role="alert">
         <details>
           <summary class="text-blue-600">
             {matchQuery.data?.team_1?.name} -{" "}
@@ -317,7 +317,7 @@ const EditStats = () => {
         </details>
       </div>
 
-      <div class="my-2 rounded-lg bg-green-50 p-4 text-sm " role="alert">
+      <div class="my-2 rounded-lg bg-green-50 p-4 text-sm" role="alert">
         <details>
           <summary class="text-green-600">
             {matchQuery.data?.team_2?.name} -{" "}

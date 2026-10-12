@@ -318,7 +318,7 @@ const TeamRegistration = () => {
 
       <div class="mx-auto max-w-screen-md">
         <div class="mt-4">
-          <div class="mb-2 flex items-center justify-between ">
+          <div class="mb-2 flex items-center justify-between">
             <h4 class="text-lg font-bold text-blue-500">
               Registered Teams{" "}
               {`(${
@@ -374,10 +374,10 @@ const TeamRegistration = () => {
                       <A
                         href={`/tournament/${params.slug}/team/${team.slug}/roster`}
                         class={clsx(
-                          "inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium  focus:outline-none focus:ring-4",
+                          "inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium focus:outline-none focus:ring-4",
                           isAdminAndPlayerRegInProgress(team.id)
                             ? "bg-blue-600 text-white hover:bg-blue-600 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
-                            : "border  border-blue-700 bg-transparent text-blue-600  focus:ring-blue-300 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+                            : "border border-blue-700 bg-transparent text-blue-600 focus:ring-blue-300 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
                         )}
                       >
                         <span class="self-center">

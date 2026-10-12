@@ -285,7 +285,7 @@ const EditStats = () => {
               >
                 <span
                   class={clsx(
-                    "relative inline-flex items-center rounded-md px-3 py-2.5 transition-all duration-75 ease-in ",
+                    "relative inline-flex items-center rounded-md px-3 py-2.5 transition-all duration-75 ease-in",
                     "bg-white group-hover:bg-opacity-0 group-disabled:bg-gray-300 dark:bg-gray-800"
                   )}
                 >
