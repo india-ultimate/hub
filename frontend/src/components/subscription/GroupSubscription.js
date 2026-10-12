@@ -311,8 +311,12 @@ const GroupSubscription = props => {
     );
     const needing = found
       .filter(p => !covered.includes(p))
-      // The search results this list usually holds carry is_minor.
-      .map(p => ({ ...p, is_minor: getAge(p.date_of_birth) < majorAge }));
+      // The search results this list usually holds carry is_minor, as does
+      // a player a team admin loads; anyone else's gets a date of birth.
+      .map(p => ({
+        ...p,
+        is_minor: p.is_minor ?? getAge(p.date_of_birth) < majorAge
+      }));
     setPayingPlayers([
       ...payingPlayers().filter(p => !ids.includes(p.id)),
       ...needing

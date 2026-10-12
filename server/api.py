@@ -87,6 +87,7 @@ from server.schema import (
     RegistrationSchema,
     RegistrationWardSchema,
     Response,
+    RosterPlayerSchema,
     TeamCreateSchema,
     TeamNameUpdateSchema,
     TeamSchema,
@@ -462,16 +463,31 @@ def recommend_players(
     )
 
 
-@api.get("/players/{player_id}", response={200: PlayerSchema, 400: Response, 404: Response})
+@api.get(
+    "/players/{player_id}",
+    response={
+        # PlayerSchema or RosterPlayerSchema: ninja can't validate a union of
+        # schemas with resolvers, so each is serialized here.
+        200: dict[str, Any],
+        400: Response,
+        403: Response,
+        404: Response,
+    },
+)
 def get_player(
     request: AuthenticatedHttpRequest, player_id: int
-) -> tuple[int, Player | message_response]:
-    """Get a single player by ID"""
+) -> tuple[int, dict[str, Any] | message_response]:
+    """A player in full for themselves, their guardian and staff. An admin of a
+    team whose roster holds them gets what paying for them needs."""
     try:
         player = Player.objects.get(id=player_id)
-        return 200, player
     except Player.DoesNotExist:
         return 404, {"message": "Player not found"}
+    if may_see(request.user, player):
+        return 200, PlayerSchema.model_validate(player).model_dump(mode="json")
+    if Team.objects.filter(admins=request.user, roster_entries__player=player).exists():
+        return 200, RosterPlayerSchema.model_validate(player).model_dump(mode="json")
+    return 403, {"message": "You can't see this player's details"}
 
 
 # Teams #########

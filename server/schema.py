@@ -1,5 +1,8 @@
+from django.utils.timezone import now
+
 from ninja import ModelSchema, Schema
 
+from server.constants import MIN_AGE
 from server.core.models import (
     Accreditation,
     CollegeId,
@@ -338,6 +341,45 @@ class PlayerMinSchema(ModelSchema):
     class Meta:
         model = Player
         fields = ["id", "state_ut", "match_up"]
+
+
+class SubscriptionStatusSchema(ModelSchema):
+    class Meta:
+        model = Subscription
+        fields = ["season", "is_active"]
+
+
+class RosterPlayerSchema(ModelSchema):
+    """A player as an admin of a team whose roster holds them sees them: what
+    paying for their subscription needs, and none of their details."""
+
+    full_name: str
+
+    @staticmethod
+    def resolve_full_name(player: Player) -> str:
+        return player.user.get_full_name()
+
+    is_minor: bool
+    # Derived from the date of birth, which admins don't see: the subscription
+    # page warns about it. The IU ID is a membership number, not contact data.
+    under_min_age: bool
+
+    @staticmethod
+    def resolve_under_min_age(player: Player) -> bool:
+        """Checked at the end of the season, as the subscription page checks it."""
+        season = Season.current()
+        return player.age_on(season.end_date if season else now().date()) < MIN_AGE
+
+    teams: list[TeamMinSchema]
+    subscription: SubscriptionStatusSchema | None = None
+
+    @staticmethod
+    def resolve_subscription(player: Player) -> Subscription | None:
+        return player.current_subscription
+
+    class Meta:
+        model = Player
+        fields = ["id", "iu_id", "teams"]
 
 
 class PersonSchema(ModelSchema):
