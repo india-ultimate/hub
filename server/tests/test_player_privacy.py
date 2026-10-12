@@ -242,3 +242,32 @@ class TestPlayersInOtherResponses(PlayerPrivacyTestCase):
         self.assertEqual("Secret Keeper", card["suggested_score_team_1"]["entered_by"]["full_name"])
         self.assertEqual("Secret Keeper", card["spirit_score_team_1"]["mvp_v2"]["full_name"])
         self.assertEqual("Secret", card["spirit_score_team_1"]["msp"]["first_name"])
+
+
+class TestElectionCandidates(PlayerPrivacyTestCase):
+    def test_only_staff_see_a_candidates_username(self) -> None:
+        from django.utils import timezone
+
+        from server.election.models import Candidate, Election
+
+        election = Election.objects.create(
+            title="Board",
+            description="",
+            start_date=timezone.now(),
+            end_date=timezone.now() + datetime.timedelta(days=7),
+        )
+        Candidate.objects.create(election=election, user=self.owner, bio="Hello")
+        url = f"/api/election/{election.id}/candidates/"
+
+        for viewer in (None, self.stranger):
+            if viewer:
+                self.client.force_login(viewer)
+            response = self.client.get(url)
+            self.assertEqual(200, response.status_code, response.content)
+            self.assert_no_secrets(response, viewer or self.stranger)
+            # What the election page reads.
+            self.assertEqual("Secret Keeper", response.json()[0]["user"]["full_name"])
+
+        # The staff's candidate manager shows it.
+        self.client.force_login(self.staff)
+        self.assertEqual(EMAIL, self.client.get(url).json()[0]["user"]["username"])
