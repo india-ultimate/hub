@@ -53,6 +53,7 @@ if SENTRY_DSN:
 
     sentry_sdk.init(
         dsn=SENTRY_DSN,
-        # What enable_tracing=True meant; sentry-sdk 2 deprecates that flag.
-        traces_sample_rate=1.0,
+        # A tenth of requests traced. Errors are sampled apart (sample_rate,
+        # left at 1.0), so every one is still sent.
+        traces_sample_rate=0.1,
     )
