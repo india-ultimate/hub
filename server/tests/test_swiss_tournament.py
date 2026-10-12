@@ -77,7 +77,7 @@ class TestSwissTournamentLifecycle(ApiBaseTestCase):
             self.assertIsNotNone(match.team_1)
             self.assertIsNotNone(match.team_2)
             # team_1 and team_2 are verified non-None above
-            pairs.add(frozenset([match.team_1.id, match.team_2.id]))  # type: ignore[union-attr, list-item]
+            pairs.add(frozenset([match.team_1.id, match.team_2.id]))  # type: ignore[union-attr]
         return pairs
 
     def test_full_swiss_tournament_lifecycle(self) -> None:
@@ -460,7 +460,7 @@ class TestOddSwissTournamentLifecycle(ApiBaseTestCase):
         for match in matches:
             self.assertIsNotNone(match.team_1)
             self.assertIsNotNone(match.team_2)
-            pairs.add(frozenset([match.team_1.id, match.team_2.id]))  # type: ignore[union-attr, list-item]
+            pairs.add(frozenset([match.team_1.id, match.team_2.id]))  # type: ignore[union-attr]
         return pairs
 
     def test_odd_swiss_round_creation(self) -> None:
@@ -1467,7 +1467,7 @@ class TestSwissNoRematch4Rounds(ApiBaseTestCase):
         for match in matches:
             self.assertIsNotNone(match.team_1)
             self.assertIsNotNone(match.team_2)
-            pairs.add(frozenset([match.team_1.id, match.team_2.id]))  # type: ignore[union-attr, list-item]
+            pairs.add(frozenset([match.team_1.id, match.team_2.id]))  # type: ignore[union-attr]
         return pairs
 
     def test_no_rematches_across_4_rounds(self) -> None:

@@ -100,7 +100,7 @@ class TestHtml(RenderTestCase):
     ) -> None:
         # Clients that strip <style> must not show "2 x 750.00" twice.
         for mode in ("email", "page"):
-            html = render_html(self.receipt, mode)  # type: ignore[arg-type]
+            html = render_html(self.receipt, mode)
             self.assertIn('class="mult mono" style="display:none;', html)
             self.assertIn(".mult { display: block !important; }", html)
 
@@ -115,7 +115,7 @@ class TestHtml(RenderTestCase):
             }
         ]
         for mode in ("email", "page", "pdf"):
-            self.assertNotIn('class="mult', render_html(self.receipt, mode))  # type: ignore[arg-type]
+            self.assertNotIn('class="mult', render_html(self.receipt, mode))
 
     def test_a_refund_note_names_its_receipt(self) -> None:
         note = Receipt.objects.create(

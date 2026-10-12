@@ -991,7 +991,7 @@ def accreditation(
         acc = Accreditation(**accreditation_data)
     else:
         acc.certificate = certificate
-        acc.date = accreditation_data.get("date", None)
+        acc.date = accreditation_data["date"]
         acc.level = accreditation_data.get("level", Accreditation.AccreditationLevel.STANDARD)
 
     try:
@@ -1071,7 +1071,7 @@ def college_id(
         old_images = {c_id.card_front.name, c_id.card_back.name} - {""}
         c_id.card_front = card_front
         c_id.card_back = card_back
-        c_id.expiry = college_id_data.get("expiry", None)
+        c_id.expiry = college_id_data["expiry"]
         c_id.ocr_name = college_id_data.get("ocr_name", None)
         c_id.ocr_college = college_id_data.get("ocr_college", None)
         c_id.images_removed_at = None  # a new card is active again
@@ -1085,7 +1085,7 @@ def college_id(
     # Nothing else would delete the old card's scans.
     for name in old_images - {c_id.card_front.name, c_id.card_back.name}:
         try:
-            default_storage.delete(name)  # type: ignore[attr-defined]
+            default_storage.delete(name)
         except (OSError, cloudinary.exceptions.Error):
             logger.exception("Couldn't delete the old college ID image %s", name)
     return 200, c_id
@@ -3067,9 +3067,9 @@ def contact(
     message = f"Name: {name}\nEmail: {request.user.email}\n\n{contact_form.description}"
     if attachment:
         name = f"contact-form-attachments/{attachment.name}"
-        path = default_storage.save(name, attachment)  # type: ignore[attr-defined]
+        path = default_storage.save(name, attachment)
         # The storage's URL: on Cloudinary, the file isn't under MEDIA_URL.
-        url = request.build_absolute_uri(default_storage.url(path))  # type: ignore[attr-defined]
+        url = request.build_absolute_uri(default_storage.url(path))
         message += f"\n\nAttachment: {url}"
 
     try:

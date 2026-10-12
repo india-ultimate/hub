@@ -20,12 +20,12 @@ from server.core.models import (
 from server.season.models import Season
 from server.subscription import sponsorship
 
-GENDERS = {t.label: t for t in Player.GenderTypes}
-STATE_UT = {t.label: t for t in StatesUTs}
-OCCUPATIONS = {t.label: t for t in Player.OccupationTypes}
-RELATIONS = {t.label: str(t) for t in Guardianship.Relation}
-ACCREDITATIONS = {t.label: str(t) for t in Accreditation.AccreditationLevel}
-VACCINATIONS = {t.label: str(t) for t in Vaccination.VaccinationName}
+GENDERS = {str(t.label): t for t in Player.GenderTypes}
+STATE_UT = {str(t.label): t for t in StatesUTs}
+OCCUPATIONS = {str(t.label): t for t in Player.OccupationTypes}
+RELATIONS = {str(t.label): str(t) for t in Guardianship.Relation}
+ACCREDITATIONS = {str(t.label): str(t) for t in Accreditation.AccreditationLevel}
+VACCINATIONS = {str(t.label): str(t) for t in Vaccination.VaccinationName}
 DATE_FORMAT = "%Y-%m-%d"
 
 
