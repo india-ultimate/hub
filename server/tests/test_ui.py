@@ -19,7 +19,7 @@ from selenium.webdriver.common.keys import Keys
 from seleniumbase import BaseCase
 
 from hub.settings import BASE_DIR
-from server.core.models import OTPAttempt, Player, User
+from server.core.models import OTPAttempt, Player, Team, User
 from server.duplicates.clusters import close_finished, detect_and_create
 from server.duplicates.emails import notify
 from server.duplicates.flow import dismiss, merge_pair, request_merge, request_staff
@@ -31,6 +31,7 @@ from server.duplicates.models import (
     DuplicateCluster,
     EmailAlias,
 )
+from server.registration.models import RosterEntry
 from server.season.models import Season
 from server.servicerequests.models import ServiceRequestStatus
 from server.subscription import sponsorship
@@ -361,6 +362,26 @@ class TestIntegration(BaseCase):
 
         self.open(f"{APP_URL}/dashboard")
         self.assert_text("IU-26-0001", "[data-testid='iu-id']")
+
+    # Breaks if: a captain buying for a roster player loses the age warning
+    # or the IU ID, which come from fields standing in for the hidden birth date.
+    def test_a_captain_sees_the_age_warning_and_iu_id_of_a_roster_player(self) -> None:
+        import_module("server.migrations.0146_legacy_seasons").add_seasons(apps, None)
+        import_module("server.migrations.0148_seed_catalog").seed(apps, None)
+        captain = make_player("captain-sub@example.com")
+        child = make_player("child-sub@example.com", first="Tiny")
+        Player.objects.filter(user=child).update(
+            iu_id="IU-26-0099", date_of_birth=now().date() - datetime.timedelta(days=3650)
+        )
+        child_player = Player.objects.get(user=child)
+        team = Team.objects.create(name="Captain Team", slug="captain-team")
+        team.admins.add(captain)
+        RosterEntry.objects.create(event=create_event("Open"), team=team, player=child_player)
+
+        self.sign_in_as(captain)
+        self.open(f"{APP_URL}/subscription/{child_player.id}")
+        self.assert_text("IU-26-0099", "[data-testid='iu-id']")
+        self.assert_text("atleast 12 years old")
 
     # Breaks if: a gap in the season timeline stops being a real answer and
     # starts looking like a failure, or starts offering tiers anyway.

@@ -105,8 +105,13 @@ const Subscription = () => {
   );
 
   createEffect(() => {
-    const age = getAge(player()?.date_of_birth, new Date(season()?.end_date));
-    setAgeRestricted(age < minAge);
+    // Admins buying for a player get under_min_age, not their date of birth.
+    const p = player();
+    setAgeRestricted(
+      p?.date_of_birth
+        ? getAge(p.date_of_birth, new Date(season()?.end_date)) < minAge
+        : Boolean(p?.under_min_age)
+    );
   });
 
   const onSale = () => plansQuery.data ?? [];

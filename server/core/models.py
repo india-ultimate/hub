@@ -167,12 +167,14 @@ class Player(ExportModelOperationsMixin("player"), models.Model):  # type: ignor
     def __str__(self) -> str:
         return self.user.get_full_name()
 
+    def age_on(self, day: datetime.date) -> float:
+        """Age on a day, worked out as getAge in frontend/src/utils.js does."""
+        dob = self.date_of_birth
+        return (day.year - dob.year) + (day.month - dob.month) / 12 + (day.day - dob.day) / 365
+
     @property
     def is_minor(self) -> bool:
-        today = now().date()
-        dob = self.date_of_birth
-        age = (today.year - dob.year) + (today.month - dob.month) / 12 + (today.day - dob.day) / 365
-        return age < MAJOR_AGE
+        return self.age_on(now().date()) < MAJOR_AGE
 
     @property
     def current_subscription(self) -> "Subscription | None":
