@@ -275,10 +275,10 @@ const FormView = () => {
                               field.type === "number"
                                 ? "number"
                                 : field.type === "email"
-                                ? "email"
-                                : field.type === "date"
-                                ? "date"
-                                : "text"
+                                  ? "email"
+                                  : field.type === "date"
+                                    ? "date"
+                                    : "text"
                             }
                             required={field.required}
                             class="w-full rounded-lg border border-gray-300 p-2.5 dark:border-gray-600 dark:bg-gray-800 dark:text-white"

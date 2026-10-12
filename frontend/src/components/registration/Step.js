@@ -32,8 +32,8 @@ const Step = props => {
             done()
               ? "bg-green-700 dark:bg-green-600"
               : current()
-              ? "bg-blue-700 dark:bg-blue-600"
-              : "bg-gray-400 dark:bg-gray-600"
+                ? "bg-blue-700 dark:bg-blue-600"
+                : "bg-gray-400 dark:bg-gray-600"
           )}
           aria-hidden="true"
         >

@@ -25,8 +25,8 @@ const Select = props => {
     Array.isArray(props.value)
       ? props.value
       : typeof props.value === "string"
-      ? [props.value]
-      : []
+        ? [props.value]
+        : []
   );
 
   return (

@@ -27,10 +27,10 @@ const ReasonButton = props => {
           blocked()
             ? "cursor-not-allowed opacity-[0.45]"
             : props.link
-            ? "hover:underline"
-            : isPrimary()
-            ? primaryHover
-            : actionHover
+              ? "hover:underline"
+              : isPrimary()
+                ? primaryHover
+                : actionHover
         )}
         aria-disabled={blocked() ? "true" : undefined}
         aria-describedby={props.reason ? id : undefined}

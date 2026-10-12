@@ -24,8 +24,8 @@ const TextInput = props => {
       props.value === undefined
         ? ""
         : !Number.isNaN(props.value)
-        ? props.value
-        : prevValue,
+          ? props.value
+          : prevValue,
     ""
   );
 

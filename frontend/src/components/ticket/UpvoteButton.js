@@ -32,8 +32,8 @@ const UpvoteButton = props => {
     props.ticket.created_by.id === props.userId
       ? "You can't upvote your own ticket"
       : props.ticket.is_private
-      ? "Private tickets can't be upvoted"
-      : "";
+        ? "Private tickets can't be upvoted"
+        : "";
 
   // A list row keeps its button when paging shows another ticket in it
   createEffect(

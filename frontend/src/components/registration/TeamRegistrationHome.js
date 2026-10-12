@@ -437,8 +437,8 @@ const TeamRegistrationHome = () => {
     entry.state.kind === "progress"
       ? "Being paid for. Try again in a few minutes."
       : entry.state.code === "timing.closed"
-      ? entry.state.text
-      : null;
+        ? entry.state.text
+        : null;
   // How many rows share each name; only then do rows show city and IU ID.
   const shared = () => {
     const counts = {};

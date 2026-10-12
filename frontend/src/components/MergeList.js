@@ -28,8 +28,8 @@ const statusBadge = group =>
   group.expired
     ? ["Link expired", "gray"]
     : group.status === "Resolved" && !group.anything_merged
-    ? ["Sorted out", "gray"]
-    : STATUS_BADGES[group.status] || [group.status, "gray"];
+      ? ["Sorted out", "gray"]
+      : STATUS_BADGES[group.status] || [group.status, "gray"];
 
 const RELATIVE_TIME = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
 const DIVISIONS = [
@@ -55,8 +55,8 @@ const startedLabel = group => {
   const who = group.is_requester
     ? "You asked"
     : group.origin === "requested"
-    ? "Someone asked"
-    : "We found it";
+      ? "Someone asked"
+      : "We found it";
   return `${who}, ${timeAgo(group.started_at)}`;
 };
 

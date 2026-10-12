@@ -33,8 +33,8 @@ const groupByTeam = registrations => {
     a.name.toLowerCase() == b.name.toLowerCase()
       ? 0
       : a.name.toLowerCase() < b.name.toLowerCase()
-      ? -1
-      : 1
+        ? -1
+        : 1
   );
   const registrationsByTeam = registrations?.reduce((acc, r) => {
     const team = acc[r.team.id] || [];
@@ -523,8 +523,8 @@ const ValidateRoster = () => {
                                                     accreditationLevel
                                                   )} (${accreditationDate})`
                                                 : !accreditationDate
-                                                ? "No accreditation"
-                                                : `Outdated: ${accreditationDate}`
+                                                  ? "No accreditation"
+                                                  : `Outdated: ${accreditationDate}`
                                             }`}
                                             class={clsx(
                                               "mx-1",

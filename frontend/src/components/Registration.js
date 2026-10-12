@@ -104,10 +104,10 @@ const RegistrationForm = props => {
     const url = props.others
       ? "/api/registration/others"
       : props.ward
-      ? "/api/registration/ward"
-      : getAge(formData.date_of_birth) < majorAge
-      ? "/api/registration/guardian"
-      : "/api/registration";
+        ? "/api/registration/ward"
+        : getAge(formData.date_of_birth) < majorAge
+          ? "/api/registration/guardian"
+          : "/api/registration";
 
     // If match_up field is not shown, use gender as match_up
     if (!formData.match_up) {
@@ -433,8 +433,8 @@ const RegistrationForm = props => {
                   editForm()
                     ? "Minors need to have a guardian and adults cannot. Use the correct age!"
                     : ward()
-                    ? `Minors need to be under ${majorAge}. Use the adults form, otherwise`
-                    : `Use the minors form if the player is less than ${majorAge} years old`
+                      ? `Minors need to be under ${majorAge}. Use the adults form, otherwise`
+                      : `Use the minors form if the player is less than ${majorAge} years old`
                 )
               ]}
             >

@@ -163,8 +163,8 @@ const Tournaments = () => {
                               teamIsOpen
                                 ? "bg-green-200 text-green-800 dark:bg-green-900 dark:text-green-300"
                                 : teamIsLate
-                                ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
-                                : "bg-red-200 text-red-800 dark:bg-red-900 dark:text-red-300"
+                                  ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
+                                  : "bg-red-200 text-red-800 dark:bg-red-900 dark:text-red-300"
                             )}
                           >
                             Team Reg
@@ -175,8 +175,8 @@ const Tournaments = () => {
                               playerIsOpen
                                 ? "bg-green-200 text-green-800 dark:bg-green-900 dark:text-green-300"
                                 : playerIsLate
-                                ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
-                                : "bg-red-200 text-red-800 dark:bg-red-900 dark:text-red-300"
+                                  ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
+                                  : "bg-red-200 text-red-800 dark:bg-red-900 dark:text-red-300"
                             )}
                           >
                             Player Reg

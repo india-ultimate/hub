@@ -45,8 +45,8 @@ const TournamentBestCard = props => {
               {props.title.includes("Scores")
                 ? " scores"
                 : props.title.includes("Assists")
-                ? " assists"
-                : " blocks"}
+                  ? " assists"
+                  : " blocks"}
             </span>
           </p>
         </div>

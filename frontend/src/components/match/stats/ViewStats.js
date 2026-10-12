@@ -195,8 +195,8 @@ const ViewStats = () => {
               {matchStatsQuery.data?.status === "FH"
                 ? "First Half"
                 : matchStatsQuery.data?.status === "SH"
-                ? "Second Half"
-                : "Completed"}
+                  ? "Second Half"
+                  : "Completed"}
             </div>
             <div>
               <span class="font-bold">Team which started on Offense:</span>{" "}
