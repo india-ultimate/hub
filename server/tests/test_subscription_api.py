@@ -167,8 +167,7 @@ class TestSubscriptionHistory(ApiBaseTestCase):
         self.player.iu_id = "IU-26-0001"
         self.player.save(update_fields=["iu_id"])
         response = self.client.get("/api/players")
-        for entry in response.json():
-            self.assertNotIn("iu_id", entry)
+        self.assertNotIn("IU-26-0001", response.content.decode())
 
 
 class TestSubscriptionHistoryIsPrivate(ApiBaseTestCase):

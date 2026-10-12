@@ -546,21 +546,10 @@ class TestPlayers(ApiBaseTestCase):
         super().setUp()
         self.client.force_login(self.user)
 
-    def test_get_players(self) -> None:
-        c = self.client
-        response = c.get(
-            "/api/players",
-            content_type="application/json",
-        )
-        self.assertEqual(200, response.status_code)
-        data = response.json()
-        self.assertEqual(1, len(data))
-        user_data = data[0]
-        self.assertIn("city", user_data)
-        self.assertIn("state_ut", user_data)
-        self.assertEqual("username@foo.com", user_data["email"])
-        self.assertNotIn("subscription", user_data)
-        self.assertNotIn("guardian", user_data)
+    def test_get_players_is_staff_only(self) -> None:
+        response = self.client.get("/api/players", content_type="application/json")
+        self.assertEqual(403, response.status_code)
+        self.assertNotIn("username@foo.com", response.content.decode())
 
     def test_get_players_staff(self) -> None:
         c = self.client
@@ -589,9 +578,11 @@ class TestPlayers(ApiBaseTestCase):
         self.assertNotIn("guardian", user_data)
 
     def test_get_players_query_count_does_not_grow_with_player_count(self) -> None:
-        # The plain (non-staff) shape: this is the unpaginated list every
-        # visitor hits, so it must not do more work per player added.
+        # The plain shape: the list is unpaginated, so it must not do more
+        # work per player added.
         c = self.client
+        self.user.is_staff = True
+        self.user.save()
 
         with CaptureQueriesContext(connection) as ctx:
             response = c.get("/api/players", content_type="application/json")
