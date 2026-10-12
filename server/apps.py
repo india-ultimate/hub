@@ -70,6 +70,6 @@ class ServerConfig(AppConfig):
     name = "server"
 
     def ready(self) -> None:
-        from server import public_cache
+        from server.cache.invalidation import connect
 
-        public_cache.connect()
+        connect()
