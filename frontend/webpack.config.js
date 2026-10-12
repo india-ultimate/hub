@@ -84,12 +84,11 @@ module.exports = {
     hot: true,
     port: 3000,
     historyApiFallback: true,
-    proxy: {
-      "/api": "http://127.0.0.1:8000",
-      "/admin": "http://127.0.0.1:8000",
-      "/static": "http://127.0.0.1:8000",
-      "/uploads": "http://127.0.0.1:8000",
-      "/ckeditor": "http://127.0.0.1:8000"
-    }
+    proxy: [
+      {
+        context: ["/api", "/admin", "/static", "/uploads", "/ckeditor"],
+        target: "http://127.0.0.1:8000"
+      }
+    ]
   }
 };
