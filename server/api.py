@@ -147,6 +147,7 @@ from server.tournament.schema import (
     PositionPoolCreateSchema,
     PositionPoolSchema,
     PublicMatchSchema,
+    PublicMatchStatsSchema,
     RosterPointsSchema,
     SpiritScoreSubmitSchema,
     SwissRoundCreateSchema,
@@ -164,6 +165,7 @@ from server.tournament.schema import (
     TournamentSchema,
     TournamentUpdateSeedingSchema,
     UCRegistrationSchema,
+    public_match_stats,
     public_matches,
 )
 from server.tournament.utils import (
@@ -2805,7 +2807,9 @@ def create_match_stats(
     return 200, match_stats
 
 
-@api.get("/match/{match_id}/stats", auth=None, response={200: MatchStatsSchema, 400: Response})
+@api.get(
+    "/match/{match_id}/stats", auth=None, response={200: PublicMatchStatsSchema, 400: Response}
+)
 def get_match_stats(
     request: HttpRequest, match_id: int
 ) -> tuple[int, MatchStats | message_response]:
@@ -2815,7 +2819,7 @@ def get_match_stats(
         return 400, {"message": "Match does not exist"}
 
     try:
-        stats = MatchStats.objects.get(match=match)
+        stats = public_match_stats(MatchStats.objects.all()).get(match=match)
     except MatchStats.DoesNotExist:
         return 400, {"message": "Stats does not exist"}
 

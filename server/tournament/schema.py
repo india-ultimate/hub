@@ -1,4 +1,4 @@
-from django.db.models import QuerySet
+from django.db.models import Prefetch, QuerySet
 from ninja import ModelSchema, Schema
 
 from server.core.models import Player, Team, UCPerson
@@ -470,6 +470,53 @@ def public_matches(matches: QuerySet[Match]) -> QuerySet[Match]:
         "stats__current_possession",
         *(f"{score}__{person}" for score in _SPIRIT_SCORES for person in ("mvp", "msp")),
         *(f"{score}__{p}__user" for score in _SPIRIT_SCORES for p in ("mvp_v2", "msp_v2")),
+    )
+
+
+class PublicMatchEventSchema(ModelSchema):
+    team: TeamMinSchema | None
+    players: list[PublicPlayerSchema]
+    scored_by: PublicPlayerSchema | None
+    assisted_by: PublicPlayerSchema | None
+    drop_by: PublicPlayerSchema | None
+    throwaway_by: PublicPlayerSchema | None
+    block_by: PublicPlayerSchema | None
+
+    @staticmethod
+    def resolve_players(match_event: MatchEvent) -> list[Player]:
+        return list(match_event.players.all())  # prefetched, in name order
+
+    class Config:
+        model = MatchEvent
+        model_exclude = ["stats"]
+
+
+class PublicMatchStatsSchema(ModelSchema):
+    initial_possession: TeamMinSchema
+    current_possession: TeamMinSchema
+    events: list[PublicMatchEventSchema]
+
+    @staticmethod
+    def resolve_events(match_stats: MatchStats) -> list[MatchEvent]:
+        return list(match_stats.events.all())  # prefetched, newest first
+
+    class Config:
+        model = MatchStats
+        model_exclude = ["match", "tournament"]
+
+
+_EVENT_PLAYERS = ["scored_by", "assisted_by", "drop_by", "throwaway_by", "block_by"]
+
+
+def public_match_stats(stats: QuerySet[MatchStats]) -> QuerySet[MatchStats]:
+    """Stats with everything `PublicMatchStatsSchema` sends, in 3 queries."""
+    events = MatchEvent.objects.order_by("-time").select_related(
+        "team", *(f"{p}__user" for p in _EVENT_PLAYERS)
+    )
+    players = Player.objects.select_related("user").order_by("user__first_name")
+    return stats.select_related("initial_possession", "current_possession").prefetch_related(
+        Prefetch("events", queryset=events),
+        Prefetch("events__players", queryset=players),
     )
 
 

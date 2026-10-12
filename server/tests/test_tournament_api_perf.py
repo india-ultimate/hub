@@ -13,6 +13,7 @@ from server.tournament.models import (
     Bracket,
     CrossPool,
     Match,
+    MatchEvent,
     MatchScore,
     MatchStats,
     Pool,
@@ -203,3 +204,55 @@ class TestMatchLists(TournamentApiTestCase):
         response = self.client.get("/api/match/999999")
         self.assertEqual(400, response.status_code)
         self.assertEqual("Match does not exist", response.json()["message"])
+
+
+class TestMatchStats(TournamentApiTestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        self.match = self.make_match()
+        self.url = f"/api/match/{self.match.id}/stats"
+
+    def add_event(self) -> None:
+        event = MatchEvent.objects.create(
+            stats=self.match.stats,
+            team=self.team_1,
+            started_on=MatchEvent.Mode.OFFENSE,
+            type=MatchEvent.EventType.SCORE,
+            scored_by=self.make_player(),
+            assisted_by=self.make_player(),
+            drop_by=self.make_player(),
+            throwaway_by=self.make_player(),
+            block_by=self.make_player(),
+        )
+        event.players.add(self.make_player(), self.make_player())
+
+    def test_queries_dont_grow_with_events(self) -> None:
+        self.add_event()
+        self.add_event()
+
+        def grow() -> None:
+            for _ in range(5):
+                self.add_event()
+
+        self.assert_constant(self.url, grow)
+
+    def test_no_personal_data(self) -> None:
+        self.add_event()
+        self.assert_no_personal_data(self.url)
+
+    def test_sends_what_the_page_reads(self) -> None:
+        self.add_event()
+        stats = self.client.get(self.url).json()
+        self.assertEqual(self.team_2.id, stats["current_possession"]["id"])
+        (event,) = stats["events"]
+        self.assertEqual(self.team_1.id, event["team"]["id"])
+        self.assertEqual({"id", "full_name"}, set(event["scored_by"]))
+        self.assertEqual(2, len(event["players"]))
+        names = [p["full_name"] for p in event["players"]]
+        self.assertEqual(sorted(names), names)
+
+    def test_events_newest_first(self) -> None:
+        self.add_event()
+        self.add_event()
+        times = [e["time"] for e in self.client.get(self.url).json()["events"]]
+        self.assertEqual(sorted(times, reverse=True), times)
