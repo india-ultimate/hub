@@ -172,7 +172,8 @@ def list_transactions(
     }
     response_data = []
     for payment_type, schema in payment_type_schema_map.items():
-        if only_manual and payment_type != PaymentGateway.MANUAL:
+        # Only manual transactions are ever validated, so "invalid" means them alone.
+        if (only_manual or only_invalid) and payment_type != PaymentGateway.MANUAL:
             continue
         transactions = list_transactions_by_type(user, payment_type, user_only, only_invalid)
         transaction_dicts = [schema.model_validate(t).model_dump() for t in transactions]
