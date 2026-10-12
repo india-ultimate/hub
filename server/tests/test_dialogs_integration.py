@@ -57,6 +57,19 @@ class TestDialogsIntegration(BaseCase):
         self.send_keys("body", Keys.ESCAPE)
         self.wait_for_element_not_visible(dialog, timeout=3)
 
+    def test_signed_in_pages_load_without_a_runtime_error(self) -> None:
+        # UserRoute once read window.fetch for its resource, which throws on
+        # every signed-in page: the dev server's error overlay covered it.
+        ManualTransaction.objects.create(
+            transaction_id="txn-1", amount=100, currency="INR", user=self.staff
+        )
+        self.sign_in_as(self.staff)
+        for path, shows in (("/dashboard", "Welcome"), ("/validate-transactions", "Validate")):
+            self.open(f"{APP_URL}{path}")
+            self.wait_for_text(shows, timeout=5)
+            self.sleep(1)
+            self.assert_element_absent("#webpack-dev-server-client-overlay")
+
     def test_the_validation_modal_opens_every_time(self) -> None:
         ManualTransaction.objects.create(
             transaction_id="txn-1", amount=100, currency="INR", user=self.staff

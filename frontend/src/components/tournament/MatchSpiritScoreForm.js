@@ -1,6 +1,5 @@
 import { createForm, custom, maxLength, required } from "@modular-forms/solid";
 import { createMutation, createQuery } from "@tanstack/solid-query";
-import { initFlowbite } from "flowbite";
 import { createSignal, Show } from "solid-js";
 
 import {
@@ -84,8 +83,6 @@ const MatchSpiritScoreForm = componentProps => {
       team_id: componentProps?.match[`team_${componentProps.curTeamNo}`].id,
       body: values
     });
-
-    setTimeout(() => initFlowbite(), 1000);
   };
 
   const isValidScore = score => {

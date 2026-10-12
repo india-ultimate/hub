@@ -1,13 +1,5 @@
 import { Navigate, Route } from "@solidjs/router";
-import { initFlowbite } from "flowbite";
-import {
-  children,
-  createEffect,
-  createResource,
-  Match,
-  Suspense,
-  Switch
-} from "solid-js";
+import { children, createResource, Match, Suspense, Switch } from "solid-js";
 
 import { Spinner } from "../icons";
 import { useStore } from "../store";
@@ -16,20 +8,9 @@ import { canManageTournaments, fetchUserData } from "../utils";
 const WithUserData = props => {
   const [store, { userFetchSuccess, userFetchFailure }] = useStore();
   const c = children(() => props.children);
-  const [fetch] = createResource(!store.userFetched, () =>
+  const [userData] = createResource(!store.userFetched, () =>
     fetchUserData(userFetchSuccess, userFetchFailure)
   );
-  createEffect(() => {
-    if (!fetch.loading) {
-      // HACK: to ensure initflowbite is actually initialized!!!
-      setTimeout(() => initFlowbite(), 100);
-      setTimeout(() => initFlowbite(), 500);
-      setTimeout(() => initFlowbite(), 1000);
-      setTimeout(() => initFlowbite(), 3000);
-      setTimeout(() => initFlowbite(), 5000);
-      setTimeout(() => initFlowbite(), 8000);
-    }
-  });
 
   const canView = () => {
     if (props.staffOrDirector) {
@@ -43,18 +24,19 @@ const WithUserData = props => {
 
   return (
     <Suspense fallback={<Spinner />}>
-      {/* NOTE: fetch() doesn't have any real data, but we "read" it to be able to use the Suspense functionality */}
+      {/* NOTE: userData() doesn't have any real data, but we "read" it to be able to use the Suspense functionality */}
       <Switch>
         <Match
           when={
-            fetch() || (store.userFetched && store?.data?.username && canView())
+            userData() ||
+            (store.userFetched && store?.data?.username && canView())
           }
         >
           <>{c()}</>
         </Match>
         <Match
           when={
-            fetch() ||
+            userData() ||
             (store.userFetched && store?.data?.username && !canView())
           }
         >
@@ -62,7 +44,9 @@ const WithUserData = props => {
             Sorry, you do not have access to this page
           </p>
         </Match>
-        <Match when={fetch() || (store.userFetched && !store?.data?.username)}>
+        <Match
+          when={userData() || (store.userFetched && !store?.data?.username)}
+        >
           <Navigate href="/login" />
         </Match>
       </Switch>
