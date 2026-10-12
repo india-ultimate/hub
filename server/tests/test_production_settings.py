@@ -85,6 +85,23 @@ class TestProductionSettings(SimpleTestCase):
             self.cache(SECRET_KEY="s"),  # noqa: S106
         )
 
+    def test_sentry_traces_a_tenth_of_requests_and_keeps_every_error(self) -> None:
+        script = (
+            "import hub.production, sentry_sdk; o = sentry_sdk.get_client().options; "
+            "print(o['traces_sample_rate'], o['sample_rate'])"
+        )
+        clean = {k: v for k, v in os.environ.items() if k not in {"DATABASE_URL", "FLY_APP_NAME"}}
+        result = subprocess.run(  # noqa: S603
+            [sys.executable, "-c", script],
+            # A DSN nothing listens at: init sends nothing on its own.
+            env={**clean, "SENTRY_DSN": "https://key@sentry.invalid/1"},
+            cwd=Path(__file__).parents[2],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual("0.1 1.0", result.stdout.strip(), result.stderr)
+
 
 class TestRedisPassword(SimpleTestCase):
     def test_it_is_derived_from_the_key(self) -> None:
