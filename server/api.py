@@ -20,7 +20,7 @@ from django.core import mail
 from django.core.exceptions import ValidationError
 from django.core.files.storage import default_storage
 from django.db import transaction
-from django.db.models import Count, F, Q, QuerySet, Value
+from django.db.models import Count, F, OuterRef, Q, QuerySet, Subquery, Value
 from django.db.models.functions import Concat, ExtractYear
 from django.db.utils import IntegrityError
 from django.http import HttpRequest, HttpResponse
@@ -149,6 +149,7 @@ from server.tournament.schema import (
     PublicMatchSchema,
     PublicMatchStatsSchema,
     PublicRosterEntrySchema,
+    PublicUCRegistrationSchema,
     RosterPointsSchema,
     SpiritScoreSubmitSchema,
     SwissRoundCreateSchema,
@@ -1555,7 +1556,7 @@ def update_registration(
 @api.get(
     "/v1/tournament/{tournament_slug}/team/{team_slug}/roster",
     auth=None,
-    response={200: list[UCRegistrationSchema], 400: Response},
+    response={200: list[PublicUCRegistrationSchema], 400: Response},
 )
 def get_tournament_team_roster(
     request: AuthenticatedHttpRequest, tournament_slug: str, team_slug: str
@@ -1567,8 +1568,12 @@ def get_tournament_team_roster(
     except (Event.DoesNotExist, Team.DoesNotExist):
         return 400, {"message": "Tournament/Team does not exist"}
 
-    uc_registrations = UCRegistration.objects.filter(team=team, event=event).order_by(
-        "person__first_name"
+    player_gender = Player.objects.filter(ultimate_central_id=OuterRef("person_id"))
+    uc_registrations = (
+        UCRegistration.objects.filter(team=team, event=event)
+        .select_related("team", "person")
+        .annotate(player_gender=Subquery(player_gender.values("gender")[:1]))
+        .order_by("person__first_name")
     )
 
     return 200, uc_registrations
