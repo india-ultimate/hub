@@ -279,3 +279,66 @@ class TestPruning(OTPTestCase):
             sorted(OTPAttempt.objects.values_list("email", flat=True)),
             ["new@x.com", "recent@x.com"],
         )
+
+
+class TestPasswordLimits(OTPTestCase):
+    def setUp(self) -> None:
+        user = User.objects.create(username="admin@x.com", email="admin@x.com")
+        user.set_password("right")
+        user.save()
+
+    def log_in(self, password: str, ip: str = "10.0.0.1", username: str = "admin@x.com") -> Any:
+        return self.client.post(
+            "/api/login",
+            data=json.dumps({"username": username, "password": password}),
+            content_type="application/json",
+            HTTP_FLY_CLIENT_IP=ip,
+        )
+
+    def test_the_eleventh_failure_from_an_ip_is_refused_even_with_the_right_password(
+        self,
+    ) -> None:
+        for _ in range(10):
+            self.assertEqual(self.log_in("wrong").status_code, 403)
+
+        self.assert_too_many(self.log_in("right"))
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_a_strangers_failures_from_another_ip_do_not_block_the_owner(self) -> None:
+        for _ in range(10):
+            self.log_in("wrong", ip="10.6.6.6")
+        self.assert_too_many(self.log_in("wrong", ip="10.6.6.6"))
+
+        self.assertEqual(self.log_in("right").status_code, 200)
+
+    def test_the_fifty_first_failure_for_a_username_in_an_hour_is_refused_from_any_ip(
+        self,
+    ) -> None:
+        for i in range(50):
+            self.assertEqual(self.log_in("wrong", ip=f"10.1.0.{i // 10}").status_code, 403)
+
+        self.assert_too_many(self.log_in("right", ip="10.1.1.1"))
+        self.assertEqual(self.log_in("wrong", username=" ADMIN@x.com ").status_code, 429)
+
+    def test_successes_do_not_count(self) -> None:
+        for _ in range(12):
+            self.assertEqual(self.log_in("right").status_code, 200)
+
+    def test_failures_arriving_while_others_check_cannot_overshoot_the_limit(self) -> None:
+        from django.contrib.auth import authenticate
+
+        pending, checked, responses = 14, 0, []
+
+        def check_while_others_arrive(*args: Any, **kwargs: Any) -> Any:
+            nonlocal pending, checked
+            checked += 1
+            while pending:
+                pending -= 1
+                responses.append(self.log_in("wrong"))
+            return authenticate(*args, **kwargs)
+
+        with mock.patch("server.api.authenticate", check_while_others_arrive):
+            responses.append(self.log_in("wrong"))
+
+        self.assertEqual(checked, 10)
+        self.assertEqual(sorted(r.status_code for r in responses), [403] * 10 + [429] * 5)

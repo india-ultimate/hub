@@ -610,14 +610,17 @@ def create_team(
 # Login #########
 
 
-@api.post("/login", auth=None, response={200: MeSchema, 403: Response})
+@api.post("/login", auth=None, response={200: MeSchema, 403: Response, 429: Response})
 def api_login(
     request: HttpRequest, credentials: Credentials
 ) -> tuple[int, AbstractBaseUser | message_response]:
-    user = authenticate(
-        request, username=credentials.username.strip().lower(), password=credentials.password
-    )
+    username = credentials.username.strip().lower()
+    ip = otp_limits.client_ip(request)
+    if wait := otp_limits.attempt(OTPAttempt.Kind.PASSWORD, username, ip):
+        return 429, otp_limits.too_many(wait)
+    user = authenticate(request, username=username, password=credentials.password)
     if user is not None:
+        otp_limits.withdraw(OTPAttempt.Kind.PASSWORD, username, ip)
         login(request, user)
 
         return 200, user

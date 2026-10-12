@@ -289,7 +289,8 @@ class CommentaryInfo(ExportModelOperationsMixin("commentary_info"), models.Model
 
 
 class OTPAttempt(models.Model):
-    """An emailed code sent, or one tried, for rate limiting sign in.
+    """An emailed code sent, a code tried, or a wrong password, for rate
+    limiting sign in.
 
     In the database rather than the cache so the limits hold when Redis is
     down. Rows over an hour old are pruned as new ones are written.
@@ -298,6 +299,7 @@ class OTPAttempt(models.Model):
     class Kind(models.TextChoices):
         SEND = "send"
         GUESS = "guess"
+        PASSWORD = "password"
 
     # No choices on the column, so a new kind needs no migration.
     kind = models.CharField(max_length=16)
