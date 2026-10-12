@@ -117,9 +117,6 @@ jobs:
 
       - name: Run Django Integration tests
         env:
-          PHONEPE_SALT_INDEX: 1
-          PHONEPE_SALT_KEY: ${{ secrets.PHONEPE_SALT_KEY }}
-          PHONEPE_MERCHANT_ID: ${{ secrets.PHONEPE_MERCHANT_ID }}
           RAZORPAY_KEY_ID: ${{ secrets.RAZORPAY_KEY_ID }}
           RAZORPAY_KEY_SECRET: ${{ secrets.RAZORPAY_KEY_SECRET }}
           RAZORPAY_WEBHOOK_SECRET: ${{ secrets.RAZORPAY_WEBHOOK_SECRET }}

@@ -26,10 +26,8 @@ from server.subscription.models import Subscription, SubscriptionPlan, Subscript
 from server.tests.base import ApiBaseTestCase, create_pool, fake_id, fake_order, start_tournament
 from server.tests.test_subscription import SubscriptionStatusTestCase
 from server.tournament.models import Match, UCRegistration
-from server.transaction.client.phonepe import update_transaction
 from server.transaction.models import (
     ManualTransaction,
-    PhonePeTransaction,
     RazorpayTransaction,
     RazorpayTransactionPlayer,
 )
@@ -861,14 +859,6 @@ class TestPayment(ApiBaseTestCase):
 
         self.assertEqual(502, response.status_code)
         self.assertIn(b"Razorpay", response.content)
-
-    def test_update_phonepe_transaction(self) -> None:
-        transaction = PhonePeTransaction.objects.create(
-            user=self.user, transaction_id=uuid.uuid4(), amount=10000
-        )
-        transaction.players.add(self.player)
-        update_transaction(transaction, "ERROR")
-        self.assertFalse(Subscription.objects.filter(player=self.player).exists())
 
 
 class TestVaccination(ApiBaseTestCase):
