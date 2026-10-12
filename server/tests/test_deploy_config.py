@@ -140,6 +140,43 @@ class TestFlyConfig(SimpleTestCase):
         self.assertEqual({image.group(1)}, versions)
 
 
+class TestRedisOnTheWorker(SimpleTestCase):
+    def test_the_apps_find_redis_on_the_worker(self) -> None:
+        self.assertEqual("worker.process.upai-hub.internal", load("fly.toml")["env"]["REDIS_HOST"])
+        # Staging keeps no cache.
+        self.assertNotIn("REDIS_HOST", load("fly.staging.toml")["env"])
+
+    def test_the_image_has_redis(self) -> None:
+        self.assertRegex(
+            (ROOT / "Dockerfile").read_text(), r"apt-get install[^\n]*\bredis-server\b"
+        )
+
+    def test_the_worker_starts_redis_before_the_task_queue(self) -> None:
+        script = (ROOT / "deploy/start-worker.sh").read_text()
+        redis, queue = script.index("redis-server"), script.index("exec python")
+        self.assertLess(redis, queue)
+        for flag in (
+            "--daemonize yes",
+            "--requirepass",
+            "--maxmemory 64mb",
+            "--maxmemory-policy allkeys-lru",
+            '--save ""',
+            "--appendonly no",
+        ):
+            self.assertIn(flag, script)
+
+    def test_the_worker_runs_the_queue_even_if_redis_wont_start(self) -> None:
+        # The cache is optional and fails open: no failure of it may exit the
+        # script (set -e), or no emails go out and no nightly jobs run.
+        script = (ROOT / "deploy/start-worker.sh").read_text()
+        self.assertRegex(script, r"if PASS=\$\(.*\); then")
+        self.assertRegex(script, r"redis-server [^\n]*(\\\n[^\n]*)*\|\|")
+        self.assertIn("else", script)
+
+    def test_the_apps_dont_run_redis(self) -> None:
+        self.assertNotIn("redis", (ROOT / "deploy/start.sh").read_text())
+
+
 class TestAppStart(SimpleTestCase):
     def start(self, sudo: str = "", **env: str) -> list[str]:
         """What deploy/start.sh runs, in order, with sudo, python and gunicorn stubbed.

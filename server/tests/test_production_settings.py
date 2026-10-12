@@ -5,6 +5,8 @@ from pathlib import Path
 
 from django.test import SimpleTestCase
 
+from hub.redis_auth import password
+
 
 class TestProductionSettings(SimpleTestCase):
     def load(self, **env: str) -> subprocess.CompletedProcess[str]:
@@ -49,3 +51,42 @@ class TestProductionSettings(SimpleTestCase):
             check=False,
         )
         self.assertEqual("60 True", result.stdout.strip(), result.stderr)
+
+    def cache(self, **env: str) -> str:
+        script = (
+            "import hub.production as s; c = s.CACHES['default']; "
+            "print(c['BACKEND'], c.get('LOCATION'), c.get('OPTIONS'))"
+        )
+        clean = {k: v for k, v in os.environ.items() if k not in {"DATABASE_URL", "REDIS_HOST"}}
+        result = subprocess.run(
+            [sys.executable, "-c", script],  # noqa: S603
+            env={**clean, **env},
+            cwd=Path(__file__).parents[2],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        return result.stdout.strip() or result.stderr
+
+    def test_production_shares_the_workers_redis_and_fails_fast(self) -> None:
+        host = "worker.process.upai-hub.internal"
+        self.assertEqual(
+            "django.core.cache.backends.redis.RedisCache "
+            f"redis://:{password('s')}@{host}:6379/0 "
+            "{'socket_connect_timeout': 0.1, 'socket_timeout': 0.2}",
+            self.cache(REDIS_HOST=host, SECRET_KEY="s"),  # noqa: S106
+        )
+
+    def test_without_redis_nothing_is_cached(self) -> None:
+        self.assertEqual(
+            "django.core.cache.backends.dummy.DummyCache None None",
+            self.cache(SECRET_KEY="s"),  # noqa: S106
+        )
+
+
+class TestRedisPassword(SimpleTestCase):
+    def test_it_is_derived_from_the_key(self) -> None:
+        self.assertEqual(password("a"), password("a"))
+        self.assertNotEqual(password("a"), password("b"))
+        self.assertRegex(password("a"), r"^[0-9a-f]{64}$")
+        self.assertNotEqual("a", password("a"))
