@@ -9,7 +9,7 @@ const SubscriptionPlayerList = props => {
     <div>
       <div class="relative my-4 overflow-x-auto">
         <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
-          <caption class="bg-white py-2 text-left text-lg font-semibold text-blue-500 rtl:text-right dark:bg-gray-800 dark:text-white">
+          <caption class="bg-white py-2 text-left text-lg font-semibold text-blue-500 dark:bg-gray-800 dark:text-white rtl:text-right">
             Selected Players
             <p class="mt-1 text-sm font-normal text-gray-500 dark:text-gray-400">
               List of players for whom subscription is being paid

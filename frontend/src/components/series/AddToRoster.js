@@ -452,7 +452,7 @@ const AddPlayerRegistrationForm = componentProps => {
           </div>
         }
       >
-        <table class="w-full text-left text-sm text-gray-500 rtl:text-right dark:text-gray-400">
+        <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400 rtl:text-right">
           <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
             <For each={table.getHeaderGroups()}>
               {headerGroup => (
@@ -549,7 +549,7 @@ const AddPlayerRegistrationForm = componentProps => {
           }
         >
           <div class="mt-4 overflow-x-auto">
-            <table class="w-full text-left text-sm text-gray-500 rtl:text-right dark:text-gray-400">
+            <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400 rtl:text-right">
               <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
                 <For each={recommendedPlayersTable.getHeaderGroups()}>
                   {headerGroup => (
