@@ -109,8 +109,22 @@ class UserMinSchema(ModelSchema):
         ]
 
 
+class TeamAdminSchema(ModelSchema):
+    """An admin as anyone may see them: everything embedding a team is public."""
+
+    full_name: str
+
+    @staticmethod
+    def resolve_full_name(user: User) -> str:
+        return user.get_full_name()
+
+    class Meta:
+        model = User
+        fields = ["id"]
+
+
 class TeamSchema(ModelSchema):
-    admins: list[UserMinSchema]
+    admins: list[TeamAdminSchema]
 
     class Meta:
         model = Team
