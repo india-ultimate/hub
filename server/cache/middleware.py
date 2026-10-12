@@ -24,9 +24,10 @@ class PublicCacheMiddleware:
             return self.get_response(request)
         path = request.get_full_path()
         hit = store.get_page(tid, version, path)
-        if hit is not None:
-            body, content_type = hit
-            return HttpResponse(body, content_type=content_type)
+        # A malformed entry (say, from another version of the code) is a miss.
+        match hit:
+            case (bytes() as body, str() as content_type):
+                return HttpResponse(body, content_type=content_type)
         response = self.get_response(request)
         if response.status_code == HTTPStatus.OK and not response.streaming:
             store.set_page(tid, version, path, response.content, response["Content-Type"])
@@ -39,4 +40,8 @@ class PublicCacheMiddleware:
             match = resolve(request.path_info)
         except Resolver404:
             return None
-        return store.safe(lambda: routes.scope(match, request), None)
+        try:
+            return routes.scope(match, request)
+        except Exception:
+            # Not a cache fault: the view answers this request its own way.
+            return None

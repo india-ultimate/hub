@@ -87,21 +87,21 @@ def set_page(tid: str, version: Any, path: str, body: bytes, content_type: str) 
 
 
 def _looked_up(key: str, ttl: int, find: Callable[[], int | None]) -> str | None:
-    found = cache.get(key)
+    found = safe(lambda: cache.get(key), None)
     if found is None:
-        tid = find()
+        tid = find()  # The database's errors are the view's to report, not a cache outage.
         if tid is None:
             return None
         found = str(tid)
-        cache.set(key, found, ttl)
+        safe(lambda: cache.set(key, found, ttl), None)
     return str(found)
 
 
 def match_tournament(match_id: str, find: Callable[[], int | None]) -> str | None:
-    """The match's tournament id, from the cache or else `find`. Raises; wrap it in safe()."""
+    """The match's tournament id, from the cache or else `find`. Only `find` can raise."""
     return _looked_up(f"tmatch:{match_id}", MATCH_LOOKUP_TTL, find)
 
 
 def slug_tournament(slug: str, find: Callable[[], int | None]) -> str | None:
-    """The slug's tournament id, from the cache or else `find`. Raises; wrap it in safe()."""
+    """The slug's tournament id, from the cache or else `find`. Only `find` can raise."""
     return _looked_up(f"tslug:{slug}", TTL, find)
