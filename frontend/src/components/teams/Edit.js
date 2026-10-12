@@ -67,7 +67,7 @@ const Edit = () => {
     },
     onError: e => {
       console.log(e);
-      setError(e);
+      setError(e.message);
     }
   });
 
@@ -76,7 +76,8 @@ const Edit = () => {
     const data = { ...teamData };
     data.id = teamQuery.data?.id;
 
-    if (selectedValues() && selectedValues().length > 0) {
+    // All of them, even none: the server refuses an empty list in words.
+    if (selectedValues()) {
       data["admin_ids"] = selectedValues().map(value => value.id);
     }
 

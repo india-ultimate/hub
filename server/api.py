@@ -521,6 +521,12 @@ def update_team(
 
     if team_details.admin_ids is not None and len(team_details.admin_ids) == 0:
         return 400, {"message": "Admin IDs cant be empty"}
+    if team_details.admin_ids is not None:
+        if request.user.id not in team_details.admin_ids:
+            return 400, {"message": "You can't remove yourself as an admin"}
+        admins = list(User.objects.filter(id__in=team_details.admin_ids))
+        if len(admins) != len(set(team_details.admin_ids)):
+            return 400, {"message": "Some of those admins don't exist"}
 
     if team_details.category is not None:
         team.category = team_details.category
@@ -534,8 +540,8 @@ def update_team(
     team.save()
 
     if team_details.admin_ids is not None:
-        admins = User.objects.filter(id__in=team_details.admin_ids)
-        team.admins.add(*admins)
+        # The form sends the admins to keep, so ones left out are removed.
+        team.admins.set(admins)
 
     return 200, team
 
