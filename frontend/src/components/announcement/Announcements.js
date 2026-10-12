@@ -11,7 +11,7 @@ import {
   lockClosed,
   tag
 } from "solid-heroicons/solid";
-import { For, onMount, Show, Suspense } from "solid-js";
+import { createMemo, For, onMount, Show, Suspense } from "solid-js";
 
 import {
   getAnnouncementTypeColor,
@@ -19,7 +19,7 @@ import {
 } from "../../colors";
 import { fetchSubscriptionStatus } from "../../queries";
 import { useStore } from "../../store";
-import { getCookie } from "../../utils";
+import { canReadAnnouncement, getCookie } from "../../utils";
 
 // Fetch announcements API
 const fetchAnnouncements = async () => {
@@ -129,24 +129,27 @@ const Announcements = () => {
             <div class="space-y-6">
               <For each={query.data}>
                 {announcement => {
-                  const hasActiveSubscription =
-                    subscriptionQuery.data?.is_active ?? false;
-                  const isMembersOnly = announcement.is_members_only;
-                  const canAccess = !isMembersOnly || hasActiveSubscription;
+                  const canAccess = createMemo(() =>
+                    canReadAnnouncement(
+                      announcement,
+                      store.data,
+                      () => subscriptionQuery.data
+                    )
+                  );
 
                   return (
                     <div
                       class={`rounded-lg border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800 ${
-                        canAccess ? "cursor-pointer" : ""
+                        canAccess() ? "cursor-pointer" : ""
                       }`}
-                      role={canAccess ? "link" : undefined}
-                      tabIndex={canAccess ? 0 : undefined}
+                      role={canAccess() ? "link" : undefined}
+                      tabIndex={canAccess() ? 0 : undefined}
                       onClick={() =>
-                        canAccess &&
+                        canAccess() &&
                         navigate(`/announcement/${announcement.slug}`)
                       }
                       onKeyDown={e => {
-                        if (canAccess && e.key === "Enter")
+                        if (canAccess() && e.key === "Enter")
                           navigate(`/announcement/${announcement.slug}`);
                       }}
                     >
@@ -188,7 +191,7 @@ const Announcements = () => {
 
                       {/* Content Preview or Members Only Message */}
                       <Show
-                        when={canAccess}
+                        when={canAccess()}
                         fallback={
                           <div class="py-2 text-center">
                             <Icon
