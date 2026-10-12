@@ -4,6 +4,14 @@ from typing import Any
 from django.apps import AppConfig
 from django.conf import settings
 from django.core.checks import Error, Tags, Warning, register
+from ninja import ModelSchema, Schema
+
+# pydantic 1 (ninja 0.22) turned numbers into strings for `str` fields, and
+# pydantic 2 refuses them: the frontend sends ids as numbers to str fields
+# (a spirit score's mvp_id), and tabs opened before a deploy keep doing so.
+# Set here, before Django imports any schema, so every schema inherits it.
+for _base in (Schema, ModelSchema):
+    _base.model_config["coerce_numbers_to_str"] = True
 
 
 @register(Tags.security, deploy=True)

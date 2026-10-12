@@ -10,9 +10,10 @@ from django.db.models.functions import Coalesce
 from django.http import HttpRequest
 from django.shortcuts import get_object_or_404
 from django.template.loader import render_to_string
-from ninja import File, Query, Router
+from ninja import Router
 from ninja.files import UploadedFile
 from ninja.pagination import PageNumberPagination, paginate
+from ninja.params.functions import File, Query
 
 from server.core.models import User
 from server.ticket.models import Ticket, TicketMessage

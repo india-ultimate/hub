@@ -57,6 +57,27 @@ class TestLogin(ApiBaseTestCase):
         response = c.post("/api/logout", content_type="application/json")
         self.assertEqual(200, response.status_code)
 
+    def test_login_needs_the_csrf_token(self) -> None:
+        # Login takes no auth, so only the API's own CSRF check guards it.
+        c = Client(enforce_csrf_checks=True)
+        credentials = {"username": self.username, "password": self.password}
+        response = c.post("/api/login", data=credentials, content_type="application/json")
+        self.assertEqual(403, response.status_code)
+
+        c.get("/")  # sets the csrftoken cookie
+        token = c.cookies["csrftoken"].value
+        response = c.post(
+            "/api/login", data=credentials, content_type="application/json", HTTP_X_CSRFTOKEN=token
+        )
+        self.assertEqual(200, response.status_code)
+
+    def test_webhooks_need_no_csrf_token(self) -> None:
+        c = Client(enforce_csrf_checks=True)
+        response = c.post(
+            "/api/transactions/razorpay/webhook", data={}, content_type="application/json"
+        )
+        self.assertNotEqual(403, response.status_code)
+
 
 class TestPasskey(ApiBaseTestCase):
     def test_enabling_one_tap_does_not_need_a_second_login_step(self) -> None:

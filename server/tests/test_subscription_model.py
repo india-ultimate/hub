@@ -136,6 +136,6 @@ class TestSubscriptionSerialization(TestCase):
         subscription = Subscription.objects.create(
             player=player, season=season, start_date=season.start_date, end_date=season.end_date
         )
-        serialized = SubscriptionSchema.from_orm(subscription).dict()
+        serialized = SubscriptionSchema.model_validate(subscription).model_dump()
         self.assertNotIn("subscription_number", serialized)
         self.assertNotIn("is_annual", serialized)

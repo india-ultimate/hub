@@ -40,9 +40,9 @@ class SeriesSchema(ModelSchema):
             for team in series.teams.all()
         ]
 
-    class Config:
+    class Meta:
         model = Series
-        model_fields = "__all__"
+        fields = "__all__"
 
 
 class SeriesMinSchema(ModelSchema):
@@ -57,9 +57,9 @@ class SeriesMinSchema(ModelSchema):
     def resolve_category(series: Series) -> str:
         return str(Series.Category._value2member_map_[series.category]._label_)  # type: ignore[attr-defined]
 
-    class Config:
+    class Meta:
         model = Series
-        model_fields = ["name", "slug", "start_date", "end_date"]
+        fields = ["name", "slug", "start_date", "end_date"]
 
 
 class TournamentSeriesSchema(ModelSchema):
@@ -76,9 +76,9 @@ class TournamentSeriesSchema(ModelSchema):
     def resolve_category(series: Series) -> str:
         return SeriesMinSchema.resolve_category(series)
 
-    class Config:
+    class Meta:
         model = Series
-        model_exclude = ["teams"]
+        exclude = ["teams"]
 
 
 class SeriesCreateSchema(Schema):
@@ -92,14 +92,14 @@ class SeriesCreateSchema(Schema):
     event_min_players_female: int
     event_max_players_male: int
     event_max_players_female: int
-    player_transfer_window_start_date: date | None
-    player_transfer_window_end_date: date | None
-    season_id: int | None
+    player_transfer_window_start_date: date | None = None
+    player_transfer_window_end_date: date | None = None
+    season_id: int | None = None
 
 
 class SeriesRosterInvitationCreateSchema(Schema):
     to_player_id: int
-    expires_on: date | None
+    expires_on: date | None = None
     role: str | None = None
 
 
@@ -108,9 +108,9 @@ class SeriesRosterInvitationSchema(ModelSchema):
     to_player: PlayerTinySchema
     team: TeamMinSchema
 
-    class Config:
+    class Meta:
         model = SeriesRosterInvitation
-        model_exclude = ["series"]
+        exclude = ["series"]
 
 
 class AddOrRemoveTeamSeriesRegistrationSchema(Schema):
@@ -121,18 +121,18 @@ class SeriesRegistrationSchema(ModelSchema):
     team: TeamMinSchema
     player: PlayerTinySchema
 
-    class Config:
+    class Meta:
         model = SeriesRegistration
-        model_fields = "__all__"
+        fields = "__all__"
 
 
 class SeriesTeamRosterSchema(ModelSchema):
     player: PlayerMinSchema
 
-    class Config:
+    class Meta:
         model = SeriesRegistration
         # role lets the roster page list non-playing staff apart from players.
-        model_fields = ["player", "role"]
+        fields = ["player", "role"]
 
 
 class SeriesRegistrationAddSchema(Schema):

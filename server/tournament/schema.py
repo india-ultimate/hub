@@ -37,15 +37,15 @@ class UCRegistrationSchema(ModelSchema):
     team: TeamSchema
     person: PersonSchema
 
-    class Config:
+    class Meta:
         model = UCRegistration
-        model_fields = "__all__"
+        fields = "__all__"
 
 
 class EventSchema(ModelSchema):
-    series: SeriesSchema | None
+    series: SeriesSchema | None = None
 
-    payment_account_name: str | None
+    payment_account_name: str | None = None
 
     @staticmethod
     def resolve_payment_account_name(event: Event) -> str | None:
@@ -53,21 +53,21 @@ class EventSchema(ModelSchema):
             return None
         return event.payment_account.name if event.payment_account else None
 
-    class Config:
+    class Meta:
         model = Event
-        model_exclude = ["ultimate_central_id"]
+        exclude = ["ultimate_central_id"]
 
 
 class TournamentEventSchema(EventSchema):
-    series: TournamentSeriesSchema | None  # type: ignore[assignment]
+    series: TournamentSeriesSchema | None = None  # type: ignore[assignment]
 
 
 class TournamentMinSchema(ModelSchema):
     event: TournamentEventSchema
 
-    class Config:
+    class Meta:
         model = Tournament
-        model_exclude = ["volunteers", "directors"]
+        exclude = ["volunteers", "directors"]
 
 
 class SeriesNameSchema(Schema):
@@ -75,11 +75,11 @@ class SeriesNameSchema(Schema):
 
 
 class TournamentCardEventSchema(ModelSchema):
-    series: SeriesNameSchema | None
+    series: SeriesNameSchema | None = None
 
-    class Config:
+    class Meta:
         model = Event
-        model_fields = [
+        fields = [
             "id",
             "title",
             "type",
@@ -100,9 +100,9 @@ class TournamentCardEventSchema(ModelSchema):
 class TournamentCardSchema(ModelSchema):
     event: TournamentCardEventSchema
 
-    class Config:
+    class Meta:
         model = Tournament
-        model_fields = ["id", "status", "logo_light", "logo_dark"]
+        fields = ["id", "status", "logo_light", "logo_dark"]
 
 
 class TournamentCardsSchema(Schema):
@@ -138,9 +138,9 @@ class TournamentSchema(ModelSchema):
             for team in tournament.teams.all()
         ]
 
-    class Config:
+    class Meta:
         model = Tournament
-        model_exclude = ["volunteers", "directors"]
+        exclude = ["volunteers", "directors"]
 
 
 class TournamentCreateFromEventSchema(Schema):
@@ -181,13 +181,13 @@ class AddOrRemoveTeamRegistrationSchema(Schema):
 
 class AddToRosterSchema(Schema):
     player_id: int
-    is_playing: bool | None
-    role: str | None
+    is_playing: bool | None = None
+    role: str | None = None
 
 
 class TournamentPlayerRegistrationUpdateSchema(Schema):
-    role: str | None
-    is_playing: bool | None
+    role: str | None = None
+    is_playing: bool | None = None
 
 
 class TournamentPlayerRegistrationSchema(Schema):
@@ -196,9 +196,9 @@ class TournamentPlayerRegistrationSchema(Schema):
     player: PlayerSchema
     is_playing: bool
     role: str
-    points: float | None
+    points: float | None = None
     event_name: str
-    series_name: str | None
+    series_name: str | None = None
     event_id: int
 
     @staticmethod
@@ -218,7 +218,7 @@ class TournamentPlayerRegistrationSchema(Schema):
     # def resolve_role_full(registration: Registration) -> str:
     #     return Registration.Role._value2member_map_[registration.role]._label_  # type: ignore[attr-defined]
 
-    class Config:
+    class Meta:
         model = Registration
 
 
@@ -227,9 +227,9 @@ class RosterPointsSchema(Schema):
 
 
 class PoolSchema(ModelSchema):
-    class Config:
+    class Meta:
         model = Pool
-        model_exclude = ["tournament"]
+        exclude = ["tournament"]
 
 
 class PoolCreateSchema(Schema):
@@ -239,9 +239,9 @@ class PoolCreateSchema(Schema):
 
 
 class SwissRoundSchema(ModelSchema):
-    class Config:
+    class Meta:
         model = SwissRound
-        model_exclude = ["tournament"]
+        exclude = ["tournament"]
 
 
 class SwissRoundCreateSchema(Schema):
@@ -252,15 +252,15 @@ class SwissRoundCreateSchema(Schema):
 
 
 class CrossPoolSchema(ModelSchema):
-    class Config:
+    class Meta:
         model = CrossPool
-        model_exclude = ["tournament"]
+        exclude = ["tournament"]
 
 
 class BracketSchema(ModelSchema):
-    class Config:
+    class Meta:
         model = Bracket
-        model_exclude = ["tournament"]
+        exclude = ["tournament"]
 
 
 class BracketCreateSchema(Schema):
@@ -269,9 +269,9 @@ class BracketCreateSchema(Schema):
 
 
 class PositionPoolSchema(ModelSchema):
-    class Config:
+    class Meta:
         model = PositionPool
-        model_exclude = ["tournament"]
+        exclude = ["tournament"]
 
 
 class PositionPoolCreateSchema(Schema):
@@ -283,58 +283,58 @@ class PositionPoolCreateSchema(Schema):
 class MatchScoreModelSchema(ModelSchema):
     entered_by: PlayerTinySchema
 
-    class Config:
+    class Meta:
         model = MatchScore
-        model_fields = "__all__"
+        fields = "__all__"
 
 
 class SpiritScoreSchema(ModelSchema):
-    mvp: PersonSchema | None
-    msp: PersonSchema | None
-    mvp_v2: PlayerTinySchema | None
-    msp_v2: PlayerTinySchema | None
+    mvp: PersonSchema | None = None
+    msp: PersonSchema | None = None
+    mvp_v2: PlayerTinySchema | None = None
+    msp_v2: PlayerTinySchema | None = None
 
-    class Config:
+    class Meta:
         model = SpiritScore
-        model_fields = "__all__"
+        fields = "__all__"
 
 
 class TournamentFieldSchema(ModelSchema):
-    class Config:
+    class Meta:
         model = TournamentField
-        model_exclude = ["tournament"]
+        exclude = ["tournament"]
 
 
 class TournamentFieldCreateSchema(Schema):
     name: str
     is_broadcasted: bool
-    address: str | None
+    address: str | None = None
 
 
 class TournamentFieldUpdateSchema(Schema):
-    name: str | None
-    is_broadcasted: bool | None
+    name: str | None = None
+    is_broadcasted: bool | None = None
     tournament_id: int
-    address: str | None
+    address: str | None = None
 
 
 class MatchEventSchema(ModelSchema):
-    team: TeamSchema | None
+    team: TeamSchema | None = None
     players: list[PlayerTinySchema]
 
     @staticmethod
     def resolve_players(match_event: MatchEvent) -> QuerySet[Player]:
         return match_event.players.all().order_by("user__first_name")
 
-    scored_by: PlayerTinySchema | None
-    assisted_by: PlayerTinySchema | None
-    drop_by: PlayerTinySchema | None
-    throwaway_by: PlayerTinySchema | None
-    block_by: PlayerTinySchema | None
+    scored_by: PlayerTinySchema | None = None
+    assisted_by: PlayerTinySchema | None = None
+    drop_by: PlayerTinySchema | None = None
+    throwaway_by: PlayerTinySchema | None = None
+    block_by: PlayerTinySchema | None = None
 
-    class Config:
+    class Meta:
         model = MatchEvent
-        model_exclude = ["stats"]
+        exclude = ["stats"]
 
 
 class MatchStatsSchema(ModelSchema):
@@ -347,63 +347,63 @@ class MatchStatsSchema(ModelSchema):
     def resolve_events(match_stats: MatchStats) -> QuerySet[MatchEvent]:
         return MatchEvent.objects.filter(stats=match_stats).order_by("-time")
 
-    class Config:
+    class Meta:
         model = MatchStats
-        model_exclude = ["match", "tournament"]
+        exclude = ["match", "tournament"]
 
 
 class MatchStatsMinSchema(ModelSchema):
     initial_possession: TeamSchema
     current_possession: TeamSchema
 
-    class Config:
+    class Meta:
         model = MatchStats
-        model_exclude = ["match", "tournament"]
+        exclude = ["match", "tournament"]
 
 
 class MatchStatsCreateSchema(Schema):
     initial_possession_team_id: int
-    initial_ratio: str | None
+    initial_ratio: str | None = None
 
 
 class MatchEventCreateSchema(Schema):
     type: str
     team_id: int
-    player_ids: list[int] | None
-    scored_by_id: int | None
-    assisted_by_id: int | None
-    drop_by_id: int | None
-    throwaway_by_id: int | None
-    block_by_id: int | None
+    player_ids: list[int] | None = None
+    scored_by_id: int | None = None
+    assisted_by_id: int | None = None
+    drop_by_id: int | None = None
+    throwaway_by_id: int | None = None
+    block_by_id: int | None = None
 
 
 class MatchSchema(ModelSchema):
-    pool: PoolSchema | None
-    cross_pool: CrossPoolSchema | None
-    bracket: BracketSchema | None
-    position_pool: PositionPoolSchema | None
-    swiss_round: SwissRoundSchema | None
-    team_1: TeamSchema | None
-    team_2: TeamSchema | None
-    spirit_score_team_1: SpiritScoreSchema | None
-    spirit_score_team_2: SpiritScoreSchema | None
-    self_spirit_score_team_1: SpiritScoreSchema | None
-    self_spirit_score_team_2: SpiritScoreSchema | None
-    suggested_score_team_1: MatchScoreModelSchema | None
-    suggested_score_team_2: MatchScoreModelSchema | None
-    field: TournamentFieldSchema | None
-    stats: MatchStatsMinSchema | None
+    pool: PoolSchema | None = None
+    cross_pool: CrossPoolSchema | None = None
+    bracket: BracketSchema | None = None
+    position_pool: PositionPoolSchema | None = None
+    swiss_round: SwissRoundSchema | None = None
+    team_1: TeamSchema | None = None
+    team_2: TeamSchema | None = None
+    spirit_score_team_1: SpiritScoreSchema | None = None
+    spirit_score_team_2: SpiritScoreSchema | None = None
+    self_spirit_score_team_1: SpiritScoreSchema | None = None
+    self_spirit_score_team_2: SpiritScoreSchema | None = None
+    suggested_score_team_1: MatchScoreModelSchema | None = None
+    suggested_score_team_2: MatchScoreModelSchema | None = None
+    field: TournamentFieldSchema | None = None
+    stats: MatchStatsMinSchema | None = None
 
     @staticmethod
-    def resolve_stats(match: Match) -> MatchStatsMinSchema | None:
+    def resolve_stats(match: Match) -> MatchStats | None:
         try:
-            return MatchStatsMinSchema.from_orm(match.stats)
+            return match.stats
         except MatchStats.DoesNotExist:
             return None
 
-    class Config:
+    class Meta:
         model = Match
-        model_exclude = ["tournament"]
+        exclude = ["tournament"]
 
 
 # Public GET endpoints: only what a page reads, and nothing personal.
@@ -419,18 +419,18 @@ class PublicPlayerSchema(Schema):
 
 
 class PublicPersonSchema(ModelSchema):
-    class Config:
+    class Meta:
         model = UCPerson
-        model_fields = ["first_name", "last_name", "image_url"]
+        fields = ["first_name", "last_name", "image_url"]
 
 
 class PublicUCPersonSchema(Schema):
     id: int
     first_name: str
     last_name: str
-    image_url: str | None
+    image_url: str | None = None
     # Only the gender the roster shows, never the rest of the player.
-    player: dict[str, str] | None
+    player: dict[str, str] | None = None
 
 
 class PublicUCRegistrationSchema(Schema):
@@ -463,49 +463,49 @@ class PublicCrossPoolSchema(Schema):
 
 
 class PublicSpiritScoreSchema(ModelSchema):
-    mvp: PublicPersonSchema | None
-    msp: PublicPersonSchema | None
-    mvp_v2: PublicPlayerSchema | None
-    msp_v2: PublicPlayerSchema | None
+    mvp: PublicPersonSchema | None = None
+    msp: PublicPersonSchema | None = None
+    mvp_v2: PublicPlayerSchema | None = None
+    msp_v2: PublicPlayerSchema | None = None
 
-    class Config:
+    class Meta:
         model = SpiritScore
-        model_fields = "__all__"
+        fields = "__all__"
 
 
 class PublicMatchScoreSchema(ModelSchema):
     entered_by: PublicPlayerSchema
 
-    class Config:
+    class Meta:
         model = MatchScore
-        model_fields = "__all__"
+        fields = "__all__"
 
 
 class PublicMatchStatsMinSchema(ModelSchema):
     initial_possession: TeamMinSchema
     current_possession: TeamMinSchema
 
-    class Config:
+    class Meta:
         model = MatchStats
-        model_exclude = ["match", "tournament"]
+        exclude = ["match", "tournament"]
 
 
 class PublicMatchSchema(ModelSchema):
-    pool: PublicStageSchema | None
-    cross_pool: PublicCrossPoolSchema | None
-    bracket: PublicStageSchema | None
-    position_pool: PublicStageSchema | None
-    swiss_round: PublicStageSchema | None
-    team_1: TeamMinSchema | None
-    team_2: TeamMinSchema | None
-    spirit_score_team_1: PublicSpiritScoreSchema | None
-    spirit_score_team_2: PublicSpiritScoreSchema | None
-    self_spirit_score_team_1: PublicSpiritScoreSchema | None
-    self_spirit_score_team_2: PublicSpiritScoreSchema | None
-    suggested_score_team_1: PublicMatchScoreSchema | None
-    suggested_score_team_2: PublicMatchScoreSchema | None
-    field: TournamentFieldSchema | None
-    stats: PublicMatchStatsMinSchema | None
+    pool: PublicStageSchema | None = None
+    cross_pool: PublicCrossPoolSchema | None = None
+    bracket: PublicStageSchema | None = None
+    position_pool: PublicStageSchema | None = None
+    swiss_round: PublicStageSchema | None = None
+    team_1: TeamMinSchema | None = None
+    team_2: TeamMinSchema | None = None
+    spirit_score_team_1: PublicSpiritScoreSchema | None = None
+    spirit_score_team_2: PublicSpiritScoreSchema | None = None
+    self_spirit_score_team_1: PublicSpiritScoreSchema | None = None
+    self_spirit_score_team_2: PublicSpiritScoreSchema | None = None
+    suggested_score_team_1: PublicMatchScoreSchema | None = None
+    suggested_score_team_2: PublicMatchScoreSchema | None = None
+    field: TournamentFieldSchema | None = None
+    stats: PublicMatchStatsMinSchema | None = None
 
     @staticmethod
     def resolve_stats(match: Match) -> MatchStats | None:
@@ -514,9 +514,9 @@ class PublicMatchSchema(ModelSchema):
         except MatchStats.DoesNotExist:
             return None
 
-    class Config:
+    class Meta:
         model = Match
-        model_exclude = ["tournament"]
+        exclude = ["tournament"]
 
 
 _SPIRIT_SCORES = [
@@ -552,21 +552,21 @@ def public_matches(matches: QuerySet[Match]) -> QuerySet[Match]:
 
 
 class PublicMatchEventSchema(ModelSchema):
-    team: TeamMinSchema | None
+    team: TeamMinSchema | None = None
     players: list[PublicPlayerSchema]
-    scored_by: PublicPlayerSchema | None
-    assisted_by: PublicPlayerSchema | None
-    drop_by: PublicPlayerSchema | None
-    throwaway_by: PublicPlayerSchema | None
-    block_by: PublicPlayerSchema | None
+    scored_by: PublicPlayerSchema | None = None
+    assisted_by: PublicPlayerSchema | None = None
+    drop_by: PublicPlayerSchema | None = None
+    throwaway_by: PublicPlayerSchema | None = None
+    block_by: PublicPlayerSchema | None = None
 
     @staticmethod
     def resolve_players(match_event: MatchEvent) -> list[Player]:
         return list(match_event.players.all())  # prefetched, in name order
 
-    class Config:
+    class Meta:
         model = MatchEvent
-        model_exclude = ["stats"]
+        exclude = ["stats"]
 
 
 class PublicMatchStatsSchema(ModelSchema):
@@ -578,9 +578,9 @@ class PublicMatchStatsSchema(ModelSchema):
     def resolve_events(match_stats: MatchStats) -> list[MatchEvent]:
         return list(match_stats.events.all())  # prefetched, newest first
 
-    class Config:
+    class Meta:
         model = MatchStats
-        model_exclude = ["match", "tournament"]
+        exclude = ["match", "tournament"]
 
 
 _EVENT_PLAYERS = ["scored_by", "assisted_by", "drop_by", "throwaway_by", "block_by"]
@@ -615,10 +615,10 @@ class SpiritScoreUpdateSchema(Schema):
     positive: int
     communication: int
 
-    mvp_id: str | None
-    msp_id: str | None
+    mvp_id: str | None = None
+    msp_id: str | None = None
 
-    comments: str | None
+    comments: str | None = None
 
 
 class SpiritScoreSubmitSchema(Schema):
@@ -629,14 +629,14 @@ class SpiritScoreSubmitSchema(Schema):
 
 
 class MatchUpdateSchema(Schema):
-    time: str | None
-    field_id: int | None
-    video_url: str | None
-    duration_mins: int | None
-    spirit_score_team_1: SpiritScoreUpdateSchema | None
-    spirit_score_team_2: SpiritScoreUpdateSchema | None
-    self_spirit_score_team_1: SpiritScoreUpdateSchema | None
-    self_spirit_score_team_2: SpiritScoreUpdateSchema | None
+    time: str | None = None
+    field_id: int | None = None
+    video_url: str | None = None
+    duration_mins: int | None = None
+    spirit_score_team_1: SpiritScoreUpdateSchema | None = None
+    spirit_score_team_2: SpiritScoreUpdateSchema | None = None
+    self_spirit_score_team_1: SpiritScoreUpdateSchema | None = None
+    self_spirit_score_team_2: SpiritScoreUpdateSchema | None = None
 
 
 class MatchScoreSchema(Schema):
@@ -655,9 +655,9 @@ class PublicCommentaryInfoSchema(Schema):
 class PublicRosterPlayerSchema(Schema):
     id: int
     full_name: str
-    profile_pic_url: str | None
+    profile_pic_url: str | None = None
     gender: str
-    commentary_info: PublicCommentaryInfoSchema | None
+    commentary_info: PublicCommentaryInfoSchema | None = None
 
     @staticmethod
     def resolve_full_name(player: Player) -> str:

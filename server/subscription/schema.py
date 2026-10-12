@@ -22,10 +22,10 @@ class SubscriptionPlanSchema(Schema):
 
 
 class SubscriptionSchema(ModelSchema):
-    waiver_signed_by: str | None
-    coc_agreed_by: str | None
-    tier: str | None
-    tier_name: str | None
+    waiver_signed_by: str | None = None
+    coc_agreed_by: str | None = None
+    tier: str | None = None
+    tier_name: str | None = None
     scopes: list[str]
     season_name: str
 
@@ -69,11 +69,11 @@ class SubscriptionSchema(ModelSchema):
             )
         )
 
-    class Config:
+    class Meta:
         model = Subscription
         # subscription_number and is_annual are retained on the model only
         # for the deploy window (a still-running previous release reads
         # the columns); they are not part of this API. Exclude rather than
         # enumerate, so fields later tasks add (plan, amount_paid,
         # refunded_at, ...) keep appearing here automatically.
-        model_exclude = ["subscription_number", "is_annual"]
+        exclude = ["subscription_number", "is_annual"]

@@ -13,6 +13,7 @@ from server.core.models import (
 )
 from server.payment_account.models import viewable_by
 from server.season.models import Season
+from server.subscription.models import Subscription
 from server.subscription.schema import SubscriptionSchema
 from server.subscription.sponsorship import has_grant
 from server.utils import mask_string
@@ -45,9 +46,9 @@ class OTPLoginCredentials(Schema):
 
 class Response(Schema):
     message: str
-    description: str | None
-    action_name: str | None
-    action_href: str | None
+    description: str | None = None
+    action_name: str | None = None
+    action_href: str | None = None
 
 
 class ValidationStatsSchema(Schema):
@@ -57,37 +58,37 @@ class ValidationStatsSchema(Schema):
 
 
 class UserFormSchema(ModelSchema):
-    class Config:
+    class Meta:
         model = User
-        model_fields = ["first_name", "last_name", "phone"]
+        fields = ["first_name", "last_name", "phone"]
 
 
 class VaccinationSchema(ModelSchema):
-    class Config:
+    class Meta:
         model = Vaccination
-        model_fields = "__all__"
+        fields = "__all__"
 
 
 class AccreditationSchema(ModelSchema):
-    class Config:
+    class Meta:
         model = Accreditation
-        model_fields = "__all__"
+        fields = "__all__"
 
 
 class CollegeIdSchema(ModelSchema):
     # Empty once the images are removed after expiry (images_removed_at).
-    card_front: str | None
-    card_back: str | None
+    card_front: str | None = None
+    card_back: str | None = None
 
-    class Config:
+    class Meta:
         model = CollegeId
-        model_fields = "__all__"
+        fields = "__all__"
 
 
 class CommentaryInfoSchema(ModelSchema):
-    class Config:
+    class Meta:
         model = CommentaryInfo
-        model_fields = "__all__"
+        fields = "__all__"
 
 
 class UserMinSchema(ModelSchema):
@@ -97,9 +98,9 @@ class UserMinSchema(ModelSchema):
     def resolve_full_name(user: User) -> str:
         return user.get_full_name()
 
-    class Config:
+    class Meta:
         model = User
-        model_fields = [
+        fields = [
             "id",
             "username",
             "email",
@@ -111,15 +112,15 @@ class UserMinSchema(ModelSchema):
 class TeamSchema(ModelSchema):
     admins: list[UserMinSchema]
 
-    class Config:
+    class Meta:
         model = Team
-        model_fields = "__all__"
+        fields = "__all__"
 
 
 class TeamMinSchema(ModelSchema):
-    class Config:
+    class Meta:
         model = Team
-        model_fields = ["id", "name", "slug", "image", "image_url"]
+        fields = ["id", "name", "slug", "image", "image_url"]
 
 
 class TeamCreateSchema(Schema):
@@ -136,16 +137,16 @@ class TeamNameUpdateSchema(Schema):
 
 class TeamUpdateSchema(Schema):
     id: str
-    category: str | None
-    state_ut: str | None
-    city: str | None
-    admin_ids: list[int] | None
+    category: str | None = None
+    state_ut: str | None = None
+    city: str | None = None
+    admin_ids: list[int] | None = None
 
 
 class PersonTinySchema(ModelSchema):
-    class Config:
+    class Meta:
         model = UCPerson
-        model_fields = "__all__"
+        fields = "__all__"
 
 
 class PlayerSchema(ModelSchema):
@@ -179,15 +180,15 @@ class PlayerSchema(ModelSchema):
     def resolve_phone(player: Player) -> str:
         return player.user.phone
 
-    subscription: SubscriptionSchema | None
+    subscription: SubscriptionSchema | None = None
 
     @staticmethod
-    def resolve_subscription(player: Player) -> SubscriptionSchema | None:
+    def resolve_subscription(player: Player) -> Subscription | None:
         if hasattr(player, "_prefetched_subscription"):
             subscription = player._prefetched_subscription
         else:
             subscription = player.current_subscription
-        return SubscriptionSchema.from_orm(subscription) if subscription is not None else None
+        return subscription
 
     sponsored: bool
 
@@ -202,16 +203,16 @@ class PlayerSchema(ModelSchema):
             return bool(player._prefetched_sponsored)
         return has_grant(player, Season.current())
 
-    vaccination: VaccinationSchema | None
+    vaccination: VaccinationSchema | None = None
 
     @staticmethod
-    def resolve_vaccination(player: Player) -> VaccinationSchema | None:
+    def resolve_vaccination(player: Player) -> Vaccination | None:
         try:
-            return VaccinationSchema.from_orm(player.vaccination)
+            return player.vaccination
         except Vaccination.DoesNotExist:
             return None
 
-    accreditation: AccreditationSchema | None
+    accreditation: AccreditationSchema | None = None
 
     @staticmethod
     def resolve_accreditation(player: Player) -> Accreditation | None:
@@ -220,7 +221,7 @@ class PlayerSchema(ModelSchema):
         except Accreditation.DoesNotExist:
             return None
 
-    college_id: CollegeIdSchema | None
+    college_id: CollegeIdSchema | None = None
 
     @staticmethod
     def resolve_college_id(player: Player) -> CollegeId | None:
@@ -229,7 +230,7 @@ class PlayerSchema(ModelSchema):
         except CollegeId.DoesNotExist:
             return None
 
-    commentary_info: CommentaryInfoSchema | None
+    commentary_info: CommentaryInfoSchema | None = None
 
     @staticmethod
     def resolve_commentary_info(player: Player) -> CommentaryInfo | None:
@@ -238,7 +239,7 @@ class PlayerSchema(ModelSchema):
         except CommentaryInfo.DoesNotExist:
             return None
 
-    guardian: int | None
+    guardian: int | None = None
 
     @staticmethod
     def resolve_guardian(player: Player) -> int | None:
@@ -252,7 +253,7 @@ class PlayerSchema(ModelSchema):
 
     teams: list[TeamMinSchema]
 
-    uc_person: PersonTinySchema | None
+    uc_person: PersonTinySchema | None = None
 
     @staticmethod
     def resolve_uc_person(player: Player) -> UCPerson | None:
@@ -263,9 +264,9 @@ class PlayerSchema(ModelSchema):
         except UCPerson.DoesNotExist:
             return None
 
-    class Config:
+    class Meta:
         model = Player
-        model_fields = "__all__"
+        fields = "__all__"
 
 
 class PlayerTinySchema(ModelSchema):
@@ -301,9 +302,9 @@ class PlayerTinySchema(ModelSchema):
 
     teams: list[TeamMinSchema]
 
-    class Config:
+    class Meta:
         model = Player
-        model_fields = [
+        fields = [
             "id",
             "city",
             "state_ut",
@@ -320,13 +321,13 @@ class PlayerMinSchema(ModelSchema):
     def resolve_full_name(player: Player) -> str:
         return player.user.get_full_name()
 
-    class Config:
+    class Meta:
         model = Player
-        model_fields = ["id", "state_ut", "match_up"]
+        fields = ["id", "state_ut", "match_up"]
 
 
 class PersonSchema(ModelSchema):
-    player: PlayerSchema | None
+    player: PlayerSchema | None = None
 
     @staticmethod
     def resolve_player(person: UCPerson) -> Player | None:
@@ -335,9 +336,9 @@ class PersonSchema(ModelSchema):
         except Player.DoesNotExist:
             return None
 
-    class Config:
+    class Meta:
         model = UCPerson
-        model_fields = "__all__"
+        fields = "__all__"
 
 
 class UserSchema(ModelSchema):
@@ -359,31 +360,30 @@ class UserSchema(ModelSchema):
     def resolve_directed_tournament_ids(user: User) -> list[int]:
         return list(user.directed_tournaments.values_list("id", flat=True))
 
-    player: PlayerSchema | None
+    player: PlayerSchema | None = None
 
     @staticmethod
-    def resolve_player(user: User) -> PlayerSchema | None:
+    def resolve_player(user: User) -> Player | None:
         try:
-            return PlayerSchema.from_orm(user.player_profile)
+            return user.player_profile
         except Player.DoesNotExist:
             return None
 
     wards: list[PlayerSchema]
 
     @staticmethod
-    def resolve_wards(user: User) -> list[PlayerSchema]:
-        wards = Player.objects.filter(guardianship__user=user)
-        return [PlayerSchema.from_orm(p) for p in wards]
+    def resolve_wards(user: User) -> list[Player]:
+        return list(Player.objects.filter(guardianship__user=user))
 
     admin_teams: list[TeamSchema]
 
     @staticmethod
-    def resolve_admin_teams(user: User) -> list[TeamSchema]:
-        return [TeamSchema.from_orm(team) for team in user.admin_teams.all()]
+    def resolve_admin_teams(user: User) -> list[Team]:
+        return list(user.admin_teams.all())
 
-    class Config:
+    class Meta:
         model = User
-        model_fields = [
+        fields = [
             "id",
             "username",
             "email",
@@ -404,27 +404,27 @@ class MeSchema(UserSchema):
 
 
 class UserOtherFormSchema(ModelSchema):
-    class Config:
+    class Meta:
         model = User
-        model_fields = ["first_name", "last_name", "phone", "email"]
+        fields = ["first_name", "last_name", "phone", "email"]
 
 
 class UserWardFormSchema(ModelSchema):
-    class Config:
+    class Meta:
         model = User
-        model_fields = ["first_name", "last_name", "phone", "email"]
-        model_fields_optional = ["email"]
+        fields = ["first_name", "last_name", "phone", "email"]
+        fields_optional = ["email"]
 
 
 class PlayerFormSchema(ModelSchema):
-    class Config:
+    class Meta:
         model = Player
         # sponsored decides what a subscription costs, imported_data says where
         # a row came from, and iu_id is printed on waivers and
         # certificates -- a self-chosen one is identity forgery. All three are
         # administrative and none may be set by the person registering, so
         # they are not input fields at all.
-        model_exclude = [
+        exclude = [
             "user",
             "teams",
             "id",
@@ -433,13 +433,13 @@ class PlayerFormSchema(ModelSchema):
             "imported_data",
             "iu_id",
         ]
-        model_fields_optional = "__all__"
+        fields_optional = "__all__"
 
 
 class GuardianshipFormSchema(ModelSchema):
-    class Config:
+    class Meta:
         model = Guardianship
-        model_fields = ["relation"]
+        fields = ["relation"]
 
 
 class NotVaccinatedFormSchema(Schema):
@@ -457,25 +457,25 @@ class VaccinatedFormSchema(Schema):
 class AccreditationFormSchema(ModelSchema):
     player_id: int
 
-    class Config:
+    class Meta:
         model = Accreditation
-        model_fields = ["level", "date", "wfdf_id"]
+        fields = ["level", "date", "wfdf_id"]
 
 
 class CollegeIdFormSchema(ModelSchema):
     player_id: int
 
-    class Config:
+    class Meta:
         model = CollegeId
-        model_fields = ["expiry"]
+        fields = ["expiry"]
 
 
 class CommentaryInfoFormSchema(ModelSchema):
     player_id: int
 
-    class Config:
+    class Meta:
         model = CommentaryInfo
-        model_fields = [
+        fields = [
             "jersey_number",
             "ultimate_origin",
             "ultimate_attraction",
@@ -495,9 +495,11 @@ class CodeOfConductFormSchema(Schema):
 
 
 class RegistrationSchema(UserFormSchema, PlayerFormSchema):
-    player_id: int | None
+    player_id: int | None = None
 
-    class Config:
+    # Each base has its own Meta; ninja reads none here (only on a direct
+    # ModelSchema subclass), and this one settles which wins for mypy.
+    class Meta:
         pass
 
 
@@ -507,17 +509,20 @@ class RegistrationGuardianSchema(RegistrationSchema, GuardianshipFormSchema):
     guardian_email: str
     guardian_phone: str
 
-    class Config:
+    # As in RegistrationSchema.
+    class Meta:
         pass
 
 
 class RegistrationOthersSchema(UserOtherFormSchema, PlayerFormSchema):
-    class Config:
+    # As in RegistrationSchema.
+    class Meta:
         pass
 
 
 class RegistrationWardSchema(UserWardFormSchema, PlayerFormSchema, GuardianshipFormSchema):
-    class Config:
+    # As in RegistrationSchema.
+    class Meta:
         pass
 
 

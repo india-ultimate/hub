@@ -5,7 +5,8 @@ from typing import Any
 from django.db.models import QuerySet
 from django.http import HttpRequest
 from django.views.decorators.csrf import csrf_exempt
-from ninja import File, Router, UploadedFile
+from ninja import Router, UploadedFile
+from ninja.params.functions import File
 
 from server.core.models import Player
 from server.lib.manual_transactions import validate_manual_transactions
@@ -77,7 +78,7 @@ def handle_razorpay_callback(
     )
     if existing is None:
         return 404, {"message": "No order found."}
-    if not razorpay.verify_payment(payment.dict(), existing.account):
+    if not razorpay.verify_payment(payment.model_dump(), existing.account):
         return 422, {"message": "We were unable to ascertain the authenticity of the payment."}
     # The same guard the webhook has. A double-clicked or replayed callback
     # must not run the handlers again: subscription fulfilment is idempotent,
@@ -174,7 +175,7 @@ def list_transactions(
         if only_manual and payment_type != PaymentGateway.MANUAL:
             continue
         transactions = list_transactions_by_type(user, payment_type, user_only, only_invalid)
-        transaction_dicts = [schema.from_orm(t).dict() for t in transactions]
+        transaction_dicts = [schema.model_validate(t).model_dump() for t in transactions]
         receipts: dict[str, tuple[int, str]] = {}
         if payment_type == PaymentGateway.RAZORPAY:
             receipts = {

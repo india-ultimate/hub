@@ -300,7 +300,7 @@ class TestStatusPage(MergeFlowTestCase):
         user_fields, player_fields = resolvable_fields()
         for name in ("email", "password"):
             self.assertNotIn(name, user_fields | player_fields)
-        self.assertNotIn("email", UserFormSchema.__fields__)
+        self.assertNotIn("email", UserFormSchema.model_fields)
         self.client.force_login(self.first)
         self.confirmed(self.first, self.second)
         profiles = [row["profile"] for row in self.page().json()["rows"] if row["profile"]]

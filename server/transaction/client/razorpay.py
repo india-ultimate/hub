@@ -130,7 +130,7 @@ def update_transaction(payment: RazorpayCallbackSchema) -> RazorpayTransaction |
         return None
 
     n = len("razorpay_")
-    for key, value in payment.dict().items():
+    for key, value in payment.model_dump().items():
         field = key[n:]
         # The model field is payment_signature; writing "signature" silently
         # went nowhere, which is why every completed row has an empty one.

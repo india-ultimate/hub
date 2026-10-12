@@ -270,8 +270,8 @@ def resolvable_fields() -> tuple[frozenset[str], frozenset[str]]:
     from server.schema import PlayerFormSchema, UserFormSchema
 
     return (
-        frozenset(UserFormSchema.__fields__),
-        frozenset(PlayerFormSchema.__fields__) - NOT_RESOLVABLE,
+        frozenset(UserFormSchema.model_fields),
+        frozenset(PlayerFormSchema.model_fields) - NOT_RESOLVABLE,
     )
 
 

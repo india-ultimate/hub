@@ -6,14 +6,14 @@ from ninja import Schema
 
 class GroupRowSchema(Schema):
     row_id: int
-    user_id: int | None
+    user_id: int | None = None
     email: str
     state: str
-    since: datetime | None
+    since: datetime | None = None
     is_yours: bool
     merged_into_you: bool
     verified_for_you: bool
-    last_seen: str | None
+    last_seen: str | None = None
     # How this account was proven: "email-code", "same-inbox", "staff", or
     # "" if not yet confirmed. Shown alongside state, never gated on proof.
     proof: str
@@ -26,10 +26,10 @@ class GroupSchema(Schema):
     status: str
     origin: str
     expires_at: datetime
-    signed_in_as: int | None
+    signed_in_as: int | None = None
     # The viewer's own address when they are signed in to none of these
     # accounts, so the page can say so rather than ask them to sign in.
-    signed_in_elsewhere: str | None
+    signed_in_elsewhere: str | None = None
     is_requester: bool
     # True only for the requester's own cancellation, never for a dismissal
     # by the other owner — is_requester alone can't tell those apart.
@@ -98,7 +98,7 @@ class MyGroupSchema(Schema):
     # _serialize's shows_address would - which for this authenticated
     # endpoint means never, and hidden entirely where a dismissed group
     # would hide it from a member too (see _visible_rows, spec §5).
-    other_email: str | None
+    other_email: str | None = None
     # How many other members the group has (0 when other_email is None).
     # More than 1 means other_email is only one of them.
     other_count: int
