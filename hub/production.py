@@ -53,5 +53,6 @@ if SENTRY_DSN:
 
     sentry_sdk.init(
         dsn=SENTRY_DSN,
-        enable_tracing=True,
+        # What enable_tracing=True meant; sentry-sdk 2 deprecates that flag.
+        traces_sample_rate=1.0,
     )
