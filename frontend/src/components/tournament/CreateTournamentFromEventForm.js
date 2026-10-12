@@ -18,6 +18,7 @@ const CreateTournamentFromEventForm = () => {
     mutationFn: createTournamentFromEvent,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tournaments"] });
+      queryClient.invalidateQueries({ queryKey: ["tournament-cards"] });
       setStatus("Created Tournament!");
     },
     onError: e => {

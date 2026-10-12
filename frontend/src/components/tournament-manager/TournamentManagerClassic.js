@@ -373,8 +373,10 @@ const TournamentManager = props => {
 
   const updateSeedingMutation = createMutation({
     mutationFn: updateSeeding,
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["tournaments"] })
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tournaments"] });
+      queryClient.invalidateQueries({ queryKey: ["tournament-cards"] });
+    }
   });
 
   const createFieldMutation = createMutation({
@@ -503,6 +505,7 @@ const TournamentManager = props => {
       queryClient.invalidateQueries({
         queryKey: ["tournaments"]
       });
+      queryClient.invalidateQueries({ queryKey: ["tournament-cards"] });
       queryClient.invalidateQueries({
         queryKey: ["matches", selectedTournamentID()]
       });

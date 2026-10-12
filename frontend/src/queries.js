@@ -419,6 +419,9 @@ export const fetchTeamSeriesRoster = async (series_slug, team_slug) => {
   return data;
 };
 
+// Live tournaments first; otherwise the server's order (newest first).
+const liveFirst = (a, b) => (b.status === "LIV") - (a.status === "LIV");
+
 export const fetchTournaments = async () => {
   const response = await fetch("/api/tournaments", {
     method: "GET",
@@ -426,22 +429,24 @@ export const fetchTournaments = async () => {
     credentials: "same-origin"
   });
 
-  let tournaments = await response.json();
+  const tournaments = await response.json();
+  return tournaments.sort(liveFirst);
+};
 
-  tournaments.sort((a, b) => {
-    if (a.status === "LIV" && b.status !== "LIV") {
-      return -1;
-    } else if (a.status !== "LIV" && b.status === "LIV") {
-      return 1;
-    } else if (
-      (a.status === "LIV" && b.status === "LIV") ||
-      (a.status !== "LIV" && b.status !== "LIV")
-    ) {
-      return 0;
-    }
+// query: "?year=2025", "?recent=1", or "" for this year and upcoming.
+export const fetchTournamentCards = async (query = "") => {
+  const response = await fetch(`/api/tournaments/public${query}`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin"
   });
 
-  return tournaments;
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data?.message || JSON.stringify(data));
+  }
+  data.tournaments.sort(liveFirst);
+  return data;
 };
 
 export const fetchTournament = async tournament_id => {
