@@ -146,6 +146,7 @@ from server.tournament.schema import (
     PoolSchema,
     PositionPoolCreateSchema,
     PositionPoolSchema,
+    PublicMatchSchema,
     RosterPointsSchema,
     SpiritScoreSubmitSchema,
     SwissRoundCreateSchema,
@@ -163,6 +164,7 @@ from server.tournament.schema import (
     TournamentSchema,
     TournamentUpdateSeedingSchema,
     UCRegistrationSchema,
+    public_matches,
 )
 from server.tournament.utils import (
     as_match_time,
@@ -1743,7 +1745,9 @@ def delete_field(request: AuthenticatedHttpRequest, field_id: int) -> tuple[int,
 
 
 @api.get(
-    "/tournament/slug/{slug}/matches", auth=None, response={200: list[MatchSchema], 400: Response}
+    "/tournament/slug/{slug}/matches",
+    auth=None,
+    response={200: list[PublicMatchSchema], 400: Response},
 )
 def get_tournament_matches_by_slug(
     request: AuthenticatedHttpRequest, slug: str
@@ -1756,13 +1760,13 @@ def get_tournament_matches_by_slug(
     except Event.DoesNotExist:
         return 400, {"message": "Event does not exist"}
 
-    return 200, Match.objects.filter(tournament=tournament).order_by("time")
+    return 200, public_matches(Match.objects.filter(tournament=tournament)).order_by("time")
 
 
 @api.get(
     "/tournament/{tournament_slug}/team/{team_slug}/matches",
     auth=None,
-    response={200: list[MatchSchema], 400: Response},
+    response={200: list[PublicMatchSchema], 400: Response},
 )
 def get_tournament_team_matches(
     request: AuthenticatedHttpRequest, tournament_slug: str, team_slug: str
@@ -1778,8 +1782,8 @@ def get_tournament_team_matches(
     except Team.DoesNotExist:
         return 400, {"message": "Team does not exist"}
 
-    tournament_team_matches = Match.objects.filter(
-        Q(team_1=team) | Q(team_2=team), tournament=tournament
+    tournament_team_matches = public_matches(
+        Match.objects.filter(Q(team_1=team) | Q(team_2=team), tournament=tournament)
     ).order_by("time")
 
     return 200, tournament_team_matches
@@ -2478,7 +2482,7 @@ def create_match(
 @api.get(
     "/tournament/{tournament_id}/matches",
     auth=None,
-    response={200: list[MatchSchema], 400: Response},
+    response={200: list[PublicMatchSchema], 400: Response},
 )
 def get_matches(
     request: AuthenticatedHttpRequest, tournament_id: int
@@ -2488,7 +2492,7 @@ def get_matches(
     except Tournament.DoesNotExist:
         return 400, {"message": "Tournament does not exist"}
 
-    return 200, Match.objects.filter(tournament=tournament).order_by("time")
+    return 200, public_matches(Match.objects.filter(tournament=tournament)).order_by("time")
 
 
 @api.post(
@@ -2558,10 +2562,10 @@ def update_rules(
     return 200, tournament
 
 
-@api.get("/match/{match_id}", auth=None, response={200: MatchSchema, 400: Response})
+@api.get("/match/{match_id}", auth=None, response={200: PublicMatchSchema, 400: Response})
 def get_match(request: HttpRequest, match_id: int) -> tuple[int, Match | message_response]:
     try:
-        match = Match.objects.get(id=match_id)
+        match = public_matches(Match.objects.all()).get(id=match_id)
     except Match.DoesNotExist:
         return 400, {"message": "Match does not exist"}
 

@@ -1,7 +1,7 @@
 from django.db.models import QuerySet
 from ninja import ModelSchema, Schema
 
-from server.core.models import Player, Team
+from server.core.models import Player, Team, UCPerson
 from server.schema import (
     PersonSchema,
     PlayerSchema,
@@ -356,6 +356,121 @@ class MatchSchema(ModelSchema):
     class Config:
         model = Match
         model_exclude = ["tournament"]
+
+
+# Public GET endpoints: only what a page reads, and nothing personal.
+
+
+class PublicPlayerSchema(Schema):
+    id: int
+    full_name: str
+
+    @staticmethod
+    def resolve_full_name(player: Player) -> str:
+        return player.user.get_full_name()
+
+
+class PublicPersonSchema(ModelSchema):
+    class Config:
+        model = UCPerson
+        model_fields = ["first_name", "last_name", "image_url"]
+
+
+class PublicStageSchema(Schema):
+    id: int
+    name: str
+    sequence_number: int
+
+
+class PublicCrossPoolSchema(Schema):
+    id: int
+
+
+class PublicSpiritScoreSchema(ModelSchema):
+    mvp: PublicPersonSchema | None
+    msp: PublicPersonSchema | None
+    mvp_v2: PublicPlayerSchema | None
+    msp_v2: PublicPlayerSchema | None
+
+    class Config:
+        model = SpiritScore
+        model_fields = "__all__"
+
+
+class PublicMatchScoreSchema(ModelSchema):
+    entered_by: PublicPlayerSchema
+
+    class Config:
+        model = MatchScore
+        model_fields = "__all__"
+
+
+class PublicMatchStatsMinSchema(ModelSchema):
+    initial_possession: TeamMinSchema
+    current_possession: TeamMinSchema
+
+    class Config:
+        model = MatchStats
+        model_exclude = ["match", "tournament"]
+
+
+class PublicMatchSchema(ModelSchema):
+    pool: PublicStageSchema | None
+    cross_pool: PublicCrossPoolSchema | None
+    bracket: PublicStageSchema | None
+    position_pool: PublicStageSchema | None
+    swiss_round: PublicStageSchema | None
+    team_1: TeamMinSchema | None
+    team_2: TeamMinSchema | None
+    spirit_score_team_1: PublicSpiritScoreSchema | None
+    spirit_score_team_2: PublicSpiritScoreSchema | None
+    self_spirit_score_team_1: PublicSpiritScoreSchema | None
+    self_spirit_score_team_2: PublicSpiritScoreSchema | None
+    suggested_score_team_1: PublicMatchScoreSchema | None
+    suggested_score_team_2: PublicMatchScoreSchema | None
+    field: TournamentFieldSchema | None
+    stats: PublicMatchStatsMinSchema | None
+
+    @staticmethod
+    def resolve_stats(match: Match) -> MatchStats | None:
+        try:
+            return match.stats
+        except MatchStats.DoesNotExist:
+            return None
+
+    class Config:
+        model = Match
+        model_exclude = ["tournament"]
+
+
+_SPIRIT_SCORES = [
+    "spirit_score_team_1",
+    "spirit_score_team_2",
+    "self_spirit_score_team_1",
+    "self_spirit_score_team_2",
+]
+
+
+def public_matches(matches: QuerySet[Match]) -> QuerySet[Match]:
+    """Matches with everything `PublicMatchSchema` sends, in one query."""
+    # ponytail: one wide join (about 45 tables); if Postgres plans it
+    # slowly, move the spirit scores' people to prefetch_related.
+    return matches.select_related(
+        "pool",
+        "cross_pool",
+        "bracket",
+        "position_pool",
+        "swiss_round",
+        "team_1",
+        "team_2",
+        "field",
+        "suggested_score_team_1__entered_by__user",
+        "suggested_score_team_2__entered_by__user",
+        "stats__initial_possession",
+        "stats__current_possession",
+        *(f"{score}__{person}" for score in _SPIRIT_SCORES for person in ("mvp", "msp")),
+        *(f"{score}__{p}__user" for score in _SPIRIT_SCORES for p in ("mvp_v2", "msp_v2")),
+    )
 
 
 class MatchCreateSchema(Schema):
