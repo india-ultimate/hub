@@ -120,8 +120,11 @@ jobs:
           RAZORPAY_KEY_ID: ${{ secrets.RAZORPAY_KEY_ID }}
           RAZORPAY_KEY_SECRET: ${{ secrets.RAZORPAY_KEY_SECRET }}
           RAZORPAY_WEBHOOK_SECRET: ${{ secrets.RAZORPAY_WEBHOOK_SECRET }}
+        # A fresh Firefox's first command now and then loses its connection to
+        # geckodriver ("Remote end closed connection"); only that is retried.
         run: |
-          poetry run pytest --disable-warnings -k Integration --firefox --splits 3 --group ${{ matrix.group }}
+          poetry run pytest --disable-warnings -k Integration --firefox --splits 3 --group ${{ matrix.group }} \
+            --reruns 2 --only-rerun "ProtocolError|RemoteDisconnected"
 
       - name: Upload selenium base logs as artifacts
         if: failure() # Upload the artifact even if a previous step fails
