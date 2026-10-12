@@ -42,8 +42,8 @@ def _id(value: object) -> str | None:
 def scope(match: ResolverMatch, request: HttpRequest) -> str | None:
     """The tournament a public page belongs to, or ALL, or None if unknown or not cached.
 
-    Reads the same input, in the same order, as the page's view. A lookup can
-    raise on a cache error, so call this through store.safe().
+    Reads the same input, in the same order, as the page's view. It can raise
+    on a database or a malformed request, which the view will report itself.
     """
     if match.route not in ROUTES:
         return None
