@@ -1979,7 +1979,7 @@ class TestAliasSignIn(MergeFlowTestCase):
         with self.captureOnCommitCallbacks(execute=True):
             merge_pair(self.cluster, self.first, self.second.id, actor=self.first)
         users = User.objects.count()
-        ts = 1_700_000_000  # the client supplies it; any value works
+        ts = int(now().timestamp())
         otp = pyotp.TOTP(get_email_hash("second@x.com")).generate_otp(ts)
         response = self.client.post(
             "/api/otp-login",

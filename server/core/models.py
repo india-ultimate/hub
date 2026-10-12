@@ -288,6 +288,31 @@ class CommentaryInfo(ExportModelOperationsMixin("commentary_info"), models.Model
     fun_fact = models.TextField()
 
 
+class OTPAttempt(models.Model):
+    """An emailed code sent, or one tried, for rate limiting sign in.
+
+    In the database rather than the cache so the limits hold when Redis is
+    down. Rows over an hour old are pruned as new ones are written.
+    """
+
+    class Kind(models.TextChoices):
+        SEND = "send"
+        GUESS = "guess"
+
+    # No choices on the column, so a new kind needs no migration.
+    kind = models.CharField(max_length=16)
+    email = models.CharField(max_length=254)
+    ip = models.CharField(max_length=64)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["kind", "email", "created_at"]),
+            models.Index(fields=["kind", "ip", "created_at"]),
+            models.Index(fields=["created_at"]),
+        ]
+
+
 @receiver(pre_save, sender=Accreditation)
 def update_accreditation_validity(
     sender: Any, instance: Accreditation, raw: bool, **kwargs: Any
