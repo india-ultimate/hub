@@ -4,6 +4,7 @@ from ninja import ModelSchema, Schema
 
 from server.core.models import User
 from server.schema import UserFormSchema
+from server.tournament.models import Event
 from server.tournament.schema import EventSchema
 
 from .models import ManualTransaction, PhonePeTransaction, RazorpayTransaction
@@ -22,17 +23,15 @@ class ManualTransactionSchema(ModelSchema):
     def resolve_players(transaction: RazorpayTransaction) -> list[str]:
         return [p.user.get_full_name() for p in transaction.players.all()]
 
-    event: EventSchema | None
+    event: EventSchema | None = None
 
     @staticmethod
-    def resolve_event(transaction: RazorpayTransaction) -> EventSchema | None:
-        if transaction.event is not None:
-            return EventSchema.from_orm(transaction.event)
-        return None
+    def resolve_event(transaction: RazorpayTransaction) -> Event | None:
+        return transaction.event
 
-    class Config:
+    class Meta:
         model = ManualTransaction
-        model_fields = "__all__"
+        fields = "__all__"
 
 
 class RazorpayTransactionSchema(ModelSchema):
@@ -48,17 +47,15 @@ class RazorpayTransactionSchema(ModelSchema):
     def resolve_players(transaction: RazorpayTransaction) -> list[str]:
         return [p.user.get_full_name() for p in transaction.players.all()]
 
-    event: EventSchema | None
+    event: EventSchema | None = None
 
     @staticmethod
-    def resolve_event(transaction: RazorpayTransaction) -> EventSchema | None:
-        if transaction.event is not None:
-            return EventSchema.from_orm(transaction.event)
-        return None
+    def resolve_event(transaction: RazorpayTransaction) -> Event | None:
+        return transaction.event
 
-    class Config:
+    class Meta:
         model = RazorpayTransaction
-        model_fields = "__all__"
+        fields = "__all__"
 
 
 class PhonePeTransactionSchema(ModelSchema):
@@ -74,17 +71,15 @@ class PhonePeTransactionSchema(ModelSchema):
     def resolve_players(transaction: RazorpayTransaction) -> list[str]:
         return [p.user.get_full_name() for p in transaction.players.all()]
 
-    event: EventSchema | None
+    event: EventSchema | None = None
 
     @staticmethod
-    def resolve_event(transaction: RazorpayTransaction) -> EventSchema | None:
-        if transaction.event is not None:
-            return EventSchema.from_orm(transaction.event)
-        return None
+    def resolve_event(transaction: RazorpayTransaction) -> Event | None:
+        return transaction.event
 
-    class Config:
+    class Meta:
         model = PhonePeTransaction
-        model_fields = "__all__"
+        fields = "__all__"
 
 
 class ManualTransactionValidationFormSchema(Schema):

@@ -12,6 +12,6 @@ class PlayerWrappedSchema(ModelSchema):
     top_teammates_who_assisted_me) are automatically serialized as dict/list.
     """
 
-    class Config:
+    class Meta:
         model = PlayerWrapped
-        model_fields = "__all__"
+        fields = "__all__"

@@ -1,11 +1,13 @@
 import contextlib
 import csv
 import datetime
+import functools
 import hashlib
 import io
 import logging
 import re
 from base64 import b32encode
+from collections.abc import Callable
 from io import StringIO
 from typing import Any, cast
 
@@ -29,9 +31,11 @@ from django.utils.html import strip_tags
 from django.utils.text import slugify
 from django.utils.timezone import now
 from django.views.decorators.csrf import csrf_exempt
-from ninja import File, NinjaAPI, Query, UploadedFile
+from ninja import NinjaAPI, UploadedFile
 from ninja.pagination import PageNumberPagination, paginate
+from ninja.params.functions import File, Query
 from ninja.security import django_auth
+from ninja.utils import check_csrf
 
 from server.announcements.api import router as announcements_router
 from server.chat.api import router as chat_router
@@ -214,7 +218,22 @@ cloudinary.config(
 )
 
 logger = logging.getLogger(__name__)
-api = NinjaAPI(auth=django_auth, csrf=True)
+
+
+def _check_csrf(view_func: Callable[..., Any]) -> Callable[..., Any]:
+    """What ninja 0.22's csrf=True did: check every unsafe request, auth=None
+    ones (login, OTP, passkeys) included, unless the view is csrf_exempt.
+    ninja 1.x checks CSRF only inside cookie auth (django_auth)."""
+
+    @functools.wraps(view_func)
+    def checked(request: HttpRequest, *args: Any, **kwargs: Any) -> Any:
+        return check_csrf(request, view_func) or view_func(request, *args, **kwargs)
+
+    return checked
+
+
+api = NinjaAPI(auth=django_auth)
+api.add_decorator(_check_csrf)
 
 
 @api.exception_handler(cloudinary.exceptions.Error)
@@ -400,10 +419,10 @@ def list_players(
     is_staff = request.user.is_staff
     if is_staff and full_schema:
         _attach_subscription_prefetch(players, need_sponsored=True)
-        return [PlayerSchema.from_orm(p) for p in players]
+        return [PlayerSchema.model_validate(p) for p in players]
     else:
         _attach_subscription_prefetch(players, need_sponsored=False)
-        return [PlayerTinySchema.from_orm(p) for p in players]
+        return [PlayerTinySchema.model_validate(p) for p in players]
 
 
 @api.get("/players/search", response={200: list[PlayerTinySchema]})
@@ -722,7 +741,7 @@ def edit_registration(
     except Player.DoesNotExist:
         return 400, {"message": "Player does not exist"}
 
-    player_data = PlayerFormSchema(**registration.dict()).dict()
+    player_data = PlayerFormSchema(**registration.model_dump()).model_dump()
     player_data["id"] = registration.player_id
     for key, value in player_data.items():
         setattr(player, key, value)
@@ -735,7 +754,7 @@ def edit_registration(
         player.save()
         player.refresh_from_db()
 
-    user_data = UserFormSchema(**registration.dict()).dict()
+    user_data = UserFormSchema(**registration.model_dump()).model_dump()
     for attr, value in user_data.items():
         setattr(player.user, attr, value)
     player.user.save()
@@ -754,7 +773,7 @@ def do_register(
     except Player.DoesNotExist:
         pass
 
-    player_data = PlayerFormSchema(**registration.dict()).dict()
+    player_data = PlayerFormSchema(**registration.model_dump()).model_dump()
     player = Player(**player_data, user=user)
     try:
         player.full_clean()
@@ -768,7 +787,7 @@ def do_register(
 
     player.save()
 
-    user_data = UserFormSchema(**registration.dict()).dict()
+    user_data = UserFormSchema(**registration.model_dump()).model_dump()
     for attr, value in user_data.items():
         setattr(user, attr, value)
     user.save()
@@ -943,7 +962,7 @@ def vaccination(
     except Vaccination.DoesNotExist:
         edit = False
 
-    vaccination_data = vaccination.dict()
+    vaccination_data = vaccination.model_dump()
     vaccination_data["certificate"] = certificate
     vaccination_data["player"] = player
     if not edit:
@@ -982,7 +1001,7 @@ def accreditation(
     except Accreditation.DoesNotExist:
         edit = False
 
-    accreditation_data = accreditation.dict()
+    accreditation_data = accreditation.model_dump()
     accreditation_data["certificate"] = certificate
     accreditation_data["player"] = player
     accreditation_data["is_valid"] = False
@@ -1033,7 +1052,7 @@ def college_id(
         edit = False
 
     old_images: set[str] = set()
-    college_id_data = college_id.dict()
+    college_id_data = college_id.model_dump()
     college_id_data["card_front"] = card_front
     college_id_data["card_back"] = card_back
     college_id_data["player"] = player
@@ -1104,7 +1123,7 @@ def upsert_commentary_info(
         return 400, {"message": "Player does not exist"}
 
     com_info, _created = CommentaryInfo.objects.update_or_create(
-        player=player, defaults=commentary_info.dict()
+        player=player, defaults=commentary_info.model_dump()
     )
     return 200, com_info
 

@@ -7,8 +7,9 @@ from django.core.mail import EmailMultiAlternatives
 from django.http import HttpRequest
 from django.shortcuts import get_object_or_404
 from django.template.loader import render_to_string
-from ninja import File, Router
+from ninja import Router
 from ninja.files import UploadedFile
+from ninja.params.functions import File
 
 from server.core.models import Guardianship, Player, User
 from server.task.helpers import queue_emails
@@ -79,7 +80,7 @@ def create_election(
     """Create a new election"""
     if error := check_staff(request):
         return error
-    return Election.objects.create(**data.dict())
+    return Election.objects.create(**data.model_dump())
 
 
 @router.get("/{election_id}/", response=ElectionSchema, auth=None)
@@ -160,7 +161,7 @@ def create_candidate(
     if error := check_staff(request):
         return error
     election = get_object_or_404(Election, id=election_id)
-    candidate = Candidate.objects.create(election=election, **data.dict())
+    candidate = Candidate.objects.create(election=election, **data.model_dump())
 
     return {
         "id": candidate.id,

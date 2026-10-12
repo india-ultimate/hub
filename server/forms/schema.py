@@ -22,15 +22,15 @@ class FormCreateSchema(Schema):
 
 
 class FormListSchema(ModelSchema):
-    class Config:
+    class Meta:
         model = Form
-        model_fields = ["id", "title", "description", "slug", "payment_amount", "is_active"]
+        fields = ["id", "title", "description", "slug", "payment_amount", "is_active"]
 
 
 class FormSchema(ModelSchema):
-    class Config:
+    class Meta:
         model = Form
-        model_fields = [
+        fields = [
             "id",
             "title",
             "description",
@@ -64,17 +64,17 @@ class FormResponseSchema(ModelSchema):
     def resolve_phone(response: FormResponse) -> str:
         return response.user.phone
 
-    class Config:
+    class Meta:
         model = FormResponse
-        model_fields = ["id", "answers", "is_paid", "submitted_at"]
+        fields = ["id", "answers", "is_paid", "submitted_at"]
 
 
 class MyFormResponseSchema(ModelSchema):
     """The current user's own response."""
 
-    class Config:
+    class Meta:
         model = FormResponse
-        model_fields = ["id", "answers", "is_paid", "submitted_at"]
+        fields = ["id", "answers", "is_paid", "submitted_at"]
 
 
 class FormSubmitResponseSchema(Schema):

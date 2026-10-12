@@ -776,20 +776,25 @@ class TestStateView(ApiBaseTestCase):
         )
 
     def test_a_nested_user_does_not_carry_accounts(self) -> None:
-        self.assertNotIn("payment_accounts", UserSchema.from_orm(self.user).dict())
+        self.assertNotIn("payment_accounts", UserSchema.model_validate(self.user).model_dump())
 
     def test_an_event_names_its_payee(self) -> None:
         self.assertEqual(
-            "Karnataka Ultimate", EventSchema.from_orm(self.latest).dict()["payment_account_name"]
+            "Karnataka Ultimate",
+            EventSchema.model_validate(self.latest).model_dump()["payment_account_name"],
         )
         self.assertIsNone(
-            EventSchema.from_orm(open_event(title="Ours")).dict()["payment_account_name"]
+            EventSchema.model_validate(open_event(title="Ours")).model_dump()[
+                "payment_account_name"
+            ]
         )
 
     def test_an_event_without_a_payee_costs_no_query(self) -> None:
         event = Event.objects.get(pk=open_event(title="Ours").pk)  # nothing cached
         with self.assertNumQueries(0):
-            self.assertIsNone(EventSchema.from_orm(event).dict()["payment_account_name"])
+            self.assertIsNone(
+                EventSchema.model_validate(event).model_dump()["payment_account_name"]
+            )
 
     def test_a_merge_keeps_the_viewer(self) -> None:
         duplicate = User.objects.create_user("dup@example.com", "dup@example.com", "pw")

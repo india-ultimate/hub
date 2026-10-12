@@ -10,5 +10,5 @@ class TestTheNumberBelongsToThePlayer(TestCase):
 
         self.assertIn("iu_id", {f.name for f in Player._meta.fields})
         self.assertIn("subscription_number", {f.name for f in Subscription._meta.fields})
-        self.assertNotIn("subscription_number", SubscriptionSchema.schema()["properties"])
+        self.assertNotIn("subscription_number", SubscriptionSchema.json_schema()["properties"])
         self.assertIn("subscription_number", SubscriptionAdmin.exclude)

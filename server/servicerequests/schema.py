@@ -17,9 +17,9 @@ class ServiceRequestSchema(ModelSchema):
     def resolve_service_players(service_request: ServiceRequest) -> list[PlayerMinSchema]:
         return list(service_request.service_players.all())
 
-    class Config:
+    class Meta:
         model = ServiceRequest
-        model_fields = "__all__"
+        fields = "__all__"
 
 
 class ServiceRequestCreateSchema(Schema):

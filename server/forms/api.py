@@ -56,7 +56,7 @@ def create_form(
         title=data.title,
         description=data.description,
         slug=_unique_slug(data.title),
-        fields=[f.dict() for f in data.fields],
+        fields=[f.model_dump() for f in data.fields],
         payment_amount=data.payment_amount,
         is_active=data.is_active,
         created_by=request.user,
@@ -86,7 +86,7 @@ def update_form(
 
     form.title = data.title
     form.description = data.description
-    form.fields = [f.dict() for f in data.fields]
+    form.fields = [f.model_dump() for f in data.fields]
     form.payment_amount = data.payment_amount
     form.is_active = data.is_active
     form.save(update_fields=["title", "description", "fields", "payment_amount", "is_active"])

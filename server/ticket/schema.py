@@ -1,12 +1,12 @@
 from datetime import datetime
 
 from ninja import Schema
-from pydantic import validator
+from pydantic import field_validator
 
 from server.ticket.models import Ticket
 
 
-def _blank_is_none(cls: object, value: object) -> object:
+def _blank_is_none(value: object) -> object:
     # The create form sends "" for "no category"
     return value or None
 
@@ -18,7 +18,10 @@ class TicketCreateSchema(Schema):
     category: Ticket.Category | None = None
     is_private: bool = False
 
-    _category = validator("category", pre=True, allow_reuse=True)(_blank_is_none)
+    @field_validator("category", mode="before")
+    @classmethod
+    def _category(cls, value: object) -> object:
+        return _blank_is_none(value)
 
 
 class TicketUpdateSchema(Schema):
@@ -30,7 +33,10 @@ class TicketUpdateSchema(Schema):
     assigned_to_id: int | None = None
     is_private: bool | None = None
 
-    _category = validator("category", pre=True, allow_reuse=True)(_blank_is_none)
+    @field_validator("category", mode="before")
+    @classmethod
+    def _category(cls, value: object) -> object:
+        return _blank_is_none(value)
 
 
 class UserSchema(Schema):
@@ -58,7 +64,7 @@ class TicketDetailSchema(Schema):
     description: str
     status: str
     priority: str
-    category: str | None
+    category: str | None = None
     is_private: bool
     upvote_count: int
     has_upvoted: bool
@@ -74,7 +80,7 @@ class TicketListItemSchema(Schema):
     title: str
     status: str
     priority: str
-    category: str | None
+    category: str | None = None
     is_private: bool
     upvote_count: int
     has_upvoted: bool

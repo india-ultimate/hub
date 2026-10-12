@@ -14,6 +14,6 @@ class SeasonSchema(ModelSchema):
     def resolve_series(season: Season) -> QuerySet[Series]:
         return season.series.all()
 
-    class Config:
+    class Meta:
         model = Season
-        model_fields = "__all__"
+        fields = "__all__"

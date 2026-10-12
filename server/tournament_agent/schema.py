@@ -89,7 +89,7 @@ class HistorySchema(Schema):
     tournament_id: int
     model_id: str
     messages: list[AgentMessageSchema]
-    pending_question: QuestionSchema | None
+    pending_question: QuestionSchema | None = None
     pending_proposals: list[ProposalSchema]
     next_step: NextStepSchema | None = None
     # What the composer invites staff to type, for the phase they are in.

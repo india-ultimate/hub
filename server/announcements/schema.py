@@ -12,7 +12,7 @@ def _can_read(announcement: Announcement) -> bool:
 
 class AnnouncementSchema(ModelSchema):
     author: UserMinSchema
-    author_profile_pic_url: str | None
+    author_profile_pic_url: str | None = None
     can_read: bool
 
     @staticmethod
@@ -43,6 +43,6 @@ class AnnouncementSchema(ModelSchema):
     def resolve_action_url(announcement: Announcement) -> str | None:
         return announcement.action_url if _can_read(announcement) else None
 
-    class Config:
+    class Meta:
         model = Announcement
-        model_fields = "__all__"
+        fields = "__all__"
