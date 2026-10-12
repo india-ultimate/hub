@@ -1,3 +1,5 @@
+from typing import Any
+
 from django.db.models import Count, Prefetch, QuerySet
 from ninja import ModelSchema, Schema
 
@@ -420,6 +422,34 @@ class PublicPersonSchema(ModelSchema):
     class Config:
         model = UCPerson
         model_fields = ["first_name", "last_name", "image_url"]
+
+
+class PublicUCPersonSchema(Schema):
+    id: int
+    first_name: str
+    last_name: str
+    image_url: str | None
+    # Only the gender the roster shows, never the rest of the player.
+    player: dict[str, str] | None
+
+
+class PublicUCRegistrationSchema(Schema):
+    id: int
+    roles: list[str]
+    team: TeamMinSchema
+    person: PublicUCPersonSchema
+
+    @staticmethod
+    def resolve_person(registration: UCRegistration) -> dict[str, Any]:
+        person = registration.person
+        gender = getattr(registration, "player_gender", None)
+        return {
+            "id": person.id,
+            "first_name": person.first_name,
+            "last_name": person.last_name,
+            "image_url": person.image_url,
+            "player": {"gender": gender} if gender else None,
+        }
 
 
 class PublicStageSchema(Schema):

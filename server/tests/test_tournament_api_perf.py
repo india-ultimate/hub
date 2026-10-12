@@ -24,6 +24,7 @@ from server.tournament.models import (
     SwissRound,
     Tournament,
     TournamentField,
+    UCRegistration,
 )
 
 SECRET_EMAIL = "secret-{}@example.com"
@@ -432,3 +433,55 @@ class TestTournaments(TournamentApiTestCase):
                 )
 
         self.assert_constant(f"/api/tournament/brackets?id={self.tournament.id}", grow)
+
+
+class TestUCRoster(TournamentApiTestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        self.url = f"/api/v1/tournament/{self.event.slug}/team/{self.team_1.slug}/roster"
+        self.team_1.admins.add(
+            User.objects.create(username="uc-admin", email="secret-uc-admin@example.com")
+        )
+        for _ in range(2):
+            self.register()
+
+    def register(self) -> UCRegistration:
+        player = self.make_player()
+        person = UCPerson.objects.create(
+            email=f"secret-uc-{self.n}@example.com",
+            slug=f"uc-{self.n}",
+            first_name=f"Uc{self.n}",
+            last_name="Public",
+            image_url="https://example.com/a.png",
+        )
+        player.ultimate_central_id = person.id
+        player.save()
+        return UCRegistration.objects.create(
+            event=self.event, team=self.team_1, person=person, roles=["player", "captain"]
+        )
+
+    def test_no_personal_data(self) -> None:
+        self.assert_no_personal_data(self.url)
+
+    def test_queries_dont_grow_with_the_roster(self) -> None:
+        self.assert_constant(self.url, lambda: [self.register() for _ in range(5)])
+
+    def test_sends_what_the_pages_read(self) -> None:
+        rows = self.client.get(self.url).json()
+        row = next(r for r in rows if r["person"]["first_name"].startswith("Uc"))
+        self.assertEqual(set(row), {"id", "roles", "team", "person"})
+        self.assertEqual(row["roles"], ["player", "captain"])
+        self.assertEqual(
+            set(row["person"]), {"id", "first_name", "last_name", "image_url", "player"}
+        )
+        self.assertEqual(row["person"]["player"], {"gender": "F"})
+        self.assertEqual(set(row["team"]), {"id", "name", "slug", "image", "image_url"})
+
+    def test_person_without_a_player(self) -> None:
+        person = UCPerson.objects.create(email="secret-x@example.com", slug="x", first_name="Z")
+        UCRegistration.objects.create(
+            event=self.event, team=self.team_1, person=person, roles=["coach"]
+        )
+        rows = self.client.get(self.url).json()
+        self.assertIsNone(rows[-1]["person"]["player"])
+        self.assertEqual(rows[-1]["person"]["first_name"], "Z")
