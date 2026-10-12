@@ -987,14 +987,14 @@ trusted-deps = ["arrow (==1.2.3)", "click (==8.1.3)", "sh (==1.14.3) ; sys_platf
 
 [[package]]
 name = "groq"
-version = "0.26.0"
+version = "1.7.0"
 description = "The official Python library for the groq API"
 optional = false
-python-versions = ">=3.8"
+python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "groq-0.26.0-py3-none-any.whl", hash = "sha256:4dc0900d506876ea39a9aa1985f12a51859bacf486fe939664248eff1f451af3"},
-    {file = "groq-0.26.0.tar.gz", hash = "sha256:1f1e50d26c6134f6fb580ea7002e8f9ff5c7c1685c9e0f50d71adecd039ae5d4"},
+    {file = "groq-1.7.0-py3-none-any.whl", hash = "sha256:cb1518f823423d4e52445859eb7d2918a927794cec12f8d5e50d9161e3690fc8"},
+    {file = "groq-1.7.0.tar.gz", hash = "sha256:d582dbb3f071b92ca339baba83af9f57ba6f46a51c34b04565d7cb9badb2785b"},
 ]
 
 [package.dependencies]
@@ -1003,7 +1003,10 @@ distro = ">=1.7.0,<2"
 httpx = ">=0.23.0,<1"
 pydantic = ">=1.9.0,<3"
 sniffio = "*"
-typing-extensions = ">=4.10,<5"
+typing-extensions = ">=4.14,<5"
+
+[package.extras]
+aiohttp = ["aiohttp", "httpx-aiohttp (>=0.1.9)"]
 
 [[package]]
 name = "gunicorn"
@@ -4073,4 +4076,4 @@ resolved_reference = "85de0cbadbba3f498deba32f861bb9a478faa3b4"
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11.5"
-content-hash = "453b5760fff49d12e05f8598e7bf652fb911d5790cc878e3596579ec672e1d1b"
+content-hash = "ece6d60386b8442cd64096d4876ff338e31ce3d509ee0f8bbdea8f7d833c87a0"
