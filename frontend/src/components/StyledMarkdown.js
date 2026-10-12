@@ -1,7 +1,7 @@
 import remarkGfm from "remark-gfm";
 import slug from "slug";
 import { createEffect } from "solid-js";
-import SolidMarkdown from "solid-markdown";
+import { SolidMarkdown } from "solid-markdown";
 
 /** Page styling: headings are centered section titles (rules, help, about). */
 export const documentClassMap = {
