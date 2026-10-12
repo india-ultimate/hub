@@ -21,7 +21,7 @@ from django.core.exceptions import ValidationError
 from django.core.files.storage import default_storage
 from django.db import transaction
 from django.db.models import Count, F, Q, QuerySet, Value
-from django.db.models.functions import Concat
+from django.db.models.functions import Concat, ExtractYear
 from django.db.utils import IntegrityError
 from django.http import HttpRequest, HttpResponse
 from django.template.loader import render_to_string
@@ -29,7 +29,7 @@ from django.utils.html import strip_tags
 from django.utils.text import slugify
 from django.utils.timezone import now
 from django.views.decorators.csrf import csrf_exempt
-from ninja import File, NinjaAPI, UploadedFile
+from ninja import File, NinjaAPI, Query, UploadedFile
 from ninja.pagination import PageNumberPagination, paginate
 from ninja.security import django_auth
 
@@ -153,6 +153,7 @@ from server.tournament.schema import (
     SpiritScoreSubmitSchema,
     SwissRoundCreateSchema,
     SwissRoundSchema,
+    TournamentCardsSchema,
     TournamentCreateFromEventSchema,
     TournamentCreateSchema,
     TournamentDirectorAddSchema,
@@ -1294,6 +1295,40 @@ def get_all_tournaments(request: AuthenticatedHttpRequest) -> tuple[int, QuerySe
         .prefetch_related("teams", "partial_teams")
         .order_by("-event__start_date")
     )
+
+
+@api.get("/tournaments/public", auth=None, response={200: TournamentCardsSchema})
+def get_tournament_cards(
+    request: HttpRequest,
+    year: int | None = Query(None, ge=1, le=9999),  # noqa: B008
+    recent: bool = False,
+) -> tuple[int, dict[str, Any]]:
+    """Cards for the public pages: a year's, or the home page's recent few.
+
+    No year means this year and anything not yet ended, so a January
+    tournament is still listed in December. The home page lists drafts too.
+    """
+    tournaments = Tournament.objects.select_related("event__series").order_by("-event__start_date")
+    published = tournaments.exclude(status=Tournament.Status.DRAFT)
+    years = (
+        published.annotate(year=ExtractYear("event__start_date"))
+        .values_list("year", flat=True)
+        .distinct()
+        .order_by("-year")
+    )
+    day = today()
+    if recent:
+        # The window the home page applies itself: within 3 months, else the 2 latest.
+        latest = tournaments.filter(event__end_date__lt=day).order_by("-event__end_date")
+        chosen = tournaments.filter(
+            Q(event__end_date__gte=day - datetime.timedelta(days=92))
+            | Q(id__in=latest.values("id")[:2])
+        )
+    elif year is not None:
+        chosen = published.filter(event__start_date__year=year)
+    else:
+        chosen = published.filter(Q(event__start_date__year=day.year) | Q(event__end_date__gte=day))
+    return 200, {"years": list(years), "tournaments": list(chosen)}
 
 
 @api.get("/tournament", auth=None, response={200: TournamentSchema, 400: Response})
