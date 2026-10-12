@@ -17,7 +17,7 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v3
         with:
-          node-version: 18
+          node-version: 22
           cache: "yarn"
           cache-dependency-path: frontend/yarn.lock
 
@@ -103,8 +103,7 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v3
         with:
-          # webpack dev server proxy doesn't work with Node 18!
-          node-version: 16
+          node-version: 22
           cache: "yarn"
           cache-dependency-path: frontend/yarn.lock
 
@@ -150,7 +149,7 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v3
         with:
-          node-version: 18
+          node-version: 22
           cache: "yarn"
           cache-dependency-path: frontend/yarn.lock
 
