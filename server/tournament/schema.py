@@ -1,7 +1,7 @@
 from django.db.models import Prefetch, QuerySet
 from ninja import ModelSchema, Schema
 
-from server.core.models import Player, Team, UCPerson
+from server.core.models import CommentaryInfo, Player, Team, UCPerson
 from server.schema import (
     PersonSchema,
     PlayerSchema,
@@ -568,3 +568,35 @@ class MatchScoreSchema(Schema):
 
 class TournamentRulesSchema(Schema):
     rules: str
+
+
+class PublicCommentaryInfoSchema(Schema):
+    jersey_number: int
+
+
+class PublicRosterPlayerSchema(Schema):
+    id: int
+    full_name: str
+    profile_pic_url: str | None
+    gender: str
+    commentary_info: PublicCommentaryInfoSchema | None
+
+    @staticmethod
+    def resolve_full_name(player: Player) -> str:
+        return player.user.get_full_name()
+
+    @staticmethod
+    def resolve_commentary_info(player: Player) -> CommentaryInfo | None:
+        try:
+            return player.commentary_info
+        except CommentaryInfo.DoesNotExist:
+            return None
+
+
+class PublicRosterEntrySchema(Schema):
+    id: int
+    event_id: int
+    team: TeamMinSchema
+    player: PublicRosterPlayerSchema
+    is_playing: bool
+    role: str

@@ -7,7 +7,7 @@ from django.db import connection
 from django.test.utils import CaptureQueriesContext
 from django.utils.timezone import now
 
-from server.core.models import Player, UCPerson, User
+from server.core.models import CommentaryInfo, Player, UCPerson, User
 from server.tests.base import ApiBaseTestCase
 from server.tournament.models import (
     Bracket,
@@ -18,6 +18,7 @@ from server.tournament.models import (
     MatchStats,
     Pool,
     PositionPool,
+    Registration,
     SpiritScore,
     SwissRound,
     TournamentField,
@@ -256,3 +257,62 @@ class TestMatchStats(TournamentApiTestCase):
         self.add_event()
         times = [e["time"] for e in self.client.get(self.url).json()["events"]]
         self.assertEqual(sorted(times, reverse=True), times)
+
+
+class TestRoster(TournamentApiTestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        self.url = f"/api/v2/tournament/{self.tournament.event.slug}/team/{self.team_1.slug}/roster"
+
+    def add_player(self, jersey: int | None = 7) -> Player:
+        player = self.make_player()
+        Registration.objects.create(event=self.event, team=self.team_1, player=player)
+        if jersey is not None:
+            CommentaryInfo.objects.create(
+                player=player,
+                jersey_number=jersey,
+                ultimate_origin="",
+                ultimate_attraction="",
+                ultimate_fav_role="",
+                ultimate_fav_exp="",
+                interests="",
+                fun_fact="",
+            )
+        return player
+
+    def test_queries_dont_grow_with_players(self) -> None:
+        self.add_player()
+        self.add_player(jersey=None)
+
+        def grow() -> None:
+            for _ in range(5):
+                self.add_player()
+
+        self.assert_constant(self.url, grow)
+
+    def test_no_personal_data(self) -> None:
+        self.add_player()
+        self.assert_no_personal_data(self.url)
+
+    def test_sends_what_the_page_reads(self) -> None:
+        player = self.add_player(jersey=23)
+        (entry,) = self.client.get(self.url).json()
+        self.assertEqual(self.event.id, entry["event_id"])
+        self.assertEqual(self.team_1.id, entry["team"]["id"])
+        self.assertTrue(entry["is_playing"])
+        self.assertIn("role", entry)
+        self.assertEqual(
+            {
+                "id": player.id,
+                "full_name": player.user.get_full_name(),
+                "profile_pic_url": None,
+                "gender": "F",
+                "commentary_info": {"jersey_number": 23},
+            },
+            entry["player"],
+        )
+
+    def test_a_player_without_commentary_info(self) -> None:
+        self.add_player(jersey=None)
+        (entry,) = self.client.get(self.url).json()
+        self.assertIsNone(entry["player"]["commentary_info"])

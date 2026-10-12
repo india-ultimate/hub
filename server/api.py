@@ -148,6 +148,7 @@ from server.tournament.schema import (
     PositionPoolSchema,
     PublicMatchSchema,
     PublicMatchStatsSchema,
+    PublicRosterEntrySchema,
     RosterPointsSchema,
     SpiritScoreSubmitSchema,
     SwissRoundCreateSchema,
@@ -1540,7 +1541,7 @@ def get_tournament_team_roster(
 @api.get(
     "/v2/tournament/{tournament_slug}/team/{team_slug}/roster",
     auth=None,
-    response={200: list[TournamentPlayerRegistrationSchema], 400: Response},
+    response={200: list[PublicRosterEntrySchema], 400: Response},
 )
 def get_tournament_team_roster_new(
     request: AuthenticatedHttpRequest, tournament_slug: str, team_slug: str
@@ -1551,8 +1552,10 @@ def get_tournament_team_roster_new(
     except (Event.DoesNotExist, Team.DoesNotExist):
         return 400, {"message": "Tournament/Team does not exist"}
 
-    registrations = Registration.objects.filter(event=event, team=team).order_by(
-        "player__user__first_name"
+    registrations = (
+        Registration.objects.filter(event=event, team=team)
+        .select_related("team", "player__user", "player__commentary_info")
+        .order_by("player__user__first_name")
     )
 
     return 200, registrations
