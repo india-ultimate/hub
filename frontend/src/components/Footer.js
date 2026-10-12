@@ -16,20 +16,20 @@ export default function Footer() {
           </span>
           <ul class="mt-3 flex flex-wrap items-center text-sm font-medium text-gray-500 dark:text-gray-400 sm:mt-0">
             <li>
-              <A href="/about" class="mr-4 hover:underline md:mr-6 ">
+              <A href="/about" class="mr-4 hover:underline md:mr-6">
                 About
               </A>
             </li>
             <li>
               <A
                 href="/terms-and-conditions"
-                class="mr-4 hover:underline md:mr-6 "
+                class="mr-4 hover:underline md:mr-6"
               >
                 Terms & Conditions
               </A>
             </li>
             <li>
-              <A href="/privacy-policy" class="mr-4 hover:underline md:mr-6 ">
+              <A href="/privacy-policy" class="mr-4 hover:underline md:mr-6">
                 Privacy Policy
               </A>
             </li>

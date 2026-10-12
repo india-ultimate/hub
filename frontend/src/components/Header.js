@@ -53,7 +53,7 @@ export default function Header() {
               fallback={
                 <A
                   href="/login"
-                  class="me-2 h-fit rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800  focus:outline-none dark:bg-blue-600  dark:hover:bg-blue-700 md:hidden"
+                  class="me-2 h-fit rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 focus:outline-none dark:bg-blue-600 dark:hover:bg-blue-700 md:hidden"
                 >
                   Login
                 </A>
@@ -61,7 +61,7 @@ export default function Header() {
             >
               <A
                 href="/dashboard"
-                class="inline-flex h-12 w-12 items-center justify-center rounded-lg p-2 text-sm text-gray-500  focus:outline-none dark:text-gray-400  md:hidden"
+                class="inline-flex h-12 w-12 items-center justify-center rounded-lg p-2 text-sm text-gray-500 focus:outline-none dark:text-gray-400 md:hidden"
               >
                 <img
                   class="rounded-full"
@@ -185,7 +185,7 @@ export default function Header() {
                   fallback={
                     <A
                       href="/login"
-                      class="mb-2 me-2 hidden rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white  hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 md:inline"
+                      class="mb-2 me-2 hidden rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 md:inline"
                     >
                       Login
                     </A>

@@ -99,7 +99,7 @@ const AddToRoster = props => {
             });
           }}
           type="button"
-          class="mb-2 me-2 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-blue-700 px-2 py-2.5 text-center text-sm font-medium text-blue-700 hover:bg-blue-800 hover:text-white focus:outline-none dark:border-blue-500  dark:text-blue-500 dark:hover:bg-blue-500 dark:hover:text-white dark:focus:ring-blue-800 md:px-5"
+          class="mb-2 me-2 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-blue-700 px-2 py-2.5 text-center text-sm font-medium text-blue-700 hover:bg-blue-800 hover:text-white focus:outline-none dark:border-blue-500 dark:text-blue-500 dark:hover:bg-blue-500 dark:hover:text-white dark:focus:ring-blue-800 md:px-5"
         >
           <Icon path={handRaised} style={{ width: "24px" }} />
           <span class="w-3/4">Add myself</span>
@@ -419,7 +419,7 @@ const AddPlayerRegistrationForm = componentProps => {
         <button
           type="button"
           onClick={() => setSearch("")}
-          class="absolute bottom-2.5 end-24 rounded-full px-2 py-2 text-sm font-medium text-gray-400 hover:text-gray-700 focus:outline-none "
+          class="absolute bottom-2.5 end-24 rounded-full px-2 py-2 text-sm font-medium text-gray-400 hover:text-gray-700 focus:outline-none"
         >
           <Icon path={xMark} style={{ width: "20px" }} />
         </button>

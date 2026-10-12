@@ -90,7 +90,7 @@ const PlayerSearchDropdown = componentProps => {
                   true
                 )
               }
-              class="mb-2 me-2 rounded-lg border border-blue-700 px-5 py-1.5 text-center text-sm font-medium text-blue-700 hover:bg-blue-800 hover:text-white "
+              class="mb-2 me-2 rounded-lg border border-blue-700 px-5 py-1.5 text-center text-sm font-medium text-blue-700 hover:bg-blue-800 hover:text-white"
             >
               Add
             </button>
@@ -159,7 +159,7 @@ const PlayerSearchDropdown = componentProps => {
         <button
           type="button"
           onClick={() => setSearch("")}
-          class="absolute bottom-2.5 end-24 rounded-full px-2 py-2 text-sm font-medium text-gray-400 hover:text-gray-700 focus:outline-none "
+          class="absolute bottom-2.5 end-24 rounded-full px-2 py-2 text-sm font-medium text-gray-400 hover:text-gray-700 focus:outline-none"
         >
           <Icon path={xMark} style={{ width: "20px" }} />
         </button>

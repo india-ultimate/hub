@@ -604,7 +604,7 @@ const ElectionPage = () => {
                           <div class="space-y-4">
                             <For each={candidatesQuery.data}>
                               {candidate => (
-                                <div class="flex flex-col  items-center space-y-2 rounded-lg border border-gray-200 p-4 dark:border-gray-700 md:flex-row md:space-x-4 md:space-y-0">
+                                <div class="flex flex-col items-center space-y-2 rounded-lg border border-gray-200 p-4 dark:border-gray-700 md:flex-row md:space-x-4 md:space-y-0">
                                   <div class="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-xl text-blue-600 dark:bg-blue-900 dark:text-blue-300">
                                     {candidate.profile_pic_url ? (
                                       <img
@@ -689,7 +689,7 @@ const ElectionPage = () => {
               </Show>
 
               {/* Candidates Section */}
-              <div class=" bg-white dark:bg-gray-800">
+              <div class="bg-white dark:bg-gray-800">
                 <h2 class="mb-6 text-2xl font-semibold text-gray-900 dark:text-white">
                   Candidates
                 </h2>

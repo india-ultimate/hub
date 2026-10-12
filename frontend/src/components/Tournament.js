@@ -214,7 +214,7 @@ const Tournament = () => {
       </Show>
       <A
         href={`/tournament/${params.slug}/schedule`}
-        class="mt-5 block w-full rounded-lg  border border-blue-600 bg-white p-4 shadow-md dark:border-blue-400 dark:bg-gray-800"
+        class="mt-5 block w-full rounded-lg border border-blue-600 bg-white p-4 shadow-md dark:border-blue-400 dark:bg-gray-800"
       >
         <h5 class="mb-2 text-center text-xl font-bold capitalize tracking-tight text-blue-600 dark:text-blue-400">
           Schedule

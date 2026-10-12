@@ -767,7 +767,7 @@ const Dashboard = () => {
       <button
         onClick={logout}
         type="button"
-        class="me-2 mt-4 rounded-lg border border-red-700 px-5 py-2.5 text-center text-sm font-medium text-red-700 hover:bg-red-800 hover:text-white focus:outline-none  dark:border-red-500 dark:text-red-500 dark:hover:bg-red-600 dark:hover:text-white "
+        class="me-2 mt-4 rounded-lg border border-red-700 px-5 py-2.5 text-center text-sm font-medium text-red-700 hover:bg-red-800 hover:text-white focus:outline-none dark:border-red-500 dark:text-red-500 dark:hover:bg-red-600 dark:hover:text-white"
       >
         Logout
       </button>

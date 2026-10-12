@@ -106,7 +106,7 @@ const Teams = () => {
   return (
     <div>
       <h1 class="text-center">
-        <span class="w-fit bg-gradient-to-r from-blue-500 to-green-500 bg-clip-text text-3xl font-extrabold text-transparent ">
+        <span class="w-fit bg-gradient-to-r from-blue-500 to-green-500 bg-clip-text text-3xl font-extrabold text-transparent">
           Teams
         </span>
       </h1>

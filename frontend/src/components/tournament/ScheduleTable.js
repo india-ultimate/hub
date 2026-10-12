@@ -78,7 +78,7 @@ const ScheduleTable = props => {
                 <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
                   <th
                     scope="row"
-                    class="whitespace-nowrap px-2 py-2 text-center text-xs font-medium "
+                    class="whitespace-nowrap px-2 py-2 text-center text-xs font-medium"
                   >
                     <span class="text-gray-900 dark:text-white">
                       {showReadableTime(startTime)}

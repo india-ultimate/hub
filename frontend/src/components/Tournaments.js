@@ -22,7 +22,7 @@ const Tournaments = () => {
   return (
     <div>
       <h1 class="mb-5 text-center">
-        <span class="w-fit bg-gradient-to-r from-blue-500 to-green-500 bg-clip-text text-3xl font-extrabold text-transparent ">
+        <span class="w-fit bg-gradient-to-r from-blue-500 to-green-500 bg-clip-text text-3xl font-extrabold text-transparent">
           Tournaments
         </span>
       </h1>
@@ -98,7 +98,7 @@ const Tournaments = () => {
 
       <div
         class={
-          "mt-5 grid grid-cols-1 justify-items-center gap-5 md:grid-cols-2 lg:grid-cols-3 "
+          "mt-5 grid grid-cols-1 justify-items-center gap-5 md:grid-cols-2 lg:grid-cols-3"
         }
       >
         <For

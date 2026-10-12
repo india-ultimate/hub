@@ -87,7 +87,7 @@ const EventsDisplay = props => {
             <Match when={event.team.id === props.match?.team_2?.id}>
               <div
                 class={clsx(
-                  "col-span-8 col-start-5  rounded-lg p-4",
+                  "col-span-8 col-start-5 rounded-lg p-4",
                   event.type === "SC" ? "bg-green-600" : "bg-green-50"
                 )}
               >
