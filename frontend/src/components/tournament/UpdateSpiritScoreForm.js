@@ -1,6 +1,5 @@
 import { createForm, required } from "@modular-forms/solid";
 import { createMutation, createQuery } from "@tanstack/solid-query";
-import { initFlowbite } from "flowbite";
 import { createSignal, Show } from "solid-js";
 
 import { fetchTournamentTeamBySlugV1, updateMatch } from "../../queries";
@@ -91,8 +90,6 @@ const UpdateSpiritScoreForm = props => {
       match_id: props?.match?.id,
       body: values
     });
-
-    setTimeout(() => initFlowbite(), 1000);
   };
 
   return (

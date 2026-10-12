@@ -4,7 +4,6 @@ import {
   flexRender,
   getCoreRowModel
 } from "@tanstack/solid-table";
-import { initFlowbite } from "flowbite";
 import { Icon } from "solid-heroicons";
 import { xMark } from "solid-heroicons/solid";
 import {
@@ -509,7 +508,6 @@ const GroupSubscription = props => {
                 setPayingPlayers([]);
                 setStatus("");
                 setNotice();
-                initFlowbite();
               }}
               disabled={!paymentSuccess()}
             >

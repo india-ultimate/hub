@@ -1,6 +1,5 @@
 import { createForm, required } from "@modular-forms/solid";
 import { createMutation } from "@tanstack/solid-query";
-import { initFlowbite } from "flowbite";
 import { createSignal, Show } from "solid-js";
 
 import { submitMatchScore } from "../../queries";
@@ -27,7 +26,6 @@ const MatchScoreForm = componentProps => {
     mutationFn: submitMatchScore,
     onSuccess: () => {
       setStatus("Updated Match Score... Thanks!");
-      setTimeout(() => initFlowbite(), 10000);
     },
     onError: e => {
       console.log(e);
@@ -43,8 +41,6 @@ const MatchScoreForm = componentProps => {
       match_id: componentProps?.match?.id,
       body: values
     });
-
-    setTimeout(() => initFlowbite(), 1000);
   };
 
   return (

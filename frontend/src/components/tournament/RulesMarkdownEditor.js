@@ -1,5 +1,4 @@
 import { createMutation } from "@tanstack/solid-query";
-import { initFlowbite } from "flowbite";
 import { createEffect, createSignal, Show } from "solid-js";
 
 import { updateTournamentRules } from "../../queries";
@@ -34,8 +33,6 @@ const RulesMarkdownEditor = props => {
         rules: rules()
       }
     });
-
-    setTimeout(() => initFlowbite(), 1000);
   };
 
   return (

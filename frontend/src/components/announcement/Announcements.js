@@ -1,6 +1,5 @@
 import { useNavigate } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
-import { initFlowbite } from "flowbite";
 import { Icon } from "solid-heroicons";
 import {
   calendarDays,
@@ -11,7 +10,7 @@ import {
   lockClosed,
   tag
 } from "solid-heroicons/solid";
-import { For, onMount, Show, Suspense } from "solid-js";
+import { For, Show, Suspense } from "solid-js";
 
 import {
   getAnnouncementTypeColor,
@@ -41,10 +40,6 @@ const Announcements = () => {
   // Fetch announcements (backend handles filtering based on user permissions)
   const query = createQuery(() => ["announcements"], fetchAnnouncements, {
     refetchOnWindowFocus: false
-  });
-
-  onMount(() => {
-    initFlowbite();
   });
 
   const formatDate = dateString => {

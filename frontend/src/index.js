@@ -1,5 +1,4 @@
 import "./index.css";
-import "flowbite";
 
 import { Router } from "@solidjs/router";
 import { render } from "solid-js/web";

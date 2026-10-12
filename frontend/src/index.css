@@ -2,6 +2,230 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Form controls as flowbite's plugin styled them: the app's inputs rely on
+   these (border, padding, focus ring, checkbox and file picker). */
+@layer base {
+  [type="text"],
+  [type="email"],
+  [type="url"],
+  [type="password"],
+  [type="number"],
+  [type="date"],
+  [type="datetime-local"],
+  [type="month"],
+  [type="search"],
+  [type="tel"],
+  [type="time"],
+  [type="week"],
+  [multiple],
+  textarea,
+  select {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-color: #fff;
+    border-color: #6b7280;
+    border-width: 1px;
+    border-radius: 0px;
+    padding-top: 0.5rem;
+    padding-right: 0.75rem;
+    padding-bottom: 0.5rem;
+    padding-left: 0.75rem;
+    font-size: 1rem;
+    line-height: 1.5rem;
+    --tw-shadow: 0 0 #0000;
+  }
+
+  [type="text"]:focus,
+  [type="email"]:focus,
+  [type="url"]:focus,
+  [type="password"]:focus,
+  [type="number"]:focus,
+  [type="date"]:focus,
+  [type="datetime-local"]:focus,
+  [type="month"]:focus,
+  [type="search"]:focus,
+  [type="tel"]:focus,
+  [type="time"]:focus,
+  [type="week"]:focus,
+  [multiple]:focus,
+  textarea:focus,
+  select:focus {
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+    --tw-ring-inset: var(--tw-empty,);
+    --tw-ring-offset-width: 0px;
+    --tw-ring-offset-color: #fff;
+    --tw-ring-color: #1c64f2;
+    --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0
+      var(--tw-ring-offset-width) var(--tw-ring-offset-color);
+    --tw-ring-shadow: var(--tw-ring-inset) 0 0 0
+      calc(1px + var(--tw-ring-offset-width)) var(--tw-ring-color);
+    box-shadow:
+      var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+    border-color: #1c64f2;
+  }
+
+  input::-moz-placeholder,
+  textarea::-moz-placeholder {
+    color: #6b7280;
+    opacity: 1;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: #6b7280;
+    opacity: 1;
+  }
+
+  ::-webkit-datetime-edit-fields-wrapper {
+    padding: 0;
+  }
+
+  input[type="time"]::-webkit-calendar-picker-indicator {
+    background: none;
+  }
+
+  select:not([size]) {
+    background-image: url("data:image/svg+xml,%3csvg aria-hidden=%27true%27 xmlns=%27http://www.w3.org/2000/svg%27 fill=%27none%27 viewBox=%270 0 10 6%27%3e %3cpath stroke=%27%236B7280%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27 stroke-width=%272%27 d=%27m1 1 4 4 4-4%27/%3e %3c/svg%3e");
+    background-position: right 0.75rem center;
+    background-repeat: no-repeat;
+    background-size: 0.75em 0.75em;
+    padding-right: 2.5rem;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  [multiple] {
+    background-image: initial;
+    background-position: initial;
+    background-repeat: unset;
+    background-size: initial;
+    padding-right: 0.75rem;
+    -webkit-print-color-adjust: unset;
+    print-color-adjust: unset;
+  }
+
+  [type="checkbox"],
+  [type="radio"] {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    padding: 0;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    display: inline-block;
+    vertical-align: middle;
+    background-origin: border-box;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    user-select: none;
+    flex-shrink: 0;
+    height: 1rem;
+    width: 1rem;
+    color: #1c64f2;
+    background-color: #fff;
+    border-color: #6b7280;
+    border-width: 1px;
+    --tw-shadow: 0 0 #0000;
+  }
+
+  [type="checkbox"] {
+    border-radius: 0px;
+  }
+
+  [type="radio"] {
+    border-radius: 100%;
+  }
+
+  [type="checkbox"]:focus,
+  [type="radio"]:focus {
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+    --tw-ring-inset: var(--tw-empty,);
+    --tw-ring-offset-width: 2px;
+    --tw-ring-offset-color: #fff;
+    --tw-ring-color: #1c64f2;
+    --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0
+      var(--tw-ring-offset-width) var(--tw-ring-offset-color);
+    --tw-ring-shadow: var(--tw-ring-inset) 0 0 0
+      calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color);
+    box-shadow:
+      var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+  }
+
+  [type="checkbox"]:checked,
+  [type="radio"]:checked,
+  .dark [type="checkbox"]:checked,
+  .dark [type="radio"]:checked {
+    border-color: transparent;
+    background-color: currentColor;
+    background-size: 0.55em 0.55em;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+
+  [type="checkbox"]:checked {
+    background-image: url("data:image/svg+xml,%3csvg aria-hidden=%27true%27 xmlns=%27http://www.w3.org/2000/svg%27 fill=%27none%27 viewBox=%270 0 16 12%27%3e %3cpath stroke=%27white%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27 stroke-width=%273%27 d=%27M1 5.917 5.724 10.5 15 1.5%27/%3e %3c/svg%3e");
+    background-repeat: no-repeat;
+    background-size: 0.55em 0.55em;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  [type="radio"]:checked {
+    background-image: url("data:image/svg+xml,%3csvg viewBox=%270 0 16 16%27 fill=%27white%27 xmlns=%27http://www.w3.org/2000/svg%27%3e%3ccircle cx=%278%27 cy=%278%27 r=%273%27/%3e%3c/svg%3e");
+    background-size: 1em 1em;
+  }
+
+  [type="file"] {
+    background: unset;
+    border-color: inherit;
+    border-width: 0;
+    border-radius: 0;
+    padding: 0;
+    font-size: unset;
+    line-height: inherit;
+  }
+
+  [type="file"]:focus {
+    outline: 1px auto inherit;
+  }
+
+  input[type="file"]::file-selector-button {
+    color: white;
+    background: #1f2937;
+    border: 0;
+    font-weight: 500;
+    font-size: 0.875rem;
+    cursor: pointer;
+    padding-top: 0.625rem;
+    padding-bottom: 0.625rem;
+    padding-left: 2rem;
+    padding-right: 1rem;
+    margin-inline-start: -1rem;
+    margin-inline-end: 1rem;
+  }
+
+  input[type="file"]::file-selector-button:hover {
+    background: #374151;
+  }
+
+  .dark [type="radio"]:checked {
+    background-image: url("data:image/svg+xml,%3csvg viewBox=%270 0 16 16%27 fill=%27white%27 xmlns=%27http://www.w3.org/2000/svg%27%3e%3ccircle cx=%278%27 cy=%278%27 r=%273%27/%3e%3c/svg%3e");
+    background-size: 1em 1em;
+  }
+
+  .dark input[type="file"]::file-selector-button {
+    color: white;
+    background: #4b5563;
+  }
+
+  .dark input[type="file"]::file-selector-button:hover {
+    background: #6b7280;
+  }
+}
+
 /* The team registration pay bar is fixed to the bottom on phones (below
    Tailwind's sm); lift the floating help and scroll-up buttons above it. */
 @media (max-width: 639px) {

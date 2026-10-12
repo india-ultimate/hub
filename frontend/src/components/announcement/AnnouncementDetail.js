@@ -1,7 +1,6 @@
 import { useNavigate, useParams } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
 import DOMPurify from "dompurify";
-import { initFlowbite } from "flowbite";
 import { Icon } from "solid-heroicons";
 import {
   arrowRight,
@@ -12,7 +11,7 @@ import {
   lockClosed,
   tag
 } from "solid-heroicons/solid";
-import { createEffect, onMount, Show } from "solid-js";
+import { createEffect, Show } from "solid-js";
 
 import {
   getAnnouncementTypeColor,
@@ -37,10 +36,6 @@ export default function AnnouncementDetail() {
   );
 
   let contentRef;
-
-  onMount(() => {
-    initFlowbite();
-  });
 
   createEffect(() => {
     // When content loads, ensure tables are wide enough to trigger horizontal scroll if needed
