@@ -573,7 +573,8 @@ class TestPlayers(ApiBaseTestCase):
         user_data = data[0]
         self.assertIn("city", user_data)
         self.assertIn("state_ut", user_data)
-        self.assertEqual("username@foo.com", user_data["email"])
+        # The short form masks it, as it does everywhere.
+        self.assertEqual("usxxxxme@foo.com", user_data["email"])
         self.assertNotIn("subscription", user_data)
         self.assertNotIn("guardian", user_data)
 
@@ -1425,9 +1426,10 @@ class TestTournaments(ApiBaseTestCase):
         self.assertEqual(200, response.status_code)
         self.assertEqual(2, match["spirit_score_team_2"]["rules"])
         self.assertEqual(3, match["spirit_score_team_2"]["fouls"])
-        self.assertEqual(
-            self.player2.ultimate_central_id, match["spirit_score_team_2"]["mvp"]["id"]
+        mvp = Match.objects.values_list("spirit_score_team_2__mvp", flat=True).get(
+            id=valid_match.id
         )
+        self.assertEqual(self.player2.ultimate_central_id, mvp)
         self.assertEqual(2, match["self_spirit_score_team_1"]["rules"])
         self.assertEqual(2, match["self_spirit_score_team_1"]["fouls"])
         self.assertEqual("Good game!", match["self_spirit_score_team_1"]["comments"])
@@ -1455,7 +1457,10 @@ class TestTournaments(ApiBaseTestCase):
         self.assertEqual(200, response.status_code)
         self.assertEqual(1, match["spirit_score_team_1"]["rules"])
         self.assertEqual(2, match["spirit_score_team_1"]["fouls"])
-        self.assertEqual(self.player.ultimate_central_id, match["spirit_score_team_1"]["mvp"]["id"])
+        mvp = Match.objects.values_list("spirit_score_team_1__mvp", flat=True).get(
+            id=valid_match.id
+        )
+        self.assertEqual(self.player.ultimate_central_id, mvp)
         self.assertEqual(3, match["self_spirit_score_team_2"]["rules"])
         self.assertEqual(2, match["self_spirit_score_team_2"]["fouls"])
 
