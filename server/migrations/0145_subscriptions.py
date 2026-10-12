@@ -23,7 +23,7 @@ def rename_stored_values(apps: Any, schema_editor: Any) -> None:
         apps.get_model("server", model).objects.filter(**{field: old}).update(**{field: new})
     # Django renames the content type with the model, but not its permission
     # rows. A group holding view_membership must keep that access.
-    Permission = apps.get_model("auth", "Permission")  # noqa: N806
+    Permission = apps.get_model("auth", "Permission")
     for perm in Permission.objects.filter(
         content_type__app_label="server", codename__endswith="_membership"
     ):
@@ -35,7 +35,7 @@ def rename_stored_values(apps: Any, schema_editor: Any) -> None:
 def restore_stored_values(apps: Any, schema_editor: Any) -> None:
     for model, field, old, new in STORED:
         apps.get_model("server", model).objects.filter(**{field: new}).update(**{field: old})
-    Permission = apps.get_model("auth", "Permission")  # noqa: N806
+    Permission = apps.get_model("auth", "Permission")
     for perm in Permission.objects.filter(
         content_type__app_label="server", codename__endswith="_subscription"
     ):

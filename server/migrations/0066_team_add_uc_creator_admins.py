@@ -4,8 +4,8 @@ from django.db.migrations.state import StateApps
 
 
 def add_admins(apps: StateApps, schema: BaseDatabaseSchemaEditor) -> None:
-    Team = apps.get_model("server", "Team")  # noqa: N806
-    Player = apps.get_model("server", "Player")  # noqa: N806
+    Team = apps.get_model("server", "Team")
+    Player = apps.get_model("server", "Player")
 
     teams = Team.objects.exclude(ultimate_central_creator_id__isnull=True)
     for team in teams:

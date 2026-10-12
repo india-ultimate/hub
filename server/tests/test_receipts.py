@@ -24,7 +24,7 @@ from server.transaction.models import (
 
 from .test_subscription_model import make_player
 
-UTC = datetime.timezone.utc
+UTC = datetime.UTC
 COMPLETED = RazorpayTransaction.TransactionStatusChoices.COMPLETED
 
 

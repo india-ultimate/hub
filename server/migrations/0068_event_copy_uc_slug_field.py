@@ -6,7 +6,7 @@ from server.utils import slugify_max
 
 
 def copy_field(apps: StateApps, schema: BaseDatabaseSchemaEditor) -> None:
-    Event = apps.get_model("server", "Event")  # noqa: N806
+    Event = apps.get_model("server", "Event")
     for event in Event.objects.all():
         if event.ultimate_central_slug != "unknown":
             event.slug = slugify_max(event.ultimate_central_slug)
@@ -14,7 +14,7 @@ def copy_field(apps: StateApps, schema: BaseDatabaseSchemaEditor) -> None:
 
 
 def reverse_field(apps: StateApps, schema: BaseDatabaseSchemaEditor) -> None:
-    Event = apps.get_model("server", "Event")  # noqa: N806
+    Event = apps.get_model("server", "Event")
     for event in Event.objects.all():
         event.slug = None
         event.save()

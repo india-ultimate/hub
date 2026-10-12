@@ -1013,7 +1013,7 @@ class TestSwap(ApiCase):
 
     def test_dates_are_indian_dates(self) -> None:
         # 20:00 UTC is already the next day in India.
-        late = datetime.datetime(2026, 9, 30, 20, 0, tzinfo=datetime.timezone.utc)
+        late = datetime.datetime(2026, 9, 30, 20, 0, tzinfo=datetime.UTC)
         out, new = self.rostered("o@x.com"), self.player("n@x.com")
         self.swap(out, new)
         RosterSwap.objects.update(at=late)

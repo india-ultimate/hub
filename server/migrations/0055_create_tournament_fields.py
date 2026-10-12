@@ -6,9 +6,9 @@ from django.db.migrations.state import StateApps
 
 
 def create_field_objects(apps: StateApps) -> None:
-    Tournament = apps.get_model("server", "Tournament")  # noqa: N806
-    Match = apps.get_model("server", "Match")  # noqa: N806
-    TournamentField = apps.get_model("server", "TournamentField")  # noqa: N806
+    Tournament = apps.get_model("server", "Tournament")
+    Match = apps.get_model("server", "Match")
+    TournamentField = apps.get_model("server", "TournamentField")
 
     for tournament in Tournament.objects.all():
         matches = Match.objects.filter(tournament=tournament)
@@ -24,13 +24,13 @@ def create_field_objects(apps: StateApps) -> None:
 
 
 def delete_field_objects(apps: StateApps) -> None:
-    TournamentField = apps.get_model("server", "TournamentField")  # noqa: N806
+    TournamentField = apps.get_model("server", "TournamentField")
     TournamentField.objects.all().delete()
 
 
 def add_field_references(apps: StateApps) -> None:
-    Match = apps.get_model("server", "Match")  # noqa: N806
-    TournamentField = apps.get_model("server", "TournamentField")  # noqa: N806
+    Match = apps.get_model("server", "Match")
+    TournamentField = apps.get_model("server", "TournamentField")
 
     matches = Match.objects.all()
     for match in matches:
@@ -46,7 +46,7 @@ def add_field_references(apps: StateApps) -> None:
 
 
 def remove_field_references(apps: StateApps) -> None:
-    Match = apps.get_model("server", "Match")  # noqa: N806
+    Match = apps.get_model("server", "Match")
     matches = Match.objects.all()
 
     for match in matches:

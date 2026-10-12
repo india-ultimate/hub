@@ -731,7 +731,7 @@ class TestPager(TestCase):
         self.assertEqual([call.args[0]["skip"] for call in all_.call_args_list], [0, 100, 200])
 
     def test_since_sets_the_window(self) -> None:
-        since = datetime.datetime(2024, 8, 1, tzinfo=datetime.timezone.utc)
+        since = datetime.datetime(2024, 8, 1, tzinfo=datetime.UTC)
         with mock.patch.object(CLIENT.refund, "all", side_effect=self.pages(0)) as all_:
             self.assertEqual(razorpay_client.get_refunds(since), [])
 

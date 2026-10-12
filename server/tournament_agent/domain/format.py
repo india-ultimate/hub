@@ -151,7 +151,7 @@ def bracket_match_plan(tournament: Tournament, name: str) -> list[dict[str, Any]
     matches: list[dict[str, Any]] = []
 
     def walk(lo: int, hi: int, seq: int) -> None:
-        for i in range(0, ((hi - lo) + 1) // 2):
+        for i in range(((hi - lo) + 1) // 2):
             seed_1 = lo + i
             seed_2 = hi - i
             matches.append(

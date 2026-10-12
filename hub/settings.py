@@ -194,7 +194,7 @@ PAYMENT_ACCOUNT_ENCRYPTION_KEY = os.environ.get("PAYMENT_ACCOUNT_ENCRYPTION_KEY"
 
 
 # Webpack dev server
-WEBPACK_SERVER_PORT = os.environ.get("WEBPACK_SERVER_PORT", 3000)
+WEBPACK_SERVER_PORT = os.environ.get("WEBPACK_SERVER_PORT", "3000")
 
 # Email settings
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
@@ -207,7 +207,7 @@ EMAIL_SECRET_KEY = os.environ.get("EMAIL_SECRET_KEY")
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 # Email Invitation URL
-EMAIL_INVITATION_BASE_URL = f"http://localhost:{os.environ.get('WEBPACK_SERVER_PORT', 3000)}"
+EMAIL_INVITATION_BASE_URL = f"http://localhost:{os.environ.get('WEBPACK_SERVER_PORT', '3000')}"
 
 # OTP settings
 OTP_EMAIL_HASH_KEY = os.environ.get("OTP_EMAIL_HASH_KEY", "")

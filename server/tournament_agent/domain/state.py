@@ -210,9 +210,11 @@ def render_state(snapshot: TournamentSnapshot, phase_line: str = "") -> str:
     """The block pinned to every turn. Kept terse — it is resent on every round."""
     lines = [
         "## Tournament state (read from the database at the start of this turn)",
-        "This is what exists. Where it disagrees with something you said earlier, this "
-        "wins. It does not override what staff are asking you for now — if they name a "
-        "date, a duration or a count, use theirs.",
+        (
+            "This is what exists. Where it disagrees with something you said earlier, this "
+            "wins. It does not override what staff are asking you for now — if they name a "
+            "date, a duration or a count, use theirs."
+        ),
         f"{snapshot.title} · status {snapshot.status} · {snapshot.team_count} teams",
     ]
     if phase_line:

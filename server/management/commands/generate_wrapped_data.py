@@ -45,7 +45,6 @@ class Command(BaseCommand):
 
     def get_tournaments_for_year(self, year: int) -> list[Tournament]:
         """Get all tournaments that occurred in the given year."""
-        start_date, end_date = self.get_year_date_range(year)
         events = Event.objects.filter(Q(start_date__year=year) | Q(end_date__year=year)).distinct()
         tournaments = Tournament.objects.filter(event__in=events).distinct()
         return list(tournaments)

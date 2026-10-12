@@ -270,7 +270,7 @@ def build_bracket(tournament: Tournament, *, name: str, sequence_number: int) ->
         raise ValueError((name_error or {}).get("message", "Invalid bracket name"))
 
     start, end = (int(part) for part in name.split("-"))
-    seeding = {seed: 0 for seed in range(start, end + 1)}
+    seeding = dict.fromkeys(range(start, end + 1), 0)
     bracket = Bracket.objects.create(
         tournament=tournament,
         name=name,
@@ -292,7 +292,7 @@ def build_position_pool(
         tournament=tournament,
         name=name,
         sequence_number=sequence_number,
-        initial_seeding={seed: 0 for seed in sorted(seeding)},
+        initial_seeding=dict.fromkeys(sorted(seeding), 0),
         results={},
     )
     create_position_pool_matches(tournament, position_pool)
@@ -378,7 +378,7 @@ def apply_bye(swiss_round: SwissRound, team_id: int, round_number: int) -> None:
 
     # Compute and store opponent strength (sum of opponents' points)
     all_swiss_matches = Match.objects.filter(swiss_round=swiss_round, status=Match.Status.COMPLETED)
-    opp_strength: dict[int, int] = {tid: 0 for tid in results}
+    opp_strength: dict[int, int] = dict.fromkeys(results, 0)
     for m in all_swiss_matches:
         if m.team_1 and m.team_2:
             t1, t2 = m.team_1.id, m.team_2.id
@@ -544,7 +544,7 @@ def reorder_swiss_round_matches(swiss_round: SwissRound, round_number: int) -> N
         if last_match and last_match.time:
             team_last_played[team_id] = last_match.time
 
-    min_dt = datetime.datetime.min.replace(tzinfo=datetime.timezone.utc)
+    min_dt = datetime.datetime.min.replace(tzinfo=datetime.UTC)
 
     def _last_played(team_id: int | None) -> datetime.datetime:
         if team_id is None:
@@ -836,7 +836,7 @@ def sort_swiss_tied_teams(
     team_ids = [team["id"] for team in tied_teams]
 
     # 1. Compute H2H stats between tied teams
-    h2h_wins: dict[int, int] = {tid: 0 for tid in team_ids}
+    h2h_wins: dict[int, int] = dict.fromkeys(team_ids, 0)
     h2h_matches = Match.objects.filter(
         swiss_round=swiss_round, status=Match.Status.COMPLETED
     ).filter(Q(team_1__id__in=team_ids, team_2__id__in=team_ids))
@@ -848,7 +848,7 @@ def sort_swiss_tied_teams(
                 h2h_wins[m.team_2.id] += 1
 
     # 2. Compute opponent strength: sum of opponents' points (higher = faced stronger opponents)
-    opp_strength: dict[int, int] = {tid: 0 for tid in team_ids}
+    opp_strength: dict[int, int] = dict.fromkeys(team_ids, 0)
     all_swiss_matches = Match.objects.filter(
         swiss_round=swiss_round, status=Match.Status.COMPLETED
     ).filter(Q(team_1__id__in=team_ids) | Q(team_2__id__in=team_ids))
@@ -893,8 +893,8 @@ def recompute_swiss_ranks(
     new rank order. This is the single source of truth for Swiss ranking —
     byes, reruns and score updates must all rank teams the same way.
     """
-    for tid in results:
-        results[tid]["id"] = tid
+    for tid, row in results.items():
+        row["id"] = tid
 
     points_groups: dict[int, list[dict[str, int]]] = {}
     for result in results.values():
@@ -1063,7 +1063,7 @@ def get_new_swiss_results(
     all_swiss_matches = Match.objects.filter(
         swiss_round=match.swiss_round, status=Match.Status.COMPLETED
     )
-    opp_strength: dict[int, int] = {tid: 0 for tid in new_results}
+    opp_strength: dict[int, int] = dict.fromkeys(new_results, 0)
     for m in all_swiss_matches:
         if m.team_1 and m.team_2:
             t1, t2 = m.team_1.id, m.team_2.id
@@ -1073,8 +1073,8 @@ def get_new_swiss_results(
             if t2 in opp_strength:
                 opp_stats = new_results.get(t1, {})
                 opp_strength[t2] += opp_stats.get("wins", 0) * 2 + opp_stats.get("draws", 0)
-    for tid in new_results:
-        new_results[tid]["opp_strength"] = opp_strength.get(tid, 0)
+    for tid, row in new_results.items():
+        row["opp_strength"] = opp_strength.get(tid, 0)
 
     return new_results, tournament_seeding
 
@@ -1143,7 +1143,7 @@ def rerun_swiss_round(tournament: Tournament, swiss_round: SwissRound) -> None:
     def _recompute_opp_strength(results: dict[int, dict[str, int]]) -> None:
         """Recompute opponent strength (sum of opponents' points) for all teams."""
         all_matches = Match.objects.filter(swiss_round=swiss_round, status=Match.Status.COMPLETED)
-        opp_strength: dict[int, int] = {tid: 0 for tid in results}
+        opp_strength: dict[int, int] = dict.fromkeys(results, 0)
         for m in all_matches:
             if m.team_1 and m.team_2:
                 t1, t2 = m.team_1.id, m.team_2.id
@@ -1153,8 +1153,8 @@ def rerun_swiss_round(tournament: Tournament, swiss_round: SwissRound) -> None:
                 if t2 in opp_strength:
                     opp_stats = results.get(t1, {})
                     opp_strength[t2] += opp_stats.get("wins", 0) * 2 + opp_stats.get("draws", 0)
-        for tid in results:
-            results[tid]["opp_strength"] = opp_strength.get(tid, 0)
+        for tid, row in results.items():
+            row["opp_strength"] = opp_strength.get(tid, 0)
 
     results = {int(k): v for k, v in swiss_round.results.items()}
     pool_seeding_list = sorted(map(int, swiss_round.initial_seeding.keys()))
@@ -1850,13 +1850,10 @@ def is_submitted_scores_equal(match: Match) -> bool:
     if match.suggested_score_team_1 is None or match.suggested_score_team_2 is None:
         return False
 
-    if (
+    return (
         match.suggested_score_team_1.score_team_1 == match.suggested_score_team_2.score_team_1
         and match.suggested_score_team_1.score_team_2 == match.suggested_score_team_2.score_team_2
-    ):
-        return True
-
-    return False
+    )
 
 
 def create_spirit_scores(spirit_score: SpiritScoreUpdateSchema, use_uc_reg: bool) -> SpiritScore:
@@ -1968,7 +1965,7 @@ def calculate_head_to_head_stats(
 def create_bracket_sequence_matches(
     tournament: Tournament, bracket: Bracket, start: int, end: int, seq_num: int
 ) -> None:
-    for i in range(0, ((end - start) + 1) // 2):
+    for i in range(((end - start) + 1) // 2):
         seed_1 = start + i
         seed_2 = end - i
 

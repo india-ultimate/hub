@@ -9,7 +9,7 @@ register = template.Library()
 
 
 @register.simple_tag
-@mark_safe
+@mark_safe  # noqa: S308 - our own build output, from STATIC_ROOT
 def static_include(filename: str) -> str:
     manifest_path = settings.STATIC_ROOT.joinpath("manifest.json")
     if manifest_path.exists():

@@ -23,7 +23,7 @@ LEGACY_NAMES = ["Season 2022-2023", "Season 2023-2024"]
 
 
 def add_seasons(apps: Any, schema_editor: Any) -> None:
-    Season = apps.get_model("server", "Season")  # noqa: N806
+    Season = apps.get_model("server", "Season")
     for name, start, end, annual, sponsored, supporter in SEASONS:
         Season.objects.get_or_create(
             name=name,
@@ -39,7 +39,7 @@ def add_seasons(apps: Any, schema_editor: Any) -> None:
 
 def remove_legacy_seasons(apps: Any, schema_editor: Any) -> None:
     """Only the two legacy seasons -- the three real ones predate this migration."""
-    Season = apps.get_model("server", "Season")  # noqa: N806
+    Season = apps.get_model("server", "Season")
     Season.objects.filter(name__in=LEGACY_NAMES).delete()
 
 

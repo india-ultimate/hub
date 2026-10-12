@@ -2,10 +2,10 @@ import re
 import shutil
 import subprocess
 import tempfile
+import tomllib
 from pathlib import Path
 from typing import Any
 
-import tomllib
 import yaml
 from django.test import SimpleTestCase
 
@@ -203,8 +203,8 @@ class TestAppStart(SimpleTestCase):
             stub = folder / command
             stub.write_text(f"#!/bin/sh\n{body}\n")
             stub.chmod(0o755)
-        self.exit_code = subprocess.run(
-            ["/bin/bash", str(ROOT / "deploy/start.sh")],  # noqa: S603
+        self.exit_code = subprocess.run(  # noqa: S603
+            ["/bin/bash", str(ROOT / "deploy/start.sh")],
             env={"PATH": f"{folder}:/usr/bin:/bin", "HOME": str(folder), "LOG": str(log), **env},
             check=False,
         ).returncode

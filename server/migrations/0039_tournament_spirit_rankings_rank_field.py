@@ -9,7 +9,7 @@ from server.tournament.utils import rank_spirit_scores
 
 def code(apps: StateApps, schema_editor: BaseDatabaseSchemaEditor) -> None:
     """Add a 'rank' field and sort by ranks."""
-    Tournament = apps.get_model("server", "Tournament")  # noqa: N806
+    Tournament = apps.get_model("server", "Tournament")
     for tournament in Tournament.objects.all():
         tournament.spirit_ranking = rank_spirit_scores(tournament.spirit_ranking)
         tournament.save(update_fields=["spirit_ranking"])
@@ -17,7 +17,7 @@ def code(apps: StateApps, schema_editor: BaseDatabaseSchemaEditor) -> None:
 
 def reverse_code(apps: StateApps, schema_editor: BaseDatabaseSchemaEditor) -> None:
     """Remove the 'rank' field and sort by points."""
-    Tournament = apps.get_model("server", "Tournament")  # noqa: N806
+    Tournament = apps.get_model("server", "Tournament")
     for tournament in Tournament.objects.all():
         for ranking in tournament.spirit_ranking:
             ranking.pop("rank")

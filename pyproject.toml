@@ -31,18 +31,18 @@ num2words = "^0.5.14"
 cryptography = "^50.0.2"
 
 [tool.poetry.group.dev.dependencies]
-ipython = "^8.13.2"
+ipython = "^9.17.1"
 black = "^26.10.1"
 ipdb = "^0.13.13"
-beautifulsoup4 = "^4.12.2"
-ruff = "^0.0.282"
+beautifulsoup4 = "^4.15.0"
+ruff = "^0.17.0"
 pytest = "^9.1.1"
 pytest-django = "^4.14.0"
 mypy = "^1.4.1"
 django-stubs = "^4.2.3"
-types-requests = "^2.31.0.2"
+types-requests = "^2.33.0.20261006"
 selenium-base = "^4.56.0"
-types-python-dateutil = "^2.8.19.14"
+types-python-dateutil = "^2.9.0.20260807"
 zulint = {git = "https://github.com/zulip/zulint.git"}
 gitlint = "^0.19.1"
 pytest-split = "^0.11.0"
@@ -59,6 +59,8 @@ line-length = 100
 
 [tool.ruff]
 line-length = 100
+
+[tool.ruff.lint]
 # Allow autofix for all enabled rules (when `--fix`) is provided.
 fixable = ["ALL"]
 # https://beta.ruff.rs/docs/rules/#tryceratops-try
@@ -93,8 +95,6 @@ select = [
     "YTT", # sys.version
 ]
 ignore = [
-    "ANN101", # Missing type annotation for `self` in method
-    "ANN102", # Missing type annotation for `cls` in classmethod
     "ANN401", # Dynamically typed expressions (typing.Any) are disallowed
     "COM812", # Trailing comma missing
     "DJ001", # Avoid using `null=True` on string-based fields
@@ -105,6 +105,11 @@ ignore = [
     "PLR0911", # Too many return statements
     "PLR0912", # Too many branches
     "PLR0913", # Too many arguments
+    "PLR0917", # Too many positional arguments (PLR0913's sibling, ignored for the same reason)
+    # Imports inside functions are deliberate here: they break Django's
+    # circular imports between apps, and keep heavy libraries (groq, the PDF
+    # stack) out of workers that never use them.
+    "PLC0415", # `import` should be at the top-level of a file
     "RUF012", # Mutable class attributes should be annotated with `typing.ClassVar`
     "S105", # Possible hardcoded password
 ]

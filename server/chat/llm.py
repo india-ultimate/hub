@@ -2,13 +2,12 @@ from __future__ import annotations
 
 import json
 from collections.abc import Iterable
-from typing import TYPE_CHECKING, Any, TypedDict, TypeVar, cast
+from typing import TYPE_CHECKING, Any, NotRequired, TypedDict, TypeVar, cast
 
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Count, Q
 from django.utils import timezone
-from typing_extensions import NotRequired
 
 # Types only. The client is built in chat/api.py; this module is handed one.
 if TYPE_CHECKING:

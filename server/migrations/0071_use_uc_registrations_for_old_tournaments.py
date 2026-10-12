@@ -4,7 +4,7 @@ from django.db.migrations.state import StateApps
 
 
 def set_uc_registrations_flag(apps: StateApps, schema: BaseDatabaseSchemaEditor) -> None:
-    Tournament = apps.get_model("server", "Tournament")  # noqa: N806
+    Tournament = apps.get_model("server", "Tournament")
     tournaments = Tournament.objects.all()
 
     for tournament in tournaments:
@@ -16,7 +16,7 @@ def set_uc_registrations_flag(apps: StateApps, schema: BaseDatabaseSchemaEditor)
 
 
 def unset_uc_registrations_flag(apps: StateApps, schema: BaseDatabaseSchemaEditor) -> None:
-    Tournament = apps.get_model("server", "Tournament")  # noqa: N806
+    Tournament = apps.get_model("server", "Tournament")
     tournaments = Tournament.objects.all()
 
     for tournament in tournaments:

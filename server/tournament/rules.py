@@ -198,8 +198,8 @@ __all__ = [
     "FORMAT_BLOCK_END",
     "FORMAT_BLOCK_START",
     "LEGACY_TABLE_SIGNATURES",
-    "upgrade_legacy_format_block",
     "render_format_block",
     "render_format_table",
     "sync_rules_format",
+    "upgrade_legacy_format_block",
 ]

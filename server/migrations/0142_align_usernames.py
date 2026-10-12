@@ -31,7 +31,7 @@ def align_usernames(apps: Apps, schema_editor: BaseDatabaseSchemaEditor) -> None
     place a username is taken as typed; there the new spelling is the one
     to type.
     """
-    User = apps.get_model("server", "User")  # noqa: N806
+    User = apps.get_model("server", "User")
     taken = set(User.objects.values_list("username", flat=True))
 
     for user in User.objects.only("id", "username", "email").order_by("pk"):

@@ -71,7 +71,7 @@ class Task(models.Model):
             self.TaskType.SEND_EMAIL: send_email,
         }
 
-        return task_handlers.get(self.type, None)
+        return task_handlers.get(self.type)
 
     def _execute(self, function: Callable[[dict[str, Any]], dict[str, Any]]) -> None:
         """Execute the task's function and save the result or error"""

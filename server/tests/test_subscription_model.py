@@ -81,7 +81,7 @@ class TestPerSeasonSubscriptions(TestCase):
             player=self.player,
             season=self.s26,
             is_active=False,
-            refunded_at=datetime.datetime(2026, 9, 1, tzinfo=datetime.timezone.utc),
+            refunded_at=datetime.datetime(2026, 9, 1, tzinfo=datetime.UTC),
             start_date=self.s26.start_date,
             end_date=self.s26.end_date,
         )

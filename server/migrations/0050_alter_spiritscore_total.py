@@ -5,7 +5,7 @@ from django.db.migrations.state import StateApps
 
 def generate_spirit_score_total(apps: StateApps, schema_editor: BaseDatabaseSchemaEditor) -> None:
     """Generate sprit score total"""
-    SpiritScore = apps.get_model("server", "SpiritScore")  # noqa: N806
+    SpiritScore = apps.get_model("server", "SpiritScore")
 
     spirit_scores = SpiritScore.objects.all()
     for spirit_score in spirit_scores:
@@ -21,7 +21,7 @@ def generate_spirit_score_total(apps: StateApps, schema_editor: BaseDatabaseSche
 
 
 def remove_spirit_score_totals(apps: StateApps, schema_editor: BaseDatabaseSchemaEditor) -> None:
-    SpiritScore = apps.get_model("server", "SpiritScore")  # noqa: N806
+    SpiritScore = apps.get_model("server", "SpiritScore")
 
     spirit_scores = SpiritScore.objects.all()
 

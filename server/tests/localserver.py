@@ -80,8 +80,8 @@ def _start_servers(log_file: str | None, dots: bool) -> "list[subprocess.Popen[b
     # Series invites are emailed with a signed link; the server needs a key.
     os.environ.setdefault("EMAIL_SECRET_KEY", "test-invite-key")
 
-    django_server = subprocess.Popen(
-        ["./manage.py", "runserver", str(PORT)], stdout=log, stderr=log, cwd=ROOT  # noqa: S603
+    django_server = subprocess.Popen(  # noqa: S603
+        ["./manage.py", "runserver", str(PORT)], stdout=log, stderr=log, cwd=ROOT
     )
     webpack_command = [
         str(FRONTEND_DIR / "node_modules/.bin/webpack-dev-server"),
@@ -90,8 +90,8 @@ def _start_servers(log_file: str | None, dots: bool) -> "list[subprocess.Popen[b
         "--mode",
         "development",
     ]
-    webpack_server = subprocess.Popen(
-        webpack_command, stdout=log, stderr=log, cwd=FRONTEND_DIR  # noqa: S603
+    webpack_server = subprocess.Popen(  # noqa: S603
+        webpack_command, stdout=log, stderr=log, cwd=FRONTEND_DIR
     )
     servers = [webpack_server, django_server]
     try:

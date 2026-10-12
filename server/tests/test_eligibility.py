@@ -145,7 +145,7 @@ class TestEligibility(TestCase):
     def test_a_refunded_subscription_does_not_count(self) -> None:
         self.hold(
             "regular",
-            refunded_at=datetime.datetime(2026, 9, 1, tzinfo=datetime.timezone.utc),
+            refunded_at=datetime.datetime(2026, 9, 1, tzinfo=datetime.UTC),
         )
         self.assertEqual(self.action(self.gated), "Get subscription")
 

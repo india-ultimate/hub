@@ -603,7 +603,7 @@ class TestStateView(ApiBaseTestCase):
         status: str = "completed",
         kind: str = Kind.TEAM_REGISTRATION,
         team: Team | None = None,
-        account: PaymentAccount | None | str = "state",
+        account: PaymentAccount | str | None = "state",
         days_ago: int = 0,
     ) -> RazorpayTransaction:
         order = RazorpayTransaction.objects.create(

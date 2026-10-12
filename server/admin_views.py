@@ -231,8 +231,10 @@ def refund_line_view(request: HttpRequest, line_id: int) -> HttpResponse:
     warning = ""
     if line.subscription is not None:
         changes = [
-            f"Their {line.subscription.season.name} subscription stops counting: not for "
-            "rostering, not in member counts, not in voter lists.",
+            (
+                f"Their {line.subscription.season.name} subscription stops counting: not for "
+                "rostering, not in member counts, not in voter lists."
+            ),
             *SUBSCRIPTION_CHANGES,
         ]
     elif line.plan_id is not None:
@@ -305,10 +307,14 @@ def refund_subscription_view(request: HttpRequest, subscription_id: int) -> Http
             "amount": rupees(left),
             "person": subscription.player.user.get_full_name(),
             "changes": [
-                f"Every payment still standing on their {subscription.season.name} subscription "
-                "is sent back, newest first.",
-                "The subscription stops counting: not for rostering, not in member counts, "
-                "not in voter lists.",
+                (
+                    f"Every payment still standing on their {subscription.season.name} subscription "
+                    "is sent back, newest first."
+                ),
+                (
+                    "The subscription stops counting: not for rostering, not in member counts, "
+                    "not in voter lists."
+                ),
                 *SUBSCRIPTION_CHANGES,
             ],
             "warning": (
@@ -366,8 +372,10 @@ def refund_order_view(request: HttpRequest, order_id: str) -> HttpResponse:
     else:
         warning = ""
         changes = [
-            "Everyone on this order who has not been refunded already is refunded, and "
-            "their subscription for that season stops counting.",
+            (
+                "Everyone on this order who has not been refunded already is refunded, and "
+                "their subscription for that season stops counting."
+            ),
             *SUBSCRIPTION_CHANGES,
         ]
     return render(

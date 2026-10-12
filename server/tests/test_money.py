@@ -277,8 +277,8 @@ class TestFrontendConvertsInOnePlace(SimpleTestCase):
         )
         command = [node, "--input-type=module", "-e", script]
         # A fixed script run by the local node.
-        out = subprocess.run(
-            command,  # noqa: S603
+        out = subprocess.run(  # noqa: S603
+            command,
             capture_output=True,
             text=True,
             check=True,

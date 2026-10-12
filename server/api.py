@@ -664,7 +664,7 @@ def passkey_start_creation(request: AuthenticatedHttpRequest) -> tuple[int, mess
 def passkey_finish_creation(
     request: AuthenticatedHttpRequest, body: PasskeyRequestSchema
 ) -> tuple[int, message_response]:
-    data, error, _ = passkey_client.finish_registration(body.passkey_request)
+    _data, error, _ = passkey_client.finish_registration(body.passkey_request)
 
     if error:
         return 400, {"message": error}
@@ -686,7 +686,7 @@ def passkey_start_login(request: HttpRequest) -> tuple[int, message_response]:
 def passkey_finish_login(
     request: HttpRequest, body: PasskeyRequestSchema
 ) -> tuple[int, User | message_response]:
-    data, error, user_id = passkey_client.finish_login(body.passkey_request)
+    _data, error, user_id = passkey_client.finish_login(body.passkey_request)
 
     if error:
         return 400, {"message": error}
@@ -1103,7 +1103,7 @@ def upsert_commentary_info(
     except Player.DoesNotExist:
         return 400, {"message": "Player does not exist"}
 
-    com_info, created = CommentaryInfo.objects.update_or_create(
+    com_info, _created = CommentaryInfo.objects.update_or_create(
         player=player, defaults=commentary_info.dict()
     )
     return 200, com_info
@@ -1301,7 +1301,7 @@ def get_all_tournaments(request: AuthenticatedHttpRequest) -> tuple[int, QuerySe
 @api.get("/tournaments/public", auth=None, response={200: TournamentCardsSchema})
 def get_tournament_cards(
     request: HttpRequest,
-    year: int | None = Query(None, ge=1, le=9999),  # noqa: B008
+    year: int | None = Query(None, ge=1, le=9999),
     recent: bool = False,
 ) -> tuple[int, dict[str, Any]]:
     """Cards for the public pages: a year's, or the home page's recent few.
@@ -2658,7 +2658,7 @@ def submit_match_score(
     ):
         return 400, {"message": "Match score cant be submitted in current status"}
 
-    player_team_id, admin_team_ids = user_tournament_teams(match.tournament, request.user)
+    _player_team_id, admin_team_ids = user_tournament_teams(match.tournament, request.user)
 
     if match.team_1.id not in admin_team_ids and match.team_2.id not in admin_team_ids:
         return 401, {"message": "User not authorised to add score for this match"}
@@ -2767,7 +2767,7 @@ def submit_match_spirit_score(
     except Match.DoesNotExist:
         return 400, {"message": "Match does not exist"}
 
-    player_team_id, admin_team_ids = user_tournament_teams(match.tournament, request.user)
+    _player_team_id, admin_team_ids = user_tournament_teams(match.tournament, request.user)
 
     if spirit_score.team_id not in admin_team_ids:
         return 401, {"message": "User not authorised to add score for this match"}

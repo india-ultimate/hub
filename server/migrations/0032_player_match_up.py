@@ -6,7 +6,7 @@ from django.db.migrations.state import StateApps
 
 
 def code(apps: StateApps, schema_editor: BaseDatabaseSchemaEditor) -> None:
-    Player = apps.get_model("server", "Player")  # noqa: N806
+    Player = apps.get_model("server", "Player")
     Player.objects.filter(gender="M").update(match_up="M")
     Player.objects.filter(gender="F").update(match_up="F")
     male_matching_ids = [2505]

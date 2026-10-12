@@ -127,9 +127,8 @@ class TestBackfill(TestCase):
         # A queryset update skips the signal, as the old data never had grants.
         ServiceRequest.objects.filter(pk=request.pk).update(
             status=status,
-            # timezone.utc, not datetime.UTC: CI runs Python 3.10.
-            created_at=datetime.datetime(2025, 11, 1, tzinfo=datetime.timezone.utc),
-            updated_at=datetime.datetime.combine(updated, datetime.time(), datetime.timezone.utc),
+            created_at=datetime.datetime(2025, 11, 1, tzinfo=datetime.UTC),
+            updated_at=datetime.datetime.combine(updated, datetime.time(), datetime.UTC),
         )
         request.refresh_from_db()
         return request

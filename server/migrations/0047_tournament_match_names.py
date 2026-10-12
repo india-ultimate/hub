@@ -9,10 +9,10 @@ def generate_pool_match_names(apps: StateApps, is_pool: bool) -> None:
     """Generate match names for pools, or position pools based on the `is_pool` flag"""
     pools = []
     if is_pool:
-        Pool = apps.get_model("server", "Pool")  # noqa: N806
+        Pool = apps.get_model("server", "Pool")
         pools = Pool.objects.all()
     else:
-        PositionPool = apps.get_model("server", "PositionPool")  # noqa: N806
+        PositionPool = apps.get_model("server", "PositionPool")
         pools = PositionPool.objects.all()
 
     for pool in pools:
@@ -22,7 +22,7 @@ def generate_pool_match_names(apps: StateApps, is_pool: bool) -> None:
             for j, seed_y in enumerate(pool_seeding_list[i + 1 :], i + 1):
                 pool_match_name = f"{pool.name}{i + 1} vs {pool.name}{j + 1}"
 
-                Match = apps.get_model("server", "Match")  # noqa: N806
+                Match = apps.get_model("server", "Match")
 
                 pool_match = Match.objects.get(
                     tournament=pool.tournament,
@@ -43,13 +43,13 @@ def simulate_creating_bracket_sequence_matches(  # type: ignore[no-untyped-def]
     end: int,
     seq_num: int,
 ) -> None:
-    for i in range(0, ((end - start) + 1) // 2):
+    for i in range(((end - start) + 1) // 2):
         seed_1 = start + i
         seed_2 = end - i
 
         bracket_match_name = get_bracket_match_name(start, end, seed_1, seed_2)
 
-        Match = apps.get_model("server", "Match")  # noqa: N806
+        Match = apps.get_model("server", "Match")
         bracket_match = Match.objects.get(
             tournament=bracket.tournament,
             bracket=bracket,
@@ -85,13 +85,13 @@ def simulate_creating_bracket_matches(  # type: ignore[no-untyped-def]
 
 
 def generate_bracket_match_names(apps: StateApps) -> None:
-    Bracket = apps.get_model("server", "Bracket")  # noqa: N806
+    Bracket = apps.get_model("server", "Bracket")
     for bracket in Bracket.objects.all():
         simulate_creating_bracket_matches(apps, bracket=bracket)
 
 
 def generate_cross_pool_match_names(apps: StateApps) -> None:
-    Match = apps.get_model("server", "Match")  # noqa: N806
+    Match = apps.get_model("server", "Match")
     cross_pool_matches = Match.objects.exclude(cross_pool=None)
     for cross_pool_match in cross_pool_matches:
         cross_pool_match.name = "Cross Pool"
@@ -108,7 +108,7 @@ def generate_match_names(apps: StateApps, schema_editor: BaseDatabaseSchemaEdito
 
 def remove_match_names(apps: StateApps, schema_editor: BaseDatabaseSchemaEditor) -> None:
     """Remove match names from all matches"""
-    Match = apps.get_model("server", "Match")  # noqa: N806
+    Match = apps.get_model("server", "Match")
     matches = Match.objects.all()
     for match in matches:
         match.name = None

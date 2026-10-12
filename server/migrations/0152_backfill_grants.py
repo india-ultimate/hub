@@ -10,11 +10,11 @@ from django.db import migrations
 
 
 def backfill(apps: Any, schema_editor: Any) -> None:
-    Player = apps.get_model("server", "Player")  # noqa: N806
-    Season = apps.get_model("server", "Season")  # noqa: N806
-    ServiceRequest = apps.get_model("server", "ServiceRequest")  # noqa: N806
-    SponsorshipGrant = apps.get_model("server", "SponsorshipGrant")  # noqa: N806
-    Subscription = apps.get_model("server", "Subscription")  # noqa: N806
+    Player = apps.get_model("server", "Player")
+    Season = apps.get_model("server", "Season")
+    ServiceRequest = apps.get_model("server", "ServiceRequest")
+    SponsorshipGrant = apps.get_model("server", "SponsorshipGrant")
+    Subscription = apps.get_model("server", "Subscription")
 
     def season_for(day: Any) -> Any:
         return (
