@@ -83,9 +83,11 @@ def _row(player: Player, reason: Reason | None, history: History, on_list: bool)
         "last_event": last[1] if last else None,
         "events": len(last[2]) if last else 0,
         "on_list": on_list,
-        "hint": None
-        if reason is None
-        else {"code": reason.code, "kind": reason.kind, "text": text or reason.text},
+        "hint": (
+            None
+            if reason is None
+            else {"code": reason.code, "kind": reason.kind, "text": text or reason.text}
+        ),
         "button": None if on_list else button,
     }
 
@@ -161,9 +163,11 @@ def candidate_payload(
             else Reason(
                 "blocked.self_subscription",
                 "blocked",
-                "Needs a subscription"
-                if error["message"] == "Subscription missing"
-                else error["message"],
+                (
+                    "Needs a subscription"
+                    if error["message"] == "Subscription missing"
+                    else error["message"]
+                ),
             )
         )
     return {

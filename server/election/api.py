@@ -721,7 +721,7 @@ def get_election_vote_count(request: HttpRequest, election_id: int) -> dict[str,
     return {
         "total_eligible": total_eligible,
         "total_voted": total_voted,
-        "turnout_percentage": round((total_voted / total_eligible * 100), 1)
-        if total_eligible > 0
-        else 0,
+        "turnout_percentage": (
+            round((total_voted / total_eligible * 100), 1) if total_eligible > 0 else 0
+        ),
     }

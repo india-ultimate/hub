@@ -31,9 +31,7 @@ def upload_error(file: UploadedFile) -> str:
             limit = (
                 MAX_CLOUDINARY_PIXELS
                 if image.format in UNSHRUNK_FORMATS
-                else MAX_TRANSPARENT_PIXELS
-                if image.mode in {"RGBA", "LA", "PA"}
-                else MAX_PIXELS
+                else MAX_TRANSPARENT_PIXELS if image.mode in {"RGBA", "LA", "PA"} else MAX_PIXELS
             )
             pixels = image.width * image.height
     except Image.DecompressionBombError:

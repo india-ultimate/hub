@@ -44,9 +44,7 @@ def save_round_results(
         status = (
             "winner"
             if candidate in round_winners
-            else "eliminated"
-            if candidate in round_result.eliminated
-            else "active"
+            else "eliminated" if candidate in round_result.eliminated else "active"
         )
         ElectionResult.objects.create(
             election_id=election_id,

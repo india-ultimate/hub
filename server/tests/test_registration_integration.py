@@ -325,24 +325,20 @@ class TestRegistrationIntegration(RegistrationPageCase):
         # Its first fetch stays inside the dialog: the page doesn't suspend
         # and drop it out of the top layer.
         self.assertTrue(
-            self.execute_script(
-                """return document.querySelector('dialog[aria-label="Add players"]')
-                .matches(":modal")"""
-            )
+            self.execute_script("""return document.querySelector('dialog[aria-label="Add players"]')
+                .matches(":modal")""")
         )
         self.assert_text(self.team.name, "h1")
         self.assert_element_absent('button[aria-label="Add Lata Full"]')
         self.click(f'{ADD_DIALOG}//button[text()="Done"]')
 
-        greyed = self.execute_script(
-            """
+        greyed = self.execute_script("""
             return Array.from(document.querySelectorAll('[aria-disabled="true"]')).map(el => {
               const id = el.getAttribute("aria-describedby");
               const reason = id && document.getElementById(id);
               return [el.textContent.trim(), reason ? reason.textContent.trim() : ""];
             });
-            """
-        )
+            """)
         reasons = dict(greyed)
         self.assertEqual(len(greyed), len(reasons), greyed)
         for label, reason in greyed:

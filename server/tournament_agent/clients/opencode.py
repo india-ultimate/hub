@@ -159,9 +159,11 @@ def to_openai_messages(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
                             "type": "function",
                             "function": {
                                 "name": tc.get("name") or "",
-                                "arguments": tc.get("arguments")
-                                if isinstance(tc.get("arguments"), str)
-                                else json.dumps(tc.get("arguments") or {}),
+                                "arguments": (
+                                    tc.get("arguments")
+                                    if isinstance(tc.get("arguments"), str)
+                                    else json.dumps(tc.get("arguments") or {})
+                                ),
                             },
                         }
                     )

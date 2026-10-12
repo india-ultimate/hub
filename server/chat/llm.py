@@ -1128,19 +1128,25 @@ Available Tools:
                 "end_date": subscription.end_date.isoformat(),
                 "is_active": subscription.is_active,
                 "waiver_valid": subscription.waiver_valid,
-                "waiver_signed_at": subscription.waiver_signed_at.isoformat()
-                if subscription.waiver_signed_at
-                else None,
-                "waiver_signed_by": subscription.waiver_signed_by.get_full_name()
-                if subscription.waiver_signed_by
-                else None,
+                "waiver_signed_at": (
+                    subscription.waiver_signed_at.isoformat()
+                    if subscription.waiver_signed_at
+                    else None
+                ),
+                "waiver_signed_by": (
+                    subscription.waiver_signed_by.get_full_name()
+                    if subscription.waiver_signed_by
+                    else None
+                ),
                 "coc_agreed": subscription.coc_agreed,
-                "coc_agreed_at": subscription.coc_agreed_at.isoformat()
-                if subscription.coc_agreed_at
-                else None,
-                "coc_agreed_by": subscription.coc_agreed_by.get_full_name()
-                if subscription.coc_agreed_by
-                else None,
+                "coc_agreed_at": (
+                    subscription.coc_agreed_at.isoformat() if subscription.coc_agreed_at else None
+                ),
+                "coc_agreed_by": (
+                    subscription.coc_agreed_by.get_full_name()
+                    if subscription.coc_agreed_by
+                    else None
+                ),
                 "season": subscription.season.name,
                 "event": subscription.event.name if subscription.event else None,
             }
@@ -1567,65 +1573,79 @@ Available Tools:
             {
                 "id": match.id,
                 "tournament": {"id": match.tournament.id, "title": match.tournament.event.title},
-                "team_1": {
-                    "id": match.team_1.id,
-                    "name": match.team_1.name,
-                    "score": match.team_1_score,
-                }
-                if hasattr(match, "team_1") and match.team_1 is not None
-                else None,
-                "team_2": {
-                    "id": match.team_2.id,
-                    "name": match.team_2.name,
-                    "score": match.team_2_score,
-                }
-                if hasattr(match, "team_2") and match.team_2 is not None
-                else None,
-                "field": {
-                    "id": match.field.id,
-                    "name": match.field.name,
-                    "location": match.field.location,
-                }
-                if match.field
-                else None,
+                "team_1": (
+                    {
+                        "id": match.team_1.id,
+                        "name": match.team_1.name,
+                        "score": match.team_1_score,
+                    }
+                    if hasattr(match, "team_1") and match.team_1 is not None
+                    else None
+                ),
+                "team_2": (
+                    {
+                        "id": match.team_2.id,
+                        "name": match.team_2.name,
+                        "score": match.team_2_score,
+                    }
+                    if hasattr(match, "team_2") and match.team_2 is not None
+                    else None
+                ),
+                "field": (
+                    {
+                        "id": match.field.id,
+                        "name": match.field.name,
+                        "location": match.field.location,
+                    }
+                    if match.field
+                    else None
+                ),
                 "spirit_score": match.spirit_score,
                 "start_time": match.time.isoformat() if match.time else None,
                 "duration_mins": match.duration_mins,
                 "status": match.get_status_display(),
-                "pool": {
-                    "id": match.pool.id,
-                    "name": match.pool.name,
-                    "sequence_number": match.pool.sequence_number,
-                    "initial_seeding": match.pool.initial_seeding,
-                    "results": match.pool.results,
-                }
-                if match.pool
-                else None,
-                "bracket": {
-                    "id": match.bracket.id,
-                    "name": match.bracket.name,
-                    "sequence_number": match.bracket.sequence_number,
-                    "initial_seeding": match.bracket.initial_seeding,
-                    "current_seeding": match.bracket.current_seeding,
-                }
-                if match.bracket
-                else None,
-                "cross_pool": {
-                    "id": match.cross_pool.id,
-                    "initial_seeding": match.cross_pool.initial_seeding,
-                    "current_seeding": match.cross_pool.current_seeding,
-                }
-                if match.cross_pool
-                else None,
-                "position_pool": {
-                    "id": match.position_pool.id,
-                    "name": match.position_pool.name,
-                    "sequence_number": match.position_pool.sequence_number,
-                    "initial_seeding": match.position_pool.initial_seeding,
-                    "results": match.position_pool.results,
-                }
-                if match.position_pool
-                else None,
+                "pool": (
+                    {
+                        "id": match.pool.id,
+                        "name": match.pool.name,
+                        "sequence_number": match.pool.sequence_number,
+                        "initial_seeding": match.pool.initial_seeding,
+                        "results": match.pool.results,
+                    }
+                    if match.pool
+                    else None
+                ),
+                "bracket": (
+                    {
+                        "id": match.bracket.id,
+                        "name": match.bracket.name,
+                        "sequence_number": match.bracket.sequence_number,
+                        "initial_seeding": match.bracket.initial_seeding,
+                        "current_seeding": match.bracket.current_seeding,
+                    }
+                    if match.bracket
+                    else None
+                ),
+                "cross_pool": (
+                    {
+                        "id": match.cross_pool.id,
+                        "initial_seeding": match.cross_pool.initial_seeding,
+                        "current_seeding": match.cross_pool.current_seeding,
+                    }
+                    if match.cross_pool
+                    else None
+                ),
+                "position_pool": (
+                    {
+                        "id": match.position_pool.id,
+                        "name": match.position_pool.name,
+                        "sequence_number": match.position_pool.sequence_number,
+                        "initial_seeding": match.position_pool.initial_seeding,
+                        "results": match.position_pool.results,
+                    }
+                    if match.position_pool
+                    else None
+                ),
             }
             for match in matches
         ]
@@ -1688,36 +1708,46 @@ Available Tools:
                             {"id": player.id, "name": player.user.get_full_name()}
                             for player in event.players.all()
                         ],
-                        "scored_by": {
-                            "id": event.scored_by.id,
-                            "name": event.scored_by.user.get_full_name(),
-                        }
-                        if event.scored_by
-                        else None,
-                        "assisted_by": {
-                            "id": event.assisted_by.id,
-                            "name": event.assisted_by.user.get_full_name(),
-                        }
-                        if event.assisted_by
-                        else None,
-                        "drop_by": {
-                            "id": event.drop_by.id,
-                            "name": event.drop_by.user.get_full_name(),
-                        }
-                        if event.drop_by
-                        else None,
-                        "throwaway_by": {
-                            "id": event.throwaway_by.id,
-                            "name": event.throwaway_by.user.get_full_name(),
-                        }
-                        if event.throwaway_by
-                        else None,
-                        "block_by": {
-                            "id": event.block_by.id,
-                            "name": event.block_by.user.get_full_name(),
-                        }
-                        if event.block_by
-                        else None,
+                        "scored_by": (
+                            {
+                                "id": event.scored_by.id,
+                                "name": event.scored_by.user.get_full_name(),
+                            }
+                            if event.scored_by
+                            else None
+                        ),
+                        "assisted_by": (
+                            {
+                                "id": event.assisted_by.id,
+                                "name": event.assisted_by.user.get_full_name(),
+                            }
+                            if event.assisted_by
+                            else None
+                        ),
+                        "drop_by": (
+                            {
+                                "id": event.drop_by.id,
+                                "name": event.drop_by.user.get_full_name(),
+                            }
+                            if event.drop_by
+                            else None
+                        ),
+                        "throwaway_by": (
+                            {
+                                "id": event.throwaway_by.id,
+                                "name": event.throwaway_by.user.get_full_name(),
+                            }
+                            if event.throwaway_by
+                            else None
+                        ),
+                        "block_by": (
+                            {
+                                "id": event.block_by.id,
+                                "name": event.block_by.user.get_full_name(),
+                            }
+                            if event.block_by
+                            else None
+                        ),
                     }
                     for event in stat.events.all()
                 ],
@@ -1790,30 +1820,40 @@ Available Tools:
                     {"id": player.id, "name": player.user.get_full_name()}
                     for player in event.players.all()
                 ],
-                "scored_by": {
-                    "id": event.scored_by.id,
-                    "name": event.scored_by.user.get_full_name(),
-                }
-                if event.scored_by
-                else None,
-                "assisted_by": {
-                    "id": event.assisted_by.id,
-                    "name": event.assisted_by.user.get_full_name(),
-                }
-                if event.assisted_by
-                else None,
-                "drop_by": {"id": event.drop_by.id, "name": event.drop_by.user.get_full_name()}
-                if event.drop_by
-                else None,
-                "throwaway_by": {
-                    "id": event.throwaway_by.id,
-                    "name": event.throwaway_by.user.get_full_name(),
-                }
-                if event.throwaway_by
-                else None,
-                "block_by": {"id": event.block_by.id, "name": event.block_by.user.get_full_name()}
-                if event.block_by
-                else None,
+                "scored_by": (
+                    {
+                        "id": event.scored_by.id,
+                        "name": event.scored_by.user.get_full_name(),
+                    }
+                    if event.scored_by
+                    else None
+                ),
+                "assisted_by": (
+                    {
+                        "id": event.assisted_by.id,
+                        "name": event.assisted_by.user.get_full_name(),
+                    }
+                    if event.assisted_by
+                    else None
+                ),
+                "drop_by": (
+                    {"id": event.drop_by.id, "name": event.drop_by.user.get_full_name()}
+                    if event.drop_by
+                    else None
+                ),
+                "throwaway_by": (
+                    {
+                        "id": event.throwaway_by.id,
+                        "name": event.throwaway_by.user.get_full_name(),
+                    }
+                    if event.throwaway_by
+                    else None
+                ),
+                "block_by": (
+                    {"id": event.block_by.id, "name": event.block_by.user.get_full_name()}
+                    if event.block_by
+                    else None
+                ),
             }
             for event in events
         ]
@@ -1834,22 +1874,28 @@ Available Tools:
                     "is_player": bool(player),
                     "is_team_admin": bool(team_admin),
                 },
-                "player": {
-                    "id": player.id,
-                    "teams": [{"id": team.id, "name": team.name} for team in player.teams.all()],
-                    "subscription": {
-                        "is_active": player.current_subscription is not None
-                        and player.current_subscription.is_active,
-                    },
-                }
-                if player is not None
-                else None,
-                "team_admin": {
-                    "id": team_admin.id,
-                    "name": team_admin.name,
-                }
-                if team_admin
-                else None,
+                "player": (
+                    {
+                        "id": player.id,
+                        "teams": [
+                            {"id": team.id, "name": team.name} for team in player.teams.all()
+                        ],
+                        "subscription": {
+                            "is_active": player.current_subscription is not None
+                            and player.current_subscription.is_active,
+                        },
+                    }
+                    if player is not None
+                    else None
+                ),
+                "team_admin": (
+                    {
+                        "id": team_admin.id,
+                        "name": team_admin.name,
+                    }
+                    if team_admin
+                    else None
+                ),
             }
         except Exception as e:
             return {"error": str(e)}
