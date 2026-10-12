@@ -2,7 +2,11 @@ import { Icon } from "solid-heroicons";
 import { chevronDown } from "solid-heroicons/solid-mini";
 
 export const AccordionDownIcon = () => (
-  <Icon data-accordion-icon path={chevronDown} style={{ width: "24px" }} />
+  <Icon
+    path={chevronDown}
+    aria-hidden="true"
+    class="h-6 w-6 shrink-0 transition-transform duration-200 group-open:rotate-180 motion-reduce:transition-none"
+  />
 );
 
 export const Spinner = props => (

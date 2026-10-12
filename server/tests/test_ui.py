@@ -267,7 +267,7 @@ class TestIntegration(BaseCase):
         self.click("button#password-tab")
         self.type("input#email", username)
         self.type("input#current-password", f"{password}\n")
-        self.assert_element("h2#accordion-heading-actions")
+        self.assert_element("summary#accordion-heading-actions")
         self.assert_element('a[href="/registration/me"]')
         print("Successfully logged in!")
 
@@ -320,12 +320,12 @@ class TestIntegration(BaseCase):
         self.click('button:contains("I Agree")')
 
         self.click("#my-account")
-        self.assert_element("div#accordion-body-player div div table tbody tr:nth-of-type(7)")
-        self.assert_element("div#accordion-body-player div div table tbody tr:nth-of-type(8)")
-        self.assert_element("div#accordion-body-player div div table tbody tr:nth-of-type(9)")
+        self.assert_element("div#accordion-body-player table tbody tr:nth-of-type(7)")
+        self.assert_element("div#accordion-body-player table tbody tr:nth-of-type(8)")
+        self.assert_element("div#accordion-body-player table tbody tr:nth-of-type(9)")
 
-        self.click("h2#accordion-heading-transactions")
-        self.assert_element("h2#accordion-heading-transactions")
+        self.click("summary#accordion-heading-transactions")
+        self.assert_element("summary#accordion-heading-transactions")
 
     # Breaks if: the page stops reading tiers from /api/seasons/{id}/plans,
     # drops a tier, or stops showing the IU ID.
@@ -415,7 +415,7 @@ class TestIntegration(BaseCase):
         self.open(DJANGO_URL)
         self.click_link("Login")
         self.sign_in_with_otp(username)
-        self.assert_element("h2#accordion-heading-actions")
+        self.assert_element("summary#accordion-heading-actions")
         self.assert_element('a[href="/registration/me"]')
 
         print("Successfully logged in!")
@@ -574,7 +574,7 @@ class TestIntegration(BaseCase):
 
         # Nothing is waiting any more.
         self.open(f"{APP_URL}/dashboard")
-        self.assert_element("h2#accordion-heading-actions")
+        self.assert_element("summary#accordion-heading-actions")
         self.assert_element_not_present("div#merge-groups-notice")
 
         # The absorbed address still signs in, to the kept account. A fresh
@@ -584,7 +584,7 @@ class TestIntegration(BaseCase):
         self.open(DJANGO_URL)
         self.open(f"{APP_URL}/login")
         self.sign_in_with_otp(other.email)
-        self.assert_element("h2#accordion-heading-actions")
+        self.assert_element("summary#accordion-heading-actions")
         self.assertFalse(User.objects.filter(username=other.email).exists())
         self.assertEqual(User.objects.filter(first_name="Rahul").count(), 1)
         print("Merged three accounts end to end!")
@@ -600,7 +600,7 @@ class TestIntegration(BaseCase):
         # Dismissing now needs a signed-in member, so sign in first.
         self.open(f"{APP_URL}/login")
         self.sign_in_with_otp(keep.email)
-        self.assert_element("h2#accordion-heading-actions")
+        self.assert_element("summary#accordion-heading-actions")
 
         self.open(f"{APP_URL}/merge-accounts/{mine.claim_token}")
         # The irreversible warning now lives in the merge dialog, not here.
@@ -634,12 +634,12 @@ class TestIntegration(BaseCase):
 
         self.open(f"{APP_URL}/login")
         self.sign_in_with_otp(keep.email)
-        self.assert_element("h2#accordion-heading-actions")
+        self.assert_element("summary#accordion-heading-actions")
 
         self.open(f"{APP_URL}/dashboard")
         # Both duplicate accounts already have a player profile, so this
         # accordion section starts collapsed.
-        self.click("h2#accordion-heading-actions")
+        self.click("summary#accordion-heading-actions")
         self.click("a#merge-request-link")
         self.assert_element("div#merge-request-keeper")
         # Nothing to say here: the reason is asked for on the merge page, and
@@ -988,7 +988,7 @@ class TestIntegration(BaseCase):
         self.open(DJANGO_URL)
         self.open(f"{APP_URL}/login")
         self.sign_in_with_otp(o1.email)
-        self.assert_element("h2#accordion-heading-actions")
+        self.assert_element("summary#accordion-heading-actions")
         self.assertEqual(User.objects.count(), users)
         self.assertFalse(User.objects.filter(username=o1.email).exists())
 

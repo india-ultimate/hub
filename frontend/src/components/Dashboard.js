@@ -1,12 +1,10 @@
 import { supported } from "@github/webauthn-json/browser-ponyfill";
 import { A } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
-import { initFlowbite } from "flowbite";
 import { Icon } from "solid-heroicons";
 import { camera, star } from "solid-heroicons/solid";
 import { createEffect, createSignal, For, Show } from "solid-js";
 
-import { AccordionDownIcon } from "../icons";
 import {
   fetchMine,
   fetchUserRegistrations,
@@ -17,6 +15,7 @@ import { useStore } from "../store";
 import { MAX_CLOUDINARY_PIXELS, uploadError as checkUpload } from "../uploads";
 import { registerPasskey, showPlayerStatus } from "../utils";
 import { getCookie } from "../utils";
+import Accordion from "./Accordion";
 import IUIDBadge from "./IUIDBadge";
 import Player from "./Player";
 import ReceiptList from "./receipts/ReceiptList";
@@ -148,8 +147,6 @@ const Actions = props => {
     if (response.error) {
       props.setError(response.error);
     }
-
-    initFlowbite();
   };
 
   return (
@@ -370,308 +367,176 @@ const Dashboard = () => {
           </A>
         </div>
       </Show>
-      <div
-        id="accordion-flush"
-        data-accordion="collapse"
-        data-active-classes="bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
-        data-inactive-classes="text-gray-500 dark:text-gray-400"
-      >
+      <div id="accordion-flush">
         <Show when={store.data.player}>
-          <h2 id="accordion-heading-player">
-            <button
-              type="button"
-              class="flex w-full items-center justify-between border-b border-gray-200 py-5 text-left font-medium text-gray-500 dark:border-gray-700 dark:text-gray-400"
-              data-accordion-target="#accordion-body-player"
-              aria-expanded="true"
-              aria-controls="accordion-body-player"
-            >
-              <span>Player Information: {store.data.player.full_name} </span>
-              <span class="flex">
-                {showPlayerStatus(store.data.player)}
-
-                <AccordionDownIcon />
-              </span>
-            </button>
-          </h2>
-          <div
-            id="accordion-body-player"
-            class="hidden"
-            aria-labelledby="accordion-heading-player"
+          <Accordion
+            group="dashboard"
+            id="player"
+            title={<>Player Information: {store.data.player.full_name}</>}
+            badge={showPlayerStatus(store.data.player)}
+            open
           >
-            <div class="border-b border-gray-200 py-5 dark:border-gray-700">
-              <ProfilePicture
-                player={store.data.player}
-                onUpdate={updatedPlayer => {
-                  setPlayerById(updatedPlayer);
-                }}
-              />
-              <Player player={store.data.player} />
-            </div>
-          </div>
+            <ProfilePicture
+              player={store.data.player}
+              onUpdate={updatedPlayer => {
+                setPlayerById(updatedPlayer);
+              }}
+            />
+            <Player player={store.data.player} />
+          </Accordion>
         </Show>
         <Show when={store.data.wards}>
           <For each={store.data.wards}>
             {ward => (
-              <>
-                <h2 id={`accordion-heading-ward-${ward.id}`}>
-                  <button
-                    type="button"
-                    class="flex w-full items-center justify-between border-b border-gray-200 py-5 text-left font-medium text-gray-500 dark:border-gray-700 dark:text-gray-400"
-                    data-accordion-target={`#accordion-body-ward-${ward.id}`}
-                    aria-expanded={store?.data?.player ? "false" : "true"}
-                    aria-controls={`accordion-body-ward-${ward.id}`}
-                  >
-                    <span>Player Information: {ward.full_name} </span>
-                    <span class="flex">
-                      {showPlayerStatus(store.data.player)}
-                      <AccordionDownIcon />
-                    </span>
-                  </button>
-                </h2>
-                <div
-                  id={`accordion-body-ward-${ward.id}`}
-                  class="hidden"
-                  aria-labelledby={`accordion-heading-ward-${ward.id}`}
-                >
-                  <div class="border-b border-gray-200 py-5 dark:border-gray-700">
-                    <Player player={ward} />
-                  </div>
-                </div>
-              </>
+              <Accordion
+                group="dashboard"
+                id={`ward-${ward.id}`}
+                title={<>Player Information: {ward.full_name}</>}
+                badge={showPlayerStatus(store.data.player)}
+                open={!store?.data?.player}
+              >
+                <Player player={ward} />
+              </Accordion>
             )}
           </For>
         </Show>
-        <h2 id="accordion-heading-actions">
-          <button
-            type="button"
-            class="flex w-full items-center justify-between border-b border-gray-200 py-5 text-left font-medium text-gray-500 dark:border-gray-700 dark:text-gray-400"
-            data-accordion-target="#accordion-body-actions"
-            aria-expanded={
-              store?.data?.player || store?.data?.wards?.length > 0
-                ? "false"
-                : "true"
-            }
-            aria-controls="accordion-body-actions"
-          >
-            <span>User Actions</span>
-            <AccordionDownIcon />
-          </button>
-        </h2>
-        <div
-          id="accordion-body-actions"
-          class="hidden"
-          aria-labelledby="accordion-heading-actions"
+        <Accordion
+          group="dashboard"
+          id="actions"
+          title={<>User Actions</>}
+          open={!store?.data?.player && !(store?.data?.wards?.length > 0)}
         >
-          <div class="border-b border-gray-200 py-5 dark:border-gray-700">
-            <Actions
-              player={store.data.player}
-              paymentAccounts={store.data.payment_accounts}
-              setSuccess={setSuccess}
-              setError={setError}
-            />
-          </div>
-        </div>
-        <h2 id="accordion-heading-registrations">
-          <button
-            type="button"
-            class="flex w-full items-center justify-between border-b border-gray-200 py-5 text-left font-medium text-gray-500 dark:border-gray-700 dark:text-gray-400"
-            data-accordion-target="#accordion-body-registrations"
-            aria-expanded="false"
-            aria-controls="accordion-body-registrations"
-          >
-            <span>Performance Points</span>
-            <span class="flex">
-              <p class="mr-2 inline-flex items-center rounded bg-blue-600 p-1.5 text-sm font-semibold text-white dark:bg-blue-200 dark:text-blue-800">
-                <Icon path={star} class="mr-1 h-4" />
-                {performancePoints() || 0}
-              </p>
-              <AccordionDownIcon />
-            </span>
-          </button>
-        </h2>
-        <div
-          id="accordion-body-registrations"
-          class="hidden"
-          aria-labelledby="accordion-heading-registrations"
-        >
-          <div class="border-b border-gray-200 py-5 dark:border-gray-700">
-            <p class="mb-4 text-sm italic">
-              The list of tournaments you've participated in and the points you
-              earned based on your team's final rankings
+          <Actions
+            player={store.data.player}
+            paymentAccounts={store.data.payment_accounts}
+            setSuccess={setSuccess}
+            setError={setError}
+          />
+        </Accordion>
+        <Accordion
+          group="dashboard"
+          id="registrations"
+          title={<>Performance Points</>}
+          badge={
+            <p class="inline-flex items-center rounded bg-blue-600 p-1.5 text-sm font-semibold text-white dark:bg-blue-200 dark:text-blue-800">
+              <Icon path={star} class="mr-1 h-4" />
+              {performancePoints() || 0}
             </p>
+          }
+        >
+          <p class="mb-4 text-sm italic">
+            The list of tournaments you've participated in and the points you
+            earned based on your team's final rankings
+          </p>
 
-            <ul class="max-w-md divide-y divide-gray-200 dark:divide-gray-700">
-              <For
-                each={userRegistrationsQuery.data?.filter(reg => reg.points)}
-                fallback={
-                  <li class="py-3 sm:py-4">
-                    <div class="w-full text-sm font-semibold">
-                      No tournaments to show!
-                    </div>
-                  </li>
-                }
-              >
-                {reg => (
-                  <li class="py-3 sm:py-4">
-                    <div class="flex items-center space-x-4 rtl:space-x-reverse">
-                      <div class="flex-shrink-0">
-                        <img
-                          class="h-10 w-10 rounded-full"
-                          src={reg.team.image ?? reg.team.image_url}
-                          alt="logo"
-                        />
-                      </div>
-                      <div class="min-w-0 flex-1">
-                        <p class="truncate text-sm font-medium text-gray-900 dark:text-white">
-                          {reg.team.name}
-                        </p>
-                        <p class="truncate text-sm text-gray-500 dark:text-gray-400">
-                          {reg.event_name}
-                        </p>
-                        <Show when={reg.series_name}>
-                          <p class="truncate text-xs text-gray-500 dark:text-gray-400">
-                            {reg.series_name}
-                          </p>
-                        </Show>
-                      </div>
-                      <div class="inline-flex items-center rounded bg-blue-100 p-1.5 text-sm font-semibold text-blue-800">
-                        <Icon path={star} class="mr-1 h-4" /> {reg.points}
-                      </div>
-                    </div>
-                  </li>
-                )}
-              </For>
-            </ul>
-
-            <div
-              class="my-2 rounded-lg bg-blue-50 p-4 text-sm text-blue-600"
-              role="alert"
+          <ul class="max-w-md divide-y divide-gray-200 dark:divide-gray-700">
+            <For
+              each={userRegistrationsQuery.data?.filter(reg => reg.points)}
+              fallback={
+                <li class="py-3 sm:py-4">
+                  <div class="w-full text-sm font-semibold">
+                    No tournaments to show!
+                  </div>
+                </li>
+              }
             >
-              <details>
-                <summary>How are the points calculated?</summary>
-                <div class="mt-4 space-y-2">
-                  <ol class="mt-2 list-decimal space-y-1 pl-5 text-sm">
-                    <li>Points are calculated based on the team's finish.</li>
-                    <li>
-                      Base Points is 20. Which means the last finishing team
-                      will get 20 points.
-                    </li>
-                    <li>
-                      Every other team from the bottom will get the additional
-                      points(upto 80 for max points of 100) in a linear format
-                      based on the number of teams.
-                    </li>
-                    <li>
-                      Example: With a tournament of 5 teams, the points for last
-                      to first team would be 20, 40, 60, 80 and 100
-                      respectively.
-                    </li>
-                  </ol>
-                </div>
-              </details>
-            </div>
+              {reg => (
+                <li class="py-3 sm:py-4">
+                  <div class="flex items-center space-x-4 rtl:space-x-reverse">
+                    <div class="flex-shrink-0">
+                      <img
+                        class="h-10 w-10 rounded-full"
+                        src={reg.team.image ?? reg.team.image_url}
+                        alt="logo"
+                      />
+                    </div>
+                    <div class="min-w-0 flex-1">
+                      <p class="truncate text-sm font-medium text-gray-900 dark:text-white">
+                        {reg.team.name}
+                      </p>
+                      <p class="truncate text-sm text-gray-500 dark:text-gray-400">
+                        {reg.event_name}
+                      </p>
+                      <Show when={reg.series_name}>
+                        <p class="truncate text-xs text-gray-500 dark:text-gray-400">
+                          {reg.series_name}
+                        </p>
+                      </Show>
+                    </div>
+                    <div class="inline-flex items-center rounded bg-blue-100 p-1.5 text-sm font-semibold text-blue-800">
+                      <Icon path={star} class="mr-1 h-4" /> {reg.points}
+                    </div>
+                  </div>
+                </li>
+              )}
+            </For>
+          </ul>
+
+          <div
+            class="my-2 rounded-lg bg-blue-50 p-4 text-sm text-blue-600"
+            role="alert"
+          >
+            <details>
+              <summary class="cursor-pointer py-2 focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-300">
+                How are the points calculated?
+              </summary>
+              <div class="mt-4 space-y-2">
+                <ol class="mt-2 list-decimal space-y-1 pl-5 text-sm">
+                  <li>Points are calculated based on the team's finish.</li>
+                  <li>
+                    Base Points is 20. Which means the last finishing team will
+                    get 20 points.
+                  </li>
+                  <li>
+                    Every other team from the bottom will get the additional
+                    points(upto 80 for max points of 100) in a linear format
+                    based on the number of teams.
+                  </li>
+                  <li>
+                    Example: With a tournament of 5 teams, the points for last
+                    to first team would be 20, 40, 60, 80 and 100 respectively.
+                  </li>
+                </ol>
+              </div>
+            </details>
           </div>
-        </div>
+        </Accordion>
         <Show
           when={
             !store.data.is_staff &&
             (store.data.directed_tournament_ids || []).length > 0
           }
         >
-          <h2 id="accordion-heading-director">
-            <button
-              type="button"
-              class="flex w-full items-center justify-between border-b border-gray-200 py-5 text-left font-medium text-gray-500 dark:border-gray-700 dark:text-gray-400"
-              data-accordion-target="#accordion-body-director"
-              aria-expanded="false"
-              aria-controls="accordion-body-director"
-            >
-              <span>Tournament director</span>
-              <AccordionDownIcon />
-            </button>
-          </h2>
-          <div
-            id="accordion-body-director"
-            class="hidden"
-            aria-labelledby="accordion-heading-director"
+          <Accordion
+            group="dashboard"
+            id="director"
+            title={<>Tournament director</>}
           >
-            <div class="border-b border-gray-200 py-5 dark:border-gray-700">
-              <div class="w-full text-sm font-medium text-gray-900 dark:text-white">
-                <A
-                  href="/tournament-manager"
-                  class="block w-full cursor-pointer border-b border-gray-200 px-4 py-2 hover:bg-gray-100 hover:text-blue-700 focus:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 dark:border-gray-600 dark:hover:bg-gray-600 dark:hover:text-white dark:focus:text-white dark:focus:ring-gray-500"
-                >
-                  Manage Tournament
-                </A>
-              </div>
+            <div class="w-full text-sm font-medium text-gray-900 dark:text-white">
+              <A
+                href="/tournament-manager"
+                class="block min-h-[44px] w-full cursor-pointer border-b border-gray-200 px-4 py-2 hover:bg-gray-100 hover:text-blue-700 focus:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 dark:border-gray-600 dark:hover:bg-gray-600 dark:hover:text-white dark:focus:text-white dark:focus:ring-gray-500"
+              >
+                Manage Tournament
+              </A>
             </div>
-          </div>
+          </Accordion>
         </Show>
         <Show when={store.data.is_staff}>
-          <h2 id="accordion-heading-staff">
-            <button
-              type="button"
-              class="flex w-full items-center justify-between border-b border-gray-200 py-5 text-left font-medium text-gray-500 dark:border-gray-700 dark:text-gray-400"
-              data-accordion-target="#accordion-body-staff"
-              aria-expanded="false"
-              aria-controls="accordion-body-staff"
-            >
-              <span>Staff Actions</span>
-              <AccordionDownIcon />
-            </button>
-          </h2>
-          <div
-            id="accordion-body-staff"
-            class="hidden"
-            aria-labelledby="accordion-heading-staff"
-          >
-            <div class="border-b border-gray-200 py-5 dark:border-gray-700">
-              <StaffActions player={store.data.player} />
-            </div>
-          </div>
+          <Accordion group="dashboard" id="staff" title={<>Staff Actions</>}>
+            <StaffActions player={store.data.player} />
+          </Accordion>
         </Show>
-        <h2 id="accordion-heading-receipts">
-          <button
-            type="button"
-            class="flex w-full items-center justify-between border-b border-gray-200 py-5 text-left font-medium text-gray-500 dark:border-gray-700 dark:text-gray-400"
-            data-accordion-target="#accordion-body-receipts"
-            aria-expanded="false"
-            aria-controls="accordion-body-receipts"
-          >
-            <span>Receipts</span>
-            <AccordionDownIcon />
-          </button>
-        </h2>
-        <div
-          id="accordion-body-receipts"
-          class="hidden"
-          aria-labelledby="accordion-heading-receipts"
+        <Accordion group="dashboard" id="receipts" title={<>Receipts</>}>
+          <ReceiptList />
+        </Accordion>
+        <Accordion
+          group="dashboard"
+          id="transactions"
+          title={<>Transactions</>}
         >
-          <div class="border-b border-gray-200 py-5 dark:border-gray-700">
-            <ReceiptList />
-          </div>
-        </div>
-        <h2 id="accordion-heading-transactions">
-          <button
-            type="button"
-            class="flex w-full items-center justify-between border-b border-gray-200 py-5 text-left font-medium text-gray-500 dark:border-gray-700 dark:text-gray-400"
-            data-accordion-target="#accordion-body-transactions"
-            aria-expanded="false"
-            aria-controls="accordion-body-transactions"
-          >
-            <span>Transactions</span>
-            <AccordionDownIcon />
-          </button>
-        </h2>
-        <div
-          id="accordion-body-transactions"
-          class="hidden"
-          aria-labelledby="accordion-heading-transactions"
-        >
-          <div class="border-b border-gray-200 py-5 dark:border-gray-700">
-            <TransactionList />
-          </div>
-        </div>
+          <TransactionList />
+        </Accordion>
       </div>
 
       <Show when={success()}>
@@ -696,7 +561,7 @@ const Dashboard = () => {
           <button
             type="button"
             class="-mx-1.5 -my-1.5 ms-auto inline-flex h-8 w-8 items-center justify-center rounded-lg bg-white p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-900 focus:ring-2 focus:ring-gray-300 dark:bg-gray-800 dark:text-gray-500 dark:hover:bg-gray-700 dark:hover:text-white"
-            data-dismiss-target="#toast-success"
+            onClick={() => setSuccess(false)}
             aria-label="Close"
           >
             <span class="sr-only">Close</span>
@@ -741,7 +606,7 @@ const Dashboard = () => {
           <button
             type="button"
             class="-mx-1.5 -my-1.5 ms-auto inline-flex h-8 w-8 items-center justify-center rounded-lg bg-white p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-900 focus:ring-2 focus:ring-gray-300 dark:bg-gray-800 dark:text-gray-500 dark:hover:bg-gray-700 dark:hover:text-white"
-            data-dismiss-target="#toast-danger"
+            onClick={() => setError(false)}
             aria-label="Close"
           >
             <span class="sr-only">Close</span>

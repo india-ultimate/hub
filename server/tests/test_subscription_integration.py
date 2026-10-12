@@ -597,7 +597,7 @@ class TestSubscriptionIntegration(BaseCase):
         receipt = Receipt.objects.get(transaction__user=user, kind="receipt")
         self.assertRegex(receipt.number, r"^IU/\d{4}-\d{2}/\d{5}$")
         self.open(f"{APP_URL}/dashboard")
-        self.click('button:contains("Receipts")')
+        self.click("summary#accordion-heading-receipts")
         self.assert_text(receipt.number, "#accordion-body-receipts")
         self.click(f'#accordion-body-receipts a[href="/receipts/{receipt.pk}"]')
         self.assert_element('a:contains("Download PDF")')

@@ -38,7 +38,7 @@ const RegisteredPlayerList = () => {
   });
 
   return (
-    <div id="accordion-collapse" data-accordion="collapse">
+    <div>
       <h2
         class="text-4xl font-bold text-blue-500"
         id="accordion-collapse-heading-1"
