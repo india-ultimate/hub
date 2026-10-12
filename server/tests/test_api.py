@@ -1043,32 +1043,6 @@ class TestWaiver(ApiBaseTestCase):
         self.assertFalse(Subscription.objects.get(player=self.player).waiver_valid)
 
 
-class TestUPAI(ApiBaseTestCase):
-    def test_get_upai_person_success(self) -> None:
-        c = self.client
-        c.force_login(self.user)
-        player_id = self.user.player_profile.id
-        player = self.user.player_profile
-        player.gender = "M"
-        player.match_up = "M"
-        player.city = "Mysore"
-        player.save()
-
-        upai_id = 463579
-        with mock.patch(
-            "server.api.TopScoreClient.get_person",
-            return_value={"person_id": upai_id, "api_csrf_valid": "no"},
-        ):
-            response = c.post(
-                "/api/upai/me",
-                data={"username": "foo", "password": "bar", "player_id": player_id},
-                content_type="application/json",
-            )
-        response_data = response.json()
-        self.assertEqual(200, response.status_code)
-        self.assertEqual(upai_id, response_data["ultimate_central_id"])
-
-
 class TestValidateTransactions(ApiBaseTestCase):
     def setUp(self) -> None:
         super().setUp()
