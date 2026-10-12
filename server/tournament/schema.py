@@ -68,6 +68,46 @@ class TournamentMinSchema(ModelSchema):
         model_exclude = ["volunteers", "directors"]
 
 
+class SeriesNameSchema(Schema):
+    name: str
+
+
+class TournamentCardEventSchema(ModelSchema):
+    series: SeriesNameSchema | None
+
+    class Config:
+        model = Event
+        model_fields = [
+            "id",
+            "title",
+            "type",
+            "slug",
+            "location",
+            "start_date",
+            "end_date",
+            "team_registration_start_date",
+            "team_registration_end_date",
+            "team_partial_registration_end_date",
+            "team_late_penalty_end_date",
+            "player_registration_start_date",
+            "player_registration_end_date",
+            "player_late_penalty_end_date",
+        ]
+
+
+class TournamentCardSchema(ModelSchema):
+    event: TournamentCardEventSchema
+
+    class Config:
+        model = Tournament
+        model_fields = ["id", "status", "logo_light", "logo_dark"]
+
+
+class TournamentCardsSchema(Schema):
+    years: list[int]
+    tournaments: list[TournamentCardSchema]
+
+
 class TournamentSchema(ModelSchema):
     event: TournamentEventSchema
     teams: list[TeamMinSchema]
