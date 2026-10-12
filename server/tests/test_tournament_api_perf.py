@@ -148,6 +148,16 @@ class TestMatchLists(TournamentApiTestCase):
             f"/api/tournament/{slug}/team/{self.team_1.slug}/matches",
         ]
 
+    def test_no_query_joins_too_many_tables(self) -> None:
+        # Postgres spent 30 ms planning one 45-table join per request, on a
+        # database with two shared CPUs; on a busy day that alone starved it.
+        match = self.make_match()
+        for url in [*self.urls(), f"/api/match/{match.id}"]:
+            with CaptureQueriesContext(connection) as queries:
+                self.client.get(url)
+            joins = max(q["sql"].count(" JOIN ") for q in queries.captured_queries)
+            self.assertLessEqual(joins, 20, url)
+
     def test_queries_dont_grow_with_matches(self) -> None:
         for _ in range(2):
             self.make_match()
@@ -202,7 +212,8 @@ class TestMatchLists(TournamentApiTestCase):
         url = f"/api/match/{match.id}"
         self.assert_no_personal_data(url)
         self.assertEqual(self.team_1.slug, self.client.get(url).json()["team_1"]["slug"])
-        self.assertLess(self.count_queries(url), 4)
+        # The match, then its four spirit scores with their people.
+        self.assertEqual(5, self.count_queries(url))
 
     def test_unknown_match_keeps_its_message(self) -> None:
         response = self.client.get("/api/match/999999")
