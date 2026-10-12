@@ -6,7 +6,7 @@ from django.db.migrations.state import StateApps
 
 
 def add_player_registration_dates(apps: StateApps, schema_editor: BaseDatabaseSchemaEditor) -> None:
-    Event = apps.get_model("server", "Event")  # noqa: N806
+    Event = apps.get_model("server", "Event")
     events = Event.objects.all()
 
     for event in events:
@@ -26,7 +26,7 @@ def add_player_registration_dates(apps: StateApps, schema_editor: BaseDatabaseSc
 def remove_player_registration_dates(
     apps: StateApps, schema_editor: BaseDatabaseSchemaEditor
 ) -> None:
-    Event = apps.get_model("server", "Event")  # noqa: N806
+    Event = apps.get_model("server", "Event")
     events = Event.objects.all()
 
     for event in events:

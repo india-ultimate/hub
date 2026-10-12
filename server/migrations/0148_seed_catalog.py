@@ -22,8 +22,10 @@ TIERS = [
         False,
         1,
         [PLAY, STAFF, VOTE],
-        "Everything in Community, plus playing in NCS tournaments and State "
-        "and National Championships, and supporting the sport at a higher rate.",
+        (
+            "Everything in Community, plus playing in NCS tournaments and State "
+            "and National Championships, and supporting the sport at a higher rate."
+        ),
     ),
     (
         "regular",
@@ -31,8 +33,10 @@ TIERS = [
         False,
         2,
         [PLAY, STAFF, VOTE],
-        "Everything in Community, plus playing in NCS tournaments and State "
-        "and National Championships.",
+        (
+            "Everything in Community, plus playing in NCS tournaments and State "
+            "and National Championships."
+        ),
     ),
     (
         "discounted",
@@ -48,12 +52,14 @@ TIERS = [
         False,
         4,
         [STAFF, VOTE],
-        "For recreational players, non-playing staff and supporters of India "
-        "Ultimate. Take part in coaching certifications and workshops; vote in "
-        "state and national elections and join committees; receive letters and "
-        "certificates; get updates and content on the Hub; and contribute to "
-        "the growth of flying disc in India. Does not include playing in NCS "
-        "tournaments or State and National Championships.",
+        (
+            "For recreational players, non-playing staff and supporters of India "
+            "Ultimate. Take part in coaching certifications and workshops; vote in "
+            "state and national elections and join committees; receive letters and "
+            "certificates; get updates and content on the Hub; and contribute to "
+            "the growth of flying disc in India. Does not include playing in NCS "
+            "tournaments or State and National Championships."
+        ),
     ),
 ]
 
@@ -74,10 +80,10 @@ ON_SALE = {"Season 2026-2027"}
 
 
 def seed(apps: Any, schema_editor: Any) -> None:
-    SubscriptionType = apps.get_model("server", "SubscriptionType")  # noqa: N806
-    SubscriptionTypeScope = apps.get_model("server", "SubscriptionTypeScope")  # noqa: N806
-    SubscriptionPlan = apps.get_model("server", "SubscriptionPlan")  # noqa: N806
-    Season = apps.get_model("server", "Season")  # noqa: N806
+    SubscriptionType = apps.get_model("server", "SubscriptionType")
+    SubscriptionTypeScope = apps.get_model("server", "SubscriptionTypeScope")
+    SubscriptionPlan = apps.get_model("server", "SubscriptionPlan")
+    Season = apps.get_model("server", "Season")
 
     tiers = {}
     for slug, name, requires_grant, order, scopes, description in TIERS:

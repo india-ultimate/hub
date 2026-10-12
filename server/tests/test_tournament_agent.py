@@ -1400,12 +1400,18 @@ class ProviderStreamParsingTests(TestCase):
         lines = [
             'data: {"choices":[{"delta":{"content":"Check"}}]}',
             'data: {"choices":[{"delta":{"content":"ing pools"}}]}',
-            'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"tc_1",'
-            '"function":{"name":"list_po"}}]}}]}',
-            'data: {"choices":[{"delta":{"tool_calls":[{"index":0,'
-            '"function":{"name":"ols","arguments":"{\\"tourna"}}]}}]}',
-            'data: {"choices":[{"delta":{"tool_calls":[{"index":0,'
-            '"function":{"arguments":"ment_id\\": 7}"}}]}}]}',
+            (
+                'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"tc_1",'
+                '"function":{"name":"list_po"}}]}}]}'
+            ),
+            (
+                'data: {"choices":[{"delta":{"tool_calls":[{"index":0,'
+                '"function":{"name":"ols","arguments":"{\\"tourna"}}]}}]}'
+            ),
+            (
+                'data: {"choices":[{"delta":{"tool_calls":[{"index":0,'
+                '"function":{"arguments":"ment_id\\": 7}"}}]}}]}'
+            ),
             'data: {"choices":[{"delta":{},"finish_reason":"tool_calls"}]}',
             "data: [DONE]",
         ]
@@ -1486,16 +1492,26 @@ class ProviderStreamParsingTests(TestCase):
     def test_anthropic_stream_text_and_tool_use(self) -> None:
         lines = [
             'data: {"type":"content_block_start","index":0,"content_block":{"type":"text"}}',
-            'data: {"type":"content_block_delta","index":0,'
-            '"delta":{"type":"text_delta","text":"Making "}}',
-            'data: {"type":"content_block_delta","index":0,'
-            '"delta":{"type":"text_delta","text":"a pool"}}',
-            'data: {"type":"content_block_start","index":1,'
-            '"content_block":{"type":"tool_use","id":"tu_1","name":"propose_create_pool"}}',
-            'data: {"type":"content_block_delta","index":1,'
-            '"delta":{"type":"input_json_delta","partial_json":"{\\"name\\":"}}',
-            'data: {"type":"content_block_delta","index":1,'
-            '"delta":{"type":"input_json_delta","partial_json":"\\"A\\"}"}}',
+            (
+                'data: {"type":"content_block_delta","index":0,'
+                '"delta":{"type":"text_delta","text":"Making "}}'
+            ),
+            (
+                'data: {"type":"content_block_delta","index":0,'
+                '"delta":{"type":"text_delta","text":"a pool"}}'
+            ),
+            (
+                'data: {"type":"content_block_start","index":1,'
+                '"content_block":{"type":"tool_use","id":"tu_1","name":"propose_create_pool"}}'
+            ),
+            (
+                'data: {"type":"content_block_delta","index":1,'
+                '"delta":{"type":"input_json_delta","partial_json":"{\\"name\\":"}}'
+            ),
+            (
+                'data: {"type":"content_block_delta","index":1,'
+                '"delta":{"type":"input_json_delta","partial_json":"\\"A\\"}"}}'
+            ),
             'data: {"type":"content_block_stop","index":1}',
             'data: {"type":"message_delta","delta":{"stop_reason":"tool_use"}}',
         ]

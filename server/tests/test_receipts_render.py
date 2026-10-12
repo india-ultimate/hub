@@ -15,7 +15,7 @@ from server.transaction.models import RazorpayTransaction
 
 from .test_subscription_model import make_player
 
-UTC = datetime.timezone.utc
+UTC = datetime.UTC
 
 
 class RenderTestCase(TestCase):
@@ -152,7 +152,7 @@ class TestHtml(RenderTestCase):
             self.assertIn(text, html)
         self.assertIn(f'href="/receipts/{self.receipt.pk}"', html)
         # The receipt's Hub page lists the note; its email and PDF do not.
-        self.assertIn('href="/receipts/%d"' % note.pk, render_html(self.receipt, "page"))
+        self.assertIn(f'href="/receipts/{note.pk}"', render_html(self.receipt, "page"))
         self.assertNotIn("RF/2026-27/00007", render_html(self.receipt, "email"))
 
 
@@ -180,8 +180,8 @@ class TestImportCost(SimpleTestCase):
             "import sys, django; django.setup(); import server.receipts.render; "
             "sys.exit(1 if 'xhtml2pdf' in sys.modules else 0)"
         )
-        answer = subprocess.run(
-            [sys.executable, "-c", script],  # noqa: S603
+        answer = subprocess.run(  # noqa: S603
+            [sys.executable, "-c", script],
             env={**os.environ, "DJANGO_SETTINGS_MODULE": "hub.test_settings"},
             capture_output=True,
             text=True,

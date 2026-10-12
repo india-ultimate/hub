@@ -15,8 +15,8 @@ URL_CONF_SCRIPT = (
 
 
 def _run(script: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        [sys.executable, "-c", script],  # noqa: S603
+    return subprocess.run(  # noqa: S603
+        [sys.executable, "-c", script],
         env={**os.environ, "DJANGO_SETTINGS_MODULE": "hub.test_settings"},
         capture_output=True,
         text=True,

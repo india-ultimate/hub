@@ -16,9 +16,9 @@ def link_players_to_the_teams_they_were_rostered_on(
     history and stay, which is also why the reverse is a no-op -- afterwards
     nothing says which of the two put a given row there.
     """
-    Player = apps.get_model("server", "Player")  # noqa: N806
-    Registration = apps.get_model("server", "Registration")  # noqa: N806
-    SeriesRegistration = apps.get_model("server", "SeriesRegistration")  # noqa: N806
+    Player = apps.get_model("server", "Player")
+    Registration = apps.get_model("server", "Registration")
+    SeriesRegistration = apps.get_model("server", "SeriesRegistration")
     Link = Player.teams.through  # noqa: N806
 
     pairs = set(Registration.objects.values_list("player_id", "team_id"))

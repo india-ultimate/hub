@@ -12,13 +12,13 @@ snapshot lands in whichever phase that produced.
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 from server.tournament.models import Tournament
 from server.tournament_agent.domain.state import TournamentSnapshot
 
 
-class Phase(str, Enum):
+class Phase(StrEnum):
     NO_FIELDS = "no_fields"
     NO_STAGES = "no_stages"
     NO_SCHEDULE = "no_schedule"

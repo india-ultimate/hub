@@ -57,7 +57,7 @@ def validate_answers(form: Form, answers: dict[str, Any]) -> str | None:
         required = field.get("required", False)
         value = answers.get(key)
 
-        is_empty = value is None or value == "" or value == []
+        is_empty = value is None or value in ("", [])
         if required and is_empty:
             return f"'{label}' is required."
 

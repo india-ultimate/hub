@@ -30,8 +30,8 @@ def season_for(season_model: Any, day: Any) -> Any:
 
 def bucket_unseasoned(apps: Any, schema_editor: Any) -> None:
     """Step 2: every row with no season gets the one containing its start."""
-    Subscription = apps.get_model("server", "Subscription")  # noqa: N806
-    Season = apps.get_model("server", "Season")  # noqa: N806
+    Subscription = apps.get_model("server", "Subscription")
+    Season = apps.get_model("server", "Season")
     for subscription in Subscription.objects.filter(season__isnull=True):
         season = season_for(Season, subscription.start_date)
         if season is not None:
@@ -67,9 +67,9 @@ def _tier_for_amount(prices: dict[int, str], each: int | None, player_count: int
 
 def reconstruct_tiers(apps: Any, schema_editor: Any) -> None:
     """Step 5: read each subscription's tier back from what was paid for it."""
-    Subscription = apps.get_model("server", "Subscription")  # noqa: N806
-    SubscriptionPlan = apps.get_model("server", "SubscriptionPlan")  # noqa: N806
-    RazorpayTransaction = apps.get_model("server", "RazorpayTransaction")  # noqa: N806
+    Subscription = apps.get_model("server", "Subscription")
+    SubscriptionPlan = apps.get_model("server", "SubscriptionPlan")
+    RazorpayTransaction = apps.get_model("server", "RazorpayTransaction")
 
     plans = {
         (plan.season.name, plan.type.slug): plan
@@ -112,9 +112,9 @@ def recover_overwritten(apps: Any, schema_editor: Any) -> None:
     The row is gone, but the payment that bought it is not. These come back
     inactive: they are history, not a live subscription.
     """
-    Subscription = apps.get_model("server", "Subscription")  # noqa: N806
-    SubscriptionPlan = apps.get_model("server", "SubscriptionPlan")  # noqa: N806
-    RazorpayTransaction = apps.get_model("server", "RazorpayTransaction")  # noqa: N806
+    Subscription = apps.get_model("server", "Subscription")
+    SubscriptionPlan = apps.get_model("server", "SubscriptionPlan")
+    RazorpayTransaction = apps.get_model("server", "RazorpayTransaction")
 
     plans = {
         (plan.season.name, plan.type.slug): plan
@@ -151,8 +151,8 @@ def recover_overwritten(apps: Any, schema_editor: Any) -> None:
 
 def assign_numbers(apps: Any, schema_editor: Any) -> None:
     """Step 7: renumber everyone who holds a subscription, oldest first."""
-    Subscription = apps.get_model("server", "Subscription")  # noqa: N806
-    Player = apps.get_model("server", "Player")  # noqa: N806
+    Subscription = apps.get_model("server", "Subscription")
+    Player = apps.get_model("server", "Player")
 
     first_by_player: dict[int, tuple[Any, Any]] = {}
     for subscription in Subscription.objects.select_related("season").order_by(

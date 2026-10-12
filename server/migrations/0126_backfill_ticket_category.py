@@ -7,7 +7,7 @@ from django.db.migrations.state import StateApps
 
 def backfill_ticket_category(apps: StateApps, schema_editor: BaseDatabaseSchemaEditor) -> None:
     """Set category to 'Other' for tickets with null or empty category."""
-    Ticket = apps.get_model("server", "Ticket")  # noqa: N806
+    Ticket = apps.get_model("server", "Ticket")
     Ticket.objects.filter(category__isnull=True).update(category="Other")
     Ticket.objects.filter(category="").update(category="Other")
 

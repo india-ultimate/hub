@@ -8,7 +8,7 @@ from django.test import SimpleTestCase
 
 from server.receipts.money import financial_year, format_inr, in_words, india_date
 
-UTC = datetime.timezone.utc
+UTC = datetime.UTC
 
 
 class TestFinancialYear(SimpleTestCase):
@@ -60,8 +60,8 @@ class TestImportCost(SimpleTestCase):
             "assert 'num2words' not in sys.modules, sys.modules.keys(); "
             "assert m.in_words(75000) == 'Rupees Seven Hundred Fifty Only'"
         )
-        answer = subprocess.run(
-            [sys.executable, "-c", script],  # noqa: S603
+        answer = subprocess.run(  # noqa: S603
+            [sys.executable, "-c", script],
             env={**os.environ, "DJANGO_SETTINGS_MODULE": "hub.test_settings"},
             capture_output=True,
             text=True,

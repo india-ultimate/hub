@@ -387,7 +387,7 @@ class TestIntegration(BaseCase):
                 Season.objects.filter(pk=pk).update(start_date=start, end_date=end)
 
     def test_login_with_otp(self) -> None:
-        username, password, user_id = create_login_user()
+        username, _password, _user_id = create_login_user()
 
         self.open(DJANGO_URL)
         self.click_link("Login")

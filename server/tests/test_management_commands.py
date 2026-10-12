@@ -288,7 +288,7 @@ class TestActivateSubscriptions(TestCase):
         call_command("activate_subscriptions", self.fixture)
         sub = Subscription.objects.select_related("player__user").first()
         assert sub is not None  # noqa: S101
-        agreed_at = datetime.datetime(2026, 8, 2, tzinfo=datetime.timezone.utc)
+        agreed_at = datetime.datetime(2026, 8, 2, tzinfo=datetime.UTC)
         Subscription.objects.filter(pk=sub.pk).update(
             coc_agreed_by=sub.player.user, coc_agreed_at=agreed_at
         )

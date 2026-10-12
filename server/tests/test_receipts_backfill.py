@@ -15,7 +15,7 @@ from server.transaction.models import RazorpayRefund, RazorpayTransaction, Razor
 from .test_subscription_model import make_player
 
 migration = import_module("server.migrations.0159_backfill_receipts")
-UTC = datetime.timezone.utc
+UTC = datetime.UTC
 
 
 class TestBackfill(TestCase):

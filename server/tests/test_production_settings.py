@@ -12,7 +12,7 @@ class TestProductionSettings(SimpleTestCase):
     def load(self, **env: str) -> subprocess.CompletedProcess[str]:
         clean = {k: v for k, v in os.environ.items() if k not in {"DATABASE_URL", "FLY_APP_NAME"}}
         return subprocess.run(
-            [sys.executable, "-c", "import hub.production"],  # noqa: S603
+            [sys.executable, "-c", "import hub.production"],
             env={**clean, **env},
             cwd=Path(__file__).parents[2],
             capture_output=True,
@@ -38,8 +38,8 @@ class TestProductionSettings(SimpleTestCase):
             "import hub.production as s; d = s.DATABASES['default']; "
             "print(d['CONN_MAX_AGE'], d['CONN_HEALTH_CHECKS'])"
         )
-        result = subprocess.run(
-            [sys.executable, "-c", script],  # noqa: S603
+        result = subprocess.run(  # noqa: S603
+            [sys.executable, "-c", script],
             env={
                 **{k: v for k, v in os.environ.items() if k != "FLY_APP_NAME"},
                 "FLY_APP_NAME": "upai-hub",
@@ -60,8 +60,8 @@ class TestProductionSettings(SimpleTestCase):
             "getattr(r, '_retries', None), [e.__module__ + '.' + e.__name__ for e in o.get('retry_on_error', [])])"
         )
         clean = {k: v for k, v in os.environ.items() if k not in {"DATABASE_URL", "REDIS_HOST"}}
-        result = subprocess.run(
-            [sys.executable, "-c", script],  # noqa: S603
+        result = subprocess.run(  # noqa: S603
+            [sys.executable, "-c", script],
             env={**clean, **env},
             cwd=Path(__file__).parents[2],
             capture_output=True,

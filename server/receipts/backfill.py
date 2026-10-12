@@ -27,12 +27,12 @@ PAID = ["completed", "refunded"]
 
 def backfill(apps: Any, schema_editor: Any = None) -> tuple[int, int]:
     """Issue what is missing. Returns (receipts, refund notes) created."""
-    Receipt = apps.get_model("server", "Receipt")  # noqa: N806
+    Receipt = apps.get_model("server", "Receipt")
     Sequence = apps.get_model("server", "ReceiptSequence")  # noqa: N806
     Transaction = apps.get_model("server", "RazorpayTransaction")  # noqa: N806
     Line = apps.get_model("server", "RazorpayTransactionPlayer")  # noqa: N806
     Refund = apps.get_model("server", "RazorpayRefund")  # noqa: N806
-    Season = apps.get_model("server", "Season")  # noqa: N806
+    Season = apps.get_model("server", "Season")
 
     last = {(s.series, s.financial_year): s.last for s in Sequence.objects.all()}
     receipts = notes = 0

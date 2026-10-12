@@ -104,10 +104,8 @@ def _serialize(link: ClusterMember, viewer: User | None) -> dict[str, object]:
     def detailed(row: ClusterMember) -> bool:
         if viewer_id is None:
             return False
-        return (
-            row.user_id == viewer_id
-            or row.merged_into_id == viewer_id
-            or (row.state == ClusterMember.State.VERIFIED and row.verified_by_id == viewer_id)
+        return viewer_id in (row.user_id, row.merged_into_id) or (
+            row.state == ClusterMember.State.VERIFIED and row.verified_by_id == viewer_id
         )
 
     requested = cluster.origin == DuplicateCluster.Origin.REQUESTED

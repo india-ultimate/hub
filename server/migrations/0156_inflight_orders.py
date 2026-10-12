@@ -15,9 +15,9 @@ OLD_PRICES = {
 
 
 def fill_pending_lines(apps: Any, schema_editor: Any) -> None:
-    SubscriptionPlan = apps.get_model("server", "SubscriptionPlan")  # noqa: N806
-    RazorpayTransaction = apps.get_model("server", "RazorpayTransaction")  # noqa: N806
-    RazorpayTransactionPlayer = apps.get_model("server", "RazorpayTransactionPlayer")  # noqa: N806
+    SubscriptionPlan = apps.get_model("server", "SubscriptionPlan")
+    RazorpayTransaction = apps.get_model("server", "RazorpayTransaction")
+    RazorpayTransactionPlayer = apps.get_model("server", "RazorpayTransactionPlayer")
 
     plans = {
         (plan.season.name, plan.type.slug): plan

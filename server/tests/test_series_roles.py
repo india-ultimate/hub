@@ -103,7 +103,7 @@ class TestSeriesRoles(TestCase):
         """The row being edited must not collide with itself: both roles are
         playing roles, so the one-team rule would otherwise refuse it."""
         player = self.member("captain@example.com", "regular")
-        registration, error = register_player(self.series, self.team, player, Role.DEFAULT)
+        registration, _error = register_player(self.series, self.team, player, Role.DEFAULT)
         assert registration is not None  # noqa: S101 - narrows the type
 
         self.assertIsNone(change_series_role(registration, Role.CAPTAIN))

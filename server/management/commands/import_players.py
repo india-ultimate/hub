@@ -95,9 +95,9 @@ class Command(BaseCommand):
                         row["other_gender"].strip() if row["other_gender"].strip() != "-" else None
                     ),
                     "city": row["city"].strip(),
-                    "state_ut": STATE_UT.get(row["state_ut"].strip(), None),
+                    "state_ut": STATE_UT.get(row["state_ut"].strip()),
                     "not_in_india": row["not_in_india"].strip().upper() == "Y",
-                    "occupation": OCCUPATIONS.get(row["occupation"].strip(), None),
+                    "occupation": OCCUPATIONS.get(row["occupation"].strip()),
                     "educational_institution": row["educational_institution"].strip(),
                 }
                 sponsored = (row.get("sponsored") or "").strip().upper() == "Y"
@@ -160,7 +160,7 @@ class Command(BaseCommand):
                     }
                     guardian_user = _account(guardian_email, guardian_data)
 
-                    relation = RELATIONS.get(row["guardian.relation"], None)
+                    relation = RELATIONS.get(row["guardian.relation"])
                     guardianship_data = {"relation": relation, "user": guardian_user}
                     try:
                         guardianship = Guardianship.objects.get(player=player)
@@ -180,9 +180,7 @@ class Command(BaseCommand):
                 has_accreditation_data = all(accreditation_data.values())
                 doa = accreditation_data["date"]  # to make the type checker happy
                 if has_accreditation_data and doa is not None:
-                    accreditation_data["level"] = ACCREDITATIONS.get(
-                        row["accreditation.level"], None
-                    )
+                    accreditation_data["level"] = ACCREDITATIONS.get(row["accreditation.level"])
                     try:
                         acc_date = datetime.strptime(doa, options["date_format"])  # noqa: DTZ007
                         accreditation_data["date"] = acc_date.date()
@@ -211,7 +209,7 @@ class Command(BaseCommand):
                     vaccination_data = (
                         {
                             "is_vaccinated": is_vaccinated,
-                            "name": VACCINATIONS.get(row["vaccination.name"], None),
+                            "name": VACCINATIONS.get(row["vaccination.name"]),
                         }
                         if is_vaccinated
                         else {

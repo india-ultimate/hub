@@ -88,7 +88,7 @@ def _build_fixture(case: dict[str, Any], user: User) -> Tournament:
     if fixture.get("schedule"):
         fields = list(TournamentField.objects.filter(tournament=tournament).order_by("name"))
         # `datetime.UTC` is 3.11+; CI runs 3.10.
-        slot = datetime.datetime(2026, 8, 1, 7, 0, tzinfo=datetime.timezone.utc)
+        slot = datetime.datetime(2026, 8, 1, 7, 0, tzinfo=datetime.UTC)
         for i, match in enumerate(Match.objects.filter(tournament=tournament).order_by("id")):
             match.time = slot + datetime.timedelta(minutes=90 * (i // max(1, len(fields))))
             match.field = fields[i % len(fields)]

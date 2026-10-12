@@ -6,12 +6,12 @@ import json
 import os
 import shutil
 import tempfile
+import tomllib
 from pathlib import Path
 from typing import Any
 from unittest import mock
 
 import cloudinary.exceptions
-import tomllib
 from django.core import mail
 from django.core.files.base import ContentFile
 from django.core.files.uploadedfile import SimpleUploadedFile

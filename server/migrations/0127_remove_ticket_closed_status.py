@@ -7,7 +7,7 @@ from django.db.migrations.state import StateApps
 
 def backfill_closed_to_resolved(apps: StateApps, schema_editor: BaseDatabaseSchemaEditor) -> None:
     """Set status to Resolved for tickets currently Closed."""
-    Ticket = apps.get_model("server", "Ticket")  # noqa: N806
+    Ticket = apps.get_model("server", "Ticket")
     Ticket.objects.filter(status="CLS").update(status="RES")
 
 

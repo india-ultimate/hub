@@ -14,8 +14,37 @@ from server.ticket.models import Ticket
 
 # Words so common they would match nearly every ticket.
 FILLER = frozenset(
-    "the and for with not can cant but are was has have this that from you your "
-    "our how why what when where who its all any get got".split()
+    [
+        "the",
+        "and",
+        "for",
+        "with",
+        "not",
+        "can",
+        "cant",
+        "but",
+        "are",
+        "was",
+        "has",
+        "have",
+        "this",
+        "that",
+        "from",
+        "you",
+        "your",
+        "our",
+        "how",
+        "why",
+        "what",
+        "when",
+        "where",
+        "who",
+        "its",
+        "all",
+        "any",
+        "get",
+        "got",
+    ]
 )
 MAX_WORDS = 8
 MIN_LENGTH = 3

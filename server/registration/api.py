@@ -380,7 +380,7 @@ def checkout(
                 for pid in body.expected_ids
                 if pid not in ready
             }
-            gone |= {pid: "Their earlier payment went through" for pid in settled}
+            gone |= dict.fromkeys(settled, "Their earlier payment went through")
             return 409, {
                 "removed": [{"player_id": pid, "reason": why} for pid, why in gone.items()],
                 "old_amount": body.expected_amount,

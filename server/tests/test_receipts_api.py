@@ -8,7 +8,7 @@ from server.transaction.models import RazorpayTransaction
 
 from .test_subscription_model import make_player
 
-UTC = datetime.timezone.utc
+UTC = datetime.UTC
 
 
 def make_receipt(

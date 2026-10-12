@@ -99,7 +99,7 @@ class TestGetNewPoolResults(ApiBaseTestCase):
         )
 
         # Process final match
-        new_results, new_seeding = get_new_pool_results(
+        new_results, _new_seeding = get_new_pool_results(
             old_results, match3, [1, 2, 3], tournament_seeding
         )
 
@@ -224,7 +224,7 @@ class TestGetNewPoolResults(ApiBaseTestCase):
             placeholder_seed_2=4,
         )
 
-        new_results, new_seeding = get_new_pool_results(
+        new_results, _new_seeding = get_new_pool_results(
             old_results, match6, [1, 2, 3, 4], tournament_seeding
         )
 
@@ -293,7 +293,7 @@ class TestGetNewPoolResults(ApiBaseTestCase):
             placeholder_seed_2=2,
         )
 
-        new_results, new_seeding = get_new_pool_results(
+        new_results, _new_seeding = get_new_pool_results(
             old_results, match3, [1, 2, 3], tournament_seeding
         )
 
