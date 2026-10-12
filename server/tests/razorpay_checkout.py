@@ -128,12 +128,10 @@ def _submit_card_otp_if_needed(test_case: BaseCase) -> None:
 def _checkout_is_open(test_case: BaseCase) -> bool | None:
     """Return whether checkout is open, or None if the browser frame is gone."""
     with contextlib.suppress(Exception):
-        return test_case.execute_script(
-            """
+        return test_case.execute_script("""
                 const container = document.querySelector(".razorpay-container");
                 return !!(container && container.offsetParent !== null);
-            """
-        )
+            """)
     return None
 
 

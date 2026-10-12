@@ -238,9 +238,10 @@ class TestIssuing(ReceiptTestCase):
 
     def test_a_failed_capture_leaves_no_gap(self) -> None:
         first = self.order((make_player("f1@example.com"), plan("regular", self.season), 75000))
-        with mock.patch(
-            "server.subscription.purchase._apply", side_effect=RuntimeError
-        ), self.assertRaises(RuntimeError):
+        with (
+            mock.patch("server.subscription.purchase._apply", side_effect=RuntimeError),
+            self.assertRaises(RuntimeError),
+        ):
             purchase.fulfil(first)
         self.assertFalse(Receipt.objects.exists())
         purchase.fulfil(first)

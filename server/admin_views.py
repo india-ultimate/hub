@@ -288,10 +288,12 @@ def refund_subscription_view(request: HttpRequest, subscription_id: int) -> Http
         else:
             messages.success(
                 request,
-                f"Refunded {rupees(sum(refund.amount for refund in refunds))} to "
-                f"{subscription.player.user.get_full_name()}."
-                if refunds
-                else "There was nothing left to refund.",
+                (
+                    f"Refunded {rupees(sum(refund.amount for refund in refunds))} to "
+                    f"{subscription.player.user.get_full_name()}."
+                    if refunds
+                    else "There was nothing left to refund."
+                ),
             )
             return redirect(back)
 
@@ -309,10 +311,12 @@ def refund_subscription_view(request: HttpRequest, subscription_id: int) -> Http
                 "not in voter lists.",
                 *SUBSCRIPTION_CHANGES,
             ],
-            "warning": ""
-            if left
-            else "No payment on this subscription can be refunded from here. If money is still "
-            "owed back, refund the order instead and mark this subscription by hand.",
+            "warning": (
+                ""
+                if left
+                else "No payment on this subscription can be refunded from here. If money is still "
+                "owed back, refund the order instead and mark this subscription by hand."
+            ),
             "cancel_url": back,
         },
     )

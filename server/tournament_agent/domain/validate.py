@@ -132,7 +132,7 @@ def schedule_conflicts(
             entries.sort(key=lambda w: (w[0], w[2].id))
 
     def overlaps(
-        windows: dict[str, list[tuple[datetime, datetime, Match, str]]]
+        windows: dict[str, list[tuple[datetime, datetime, Match, str]]],
     ) -> list[dict[str, Any]]:
         found = []
         for entries in windows.values():

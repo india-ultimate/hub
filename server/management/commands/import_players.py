@@ -91,9 +91,9 @@ class Command(BaseCommand):
                     "user": user,
                     "date_of_birth": dob.strftime("%Y-%m-%d"),
                     "gender": GENDERS.get(row["gender"].strip(), Player.GenderTypes.OTHER),
-                    "other_gender": row["other_gender"].strip()
-                    if row["other_gender"].strip() != "-"
-                    else None,
+                    "other_gender": (
+                        row["other_gender"].strip() if row["other_gender"].strip() != "-" else None
+                    ),
                     "city": row["city"].strip(),
                     "state_ut": STATE_UT.get(row["state_ut"].strip(), None),
                     "not_in_india": row["not_in_india"].strip().upper() == "Y",

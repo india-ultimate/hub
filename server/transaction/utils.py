@@ -332,13 +332,19 @@ def create_transaction(
             "event": event,
             "season": season,
             "team": team,
-            "type": RazorpayTransaction.TransactionTypeChoices.PARTIAL_TEAM_REGISTRATION
-            if isinstance(order, TeamRegistrationSchema) and order.partial
-            else RazorpayTransaction.TransactionTypeChoices.TEAM_REGISTRATION
-            if isinstance(order, TeamRegistrationSchema)
-            else RazorpayTransaction.TransactionTypeChoices.PLAYER_REGISTRATION
-            if isinstance(order, PlayerRegistrationSchema)
-            else RazorpayTransaction.TransactionTypeChoices.ANNUAL_SUBSCRIPTION,
+            "type": (
+                RazorpayTransaction.TransactionTypeChoices.PARTIAL_TEAM_REGISTRATION
+                if isinstance(order, TeamRegistrationSchema) and order.partial
+                else (
+                    RazorpayTransaction.TransactionTypeChoices.TEAM_REGISTRATION
+                    if isinstance(order, TeamRegistrationSchema)
+                    else (
+                        RazorpayTransaction.TransactionTypeChoices.PLAYER_REGISTRATION
+                        if isinstance(order, PlayerRegistrationSchema)
+                        else RazorpayTransaction.TransactionTypeChoices.ANNUAL_SUBSCRIPTION
+                    )
+                )
+            ),
         }
     )
     with db_transaction.atomic():
