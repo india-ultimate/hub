@@ -528,9 +528,13 @@ _SPIRIT_SCORES = [
 
 
 def public_matches(matches: QuerySet[Match]) -> QuerySet[Match]:
-    """Matches with everything `PublicMatchSchema` sends, in one query."""
-    # ponytail: one wide join (about 45 tables); if Postgres plans it
-    # slowly, move the spirit scores' people to prefetch_related.
+    """Matches with everything `PublicMatchSchema` sends, in five queries.
+
+    Not one: joining all 45 tables took Postgres 30 ms just to plan, on
+    every request. The spirit scores and their people come in four small
+    queries instead.
+    """
+    spirit = SpiritScore.objects.select_related("mvp", "msp", "mvp_v2__user", "msp_v2__user")
     return matches.select_related(
         "pool",
         "cross_pool",
@@ -544,9 +548,7 @@ def public_matches(matches: QuerySet[Match]) -> QuerySet[Match]:
         "suggested_score_team_2__entered_by__user",
         "stats__initial_possession",
         "stats__current_possession",
-        *(f"{score}__{person}" for score in _SPIRIT_SCORES for person in ("mvp", "msp")),
-        *(f"{score}__{p}__user" for score in _SPIRIT_SCORES for p in ("mvp_v2", "msp_v2")),
-    )
+    ).prefetch_related(*(Prefetch(score, queryset=spirit) for score in _SPIRIT_SCORES))
 
 
 class PublicMatchEventSchema(ModelSchema):
