@@ -112,6 +112,14 @@ class UserMinSchema(ModelSchema):
         ]
 
 
+class UserSearchSchema(Schema):
+    """Someone a picker can choose. The username is masked for all but staff."""
+
+    id: int
+    full_name: str
+    username: str
+
+
 class TeamAdminSchema(ModelSchema):
     """An admin as anyone may see them: everything embedding a team is public."""
 

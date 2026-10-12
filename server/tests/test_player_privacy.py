@@ -125,3 +125,41 @@ class TestPlayerDetail(PlayerPrivacyTestCase):
         team.admins.add(self.stranger)
         self.client.force_login(self.stranger)
         self.assertEqual(403, self.client.get(self.url()).status_code)
+
+
+class TestUserSearch(PlayerPrivacyTestCase):
+    def search(self, text: str) -> list[dict[str, object]]:
+        response = self.client.get("/api/users/search", {"text": text})
+        self.assertEqual(200, response.status_code, response.content)
+        return response.json()
+
+    def test_a_stranger_finds_a_name_with_its_email_masked(self) -> None:
+        self.client.force_login(self.stranger)
+        response = self.client.get("/api/users/search", {"text": "secret k"})
+        self.assert_no_secrets(response, self.stranger)
+        [found] = response.json()
+        self.assertEqual(
+            {
+                "id": self.owner.id,
+                "full_name": "Secret Keeper",
+                "username": "hixxxxxxxxxet@example.org",
+            },
+            found,
+        )
+        # Searching by address still finds them, still masked.
+        self.assertEqual([self.owner.id], [u["id"] for u in self.search("hidden.secret")])
+
+    def test_staff_see_the_address(self) -> None:
+        self.client.force_login(self.staff)
+        self.assertEqual([EMAIL], [u["username"] for u in self.search("secret k")])
+
+    def test_under_three_characters_finds_no_one(self) -> None:
+        self.client.force_login(self.stranger)
+        for text in ("", "  ", "se", " x "):
+            self.assertEqual([], self.search(text), text)
+
+    def test_at_most_twenty_are_returned(self) -> None:
+        for i in range(25):
+            User.objects.create(username=f"many{i}@x.com", email=f"many{i}@x.com")
+        self.client.force_login(self.stranger)
+        self.assertEqual(20, len(self.search("many")))
