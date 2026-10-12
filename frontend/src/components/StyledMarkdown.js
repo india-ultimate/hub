@@ -21,6 +21,16 @@ export const documentClassMap = {
   "tbody td": "px-6 py-4 font-medium"
 };
 
+// Markdown comes from tournament admins and LLM replies, and solid-markdown
+// passes URLs through as written: allow only web, mail and phone links, and
+// relative ones (no scheme before the first "/", "?" or "#").
+export const safeUrl = url => {
+  const colon = url.indexOf(":");
+  const path = url.search(/[/?#]/);
+  if (colon === -1 || (path !== -1 && path < colon)) return url;
+  return /^(https?|mailto|tel)$/i.test(url.slice(0, colon)) ? url : "";
+};
+
 const TailwindMarkdown = props => {
   let divRef;
   const classMap = () => props.classMap || documentClassMap;
@@ -47,7 +57,12 @@ const TailwindMarkdown = props => {
 
   return (
     <div ref={divRef}>
-      <SolidMarkdown remarkPlugins={[remarkGfm]} children={props.markdown} />
+      <SolidMarkdown
+        remarkPlugins={[remarkGfm]}
+        transformLinkUri={safeUrl}
+        transformImageUri={safeUrl}
+        children={props.markdown}
+      />
     </div>
   );
 };
