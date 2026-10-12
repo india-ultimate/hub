@@ -11,15 +11,14 @@ import {
   lockClosed,
   tag
 } from "solid-heroicons/solid";
-import { createMemo, For, onMount, Show, Suspense } from "solid-js";
+import { For, onMount, Show, Suspense } from "solid-js";
 
 import {
   getAnnouncementTypeColor,
   getAnnouncementTypeLabel
 } from "../../colors";
-import { fetchSubscriptionStatus } from "../../queries";
 import { useStore } from "../../store";
-import { canReadAnnouncement, getCookie } from "../../utils";
+import { getCookie } from "../../utils";
 
 // Fetch announcements API
 const fetchAnnouncements = async () => {
@@ -43,15 +42,6 @@ const Announcements = () => {
   const query = createQuery(() => ["announcements"], fetchAnnouncements, {
     refetchOnWindowFocus: false
   });
-
-  // Fetch subscription status
-  const subscriptionQuery = createQuery(
-    () => ["subscription"],
-    fetchSubscriptionStatus,
-    {
-      refetchOnWindowFocus: false
-    }
-  );
 
   onMount(() => {
     initFlowbite();
@@ -129,27 +119,22 @@ const Announcements = () => {
             <div class="space-y-6">
               <For each={query.data}>
                 {announcement => {
-                  const canAccess = createMemo(() =>
-                    canReadAnnouncement(
-                      announcement,
-                      store.data,
-                      () => subscriptionQuery.data
-                    )
-                  );
+                  // The server blanks members-only content it won't show.
+                  const canAccess = announcement.can_read;
 
                   return (
                     <div
                       class={`rounded-lg border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800 ${
-                        canAccess() ? "cursor-pointer" : ""
+                        canAccess ? "cursor-pointer" : ""
                       }`}
-                      role={canAccess() ? "link" : undefined}
-                      tabIndex={canAccess() ? 0 : undefined}
+                      role={canAccess ? "link" : undefined}
+                      tabIndex={canAccess ? 0 : undefined}
                       onClick={() =>
-                        canAccess() &&
+                        canAccess &&
                         navigate(`/announcement/${announcement.slug}`)
                       }
                       onKeyDown={e => {
-                        if (canAccess() && e.key === "Enter")
+                        if (canAccess && e.key === "Enter")
                           navigate(`/announcement/${announcement.slug}`);
                       }}
                     >
@@ -191,7 +176,7 @@ const Announcements = () => {
 
                       {/* Content Preview or Members Only Message */}
                       <Show
-                        when={canAccess()}
+                        when={canAccess}
                         fallback={
                           <div class="py-2 text-center">
                             <Icon

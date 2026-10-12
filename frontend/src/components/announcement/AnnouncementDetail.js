@@ -18,9 +18,7 @@ import {
   getAnnouncementTypeColor,
   getAnnouncementTypeLabel
 } from "../../colors";
-import { fetchSubscriptionStatus } from "../../queries";
 import { useStore } from "../../store";
-import { canReadAnnouncement } from "../../utils";
 
 const fetchAnnouncement = async slug => {
   const response = await fetch(`/api/announcements/${slug}`);
@@ -36,15 +34,6 @@ export default function AnnouncementDetail() {
   const query = createQuery(
     () => ["announcement", params.slug],
     () => fetchAnnouncement(params.slug)
-  );
-
-  // Fetch subscription status
-  const subscriptionQuery = createQuery(
-    () => ["subscription"],
-    fetchSubscriptionStatus,
-    {
-      refetchOnWindowFocus: false
-    }
   );
 
   let contentRef;
@@ -171,11 +160,7 @@ export default function AnnouncementDetail() {
             </div>
 
             <Show
-              when={canReadAnnouncement(
-                query.data,
-                store.data,
-                () => subscriptionQuery.data
-              )}
+              when={query.data.can_read}
               fallback={
                 <div class="py-12 text-center">
                   <Icon
