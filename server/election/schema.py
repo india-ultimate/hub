@@ -9,7 +9,8 @@ class ErrorSchema(Schema):
 
 class UserSchema(Schema):
     id: int
-    username: str
+    # An email: for staff only.
+    username: str | None = None
     full_name: str
 
 

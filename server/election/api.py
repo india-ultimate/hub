@@ -134,6 +134,8 @@ def get_election(request: HttpRequest, election_id: int) -> dict[str, Any]:
 @router.get("/{election_id}/candidates/", response=list[CandidateSchema], auth=None)
 def list_candidates(request: HttpRequest, election_id: int) -> list[dict[str, Any]]:
     candidates = Candidate.objects.filter(election_id=election_id).select_related("user")
+    # The username is an email: only the staff's candidate manager shows it.
+    staff = request.user.is_staff
     return [
         {
             "id": candidate.id,
@@ -145,7 +147,7 @@ def list_candidates(request: HttpRequest, election_id: int) -> list[dict[str, An
             "created_at": candidate.created_at,
             "user": {
                 "id": candidate.user.id,
-                "username": candidate.user.username,
+                "username": candidate.user.username if staff else None,
                 "full_name": candidate.user.get_full_name(),
             },
         }
