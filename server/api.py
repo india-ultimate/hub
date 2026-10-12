@@ -431,20 +431,19 @@ def _attach_subscription_prefetch(players: list[Player], *, need_sponsored: bool
             )
 
 
-@api.get("/players")
+@api.get("/players", response={200: list[dict[str, Any]], 403: Response})
 def list_players(
     request: AuthenticatedHttpRequest, full_schema: bool = False
-) -> list[PlayerTinySchema | PlayerSchema]:
+) -> tuple[int, list[dict[str, Any]] | message_response]:
+    # Every player's email and phone: only the staff's player list reads it.
+    if not request.user.is_staff:
+        return 403, {"message": "Only staff can list every player"}
+    schema = PlayerSchema if full_schema else PlayerTinySchema
     # This list is not paginated, and both schemas read a player's name, email,
     # phone, subscription and teams -- five queries each over every player there is.
     players = list(Player.objects.select_related("user").prefetch_related("teams"))
-    is_staff = request.user.is_staff
-    if is_staff and full_schema:
-        _attach_subscription_prefetch(players, need_sponsored=True)
-        return [PlayerSchema.model_validate(p) for p in players]
-    else:
-        _attach_subscription_prefetch(players, need_sponsored=False)
-        return [PlayerTinySchema.model_validate(p) for p in players]
+    _attach_subscription_prefetch(players, need_sponsored=full_schema)
+    return 200, [schema.model_validate(p).model_dump(mode="json") for p in players]
 
 
 @api.get("/players/search", response={200: list[PlayerTinySchema]})

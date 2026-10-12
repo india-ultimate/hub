@@ -163,3 +163,18 @@ class TestUserSearch(PlayerPrivacyTestCase):
             User.objects.create(username=f"many{i}@x.com", email=f"many{i}@x.com")
         self.client.force_login(self.stranger)
         self.assertEqual(20, len(self.search("many")))
+
+
+class TestPlayerList(PlayerPrivacyTestCase):
+    def test_only_staff_can_list_every_player(self) -> None:
+        # Only the staff page reads it.
+        for viewer in (self.stranger, self.owner, self.guardian):
+            self.client.force_login(viewer)
+            for url in ("/api/players", "/api/players?full_schema=1"):
+                response = self.client.get(url)
+                self.assertEqual(403, response.status_code, url)
+                self.assert_no_secrets(response, viewer)
+
+        self.client.force_login(self.staff)
+        [player] = self.client.get("/api/players?full_schema=1").json()
+        self.assertEqual((EMAIL, PHONE), (player["email"], player["phone"]))
