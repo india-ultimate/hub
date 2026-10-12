@@ -1,6 +1,7 @@
 """A team admin changing who else administers the team (ticket #362)."""
 
 import json
+from typing import cast
 
 from django.test import TestCase
 
@@ -67,3 +68,20 @@ class TestTeamAdmins(TestCase):
     def test_removing_everyone_is_refused(self) -> None:
         self.assertEqual(400, self.edit(admin_ids=[]))
         self.assertEqual({self.me, self.meshach, self.arpita}, self.admins())
+
+    def test_a_state_that_isnt_one_is_refused_and_nothing_is_saved(self) -> None:
+        # Too long for the column: it used to save the other fields, then 500.
+        self.assertEqual(400, self.edit(state_ut="TOOLONG", city="Chennai", category="School"))
+        self.assertIn("state", self.response.json()["message"].lower())
+        self.team.refresh_from_db()
+        self.assertEqual(
+            ("TN", "Coimbatore", "Club"), (self.team.state_ut, self.team.city, self.team.category)
+        )
+        self.assertEqual({self.me, self.meshach, self.arpita}, self.admins())
+
+    def test_a_city_too_long_for_the_column_is_refused_and_nothing_is_saved(self) -> None:
+        too_long = "C" * (cast(int, Team._meta.get_field("city").max_length) + 1)
+        self.assertEqual(400, self.edit(city=too_long, category="School"))
+        self.assertIn("city", self.response.json()["message"].lower())
+        self.team.refresh_from_db()
+        self.assertEqual(("Coimbatore", "Club"), (self.team.city, self.team.category))
