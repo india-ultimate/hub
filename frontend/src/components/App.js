@@ -11,8 +11,8 @@ import UserRoute from "./UserRoute";
 
 const About = lazy(() => import("./About"));
 const Announcements = lazy(() => import("./announcement/Announcements"));
-const AnnouncementDetail = lazy(() =>
-  import("./announcement/AnnouncementDetail")
+const AnnouncementDetail = lazy(
+  () => import("./announcement/AnnouncementDetail")
 );
 const Dashboard = lazy(() => import("./Dashboard"));
 const PaymentAccount = lazy(() => import("./payments/PaymentAccount"));
@@ -51,8 +51,8 @@ const TournamentRules = lazy(() => import("./TournamentRules"));
 const TournamentSchedule = lazy(() => import("./TournamentSchedule"));
 const TournamentStandings = lazy(() => import("./TournamentStandings"));
 const TournamentLeaderboard = lazy(() => import("./tournament/Leaderboard"));
-const TeamRegistrationHome = lazy(() =>
-  import("./registration/TeamRegistrationHome")
+const TeamRegistrationHome = lazy(
+  () => import("./registration/TeamRegistrationHome")
 );
 const TournamentTeam = lazy(() => import("./TournamentTeam"));
 const Error404 = lazy(() => import("./Error404"));
@@ -64,8 +64,8 @@ const SeriesRoster = lazy(() => import("./series/SeriesRoster"));
 // const EditStats = lazy(() => import("./match/stats/EditStats"));
 const EditStatsMin = lazy(() => import("./match/stats/EditMinStats"));
 const ViewStats = lazy(() => import("./match/stats/ViewStats"));
-const EmailInvitationHandler = lazy(() =>
-  import("./series/InvitationViaEmail")
+const EmailInvitationHandler = lazy(
+  () => import("./series/InvitationViaEmail")
 );
 // Ticket Pages
 const Tickets = lazy(() => import("./ticket/Tickets"));
@@ -93,8 +93,8 @@ const FormBuilder = lazy(() => import("./forms/FormBuilder"));
 const FormResponses = lazy(() => import("./forms/FormResponses"));
 
 // Simulation Pages
-const TournamentSimulator = lazy(() =>
-  import("./simulations/TournamentSimulator")
+const TournamentSimulator = lazy(
+  () => import("./simulations/TournamentSimulator")
 );
 
 const queryClient = new QueryClient({

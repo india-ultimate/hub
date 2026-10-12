@@ -146,8 +146,8 @@ const buildStarterPrompts = s => {
     s.startDate && s.endDate && s.startDate !== s.endDate
       ? ` from ${s.startDate} to ${s.endDate}`
       : s.startDate
-      ? ` on ${s.startDate}`
-      : "";
+        ? ` on ${s.startDate}`
+        : "";
 
   if (s.status === "COM") {
     return [

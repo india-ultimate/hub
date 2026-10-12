@@ -132,8 +132,8 @@ const EditStats = () => {
                 {matchStatsQuery.data?.status === "FH"
                   ? "First Half"
                   : matchStatsQuery.data?.status === "SH"
-                  ? "Second Half"
-                  : "Completed"}
+                    ? "Second Half"
+                    : "Completed"}
               </span>
             </div>
           </div>

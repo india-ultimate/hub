@@ -59,8 +59,8 @@ const AddPlayersDialog = props => {
         !undo
           ? `Added ${player.name}`
           : mine && props.series
-          ? "Removed. You're still on the series roster."
-          : `Removed ${player.name}`
+            ? "Removed. You're still on the series roster."
+            : `Removed ${player.name}`
       );
       props.onChanged();
     } catch (e) {
@@ -149,8 +149,8 @@ const AddPlayersDialog = props => {
               {busy() === p().id
                 ? "Adding…"
                 : p().button === "invite"
-                ? "Invite"
-                : "Add"}
+                  ? "Invite"
+                  : "Add"}
             </button>
           </Show>
         </Show>

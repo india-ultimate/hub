@@ -33,8 +33,8 @@ const FormResponses = () => {
     Array.isArray(value)
       ? value.join(", ")
       : value === "" || value === undefined
-      ? "-"
-      : value;
+        ? "-"
+        : value;
 
   const toggleAcceptingSubmissions = async () => {
     const form = formQuery.data;

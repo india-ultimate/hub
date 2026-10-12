@@ -226,8 +226,8 @@ const TeamRegistration = () => {
                 teamIsOpen
                   ? "border-green-300 bg-green-50 text-green-800 dark:border-green-700 dark:bg-green-900/30 dark:text-green-300"
                   : teamIsLate
-                  ? "border-yellow-300 bg-yellow-50 text-yellow-800 dark:border-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300"
-                  : "border-red-300 bg-red-50 text-red-800 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
+                    ? "border-yellow-300 bg-yellow-50 text-yellow-800 dark:border-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300"
+                    : "border-red-300 bg-red-50 text-red-800 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
               )}
             >
               <div class="mb-2 font-bold">
@@ -235,16 +235,16 @@ const TeamRegistration = () => {
                 {teamIsOpen
                   ? " (Open)"
                   : teamIsLate
-                  ? " (Open with Late Penalty)"
-                  : " (Closed)"}
+                    ? " (Open with Late Penalty)"
+                    : " (Closed)"}
               </div>
               <div class="space-y-1">
                 <p>
                   {teamIsOpen
                     ? `Open till ${formatDate(teamRegEnd)}`
                     : teamIsLate
-                    ? `Late penalty till ${formatDate(teamLateEnd)}`
-                    : `Closed on ${formatDate(teamRegEnd)}`}
+                      ? `Late penalty till ${formatDate(teamLateEnd)}`
+                      : `Closed on ${formatDate(teamRegEnd)}`}
                 </p>
                 <p>Fee: {formatFee(event?.team_fee)}</p>
                 <Show when={teamIsLate && teamPenalty.daysLate > 0}>
@@ -277,8 +277,8 @@ const TeamRegistration = () => {
                 playerIsOpen
                   ? "border-green-300 bg-green-50 text-green-800 dark:border-green-700 dark:bg-green-900/30 dark:text-green-300"
                   : playerIsLate
-                  ? "border-yellow-300 bg-yellow-50 text-yellow-800 dark:border-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300"
-                  : "border-red-300 bg-red-50 text-red-800 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
+                    ? "border-yellow-300 bg-yellow-50 text-yellow-800 dark:border-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300"
+                    : "border-red-300 bg-red-50 text-red-800 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
               )}
             >
               <div class="mb-2 font-bold">
@@ -286,16 +286,16 @@ const TeamRegistration = () => {
                 {playerIsOpen
                   ? " (Open)"
                   : playerIsLate
-                  ? " (Open with Late Penalty)"
-                  : " (Closed)"}
+                    ? " (Open with Late Penalty)"
+                    : " (Closed)"}
               </div>
               <div class="space-y-1">
                 <p>
                   {playerIsOpen
                     ? `Open till ${formatDate(playerRegEnd)}`
                     : playerIsLate
-                    ? `Open with Late penalty till ${formatDate(playerLateEnd)}`
-                    : `Closed on ${formatDate(playerRegEnd)}`}
+                      ? `Open with Late penalty till ${formatDate(playerLateEnd)}`
+                      : `Closed on ${formatDate(playerRegEnd)}`}
                 </p>
                 <p>Fee: {formatFee(event?.player_fee)}</p>
                 <Show when={playerIsLate && playerPenalty.daysLate > 0}>

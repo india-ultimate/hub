@@ -76,7 +76,7 @@ export const displayDateShort = dateString => {
 
 export const razorpayScriptExists = () => {
   var scripts = document.getElementsByTagName("script");
-  for (var i = scripts.length; i--; ) {
+  for (var i = scripts.length; i--;) {
     if (scripts[i].src == "https://checkout.razorpay.com/v1/checkout.js")
       return true;
   }

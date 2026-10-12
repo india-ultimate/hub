@@ -604,8 +604,8 @@ export default function MergeAccounts() {
             {data().is_requester
               ? "You asked to merge these accounts."
               : data().origin === "requested"
-              ? "Someone asked to merge these accounts."
-              : "These accounts look like yours."}
+                ? "Someone asked to merge these accounts."
+                : "These accounts look like yours."}
           </p>
         </Show>
 
@@ -619,8 +619,8 @@ export default function MergeAccounts() {
             {data().status === "Dismissed"
               ? "Someone in this group said these aren't the same person."
               : data().anything_merged
-              ? "These accounts were merged."
-              : "These accounts were sorted out."}
+                ? "These accounts were merged."
+                : "These accounts were sorted out."}
           </p>
         </Show>
         <Show when={data().status === "Dismissed" && data().rows.length > 0}>
