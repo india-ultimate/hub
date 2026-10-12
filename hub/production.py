@@ -12,6 +12,18 @@ SECURE_SSL_REDIRECT = bool(int(os.environ.get("SECURE_SSL_REDIRECT", "1")))
 SECRET_KEY = os.environ.get("SECRET_KEY", SECRET_KEY)  # noqa: F405
 EMAIL_INVITATION_BASE_URL = "https://hub.indiaultimate.org"
 
+if os.environ.get("REDIS_HOST"):
+    from hub.redis_auth import password
+
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": f"redis://:{password(SECRET_KEY)}@{os.environ['REDIS_HOST']}:6379/0",
+            # Fail fast: an unreachable cache must cost a request at most 0.3 s.
+            "OPTIONS": {"socket_connect_timeout": 0.1, "socket_timeout": 0.2},  # type: ignore[dict-item]
+        }
+    }
+
 if os.environ.get("DATABASE_URL"):
     DATABASES["default"] = dj_database_url.config()  # type: ignore[assignment]  # noqa: F405
     # Reused for a minute, and checked first, rather than a new one per request.

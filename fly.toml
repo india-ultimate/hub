@@ -28,6 +28,8 @@ kill_timeout = "30s"
 
 [env]
   PORT = "8000"
+  # Redis runs on the worker (deploy/start-worker.sh); the apps share its cache.
+  REDIS_HOST = "worker.process.upai-hub.internal"
   DJANGO_SETTINGS_MODULE = "hub.production"
   # workers x threads must stay at or above soft_limit below.
   GUNICORN_WORKERS = "2"
