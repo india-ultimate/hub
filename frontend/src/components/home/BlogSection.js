@@ -1,46 +1,55 @@
 import { A } from "@solidjs/router";
-import { For } from "solid-js";
+import clsx from "clsx";
+import { createSignal, For } from "solid-js";
 
 import { ChevronLeft, ChevronRight } from "../../icons";
 
 const BlogSection = () => {
-  return (
-    <div>
-      <div
-        id="controls-carousel"
-        class="relative w-full"
-        data-carousel="static"
-      >
-        <div class="relative h-96 overflow-hidden rounded-lg md:h-96">
-          <For each={data}>
-            {a => (
-              <div
-                id={a.title}
-                class="hidden duration-200 ease-in-out"
-                data-carousel-item
-              >
-                <BlogCard
-                  title={a.title}
-                  category={a.category}
-                  img={a.img}
-                  link={a.link}
-                  body={a.body}
-                />
-              </div>
-            )}
-          </For>
-        </div>
+  const [current, setCurrent] = createSignal(0);
+  const step = by => setCurrent(i => (i + by + data.length) % data.length);
 
-        <div class="flex justify-center md:mt-4">
-          <button type="button" class="mr-5" data-carousel-prev>
-            <ChevronLeft height={20} width={20} />
-          </button>
-          <button type="button" class="ml-5" data-carousel-next>
-            <ChevronRight height={20} width={20} />
-          </button>
-        </div>
+  return (
+    <section aria-roledescription="carousel" aria-label="Announcements">
+      <div class="relative h-96 overflow-hidden rounded-lg md:h-96">
+        <For each={data}>
+          {(a, i) => (
+            <div
+              role="group"
+              aria-roledescription="slide"
+              aria-label={`${i() + 1} of ${data.length}`}
+              class={clsx("h-full", current() !== i() && "hidden")}
+            >
+              <BlogCard
+                title={a.title}
+                category={a.category}
+                img={a.img}
+                link={a.link}
+                body={a.body}
+              />
+            </div>
+          )}
+        </For>
       </div>
-    </div>
+
+      <div class="flex justify-center gap-2 md:mt-4">
+        <button
+          type="button"
+          aria-label="Previous announcement"
+          class="inline-flex h-11 w-11 items-center justify-center rounded-lg text-gray-700 hover:bg-gray-100 focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-300 dark:text-gray-200 dark:hover:bg-gray-700 dark:focus-visible:ring-blue-800"
+          onClick={() => step(-1)}
+        >
+          <ChevronLeft height={20} width={20} />
+        </button>
+        <button
+          type="button"
+          aria-label="Next announcement"
+          class="inline-flex h-11 w-11 items-center justify-center rounded-lg text-gray-700 hover:bg-gray-100 focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-300 dark:text-gray-200 dark:hover:bg-gray-700 dark:focus-visible:ring-blue-800"
+          onClick={() => step(1)}
+        >
+          <ChevronRight height={20} width={20} />
+        </button>
+      </div>
+    </section>
   );
 };
 

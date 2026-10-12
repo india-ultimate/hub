@@ -93,3 +93,23 @@ class TestDialogsIntegration(BaseCase):
         self.select_option_by_text("select#tournaments", "Nationals")
         self.assert_opens_closes_reopens('button:contains("Edit Format")', "Rules Editor")
         self.assert_opens_closes_reopens('button:contains("Add Spirit Score")', "Add Spirit Score")
+
+    def test_dashboard_sections_open_one_at_a_time(self) -> None:
+        self.sign_in_as(self.staff)
+        self.open(f"{APP_URL}/dashboard")
+        # No player profile: User Actions starts open, as it did.
+        self.assert_element("details:has(#accordion-heading-actions)[open]")
+        self.click("#accordion-heading-transactions")
+        self.assert_element("details:has(#accordion-heading-transactions)[open]")
+        self.assert_element_absent("details:has(#accordion-heading-actions)[open]")
+
+    def test_the_mobile_menu_closes_when_a_link_is_followed(self) -> None:
+        self.set_window_size(375, 812)
+        self.open(f"{APP_URL}/")
+        self.click('button[aria-controls="navbar-solid-bg"]')
+        self.assert_element('button[aria-expanded="true"]')
+        self.click('#navbar-solid-bg a[href="/teams"]')
+        self.wait_for_element_present(
+            'button[aria-controls="navbar-solid-bg"][aria-expanded="false"]'
+        )
+        self.assert_element_not_visible("#navbar-solid-bg")
