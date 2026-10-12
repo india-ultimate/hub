@@ -13,6 +13,10 @@ SECRET_KEY = os.environ.get("SECRET_KEY", SECRET_KEY)  # noqa: F405
 EMAIL_INVITATION_BASE_URL = "https://hub.indiaultimate.org"
 
 if os.environ.get("REDIS_HOST"):
+    from redis.backoff import NoBackoff
+    from redis.exceptions import ConnectionError as RedisConnectionError
+    from redis.retry import Retry
+
     from hub.redis_auth import password
 
     CACHES = {
@@ -20,7 +24,15 @@ if os.environ.get("REDIS_HOST"):
             "BACKEND": "django.core.cache.backends.redis.RedisCache",
             "LOCATION": f"redis://:{password(SECRET_KEY)}@{os.environ['REDIS_HOST']}:6379/0",
             # Fail fast: an unreachable cache must cost a request at most 0.3 s.
-            "OPTIONS": {"socket_connect_timeout": 0.1, "socket_timeout": 0.2},  # type: ignore[dict-item]
+            "OPTIONS": {  # type: ignore[dict-item]
+                "socket_connect_timeout": 0.1,
+                "socket_timeout": 0.2,
+                # A pooled connection can be dead after a resume or a Redis restart:
+                # reconnect once, at once. Retry's default also covers timeouts, so
+                # name ConnectionError only: an unreachable Redis still costs one timeout.
+                "retry": Retry(NoBackoff(), 1, supported_errors=(RedisConnectionError,)),
+                "retry_on_error": [RedisConnectionError],
+            },
         }
     }
 
