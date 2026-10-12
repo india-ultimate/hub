@@ -62,6 +62,25 @@ class SeriesMinSchema(ModelSchema):
         model_fields = ["name", "slug", "start_date", "end_date"]
 
 
+class TournamentSeriesSchema(ModelSchema):
+    """A series as a tournament sends it: without its teams and their counts."""
+
+    type: str
+    category: str
+
+    @staticmethod
+    def resolve_type(series: Series) -> str:
+        return SeriesMinSchema.resolve_type(series)
+
+    @staticmethod
+    def resolve_category(series: Series) -> str:
+        return SeriesMinSchema.resolve_category(series)
+
+    class Config:
+        model = Series
+        model_exclude = ["teams"]
+
+
 class SeriesCreateSchema(Schema):
     start_date: date
     end_date: date

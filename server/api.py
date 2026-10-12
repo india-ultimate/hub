@@ -1289,7 +1289,11 @@ def upai_person(
 @api.get("/tournaments", auth=None, response={200: list[TournamentMinSchema]})
 def get_all_tournaments(request: AuthenticatedHttpRequest) -> tuple[int, QuerySet[Tournament]]:
     """Get tournaments, most recently started tournament first"""
-    return 200, Tournament.objects.all().order_by("-event__start_date")
+    return 200, (
+        Tournament.objects.select_related("event__series", "event__payment_account")
+        .prefetch_related("teams", "partial_teams")
+        .order_by("-event__start_date")
+    )
 
 
 @api.get("/tournament", auth=None, response={200: TournamentSchema, 400: Response})
@@ -1298,13 +1302,10 @@ def get_tournament(
 ) -> tuple[int, Tournament | message_response]:
     if id is None and slug is None:
         return 400, {"message": "Need either tournament id or slug"}
+    tournaments = Tournament.objects.select_related("event__series", "event__payment_account")
     try:
-        if id is not None:
-            tournament = Tournament.objects.get(id=id)
-        else:
-            event = Event.objects.get(slug=slug)
-            tournament = Tournament.objects.get(event=event)
-    except (Tournament.DoesNotExist, Event.DoesNotExist):
+        tournament = tournaments.get(id=id) if id is not None else tournaments.get(event__slug=slug)
+    except Tournament.DoesNotExist:
         return 400, {"message": "Tournament does not exist"}
 
     return 200, tournament

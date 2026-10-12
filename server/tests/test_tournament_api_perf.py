@@ -7,8 +7,9 @@ from django.db import connection
 from django.test.utils import CaptureQueriesContext
 from django.utils.timezone import now
 
-from server.core.models import CommentaryInfo, Player, UCPerson, User
-from server.tests.base import ApiBaseTestCase
+from server.core.models import CommentaryInfo, Player, Team, UCPerson, User
+from server.series.models import Series
+from server.tests.base import ApiBaseTestCase, create_event
 from server.tournament.models import (
     Bracket,
     CrossPool,
@@ -21,6 +22,7 @@ from server.tournament.models import (
     Registration,
     SpiritScore,
     SwissRound,
+    Tournament,
     TournamentField,
 )
 
@@ -316,3 +318,117 @@ class TestRoster(TournamentApiTestCase):
         self.add_player(jersey=None)
         (entry,) = self.client.get(self.url).json()
         self.assertIsNone(entry["player"]["commentary_info"])
+
+
+class TestTournaments(TournamentApiTestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        self.series = Series.objects.create(
+            name="Nationals Series",
+            type=Series.Type.MIXED,
+            category=Series.Category.CLUB,
+            start_date="2026-01-01",
+            end_date="2026-12-31",
+            series_roster_max_players=30,
+            event_min_players_male=0,
+            event_min_players_female=0,
+            event_max_players_male=30,
+            event_max_players_female=30,
+        )
+
+    def add_tournament(self) -> None:
+        self.n += 1
+        event = create_event(f"Event {self.n}")
+        event.series = self.series
+        event.save()
+        tournament = Tournament.objects.create(event=event)
+        team = Team.objects.create(name=f"Listed {self.n}")
+        tournament.teams.add(team)
+        tournament.partial_teams.add(team)
+        self.series.teams.add(team)
+
+    def add_team(self) -> None:
+        self.n += 1
+        team = Team.objects.create(name=f"Entered {self.n}")
+        self.tournament.teams.add(team)
+        self.tournament.partial_teams.add(team)
+        team.admins.add(self.make_player().user)
+        Registration.objects.create(event=self.event, team=team, player=self.make_player())
+
+    def test_list_queries_dont_grow(self) -> None:
+        def grow() -> None:
+            for _ in range(5):
+                self.add_tournament()
+
+        self.add_tournament()
+        self.assert_constant("/api/tournaments", grow)
+
+    def test_list_keeps_what_managers_save(self) -> None:
+        self.tournament.rules = "Be kind"
+        self.tournament.initial_seeding = {"1": self.team_1.id}
+        self.tournament.save()
+        (tournament,) = (
+            t for t in self.client.get("/api/tournaments").json() if t["id"] == self.tournament.id
+        )
+        self.assertEqual("Be kind", tournament["rules"])
+        self.assertEqual({"1": self.team_1.id}, tournament["initial_seeding"])
+        self.assertIn("current_seeding", tournament)
+        self.assertIn(self.team_1.id, tournament["teams"])
+
+    def test_list_series_has_no_teams(self) -> None:
+        self.add_tournament()
+        listed = [t for t in self.client.get("/api/tournaments").json() if t["event"]["series"]]
+        series = listed[0]["event"]["series"]
+        self.assertEqual("Nationals Series", series["name"])
+        self.assertNotIn("teams", series)
+        self.assertNotIn("reg_count", series)
+
+    def test_one_tournament_queries_dont_grow_with_teams(self) -> None:
+        def grow() -> None:
+            for _ in range(5):
+                self.add_team()
+
+        self.event.series = self.series
+        self.event.save()
+        self.add_team()
+        self.assert_constant(f"/api/tournament?slug={self.event.slug}", grow)
+
+    def test_one_tournament_counts_registrations(self) -> None:
+        self.add_team()
+        team = self.tournament.teams.order_by("-id")[0]
+        body = self.client.get(f"/api/tournament?slug={self.event.slug}").json()
+        counts = {c["team_id"]: c["count"] for c in body["reg_count"]}
+        self.assertEqual(1, counts[team.id])
+        self.assertEqual(0, counts[self.teams[2].id])
+        self.assertEqual({"id", "name", "slug", "image", "image_url"}, set(body["teams"][0]))
+
+    def test_no_personal_data(self) -> None:
+        self.add_team()
+        self.assert_no_personal_data("/api/tournaments")
+        self.assert_no_personal_data(f"/api/tournament?slug={self.event.slug}")
+
+    def test_pools_dont_grow(self) -> None:
+        def grow() -> None:
+            for name in ("C", "D", "E"):
+                Pool.objects.create(
+                    tournament=self.tournament,
+                    sequence_number=1,
+                    name=name,
+                    initial_seeding={},
+                    results={},
+                )
+
+        self.assert_constant(f"/api/tournament/pools?id={self.tournament.id}", grow)
+
+    def test_brackets_dont_grow(self) -> None:
+        def grow() -> None:
+            for name in ("9-12", "13-16", "17-20"):
+                Bracket.objects.create(
+                    tournament=self.tournament,
+                    sequence_number=1,
+                    name=name,
+                    initial_seeding={},
+                    current_seeding={},
+                )
+
+        self.assert_constant(f"/api/tournament/brackets?id={self.tournament.id}", grow)
