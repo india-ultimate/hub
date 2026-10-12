@@ -1,4 +1,4 @@
-from django.db.models import Prefetch, QuerySet
+from django.db.models import Count, Prefetch, QuerySet
 from ninja import ModelSchema, Schema
 
 from server.core.models import CommentaryInfo, Player, Team, UCPerson
@@ -10,7 +10,7 @@ from server.schema import (
     TeamMinSchema,
     TeamSchema,
 )
-from server.series.schema import SeriesSchema
+from server.series.schema import SeriesSchema, TournamentSeriesSchema
 
 from .models import (
     Bracket,
@@ -56,8 +56,12 @@ class EventSchema(ModelSchema):
         model_exclude = ["ultimate_central_id"]
 
 
+class TournamentEventSchema(EventSchema):
+    series: TournamentSeriesSchema | None  # type: ignore[assignment]
+
+
 class TournamentMinSchema(ModelSchema):
-    event: EventSchema
+    event: TournamentEventSchema
 
     class Config:
         model = Tournament
@@ -65,9 +69,9 @@ class TournamentMinSchema(ModelSchema):
 
 
 class TournamentSchema(ModelSchema):
-    event: EventSchema
-    teams: list[TeamSchema]
-    partial_teams: list[TeamSchema]
+    event: TournamentEventSchema
+    teams: list[TeamMinSchema]
+    partial_teams: list[TeamMinSchema]
 
     @staticmethod
     def resolve_teams(tournament: Tournament) -> QuerySet[Team]:
@@ -81,13 +85,15 @@ class TournamentSchema(ModelSchema):
 
     @staticmethod
     def resolve_reg_count(tournament: Tournament) -> list[RegistrationCount]:
-        teams = tournament.teams.all()
+        rows = (
+            Registration.objects.filter(event=tournament.event_id)
+            .values_list("team")
+            .annotate(count=Count("id"))
+        )
+        counts = {row[0]: row[1] for row in rows}
         return [
-            RegistrationCount(
-                team_id=team.id,
-                count=Registration.objects.filter(team=team, event=tournament.event).count(),
-            )
-            for team in teams
+            RegistrationCount(team_id=team.id, count=counts.get(team.id, 0))
+            for team in tournament.teams.all()
         ]
 
     class Config:
