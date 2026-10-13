@@ -26,6 +26,37 @@ from server.tournament.models import (
 T = TypeVar("T")
 
 
+# A valid POST /api/tournaments body, tags and all.
+TOURNAMENT_DETAILS: dict[str, Any] = {
+    "title": "Tagged Cup",
+    "start_date": "2026-09-01",
+    "end_date": "2026-09-02",
+    "team_registration_start_date": "2026-08-01",
+    "team_registration_end_date": "2026-08-10",
+    "player_registration_start_date": "2026-08-11",
+    "player_registration_end_date": "2026-08-20",
+    "team_partial_registration_end_date": "2026-08-05",
+    "team_late_penalty_end_date": "2026-08-12",
+    "player_late_penalty_end_date": "2026-08-22",
+    "location": "City",
+    "type": "MXD",
+    "team_fee": 0,
+    "player_fee": 0,
+    "partial_team_fee": 0,
+    "team_late_penalty": 0,
+    "player_late_penalty": 0,
+    "is_iu_sanctioned": True,
+    "age": "Masters",
+    "surface": "Beach",
+    "level": "Club",
+    "stage": "Nationals",
+    "format": "5v5",
+    "skill_division": None,
+    "is_adaptive": False,
+    "is_subscription_needed": False,
+}
+
+
 def not_none(value: T | None, message: str = "expected a value, got None") -> T:
     """Assert a value is present and hand it back with the `None` narrowed away.
 

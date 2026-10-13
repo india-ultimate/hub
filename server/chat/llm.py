@@ -28,6 +28,7 @@ from server.subscription.models import Subscription
 from server.tournament.models import (
     Bracket,
     CrossPool,
+    Event,
     Match,
     MatchEvent,
     MatchStats,
@@ -1278,7 +1279,7 @@ Available Tools:
                 "player_fee": tournament.event.player_fee,
                 "partial_team_fee": tournament.event.partial_team_fee,
                 "is_subscription_needed": tournament.event.is_subscription_needed,
-                "tier": tournament.event.tier,
+                **{field: getattr(tournament.event, field) for field in Event.TAG_FIELDS},
                 "series": tournament.event.series.name if tournament.event.series else None,
                 "team_count": tournament.teams.count(),
                 "partial_team_count": tournament.partial_teams.count(),
@@ -1313,7 +1314,7 @@ Available Tools:
                 "player_fee": tournament.event.player_fee,
                 "partial_team_fee": tournament.event.partial_team_fee,
                 "is_subscription_needed": tournament.event.is_subscription_needed,
-                "tier": tournament.event.tier,
+                **{field: getattr(tournament.event, field) for field in Event.TAG_FIELDS},
                 "series": tournament.event.series.name if tournament.event.series else None,
                 "teams": [{"id": team.id, "name": team.name} for team in tournament.teams.all()],
                 "partial_teams": [

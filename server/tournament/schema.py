@@ -168,6 +168,15 @@ class TournamentCreateSchema(Schema):
     partial_team_fee: int
     team_late_penalty: int
     player_late_penalty: int
+    is_iu_sanctioned: bool
+    age: Event.Age
+    surface: Event.Surface
+    level: Event.Level
+    stage: Event.Stage
+    format: Event.Format
+    skill_division: Event.SkillDivision | None = None
+    is_adaptive: bool = False
+    is_subscription_needed: bool
 
 
 class TournamentUpdateSeedingSchema(Schema):

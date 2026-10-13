@@ -1,5 +1,6 @@
 from typing import Any
 
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models.signals import m2m_changed, post_delete, post_save
 from django.dispatch import receiver
@@ -16,6 +17,40 @@ class Event(ExportModelOperationsMixin("event"), models.Model):  # type: ignore[
         MIXED = "MXD", _("Mixed")
         OPENS = "OPN", _("Opens")
         WOMENS = "WMN", _("Womens")
+
+    # Tags for comparing stats across events. Null is "not tagged yet", so no
+    # choice has a default that could mislabel an old event. Two exceptions: a
+    # null skill_division also means "not split by skill", and is_adaptive is
+    # false unless set.
+    class Age(models.TextChoices):
+        OPEN = "Open", _("Open")
+        MASTERS = "Masters", _("Masters")
+        U24 = "U24", _("U24")
+        U18 = "U18", _("U18")
+
+    class Surface(models.TextChoices):
+        GRASS = "Grass", _("Grass")
+        BEACH = "Beach", _("Beach")
+
+    class Level(models.TextChoices):
+        CLUB = "Club", _("Club")
+        STATE = "State", _("State")
+        COLLEGE = "College", _("College")
+        REC = "Rec", _("Rec")
+
+    class Stage(models.TextChoices):
+        SECTIONALS = "Sectionals", _("Sectionals")
+        REGIONALS = "Regionals", _("Regionals")
+        NATIONALS = "Nationals", _("Nationals")
+        STANDALONE = "Standalone", _("Standalone")
+
+    class Format(models.TextChoices):
+        SEVENS = "7v7", _("7v7")
+        FIVES = "5v5", _("5v5")
+
+    class SkillDivision(models.TextChoices):
+        ELITE = "Elite", _("Elite")
+        CHALLENGER = "Challenger", _("Challenger")
 
     title = models.CharField(max_length=255)
     start_date = models.DateField()
@@ -59,7 +94,49 @@ class Event(ExportModelOperationsMixin("event"), models.Model):  # type: ignore[
         null=True,
     )
     is_subscription_needed = models.BooleanField(default=False)
+    # Unused. Drop it a release after the tags ship: migrations run before the
+    # old machines stop, and their queries still select it.
     tier = models.IntegerField(default=4)
+
+    is_iu_sanctioned = models.BooleanField(
+        "Sanctioned by India Ultimate",
+        null=True,
+        blank=True,
+        help_text="A series event or one that needs IU membership.",
+    )
+    age = models.CharField(max_length=7, choices=Age.choices, null=True, blank=True)
+    surface = models.CharField(max_length=5, choices=Surface.choices, null=True, blank=True)
+    level = models.CharField(max_length=7, choices=Level.choices, null=True, blank=True)
+    stage = models.CharField(max_length=10, choices=Stage.choices, null=True, blank=True)
+    format = models.CharField(max_length=3, choices=Format.choices, null=True, blank=True)
+    skill_division = models.CharField(
+        max_length=10,
+        choices=SkillDivision.choices,
+        null=True,
+        blank=True,
+        help_text="Empty when the event isn't split by skill.",
+    )
+    is_adaptive = models.BooleanField(
+        default=False,
+        # Old machines still insert events without it while a deploy rolls out.
+        db_default=False,
+        help_text="Wheelchair or other adaptive play.",
+    )
+
+    TAG_FIELDS = (
+        "is_iu_sanctioned",
+        "age",
+        "surface",
+        "level",
+        "stage",
+        "format",
+        "skill_division",
+        "is_adaptive",
+    )
+
+    SANCTION_RULE = (
+        "An event in a series or needing IU membership must be sanctioned by India Ultimate."
+    )
 
     def save(self, *args: Any, **kwargs: Any) -> None:
         if not self.slug:
@@ -67,6 +144,11 @@ class Event(ExportModelOperationsMixin("event"), models.Model):  # type: ignore[
             self.slug = slug
             self.ultimate_central_slug = slug
         return super().save(*args, **kwargs)
+
+    def clean(self) -> None:
+        super().clean()
+        if (self.is_subscription_needed or self.series_id) and self.is_iu_sanctioned is not True:
+            raise ValidationError({"is_iu_sanctioned": self.SANCTION_RULE})
 
     def get_slug(self) -> str:
         slug = slugify_max(self.title, 45)

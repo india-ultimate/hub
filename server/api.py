@@ -2051,7 +2051,20 @@ def create_tournament(
         partial_team_fee=tournament_details.partial_team_fee,
         team_late_penalty=tournament_details.team_late_penalty,
         player_late_penalty=tournament_details.player_late_penalty,
+        is_iu_sanctioned=tournament_details.is_iu_sanctioned,
+        age=tournament_details.age,
+        surface=tournament_details.surface,
+        level=tournament_details.level,
+        stage=tournament_details.stage,
+        format=tournament_details.format,
+        skill_division=tournament_details.skill_division,
+        is_adaptive=tournament_details.is_adaptive,
+        is_subscription_needed=tournament_details.is_subscription_needed,
     )
+    try:
+        event.clean()
+    except ValidationError as error:
+        return 400, {"message": " ".join(error.messages)}
     event.save()
 
     tournament = Tournament(event=event)
