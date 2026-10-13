@@ -6,6 +6,7 @@ imports nothing from the rest of the package."""
 import re
 import unicodedata
 
+from django.db.models import Q
 from django.template.defaultfilters import slugify
 
 from server.utils import mask_string
@@ -13,6 +14,15 @@ from server.utils import mask_string
 # Only Gmail treats dots in the local part as insignificant.
 DOTLESS_DOMAINS = frozenset({"gmail.com", "googlemail.com"})
 PHONE_DIGITS = 10
+
+
+def full_email_match(text: str, username_field: str) -> Q:
+    """Someone whose whole address was typed, never a prefix or a part of one: a
+    search that completed addresses would let people recover them a character at a time."""
+    text = text.strip()
+    return Q(**{f"{username_field}__iexact": text}) | Q(
+        **{f"{username_field}__iexact": normalize_email(text)}
+    )
 
 
 def normalize_email(email: str) -> str:

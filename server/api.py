@@ -55,6 +55,7 @@ from server.core.models import (
     Vaccination,
 )
 from server.duplicates.api import router as merge_router
+from server.duplicates.identity import full_email_match
 from server.election.api import router as election_router
 from server.forms.api import router as forms_router
 from server.passkey_utils import PassKeyClient
@@ -353,6 +354,19 @@ USER_SEARCH_MIN_LENGTH = 3
 USER_SEARCH_LIMIT = 20
 
 
+def _name_or_email(user: Any, text: str, username_field: str) -> Q:
+    """Names match for everyone. An address matches only whole for everyone but staff,
+    so no one can probe for one a few characters at a time."""
+    match = Q(full_name__icontains=text)
+    if user.is_staff:
+        return match | Q(**{f"{username_field}__icontains": text})
+    return match | full_email_match(text, username_field)
+
+
+def _too_short(user: Any, text: str) -> bool:
+    return not user.is_staff and len(text) < USER_SEARCH_MIN_LENGTH
+
+
 @api.get("/users/search", response={200: list[UserSearchSchema]})
 def search_users(request: AuthenticatedHttpRequest, text: str = "") -> QuerySet[User] | list[User]:
     text = text.strip().lower()
@@ -360,7 +374,7 @@ def search_users(request: AuthenticatedHttpRequest, text: str = "") -> QuerySet[
         return []
     return (
         User.objects.annotate(full_name=Concat("first_name", Value(" "), "last_name"))
-        .filter(Q(full_name__icontains=text) | Q(username__icontains=text))
+        .filter(_name_or_email(request.user, text, "username"))
         .order_by("full_name", "id")[:USER_SEARCH_LIMIT]
     )
 
@@ -439,11 +453,14 @@ def list_players(
 @paginate(PageNumberPagination, page_size=5)
 def search_players(request: AuthenticatedHttpRequest, text: str = "") -> QuerySet[Player]:
     text = text.strip().lower()
-    return (
+    if _too_short(request.user, text):
+        return Player.objects.none()
+    found = (
         Player.objects.annotate(full_name=Concat("user__first_name", Value(" "), "user__last_name"))
-        .filter(Q(full_name__icontains=text) | Q(user__username__icontains=text))
-        .order_by("full_name")
+        .filter(_name_or_email(request.user, text, "user__username"))
+        .order_by("full_name", "id")
     )
+    return found if request.user.is_staff else found[:USER_SEARCH_LIMIT]
 
 
 @api.get("/players/recommend", response={200: list[PlayerTinySchema], 400: Response})
@@ -1467,15 +1484,18 @@ def event_roster_player_search(
         return []
 
     text = text.strip().lower()
+    if _too_short(request.user, text):
+        return []
 
     if not event.series:
-        return (
+        found = (
             Player.objects.annotate(
                 full_name=Concat("user__first_name", Value(" "), "user__last_name")
             )
-            .filter(Q(full_name__icontains=text) | Q(user__username__icontains=text))
-            .order_by("full_name")
+            .filter(_name_or_email(request.user, text, "user__username"))
+            .order_by("full_name", "id")
         )
+        return found if request.user.is_staff else found[:USER_SEARCH_LIMIT]
 
     # Players have to be in the series roster first, to be added to the event roster
     # Subscription active status already checked before adding to the season roster
@@ -1483,12 +1503,13 @@ def event_roster_player_search(
         series=event.series, team=team
     ).values_list("player__id", flat=True)
 
-    return (
+    found = (
         Player.objects.filter(id__in=series_roster_player_ids)
         .annotate(full_name=Concat("user__first_name", Value(" "), "user__last_name"))
-        .filter(Q(full_name__icontains=text) | Q(user__username__icontains=text))
-        .order_by("full_name")
+        .filter(_name_or_email(request.user, text, "user__username"))
+        .order_by("full_name", "id")
     )
+    return found if request.user.is_staff else found[:USER_SEARCH_LIMIT]
 
 
 @api.post(
