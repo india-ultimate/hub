@@ -55,7 +55,6 @@ from server.core.models import (
     Vaccination,
 )
 from server.duplicates.api import router as merge_router
-from server.duplicates.identity import mask_email
 from server.election.api import router as election_router
 from server.forms.api import router as forms_router
 from server.passkey_utils import PassKeyClient
@@ -96,7 +95,6 @@ from server.schema import (
     TopScoreCredentials,
     UserAccessSchema,
     UserFormSchema,
-    UserMinSchema,
     UserSearchSchema,
     VaccinatedFormSchema,
     VaccinationSchema,
@@ -356,24 +354,15 @@ USER_SEARCH_LIMIT = 20
 
 
 @api.get("/users/search", response={200: list[UserSearchSchema]})
-def search_users(request: AuthenticatedHttpRequest, text: str = "") -> list[dict[str, Any]]:
+def search_users(request: AuthenticatedHttpRequest, text: str = "") -> QuerySet[User] | list[User]:
     text = text.strip().lower()
     if len(text) < USER_SEARCH_MIN_LENGTH:
         return []
-    users = (
+    return (
         User.objects.annotate(full_name=Concat("first_name", Value(" "), "last_name"))
         .filter(Q(full_name__icontains=text) | Q(username__icontains=text))
         .order_by("full_name", "id")[:USER_SEARCH_LIMIT]
     )
-    staff = request.user.is_staff
-    return [
-        {
-            "id": u.id,
-            "full_name": u.get_full_name(),
-            "username": u.username if staff else mask_email(u.username),
-        }
-        for u in users
-    ]
 
 
 # Players ##########
@@ -2225,7 +2214,7 @@ def delete_tournament(
 
 @api.get(
     "/tournament/{tournament_id}/directors",
-    response={200: list[UserMinSchema], 400: Response, 401: Response},
+    response={200: list[UserSearchSchema], 400: Response, 401: Response},
 )
 def list_tournament_directors(
     request: AuthenticatedHttpRequest, tournament_id: int
@@ -2244,7 +2233,7 @@ def list_tournament_directors(
 
 @api.post(
     "/tournament/{tournament_id}/directors",
-    response={200: list[UserMinSchema], 400: Response, 401: Response},
+    response={200: list[UserSearchSchema], 400: Response, 401: Response},
 )
 def add_tournament_director(
     request: AuthenticatedHttpRequest,
@@ -2270,7 +2259,7 @@ def add_tournament_director(
 
 @api.delete(
     "/tournament/{tournament_id}/directors/{user_id}",
-    response={200: list[UserMinSchema], 400: Response, 401: Response},
+    response={200: list[UserSearchSchema], 400: Response, 401: Response},
 )
 def remove_tournament_director(
     request: AuthenticatedHttpRequest, tournament_id: int, user_id: int
