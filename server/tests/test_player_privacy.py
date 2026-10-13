@@ -5,6 +5,7 @@ and searches whole response bodies for them.
 """
 
 import datetime
+from typing import Any
 from unittest.mock import patch
 
 from django.test import TestCase
@@ -147,12 +148,21 @@ class TestUserSearch(PlayerPrivacyTestCase):
             },
             found,
         )
-        # Searching by address still finds them, still masked.
-        self.assertEqual([self.owner.id], [u["id"] for u in self.search("hidden.secret")])
 
     def test_staff_see_the_address(self) -> None:
         self.client.force_login(self.staff)
         self.assertEqual([EMAIL], [u["username"] for u in self.search("secret k")])
+        self.assertEqual([EMAIL], [u["username"] for u in self.search("hidden.sec")])
+
+    def test_a_stranger_cannot_find_an_address_by_its_characters(self) -> None:
+        self.client.force_login(self.stranger)
+        for text in ("hid", "hidden.sec", "example.org", EMAIL[:-1]):
+            self.assertEqual([], self.search(text), text)
+
+    def test_a_stranger_finds_someone_by_their_full_address(self) -> None:
+        self.client.force_login(self.stranger)
+        for text in (EMAIL, EMAIL.upper(), f" {EMAIL} "):
+            self.assertEqual([self.owner.id], [u["id"] for u in self.search(text)], text)
 
     def test_under_three_characters_finds_no_one(self) -> None:
         self.client.force_login(self.stranger)
@@ -161,7 +171,7 @@ class TestUserSearch(PlayerPrivacyTestCase):
 
     def test_at_most_twenty_are_returned(self) -> None:
         for i in range(25):
-            User.objects.create(username=f"many{i}@x.com", email=f"many{i}@x.com")
+            User.objects.create(username=f"m{i}@x.com", first_name="Many", last_name=str(i))
         self.client.force_login(self.stranger)
         self.assertEqual(20, len(self.search("many")))
 
@@ -179,6 +189,50 @@ class TestPlayerList(PlayerPrivacyTestCase):
         self.client.force_login(self.staff)
         [player] = self.client.get("/api/players?full_schema=1").json()
         self.assertEqual((EMAIL, PHONE), (player["email"], player["phone"]))
+
+
+class TestPlayerSearchByEmail(PlayerPrivacyTestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        self.team = Team.objects.create(name="Home", slug="home")
+        self.event = create_event("Open")
+
+    def found(self, viewer: User, text: str) -> list[int]:
+        self.client.force_login(viewer)
+        urls = (
+            "/api/players/search",
+            f"/api/tournament/{self.event.slug}/team/{self.team.slug}/players/search",
+        )
+        results = []
+        for url in urls:
+            response = self.client.get(url, {"text": text})
+            self.assertEqual(200, response.status_code, response.content)
+            results.append([p["id"] for p in response.json()["items"]])
+        self.assertEqual(results[0], results[1], text)
+        return results[0]
+
+    def test_a_stranger_cannot_find_a_player_by_email(self) -> None:
+        for text in ("hid", "hidden.sec", "example.org", EMAIL[:-1]):
+            self.assertEqual([], self.found(self.stranger, text), text)
+
+    def test_the_full_address_finds_them(self) -> None:
+        for text in (EMAIL, EMAIL.upper()):
+            self.assertEqual([self.player.id], self.found(self.stranger, text), text)
+
+    def test_a_name_finds_them(self) -> None:
+        self.assertEqual([self.player.id], self.found(self.stranger, "secret k"))
+
+    def test_staff_can_search_by_email(self) -> None:
+        self.assertEqual([self.player.id], self.found(self.staff, "hidden.sec"))
+
+    def test_a_stranger_needs_three_characters_and_gets_at_most_a_page(self) -> None:
+        self.assertEqual([], self.found(self.stranger, "se"))
+        for i in range(25):
+            u = User.objects.create(username=f"m{i}@x.com", first_name="Many", last_name=str(i))
+            Player.objects.create(user=u, date_of_birth=DOB, city="Pune")
+        self.assertEqual(5, len(self.found(self.stranger, "many")))
+        response = self.client.get("/api/players/search", {"text": "many", "page": "5"})
+        self.assertEqual([], response.json()["items"])
 
 
 class TestPlayersInOtherResponses(PlayerPrivacyTestCase):
@@ -366,10 +420,11 @@ class TestLinkUltimateCentral(PlayerPrivacyTestCase):
         # Enough for the player to pass full_clean when linked.
         Player.objects.filter(id=self.player.id).update(gender="M", match_up="M")
 
-    def link(self, viewer: User) -> object:
+    def link(self, viewer: User) -> Any:
         self.client.force_login(viewer)
         UCPerson.objects.get_or_create(
-            id=4242, defaults={"email": "uc@x.com", "slug": "uc", "first_name": "U", "last_name": "C"}
+            id=4242,
+            defaults={"email": "uc@x.com", "slug": "uc", "first_name": "U", "last_name": "C"},
         )
         with patch("server.api.TopScoreClient") as client:
             client.return_value.get_person.return_value = {"person_id": 4242}
@@ -390,6 +445,6 @@ class TestLinkUltimateCentral(PlayerPrivacyTestCase):
         for viewer in (self.owner, self.guardian):
             Player.objects.filter(id=self.player.id).update(ultimate_central_id=None)
             response = self.link(viewer)
-            self.assertEqual(200, response.status_code, response.content)  # type: ignore[attr-defined]
+            self.assertEqual(200, response.status_code, response.content)
             self.player.refresh_from_db()
             self.assertEqual(4242, self.player.ultimate_central_id)
