@@ -6,6 +6,7 @@ from django.db.models import Case, IntegerField, Q, Value, When
 from django.db.models.functions import Concat
 
 from server.core.models import Player, Team, User
+from server.duplicates.identity import full_email_match
 from server.registration.state import Reason, build_context, preview
 from server.series.models import SeriesRegistration
 from server.subscription import eligibility
@@ -136,7 +137,14 @@ def candidate_payload(
                     When(id__in=mates, then=Value(1)), default=Value(0), output_field=IntegerField()
                 ),
             )
-            .filter(Q(full_name__icontains=text) | Q(user__username__icontains=text))
+            .filter(
+                Q(full_name__icontains=text)
+                | (
+                    Q(user__username__icontains=text)
+                    if viewer.is_staff
+                    else full_email_match(text, "user__username")
+                )
+            )
             .exclude(id__in=[me.id] if me else [])
             .order_by("-mate", "full_name", "id")
         )
