@@ -751,34 +751,44 @@ class TestCandidates(ApiCase):
     def test_search_puts_teammates_first(self) -> None:
         stranger = self.player("zed.alpha@x.com", on_series=False, entry=False)
         mate = self.player("zed.beta@x.com", entry=False)
+        User.objects.filter(username__startswith="zed.").update(first_name="Zed")
         body = self.get("zed").json()
         self.assertEqual(["matches", "others"], [g["key"] for g in body["groups"]])
         self.assertEqual([mate.id], [p["id"] for p in body["groups"][0]["players"]])
         self.assertEqual([stranger.id], [p["id"] for p in body["groups"][1]["players"]])
 
+    def test_an_address_matches_only_whole(self) -> None:
+        p = self.player("full.address@x.com", on_series=False, entry=False)
+        for text in ("full.address@x.co", "full.addr", "address@x.com", "x.com"):
+            body = self.get(text).json()
+            self.assertEqual([], [r for g in body["groups"] for r in g["players"]], text)
+        for text in ("full.address@x.com", "FULL.Address@X.com"):
+            ids = [r["id"] for g in self.get(text).json()["groups"] for r in g["players"]]
+            self.assertEqual([p.id], ids, text)
+
     def test_search_marks_people_on_the_list(self) -> None:
         listed = self.player("zed@x.com")
-        players = [p for g in self.get("zed").json()["groups"] for p in g["players"]]
+        players = [p for g in self.get("zed@x.com").json()["groups"] for p in g["players"]]
         self.assertEqual([True], [p["on_list"] for p in players if p["id"] == listed.id])
 
     def test_an_unagreed_code_of_conduct_shows_in_the_hint(self) -> None:
         p = self.player("coc@x.com", entry=False)
         Subscription.objects.filter(player=p).update(coc_agreed=False)
-        rows = {r["id"]: r for g in self.get("coc@x").json()["groups"] for r in g["players"]}
+        rows = {r["id"]: r for g in self.get("coc@x.com").json()["groups"] for r in g["players"]}
         self.assertEqual("Code of conduct not agreed", rows[p.id]["hint"]["text"])
 
     def test_rows_carry_the_players_photo(self) -> None:
         p = self.player("pic@x.com", entry=False)
         p.profile_pic_url = "https://example.com/p.png"
         p.save()
-        rows = {r["id"]: r for g in self.get("pic@x").json()["groups"] for r in g["players"]}
+        rows = {r["id"]: r for g in self.get("pic@x.com").json()["groups"] for r in g["players"]}
         self.assertEqual("https://example.com/p.png", rows[p.id]["photo"])
 
     def test_hints_and_buttons(self) -> None:
         invitee = self.player("i@x.com", on_series=False, entry=False)
         no_sub = self.player("n@x.com", tier=None, entry=False)
         rows = {p["id"]: p for g in self.get().json()["groups"] for p in g["players"]}
-        rows |= {p["id"]: p for g in self.get("i@x").json()["groups"] for p in g["players"]}
+        rows |= {p["id"]: p for g in self.get("i@x.com").json()["groups"] for p in g["players"]}
         self.assertEqual("invite", rows[invitee.id]["button"])
         self.assertEqual("Gets a series invite", rows[invitee.id]["hint"]["text"])
         self.assertEqual("Needs a subscription", rows[no_sub.id]["hint"]["text"])
@@ -813,6 +823,7 @@ class TestCandidates(ApiCase):
     def test_search_pages(self) -> None:
         for i in range(12):
             self.player(f"many{i:02}@x.com", on_series=False, entry=False)
+        User.objects.filter(username__startswith="many").update(first_name="Many")
         first = self.get("many").json()
         self.assertTrue(first["has_more"])
         self.assertEqual(10, sum(len(g["players"]) for g in first["groups"]))
