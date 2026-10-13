@@ -41,6 +41,14 @@ class TestTournamentCards(TestCase):
     def slugs(self, query: str = "") -> set[str]:
         return {t["event"]["slug"] for t in self.cards(query)["tournaments"]}
 
+    def test_cards_carry_the_tags(self) -> None:
+        t = tournament("beach", today() + 5 * DAY)
+        Event.objects.filter(pk=t.event_id).update(surface="Beach", is_iu_sanctioned=True)
+        (card,) = self.cards()["tournaments"]
+        self.assertEqual("Beach", card["event"]["surface"])
+        self.assertIs(True, card["event"]["is_iu_sanctioned"])
+        self.assertIsNone(card["event"]["age"])
+
     def test_a_year_has_only_its_tournaments(self) -> None:
         tournament("in-2024", datetime.date(2024, 5, 1))
         tournament("in-2025", datetime.date(2025, 5, 1))

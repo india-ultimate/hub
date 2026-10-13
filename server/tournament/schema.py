@@ -93,6 +93,7 @@ class TournamentCardEventSchema(ModelSchema):
             "player_registration_start_date",
             "player_registration_end_date",
             "player_late_penalty_end_date",
+            *Event.TAG_FIELDS,
         ]
 
 
