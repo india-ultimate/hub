@@ -2,9 +2,16 @@ import { A, useSearchParams } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
 import clsx from "clsx";
 import { Icon } from "solid-heroicons";
-import { check } from "solid-heroicons/solid-mini";
+import { checkBadge } from "solid-heroicons/solid";
+import { check, chevronRight } from "solid-heroicons/solid-mini";
 import { createEffect, createSignal, For, Match, Show, Switch } from "solid-js";
 
+import {
+  SANCTIONED,
+  SanctionedSeal,
+  TagChips,
+  tournamentTags
+} from "../eventTags";
 import { fetchTournamentCards } from "../queries";
 import { parseLocalDate, todayIST, tournamentLink } from "../utils";
 
@@ -32,6 +39,43 @@ const Tournaments = () => {
   const [showOpens, setShowOpens] = createSignal(true);
   const [showWomens, setShowWomens] = createSignal(true);
 
+  // Tag filters live in the URL too (?surface=Beach&age=U24,U18&iu=1).
+  // Values that aren't a tag's choices are ignored.
+  const tagFilters = tournamentTags.filter(t => t.filter);
+  const picked = tag => {
+    const raw = searchParams[tag.name];
+    if (typeof raw !== "string") return [];
+    const valid = tag.options.map(o => o.value);
+    return [...new Set(raw.split(","))].filter(v => valid.includes(v));
+  };
+  const iuOnly = () => searchParams.iu === "1";
+  const activeFilters = () =>
+    tagFilters.reduce((n, tag) => n + picked(tag).length, 0) +
+    (iuOnly() ? 1 : 0);
+  const setFilters = params =>
+    setSearchParams(params, { replace: true, scroll: false });
+  const toggleTag = (tag, value) => {
+    const now = picked(tag);
+    const next = now.includes(value)
+      ? now.filter(v => v !== value)
+      : [...now, value];
+    setFilters({ [tag.name]: next.join(",") || undefined });
+  };
+  const clearFilters = () =>
+    setFilters(
+      Object.fromEntries(
+        [...tagFilters.map(t => t.name), "iu"].map(k => [k, undefined])
+      )
+    );
+  // Open on load when the link brought filters; after that it's the user's.
+  const startOpen = activeFilters() > 0;
+  const matchesTags = event =>
+    (!iuOnly() || event?.is_iu_sanctioned === true) &&
+    tagFilters.every(tag => {
+      const p = picked(tag);
+      return !p.length || p.includes(event?.[tag.name]);
+    });
+
   // Newest first, whatever order the API sends.
   const yearOptions = () => [
     { value: "", label: "This year & upcoming" },
@@ -55,18 +99,19 @@ const Tournaments = () => {
       ?.scrollIntoView({ inline: "center", block: "nearest" });
   });
 
+  const divisionOn = type =>
+    ({ OPN: showOpens(), MXD: showMixed(), WMN: showWomens() })[type] ?? false;
   const shown = () =>
-    (tournamentsQuery.data?.tournaments ?? []).filter(t => {
-      if (t.status === "DFT") return false;
-      if (t.event?.type === "OPN" && showOpens()) return true;
-      if (t.event?.type === "MXD" && showMixed()) return true;
-      if (t.event?.type === "WMN" && showWomens()) return true;
-      return false;
-    });
+    (tournamentsQuery.data?.tournaments ?? []).filter(
+      t =>
+        t.status !== "DFT" && divisionOn(t.event?.type) && matchesTags(t.event)
+    );
 
   const pill =
     "inline-flex min-h-[44px] shrink-0 snap-start items-center justify-center whitespace-nowrap rounded-full border px-4 text-sm font-medium transition-colors duration-200 motion-reduce:transition-none focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900";
   const on = "border-blue-600 bg-blue-600 text-white hover:bg-blue-700";
+  const toggledOn =
+    "border-blue-600 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:border-blue-400 dark:bg-blue-900/40 dark:text-blue-200";
   const off =
     "border-gray-300 bg-white text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700";
 
@@ -148,13 +193,7 @@ const Tournaments = () => {
                   type="button"
                   aria-pressed={c.on()}
                   onClick={() => c.set(!c.on())}
-                  class={clsx(
-                    pill,
-                    "gap-1.5",
-                    c.on()
-                      ? "border-blue-600 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:border-blue-400 dark:bg-blue-900/40 dark:text-blue-200"
-                      : off
-                  )}
+                  class={clsx(pill, "gap-1.5", c.on() ? toggledOn : off)}
                 >
                   <Show when={c.on()}>
                     <Icon path={check} aria-hidden="true" class="h-4 w-4" />
@@ -164,6 +203,88 @@ const Tournaments = () => {
               )}
             </For>
           </div>
+        </div>
+        <div class="flex items-start justify-between gap-2">
+          <details id="more-filters" class="group flex-1" open={startOpen}>
+            <summary class="flex min-h-[44px] cursor-pointer list-none items-center gap-1 text-sm font-medium text-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:text-blue-300 [&::-webkit-details-marker]:hidden">
+              <Icon
+                path={chevronRight}
+                aria-hidden="true"
+                class="h-4 w-4 transition-transform duration-200 group-open:rotate-90 motion-reduce:transition-none"
+              />
+              More filters
+              <Show when={activeFilters()}>{` (${activeFilters()})`}</Show>
+            </summary>
+            <div class="mt-2 space-y-3">
+              <For each={tagFilters}>
+                {tag => (
+                  <div>
+                    <span
+                      id={`${tag.name}-label`}
+                      class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400"
+                    >
+                      {tag.label}
+                    </span>
+                    <div
+                      class="flex flex-wrap gap-2"
+                      role="group"
+                      aria-labelledby={`${tag.name}-label`}
+                    >
+                      <For each={tag.options}>
+                        {o => {
+                          const isOn = () => picked(tag).includes(o.value);
+                          return (
+                            <button
+                              type="button"
+                              aria-pressed={isOn()}
+                              onClick={() => toggleTag(tag, o.value)}
+                              class={clsx(
+                                pill,
+                                "gap-1.5",
+                                isOn() ? toggledOn : off
+                              )}
+                            >
+                              <Icon
+                                path={isOn() ? check : o.icon}
+                                aria-hidden="true"
+                                class="h-4 w-4"
+                              />
+                              {o.label}
+                            </button>
+                          );
+                        }}
+                      </For>
+                    </div>
+                  </div>
+                )}
+              </For>
+              <button
+                type="button"
+                aria-pressed={iuOnly()}
+                onClick={() => setFilters({ iu: iuOnly() ? undefined : "1" })}
+                class={clsx(pill, "gap-1.5", iuOnly() ? toggledOn : off)}
+              >
+                <Icon
+                  path={iuOnly() ? check : checkBadge}
+                  aria-hidden="true"
+                  class={clsx(
+                    "h-4 w-4",
+                    !iuOnly() && "text-blue-600 dark:text-blue-400"
+                  )}
+                />
+                {SANCTIONED}
+              </button>
+            </div>
+          </details>
+          <Show when={activeFilters()}>
+            <button
+              type="button"
+              onClick={clearFilters}
+              class="min-h-[44px] shrink-0 rounded px-2 text-sm font-medium text-blue-700 underline hover:no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:text-blue-300"
+            >
+              Clear filters
+            </button>
+          </Show>
         </div>
       </div>
 
@@ -175,7 +296,8 @@ const Tournaments = () => {
       <Show when={tournamentsQuery.data && shown().length === 0}>
         <p class="mt-8 text-center text-gray-600 dark:text-gray-300">
           No tournaments match these filters
-          {year() ? ` in ${year()}` : " yet"}. Try another year or category.
+          {year() ? ` in ${year()}` : " yet"}. Try another year, category or
+          filter.
         </p>
       </Show>
       <div
@@ -283,9 +405,17 @@ const Tournaments = () => {
                     </span>
                   </Match>
                 </Switch>
+                <TagChips
+                  event={tournament.event}
+                  variant="card"
+                  class="mt-2"
+                />
                 <div class="mb-2 mt-2">
                   <h5 class="text-xl font-bold capitalize tracking-tight text-blue-600 dark:text-blue-400">
                     {tournament.event.title}
+                    <Show when={tournament.event?.is_iu_sanctioned}>
+                      <SanctionedSeal />
+                    </Show>
                   </h5>
                   <Show when={tournament.event?.series}>
                     <p class="text-sm italic">

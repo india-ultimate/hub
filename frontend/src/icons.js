@@ -132,3 +132,32 @@ export const ChevronLeft = props => (
     </g>
   </svg>
 );
+
+// Shaped like solid-heroicons' icons, so <Icon path={grass} /> draws them
+// (outline: stroked with the text colour, on a 24×24 grid).
+export const grass = {
+  path: () => (
+    <path
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      d="M3 20h18M7 20c0-4-1-7-3-9m8 9V5m0 15c0-3 1-6 3-8m2 8c0-4 1-7 3-9"
+    />
+  ),
+  outline: true,
+  mini: false
+};
+
+export const wheelchair = {
+  path: () => (
+    <>
+      <circle cx="10" cy="4" r="1.75" fill="currentColor" />
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M10 7.5v6h5.5l2.5 5.5M10 10.5h5M7.5 11.2a5.5 5.5 0 1 0 7.3 7.3"
+      />
+    </>
+  ),
+  outline: true,
+  mini: false
+};

@@ -12,6 +12,7 @@ import {
   Switch
 } from "solid-js";
 
+import { SanctionedPill, TagChips } from "../eventTags";
 import {
   fetchTournamentBySlug,
   fetchUserAccessByTournamentSlug
@@ -179,6 +180,17 @@ const Tournament = () => {
           />
         </div>
       </Show>
+
+      <Show when={tournamentQuery.data?.event?.is_iu_sanctioned}>
+        <div class="mt-4">
+          <SanctionedPill />
+        </div>
+      </Show>
+      <TagChips
+        event={tournamentQuery.data?.event}
+        variant="page"
+        class="mt-3 justify-center"
+      />
 
       <div class="mt-5 flex justify-center">
         <Switch>
