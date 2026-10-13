@@ -2,7 +2,7 @@ from ninja import ModelSchema
 
 from server.announcements.models import Announcement
 from server.core.models import User
-from server.schema import UserMinSchema
+from server.schema import UserNameSchema
 
 
 def _can_read(announcement: Announcement) -> bool:
@@ -11,7 +11,7 @@ def _can_read(announcement: Announcement) -> bool:
 
 
 class AnnouncementSchema(ModelSchema):
-    author: UserMinSchema
+    author: UserNameSchema
     author_profile_pic_url: str | None = None
     can_read: bool
 

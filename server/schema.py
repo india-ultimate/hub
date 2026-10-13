@@ -1,5 +1,6 @@
-from django.utils.timezone import now
+from typing import Any
 
+from django.utils.timezone import now
 from ninja import ModelSchema, Schema
 
 from server.constants import MIN_AGE
@@ -95,7 +96,15 @@ class CommentaryInfoSchema(ModelSchema):
         fields = "__all__"
 
 
-class UserMinSchema(ModelSchema):
+def viewer_is_staff(context: dict[str, Any] | None) -> bool:
+    """For a resolver taking `context`: whether the request is a staff member's."""
+    request = (context or {}).get("request")
+    return bool(request is not None and request.user.is_staff)
+
+
+class UserNameSchema(ModelSchema):
+    """Someone named on a page, an author or an inviter: by name only."""
+
     full_name: str
 
     @staticmethod
@@ -104,21 +113,28 @@ class UserMinSchema(ModelSchema):
 
     class Meta:
         model = User
-        fields = [
-            "id",
-            "username",
-            "email",
-            "first_name",
-            "last_name",
-        ]
+        fields = ["id", "first_name", "last_name"]
 
 
-class UserSearchSchema(Schema):
-    """Someone a picker can choose. The username is masked for all but staff."""
+class UserSearchSchema(ModelSchema):
+    """Someone a picker or a director list shows. The username, an email, is
+    masked for all but staff."""
 
-    id: int
     full_name: str
+
+    @staticmethod
+    def resolve_full_name(user: User) -> str:
+        return user.get_full_name()
+
     username: str
+
+    @staticmethod
+    def resolve_username(user: User, context: dict[str, Any]) -> str:
+        return user.username if viewer_is_staff(context) else mask_email(user.username)
+
+    class Meta:
+        model = User
+        fields = ["id"]
 
 
 class TeamAdminSchema(ModelSchema):

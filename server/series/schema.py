@@ -7,7 +7,7 @@ from server.schema import (
     PlayerTinySchema,
     RegistrationCount,
     TeamMinSchema,
-    UserMinSchema,
+    UserNameSchema,
 )
 
 from .models import Series, SeriesRegistration, SeriesRosterInvitation
@@ -104,7 +104,7 @@ class SeriesRosterInvitationCreateSchema(Schema):
 
 
 class SeriesRosterInvitationSchema(ModelSchema):
-    from_user: UserMinSchema
+    from_user: UserNameSchema
     to_player: PlayerTinySchema
     team: TeamMinSchema
 

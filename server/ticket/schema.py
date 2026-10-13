@@ -1,8 +1,11 @@
 from datetime import datetime
+from typing import Any
 
 from ninja import Schema
 from pydantic import field_validator
 
+from server.core.models import User
+from server.schema import viewer_is_staff
 from server.ticket.models import Ticket
 
 
@@ -41,9 +44,14 @@ class TicketUpdateSchema(Schema):
 
 class UserSchema(Schema):
     id: int
-    username: str
     first_name: str
     last_name: str
+    # An email: staff mail people from the ticket page, no one else sees it.
+    username: str | None = None
+
+    @staticmethod
+    def resolve_username(user: User, context: dict[str, Any]) -> str | None:
+        return user.username if viewer_is_staff(context) else None
 
 
 class TicketMessageCreateSchema(Schema):

@@ -271,3 +271,89 @@ class TestElectionCandidates(PlayerPrivacyTestCase):
         # The staff's candidate manager shows it.
         self.client.force_login(self.staff)
         self.assertEqual(EMAIL, self.client.get(url).json()[0]["user"]["username"])
+
+
+class TestUsersNamedInResponses(PlayerPrivacyTestCase):
+    """An author, an inviter, a ticket's people or a co-director: by name."""
+
+    def test_an_announcements_author_is_named_without_their_email(self) -> None:
+        from server.announcements.models import Announcement
+
+        Announcement.objects.create(
+            title="News", slug="news", content="Hi", author=self.owner, is_published=True
+        )
+        self.client.force_login(self.stranger)
+        for url in ("/api/announcements/", "/api/announcements/news"):
+            response = self.client.get(url)
+            self.assertEqual(200, response.status_code, response.content)
+            self.assert_no_secrets(response, self.stranger)
+        author = self.client.get("/api/announcements/news").json()["author"]
+        # What the announcement pages read.
+        self.assertEqual(("Secret", "Keeper"), (author["first_name"], author["last_name"]))
+
+    def test_a_series_invitation_names_its_sender_without_their_email(self) -> None:
+        from server.series.models import Series, SeriesRosterInvitation
+        from server.series.schema import SeriesRosterInvitationSchema
+
+        series = Series.objects.create(
+            name="Club series",
+            start_date="2026-10-01",
+            end_date="2027-03-31",
+            type=Series.Type.MIXED,
+            category=Series.Category.CLUB,
+            series_roster_max_players=30,
+            event_min_players_male=0,
+            event_min_players_female=0,
+            event_max_players_male=20,
+            event_max_players_female=20,
+        )
+        invitee = Player.objects.create(user=self.stranger, date_of_birth=datetime.date(1990, 1, 1))
+        invitation = SeriesRosterInvitation.objects.create(
+            series=series,
+            from_user=self.owner,
+            to_player=invitee,
+            team=Team.objects.create(name="Inviters", slug="inviters"),
+        )
+        body = SeriesRosterInvitationSchema.model_validate(invitation).model_dump_json()
+        for secret in (EMAIL, PHONE, DOB.isoformat()):
+            self.assertNotIn(secret, body)
+        # What the invitation pages read.
+        self.assertIn('"full_name":"Secret Keeper"', body)
+
+    def test_a_public_tickets_people_are_named_without_their_email(self) -> None:
+        from server.ticket.models import Ticket, TicketMessage
+
+        ticket = Ticket.objects.create(
+            title="Help", description="Please", created_by=self.owner, assigned_to=self.owner
+        )
+        TicketMessage.objects.create(ticket=ticket, sender=self.owner, message="Hello")
+
+        self.client.force_login(self.stranger)
+        for url in ("/api/ticket/", f"/api/ticket/{ticket.id}"):
+            response = self.client.get(url)
+            self.assertEqual(200, response.status_code, response.content)
+            self.assert_no_secrets(response, self.stranger)
+        detail = self.client.get(f"/api/ticket/{ticket.id}").json()
+        self.assertEqual("Secret", detail["created_by"]["first_name"])
+
+        # Staff mail them from the ticket page.
+        self.client.force_login(self.staff)
+        detail = self.client.get(f"/api/ticket/{ticket.id}").json()
+        self.assertEqual(EMAIL, detail["created_by"]["username"])
+        self.assertEqual(EMAIL, detail["messages"][0]["sender"]["username"])
+
+    def test_a_director_sees_co_directors_emails_masked(self) -> None:
+        from server.tournament.models import Tournament
+
+        tournament = Tournament.objects.create(event=create_event("Regionals"))
+        tournament.directors.add(self.owner, self.stranger)
+        url = f"/api/tournament/{tournament.id}/directors"
+
+        self.client.force_login(self.stranger)
+        response = self.client.get(url)
+        self.assertEqual(200, response.status_code, response.content)
+        self.assert_no_secrets(response, self.stranger)
+        self.assertIn("hixxxxxxxxxet@example.org", {d["username"] for d in response.json()})
+
+        self.client.force_login(self.staff)
+        self.assertIn(EMAIL, {d["username"] for d in self.client.get(url).json()})
