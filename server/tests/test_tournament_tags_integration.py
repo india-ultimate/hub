@@ -102,7 +102,7 @@ class TestTournamentTagsIntegration(BaseCase):
         self.assertIn("age=U24", url)
         self.open(url)
         self.assert_element("details#more-filters[open]")
-        self.assert_element('details#more-filters summary:contains("(2)")')
+        self.assert_element('details#more-filters summary:contains("2 active")')
         self.assert_element_not_present(beach_open)
         self.click('button:contains("Clear filters")')
         self.assert_element(untagged)
@@ -122,7 +122,7 @@ class TestTournamentTagsIntegration(BaseCase):
         self.open(f"{APP_URL}/tournaments?surface=Moon&age=U24,,X&iu=yes")
         self.assert_element(beach)
         self.assert_element_not_present(grass)
-        self.assert_element('details#more-filters summary:contains("(1)")')
+        self.assert_element('details#more-filters summary:contains("1 active")')
         self.assert_element_not_present('[role="alert"]')
 
     def test_clearing_keeps_the_year(self) -> None:
