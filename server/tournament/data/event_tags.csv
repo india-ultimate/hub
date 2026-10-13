@@ -1,0 +1,86 @@
+id,title,is_iu_sanctioned,age,surface,level,stage,format,skill_division,is_adaptive
+2,NCS 23-24 SW Sectionals (Bangalore),true,Open,Grass,Club,Sectionals,7v7,,false
+148,Beach Nationals 2023,true,Open,Beach,Club,Nationals,5v5,,false
+74501,NCS 23-24 Regionals (South) - Bangalore,true,Open,Grass,Club,Regionals,7v7,,false
+74350,NCS 23-24 Regionals (West) - Surat,true,Open,Grass,Club,Regionals,7v7,,false
+112703,NOCS 23-24 Qualifiers (South East) - Auroville,true,Open,Grass,Club,Regionals,7v7,,false
+112704,NOCS 23-24 Qualifiers (South West) - Bangalore,true,Open,Grass,Club,Regionals,7v7,,false
+112705,NOCS 23-24 Qualifiers (West) - Surat,true,Open,Grass,Club,Regionals,7v7,,false
+112706,NOCS 23-24 Qualifiers (North) - Lucknow,true,Open,Grass,Club,Regionals,7v7,,false
+112707,NWCS 23-24 Regionals (South West) - Bangalore,true,Open,Grass,Club,Regionals,7v7,,false
+112708,NWCS 23-24 Regionals (South East) - Auroville,true,Open,Grass,Club,Regionals,7v7,,false
+225402,NCS 23-24 Nationals,true,Open,Grass,Club,Nationals,7v7,,false
+310088,NWCS 23-24 Nationals (WOMEN'S),true,Open,Grass,Club,Nationals,7v7,,false
+337112,NOCS 23-24 Nationals (OPEN),true,Open,Grass,Club,Nationals,7v7,,false
+478133,IU NCUC 2024,true,Open,Grass,College,Nationals,7v7,,false
+474032,IU Masters Nationals 2024,true,Masters,Grass,Club,Nationals,7v7,,false
+1004588,Sakkath (Opens),false,Open,Grass,Club,Standalone,7v7,,false
+1004589,Sakkath (Womens),false,Open,Grass,Club,Standalone,7v7,,false
+1004590,Wild Five School Championship,false,U18,Grass,Club,Standalone,5v5,,false
+1004591,Wild Five U24 Championship,false,U24,Grass,Club,Standalone,5v5,,false
+1004592,Bharat Trophy 2024,true,Open,Grass,State,Nationals,7v7,,false
+1004593,Karnataka Sectionals,true,Open,Grass,Club,Sectionals,7v7,,false
+1004594,Maharashtra Sectionals,true,Open,Grass,Club,Sectionals,7v7,,false
+1004596,Tamil Nadu Sectionals,true,Open,Grass,Club,Sectionals,7v7,,false
+1004595,Gujarat Sectionals,true,Open,Grass,Club,Sectionals,7v7,,false
+1004597,South Regionals,true,Open,Grass,Club,Regionals,7v7,,false
+1004598,West Regionals,true,Open,Grass,Club,Regionals,7v7,,false
+1004599,North Regionals,true,Open,Grass,Club,Regionals,7v7,,false
+1004601,Rise Up Mini,false,Open,Grass,Rec,Standalone,7v7,,false
+1004600,Beach Nationals 24-25,true,Open,Beach,Club,Nationals,5v5,,false
+1004604,Meghalaya Sectionals (Khasi),true,Open,Grass,Club,Sectionals,7v7,,false
+1004605,Meghalaya Sectionals (Garo),true,Open,Grass,Club,Sectionals,7v7,,false
+1004606,North East Regionals,true,Open,Grass,Club,Regionals,7v7,,false
+1004602,Nationals,true,Open,Grass,Club,Nationals,7v7,Elite,false
+1004607,Regionals (South West) - Bangalore,true,Open,Grass,Club,Regionals,7v7,,false
+1004609,Regionals (South East) - Auroville,true,Open,Grass,Club,Regionals,7v7,,false
+1004610,Regionals (North) - Delhi,true,Open,Grass,Club,Regionals,7v7,,false
+1004611,NWCS 24-25 Regionals (South East) - Auroville,true,Open,Grass,Club,Regionals,7v7,,false
+1004612,NWCS 24-25 Regionals (South West) - Bangalore,true,Open,Grass,Club,Regionals,7v7,,false
+1004608,Regionals (West) - Surat,true,Open,Grass,Club,Regionals,7v7,,false
+1004613,Nationals (Elite),true,Open,Grass,Club,Nationals,7v7,Elite,false
+1004614,Nationals,true,Open,Grass,Club,Nationals,7v7,,false
+1004615,Nationals (Challenger),true,Open,Grass,Club,Nationals,7v7,Challenger,false
+1004617,IU NCUC 2025,true,Open,Grass,College,Nationals,7v7,,false
+1004616,IU Masters Nationals 2025,true,Masters,Grass,Club,Nationals,7v7,,false
+1004620,SUI Beach '25,false,Open,Beach,Club,Standalone,5v5,,false
+1004621,Parava '25,false,Open,Grass,Club,Standalone,7v7,,false
+1004618,Bharat Trophy 2025 (Women’s),true,Open,Grass,State,Nationals,7v7,,false
+1004619,Bharat Trophy 2025 (Open),true,Open,Grass,State,Nationals,7v7,,false
+1004622,Rise up League '25,false,Open,Grass,Rec,Standalone,7v7,,false
+1004623,Sakkath 2025 (Opens),false,Open,Grass,Club,Standalone,7v7,,false
+1004624,Sakkath 2025 (Womens),false,Open,Grass,Club,Standalone,7v7,,false
+1004626,Chilly-O,false,Open,Grass,Club,Standalone,7v7,,false
+1004627,Agni'25,false,Open,Grass,Club,Standalone,7v7,,false
+1004628,Wild Five U24 2025,false,U24,Grass,Club,Standalone,5v5,,false
+1004629,Wild Five U18 2025,false,U18,Grass,Club,Standalone,5v5,,false
+1004633,North Regionals,true,Open,Grass,Club,Regionals,7v7,,false
+1004630,West Regionals,true,Open,Grass,Club,Regionals,7v7,,false
+1004631,South West Regionals,true,Open,Grass,Club,Regionals,7v7,,false
+1004632,South East Regionals,true,Open,Grass,Club,Regionals,7v7,,false
+1004636,IU RCUC 2025,true,Open,Grass,College,Regionals,7v7,,false
+1004638,NorthEast Ultimate Frisbee Tournament,false,Open,Grass,Club,Standalone,7v7,,false
+1004634,Elite Nationals,true,Open,Grass,Club,Nationals,7v7,Elite,false
+1004635,Challenger Nationals,true,Open,Grass,Club,Nationals,7v7,Challenger,false
+1004637,IU Masters Nationals 2026,true,Masters,Grass,Club,Nationals,7v7,,false
+1004646,IU Women's Five(South East),true,Open,Grass,Club,Standalone,5v5,,false
+1004647,NOCS 2025-26 Regionals(South East),true,Open,Grass,Club,Regionals,7v7,,false
+1004648,NOCS 2025-26 Regionals(South West),true,Open,Grass,Club,Regionals,7v7,,false
+1004640,NOCS 2025-26 Regionals (North) - Delhi,true,Open,Grass,Club,Regionals,7v7,,false
+1004641,NOCS 2025-26 Regionals (West) - Surat,true,Open,Grass,Club,Regionals,7v7,,false
+1004649,IU Women's Five(South West),true,Open,Grass,Club,Standalone,5v5,,false
+1004650,Beach Nationals 2026 (Opens),true,Open,Beach,Club,Nationals,5v5,,false
+1004651,Beach Nationals 2026 (Womens),true,Open,Beach,Club,Nationals,5v5,,false
+1004656,Wheelchair Ultimate National Championship 2026,true,Open,Grass,Club,Nationals,,,true
+1004657,Wheelchair Ultimate National Championship 2026,true,Open,Grass,Club,Nationals,,,true
+1004653,NCUC 2026,true,Open,Grass,College,Nationals,7v7,,false
+1004652,NOCS 2025-26 Nationals,true,Open,Grass,Club,Nationals,7v7,,false
+1004654,NWCS 2025-26 Nationals,true,Open,Grass,Club,Nationals,7v7,,false
+1004658,Parava 2026,false,Open,Grass,Club,Standalone,7v7,,false
+1004659,Chilly-O 2026(KHELADI),false,Open,Grass,Club,Standalone,7v7,,false
+1004660,Chilly-O 2026(ANADI),false,Open,Grass,Club,Standalone,7v7,,false
+1004662,Temp tournament,false,Open,Grass,Club,Standalone,7v7,,false
+1004663,temp tournament 2,false,Open,Grass,Club,Standalone,7v7,,false
+1004661,Bharat Trophy 2026,true,Open,Grass,State,Nationals,7v7,,false
+1004664,NOCS 2026-27 Nationals,true,Open,Grass,Club,Nationals,7v7,,false
+1004665,NWCS 2026-27 Nationals,true,Open,Grass,Club,Nationals,7v7,,false

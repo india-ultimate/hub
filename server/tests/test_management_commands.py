@@ -1,3 +1,4 @@
+import csv
 import datetime
 import tempfile
 from io import StringIO
@@ -22,6 +23,7 @@ from server.servicerequests.models import (
 )
 from server.subscription.models import SponsorshipGrant, Subscription
 from server.task.models import Task
+from server.tests.base import create_event
 from server.tournament.models import (
     Event,
     Match,
@@ -892,3 +894,85 @@ class TestSubscriptionMigrationReport(TestCase):
         self.assertIn("Every row can be placed in a season.", report)
         self.assertIn(f"subscription {unpaid_row.pk}  player {unpaid.pk}", report)
         self.assertNotIn(f"subscription {paid_row.pk}  player {paid.pk}", report)
+
+
+class TestTagEvents(TestCase):
+    HEADER = ",".join(["id", "title", *Event.TAG_FIELDS])
+
+    def setUp(self) -> None:
+        self.event = create_event("Beach Nationals")
+        self.folder = tempfile.TemporaryDirectory()
+        self.addCleanup(self.folder.cleanup)
+
+    def tag(self, *rows: str, dry_run: bool = False) -> str:
+        path = Path(self.folder.name) / "tags.csv"
+        path.write_text("\n".join([self.HEADER, *rows]) + "\n")
+        return self.tag_file(path, dry_run=dry_run)
+
+    def tag_file(self, path: Path, dry_run: bool = False) -> str:
+        out = StringIO()
+        call_command("tag_events", path, dry_run=dry_run, stdout=out)
+        return out.getvalue()
+
+    def row(self, **changes: str) -> str:
+        values = {
+            "id": str(self.event.id),
+            "title": "Beach Nationals",
+            "is_iu_sanctioned": "true",
+            "age": "Open",
+            "surface": "Beach",
+            "level": "Club",
+            "stage": "Nationals",
+            "format": "5v5",
+            "skill_division": "",
+            "is_adaptive": "false",
+            **changes,
+        }
+        return ",".join(values.values())
+
+    def saved(self) -> tuple[Any, ...]:
+        self.event.refresh_from_db()
+        return tuple(getattr(self.event, field) for field in Event.TAG_FIELDS)
+
+    def test_tags_the_events_in_the_sheet(self) -> None:
+        out = self.tag(self.row())
+        self.assertEqual(
+            (True, "Open", "Beach", "Club", "Nationals", "5v5", None, False), self.saved()
+        )
+        self.assertIn("Tagged 1 event", out)
+        self.assertIn("Tagged 0 events", self.tag(self.row()))
+
+    def test_a_dry_run_saves_nothing(self) -> None:
+        out = self.tag(self.row(), dry_run=True)
+        self.assertIn("Would tag 1 event", out)
+        self.event.refresh_from_db()
+        self.assertIsNone(self.event.surface)
+
+    def test_any_bad_row_saves_nothing(self) -> None:
+        other = create_event("Grass Open")
+        good = self.row(id=str(other.id), title="Grass Open", surface="Grass")
+        for bad in (
+            self.row(surface="Moon"),
+            self.row(title="Someone Else"),
+            self.row(id="999999"),
+            self.row(is_adaptive=""),
+        ):
+            with self.subTest(bad=bad), self.assertRaises(CommandError):
+                self.tag(good, bad)
+            other.refresh_from_db()
+            self.assertIsNone(other.surface)
+
+    def test_the_reviewed_sheet_tags_every_event_in_it(self) -> None:
+        sheet = Path(__file__).parents[1] / "tournament" / "data" / "event_tags.csv"
+        with sheet.open(encoding="utf-8") as file:
+            rows = list(csv.DictReader(file))
+        self.event.delete()
+        day = self.event.start_date
+        dates = ["start_date", "end_date", "team_registration_start_date"]
+        dates += ["team_registration_end_date", "player_registration_start_date"]
+        dates += ["player_registration_end_date"]
+        Event.objects.bulk_create(
+            Event(id=int(row["id"]), title=row["title"], **dict.fromkeys(dates, day))
+            for row in rows
+        )
+        self.assertIn(f"Tagged {len(rows)} events", self.tag_file(sheet))
