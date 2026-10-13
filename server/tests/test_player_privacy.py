@@ -5,6 +5,7 @@ and searches whole response bodies for them.
 """
 
 import datetime
+from unittest.mock import patch
 
 from django.test import TestCase
 from django.utils.timezone import now
@@ -357,3 +358,38 @@ class TestUsersNamedInResponses(PlayerPrivacyTestCase):
 
         self.client.force_login(self.staff)
         self.assertIn(EMAIL, {d["username"] for d in self.client.get(url).json()})
+
+
+class TestLinkUltimateCentral(PlayerPrivacyTestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        # Enough for the player to pass full_clean when linked.
+        Player.objects.filter(id=self.player.id).update(gender="M", match_up="M")
+
+    def link(self, viewer: User) -> object:
+        self.client.force_login(viewer)
+        UCPerson.objects.get_or_create(
+            id=4242, defaults={"email": "uc@x.com", "slug": "uc", "first_name": "U", "last_name": "C"}
+        )
+        with patch("server.api.TopScoreClient") as client:
+            client.return_value.get_person.return_value = {"person_id": 4242}
+            return self.client.post(
+                "/api/upai/me",
+                {"username": "u", "password": "p", "player_id": self.player.id},
+                content_type="application/json",
+            )
+
+    def test_a_stranger_cannot_read_or_link_another_player(self) -> None:
+        response = self.link(self.stranger)
+        self.assertEqual(403, response.status_code)
+        self.assert_no_secrets(response, self.stranger)
+        self.player.refresh_from_db()
+        self.assertIsNone(self.player.ultimate_central_id)
+
+    def test_the_player_and_their_guardian_can_link(self) -> None:
+        for viewer in (self.owner, self.guardian):
+            Player.objects.filter(id=self.player.id).update(ultimate_central_id=None)
+            response = self.link(viewer)
+            self.assertEqual(200, response.status_code, response.content)  # type: ignore[attr-defined]
+            self.player.refresh_from_db()
+            self.assertEqual(4242, self.player.ultimate_central_id)
