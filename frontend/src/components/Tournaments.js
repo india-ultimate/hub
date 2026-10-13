@@ -15,6 +15,20 @@ import {
 import { fetchTournamentCards } from "../queries";
 import { parseLocalDate, todayIST, tournamentLink } from "../utils";
 
+// A filter's label and its choices: label above on phones, beside them on
+// wider screens, so the rows line up.
+const FilterRow = props => (
+  <div class="grid gap-2 md:grid-cols-[7.5rem_minmax(0,1fr)] md:items-start md:gap-4">
+    <span
+      id={props.id}
+      class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 md:pt-2.5"
+    >
+      {props.label}
+    </span>
+    {props.children}
+  </div>
+);
+
 const Tournaments = () => {
   // "" is this year and anything upcoming; otherwise one year's tournaments.
   // The year lives in the URL (?year=2025) so it survives back and sharing.
@@ -107,13 +121,37 @@ const Tournaments = () => {
         t.status !== "DFT" && divisionOn(t.event?.type) && matchesTags(t.event)
     );
 
+  // 44px tall for fingers; a compact 36px where there's a mouse.
   const pill =
-    "inline-flex min-h-[44px] shrink-0 snap-start items-center justify-center whitespace-nowrap rounded-full border px-4 text-sm font-medium transition-colors duration-200 motion-reduce:transition-none focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900";
+    "inline-flex min-h-[44px] shrink-0 snap-start items-center justify-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 text-sm font-medium transition-colors duration-200 motion-reduce:transition-none focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900 [@media(pointer:fine)]:min-h-[36px]";
   const on = "border-blue-600 bg-blue-600 text-white hover:bg-blue-700";
   const toggledOn =
     "border-blue-600 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:border-blue-400 dark:bg-blue-900/40 dark:text-blue-200";
   const off =
     "border-gray-300 bg-white text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700";
+
+  // A pill for a choice of many: its icon, its label and, when on, a check,
+  // so its state isn't shown by colour alone.
+  const Toggle = props => (
+    <button
+      type="button"
+      aria-pressed={props.on}
+      onClick={props.onClick}
+      class={clsx(pill, props.on ? toggledOn : off)}
+    >
+      <Show when={props.icon}>
+        <Icon
+          path={props.icon}
+          aria-hidden="true"
+          class={clsx("h-5 w-5 shrink-0", props.iconClass)}
+        />
+      </Show>
+      {props.children}
+      <Show when={props.on}>
+        <Icon path={check} aria-hidden="true" class="h-4 w-4 shrink-0" />
+      </Show>
+    </button>
+  );
 
   // Radiogroup: arrows move the selection, and only the selected pill is a tab stop.
   const onKeyDown = e => {
@@ -143,144 +181,115 @@ const Tournaments = () => {
         </span>
       </h1>
 
-      <div class="space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/50">
-        <div>
-          <span
-            id="year-label"
-            class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400"
-          >
-            Year
-          </span>
-          <div
-            ref={pillsRef}
-            role="radiogroup"
-            aria-labelledby="year-label"
-            onKeyDown={onKeyDown}
-            class="-mx-1 flex snap-x gap-2 overflow-x-auto px-1 py-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-          >
-            <For each={yearOptions()}>
-              {(o, i) => (
-                <button
-                  type="button"
-                  role="radio"
-                  data-year={o.value}
-                  aria-checked={year() === o.value}
-                  tabindex={isTabStop(o, i()) ? 0 : -1}
-                  onClick={() => setYear(o.value)}
-                  class={clsx(pill, year() === o.value ? on : off)}
-                >
-                  {o.label}
-                </button>
-              )}
-            </For>
-          </div>
+      <div class="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/50 sm:p-5">
+        <div class="space-y-4">
+          <FilterRow id="year-label" label="Year">
+            <div
+              ref={pillsRef}
+              role="radiogroup"
+              aria-labelledby="year-label"
+              onKeyDown={onKeyDown}
+              class="-mx-1 flex min-w-0 snap-x gap-2 overflow-x-auto px-1 py-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
+              <For each={yearOptions()}>
+                {(o, i) => (
+                  <button
+                    type="button"
+                    role="radio"
+                    data-year={o.value}
+                    aria-checked={year() === o.value}
+                    tabindex={isTabStop(o, i()) ? 0 : -1}
+                    onClick={() => setYear(o.value)}
+                    class={clsx(pill, year() === o.value ? on : off)}
+                  >
+                    {o.label}
+                  </button>
+                )}
+              </For>
+            </div>
+          </FilterRow>
+          <FilterRow id="category-label" label="Category">
+            <div
+              class="flex flex-wrap gap-2"
+              role="group"
+              aria-labelledby="category-label"
+            >
+              <For each={categories}>
+                {c => (
+                  <Toggle on={c.on()} onClick={() => c.set(!c.on())}>
+                    {c.label}
+                  </Toggle>
+                )}
+              </For>
+            </div>
+          </FilterRow>
         </div>
-        <div>
-          <span
-            id="category-label"
-            class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400"
+
+        <div class="mt-4 flex items-center justify-between gap-2 border-t border-gray-200 pt-2 dark:border-gray-700">
+          <details
+            id="more-filters"
+            class="group min-w-0 flex-1"
+            open={startOpen}
           >
-            Category
-          </span>
-          <div
-            class="flex flex-wrap gap-2"
-            role="group"
-            aria-labelledby="category-label"
-          >
-            <For each={categories}>
-              {c => (
-                <button
-                  type="button"
-                  aria-pressed={c.on()}
-                  onClick={() => c.set(!c.on())}
-                  class={clsx(pill, "gap-1.5", c.on() ? toggledOn : off)}
-                >
-                  <Show when={c.on()}>
-                    <Icon path={check} aria-hidden="true" class="h-4 w-4" />
-                  </Show>
-                  {c.label}
-                </button>
-              )}
-            </For>
-          </div>
-        </div>
-        <div class="flex items-start justify-between gap-2">
-          <details id="more-filters" class="group flex-1" open={startOpen}>
-            <summary class="flex min-h-[44px] cursor-pointer list-none items-center gap-1 text-sm font-medium text-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:text-blue-300 [&::-webkit-details-marker]:hidden">
+            <summary class="inline-flex min-h-[44px] cursor-pointer list-none items-center gap-1.5 rounded text-sm font-medium text-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:text-blue-300 [&::-webkit-details-marker]:hidden">
               <Icon
                 path={chevronRight}
                 aria-hidden="true"
                 class="h-4 w-4 transition-transform duration-200 group-open:rotate-90 motion-reduce:transition-none"
               />
               More filters
-              <Show when={activeFilters()}>{` (${activeFilters()})`}</Show>
+              <Show when={activeFilters()}>
+                <span class="rounded-full bg-blue-600 px-2 py-0.5 text-xs font-semibold text-white">
+                  {activeFilters()}
+                  <span class="sr-only"> active</span>
+                </span>
+              </Show>
             </summary>
-            <div class="mt-2 space-y-3">
+            <div class="space-y-4 pb-1 pt-3">
+              <FilterRow id="iu-label" label="Sanctioning">
+                <div role="group" aria-labelledby="iu-label">
+                  <Toggle
+                    on={iuOnly()}
+                    icon={checkBadge}
+                    iconClass="text-blue-600 dark:text-blue-400"
+                    onClick={() =>
+                      setFilters({ iu: iuOnly() ? undefined : "1" })
+                    }
+                  >
+                    {SANCTIONED}
+                  </Toggle>
+                </div>
+              </FilterRow>
               <For each={tagFilters}>
                 {tag => (
-                  <div>
-                    <span
-                      id={`${tag.name}-label`}
-                      class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400"
-                    >
-                      {tag.label}
-                    </span>
+                  <FilterRow id={`${tag.name}-label`} label={tag.label}>
                     <div
                       class="flex flex-wrap gap-2"
                       role="group"
                       aria-labelledby={`${tag.name}-label`}
                     >
                       <For each={tag.options}>
-                        {o => {
-                          const isOn = () => picked(tag).includes(o.value);
-                          return (
-                            <button
-                              type="button"
-                              aria-pressed={isOn()}
-                              onClick={() => toggleTag(tag, o.value)}
-                              class={clsx(
-                                pill,
-                                "gap-1.5",
-                                isOn() ? toggledOn : off
-                              )}
-                            >
-                              <Icon
-                                path={isOn() ? check : o.icon}
-                                aria-hidden="true"
-                                class="h-4 w-4"
-                              />
-                              {o.label}
-                            </button>
-                          );
-                        }}
+                        {o => (
+                          <Toggle
+                            on={picked(tag).includes(o.value)}
+                            icon={o.icon}
+                            onClick={() => toggleTag(tag, o.value)}
+                          >
+                            {o.label}
+                          </Toggle>
+                        )}
                       </For>
                     </div>
-                  </div>
+                  </FilterRow>
                 )}
               </For>
-              <button
-                type="button"
-                aria-pressed={iuOnly()}
-                onClick={() => setFilters({ iu: iuOnly() ? undefined : "1" })}
-                class={clsx(pill, "gap-1.5", iuOnly() ? toggledOn : off)}
-              >
-                <Icon
-                  path={iuOnly() ? check : checkBadge}
-                  aria-hidden="true"
-                  class={clsx(
-                    "h-4 w-4",
-                    !iuOnly() && "text-blue-600 dark:text-blue-400"
-                  )}
-                />
-                {SANCTIONED}
-              </button>
             </div>
           </details>
           <Show when={activeFilters()}>
             <button
               type="button"
               onClick={clearFilters}
-              class="min-h-[44px] shrink-0 rounded px-2 text-sm font-medium text-blue-700 underline hover:no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:text-blue-300"
+              class="min-h-[44px] shrink-0 self-start rounded px-2 text-sm font-medium text-blue-700 underline hover:no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:text-blue-300"
             >
               Clear filters
             </button>

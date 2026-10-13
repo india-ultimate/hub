@@ -4,18 +4,27 @@ import { Icon } from "solid-heroicons";
 import {
   academicCap,
   bolt,
-  cake,
-  checkBadge,
   faceSmile,
   map,
-  sun,
-  trophy,
   userGroup,
   users
-} from "solid-heroicons/solid";
+} from "solid-heroicons/outline";
+import { checkBadge } from "solid-heroicons/solid";
 import { For, Show } from "solid-js";
 
-import { grass, wheelchair } from "./icons";
+import {
+  ageMasters,
+  ageOpen,
+  ageU18,
+  ageU24,
+  beach,
+  grass,
+  medal,
+  nationals,
+  regionals,
+  sectionals,
+  wheelchair
+} from "./icons";
 
 export const SANCTIONED = "Sanctioned by India Ultimate";
 // /tournaments?iu=1 shows only sanctioned events.
@@ -24,8 +33,9 @@ export const SANCTIONED_LINK = "/tournaments?iu=1";
 // Event tags, matching the choices on server Event. One table drives the
 // create form (every entry), the chips (chip: on the tournament page; and on
 // cards where standsOut) and the /tournaments filters (filter: by its name).
-const tagChoices = (values, icon) =>
-  values.map(value => ({ value, label: value, icon }));
+// [value, icon] pairs: the label is the value.
+const tagChoices = pairs =>
+  pairs.map(([value, icon]) => ({ value, label: value, icon }));
 const yesNo = [
   { value: "true", label: "Yes" },
   { value: "false", label: "No" }
@@ -41,7 +51,12 @@ export const tournamentTags = [
   {
     name: "age",
     label: "Age Division",
-    options: tagChoices(["Open", "Masters", "U24", "U18"], cake),
+    options: tagChoices([
+      ["Open", ageOpen],
+      ["Masters", ageMasters],
+      ["U24", ageU24],
+      ["U18", ageU18]
+    ]),
     chip: true,
     standsOut: v => v !== "Open",
     filter: true
@@ -49,10 +64,10 @@ export const tournamentTags = [
   {
     name: "surface",
     label: "Surface",
-    options: [
-      { value: "Grass", label: "Grass", icon: grass },
-      { value: "Beach", label: "Beach", icon: sun }
-    ],
+    options: tagChoices([
+      ["Grass", grass],
+      ["Beach", beach]
+    ]),
     chip: true,
     standsOut: v => v === "Beach",
     filter: true
@@ -60,22 +75,24 @@ export const tournamentTags = [
   {
     name: "level",
     label: "Level",
-    options: [
-      { value: "Club", label: "Club", icon: userGroup },
-      { value: "State", label: "State", icon: map },
-      { value: "College", label: "College", icon: academicCap },
-      { value: "Rec", label: "Rec", icon: faceSmile }
-    ],
+    options: tagChoices([
+      ["Club", userGroup],
+      ["State", map],
+      ["College", academicCap],
+      ["Rec", faceSmile]
+    ]),
     chip: true,
     standsOut: v => v !== "Club"
   },
   {
     name: "stage",
     label: "Stage",
-    options: tagChoices(
-      ["Sectionals", "Regionals", "Nationals", "Standalone"],
-      trophy
-    ),
+    options: tagChoices([
+      ["Nationals", nationals],
+      ["Regionals", regionals],
+      ["Sectionals", sectionals],
+      ["Standalone", medal]
+    ]),
     chip: true,
     standsOut: v => v !== "Standalone",
     filter: true
@@ -83,13 +100,16 @@ export const tournamentTags = [
   {
     name: "format",
     label: "Format",
-    options: tagChoices(["7v7", "5v5"], users),
+    options: tagChoices([
+      ["7v7", users],
+      ["5v5", users]
+    ]),
     chip: true
   },
   {
     name: "skill_division",
     label: "Skill Division",
-    options: tagChoices(["Not split", "Elite", "Challenger"], bolt),
+    options: tagChoices([["Not split"], ["Elite", bolt], ["Challenger", bolt]]),
     chip: true,
     standsOut: () => true
   },
@@ -162,7 +182,7 @@ export const TagChips = props => {
                 <Icon
                   path={c.icon}
                   aria-hidden="true"
-                  class="h-4 w-4 shrink-0"
+                  class="h-[18px] w-[18px] shrink-0"
                 />
                 {c.text}
               </>

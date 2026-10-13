@@ -133,31 +133,109 @@ export const ChevronLeft = props => (
   </svg>
 );
 
-// Shaped like solid-heroicons' icons, so <Icon path={grass} /> draws them
-// (outline: stroked with the text colour, on a 24×24 grid).
-export const grass = {
+// Tag icons, drawn in heroicons' outline style (24×24, stroked with the text
+// colour), so <Icon path={grass} /> draws them like any heroicon. Each tag's
+// icons share a family: people for age, trophies for stage.
+const outline = path => ({
   path: () => (
-    <path
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      d="M3 20h18M7 20c0-4-1-7-3-9m8 9V5m0 15c0-3 1-6 3-8m2 8c0-4 1-7 3-9"
-    />
+    <g stroke-linecap="round" stroke-linejoin="round">
+      {path()}
+    </g>
   ),
   outline: true,
   mini: false
-};
+});
 
-export const wheelchair = {
-  path: () => (
+export const grass = outline(() => (
+  <path d="M3 20.25h18M7 20.25c0-4-1-7-3-9m8 9v-15m0 15c0-3 1-6 3-8m2 8c0-4 1-7 3-9" />
+));
+
+export const beach = outline(() => (
+  <path d="M8 12.5a4 4 0 0 1 8 0M12 4.5V6M5.6 7.1l1.05 1.05M18.4 7.1l-1.05 1.05M3.5 12.5H5m14 0h1.5M3 16.5c1.5 0 1.5-1 3-1s1.5 1 3 1 1.5-1 3-1 1.5 1 3 1 1.5-1 3-1 1.5 1 3 1M3 20c1.5 0 1.5-1 3-1s1.5 1 3 1 1.5-1 3-1 1.5 1 3 1 1.5-1 3-1 1.5 1 3 1" />
+));
+
+export const wheelchair = outline(() => (
+  <>
+    <circle cx="10.5" cy="3.75" r="1.6" fill="currentColor" stroke="none" />
+    <path d="M10.5 7.5v6h5.25l2.5 5.5M10.5 10.5H15m-7.25.6a5.25 5.25 0 1 0 6.9 6.9" />
+  </>
+));
+
+// Age: a man and a woman, as adults, older, younger and children.
+const woman = (x, top) => (
+  <>
+    <circle cx={x} cy={top} r="2" />
+    <path
+      d={`M${x} ${top + 4.5}l-3 6.5h6zM${x - 1.25} ${top + 11}V21M${x + 1.25} ${top + 11}V21`}
+    />
+  </>
+);
+
+export const ageOpen = outline(() => (
+  <>
+    <circle cx="8" cy="4.5" r="2" />
+    <path d="M5.5 21v-7.5a2.5 2.5 0 0 1 5 0V21" />
+    {woman(16, 4.5)}
+  </>
+));
+
+export const ageMasters = outline(() => (
+  <>
+    <circle cx="9.5" cy="5" r="2" />
+    <path d="M8.5 8.75c-1.5 1.25-2 3-1.75 5.25m0 0-1.25 7m1.25-7 2 7M8 10.5l3 2.5m.25-.5V21" />
+    {woman(17.5, 5.5)}
+  </>
+));
+
+export const ageU24 = outline(() => (
+  <>
+    <path d="M5 4.5 8 3l3 1.5L8 6zm5 .5v1.5" />
+    <circle cx="8" cy="7.5" r="1.75" />
+    <path d="M6 21v-6.5a2 2 0 0 1 4 0V21" />
+    <circle cx="16" cy="7.5" r="1.75" />
+    <path d="m16 11.5-2.5 6h5zm-1 6V21m2-3.5V21" />
+  </>
+));
+
+export const ageU18 = outline(() => (
+  <>
+    <circle cx="8" cy="10" r="2.25" />
+    <path d="M6.25 21v-4a1.75 1.75 0 0 1 3.5 0v4" />
+    <circle cx="16" cy="10" r="2.25" />
+    <path d="m13.6 9.2-1-1m5.8 1 1-1M16 14.5l-2.25 4.5h4.5zM15.1 19v2m1.8-2v2" />
+  </>
+));
+
+// Stage: trophies for the series' tiers, a medal for an event of its own.
+const trophy = place =>
+  outline(() => (
     <>
-      <circle cx="10" cy="4" r="1.75" fill="currentColor" />
-      <path
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        d="M10 7.5v6h5.5l2.5 5.5M10 10.5h5M7.5 11.2a5.5 5.5 0 1 0 7.3 7.3"
-      />
+      <path d="M5.5 2.5h13v7a6.5 6.5 0 0 1-13 0zm0 2h-1a2 2 0 0 0 1.4 3.6M18.5 4.5h1a2 2 0 0 1-1.4 3.6M12 16v2M8 21.25h8m-6-3.25h4v3.25h-4z" />
+      <text
+        x="12"
+        y="13.4"
+        text-anchor="middle"
+        font-size="11.5"
+        font-weight="700"
+        fill="currentColor"
+        stroke="none"
+      >
+        {place}
+      </text>
     </>
-  ),
-  outline: true,
-  mini: false
-};
+  ));
+
+export const nationals = trophy(1);
+export const regionals = trophy(2);
+export const sectionals = trophy(3);
+
+export const medal = outline(() => (
+  <>
+    <path d="m8.5 3.5 2.25 6m4.75-6-2.25 6M8 3.5h8" />
+    <circle cx="12" cy="15" r="5.25" />
+    <path
+      stroke-width="1"
+      d="m12 12.4.8 1.65 1.8.25-1.3 1.27.3 1.8-1.6-.85-1.6.85.3-1.8-1.3-1.27 1.8-.25z"
+    />
+  </>
+));
