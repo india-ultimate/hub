@@ -1344,7 +1344,8 @@ def upload_profile_pic(
 
 
 @api.post(
-    "/upai/me", response={200: PlayerSchema, 403: PlayerTinySchema, 400: Response, 404: Response}
+    "/upai/me",
+    response={200: PlayerSchema, 403: PlayerTinySchema | Response, 400: Response, 404: Response},
 )
 def upai_person(
     request: AuthenticatedHttpRequest, credentials: TopScoreCredentials
@@ -1353,7 +1354,8 @@ def upai_person(
         player = Player.objects.get(id=credentials.player_id)
     except Player.DoesNotExist:
         return 400, {"message": "Player does not exist"}
-
+    if not may_see(request.user, player):
+        return 403, {"message": "You can only link Ultimate Central for yourself or your ward"}
     client = TopScoreClient(credentials.username, credentials.password)
     person = client.get_person()
     if person is None or person["person_id"] is None:

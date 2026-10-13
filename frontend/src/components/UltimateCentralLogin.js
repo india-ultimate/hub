@@ -51,7 +51,7 @@ const UltimateCentralLogin = () => {
       } else {
         const message = await response.json();
         const text =
-          response.status === 403
+          response.status === 403 && message.id
             ? `Ultimate Central profile already linked to ${message.full_name} (${message.id}) [${message.email}]`
             : message?.message || JSON.stringify(message);
         setError(`${text}`);
