@@ -495,7 +495,8 @@ class EventAdmin(Rupees, admin.ModelAdmin[Event]):
     )
     form = EventAdminForm
     search_fields = ["title", "slug", "location"]
-    list_display = ["title", "tier"]
+    list_display = ["title", "start_date", "type", "age", "surface", "level", "stage"]
+    list_filter = ["type", *Event.TAG_FIELDS]
 
 
 @admin.register(Tournament)

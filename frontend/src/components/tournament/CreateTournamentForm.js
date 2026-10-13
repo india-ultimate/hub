@@ -1,13 +1,17 @@
 import {
   createForm,
+  custom,
+  getValue,
   getValues,
   required,
-  setValue
+  setValue,
+  validate
 } from "@modular-forms/solid";
 import { createMutation, useQueryClient } from "@tanstack/solid-query";
-import { createEffect, createSignal, Show } from "solid-js";
+import { createEffect, createSignal, For, Show } from "solid-js";
 
 import { tournamentTypeChoices } from "../../constants";
+import { tournamentTags } from "../../eventTags";
 import { toPaise } from "../../money";
 import { createTournament } from "../../queries";
 import { withinUploadLimits } from "../../uploads";
@@ -66,6 +70,11 @@ const CreateTournamentForm = () => {
       }
     });
 
+    data.is_iu_sanctioned = data.is_iu_sanctioned === "true";
+    data.is_adaptive = data.is_adaptive === "true";
+    data.is_subscription_needed = data.is_subscription_needed === "true";
+    if (data.skill_division === "Not split") data.skill_division = null;
+
     const formData = new FormData();
     formData.append("tournament_details", JSON.stringify(data));
     formData.append("logo_light", logo_light);
@@ -78,6 +87,21 @@ const CreateTournamentForm = () => {
   };
 
   const minDate = new Date().toISOString().split("T")[0];
+
+  // Needing IU membership means the event is sanctioned (the server checks too).
+  const MEMBERSHIP_RULE =
+    "Needs IU membership, so it must be sanctioned by India Ultimate.";
+  const sanctionedIfMembership = value =>
+    !(
+      value === "false" &&
+      getValue(tournamentForm, "is_subscription_needed") === "true"
+    );
+  // Re-check Sanctioned when membership changes, once both have a value.
+  createEffect(() => {
+    const membership = getValue(tournamentForm, "is_subscription_needed");
+    if (membership && getValue(tournamentForm, "is_iu_sanctioned"))
+      validate(tournamentForm, "is_iu_sanctioned", { shouldFocus: false });
+  });
 
   // Auto-fill late penalty and partial registration end dates based on
   // the corresponding registration dates
@@ -655,6 +679,31 @@ const CreateTournamentForm = () => {
               />
             )}
           </Field>
+          <For each={tournamentTags}>
+            {tag => (
+              <Field
+                name={tag.name}
+                validate={[
+                  required(`Please select the ${tag.label}.`),
+                  ...(tag.name === "is_iu_sanctioned"
+                    ? [custom(sanctionedIfMembership, MEMBERSHIP_RULE)]
+                    : [])
+                ]}
+              >
+                {(field, props) => (
+                  <Select
+                    {...props}
+                    value={field.value}
+                    error={field.error}
+                    options={tag.options}
+                    label={tag.label}
+                    placeholder="Select"
+                    required
+                  />
+                )}
+              </Field>
+            )}
+          </For>
           <Field name="logo_light" type="File" validate={withinUploadLimits}>
             {(field, fieldProps) => (
               <FileInput

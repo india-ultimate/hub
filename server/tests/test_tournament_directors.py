@@ -1,7 +1,7 @@
 import json
 
 from server.core.models import Player, Team, User
-from server.tests.base import ApiBaseTestCase, create_event
+from server.tests.base import TOURNAMENT_DETAILS, ApiBaseTestCase, create_event
 from server.tournament.models import Registration, Tournament, TournamentField
 from server.tournament.utils import can_access_tournament_agent, can_manage_tournament
 
@@ -142,29 +142,7 @@ class TournamentDirectorTests(ApiBaseTestCase):
         self.client.force_login(self.director)
         create = self.client.post(
             "/api/tournaments",
-            data={
-                "tournament_details": json.dumps(
-                    {
-                        "title": "Director Cup",
-                        "start_date": "2026-09-01",
-                        "end_date": "2026-09-02",
-                        "team_registration_start_date": "2026-08-01",
-                        "team_registration_end_date": "2026-08-10",
-                        "player_registration_start_date": "2026-08-11",
-                        "player_registration_end_date": "2026-08-20",
-                        "team_partial_registration_end_date": "2026-08-05",
-                        "team_late_penalty_end_date": "2026-08-12",
-                        "player_late_penalty_end_date": "2026-08-22",
-                        "location": "City",
-                        "type": "MXD",
-                        "team_fee": 0,
-                        "player_fee": 0,
-                        "partial_team_fee": 0,
-                        "team_late_penalty": 0,
-                        "player_late_penalty": 0,
-                    }
-                )
-            },
+            data={"tournament_details": json.dumps(TOURNAMENT_DETAILS)},
         )
         self.assertEqual(401, create.status_code)
 
