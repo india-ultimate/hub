@@ -196,6 +196,26 @@ class TestMergeMechanics(MergeTestCase):
         self.assertEqual([self.primary], list(theirs.upvoters.all()))
         self.assertEqual([self.primary], list(both.upvoters.all()))
 
+    # Breaks if: Reaction's uniqueness moves to a UniqueConstraint the merge
+    # can't read, so a reaction both accounts gave rolls the merge back.
+    def test_reactions_and_comments_follow_the_account(self) -> None:
+        from server.announcements.models import Announcement, Comment, Reaction
+
+        post = Announcement.objects.create(title="News", content="x", author=self.primary)
+        Reaction.objects.create(announcement=post, user=self.primary, kind="like")
+        Reaction.objects.create(announcement=post, user=self.duplicate, kind="like")
+        Reaction.objects.create(announcement=post, user=self.duplicate, kind="love")
+        comment = Comment.objects.create(announcement=post, author=self.duplicate, body="Hi")
+
+        merge_accounts(self.primary, [self.duplicate], dry_run=False)
+
+        self.assertEqual(
+            [("like", self.primary.id), ("love", self.primary.id)],
+            sorted(Reaction.objects.values_list("kind", "user_id")),
+        )
+        comment.refresh_from_db()
+        self.assertEqual(self.primary, comment.author)
+
     def test_player_moves_when_the_primary_has_none(self) -> None:
         # The account someone can sign in to is often the emptier one.
         self.primary_player.delete()
