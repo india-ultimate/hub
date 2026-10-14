@@ -15,7 +15,7 @@ from django.utils.html import format_html
 from django.utils.text import capfirst
 
 from server.admin_views import REFUND_PERM
-from server.announcements.models import Announcement
+from server.announcements.models import Announcement, Comment, Reaction
 from server.core.models import Accreditation, Guardianship, Player, Team, User
 from server.duplicates import review
 from server.duplicates.flow import FlowError, approve_staff, reject_staff
@@ -1377,7 +1377,7 @@ class ServiceRequestAdmin(admin.ModelAdmin[ServiceRequest]):
 
 @admin.register(Announcement)
 class AnnouncementAdmin(admin.ModelAdmin[Announcement]):
-    list_display = ["title", "type", "slug", "author", "created_at", "has_action"]
+    list_display = ["title", "type", "slug", "author", "created_at", "allow_comments", "has_action"]
     # Only people who have written one, not every user in the Hub.
     list_filter = ["type", "created_at", ("author", admin.RelatedOnlyFieldListFilter)]
     search_fields = ["title", "slug", "content", "author__first_name", "author__last_name"]
@@ -1398,6 +1398,7 @@ class AnnouncementAdmin(admin.ModelAdmin[Announcement]):
                     "content",
                     "is_members_only",
                     "is_published",
+                    "allow_comments",
                 )
             },
         ),
@@ -1472,6 +1473,41 @@ class AnnouncementAdmin(admin.ModelAdmin[Announcement]):
             return HttpResponseRedirect(request.path)
 
         return super().change_view(request, object_id, form_url, extra_context)
+
+
+@admin.register(Comment)
+class CommentAdmin(admin.ModelAdmin[Comment]):
+    list_display = ["announcement", "author", "short_body", "created_at", "is_deleted"]
+    list_filter = [("announcement", admin.RelatedOnlyFieldListFilter), "is_deleted"]
+    list_select_related = ["announcement", "author"]
+    search_fields = ["body"]
+
+    @admin.display(description="Body")
+    def short_body(self, obj: Comment) -> str:
+        return obj.body[:80]
+
+    # Read-only: people write comments on the site; staff may only delete them.
+    def has_add_permission(self, request: HttpRequest) -> bool:
+        return False
+
+    def has_change_permission(self, request: HttpRequest, obj: Comment | None = None) -> bool:
+        return False
+
+
+@admin.register(Reaction)
+class ReactionAdmin(admin.ModelAdmin[Reaction]):
+    list_display = ["announcement", "user", "kind", "created_at"]
+    list_filter = ["kind"]
+    list_select_related = ["announcement", "user"]
+
+    def has_add_permission(self, request: HttpRequest) -> bool:
+        return False
+
+    def has_change_permission(self, request: HttpRequest, obj: Reaction | None = None) -> bool:
+        return False
+
+    def has_delete_permission(self, request: HttpRequest, obj: Reaction | None = None) -> bool:
+        return False
 
 
 @admin.register(Task)
