@@ -471,3 +471,21 @@ export const calculateLatePenalty = (
   const daysLate = Math.ceil((today - regEnd) / (1000 * 60 * 60 * 24));
   return { daysLate, penalty: daysLate * penaltyPerDay };
 };
+
+const relativeTime = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
+const timeUnits = [
+  ["day", 86400],
+  ["hour", 3600],
+  ["minute", 60]
+];
+
+// "just now", "5 minutes ago", "yesterday"; a date once it's over a week old.
+export const timeAgo = iso => {
+  // Never in the future: the device's clock may run behind the server's.
+  const seconds = Math.min(0, (new Date(iso) - Date.now()) / 1000);
+  if (-seconds >= 7 * 86400) return displayDateShort(iso);
+  const [unit, size] = timeUnits.find(([, s]) => Math.abs(seconds) >= s) || [];
+  return unit
+    ? relativeTime.format(Math.round(seconds / size), unit)
+    : "just now";
+};

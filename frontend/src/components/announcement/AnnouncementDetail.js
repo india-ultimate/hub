@@ -18,6 +18,8 @@ import {
   getAnnouncementTypeLabel
 } from "../../colors";
 import { useStore } from "../../store";
+import Comments from "./Comments";
+import ReactionBar from "./ReactionBar";
 
 const fetchAnnouncement = async slug => {
   const response = await fetch(`/api/announcements/${slug}`);
@@ -223,6 +225,28 @@ export default function AnnouncementDetail() {
                   </div>
                 </div>
               </Show>
+
+              <div class="mt-8 border-t border-gray-200 pt-6 dark:border-gray-700">
+                <ReactionBar
+                  slug={params.slug}
+                  reactions={query.data.reactions || []}
+                  commentCount={query.data.comment_count || 0}
+                  onCommentsClick={() =>
+                    document.getElementById("comments")?.scrollIntoView({
+                      behavior: window.matchMedia(
+                        "(prefers-reduced-motion: reduce)"
+                      ).matches
+                        ? "auto"
+                        : "smooth"
+                    })
+                  }
+                />
+                <Comments
+                  slug={params.slug}
+                  allowComments={query.data.allow_comments}
+                  count={query.data.comment_count}
+                />
+              </div>
             </Show>
           </article>
         </Show>
