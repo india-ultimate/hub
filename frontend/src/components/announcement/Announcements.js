@@ -1,6 +1,8 @@
 import { useNavigate } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
+import clsx from "clsx";
 import { Icon } from "solid-heroicons";
+import { chatBubbleLeft } from "solid-heroicons/outline";
 import {
   calendarDays,
   documentText,
@@ -16,8 +18,71 @@ import {
   getAnnouncementTypeColor,
   getAnnouncementTypeLabel
 } from "../../colors";
+import { REACTIONS } from "../../reactions";
 import { useStore } from "../../store";
 import { getCookie } from "../../utils";
+
+const emojiOf = Object.fromEntries(REACTIONS.map(r => [r.kind, r.emoji]));
+const labelOf = Object.fromEntries(REACTIONS.map(r => [r.kind, r.label]));
+const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
+// Top right of a card: each reaction's count, then the comments'. Display
+// only, as the whole card is a link; yours are blue, as on the post.
+const Engagement = props => {
+  const reactions = () => props.announcement.reactions || [];
+  const comments = () => props.announcement.comment_count || 0;
+  const label = () =>
+    [
+      ...reactions().map(
+        r => `${labelOf[r.kind]} ${r.count}${r.reacted ? " including you" : ""}`
+      ),
+      plural(comments(), "comment")
+    ].join(", ");
+
+  return (
+    <Show when={reactions().length || comments()}>
+      <div
+        role="img"
+        aria-label={label()}
+        class="ml-auto flex flex-wrap items-center justify-end gap-x-3 gap-y-1 text-sm tabular-nums text-gray-600 dark:text-gray-300"
+      >
+        {/* Phones: the top three emoji and the total, to fit beside the tag. */}
+        <Show when={reactions().length}>
+          <span class="inline-flex items-center gap-1 sm:hidden">
+            <span>
+              {[...reactions()]
+                .sort((a, b) => b.count - a.count)
+                .slice(0, 3)
+                .map(r => emojiOf[r.kind])
+                .join("")}
+            </span>
+            {reactions().reduce((sum, r) => sum + r.count, 0)}
+          </span>
+        </Show>
+        <For each={reactions()}>
+          {r => (
+            <span
+              class={clsx(
+                "hidden items-center gap-1 sm:inline-flex",
+                r.reacted && "font-semibold text-blue-700 dark:text-blue-300"
+              )}
+            >
+              <span>{emojiOf[r.kind]}</span>
+              {r.count}
+            </span>
+          )}
+        </For>
+        <Show when={reactions().length}>
+          <span class="h-4 w-px bg-gray-200 dark:bg-gray-600" />
+        </Show>
+        <span class="inline-flex items-center gap-1">
+          <Icon path={chatBubbleLeft} class="h-4 w-4" />
+          {comments()}
+        </span>
+      </div>
+    </Show>
+  );
+};
 
 // Fetch announcements API
 const fetchAnnouncements = async () => {
@@ -136,7 +201,7 @@ const Announcements = () => {
                       {/* Header */}
                       <div class="mb-2 flex items-start justify-between">
                         <div class="flex-1">
-                          <div class="mb-2 flex items-center gap-2">
+                          <div class="mb-2 flex flex-wrap items-center gap-2">
                             <span
                               class={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getAnnouncementTypeColor(
                                 announcement.type
@@ -157,6 +222,7 @@ const Announcements = () => {
                                 Members Only
                               </span>
                             </Show>
+                            <Engagement announcement={announcement} />
                           </div>
                           <h2 class="text-xl font-semibold text-blue-700 dark:text-white">
                             <a
