@@ -30,9 +30,17 @@ class Ticket(models.Model):
     title = models.CharField(max_length=200)
     description = models.TextField()
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name="created_tickets")
+    # Kept only so the release still running during a deploy can read this
+    # column. Nothing reads or writes it any more: see `assignees`. Field and
+    # column are removed together in the follow-up branch.
     assigned_to = models.ForeignKey(
-        User, on_delete=models.SET_NULL, null=True, blank=True, related_name="assigned_tickets"
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="legacy_assigned_tickets",
     )
+    assignees = models.ManyToManyField(User, blank=True, related_name="assigned_tickets")
     status = models.CharField(max_length=3, choices=Status.choices, default=Status.OPEN)
     priority = models.CharField(max_length=3, choices=Priority.choices, default=Priority.MEDIUM)
     category = models.CharField(

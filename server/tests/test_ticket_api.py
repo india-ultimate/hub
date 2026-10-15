@@ -133,8 +133,7 @@ class TestPrivateTickets(TicketTestCase):
 
     def test_reply_is_not_emailed_to_an_assignee_who_cannot_open_it(self) -> None:
         # The API lets staff assign anyone, but only staff can open a private ticket.
-        self.ticket.assigned_to = self.outsider
-        self.ticket.save()
+        self.ticket.assignees.add(self.outsider)
 
         self.as_user(self.creator).post(
             f"/api/ticket/{self.ticket.id}/message",

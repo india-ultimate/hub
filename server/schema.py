@@ -102,6 +102,13 @@ def viewer_is_staff(context: dict[str, Any] | None) -> bool:
     return bool(request is not None and request.user.is_staff)
 
 
+def profile_pic_url(user: User) -> str | None:
+    try:
+        return user.player_profile.profile_pic_url
+    except Exception:
+        return None
+
+
 class UserNameSchema(ModelSchema):
     """Someone named on a page, an author or an inviter: by name only."""
 

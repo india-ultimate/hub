@@ -57,6 +57,7 @@ from server.transaction.models import (
     RazorpayTransaction,
     RazorpayTransactionPlayer,
 )
+from server.utils import today
 from server.wrapped.models import PlayerWrapped
 
 
@@ -221,6 +222,24 @@ class TestMergeMechanics(MergeTestCase):
             [("thanks", self.primary.id)],
             list(CommentReaction.objects.values_list("kind", "user_id")),
         )
+
+    # Breaks if: Role or Ticket.assignees stop being relations the merge walks,
+    # so an absorbed account's chair role or assignment is cascade-deleted.
+    def test_committee_roles_and_assignments_follow_the_account(self) -> None:
+        from server.committee.models import Committee, Role
+
+        committee = Committee.objects.get(slug="competitions")
+        role = Role.objects.create(
+            committee=committee, user=self.duplicate, title="Chair", start_date=today()
+        )
+        ticket = Ticket.objects.create(title="Help", description="x", created_by=self.primary)
+        ticket.assignees.add(self.duplicate)
+
+        merge_accounts(self.primary, [self.duplicate], dry_run=False)
+
+        role.refresh_from_db()
+        self.assertEqual(self.primary, role.user)
+        self.assertEqual([self.primary], list(ticket.assignees.all()))
 
     def test_player_moves_when_the_primary_has_none(self) -> None:
         # The account someone can sign in to is often the emptier one.
