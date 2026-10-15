@@ -11,7 +11,7 @@ def committees_for(category: str | None) -> QuerySet[Committee]:
     category would match every committee without a route."""
     if not category:
         return Committee.objects.none()
-    return Committee.objects.filter(routes__category=category)
+    return Committee.objects.filter(routes__category__key=category)
 
 
 def chairs_for(category: str | None) -> QuerySet[User]:

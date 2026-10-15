@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Any
 
 from ninja import Schema
-from pydantic import field_validator
+from pydantic import Field, field_validator
 
 from server.committee.routing import committees_for
 from server.core.models import User
@@ -20,7 +20,7 @@ class TicketCreateSchema(Schema):
     title: str
     description: str
     priority: str = "MED"
-    category: Ticket.Category | None = None
+    category: str | None = None
     is_private: bool = False
 
     @field_validator("category", mode="before")
@@ -34,7 +34,7 @@ class TicketUpdateSchema(Schema):
     description: str | None = None
     status: str | None = None
     priority: str | None = None
-    category: Ticket.Category | None = None
+    category: str | None = None
     is_private: bool | None = None
 
     @field_validator("category", mode="before")
@@ -75,13 +75,22 @@ class TicketMessageSchema(Schema):
     attachment: str | None = None  # URL to the attachment (Cloudinary)
 
 
-class TicketDetailSchema(Schema):
+class TicketCategoryFields(Schema):
+    # The key tickets store, and the name people see
+    category: str | None = Field(None, alias="category_id")
+    category_name: str | None = None
+
+    @staticmethod
+    def resolve_category_name(ticket: Ticket) -> str | None:
+        return ticket.category.name if ticket.category else None
+
+
+class TicketDetailSchema(TicketCategoryFields):
     id: int
     title: str
     description: str
     status: str
     priority: str
-    category: str | None = None
     is_private: bool
     upvote_count: int
     has_upvoted: bool
@@ -100,15 +109,14 @@ class TicketDetailSchema(Schema):
 
     @staticmethod
     def resolve_routed_committees(ticket: Ticket) -> list[str]:
-        return list(committees_for(ticket.category).values_list("slug", flat=True))
+        return list(committees_for(ticket.category_id).values_list("slug", flat=True))
 
 
-class TicketListItemSchema(Schema):
+class TicketListItemSchema(TicketCategoryFields):
     id: int
     title: str
     status: str
     priority: str
-    category: str | None = None
     is_private: bool
     upvote_count: int
     has_upvoted: bool
@@ -118,6 +126,23 @@ class TicketListItemSchema(Schema):
     message_count: int
     # How well it matched a search; None when there were no words to search for
     score: int | None = None
+
+
+class TicketCategorySchema(Schema):
+    key: str
+    name: str
+    order: int
+    is_retired: bool
+
+
+class TicketCategoryCreateSchema(Schema):
+    name: str
+
+
+class TicketCategoryUpdateSchema(Schema):
+    name: str | None = None
+    order: int | None = None
+    is_retired: bool | None = None
 
 
 class TicketRouteSchema(Schema):

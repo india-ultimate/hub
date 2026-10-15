@@ -1,8 +1,6 @@
 import json
-from importlib import import_module
 from typing import Any
 
-from django.apps import apps
 from django.core import mail
 from django.test import Client, SimpleTestCase, TestCase
 
@@ -326,12 +324,12 @@ class TestListing(TicketTestCase):
         self.assertEqual(["Working on it", "My address"], titles)
 
     def test_unknown_filter_values_are_rejected(self) -> None:
-        for query in ("status=XYZ", "category=Nonsense", "sort=best"):
+        for query in ("status=XYZ", "sort=best"):
             response = self.as_user(self.outsider).get(f"/api/ticket/?{query}")
             self.assertEqual(422, response.status_code, query)
 
     def test_category_filter(self) -> None:
-        self.make("Card declined", category=Ticket.Category.PAYMENT)
+        self.make("Card declined", category_id="Payment")
         self.assertEqual(["Card declined"], self.titles(self.outsider, "category=Payment"))
 
     def test_mine(self) -> None:
@@ -393,18 +391,10 @@ class TestCategoryValidation(TicketTestCase):
         )
 
     def test_unknown_category_is_rejected_on_create_and_update(self) -> None:
-        self.assertEqual(422, self.create("Nonsense").status_code)
-        self.assertEqual(422, self.put(self.staff, {"category": "Nonsense"}).status_code)
+        self.assertEqual(400, self.create("Nonsense").status_code)
+        self.assertEqual(400, self.put(self.staff, {"category": "Nonsense"}).status_code)
 
     def test_blank_category_means_none(self) -> None:
         response = self.create("")
         self.assertEqual(201, response.status_code)
         self.assertIsNone(response.json()["category"])
-
-    def test_lowercase_other_is_normalised(self) -> None:
-        Ticket.objects.filter(id=self.ticket.id).update(category="other")
-
-        import_module("server.migrations.0163_ticket_category_case").normalise(apps, None)
-
-        self.ticket.refresh_from_db()
-        self.assertEqual("Other", self.ticket.category)

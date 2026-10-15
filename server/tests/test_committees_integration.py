@@ -10,7 +10,7 @@ from server.committee.models import Committee, Role, TicketRoute
 from server.core.models import User
 from server.tests import test_ui
 from server.tests.localserver import APP_URL, running_test_server
-from server.ticket.models import Ticket
+from server.ticket.models import Ticket, TicketCategory
 from server.utils import today
 
 
@@ -120,12 +120,14 @@ class TestCommitteesIntegration(BaseCase):
 
     def test_a_chair_handles_a_routed_ticket_but_cannot_change_its_privacy(self) -> None:
         self.hold(self.zonal, self.meera, "Chair", is_chair=True)
-        TicketRoute.objects.create(category=Ticket.Category.TECH, committee=self.zonal)
+        # A transactional test before this one can empty the seeded categories.
+        TicketCategory.objects.get_or_create(key="Tech", defaults={"name": "Tech"})
+        TicketRoute.objects.create(category_id="Tech", committee=self.zonal)
         ticket = Ticket.objects.create(
             title="Site is slow",
             description="Pages hang",
             created_by=self.asha,
-            category=Ticket.Category.TECH,
+            category_id="Tech",
         )
         self.sign_in_as(self.meera)
         self.open(f"{APP_URL}/tickets/{ticket.id}")

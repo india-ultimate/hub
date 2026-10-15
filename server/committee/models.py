@@ -2,7 +2,7 @@ from django.db import models
 from django.db.models import Q
 
 from server.core.models import User
-from server.ticket.models import Ticket
+from server.ticket.models import TicketCategory
 from server.utils import today
 
 
@@ -52,11 +52,17 @@ class TicketRoute(models.Model):
     """A category of ticket that a committee handles. A category with no route
     stays unassigned for Ops."""
 
-    category = models.CharField(max_length=100, choices=Ticket.Category.choices)
+    category = models.ForeignKey(
+        TicketCategory,
+        to_field="key",
+        db_column="category",
+        on_delete=models.PROTECT,
+        related_name="routes",
+    )
     committee = models.ForeignKey(Committee, on_delete=models.CASCADE, related_name="routes")
 
     class Meta:
         unique_together = ("category", "committee")
 
     def __str__(self) -> str:
-        return f"{self.category} -> {self.committee}"
+        return f"{self.category_id} -> {self.committee}"

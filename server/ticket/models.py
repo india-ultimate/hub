@@ -1,6 +1,35 @@
 from django.db import models
+from django.utils.text import slugify
 
 from server.core.models import User
+
+
+class TicketCategory(models.Model):
+    """What a ticket is about. Staff manage these; they are retired, never deleted."""
+
+    NAME_MAX_LENGTH = 100
+
+    # Set once and never changed: it is what tickets and routes store
+    key = models.CharField(max_length=100, unique=True)
+    name = models.CharField(max_length=NAME_MAX_LENGTH, unique=True)
+    order = models.PositiveSmallIntegerField(default=0)
+    is_retired = models.BooleanField(default=False, db_default=False)
+
+    class Meta:
+        ordering = ["order", "name"]
+
+    def __str__(self) -> str:
+        return self.name
+
+    @classmethod
+    def new_key(cls, name: str) -> str:
+        """The slug of `name`, with -2, -3 and so on added if taken."""
+        base = slugify(name)[:90] or "category"
+        key, n = base, 1
+        while cls.objects.filter(key=key).exists():
+            n += 1
+            key = f"{base}-{n}"
+        return key
 
 
 class Ticket(models.Model):
@@ -18,15 +47,6 @@ class Ticket(models.Model):
         HIGH = "HIG", "High"
         URGENT = "URG", "Urgent"
 
-    class Category(models.TextChoices):
-        ACCOUNT = "Account", "Account"
-        COMPETITIONS = "Competitions", "Competitions"
-        SUBSCRIPTION = "Subscription", "Subscription"
-        TOURNAMENT = "Tournament", "Tournament"
-        PAYMENT = "Payment", "Payment"
-        TECH = "Tech", "Tech"
-        OTHER = "Other", "Other"
-
     title = models.CharField(max_length=200)
     description = models.TextField()
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name="created_tickets")
@@ -43,8 +63,14 @@ class Ticket(models.Model):
     assignees = models.ManyToManyField(User, blank=True, related_name="assigned_tickets")
     status = models.CharField(max_length=3, choices=Status.choices, default=Status.OPEN)
     priority = models.CharField(max_length=3, choices=Priority.choices, default=Priority.MEDIUM)
-    category = models.CharField(
-        max_length=100, choices=Category.choices, blank=True, null=True, default=Category.OTHER
+    category = models.ForeignKey(
+        "TicketCategory",
+        to_field="key",
+        db_column="category",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="tickets",
     )
     # Seen only by its creator and staff, for things not meant for everyone.
     is_private = models.BooleanField(default=False)
