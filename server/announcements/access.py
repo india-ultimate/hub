@@ -1,8 +1,11 @@
-"""Who may read members-only announcements, in the app and in email."""
+"""Who may read members-only announcements, in the app and in email, and who may
+post and manage announcements."""
 
 from django.db.models import OuterRef, Q, QuerySet, Subquery
 from django.db.models.functions import Coalesce
 
+from server.announcements.models import Announcement
+from server.committee.models import Role
 from server.core.models import Player, User
 from server.subscription.models import Subscription
 from server.utils import today
@@ -19,6 +22,20 @@ def can_read_members_only(user: User) -> bool:
     # Same rule as /api/me/subscription, which the dashboard shows.
     subscription = player.current_subscription
     return subscription is not None and subscription.is_active
+
+
+def can_post(user: User) -> bool:
+    """Staff, and anyone with a current role that lets them: the role's own switch,
+    or the committee's. Access ends with the term."""
+    if user.is_staff:
+        return True
+    allowed = Q(can_post_announcements=True) | Q(committee__can_post_announcements=True)
+    return Role.objects.current().filter(allowed, user=user).exists()
+
+
+def can_manage(user: User, announcement: Announcement) -> bool:
+    """Staff manage every post; a poster, the ones they wrote."""
+    return user.is_staff or (announcement.author_id == user.id and can_post(user))
 
 
 def members_only_readers(users: QuerySet[User]) -> QuerySet[User]:

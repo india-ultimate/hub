@@ -3,6 +3,7 @@ from typing import Any
 from django.utils.timezone import now
 from ninja import ModelSchema, Schema
 
+from server.announcements.access import can_post
 from server.constants import MIN_AGE
 from server.core.models import (
     Accreditation,
@@ -486,6 +487,11 @@ class MeSchema(UserSchema):
     """The signed-in person's own user, for the frontend's user store. Not for nesting."""
 
     payment_accounts: list[dict[str, str]]
+    can_post_announcements: bool
+
+    @staticmethod
+    def resolve_can_post_announcements(user: User) -> bool:
+        return can_post(user)
 
     @staticmethod
     def resolve_payment_accounts(user: User) -> list[dict[str, str]]:
