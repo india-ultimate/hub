@@ -108,10 +108,19 @@ def update_committee(
         return 404, {"message": "Committee not found"}
     if _name_is_taken(data.name, committee):
         return 400, {"message": "A committee with this name already exists"}
-    for field, value in data.dict().items():
+    for field, value in data.dict(exclude_unset=True).items():
         setattr(committee, field, value)
     committee.save()
     return 200, _committees().get(pk=committee.pk)
+
+
+@router.delete("/{slug}", response={204: None, 403: Message, 404: Message})
+def delete_committee(request: AuthenticatedHttpRequest, slug: str) -> tuple[int, Message | None]:
+    """Its roles and ticket routes go with it; its tickets stay."""
+    if denied := _deny_unless_staff(request.user):
+        return denied
+    get_object_or_404(Committee, slug=slug).delete()
+    return 204, None
 
 
 @router.post("/{slug}/roles", response={201: RoleSchema, 400: Message, 403: Message, 404: Message})
@@ -127,6 +136,7 @@ def add_role(
         user=user,
         title=data.title,
         is_chair=data.is_chair,
+        can_post_announcements=data.can_post_announcements,
         start_date=data.start_date,
     )
     if not _save_unless_overlapping(role):

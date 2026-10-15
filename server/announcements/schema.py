@@ -1,7 +1,8 @@
-from typing import Any
+from typing import Any, Literal
 
 from ninja import ModelSchema, Schema
 
+from server.announcements.access import can_manage
 from server.announcements.models import Announcement, Comment
 from server.core.models import User
 from server.schema import UserNameSchema, profile_pic_url
@@ -24,6 +25,11 @@ class AnnouncementSchema(ModelSchema):
     can_read: bool
     comment_count: int
     reactions: list[ReactionCountSchema]
+    can_manage: bool
+
+    @staticmethod
+    def resolve_can_manage(announcement: Announcement, context: dict[str, Any]) -> bool:
+        return can_manage(context["request"].user, announcement)
 
     @staticmethod
     def resolve_author(announcement: Announcement) -> User:
@@ -62,6 +68,43 @@ class AnnouncementSchema(ModelSchema):
     class Meta:
         model = Announcement
         fields = "__all__"
+
+
+class AnnouncementInSchema(Schema):
+    title: str
+    content: str
+    type: Announcement.Type = Announcement.Type.COMPETITIONS
+    is_members_only: bool = False
+    is_published: bool = False
+    allow_comments: bool = True
+    action_text: str = ""
+    action_url: str = ""
+
+
+class AnnouncementUpdateSchema(Schema):
+    """Whatever is sent changes; null, like leaving it out, keeps what's there.
+    Send "" to clear the action button."""
+
+    title: str | None = None
+    content: str | None = None
+    type: Announcement.Type | None = None
+    is_members_only: bool | None = None
+    is_published: bool | None = None
+    allow_comments: bool | None = None
+    action_text: str | None = None
+    action_url: str | None = None
+
+
+class ImageSchema(Schema):
+    url: str
+
+
+class QueuedSchema(Schema):
+    queued: int
+
+
+class EmailInSchema(Schema):
+    audience: Literal["all", "members"]
 
 
 class CommentSchema(ModelSchema):

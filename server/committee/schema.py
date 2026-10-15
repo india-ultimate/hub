@@ -25,6 +25,7 @@ class RoleSchema(Schema):
     id: int
     title: str
     is_chair: bool
+    can_post_announcements: bool
     start_date: date
     end_date: date | None = None
     person: PersonSchema
@@ -40,6 +41,7 @@ class CommitteeSchema(Schema):
     email: str
     description: str
     order: int
+    can_post_announcements: bool
     roles: list[RoleSchema]
 
     @staticmethod
@@ -62,17 +64,20 @@ class CommitteeInSchema(Schema):
     email: str = ""
     description: str = ""
     order: int = Field(0, ge=0, le=32767)
+    can_post_announcements: bool = False
 
 
 class RoleCreateSchema(Schema):
     user_id: int
     title: str
     is_chair: bool = False
+    can_post_announcements: bool = False
     start_date: date
 
 
 class RoleUpdateSchema(Schema):
     title: str | None = None
     is_chair: bool | None = None
+    can_post_announcements: bool | None = None
     start_date: date | None = None
     end_date: date | None = None
