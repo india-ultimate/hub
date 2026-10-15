@@ -99,6 +99,17 @@ class ImageSchema(Schema):
     url: str
 
 
+class VideoUploadSchema(Schema):
+    """Where the browser sends a video, and the form fields to send with it."""
+
+    url: str
+    fields: dict[str, str]
+
+
+class UploadedVideoSchema(Schema):
+    secure_url: str  # Cloudinary's name for it, so both uploads answer alike
+
+
 class QueuedSchema(Schema):
     queued: int
 

@@ -1,9 +1,13 @@
 import os
+import time
 import unicodedata
 import uuid
 from collections.abc import Iterable
 from typing import Any
 
+import cloudinary
+import cloudinary.utils
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.files.storage import default_storage
 from django.core.validators import URLValidator
@@ -34,10 +38,13 @@ from server.announcements.schema import (
     ImageSchema,
     QueuedSchema,
     ReactionCountSchema,
+    UploadedVideoSchema,
+    VideoUploadSchema,
     _can_read,
 )
 from server.core.models import User
 from server.storage.ckeditor import upload_error
+from server.storage.cloudinary import CloudinaryStorage
 
 # Create announcements router
 router = Router()
@@ -169,6 +176,59 @@ def upload_image(
     extension = os.path.splitext(file.name or "")[1].lower()
     name = default_storage.save(f"announcement_images/{uuid.uuid4().hex}{extension}", file)
     return 200, ImageSchema(url=default_storage.url(name))
+
+
+VIDEO_FORMATS = ("mp4", "webm", "mov")
+
+
+@router.post(
+    "/videos",
+    response={200: VideoUploadSchema, 403: Message},
+    throttle=_limit("announcement_video", "10/m"),
+)
+def start_video_upload(
+    request: AuthenticatedHttpRequest,
+) -> tuple[int, VideoUploadSchema | Message]:
+    """A signed upload for one video, which the browser sends straight to Cloudinary:
+    videos are too big to pass through the Hub's machines. Without Cloudinary (in
+    development), the Hub keeps them itself."""
+    if not can_post(request.user):
+        return 403, {"message": "You can't post announcements."}
+    if not isinstance(default_storage, CloudinaryStorage):
+        return 200, VideoUploadSchema(url="/api/announcements/videos/file", fields={})
+    fields = {
+        "public_id": f"{settings.CLOUDINARY_MEDIA_PREFIX}announcement_videos/{uuid.uuid4().hex}",
+        "allowed_formats": ",".join(VIDEO_FORMATS),
+        "format": "mp4",  # what every browser plays; a Mac's recordings are .mov
+        "overwrite": "false",  # or the signature, good for an hour, could replace a video
+        "timestamp": str(int(time.time())),
+    }
+    config = cloudinary.config()
+    fields["signature"] = cloudinary.utils.api_sign_request(fields, config.api_secret)
+    fields["api_key"] = config.api_key
+    url = f"https://api.cloudinary.com/v1_1/{config.cloud_name}/video/upload"
+    return 200, VideoUploadSchema(url=url, fields=fields)
+
+
+@router.post(
+    "/videos/file",
+    response={200: UploadedVideoSchema, 400: Message, 403: Message, 404: Message},
+    throttle=_limit("announcement_video", "10/m"),
+)
+def upload_video_here(
+    request: AuthenticatedHttpRequest,
+    file: UploadedFile = File(...),  # noqa: B008
+) -> tuple[int, UploadedVideoSchema | Message]:
+    """Development only: with Cloudinary, videos go straight there."""
+    if isinstance(default_storage, CloudinaryStorage):
+        return 404, {"message": "Upload videos to Cloudinary."}
+    if not can_post(request.user):
+        return 403, {"message": "You can't post announcements."}
+    extension = os.path.splitext(file.name or "")[1].lower()
+    if extension.lstrip(".") not in VIDEO_FORMATS:
+        return 400, {"message": "Upload an MP4, WebM or MOV video."}
+    name = default_storage.save(f"announcement_videos/{uuid.uuid4().hex}{extension}", file)
+    return 200, UploadedVideoSchema(secure_url=default_storage.url(name))
 
 
 @router.get("/", response={200: list[AnnouncementSchema]})

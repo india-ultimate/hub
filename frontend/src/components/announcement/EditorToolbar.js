@@ -8,7 +8,8 @@ import {
   listBullet,
   minus,
   photo,
-  tableCells
+  tableCells,
+  videoCamera
 } from "solid-heroicons/solid";
 import {
   createEffect,
@@ -21,7 +22,10 @@ import {
 } from "solid-js";
 
 import { Field, focusRing, input, primaryButton } from "../../committees";
-import { uploadAnnouncementImage } from "../../queries";
+import {
+  uploadAnnouncementImage,
+  uploadAnnouncementVideo
+} from "../../queries";
 import { uploadError } from "../../uploads";
 
 // `active` is what isActive() is asked, so the button can show it is pressed.
@@ -92,6 +96,32 @@ const note =
   "border-x border-gray-300 bg-gray-50 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800";
 
 const SAFE_LINK = /^(https?:\/\/|mailto:)/i;
+
+// Cloudinary's limit for one video in one request.
+const MAX_VIDEO_BYTES = 100 * 1024 * 1024;
+
+// What each upload button takes, checks first, sends and puts in the post.
+const MEDIA = [
+  {
+    kind: "image",
+    label: "Image",
+    icon: photo,
+    accept: "image/*",
+    problem: uploadError,
+    send: uploadAnnouncementImage,
+    node: src => ({ type: "image", attrs: { src, alt: "" } })
+  },
+  {
+    kind: "video",
+    label: "Video",
+    icon: videoCamera,
+    accept: "video/mp4,video/webm,video/quicktime",
+    problem: file =>
+      file.size > MAX_VIDEO_BYTES ? "Videos must be 100 MB or smaller." : "",
+    send: uploadAnnouncementVideo,
+    node: src => ({ type: "video", attrs: { src } })
+  }
+];
 
 // A small form under the toolbar: the link on the selection, or none.
 const LinkForm = props => {
@@ -169,8 +199,8 @@ const EditorToolbar = props => {
   const [tick, setTick] = createSignal(0);
   const [linking, setLinking] = createSignal(false);
   const [progress, setProgress] = createSignal(null);
-  const [imageError, setImageError] = createSignal("");
-  let fileInput;
+  const [uploading, setUploading] = createSignal(MEDIA[0]);
+  const [uploadFailure, setUploadFailure] = createSignal("");
 
   createEffect(() => {
     const editor = props.editor();
@@ -197,31 +227,30 @@ const EditorToolbar = props => {
     props.editor().commands.focus();
   };
 
-  const upload = async file => {
-    setImageError("");
-    const problem = await uploadError(file);
-    if (problem) return setImageError(problem);
+  const upload = async (file, media) => {
+    setUploadFailure("");
+    const problem = await media.problem(file);
+    if (problem) return setUploadFailure(problem);
+    setUploading(media);
     setProgress(0);
     try {
-      const src = await uploadAnnouncementImage(file, setProgress);
+      const src = await media.send(file, setProgress);
       const editor = props.editor();
+      const node = media.node(src);
       // After the selection, so a selected image isn't replaced.
       editor
         .chain()
         .focus()
-        .insertContentAt(editor.state.selection.to, {
-          type: "image",
-          attrs: { src, alt: "" }
-        })
+        .insertContentAt(editor.state.selection.to, node)
         .run();
-      // Select it, so its description can be written.
-      editor.state.doc.descendants((node, pos) => {
-        if (node.type.name === "image" && node.attrs.src === src) {
+      // Select it, so an image's description can be written.
+      editor.state.doc.descendants((child, pos) => {
+        if (child.type.name === node.type && child.attrs.src === src) {
           editor.commands.setNodeSelection(pos);
         }
       });
     } catch (error) {
-      setImageError(error.message);
+      setUploadFailure(error.message);
     } finally {
       setProgress(null);
     }
@@ -262,30 +291,47 @@ const EditorToolbar = props => {
           >
             <Icon path={link} class="h-5 w-5" aria-hidden="true" />
           </button>
-          <button
-            type="button"
-            aria-label="Image"
-            title="Image"
-            disabled={progress() !== null}
-            class={button(false)}
-            onClick={() => fileInput.click()}
-          >
-            <Icon path={photo} class="h-5 w-5" aria-hidden="true" />
-          </button>
-          <input
-            ref={fileInput}
-            id="image-file"
-            type="file"
-            accept="image/*"
-            tabindex="-1"
-            aria-label="Choose an image"
-            class="sr-only"
-            onChange={e => {
-              const [file] = e.currentTarget.files;
-              // Cleared once it's sent, so the same file can be chosen again.
-              if (file) upload(file).finally(() => (fileInput.value = ""));
+          <For each={MEDIA}>
+            {media => {
+              let fileInput;
+              return (
+                <>
+                  <button
+                    type="button"
+                    aria-label={media.label}
+                    title={media.label}
+                    disabled={progress() !== null}
+                    class={button(false)}
+                    onClick={() => fileInput.click()}
+                  >
+                    <Icon
+                      path={media.icon}
+                      class="h-5 w-5"
+                      aria-hidden="true"
+                    />
+                  </button>
+                  <input
+                    ref={fileInput}
+                    id={`${media.kind}-file`}
+                    type="file"
+                    accept={media.accept}
+                    tabindex="-1"
+                    aria-label={`Choose ${media.label.toLowerCase()} file`}
+                    class="sr-only"
+                    onChange={e => {
+                      const [file] = e.currentTarget.files;
+                      // Cleared once it's sent, so the same file can be chosen again.
+                      if (file) {
+                        upload(file, media).finally(
+                          () => (fileInput.value = "")
+                        );
+                      }
+                    }}
+                  />
+                </>
+              );
             }}
-          />
+          </For>
         </div>
         <Show when={linking()}>
           <LinkForm editor={props.editor()} close={closeLink} />
@@ -332,13 +378,13 @@ const EditorToolbar = props => {
         </For>
         <Show when={progress() !== null}>
           <p role="status" class={note}>
-            Uploading image…{" "}
+            Uploading {uploading().kind}…{" "}
             {progress().toLocaleString("en-IN", { style: "percent" })}
           </p>
         </Show>
-        <Show when={imageError()}>
+        <Show when={uploadFailure()}>
           <p role="alert" class={`${note} text-red-700 dark:text-red-400`}>
-            {imageError()}
+            {uploadFailure()}
           </p>
         </Show>
       </div>

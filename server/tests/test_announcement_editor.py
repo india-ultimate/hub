@@ -4,7 +4,10 @@ import json
 import shutil
 import tempfile
 from typing import Any
+from unittest import mock
 
+import cloudinary
+import cloudinary.utils
 from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
@@ -212,6 +215,37 @@ class TestCleaning(TestCase):
         self.assertFalse(is_blank('<p></p><img src="https://x.org/a.png">'))
         self.assertFalse(is_blank("<p>Hi</p>"))
 
+    def test_a_video_alone_is_not_blank(self) -> None:
+        self.assertFalse(is_blank('<video src="https://x.org/a.mp4"></video>'))
+        self.assertTrue(is_blank("<video controls></video>"))
+        self.assertFalse(is_blank('<video controls=""><source src="/media/a.mp4"></video>'))
+
+    def test_videos_stay_with_controls_and_nothing_that_plays_by_itself(self) -> None:
+        html = clean_content(
+            '<video src="https://x.org/a.mp4" autoplay muted loop onplay="x()"></video>'
+        )
+
+        # The order of the attributes it sets varies.
+        for part in (
+            '<video src="https://x.org/a.mp4" ',
+            ' controls=""',
+            ' preload="metadata"',
+            ' playsinline=""',
+        ):
+            self.assertIn(part, html)
+        self.assertNotRegex(html, "autoplay|muted|loop|onplay")
+
+    def test_old_videos_keep_their_sources(self) -> None:
+        html = clean_content('<video><source src="/media/a.mp4" type="video/mp4"></video>')
+
+        self.assertIn('<source src="/media/a.mp4" type="video/mp4">', html)
+
+    def test_videos_take_only_web_addresses(self) -> None:
+        for address in ("javascript:x()", "mailto:a@b.org", "//evil.com/a.mp4"):
+            html = clean_content(f'<video src="{address}"></video><source src="{address}">')
+
+            self.assertNotIn("src", html, address)
+
 
 class TestWriting(EditorTestCase):
     def setUp(self) -> None:
@@ -408,6 +442,69 @@ class TestImages(EditorTestCase):
 
         self.assertEqual(400, response.status_code)
         self.assertIn("10 MB", response.json()["message"])
+
+
+CLOUDINARY = {
+    "default": {"BACKEND": "server.storage.cloudinary.CloudinaryStorage"},
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+}
+
+
+class TestVideos(EditorTestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        Committee.objects.update(can_post_announcements=True)
+        media = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, media)
+        override = override_settings(MEDIA_ROOT=media)
+        override.enable()
+        self.addCleanup(override.disable)
+
+    def upload(self, user: User, name: str = "how-to.mp4") -> Any:
+        client = Client()
+        client.force_login(user)
+        file = SimpleUploadedFile(name, b"\x00\x00\x00\x18ftypmp42")
+        return client.post("/api/announcements/videos/file", {"file": file})
+
+    @override_settings(STORAGES=CLOUDINARY)
+    @mock.patch.object(cloudinary.config(), "api_secret", "secret")
+    def test_a_poster_gets_a_signed_upload_straight_to_cloudinary(self) -> None:
+        response = self.call("post", "/videos", self.poster)
+
+        self.assertEqual(200, response.status_code, response.content)
+        body = response.json()
+        self.assertEqual("https://api.cloudinary.com/v1_1/india-ultimate/video/upload", body["url"])
+        fields = body["fields"]
+        self.assertTrue(fields["public_id"].startswith("media/announcement_videos/"))
+        self.assertEqual("mp4,webm,mov", fields["allowed_formats"])
+        self.assertEqual(("mp4", "false"), (fields["format"], fields["overwrite"]))
+        signed = {k: v for k, v in fields.items() if k not in {"api_key", "signature"}}
+        self.assertEqual(
+            cloudinary.utils.api_sign_request(signed, "secret"),
+            fields["signature"],
+        )
+
+    @override_settings(STORAGES=CLOUDINARY)
+    def test_with_cloudinary_videos_never_pass_through_the_hub(self) -> None:
+        self.assertEqual(404, self.upload(self.poster).status_code)
+
+    def test_without_cloudinary_videos_are_kept_here(self) -> None:
+        sign = self.call("post", "/videos", self.poster).json()
+        self.assertEqual({"url": "/api/announcements/videos/file", "fields": {}}, sign)
+
+        response = self.upload(self.poster)
+
+        self.assertEqual(200, response.status_code, response.content)
+        url = response.json()["secure_url"]
+        self.assertIn("announcement_videos/", url)
+        self.assertTrue(url.endswith(".mp4"))
+
+    def test_a_file_that_is_not_a_video_is_refused(self) -> None:
+        self.assertEqual(400, self.upload(self.poster, name="a.html").status_code)
+
+    def test_someone_who_cannot_post_gets_403(self) -> None:
+        self.assertEqual(403, self.call("post", "/videos", self.other).status_code)
+        self.assertEqual(403, self.upload(self.other).status_code)
 
 
 class TestEmails(EditorTestCase):

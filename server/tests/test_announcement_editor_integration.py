@@ -221,3 +221,22 @@ class TestAnnouncementEditorIntegration(BaseCase):
         content = Announcement.objects.get(title="Two photos").content
         self.assertIn('alt="First"', content)
         self.assertIn('alt="Second"', content)
+
+    def test_an_uploaded_video_goes_in_the_post(self) -> None:
+        self.sign_in_as(self.meera)
+        self.open(f"{APP_URL}/announcements/new")
+        self.type("#announcement-title", "How to merge accounts")
+        self.click(EDITOR)
+        self.send_keys(EDITOR, "Watch")
+        with TemporaryDirectory() as folder:
+            path = Path(folder) / "merge.mp4"
+            path.write_bytes(b"\x00\x00\x00\x18ftypmp42")
+            self.choose_file("#video-file", str(path))
+            # The browser reads the file as it uploads: keep it until then.
+            self.wait_for_element(f"{EDITOR} video", timeout=10)
+        self.click('button:contains("Save draft")')
+        self.wait_for_element("#email-heading", timeout=10)
+        content = Announcement.objects.get(title="How to merge accounts").content
+        self.assertIn("<video", content)
+        self.assertIn("announcement_videos/", content)
+        self.assertIn("controls", content)
