@@ -73,6 +73,7 @@ const EmailInvitationHandler = lazy(
 // Ticket Pages
 const Tickets = lazy(() => import("./ticket/Tickets"));
 const CreateTicket = lazy(() => import("./ticket/CreateTicket"));
+const ManageCategories = lazy(() => import("./ticket/ManageCategories"));
 const TicketDetail = lazy(() => import("./ticket/TicketDetail"));
 
 const filters = {
@@ -324,6 +325,12 @@ export default function App() {
                   <Route path="/tickets" component={Tickets} />
                   {/* Ticket private routes */}
                   <UserRoute path="/tickets/new" component={CreateTicket} />
+                  {/* Static, so /tickets/manage isn't read as an id */}
+                  <UserRoute
+                    path="/tickets/manage"
+                    component={ManageCategories}
+                    admin={true}
+                  />
                   <UserRoute
                     path="/tickets/:id"
                     component={TicketDetail}

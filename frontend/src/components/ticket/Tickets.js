@@ -29,13 +29,23 @@ const Tickets = () => {
           </p>
         </div>
         <Show when={userQuery.data}>
-          <A
-            href="/tickets/new"
-            class="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-blue-700 px-5 text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus-visible:ring-blue-800"
-          >
-            <Icon path={plus} class="h-5 w-5" aria-hidden="true" />
-            New ticket
-          </A>
+          <div class="flex flex-wrap items-center gap-2">
+            <Show when={userQuery.data.is_staff}>
+              <A
+                href="/tickets/manage"
+                class="inline-flex min-h-[44px] items-center rounded-lg border border-gray-300 bg-white px-4 text-sm font-medium text-gray-900 hover:bg-gray-100 focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700 dark:focus-visible:ring-blue-800"
+              >
+                Manage categories
+              </A>
+            </Show>
+            <A
+              href="/tickets/new"
+              class="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-blue-700 px-5 text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus-visible:ring-blue-800"
+            >
+              <Icon path={plus} class="h-5 w-5" aria-hidden="true" />
+              New ticket
+            </A>
+          </div>
         </Show>
       </div>
 
