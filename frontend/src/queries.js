@@ -1872,6 +1872,59 @@ export const updateTicket = async (ticketId, data) => {
   return responseData;
 };
 
+// Committee API functions
+const committeeRequest = async (url, method = "GET", data) => {
+  const response = await fetch(url, {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin",
+    ...(data && { body: JSON.stringify(data) })
+  });
+  const body = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw Object.assign(
+      new Error(
+        body?.message || body?.detail || "Something went wrong. Try again."
+      ),
+      { status: response.status }
+    );
+  }
+  return body;
+};
+
+export const fetchCommittees = () => committeeRequest("/api/committees/");
+
+export const fetchCommittee = slug =>
+  committeeRequest(`/api/committees/${slug}`);
+
+export const saveCommittee = ({ slug, ...data }) =>
+  slug
+    ? committeeRequest(`/api/committees/${slug}`, "PUT", data)
+    : committeeRequest("/api/committees/", "POST", data);
+
+export const addCommitteeRole = ({ slug, ...data }) =>
+  committeeRequest(`/api/committees/${slug}/roles`, "POST", data);
+
+export const updateCommitteeRole = ({ id, ...data }) =>
+  committeeRequest(`/api/committees/roles/${id}`, "PUT", data);
+
+export const deleteCommitteeRole = id =>
+  committeeRequest(`/api/committees/roles/${id}`, "DELETE");
+
+export const fetchTicketRoutes = () => committeeRequest("/api/ticket/routes");
+
+export const saveTicketRoute = ({ category, committees }) =>
+  committeeRequest(`/api/ticket/routes/${category}`, "PUT", { committees });
+
+export const setTicketAssignee = ({ ticketId, userId, assigned }) =>
+  committeeRequest(
+    `/api/ticket/${ticketId}/assignees/${userId}`,
+    assigned ? "POST" : "DELETE"
+  );
+
 // Election API functions
 export const createElection = async data => {
   const response = await fetch("/api/election/", {

@@ -23,6 +23,7 @@ import {
   CategoryChip,
   formatDate,
   formatDateTime,
+  fullName,
   PriorityBadge,
   StatusBadge,
   STATUSES
@@ -31,17 +32,14 @@ import { MAX_CLOUDINARY_PIXELS, uploadError } from "../../uploads";
 import ErrorAlert from "../alerts/Error";
 import Breadcrumbs from "../Breadcrumbs";
 import FileInput from "../FileInput";
+import Assignees from "./Assignees";
 import UpvoteButton from "./UpvoteButton";
 
 const card =
   "rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800 sm:p-6";
 const primary =
   "inline-flex min-h-[44px] items-center justify-center rounded-lg bg-blue-700 px-5 text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus-visible:ring-blue-800";
-const secondary =
-  "inline-flex min-h-[44px] w-full items-center justify-center rounded-lg border border-gray-300 bg-white px-4 text-sm font-medium text-gray-900 hover:bg-gray-100 focus:outline-none focus-visible:ring-4 focus-visible:ring-gray-200 disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700";
 const IMAGE = /\.(jpe?g|png|gif|webp|bmp|tiff)$/i;
-
-const fullName = user => `${user.first_name} ${user.last_name}`.trim();
 
 const fileName = url => {
   try {
@@ -95,8 +93,8 @@ const TicketDetail = () => {
   const me = () => userQuery.data;
   const ticket = () => ticketQuery.data;
   const isStaff = () => Boolean(me()?.is_staff);
-  const canManage = () =>
-    isStaff() || (me() && me().id === ticket()?.created_by.id);
+  const isCreator = () => me() && me().id === ticket()?.created_by.id;
+  const canManage = () => isStaff() || ticket()?.can_handle || isCreator();
 
   const refresh = () => {
     queryClient.invalidateQueries(["ticket", params.id]);
@@ -225,16 +223,6 @@ const TicketDetail = () => {
                   </h2>
                   <dl class="mt-3 space-y-2 text-sm">
                     <div class="flex justify-between gap-4">
-                      <dt class="text-gray-600 dark:text-gray-400">
-                        Assigned to
-                      </dt>
-                      <dd class="text-right font-medium text-gray-900 dark:text-white">
-                        {ticket().assigned_to
-                          ? fullName(ticket().assigned_to)
-                          : "Unassigned"}
-                      </dd>
-                    </div>
-                    <div class="flex justify-between gap-4">
                       <dt class="text-gray-600 dark:text-gray-400">Opened</dt>
                       <dd class="text-right text-gray-900 dark:text-white">
                         {formatDateTime(ticket().created_at)}
@@ -249,6 +237,14 @@ const TicketDetail = () => {
                       </dd>
                     </div>
                   </dl>
+                  <div class="mt-4 border-t border-gray-200 pt-4 dark:border-gray-700">
+                    <Assignees
+                      ticket={ticket()}
+                      ticketId={params.id}
+                      me={me()}
+                      isStaff={isStaff()}
+                    />
+                  </div>
 
                   <Show when={canManage()}>
                     <div class="mt-4 space-y-4 border-t border-gray-200 pt-4 dark:border-gray-700">
@@ -277,21 +273,10 @@ const TicketDetail = () => {
                           </For>
                         </select>
                       </div>
-                      <Show
-                        when={isStaff() && ticket().assigned_to?.id !== me().id}
-                      >
-                        <button
-                          type="button"
-                          id="assign-to-me"
-                          class={secondary}
-                          disabled={updateMutation.isLoading}
-                          onClick={() =>
-                            updateMutation.mutate({ assigned_to_id: me().id })
-                          }
-                        >
-                          Assign to me
-                        </button>
-                      </Show>
+                    </div>
+                  </Show>
+                  <Show when={isStaff() || isCreator()}>
+                    <div class="mt-4 space-y-4 border-t border-gray-200 pt-4 dark:border-gray-700">
                       <div class="flex items-start justify-between gap-4">
                         <div>
                           <p
@@ -348,9 +333,11 @@ const TicketDetail = () => {
                           </span>
                         </button>
                       </div>
-                      <Show when={updateError()}>
-                        <ErrorAlert text={updateError()} />
-                      </Show>
+                    </div>
+                  </Show>
+                  <Show when={updateError()}>
+                    <div class="mt-4">
+                      <ErrorAlert text={updateError()} />
                     </div>
                   </Show>
                 </section>
