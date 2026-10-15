@@ -6,7 +6,7 @@ from django.db import connection
 from django.test import TestCase, override_settings
 from django.test.utils import CaptureQueriesContext
 
-from server.announcements.models import Announcement, Comment, Reaction
+from server.announcements.models import Announcement, Comment, CommentReaction, Reaction
 from server.core.models import Player, User
 
 LOCMEM = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
@@ -59,6 +59,10 @@ class AnnouncementCommentsTestCase(TestCase):
 
     def _react(self, kind: str, method: str = "put", slug: str | None = None) -> Any:
         url = f"/api/announcements/{slug or self.post.slug}/reactions/{kind}"
+        return getattr(self.client, method)(url)
+
+    def _react_to(self, comment_id: int, kind: str, method: str = "put") -> Any:
+        url = f"/api/announcements/comments/{comment_id}/reactions/{kind}"
         return getattr(self.client, method)(url)
 
     def _detail(self) -> dict[str, Any]:
@@ -260,6 +264,73 @@ class AnnouncementCommentsTestCase(TestCase):
             self._react("like")
         self.assertEqual(429, self._react("like").status_code)
 
+    # Comment reactions
+
+    def test_reacting_to_a_comment_and_a_reply(self) -> None:
+        top = self._comment("When is it?")
+        reply = self._comment("March", parent_id=top)
+        self.assertEqual(
+            [{"kind": "celebrate", "count": 1, "reacted": True}],
+            self._react_to(reply, "celebrate").json(),
+        )
+        self._react_to(reply, "celebrate")  # twice is still once
+        self._react_to(top, "like")
+        self._as(self.other)
+        self._react_to(top, "like")
+        self._react_to(top, "thanks")
+
+        (comment,) = self._comments()
+        self.assertEqual(
+            [
+                {"kind": "like", "count": 2, "reacted": True},
+                {"kind": "thanks", "count": 1, "reacted": True},
+            ],
+            comment["reactions"],
+        )
+        self.assertEqual(
+            [{"kind": "celebrate", "count": 1, "reacted": False}],
+            comment["replies"][0]["reactions"],
+        )
+        self.assertEqual(
+            [{"kind": "like", "count": 2, "reacted": True}],
+            self._react_to(top, "thanks", "delete").json(),
+        )
+
+    def test_a_new_comment_has_no_reactions(self) -> None:
+        self.assertEqual([], self._post("Hi").json()["reactions"])
+
+    def test_deleted_or_unknown_comment_takes_no_reaction(self) -> None:
+        top = self._comment("Q")
+        self._react_to(top, "like")
+        self._comment("A", parent_id=top)
+        self._delete(top)  # kept, as deleted, for its reply
+        for comment_id in (top, 999999):
+            response = self._react_to(comment_id, "love")
+            self.assertEqual(404, response.status_code)
+            self.assertEqual({"message": "Comment not found"}, response.json())
+        self.assertEqual([], self._comments()[0]["reactions"])
+
+    def test_comment_reactions_on_a_locked_or_draft_post(self) -> None:
+        comment = Comment.objects.create(announcement=self.post, author=self.staff, body="Hi")
+        self.post.is_members_only = True
+        self.post.save()
+        for method in ("put", "delete"):
+            response = self._react_to(comment.id, "like", method)
+            self.assertEqual(403, response.status_code)
+        self.post.is_members_only, self.post.is_published = False, False
+        self.post.save()
+        self.assertEqual(404, self._react_to(comment.id, "like").status_code)
+        self.assertFalse(CommentReaction.objects.exists())
+
+    def test_comment_reactions_have_their_own_limit(self) -> None:
+        comment = self._comment("Hi")
+        for _ in range(30):
+            self.assertEqual(200, self._react_to(comment, "like").status_code)
+            self.assertEqual(200, self._react_to(comment, "like", "delete").status_code)
+        self.assertEqual(429, self._react_to(comment, "like").status_code)
+        # Reacting to comments doesn't use up the limit for reacting to posts.
+        self.assertEqual(200, self._react("like").status_code)
+
     def test_list_queries_do_not_grow_with_announcements(self) -> None:
         def seed() -> None:
             post = Announcement.objects.create(
@@ -284,7 +355,11 @@ class AnnouncementCommentsTestCase(TestCase):
     def test_comment_queries_do_not_grow_with_comments(self) -> None:
         def seed() -> None:
             top = Comment.objects.create(announcement=self.post, author=self.other, body="Q")
-            Comment.objects.create(announcement=self.post, author=self.staff, body="A", parent=top)
+            reply = Comment.objects.create(
+                announcement=self.post, author=self.staff, body="A", parent=top
+            )
+            for comment in (top, reply):
+                CommentReaction.objects.create(comment=comment, user=self.other, kind="like")
 
         def queries() -> int:
             with CaptureQueriesContext(connection) as context:

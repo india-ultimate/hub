@@ -105,3 +105,17 @@ class Comment(models.Model):
 
     def __str__(self) -> str:
         return f"{self.author} on {self.announcement}"
+
+
+class CommentReaction(models.Model):
+    comment = models.ForeignKey(Comment, on_delete=models.CASCADE, related_name="reactions")
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    kind = models.CharField(max_length=10, choices=Reaction.Kind.choices)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        # unique_together, not UniqueConstraint, as on Reaction.
+        unique_together = ("comment", "user", "kind")
+
+    def __str__(self) -> str:
+        return f"{self.user} {self.kind} {self.comment}"

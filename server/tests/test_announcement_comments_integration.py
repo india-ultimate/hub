@@ -5,7 +5,7 @@ from contextlib import ExitStack
 import pytest
 from seleniumbase import BaseCase
 
-from server.announcements.models import Announcement, Comment
+from server.announcements.models import Announcement, Comment, CommentReaction
 from server.core.models import User
 from server.tests import test_ui
 from server.tests.localserver import APP_URL, running_test_server
@@ -99,3 +99,41 @@ class TestAnnouncementCommentsIntegration(BaseCase):
         self.sign_in_as(self.player)
         self.open(f"{APP_URL}/announcements")
         self.wait_for_element('[aria-label="Celebrate 1 including you, 2 comments"]', timeout=10)
+
+    def react_to(self, comment: Comment, label: str) -> str:
+        """React to a comment from its popover; the selector for that reaction's pill."""
+        row = f'[data-testid="comment-reactions-{comment.id}"]'
+        self.click(f'{row} button[aria-label="Add a reaction"]')
+        self.click(f'{row} button[aria-label="{label}"]')
+        pill = f'{row} button[aria-label^="{label}:"][aria-pressed="true"]'
+        self.wait_for_element(pill, timeout=5)
+        return pill
+
+    def test_reacting_to_a_comment(self) -> None:
+        comment = Comment.objects.create(
+            announcement=self.post, author=self.player, body="See you there"
+        )
+        self.open_post()
+        pill = self.react_to(comment, "Thank you")
+        self.assert_attribute(pill, "aria-label", "Thank you: 1, including you")
+        self.refresh()
+        self.wait_for_element(pill, timeout=10)
+        self.assertTrue(
+            CommentReaction.objects.filter(
+                comment=comment, user=self.player, kind="thanks"
+            ).exists()
+        )
+
+    def test_reacting_keeps_focus_and_an_open_reply(self) -> None:
+        comment = Comment.objects.create(announcement=self.post, author=self.player, body="Q")
+        self.open_post()
+        self.click(f'#comment-{comment.id} button:contains("Reply")')
+        self.type(f"#reply-{comment.id}", "Half a thought")
+        self.react_to(comment, "Like")
+        # Past the save and the refetch after it, which once drew the row again.
+        self.sleep(1.5)
+        self.assertEqual("Half a thought", self.get_value(f"#reply-{comment.id}"))
+        self.assertEqual(
+            "Add a reaction",
+            self.execute_script("return document.activeElement.getAttribute('aria-label')"),
+        )

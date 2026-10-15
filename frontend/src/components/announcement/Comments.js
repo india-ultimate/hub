@@ -6,10 +6,20 @@ import {
 import clsx from "clsx";
 import { Icon } from "solid-heroicons";
 import { checkBadge } from "solid-heroicons/solid";
-import { createSignal, createUniqueId, For, onMount, Show } from "solid-js";
+import {
+  createEffect,
+  createSignal,
+  createUniqueId,
+  For,
+  onMount,
+  Show
+} from "solid-js";
+import { createStore, reconcile } from "solid-js/store";
 
+import { saveReaction, toggled } from "../../reactions";
 import { getCookie, timeAgo } from "../../utils";
 import Modal from "../Modal";
+import Reactions from "./Reactions";
 
 const MAX_LENGTH = 2000;
 
@@ -39,6 +49,25 @@ const action = clsx(
   "inline-flex min-h-[44px] items-center rounded px-2 text-sm font-medium text-gray-600 dark:text-gray-300 [@media(pointer:fine)]:min-h-[32px]",
   focusRing
 );
+// The comments, with one comment's or reply's reactions changed.
+const changeReactions = (comments, id, change) => {
+  const update = c =>
+    c.id === id ? { ...c, reactions: change(c.reactions) } : c;
+  return comments.map(comment => ({
+    ...update(comment),
+    replies: comment.replies.map(update)
+  }));
+};
+
+// reconcile matches items by `id`; a reaction's is its kind, so a pill keeps
+// its place (and focus) when another one is removed.
+const withReactionIds = comments =>
+  comments.map(comment => ({
+    ...comment,
+    reactions: comment.reactions.map(r => ({ id: r.kind, ...r })),
+    replies: withReactionIds(comment.replies)
+  }));
+
 const fullDate = iso =>
   new Date(iso).toLocaleString("en-US", {
     dateStyle: "medium",
@@ -223,31 +252,39 @@ const Row = props => {
           <p class="mt-1 whitespace-pre-line break-words text-sm text-gray-800 dark:text-gray-200">
             {c().body}
           </p>
-          <div class="-ml-2 flex gap-1">
-            <Show when={props.onReply}>
-              <button
-                type="button"
-                onClick={() => props.onReply()}
-                class={clsx(
-                  action,
-                  "hover:text-blue-700 dark:hover:text-blue-300"
-                )}
-              >
-                Reply
-              </button>
-            </Show>
-            <Show when={c().can_delete}>
-              <button
-                type="button"
-                onClick={() => props.onDelete(c())}
-                class={clsx(
-                  action,
-                  "hover:text-red-700 dark:hover:text-red-400"
-                )}
-              >
-                Delete
-              </button>
-            </Show>
+          <div class="mt-1">
+            <Reactions
+              compact
+              testId={`comment-reactions-${c().id}`}
+              reactions={c().reactions}
+              onToggle={(kind, on) => props.onReact(c(), kind, on)}
+              failed={props.reactionFailed}
+            >
+              <Show when={props.onReply}>
+                <button
+                  type="button"
+                  onClick={() => props.onReply()}
+                  class={clsx(
+                    action,
+                    "hover:text-blue-700 dark:hover:text-blue-300"
+                  )}
+                >
+                  Reply
+                </button>
+              </Show>
+              <Show when={c().can_delete}>
+                <button
+                  type="button"
+                  onClick={() => props.onDelete(c())}
+                  class={clsx(
+                    action,
+                    "hover:text-red-700 dark:hover:text-red-400"
+                  )}
+                >
+                  Delete
+                </button>
+              </Show>
+            </Reactions>
           </div>
         </Show>
       </div>
@@ -261,6 +298,7 @@ const Comments = props => {
   const [replyingTo, setReplyingTo] = createSignal(null);
   const [highlighted, setHighlighted] = createSignal(null);
   const [deleting, setDeleting] = createSignal(null);
+  const [reactionFailed, setReactionFailed] = createSignal(null);
   let deleteDialog;
 
   const query = createQuery(
@@ -276,6 +314,34 @@ const Comments = props => {
       queryClient.invalidateQueries({ queryKey: ["announcement", props.slug] }),
       queryClient.invalidateQueries({ queryKey: ["announcements"] })
     ]);
+
+  const key = () => ["announcement-comments", props.slug];
+  const reactionMutation = createMutation({
+    mutationFn: ({ comment, kind, on }) =>
+      saveReaction(
+        `/api/announcements/comments/${comment.id}/reactions/${kind}`,
+        on
+      ),
+    onMutate: async ({ comment, kind, on }) => {
+      setReactionFailed(null);
+      await queryClient.cancelQueries({ queryKey: key() });
+      const previous = queryClient.getQueryData(key());
+      queryClient.setQueryData(key(), old =>
+        old
+          ? changeReactions(old, comment.id, list => toggled(list, kind, on))
+          : old
+      );
+      return { previous };
+    },
+    onError: (_error, { comment }, context) => {
+      queryClient.setQueryData(key(), context?.previous);
+      setReactionFailed(comment.id);
+    },
+    // Toggles can overlap and land out of order: settle on the server's state.
+    onSettled: () => queryClient.invalidateQueries({ queryKey: key() })
+  });
+  const react = (comment, kind, on) =>
+    reactionMutation.mutate({ comment, kind, on });
 
   const deleteMutation = createMutation({
     mutationFn: id =>
@@ -301,7 +367,13 @@ const Comments = props => {
     deleteDialog.showModal();
   };
 
-  const comments = () => query.data || [];
+  // Kept in place by id, so a change to one comment (a reaction, a refetch)
+  // updates its row rather than drawing it again, which would drop focus and
+  // an open reply box.
+  const [comments, setComments] = createStore([]);
+  createEffect(() =>
+    setComments(reconcile(withReactionIds(query.data || []), { key: "id" }))
+  );
 
   return (
     <section id="comments" aria-labelledby={headingId} class="mt-8">
@@ -335,15 +407,13 @@ const Comments = props => {
             Couldn't load the comments. Try again later.
           </p>
         </Show>
-        <Show
-          when={!comments().length && props.allowComments && !query.isError}
-        >
+        <Show when={!comments.length && props.allowComments && !query.isError}>
           <p class="mt-4 text-sm text-gray-600 dark:text-gray-400">
             No comments yet. Ask a question or share your thoughts.
           </p>
         </Show>
         <ul class="mt-4 space-y-2">
-          <For each={comments()}>
+          <For each={comments}>
             {comment => (
               <li id={`comment-${comment.id}`}>
                 <Row
@@ -355,6 +425,8 @@ const Comments = props => {
                       : undefined
                   }
                   onDelete={askDelete}
+                  onReact={react}
+                  reactionFailed={reactionFailed() === comment.id}
                 />
                 <Show
                   when={comment.replies.length || replyingTo() === comment.id}
@@ -368,6 +440,8 @@ const Comments = props => {
                               comment={reply}
                               highlighted={highlighted() === reply.id}
                               onDelete={askDelete}
+                              onReact={react}
+                              reactionFailed={reactionFailed() === reply.id}
                             />
                           </li>
                         )}

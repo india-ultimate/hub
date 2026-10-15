@@ -15,7 +15,7 @@ from django.utils.html import format_html
 from django.utils.text import capfirst
 
 from server.admin_views import REFUND_PERM
-from server.announcements.models import Announcement, Comment, Reaction
+from server.announcements.models import Announcement, Comment, CommentReaction, Reaction
 from server.core.models import Accreditation, Guardianship, Player, Team, User
 from server.duplicates import review
 from server.duplicates.flow import FlowError, approve_staff, reject_staff
@@ -1507,6 +1507,26 @@ class ReactionAdmin(admin.ModelAdmin[Reaction]):
         return False
 
     def has_delete_permission(self, request: HttpRequest, obj: Reaction | None = None) -> bool:
+        return False
+
+
+@admin.register(CommentReaction)
+class CommentReactionAdmin(admin.ModelAdmin[CommentReaction]):
+    list_display = ["comment", "user", "kind", "created_at"]
+    list_filter = ["kind"]
+    list_select_related = ["comment__announcement", "comment__author", "user"]
+
+    def has_add_permission(self, request: HttpRequest) -> bool:
+        return False
+
+    def has_change_permission(
+        self, request: HttpRequest, obj: CommentReaction | None = None
+    ) -> bool:
+        return False
+
+    def has_delete_permission(
+        self, request: HttpRequest, obj: CommentReaction | None = None
+    ) -> bool:
         return False
 
 
