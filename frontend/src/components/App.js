@@ -14,6 +14,9 @@ const Announcements = lazy(() => import("./announcement/Announcements"));
 const AnnouncementDetail = lazy(
   () => import("./announcement/AnnouncementDetail")
 );
+const AnnouncementEditor = lazy(
+  () => import("./announcement/AnnouncementEditor")
+);
 const Committees = lazy(() => import("./committee/Committees"));
 const CommitteeDetail = lazy(() => import("./committee/CommitteeDetail"));
 const ManageCommittees = lazy(() => import("./committee/Manage"));
@@ -130,6 +133,16 @@ export default function App() {
                   <Route path="/" component={Home} />
                   <Route path="/about" component={About} />
                   <Route path="/announcements" component={Announcements} />
+                  <UserRoute
+                    path="/announcements/new"
+                    component={AnnouncementEditor}
+                    poster={true}
+                  />
+                  <UserRoute
+                    path="/announcement/:slug/edit"
+                    component={AnnouncementEditor}
+                    poster={true}
+                  />
                   <Route
                     path="/announcement/:slug"
                     component={AnnouncementDetail}

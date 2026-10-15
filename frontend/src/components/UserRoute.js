@@ -16,6 +16,9 @@ const WithUserData = props => {
     if (props.staffOrDirector) {
       return store.userFetched && canManageTournaments(store?.data);
     }
+    if (props.poster) {
+      return store.userFetched && store?.data?.can_post_announcements;
+    }
     if (!props.admin) {
       return true;
     }
@@ -64,6 +67,7 @@ const UserRoute = props => {
           <WithUserData
             admin={props.admin}
             staffOrDirector={props.staffOrDirector}
+            poster={props.poster}
           >
             {props.element}
           </WithUserData>
@@ -79,6 +83,7 @@ const UserRoute = props => {
           <WithUserData
             admin={props.admin}
             staffOrDirector={props.staffOrDirector}
+            poster={props.poster}
           >
             <props.component />
           </WithUserData>

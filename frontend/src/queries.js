@@ -1872,8 +1872,8 @@ export const updateTicket = async (ticketId, data) => {
   return responseData;
 };
 
-// Committee API functions
-const committeeRequest = async (url, method = "GET", data) => {
+// JSON requests with the CSRF header, then the committee API functions
+const jsonRequest = async (url, method = "GET", data) => {
   const response = await fetch(url, {
     method,
     headers: {
@@ -1895,44 +1895,87 @@ const committeeRequest = async (url, method = "GET", data) => {
   return body;
 };
 
-export const fetchCommittees = () => committeeRequest("/api/committees/");
+export const fetchCommittees = () => jsonRequest("/api/committees/");
 
-export const fetchCommittee = slug =>
-  committeeRequest(`/api/committees/${slug}`);
+export const fetchCommittee = slug => jsonRequest(`/api/committees/${slug}`);
 
 export const saveCommittee = ({ slug, ...data }) =>
   slug
-    ? committeeRequest(`/api/committees/${slug}`, "PUT", data)
-    : committeeRequest("/api/committees/", "POST", data);
+    ? jsonRequest(`/api/committees/${slug}`, "PUT", data)
+    : jsonRequest("/api/committees/", "POST", data);
 
 export const addCommitteeRole = ({ slug, ...data }) =>
-  committeeRequest(`/api/committees/${slug}/roles`, "POST", data);
+  jsonRequest(`/api/committees/${slug}/roles`, "POST", data);
 
 export const updateCommitteeRole = ({ id, ...data }) =>
-  committeeRequest(`/api/committees/roles/${id}`, "PUT", data);
+  jsonRequest(`/api/committees/roles/${id}`, "PUT", data);
 
 export const deleteCommitteeRole = id =>
-  committeeRequest(`/api/committees/roles/${id}`, "DELETE");
+  jsonRequest(`/api/committees/roles/${id}`, "DELETE");
 
 export const fetchTicketCategories = ({ all = false } = {}) =>
-  committeeRequest(`/api/ticket/categories${all ? "?all=true" : ""}`);
+  jsonRequest(`/api/ticket/categories${all ? "?all=true" : ""}`);
 
 export const addTicketCategory = name =>
-  committeeRequest("/api/ticket/categories", "POST", { name });
+  jsonRequest("/api/ticket/categories", "POST", { name });
 
 export const updateTicketCategory = ({ key, ...data }) =>
-  committeeRequest(`/api/ticket/categories/${key}`, "PUT", data);
+  jsonRequest(`/api/ticket/categories/${key}`, "PUT", data);
 
-export const fetchTicketRoutes = () => committeeRequest("/api/ticket/routes");
+export const fetchTicketRoutes = () => jsonRequest("/api/ticket/routes");
 
 export const saveTicketRoute = ({ category, committees }) =>
-  committeeRequest(`/api/ticket/routes/${category}`, "PUT", { committees });
+  jsonRequest(`/api/ticket/routes/${category}`, "PUT", { committees });
 
 export const setTicketAssignee = ({ ticketId, userId, assigned }) =>
-  committeeRequest(
+  jsonRequest(
     `/api/ticket/${ticketId}/assignees/${userId}`,
     assigned ? "POST" : "DELETE"
   );
+
+export const deleteCommittee = slug =>
+  jsonRequest(`/api/committees/${slug}`, "DELETE");
+
+// Announcement API functions
+export const fetchAnnouncement = slug =>
+  jsonRequest(`/api/announcements/${slug}`);
+
+export const saveAnnouncement = ({ slug, ...data }) =>
+  slug
+    ? jsonRequest(`/api/announcements/${slug}`, "PUT", data)
+    : jsonRequest("/api/announcements/", "POST", data);
+
+export const deleteAnnouncement = slug =>
+  jsonRequest(`/api/announcements/${slug}`, "DELETE");
+
+// audience: "all" or "members" (staff), or "test" to send to yourself.
+export const emailAnnouncement = ({ slug, audience }) =>
+  audience === "test"
+    ? jsonRequest(`/api/announcements/${slug}/email/test`, "POST")
+    : jsonRequest(`/api/announcements/${slug}/email`, "POST", { audience });
+
+// Multipart, so fetch can't report progress; resolves with the image's URL.
+export const uploadAnnouncementImage = (file, onProgress) =>
+  new Promise((resolve, reject) => {
+    const request = new XMLHttpRequest();
+    request.open("POST", "/api/announcements/images");
+    request.setRequestHeader("X-CSRFToken", getCookie("csrftoken"));
+    request.upload.onprogress = e => onProgress(e.loaded / e.total);
+    request.onerror = () => reject(new Error("Upload failed. Try again."));
+    request.onload = () => {
+      let body = null;
+      try {
+        body = JSON.parse(request.responseText);
+      } catch {
+        // The server's error page; the default message below covers it.
+      }
+      if (request.status < 300) return resolve(body.url);
+      reject(new Error(body?.message || body?.detail || "Upload failed."));
+    };
+    const form = new FormData();
+    form.append("file", file);
+    request.send(form);
+  });
 
 // Election API functions
 export const createElection = async data => {

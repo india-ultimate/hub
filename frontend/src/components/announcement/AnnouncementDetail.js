@@ -1,4 +1,4 @@
-import { useNavigate, useParams } from "@solidjs/router";
+import { A, useNavigate, useParams } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
 import DOMPurify from "dompurify";
 import { Icon } from "solid-heroicons";
@@ -13,19 +13,16 @@ import {
 } from "solid-heroicons/solid";
 import { createEffect, Show } from "solid-js";
 
+import { postProse } from "../../announcements";
 import {
   getAnnouncementTypeColor,
   getAnnouncementTypeLabel
 } from "../../colors";
+import { secondaryButton } from "../../committees";
+import { fetchAnnouncement } from "../../queries";
 import { useStore } from "../../store";
 import Comments from "./Comments";
 import ReactionBar from "./ReactionBar";
-
-const fetchAnnouncement = async slug => {
-  const response = await fetch(`/api/announcements/${slug}`);
-  if (!response.ok) throw new Error("Failed to fetch announcement");
-  return response.json();
-};
 
 export default function AnnouncementDetail() {
   const [store] = useStore();
@@ -80,13 +77,21 @@ export default function AnnouncementDetail() {
           </div>
         }
       >
-        <div class="mb-8">
+        <div class="mb-8 flex items-center justify-between gap-2">
           <button
             class="text-blue-600 hover:text-blue-700"
             onClick={() => navigate("/announcements")}
           >
             ← All Announcements
           </button>
+          <Show when={query.data?.can_manage}>
+            <A
+              href={`/announcement/${params.slug}/edit`}
+              class={secondaryButton}
+            >
+              Edit
+            </A>
+          </Show>
         </div>
         <Show
           when={query.data}
@@ -202,7 +207,7 @@ export default function AnnouncementDetail() {
               <div class="max-w-full overflow-x-auto sm:overflow-visible">
                 <div
                   ref={el => (contentRef = el)}
-                  class="prose-sm max-w-none dark:prose-invert md:prose lg:prose-lg prose-a:text-blue-600 hover:prose-a:text-blue-700 [&_img]:!h-auto [&_img]:object-contain [&_li]:!list-item [&_ol]:!list-decimal [&_ol]:!pl-6 [&_table]:!my-2 [&_table]:!mb-4 [&_table]:border [&_table]:border-gray-200 dark:[&_table]:border-gray-700 [&_td]:border [&_td]:border-gray-200 [&_td]:!px-2 [&_td]:!py-1 [&_td]:!text-xs dark:[&_td]:border-gray-700 sm:[&_td]:!px-4 sm:[&_td]:!py-2 sm:[&_td]:!text-sm [&_th]:border [&_th]:border-gray-200 [&_th]:!px-2 [&_th]:!py-1 [&_th]:!text-xs dark:[&_th]:border-gray-700 sm:[&_th]:!px-4 sm:[&_th]:!py-2 sm:[&_th]:!text-sm [&_ul]:!list-disc [&_ul]:!pl-6"
+                  class={postProse}
                   // eslint-disable-next-line solid/no-innerhtml
                   innerHTML={DOMPurify.sanitize(query.data.content)}
                 />

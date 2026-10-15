@@ -1,4 +1,4 @@
-import { useNavigate } from "@solidjs/router";
+import { A, useNavigate } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
 import clsx from "clsx";
 import { Icon } from "solid-heroicons";
@@ -18,6 +18,7 @@ import {
   getAnnouncementTypeColor,
   getAnnouncementTypeLabel
 } from "../../colors";
+import { primaryButton, secondaryButton } from "../../committees";
 import { REACTIONS } from "../../reactions";
 import { useStore } from "../../store";
 import { getCookie } from "../../utils";
@@ -98,6 +99,10 @@ const fetchAnnouncements = async () => {
   return response.json();
 };
 
+// Drafts are only listed for the people who may see them: show those first.
+const draftsFirst = announcements =>
+  [...announcements].sort((a, b) => a.is_published - b.is_published);
+
 const Announcements = () => {
   const [store] = useStore();
   const navigate = useNavigate();
@@ -130,13 +135,20 @@ const Announcements = () => {
 
   return (
     <div class="mx-auto">
-      <div class="mb-8">
-        <h1 class="mb-4 text-4xl font-bold text-blue-700 dark:text-white">
-          Announcements
-        </h1>
-        <p class="text-lg text-gray-600 dark:text-gray-400">
-          Stay updated with the latest news and updates from India Ultimate.
-        </p>
+      <div class="mb-8 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 class="mb-4 text-4xl font-bold text-blue-700 dark:text-white">
+            Announcements
+          </h1>
+          <p class="text-lg text-gray-600 dark:text-gray-400">
+            Stay updated with the latest news and updates from India Ultimate.
+          </p>
+        </div>
+        <Show when={store.data?.can_post_announcements}>
+          <A href="/announcements/new" class={primaryButton}>
+            New announcement
+          </A>
+        </Show>
       </div>
 
       <Suspense fallback={<AnnouncementsSkeleton />}>
@@ -177,7 +189,7 @@ const Announcements = () => {
             }
           >
             <div class="space-y-6">
-              <For each={query.data}>
+              <For each={draftsFirst(query.data)}>
                 {announcement => {
                   // The server blanks members-only content it won't show.
                   const canAccess = announcement.can_read;
@@ -283,6 +295,17 @@ const Announcements = () => {
                             </a>
                           </div>
                         </Show>
+                      </Show>
+
+                      <Show when={announcement.can_manage}>
+                        <A
+                          href={`/announcement/${announcement.slug}/edit`}
+                          class={`${secondaryButton} mt-4`}
+                          onClick={e => e.stopPropagation()}
+                          onKeyDown={e => e.stopPropagation()}
+                        >
+                          Edit
+                        </A>
                       </Show>
 
                       {/* Footer */}

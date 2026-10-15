@@ -10,11 +10,13 @@ import {
   sinceLabel
 } from "../../committees";
 import { ChairBadge } from "../../committees";
+import { updateCommitteeRole } from "../../queries";
 import Modal from "../Modal";
 import AddPersonForm from "./AddPersonForm";
 import Avatar from "./Avatar";
 import EditRoleForm from "./EditRoleForm";
 import EndTermForm from "./EndTermForm";
+import PostSwitch from "./PostSwitch";
 
 const TITLES = {
   add: "Add person",
@@ -43,6 +45,16 @@ const ManagePeople = props => {
     props.onSaved();
     queryClient.invalidateQueries({ queryKey: ["committees"] });
     queryClient.invalidateQueries({ queryKey: ["committee"] });
+  };
+
+  const setCanPost = async (id, can_post_announcements) => {
+    await updateCommitteeRole({ id, can_post_announcements });
+    props.onSaved();
+    queryClient.invalidateQueries({ queryKey: ["committee"] });
+    await queryClient.invalidateQueries(
+      { queryKey: ["committees"] },
+      { throwOnError: true }
+    );
   };
 
   return (
@@ -94,6 +106,17 @@ const ManagePeople = props => {
                   {role.title} · {sinceLabel(role)}
                 </p>
               </div>
+              <PostSwitch
+                label={`Can post announcements${
+                  committee().can_post_announcements ? " (via committee)" : ""
+                }`}
+                checked={
+                  role.can_post_announcements ||
+                  committee().can_post_announcements
+                }
+                disabled={committee().can_post_announcements}
+                onChange={checked => setCanPost(role.id, checked)}
+              />
               <div class="flex gap-2">
                 <button
                   type="button"

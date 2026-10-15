@@ -1,8 +1,20 @@
-import { createMutation, useQueryClient } from "@tanstack/solid-query";
-import { createSignal, For } from "solid-js";
+import {
+  createMutation,
+  createQuery,
+  useQueryClient
+} from "@tanstack/solid-query";
+import { createSignal, For, Show } from "solid-js";
 
-import { card, Field, input, primaryButton } from "../../committees";
-import { saveCommittee } from "../../queries";
+import {
+  card,
+  Field,
+  input,
+  primaryButton,
+  secondaryButton
+} from "../../committees";
+import { deleteCommittee, fetchCommittee, saveCommittee } from "../../queries";
+import ConfirmDialog from "../ConfirmDialog";
+import PostSwitch from "./PostSwitch";
 
 // Name, email, description and order for one committee, or a new one.
 const CommitteeForm = props => {
@@ -25,6 +37,57 @@ const CommitteeForm = props => {
       if (!c.slug) setForm({ ...form(), name: "", email: "", description: "" });
     }
   });
+
+  const setCanPost = async data => {
+    await saveCommittee(data);
+    props.onSaved();
+    await queryClient.invalidateQueries(
+      { queryKey: ["committees"] },
+      { throwOnError: true }
+    );
+  };
+
+  // The roles it would take with it, counted once the dialog asks.
+  const [request, setRequest] = createSignal(null);
+  const detail = createQuery(
+    () => ["committee", c.slug],
+    () => fetchCommittee(c.slug),
+    {
+      get enabled() {
+        return Boolean(request());
+      },
+      // The counts must be current: it is a deletion.
+      staleTime: 0
+    }
+  );
+  const remove = createMutation({
+    mutationFn: deleteCommittee,
+    onSuccess: () => {
+      props.onSaved();
+      queryClient.removeQueries({ queryKey: ["committee", c.slug] });
+      queryClient.invalidateQueries({ queryKey: ["committees"] });
+      queryClient.invalidateQueries({ queryKey: ["ticket-routes"] });
+    }
+  });
+  const askDelete = () =>
+    setRequest({
+      title: "Delete committee",
+      get message() {
+        if (!detail.data) return `Delete ${c.name}?`;
+        const { roles, past_roles } = detail.data;
+        return `Delete ${c.name}? This removes ${roles.length} current and ${past_roles.length} past roles, and its ticket routing goes too. Tickets are kept.`;
+      },
+      get disabled() {
+        return !detail.isSuccess || detail.isFetching;
+      },
+      get error() {
+        return detail.error?.message;
+      },
+      retry: () => detail.refetch(),
+      confirm: "Delete committee",
+      danger: true,
+      run: () => remove.mutate(c.slug)
+    });
 
   return (
     <form
@@ -77,11 +140,41 @@ const CommitteeForm = props => {
           class={input}
         />
       </Field>
-      <div class="flex items-end justify-end">
+      <Show when={c.slug}>
+        <PostSwitch
+          label="Everyone in this committee can post announcements"
+          checked={c.can_post_announcements}
+          onChange={can_post_announcements =>
+            setCanPost({
+              slug: c.slug,
+              name: c.name,
+              email: c.email,
+              description: c.description,
+              order: c.order,
+              can_post_announcements
+            })
+          }
+        />
+      </Show>
+      <div class="flex flex-wrap items-end justify-end gap-2 sm:col-span-2">
+        <Show when={c.slug}>
+          <button type="button" class={secondaryButton} onClick={askDelete}>
+            Delete committee
+          </button>
+        </Show>
         <button type="submit" class={primaryButton} disabled={save.isLoading}>
           {c.slug ? "Save" : "Add committee"}
         </button>
       </div>
+      <Show when={remove.error}>
+        <p
+          role="alert"
+          class="text-sm text-red-700 dark:text-red-400 sm:col-span-2"
+        >
+          {remove.error.message}
+        </p>
+      </Show>
+      <ConfirmDialog request={request} close={() => setRequest(null)} />
     </form>
   );
 };
