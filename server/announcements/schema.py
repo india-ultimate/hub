@@ -76,6 +76,7 @@ class CommentSchema(ModelSchema):
     author_profile_pic_url: str | None = None
     author_is_staff: bool
     can_delete: bool
+    reactions: list[ReactionCountSchema]
     replies: list["CommentSchema"]
 
     @staticmethod
@@ -90,6 +91,11 @@ class CommentSchema(ModelSchema):
     def resolve_can_delete(comment: Comment, context: dict[str, Any]) -> bool:
         user = context["request"].user
         return not comment.is_deleted and (comment.author_id == user.id or user.is_staff)
+
+    # Set by the view, as on an announcement; a deleted comment shows none.
+    @staticmethod
+    def resolve_reactions(comment: Comment) -> list[dict[str, Any]]:
+        return [] if comment.is_deleted else getattr(comment, "reaction_counts", [])
 
     @staticmethod
     def resolve_replies(comment: Comment) -> Any:
