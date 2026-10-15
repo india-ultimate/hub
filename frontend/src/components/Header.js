@@ -167,6 +167,16 @@ export default function Header() {
                   Announcements
                 </A>
               </li>
+              <li class="flex items-center">
+                <A
+                  href="/committees"
+                  activeClass="flex min-h-[44px] w-full items-center py-2 md:min-h-0 rounded bg-transparent text-blue-700 md:p-0 dark:text-blue-500 underline underline-offset-8 font-bold decoration-2"
+                  inactiveClass="flex min-h-[44px] w-full items-center py-2 md:min-h-0 text-gray-900 rounded md:hover:bg-transparent md:border-0 md:hover:text-blue-700 md:p-0 dark:text-white md:dark:hover:text-blue-500 md:dark:hover:bg-transparent"
+                  end={true}
+                >
+                  Committees
+                </A>
+              </li>
               {/* <li class="flex items-center">
                 <A
                   href="/chat"

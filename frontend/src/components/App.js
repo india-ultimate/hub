@@ -14,6 +14,9 @@ const Announcements = lazy(() => import("./announcement/Announcements"));
 const AnnouncementDetail = lazy(
   () => import("./announcement/AnnouncementDetail")
 );
+const Committees = lazy(() => import("./committee/Committees"));
+const CommitteeDetail = lazy(() => import("./committee/CommitteeDetail"));
+const ManageCommittees = lazy(() => import("./committee/Manage"));
 const Dashboard = lazy(() => import("./Dashboard"));
 const PaymentAccount = lazy(() => import("./payments/PaymentAccount"));
 const ReceiptPage = lazy(() => import("./receipts/ReceiptPage"));
@@ -130,6 +133,14 @@ export default function App() {
                     path="/announcement/:slug"
                     component={AnnouncementDetail}
                   />
+                  <Route path="/committees" component={Committees} />
+                  {/* Static, so /committees/manage isn't read as a slug */}
+                  <UserRoute
+                    path="/committees/manage"
+                    component={ManageCommittees}
+                    admin={true}
+                  />
+                  <Route path="/committees/:slug" component={CommitteeDetail} />
                   <UserRoute path="/dashboard" component={Dashboard} />
                   <UserRoute path="/receipts/:id" component={ReceiptPage} />
                   <UserRoute

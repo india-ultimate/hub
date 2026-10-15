@@ -7,6 +7,7 @@ import {
 import { Show } from "solid-js";
 
 import { CategoryChip, formatDate, StatusBadge } from "../../tickets";
+import AssigneeStack from "./AssigneeStack";
 import UpvoteButton from "./UpvoteButton";
 
 /**
@@ -51,6 +52,7 @@ const TicketRow = props => (
           <span class="sr-only">Replies:</span>
           {props.ticket.message_count}
         </span>
+        <AssigneeStack assignees={props.ticket.assignees} />
         <Show when={props.isStaff}>
           <span aria-hidden="true">·</span>
           <span>#{props.ticket.id}</span>

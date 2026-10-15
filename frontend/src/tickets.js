@@ -84,6 +84,8 @@ export const CategoryChip = props => (
   </Show>
 );
 
+export const fullName = user => `${user.first_name} ${user.last_name}`.trim();
+
 // "3 Oct", or "3 Oct 2025" for another year
 export const formatDate = iso => {
   const date = new Date(iso);
