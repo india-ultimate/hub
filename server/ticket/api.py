@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 from typing import Any, Literal
 
 import cloudinary
@@ -5,6 +6,7 @@ import cloudinary.uploader
 from django.conf import settings
 from django.conf import settings as django_settings
 from django.core.mail import send_mail
+from django.db import transaction
 from django.db.models import Count, Exists, IntegerField, OuterRef, Q, QuerySet, Subquery
 from django.db.models.functions import Coalesce
 from django.http import HttpRequest
@@ -15,13 +17,18 @@ from ninja.files import UploadedFile
 from ninja.pagination import PageNumberPagination, paginate
 from ninja.params.functions import File, Query
 
+from server.committee.models import Committee, TicketRoute
+from server.committee.routing import chairs_for
 from server.core.models import User
+from server.ticket.access import can_be_assigned, can_handle, handlers, routed_to
 from server.ticket.models import Ticket, TicketMessage
 from server.ticket.schema import (
     TicketCreateSchema,
     TicketDetailSchema,
     TicketListItemSchema,
     TicketMessageCreateSchema,
+    TicketRouteSchema,
+    TicketRouteUpdateSchema,
     TicketUpdateSchema,
 )
 from server.ticket.search import ranked, search_words
@@ -61,7 +68,8 @@ def _count(rows: QuerySet[Any]) -> Coalesce:
 
 
 def visible_tickets(user: User) -> QuerySet[Ticket]:
-    """The tickets `user` may see: a private one only to its creator and staff.
+    """The tickets `user` may see: a private one only to its creator, staff and
+    the committees its category routes to.
 
     Each comes with its upvote count and whether `user` is one of them.
     """
@@ -69,10 +77,67 @@ def visible_tickets(user: User) -> QuerySet[Ticket]:
     tickets = Ticket.objects.annotate(
         upvote_count=_count(upvotes),
         has_upvoted=Exists(upvotes.filter(user=user)),
-    )
+    ).prefetch_related("assignees__player_profile")
     if user.is_staff:
         return tickets
-    return tickets.filter(Q(is_private=False) | Q(created_by=user))
+    return tickets.filter(Q(is_private=False) | Q(created_by=user) | routed_to(user))
+
+
+def _notify_assigned(ticket: Ticket, users: Iterable[User]) -> None:
+    """Email each of `users` that the ticket is theirs to handle."""
+    recipients = [user.email for user in users if user.email]
+    if not recipients:
+        return
+    try:
+        plain_message = f"Ticket #{ticket.id} has been assigned to you:\n\n"
+        plain_message += f"{ticket.title}\n"
+        plain_message += f"Priority: {ticket.get_priority_display()}\n\n"
+        plain_message += "You can view and respond to this ticket on the website."
+        context = {"ticket": ticket, "site_url": settings.EMAIL_INVITATION_BASE_URL}
+        send_mail(
+            subject=f"Ticket #{ticket.id} assigned to you: {ticket.title}",
+            message=plain_message,
+            from_email=settings.EMAIL_HOST_USER,
+            recipient_list=recipients,
+            fail_silently=True,
+            html_message=render_to_string("emails/ticket_assigned.html", context),
+        )
+    except Exception as e:
+        # Log the error but don't fail the request
+        print(f"Error sending email notification: {e}")
+
+
+@ticket_api.get("/routes", response={200: list[TicketRouteSchema], 403: message_response})
+def list_routes(request: AuthenticatedHttpRequest) -> tuple[int, Any]:
+    """Which committees each category of ticket goes to. Staff only."""
+    if not request.user.is_staff:
+        return 403, {"message": "Only staff can do this"}
+    routes = TicketRoute.objects.order_by("committee__order", "committee__name")
+    by_category: dict[str, list[str]] = {category: [] for category in Ticket.Category.values}
+    for route in routes.select_related("committee"):
+        by_category[route.category].append(route.committee.slug)
+    return 200, [{"category": c, "committees": slugs} for c, slugs in by_category.items()]
+
+
+@ticket_api.put(
+    "/routes/{category}",
+    response={200: TicketRouteSchema, 400: message_response, 403: message_response},
+)
+def update_route(
+    request: AuthenticatedHttpRequest, category: Ticket.Category, data: TicketRouteUpdateSchema
+) -> tuple[int, Any]:
+    """Replace the committees that new tickets of `category` go to. Staff only."""
+    if not request.user.is_staff:
+        return 403, {"message": "Only staff can do this"}
+    committees = Committee.objects.filter(slug__in=data.committees).order_by("order", "name")
+    if committees.count() != len(set(data.committees)):
+        return 400, {"message": "Unknown committee"}
+    with transaction.atomic():
+        TicketRoute.objects.filter(category=category).delete()
+        TicketRoute.objects.bulk_create(
+            TicketRoute(category=category, committee=committee) for committee in committees
+        )
+    return 200, {"category": category, "committees": [c.slug for c in committees]}
 
 
 @ticket_api.get("/", response=list[TicketListItemSchema])
@@ -138,6 +203,9 @@ def create_ticket(
         is_private=data.is_private,
         created_by=request.user,
     )
+    chairs = list(chairs_for(ticket.category))
+    ticket.assignees.set(chairs)
+    _notify_assigned(ticket, chairs)
 
     # Get all emails from settings to notify
     notification_emails = settings.NEW_TICKET_NOTIFICATION_EMAILS
@@ -187,33 +255,27 @@ def update_ticket(
     """Update ticket details"""
     ticket = get_object_or_404(visible_tickets(request.user), id=ticket_id)
 
-    # Staff can update any ticket, but regular users can only update status on their own tickets
-    if not request.user.is_staff and ticket.created_by != request.user:
-        # Regular users can only update tickets they created
+    is_creator = ticket.created_by == request.user
+    is_handler = can_handle(request.user, ticket)
+    if not (is_creator or is_handler):
         return 403, {"message": "You don't have permission to update this ticket"}
 
-    # Restrict what non-staff users can update
-    if not request.user.is_staff:
-        # Regular users can only update tickets they created
-        if data.status:
-            ticket.status = data.status
-    else:
-        # Staff can update all fields
+    # The creator and the handlers can set the status; handlers also the priority,
+    # and only staff the rest
+    if data.status:
+        ticket.status = data.status
+    if is_handler and data.priority:
+        ticket.priority = data.priority
+    if request.user.is_staff:
         if data.title:
             ticket.title = data.title
         if data.description:
             ticket.description = data.description
-        if data.status:
-            ticket.status = data.status
-        if data.priority:
-            ticket.priority = data.priority
         if data.category:
             ticket.category = data.category
-        if data.assigned_to_id:
-            ticket.assigned_to = get_object_or_404(User, id=data.assigned_to_id)
 
     # Both the creator and staff can hide a ticket, or show it again
-    if data.is_private is not None:
+    if data.is_private is not None and (is_creator or request.user.is_staff):
         ticket.is_private = data.is_private
 
     ticket.save()
@@ -280,22 +342,17 @@ def add_message(
     if ticket.created_by.email and ticket.created_by != request.user:
         recipients.add(ticket.created_by.email)
 
-    # Add assigned staff if they have an email and are not the sender. Anyone can
-    # be assigned, but only staff can open a private ticket.
-    assignee = ticket.assigned_to
-    if (
-        assignee
-        and assignee.email
-        and assignee != request.user
-        and (assignee.is_staff or not ticket.is_private)
-    ):
-        recipients.add(assignee.email)
+    # Add the assignees, but a private ticket only goes to those who can open it
+    assignees = ticket.assignees.exclude(id=request.user.id)
+    if ticket.is_private:
+        assignees = assignees.filter(id__in=handlers(ticket).values("id"))
+    recipients.update(email for email in assignees.values_list("email", flat=True) if email)
 
     # Add all users who have previously sent messages (except the current sender)
     previous_messages = TicketMessage.objects.filter(ticket=ticket).exclude(sender=request.user)
     # Someone who replied while the ticket was public must not keep reading it
     if ticket.is_private:
-        previous_messages = previous_messages.filter(sender__is_staff=True)
+        previous_messages = previous_messages.filter(sender__in=handlers(ticket))
     previous_senders = previous_messages.values_list("sender__email", flat=True).distinct()
 
     for email in previous_senders:
@@ -360,4 +417,39 @@ def remove_upvote(request: AuthenticatedHttpRequest, ticket_id: int) -> tuple[in
     """Take an upvote back. Doing so without one is not an error."""
     ticket = get_object_or_404(visible_tickets(request.user), id=ticket_id)
     ticket.upvoters.remove(request.user)
+    return 200, visible_tickets(request.user).get(id=ticket.id)
+
+
+@ticket_api.post(
+    "/{ticket_id}/assignees/{user_id}",
+    response={200: TicketDetailSchema, 400: message_response, 403: message_response},
+)
+def add_assignee(
+    request: AuthenticatedHttpRequest, ticket_id: int, user_id: int
+) -> tuple[int, Ticket | dict[str, str]]:
+    """Make someone responsible for a ticket, and tell them unless it was you."""
+    ticket = get_object_or_404(visible_tickets(request.user), id=ticket_id)
+    if not can_handle(request.user, ticket):
+        return 403, {"message": "You can't change who handles this ticket"}
+    assignee = get_object_or_404(User, id=user_id)
+    if not can_be_assigned(assignee):
+        return 400, {"message": "Only staff and committee members can be assigned"}
+    if not ticket.assignees.filter(id=assignee.id).exists():
+        ticket.assignees.add(assignee)
+        if assignee != request.user:
+            _notify_assigned(ticket, [assignee])
+    return 200, visible_tickets(request.user).get(id=ticket.id)
+
+
+@ticket_api.delete(
+    "/{ticket_id}/assignees/{user_id}", response={200: TicketDetailSchema, 403: message_response}
+)
+def remove_assignee(
+    request: AuthenticatedHttpRequest, ticket_id: int, user_id: int
+) -> tuple[int, Ticket | dict[str, str]]:
+    """Take someone off a ticket. Removing someone not on it is not an error."""
+    ticket = get_object_or_404(visible_tickets(request.user), id=ticket_id)
+    if not can_handle(request.user, ticket):
+        return 403, {"message": "You can't change who handles this ticket"}
+    ticket.assignees.remove(user_id)
     return 200, visible_tickets(request.user).get(id=ticket.id)

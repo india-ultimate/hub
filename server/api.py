@@ -41,6 +41,7 @@ from server.announcements.api import router as announcements_router
 from server.announcements.models import Announcement
 from server.announcements.schema import AnnouncementHeadlineSchema
 from server.chat.api import router as chat_router
+from server.committee.api import router as committees_router
 from server.core import otp as otp_limits
 from server.core.accounts import find_user, resolve_login_user
 from server.core.models import (
@@ -279,6 +280,7 @@ api.add_router("/chat", chat_router)
 api.add_router("/tournament-agent", tournament_agent_router)
 api.add_router("/service-requests", servicerequests_router)
 api.add_router("/announcements", announcements_router)
+api.add_router("/committees", committees_router)
 api.add_router("/task", task_router)
 api.add_router("/wrapped", wrapped_router)
 

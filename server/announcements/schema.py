@@ -4,19 +4,12 @@ from ninja import ModelSchema, Schema
 
 from server.announcements.models import Announcement, Comment
 from server.core.models import User
-from server.schema import UserNameSchema
+from server.schema import UserNameSchema, profile_pic_url
 
 
 def _can_read(announcement: Announcement) -> bool:
     # Set by the API's queryset; missing means locked.
     return bool(getattr(announcement, "can_read", False))
-
-
-def _profile_pic_url(user: User) -> str | None:
-    try:
-        return user.player_profile.profile_pic_url
-    except Exception:
-        return None
 
 
 class ReactionCountSchema(Schema):
@@ -38,7 +31,7 @@ class AnnouncementSchema(ModelSchema):
 
     @staticmethod
     def resolve_author_profile_pic_url(announcement: Announcement) -> str | None:
-        return _profile_pic_url(announcement.author)
+        return profile_pic_url(announcement.author)
 
     @staticmethod
     def resolve_can_read(announcement: Announcement) -> bool:
@@ -81,7 +74,7 @@ class CommentSchema(ModelSchema):
 
     @staticmethod
     def resolve_author_profile_pic_url(comment: Comment) -> str | None:
-        return _profile_pic_url(comment.author)
+        return profile_pic_url(comment.author)
 
     @staticmethod
     def resolve_author_is_staff(comment: Comment) -> bool:

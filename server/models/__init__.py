@@ -7,6 +7,11 @@ from server.chat.models import (  # noqa: F401
     ChatMessage,
     ChatSession,
 )
+from server.committee.models import (  # noqa: F401
+    Committee,
+    Role,
+    TicketRoute,
+)
 from server.core.models import (  # noqa: F401
     Accreditation,
     CollegeId,

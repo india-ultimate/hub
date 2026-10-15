@@ -32,6 +32,19 @@ class AnnouncementCommentsTestCase(TestCase):
         Player.objects.create(user=user, date_of_birth="1990-01-01")
         return user
 
+    def test_an_author_with_a_photo_shows_it_on_the_post_and_the_comment(self) -> None:
+        Player.objects.filter(user=self.user).update(profile_pic_url="https://x.org/a.jpg")
+        self._post("Hello")
+
+        announcement = self.client.get(f"/api/announcements/{self.post.slug}").json()
+        self.post.author = self.user
+        self.post.save()
+        authored = self.client.get(f"/api/announcements/{self.post.slug}").json()
+
+        self.assertIsNone(announcement["author_profile_pic_url"])
+        self.assertEqual("https://x.org/a.jpg", authored["author_profile_pic_url"])
+        self.assertEqual("https://x.org/a.jpg", self._comments()[0]["author_profile_pic_url"])
+
     def _as(self, user: User) -> None:
         self.client.force_login(user)
 
