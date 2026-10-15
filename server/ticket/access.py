@@ -17,14 +17,16 @@ def can_handle(user: User, ticket: Ticket) -> bool:
     """Staff, and members of the committees the ticket's category routes to."""
     return (
         user.is_staff
-        or committees_for(ticket.category).filter(pk__in=committees_of(user).values("pk")).exists()
+        or committees_for(ticket.category_id)
+        .filter(pk__in=committees_of(user).values("pk"))
+        .exists()
     )
 
 
 def handlers(ticket: Ticket) -> QuerySet[User]:
     """Everyone who can open a private ticket, besides its creator."""
     return User.objects.filter(
-        Q(is_staff=True) | Q(pk__in=members_for(ticket.category).values("pk"))
+        Q(is_staff=True) | Q(pk__in=members_for(ticket.category_id).values("pk"))
     )
 
 

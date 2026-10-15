@@ -6,7 +6,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.test import TestCase
 
 from server.servicerequests.models import ServiceRequest
-from server.ticket.models import Ticket
+from server.ticket.models import Ticket, TicketCategory
 from server.transaction.models import RazorpayTransaction
 
 rename = import_module("server.migrations.0145_subscriptions")
@@ -26,13 +26,14 @@ class TestRenameStoredValues(TestCase):
             type="annual-membership",
         )
         ServiceRequest.objects.create(user=user, type="REQUEST_SPONSORED_MEMBERSHIP", message="m")
-        Ticket.objects.create(title="t", description="d", category="Membership", created_by=user)
+        TicketCategory.objects.create(key="Membership", name="Membership")
+        Ticket.objects.create(title="t", description="d", category_id="Membership", created_by=user)
 
         rename.rename_stored_values(apps, None)
 
         self.assertEqual(RazorpayTransaction.objects.get().type, "annual-subscription")
         self.assertEqual(ServiceRequest.objects.get().type, "REQUEST_SPONSORED_SUBSCRIPTION")
-        self.assertEqual(Ticket.objects.get().category, "Subscription")
+        self.assertEqual(Ticket.objects.get().category_id, "Subscription")
 
     def test_a_group_keeps_its_view_permission(self) -> None:
         ct = ContentType.objects.get(app_label="server", model="subscription")
@@ -63,7 +64,8 @@ class TestRenameStoredValues(TestCase):
             type="annual-membership",
         )
         ServiceRequest.objects.create(user=user, type="REQUEST_SPONSORED_MEMBERSHIP", message="m")
-        Ticket.objects.create(title="t", description="d", category="Membership", created_by=user)
+        TicketCategory.objects.create(key="Membership", name="Membership")
+        Ticket.objects.create(title="t", description="d", category_id="Membership", created_by=user)
         ct = ContentType.objects.get(app_label="server", model="subscription")
         Permission.objects.filter(content_type=ct).delete()
         old = Permission.objects.create(
@@ -75,7 +77,7 @@ class TestRenameStoredValues(TestCase):
 
         self.assertEqual(RazorpayTransaction.objects.get().type, "annual-membership")
         self.assertEqual(ServiceRequest.objects.get().type, "REQUEST_SPONSORED_MEMBERSHIP")
-        self.assertEqual(Ticket.objects.get().category, "Membership")
+        self.assertEqual(Ticket.objects.get().category_id, "Membership")
         old.refresh_from_db()
         self.assertEqual(old.codename, "view_membership")
         self.assertEqual(old.name, "Can view membership")

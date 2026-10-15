@@ -74,6 +74,7 @@ from server.task.models import (  # noqa: F401
 )
 from server.ticket.models import (  # noqa: F401
     Ticket,
+    TicketCategory,
     TicketMessage,
 )
 from server.tournament.models import (  # noqa: F401

@@ -64,7 +64,7 @@ class CommitteeTestCase(TestCase):
             title="Fixtures",
             description="Wrong",
             created_by=self.creator,
-            category=category,
+            category_id=category,
             is_private=is_private,
         )
 
@@ -110,18 +110,18 @@ class TestRouting(CommitteeTestCase):
     def test_a_category_routes_to_every_committee_it_lists(self) -> None:
         finance_chair = make_user("finance_chair")
         self.give_role(finance_chair, self.finance, is_chair=True)
-        TicketRoute.objects.create(category="Competitions", committee=self.finance)
+        TicketRoute.objects.create(category_id="Competitions", committee=self.finance)
 
         self.assertEqual({self.chair, finance_chair}, set(chairs_for("Competitions")))
 
     def test_a_person_chairing_two_routed_committees_is_assigned_once(self) -> None:
         self.give_role(self.chair, self.finance, is_chair=True)
-        TicketRoute.objects.create(category="Competitions", committee=self.finance)
+        TicketRoute.objects.create(category_id="Competitions", committee=self.finance)
 
         self.assertEqual([self.chair], list(chairs_for("Competitions")))
 
     def test_a_category_with_no_route_stays_unassigned(self) -> None:
-        TicketRoute.objects.filter(category="Other").delete()
+        TicketRoute.objects.filter(category__key="Other").delete()
 
         response = self.post_ticket(self.creator, "Other")
 
@@ -177,13 +177,13 @@ class TestAccess(CommitteeTestCase):
         self.assertEqual(200, response.status_code)
         self.ticket.refresh_from_db()
         self.assertEqual(("RES", "URG"), (self.ticket.status, self.ticket.priority))
-        self.assertEqual(("Fixtures", "Competitions"), (self.ticket.title, self.ticket.category))
+        self.assertEqual(("Fixtures", "Competitions"), (self.ticket.title, self.ticket.category_id))
 
     def test_staff_change_the_title_and_category(self) -> None:
         self.put(self.staff, {"title": "New", "category": "Tech"})
 
         self.ticket.refresh_from_db()
-        self.assertEqual(("New", "Tech"), (self.ticket.title, self.ticket.category))
+        self.assertEqual(("New", "Tech"), (self.ticket.title, self.ticket.category_id))
 
     def test_a_former_member_cannot(self) -> None:
         Role.objects.filter(user=self.member).update(end_date=today())
@@ -203,7 +203,7 @@ class TestAccess(CommitteeTestCase):
     def test_a_member_of_an_unrouted_committee_cannot_handle_an_uncategorised_ticket(self) -> None:
         self.give_role(self.outsider, self.finance)
         ticket = self.make_ticket("")
-        Ticket.objects.filter(id=ticket.id).update(category=None)
+        Ticket.objects.filter(id=ticket.id).update(category_id=None)
 
         response = self.call("get", f"/ticket/{ticket.id}", self.outsider)
 
@@ -313,7 +313,7 @@ class TestMessageEmails(CommitteeTestCase):
     def test_an_uncategorised_private_ticket_reaches_no_committee_member(self) -> None:
         self.give_role(self.outsider, self.finance)
         ticket = self.make_ticket()
-        Ticket.objects.filter(id=ticket.id).update(category=None)
+        Ticket.objects.filter(id=ticket.id).update(category_id=None)
         ticket.refresh_from_db()
         ticket.assignees.add(self.outsider)
 
@@ -534,7 +534,7 @@ class TestStaffApi(CommitteeTestCase):
         response = self.call("put", "/ticket/routes/Payment", self.staff, {"committees": ["nope"]})
 
         self.assertEqual(400, response.status_code)
-        self.assertEqual(1, TicketRoute.objects.filter(category="Payment").count())
+        self.assertEqual(1, TicketRoute.objects.filter(category__key="Payment").count())
 
 
 class TestMigrations(TestCase):
@@ -545,7 +545,7 @@ class TestMigrations(TestCase):
         )
         self.assertEqual(11, Committee.objects.count())
         routes = {
-            (route.category, route.committee.name)
+            (route.category_id, route.committee.name)
             for route in TicketRoute.objects.select_related("committee")
         }
         self.assertEqual(

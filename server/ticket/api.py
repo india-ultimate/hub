@@ -6,7 +6,7 @@ import cloudinary.uploader
 from django.conf import settings
 from django.conf import settings as django_settings
 from django.core.mail import send_mail
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import Count, Exists, IntegerField, OuterRef, Q, QuerySet, Subquery
 from django.db.models.functions import Coalesce
 from django.http import HttpRequest
@@ -21,8 +21,11 @@ from server.committee.models import Committee, TicketRoute
 from server.committee.routing import chairs_for
 from server.core.models import User
 from server.ticket.access import can_be_assigned, can_handle, handlers, routed_to
-from server.ticket.models import Ticket, TicketMessage
+from server.ticket.models import Ticket, TicketCategory, TicketMessage
 from server.ticket.schema import (
+    TicketCategoryCreateSchema,
+    TicketCategorySchema,
+    TicketCategoryUpdateSchema,
     TicketCreateSchema,
     TicketDetailSchema,
     TicketListItemSchema,
@@ -52,6 +55,8 @@ ticket_api = Router()
 Status = Literal["OPN", "PRG", "RES"]
 Sort = Literal["relevance", "newest", "upvotes"]
 PAGE_SIZE = 20
+DUPLICATE_NAME = "A category with that name already exists"
+MAX_ORDER = 32767  # what a PositiveSmallIntegerField holds
 
 
 def _count(rows: QuerySet[Any]) -> Coalesce:
@@ -74,10 +79,14 @@ def visible_tickets(user: User) -> QuerySet[Ticket]:
     Each comes with its upvote count and whether `user` is one of them.
     """
     upvotes = Ticket.upvoters.through.objects.filter(ticket=OuterRef("pk"))
-    tickets = Ticket.objects.annotate(
-        upvote_count=_count(upvotes),
-        has_upvoted=Exists(upvotes.filter(user=user)),
-    ).prefetch_related("assignees__player_profile")
+    tickets = (
+        Ticket.objects.annotate(
+            upvote_count=_count(upvotes),
+            has_upvoted=Exists(upvotes.filter(user=user)),
+        )
+        .select_related("category", "created_by")
+        .prefetch_related("assignees__player_profile")
+    )
     if user.is_staff:
         return tickets
     return tickets.filter(Q(is_private=False) | Q(created_by=user) | routed_to(user))
@@ -107,35 +116,145 @@ def _notify_assigned(ticket: Ticket, users: Iterable[User]) -> None:
         print(f"Error sending email notification: {e}")
 
 
+def _deny_unless_staff(request: AuthenticatedHttpRequest) -> tuple[int, dict[str, str]] | None:
+    if request.user.is_staff:
+        return None
+    return 403, {"message": "Only staff can do this"}
+
+
+@ticket_api.get("/categories", response={200: list[TicketCategorySchema], 403: message_response})
+def list_categories(request: AuthenticatedHttpRequest, all: bool = False) -> tuple[int, Any]:
+    """The categories a ticket can have, in order. Staff can ask for all of them:
+    the retired ones come after the active ones."""
+    categories = TicketCategory.objects.order_by("is_retired", "order", "name")
+    if not all:
+        return 200, categories.filter(is_retired=False)
+    return _deny_unless_staff(request) or (200, categories)
+
+
+def _name_error(name: str, category: TicketCategory | None = None) -> str | None:
+    """Why `name` can't be a category's name, if it can't."""
+    if not name:
+        return "A category needs a name"
+    if len(name) > TicketCategory.NAME_MAX_LENGTH:
+        return "That name is too long"
+    taken = TicketCategory.objects.filter(name__iexact=name)
+    if category:
+        taken = taken.exclude(pk=category.pk)
+    if taken.exists():
+        return DUPLICATE_NAME
+    return None
+
+
+@ticket_api.post(
+    "/categories",
+    response={201: TicketCategorySchema, 400: message_response, 403: message_response},
+)
+def create_category(
+    request: AuthenticatedHttpRequest, data: TicketCategoryCreateSchema
+) -> tuple[int, Any]:
+    """Add a category, last in the order. Staff only."""
+    if denied := _deny_unless_staff(request):
+        return denied
+    name = data.name.strip()
+    if error := _name_error(name):
+        return 400, {"message": error}
+    last = TicketCategory.objects.order_by("-order").first()
+    try:
+        with transaction.atomic():
+            category = TicketCategory.objects.create(
+                key=TicketCategory.new_key(name),
+                name=name,
+                order=min(last.order + 1, MAX_ORDER) if last else 0,
+            )
+    except IntegrityError:  # someone added the same name or key meanwhile
+        return 400, {"message": DUPLICATE_NAME}
+    return 201, category
+
+
+@ticket_api.put(
+    "/categories/{key}",
+    response={
+        200: TicketCategorySchema,
+        400: message_response,
+        403: message_response,
+        404: message_response,
+    },
+)
+def update_category(
+    request: AuthenticatedHttpRequest, key: str, data: TicketCategoryUpdateSchema
+) -> tuple[int, Any]:
+    """Rename, reorder, retire or restore a category. The key never changes. Staff only."""
+    if denied := _deny_unless_staff(request):
+        return denied
+    category = get_object_or_404(TicketCategory, key=key)
+    if data.name is not None:
+        name = data.name.strip()
+        if error := _name_error(name, category):
+            return 400, {"message": error}
+        category.name = name
+    if data.order is not None:
+        if not 0 <= data.order <= MAX_ORDER:
+            return 400, {"message": f"The order must be between 0 and {MAX_ORDER}"}
+        category.order = data.order
+    if data.is_retired is not None:
+        category.is_retired = data.is_retired
+    try:
+        with transaction.atomic():
+            category.save()
+    except IntegrityError:  # someone took the name meanwhile
+        return 400, {"message": DUPLICATE_NAME}
+    return 200, category
+
+
+def _category_error(key: str | None, current: str | None = None) -> str | None:
+    """Why a ticket can't be given the category `key`, if it can't. Keeping the
+    `current` one is always fine, even once retired."""
+    if not key or key == current:
+        return None
+    if not TicketCategory.objects.filter(key=key, is_retired=False).exists():
+        return "That category doesn't exist"
+    return None
+
+
 @ticket_api.get("/routes", response={200: list[TicketRouteSchema], 403: message_response})
 def list_routes(request: AuthenticatedHttpRequest) -> tuple[int, Any]:
-    """Which committees each category of ticket goes to. Staff only."""
-    if not request.user.is_staff:
-        return 403, {"message": "Only staff can do this"}
+    """Which committees each category of ticket goes to, retired categories too.
+    Staff only."""
+    if denied := _deny_unless_staff(request):
+        return denied
     routes = TicketRoute.objects.order_by("committee__order", "committee__name")
-    by_category: dict[str, list[str]] = {category: [] for category in Ticket.Category.values}
+    by_category: dict[str, list[str]] = {
+        key: [] for key in TicketCategory.objects.values_list("key", flat=True)
+    }
     for route in routes.select_related("committee"):
-        by_category[route.category].append(route.committee.slug)
+        by_category[route.category_id].append(route.committee.slug)
     return 200, [{"category": c, "committees": slugs} for c, slugs in by_category.items()]
 
 
 @ticket_api.put(
     "/routes/{category}",
-    response={200: TicketRouteSchema, 400: message_response, 403: message_response},
+    response={
+        200: TicketRouteSchema,
+        400: message_response,
+        403: message_response,
+        404: message_response,
+    },
 )
 def update_route(
-    request: AuthenticatedHttpRequest, category: Ticket.Category, data: TicketRouteUpdateSchema
+    request: AuthenticatedHttpRequest, category: str, data: TicketRouteUpdateSchema
 ) -> tuple[int, Any]:
     """Replace the committees that new tickets of `category` go to. Staff only."""
-    if not request.user.is_staff:
-        return 403, {"message": "Only staff can do this"}
+    if denied := _deny_unless_staff(request):
+        return denied
+    category_row = get_object_or_404(TicketCategory, key=category)
     committees = Committee.objects.filter(slug__in=data.committees).order_by("order", "name")
     if committees.count() != len(set(data.committees)):
         return 400, {"message": "Unknown committee"}
     with transaction.atomic():
-        TicketRoute.objects.filter(category=category).delete()
+        TicketRoute.objects.filter(category=category_row).delete()
         TicketRoute.objects.bulk_create(
-            TicketRoute(category=category, committee=committee) for committee in committees
+            TicketRoute(category=category_row, committee=committee) for committee in committees
         )
     return 200, {"category": category, "committees": [c.slug for c in committees]}
 
@@ -146,7 +265,7 @@ def list_tickets(
     request: AuthenticatedHttpRequest,
     q: str = "",
     status: list[Status] = Query(None),  # noqa: B008  # repeatable: ?status=OPN&status=PRG
-    category: Ticket.Category | None = None,
+    category: str | None = None,
     mine: bool = False,
     upvoted: bool = False,
     exclude_private: bool = False,
@@ -163,7 +282,7 @@ def list_tickets(
     if status:
         query = query.filter(status__in=status)
     if category:
-        query = query.filter(category=category)
+        query = query.filter(category__key=category)
     if mine:
         query = query.filter(created_by=request.user)
     if upvoted:
@@ -190,20 +309,22 @@ def get_ticket(request: AuthenticatedHttpRequest, ticket_id: int) -> Ticket:
     return ticket
 
 
-@ticket_api.post("/", response={201: TicketDetailSchema})
+@ticket_api.post("/", response={201: TicketDetailSchema, 400: message_response})
 def create_ticket(
     request: AuthenticatedHttpRequest, data: TicketCreateSchema
-) -> tuple[int, Ticket]:
+) -> tuple[int, Ticket | dict[str, str]]:
     """Create a new ticket"""
+    if error := _category_error(data.category):
+        return 400, {"message": error}
     ticket = Ticket.objects.create(
         title=data.title,
         description=data.description,
         priority=data.priority,
-        category=data.category,
+        category_id=data.category,
         is_private=data.is_private,
         created_by=request.user,
     )
-    chairs = list(chairs_for(ticket.category))
+    chairs = list(chairs_for(ticket.category_id))
     ticket.assignees.set(chairs)
     _notify_assigned(ticket, chairs)
 
@@ -248,7 +369,10 @@ def create_ticket(
     return 201, visible_tickets(request.user).get(id=ticket.id)
 
 
-@ticket_api.put("/{ticket_id}", response={200: TicketDetailSchema, 403: message_response})
+@ticket_api.put(
+    "/{ticket_id}",
+    response={200: TicketDetailSchema, 400: message_response, 403: message_response},
+)
 def update_ticket(
     request: AuthenticatedHttpRequest, ticket_id: int, data: TicketUpdateSchema
 ) -> tuple[int, Ticket | dict[str, Any]]:
@@ -259,6 +383,9 @@ def update_ticket(
     is_handler = can_handle(request.user, ticket)
     if not (is_creator or is_handler):
         return 403, {"message": "You don't have permission to update this ticket"}
+
+    if request.user.is_staff and (error := _category_error(data.category, ticket.category_id)):
+        return 400, {"message": error}
 
     # The creator and the handlers can set the status; handlers also the priority,
     # and only staff the rest
@@ -272,7 +399,7 @@ def update_ticket(
         if data.description:
             ticket.description = data.description
         if data.category:
-            ticket.category = data.category
+            ticket.category_id = data.category
 
     # Both the creator and staff can hide a ticket, or show it again
     if data.is_private is not None and (is_creator or request.user.is_staff):
