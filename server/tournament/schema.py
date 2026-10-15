@@ -1,7 +1,7 @@
 from typing import Any
 
 from django.db.models import Count, Prefetch, QuerySet
-from ninja import ModelSchema, Schema
+from ninja import Field, ModelSchema, Schema
 
 from server.core.models import CommentaryInfo, Player, Team, UCPerson
 from server.schema import (
@@ -511,6 +511,17 @@ class PublicMatchSchema(ModelSchema):
     class Meta:
         model = Match
         exclude = ["tournament"]
+
+
+class MatchTournamentSchema(Schema):
+    slug: str = Field(alias="event.slug")
+    title: str = Field(alias="event.title")
+
+
+class RecentMatchSchema(PublicMatchSchema):
+    """A match on the website's schedule, which spans tournaments."""
+
+    tournament: MatchTournamentSchema
 
 
 _SPIRIT_SCORES = [

@@ -104,3 +104,9 @@ class CommentSchema(ModelSchema):
 class CommentCreateSchema(Schema):
     body: str
     parent_id: int | None = None
+
+
+class AnnouncementHeadlineSchema(ModelSchema):
+    class Meta:
+        model = Announcement
+        fields = ["title", "slug", "type", "is_members_only", "created_at"]
