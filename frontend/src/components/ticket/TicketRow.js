@@ -36,7 +36,7 @@ const TicketRow = props => (
       </A>
       <div class="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-gray-600 dark:text-gray-400">
         <StatusBadge status={props.ticket.status} />
-        <CategoryChip category={props.ticket.category} />
+        <CategoryChip category={props.ticket.category_name} />
         <span>{props.ticket.created_by.first_name}</span>
         <span aria-hidden="true">·</span>
         <time datetime={props.ticket.created_at}>

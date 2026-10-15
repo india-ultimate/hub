@@ -179,7 +179,7 @@ const TicketDetail = () => {
                 <div class="mt-2 flex flex-wrap items-center gap-2">
                   <StatusBadge status={ticket().status} />
                   <PriorityBadge priority={ticket().priority} />
-                  <CategoryChip category={ticket().category} />
+                  <CategoryChip category={ticket().category_name} />
                   <Show when={ticket().is_private}>
                     <span
                       id="private-badge"

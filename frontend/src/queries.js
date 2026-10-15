@@ -1914,6 +1914,15 @@ export const updateCommitteeRole = ({ id, ...data }) =>
 export const deleteCommitteeRole = id =>
   committeeRequest(`/api/committees/roles/${id}`, "DELETE");
 
+export const fetchTicketCategories = ({ all = false } = {}) =>
+  committeeRequest(`/api/ticket/categories${all ? "?all=true" : ""}`);
+
+export const addTicketCategory = name =>
+  committeeRequest("/api/ticket/categories", "POST", { name });
+
+export const updateTicketCategory = ({ key, ...data }) =>
+  committeeRequest(`/api/ticket/categories/${key}`, "PUT", data);
+
 export const fetchTicketRoutes = () => committeeRequest("/api/ticket/routes");
 
 export const saveTicketRoute = ({ category, committees }) =>

@@ -19,8 +19,7 @@ import {
   Switch
 } from "solid-js";
 
-import { fetchTickets } from "../../queries";
-import { CATEGORIES } from "../../tickets";
+import { fetchTicketCategories, fetchTickets } from "../../queries";
 import Pagination from "./Pagination";
 import TicketRow from "./TicketRow";
 
@@ -85,11 +84,25 @@ const TicketList = props => {
     page: page()
   });
 
+  const categories = createQuery(
+    () => ["ticket-categories"],
+    fetchTicketCategories
+  );
   const ticketsQuery = createQuery(
     () => ["tickets", "list", request()],
     () => fetchTickets(request()),
     { keepPreviousData: true }
   );
+
+  // An old link can filter by a retired category, which the menu no longer
+  // lists: name it after a ticket that has it, or its key.
+  const retiredFilter = () =>
+    categories.data &&
+    params.category &&
+    !categories.data.some(c => c.key === params.category) &&
+    (ticketsQuery.data?.items.find(t => t.category === params.category)
+      ?.category_name ??
+      params.category);
 
   const count = () => ticketsQuery.data?.count ?? 0;
   const pages = () => Math.ceil(count() / PAGE_SIZE);
@@ -223,8 +236,20 @@ const TicketList = props => {
             onChange={e => update({ category: e.currentTarget.value || null })}
           >
             <option value="">All categories</option>
-            <For each={CATEGORIES}>
-              {category => <option value={category}>{category}</option>}
+            <Show when={retiredFilter()}>
+              <option value={params.category} selected>
+                {retiredFilter()}
+              </option>
+            </Show>
+            <For each={categories.data}>
+              {category => (
+                <option
+                  value={category.key}
+                  selected={params.category === category.key}
+                >
+                  {category.name}
+                </option>
+              )}
             </For>
           </select>
           <label for="sort" class="sr-only">

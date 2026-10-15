@@ -20,8 +20,13 @@ import {
   Show
 } from "solid-js";
 
-import { createTicket, fetchTickets, fetchUser } from "../../queries";
-import { CATEGORIES, PRIORITIES, StatusBadge } from "../../tickets";
+import {
+  createTicket,
+  fetchTicketCategories,
+  fetchTickets,
+  fetchUser
+} from "../../queries";
+import { PRIORITIES, StatusBadge } from "../../tickets";
 import ErrorAlert from "../alerts/Error";
 import Breadcrumbs from "../Breadcrumbs";
 import UpvoteButton from "./UpvoteButton";
@@ -36,6 +41,10 @@ const CreateTicket = () => {
   const queryClient = useQueryClient();
   const [error, setError] = createSignal("");
   const userQuery = createQuery(() => ["me"], fetchUser);
+  const categories = createQuery(
+    () => ["ticket-categories"],
+    fetchTicketCategories
+  );
 
   const [form, { Form, Field }] = createForm({
     initialValues: {
@@ -230,13 +239,13 @@ const CreateTicket = () => {
                       class={input}
                     >
                       <option value="">Choose a category</option>
-                      <For each={CATEGORIES}>
+                      <For each={categories.data}>
                         {category => (
                           <option
-                            value={category}
-                            selected={field.value === category}
+                            value={category.key}
+                            selected={field.value === category.key}
                           >
-                            {category}
+                            {category.name}
                           </option>
                         )}
                       </For>

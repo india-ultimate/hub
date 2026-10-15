@@ -6,15 +6,13 @@ import { fetchCommittees } from "../../queries";
 import PillTabs from "../tabs/PillTabs";
 import ManageCommittees from "./ManageCommittees";
 import ManagePeople from "./ManagePeople";
-import ManageRouting from "./ManageRouting";
 
 const TABS = [
   { id: "people", label: "People" },
-  { id: "routing", label: "Ticket routing" },
   { id: "committees", label: "Committees" }
 ];
 
-// Staff only: who holds which role, where tickets go, and the committees.
+// Staff only: who holds which role, and the committees.
 const Manage = () => {
   const [tab, setTab] = createSignal("people");
   const [saved, flash] = createSaved();
@@ -36,9 +34,6 @@ const Manage = () => {
         <Switch>
           <Match when={tab() === "people"}>
             <ManagePeople committees={query.data} onSaved={flash} />
-          </Match>
-          <Match when={tab() === "routing"}>
-            <ManageRouting committees={query.data} onSaved={flash} />
           </Match>
           <Match when={tab() === "committees"}>
             <ManageCommittees committees={query.data} onSaved={flash} />
