@@ -38,6 +38,8 @@ from ninja.security import django_auth
 from ninja.utils import check_csrf
 
 from server.announcements.api import router as announcements_router
+from server.announcements.models import Announcement
+from server.announcements.schema import AnnouncementHeadlineSchema
 from server.chat.api import router as chat_router
 from server.core import otp as otp_limits
 from server.core.accounts import find_user, resolve_login_user
@@ -159,6 +161,7 @@ from server.tournament.schema import (
     PublicMatchStatsSchema,
     PublicRosterEntrySchema,
     PublicUCRegistrationSchema,
+    RecentMatchSchema,
     RosterPointsSchema,
     SpiritScoreSubmitSchema,
     SwissRoundCreateSchema,
@@ -2748,6 +2751,32 @@ def get_match(request: HttpRequest, match_id: int) -> tuple[int, Match | message
         return 400, {"message": "Match does not exist"}
 
     return 200, match
+
+
+# Website ##########
+# The India Ultimate website shows these and links to the hub for the rest.
+
+
+@api.get("/public/matches", auth=None, response={200: list[RecentMatchSchema]})
+def get_recent_matches(request: HttpRequest) -> QuerySet[Match]:
+    """Matches from five days ago to five days ahead, in published tournaments."""
+    days = datetime.timedelta(days=5)
+    return (
+        public_matches(Match.objects.filter(time__range=(now() - days, now() + days)))
+        .exclude(tournament__status=Tournament.Status.DRAFT)
+        .select_related("tournament__event")
+        .order_by("time")
+    )
+
+
+@api.get("/public/announcements", auth=None, response={200: list[AnnouncementHeadlineSchema]})
+def get_announcement_headlines(request: HttpRequest) -> QuerySet[Announcement]:
+    """Every published headline, members-only ones too: reading one needs a sign-in."""
+    return (
+        Announcement.objects.filter(is_published=True)
+        .only(*AnnouncementHeadlineSchema.Meta.fields)
+        .order_by("-created_at")
+    )
 
 
 @api.post("/match/{match_id}/score", response={200: MatchSchema, 400: Response, 401: Response})
