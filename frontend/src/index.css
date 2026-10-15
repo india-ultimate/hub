@@ -588,3 +588,11 @@ dialog[open]::backdrop {
     animation: none;
   }
 }
+
+/* The announcement editor: what TipTap marks as selected */
+.ProseMirror .selectedCell {
+  background-color: rgb(219 234 254);
+}
+.ProseMirror img.ProseMirror-selectednode {
+  outline: 2px solid rgb(59 130 246);
+}
