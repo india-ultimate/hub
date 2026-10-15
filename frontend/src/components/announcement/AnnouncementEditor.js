@@ -47,8 +47,8 @@ const UnsupportedNotice = props => (
     class="mb-6 rounded-lg border border-yellow-300 bg-yellow-50 p-4 text-sm text-yellow-900"
   >
     <p>
-      This post has formatting the Hub editor can't keep (videos, custom
-      styles). Edit it in the admin to keep it.
+      This post has formatting the Hub editor can't keep (embedded players,
+      custom styles). Edit it in the admin to keep it.
     </p>
     <div class="mt-3 flex flex-wrap gap-2">
       <Show when={props.adminHref}>

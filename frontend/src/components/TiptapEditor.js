@@ -10,6 +10,7 @@ import StarterKit from "@tiptap/starter-kit";
 import { onCleanup, onMount } from "solid-js";
 
 import { postProse } from "../announcements";
+import { Video } from "../tiptapVideo";
 
 // A TipTap editor in a div: made on mount, destroyed on cleanup. `onReady`
 // gets the editor; `onChange` gets the HTML after each edit.
@@ -24,6 +25,7 @@ const TiptapEditor = props => {
         // StarterKit brings underline and links too.
         StarterKit.configure({ link: { openOnClick: false } }),
         Image,
+        Video,
         Table,
         TableRow,
         TableHeader,

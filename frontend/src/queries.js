@@ -1955,12 +1955,17 @@ export const emailAnnouncement = ({ slug, audience }) =>
     : jsonRequest(`/api/announcements/${slug}/email`, "POST", { audience });
 
 // Multipart, so fetch can't report progress; resolves with the image's URL.
-export const uploadAnnouncementImage = (file, onProgress) =>
+// Sends `fields` and the file as a form, reporting progress; resolves to the
+// JSON answer. Only the Hub gets the CSRF token: Cloudinary refuses the header.
+const uploadWithProgress = (url, fields, file, onProgress) =>
   new Promise((resolve, reject) => {
     const request = new XMLHttpRequest();
-    request.open("POST", "/api/announcements/images");
-    request.setRequestHeader("X-CSRFToken", getCookie("csrftoken"));
-    request.upload.onprogress = e => onProgress(e.loaded / e.total);
+    request.open("POST", url);
+    if (url.startsWith("/")) {
+      request.setRequestHeader("X-CSRFToken", getCookie("csrftoken"));
+    }
+    request.upload.onprogress = e =>
+      e.lengthComputable && onProgress(e.loaded / e.total);
     request.onerror = () => reject(new Error("Upload failed. Try again."));
     request.onload = () => {
       let body = null;
@@ -1969,13 +1974,29 @@ export const uploadAnnouncementImage = (file, onProgress) =>
       } catch {
         // The server's error page; the default message below covers it.
       }
-      if (request.status < 300) return resolve(body.url);
-      reject(new Error(body?.message || body?.detail || "Upload failed."));
+      if (request.status < 300) return resolve(body);
+      const message = body?.message || body?.detail || body?.error?.message;
+      reject(new Error(message || "Upload failed."));
     };
     const form = new FormData();
+    Object.entries(fields).forEach(([name, value]) => form.append(name, value));
     form.append("file", file);
     request.send(form);
   });
+
+export const uploadAnnouncementImage = async (file, onProgress) =>
+  (await uploadWithProgress("/api/announcements/images", {}, file, onProgress))
+    .url;
+
+// Too big for the Hub's machines: the Hub signs the upload and the browser
+// sends it straight to Cloudinary.
+export const uploadAnnouncementVideo = async (file, onProgress) => {
+  const { url, fields } = await jsonRequest(
+    "/api/announcements/videos",
+    "POST"
+  );
+  return (await uploadWithProgress(url, fields, file, onProgress)).secure_url;
+};
 
 // Election API functions
 export const createElection = async data => {
