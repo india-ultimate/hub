@@ -4,9 +4,11 @@ from typing import Any
 
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
+from django.db import transaction
 from django.http import HttpRequest
 from django.shortcuts import get_object_or_404
 from django.template.loader import render_to_string
+from django.utils import timezone
 from ninja import Router
 from ninja.files import UploadedFile
 from ninja.params.functions import File
@@ -31,6 +33,7 @@ from .schema import (
     ElectionSchema,
     EligibleVoterSchema,
     ErrorSchema,
+    RankedVoteChoiceSchema,
     RankedVoteCreateSchema,
     RankedVoteSchema,
     VoterVerificationSchema,
@@ -50,6 +53,49 @@ def check_staff(request: AuthenticatedHttpRequest) -> tuple[int, dict[str, str]]
     if not request.user.is_staff:
         return 403, {"message": "Only staff members can perform this action"}
     return None
+
+
+def check_open(election: Election) -> tuple[int, dict[str, str]] | None:
+    """Check that voting is open right now, return 400 response if not"""
+    if not election.is_active or not election.start_date <= timezone.now() <= election.end_date:
+        return 400, {"message": "Voting is not open for this election"}
+    return None
+
+
+def save_vote(
+    election: Election,
+    voter: User,
+    verification: VoterVerification,
+    choices: list[RankedVoteChoiceSchema],
+) -> RankedVote | tuple[int, dict[str, str]]:
+    """Store a ballot and spend the token together, or store nothing"""
+    candidate_ids = [choice.candidate_id for choice in choices]
+    ranks = [choice.rank for choice in choices]
+    if (
+        len(set(candidate_ids)) != len(candidate_ids)
+        or len(set(ranks)) != len(ranks)
+        or Candidate.objects.filter(election=election, id__in=candidate_ids).count()
+        != len(candidate_ids)
+    ):
+        return 400, {"message": "Rank each candidate of this election at most once"}
+
+    # Generate a unique voter hash
+    voter_identifier = f"{voter.id}:{election.id}:{secrets.token_hex(16)}"
+    voter_hash = hashlib.sha256(voter_identifier.encode()).hexdigest()
+
+    with transaction.atomic():
+        # Lock the token so a double submit cannot spend it twice
+        locked = VoterVerification.objects.select_for_update().get(pk=verification.pk)
+        if locked.is_used:
+            return 400, {"message": "This verification token has already been used"}
+
+        vote = RankedVote.objects.create(election=election, voter_hash=voter_hash)
+        RankedVoteChoice.objects.bulk_create(
+            RankedVoteChoice(vote=vote, candidate_id=choice.candidate_id, rank=choice.rank)
+            for choice in choices
+        )
+        locked.mark_as_used()
+        return vote
 
 
 @router.get("/", response=list[ElectionSchema], auth=None)
@@ -266,6 +312,8 @@ def get_voter_verification(
 ) -> VoterVerification | tuple[int, dict[str, str]]:
     """Get a verification token for voting"""
     election = get_object_or_404(Election, id=election_id)
+    if error := check_open(election):
+        return error
 
     # Check if user is eligible to vote
     if not EligibleVoter.objects.filter(election=election, user=request.user).exists():
@@ -300,6 +348,8 @@ def cast_ranked_vote(
     request: AuthenticatedHttpRequest, election_id: int, payload: RankedVoteCreateSchema
 ) -> RankedVote | tuple[int, dict[str, str]]:
     election = get_object_or_404(Election, id=election_id)
+    if error := check_open(election):
+        return error
 
     # Verify the voter's token
     verification = get_object_or_404(
@@ -317,30 +367,7 @@ def cast_ranked_vote(
             "message": "Minors cannot vote directly. Only guardians can vote on their behalf."
         }
 
-    # Generate a unique voter hash
-    voter_identifier = f"{request.user.id}:{election_id}:{secrets.token_hex(16)}"
-    voter_hash = hashlib.sha256(voter_identifier.encode()).hexdigest()
-
-    try:
-        # Create the vote record with hashed identifier
-        vote = RankedVote.objects.create(election=election, voter_hash=voter_hash)
-
-        # Create the ranked choices
-        for choice in payload.choices:
-            RankedVoteChoice.objects.create(
-                vote=vote, candidate_id=choice.candidate_id, rank=choice.rank
-            )
-
-        # Mark verification token as used
-        verification.mark_as_used()
-
-        return vote
-    except Exception as e:
-        # If anything fails, ensure the verification token isn't marked as used
-        verification.refresh_from_db()
-        if not verification.is_used:
-            verification.delete()
-        return 400, {"message": str(e)}
+    return save_vote(election, request.user, verification, payload.choices)
 
 
 @router.post("/{election_id}/vote-for-ward/", response={200: RankedVoteSchema, 400: ErrorSchema})
@@ -352,6 +379,8 @@ def cast_ranked_vote_for_ward(
 ) -> RankedVote | tuple[int, dict[str, str]]:
     """Allow guardians to vote on behalf of their minor wards"""
     election = get_object_or_404(Election, id=election_id)
+    if error := check_open(election):
+        return error
 
     # Get the ward (minor player)
     try:
@@ -386,30 +415,7 @@ def cast_ranked_vote_for_ward(
     if verification.is_used:
         return 400, {"message": "The ward has already voted in this election"}
 
-    # Generate a unique voter hash for the ward
-    voter_identifier = f"{ward.user.id}:{election_id}:{secrets.token_hex(16)}"
-    voter_hash = hashlib.sha256(voter_identifier.encode()).hexdigest()
-
-    try:
-        # Create the vote record with hashed identifier
-        vote = RankedVote.objects.create(election=election, voter_hash=voter_hash)
-
-        # Create the ranked choices
-        for choice in payload.choices:
-            RankedVoteChoice.objects.create(
-                vote=vote, candidate_id=choice.candidate_id, rank=choice.rank
-            )
-
-        # Mark verification token as used
-        verification.mark_as_used()
-
-        return vote
-    except Exception as e:
-        # If anything fails, ensure the verification token isn't marked as used
-        verification.refresh_from_db()
-        if not verification.is_used:
-            verification.delete()
-        return 400, {"message": str(e)}
+    return save_vote(election, ward.user, verification, payload.choices)
 
 
 @router.post(
