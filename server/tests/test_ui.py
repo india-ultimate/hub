@@ -19,7 +19,7 @@ from selenium.webdriver.common.keys import Keys
 from seleniumbase import BaseCase
 
 from hub.settings import BASE_DIR
-from server.core.models import OTPAttempt, Player, Team, User
+from server.core.models import Guardianship, OTPAttempt, Player, Team, User
 from server.duplicates.clusters import close_finished, detect_and_create
 from server.duplicates.emails import notify
 from server.duplicates.flow import dismiss, merge_pair, request_merge, request_staff
@@ -382,6 +382,27 @@ class TestIntegration(BaseCase):
         self.open(f"{APP_URL}/subscription/{child_player.id}")
         self.assert_text("IU-26-0099", "[data-testid='iu-id']")
         self.assert_text("atleast 12 years old")
+
+    # Breaks if: saving a minor's profile goes anywhere but the edit endpoint.
+    def test_a_guardian_edits_their_child_s_profile(self) -> None:
+        guardian = make_player("parent@example.com")
+        child = make_player("kid@example.com", first="Tiny", institution="DPS")
+        Player.objects.filter(user=child).update(
+            date_of_birth=now().date() - datetime.timedelta(days=12 * 366),
+            occupation=Player.OccupationTypes.STUDENT,
+            state_ut="KA",
+        )
+        User.objects.filter(id=child.id).update(phone="+919812345678")
+        child_player = Player.objects.get(user=child)
+        Guardianship.objects.create(relation="LG", user=guardian, player=child_player)
+
+        self.sign_in_as(guardian)
+        self.open(f"{APP_URL}/edit/registration/{child_player.id}")
+        self.type("input#city", "Mysuru")
+        self.click('button:contains("Submit")')
+        self.assert_text("Successful Registration")
+        child_player.refresh_from_db()
+        self.assertEqual("Mysuru", child_player.city)
 
     # Breaks if: a gap in the season timeline stops being a real answer and
     # starts looking like a failure, or starts offering tiers anyway.

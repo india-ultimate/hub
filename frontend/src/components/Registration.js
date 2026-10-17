@@ -100,14 +100,16 @@ const RegistrationForm = props => {
   });
 
   const submitFormData = async formData => {
-    // Send a post request to the api
-    const url = props.others
-      ? "/api/registration/others"
-      : props.ward
-        ? "/api/registration/ward"
-        : getAge(formData.date_of_birth) < majorAge
-          ? "/api/registration/guardian"
-          : "/api/registration";
+    // Edits of anyone's profile go to one endpoint; the others only create.
+    const url = editForm()
+      ? "/api/registration"
+      : props.others
+        ? "/api/registration/others"
+        : props.ward
+          ? "/api/registration/ward"
+          : getAge(formData.date_of_birth) < majorAge
+            ? "/api/registration/guardian"
+            : "/api/registration";
 
     // If match_up field is not shown, use gender as match_up
     if (!formData.match_up) {
