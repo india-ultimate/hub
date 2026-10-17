@@ -37,7 +37,9 @@ if os.environ.get("REDIS_HOST"):
     }
 
 if os.environ.get("DATABASE_URL"):
-    DATABASES["default"] = dj_database_url.config()  # type: ignore[assignment]  # noqa: F405
+    DATABASES["default"] = dj_database_url.config(  # type: ignore[assignment]  # noqa: F405
+        engine="django_prometheus.db.backends.postgresql"
+    )
     # Reused for a minute, and checked first, rather than a new one per request.
     DATABASES["default"]["CONN_MAX_AGE"] = 60  # noqa: F405
     DATABASES["default"]["CONN_HEALTH_CHECKS"] = True  # noqa: F405

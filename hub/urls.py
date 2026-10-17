@@ -60,7 +60,6 @@ urlpatterns = [
     # Before server.urls, whose catch-all would serve the app for /media/.
     path("media/<path:name>", old_media_link),
     path("", include("server.urls")),
-    path("", include("django_prometheus.urls")),
     path("ckeditor/upload/", ckeditor_upload),
     path("ckeditor/", include("ckeditor_uploader.urls")),
     path("admin/", admin.site.urls),

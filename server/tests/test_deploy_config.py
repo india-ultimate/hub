@@ -1,15 +1,24 @@
+import os
 import re
 import shutil
+import socket
 import subprocess
+import sys
 import tempfile
+import time
 import tomllib
 from pathlib import Path
 from typing import Any
+from urllib.request import urlopen
 
 import yaml
 from django.test import SimpleTestCase
+from django_prometheus.middleware import Metrics
+from prometheus_client import REGISTRY
 
 ROOT = Path(__file__).parents[2]
+# What a query adds to a metric family's name.
+SUFFIXES = ("_total", "_bucket", "_count", "_sum", "")
 
 
 def load(name: str) -> dict[str, Any]:
@@ -203,13 +212,24 @@ class TestAppStart(SimpleTestCase):
             stub = folder / command
             stub.write_text(f"#!/bin/sh\n{body}\n")
             stub.chmod(0o755)
+        self.metrics_dir = folder / "metrics"
+        self.metrics_dir.mkdir()
+        (self.metrics_dir / "counter_1.db").touch()  # from a previous boot
         self.exit_code = subprocess.run(  # noqa: S603
             ["/bin/bash", str(ROOT / "deploy/start.sh")],
-            env={"PATH": f"{folder}:/usr/bin:/bin", "HOME": str(folder), "LOG": str(log), **env},
+            env={
+                "PATH": f"{folder}:/usr/bin:/bin",
+                "HOME": str(folder),
+                "LOG": str(log),
+                "PROMETHEUS_MULTIPROC_DIR": str(self.metrics_dir),
+                **env,
+            },
             check=False,
         ).returncode
+        self.log = log.read_text().splitlines()
+        # Started in the background, so its place among the rest isn't fixed.
+        lines = [line for line in self.log if line != "python deploy/metrics.py"]
         # gunicorn's and curl's flags aren't the point here.
-        lines = log.read_text().splitlines()
         flagged = ("gunicorn ", "curl ")
         return [line.split(" ")[0] if line.startswith(flagged) else line for line in lines]
 
@@ -247,3 +267,65 @@ class TestAppStart(SimpleTestCase):
             ],
             self.start(),
         )
+
+    def test_the_metrics_exporter_adds_up_this_boot_s_workers(self) -> None:
+        self.start(DATABASE_URL="postgres://u:p@h:5432/db")
+        self.assertIn("python deploy/metrics.py", self.log)
+        (gunicorn,) = [line for line in self.log if line.startswith("gunicorn ")]
+        # Its hook drops a recycled worker's numbers.
+        self.assertIn("-c deploy/gunicorn.conf.py", gunicorn)
+        # A previous boot's counts would be added to this one's.
+        self.assertEqual([], list(self.metrics_dir.iterdir()))
+
+
+class TestMetrics(SimpleTestCase):
+    def test_fly_scrapes_the_exporter_on_app_machines_only(self) -> None:
+        config = load("fly.toml")
+        self.assertEqual(
+            {"port": 9091, "path": "/metrics", "processes": ["app"]}, config["metrics"]
+        )
+        # Not a service port, so not reachable from the internet.
+        for service in config["services"]:
+            ports = [service["internal_port"], *(p["port"] for p in service["ports"])]
+            self.assertNotIn(9091, ports)
+
+    def test_the_exporter_sums_every_worker(self) -> None:
+        folder = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, folder)
+        env = {**os.environ, "PROMETHEUS_MULTIPROC_DIR": str(folder)}
+        count = "from prometheus_client import Counter; Counter('hub_test', 'test').inc({})"
+        for n in (2, 3):  # two worker processes
+            worker = [sys.executable, "-c", count.format(n)]
+            subprocess.run(worker, env=env, check=True)  # noqa: S603
+
+        with socket.socket() as s:
+            s.bind(("127.0.0.1", 0))
+            port = s.getsockname()[1]
+        exporter = subprocess.Popen(  # noqa: S603
+            [sys.executable, str(ROOT / "deploy/metrics.py")],
+            env={**env, "METRICS_PORT": str(port)},
+        )
+        self.addCleanup(exporter.kill)
+        body = ""
+        for _ in range(50):
+            try:
+                with urlopen(f"http://127.0.0.1:{port}/metrics", timeout=1) as response:
+                    body = response.read().decode()
+                break
+            except OSError:
+                time.sleep(0.1)
+        self.assertIn("hub_test_total 5.0", body)
+
+    def test_the_dashboard_asks_for_metrics_the_app_has(self) -> None:
+        # A renamed metric would leave its panel empty without a word.
+        dashboard = (ROOT / "deploy/grafana/hub.json").read_text()
+        asked = set(re.findall(r"hub_django_\w+", dashboard))
+        Metrics.get_instance()  # the request metrics, made on first use
+        families = {m.name for m in REGISTRY.collect()}
+        missing = {
+            name
+            for name in asked
+            if not any(name.removesuffix(suffix) in families for suffix in SUFFIXES)
+        }
+        self.assertTrue(asked)
+        self.assertEqual(set(), missing)
