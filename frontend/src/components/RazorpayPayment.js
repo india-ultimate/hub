@@ -71,7 +71,10 @@ const RazorpayPayment = props => {
                 props.failureCallback(message);
               }
               setLoading(false);
-            }
+            },
+            onDismiss: () => setLoading(false),
+            // The payment may have gone through, so Pay stays off.
+            onUnconfirmed: props.setStatus
           });
 
           //   window.location = data.redirect_url;
