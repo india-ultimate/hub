@@ -286,7 +286,7 @@ class TestWebhook(TestCase):
         with (
             mock.patch(
                 "server.management.commands.sync_razorpay_transactions.get_transactions",
-                return_value=[{"status": "captured", "order_id": "order_hook"}],
+                return_value=[{"id": "pay_hook", "status": "captured", "order_id": "order_hook"}],
             ),
             mock.patch(
                 "server.management.commands.sync_razorpay_transactions.get_refunds",

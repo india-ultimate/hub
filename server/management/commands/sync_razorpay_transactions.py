@@ -84,10 +84,12 @@ class Command(BaseCommand):
         self, account: PaymentAccount | None, since: datetime.datetime | None, notify: bool
     ) -> None:
         order_ids_by_status: dict[str, set[str]] = {}
+        captured_payment_ids: dict[str, str] = {}
         for payment in get_transactions(since, account=account):
             razorpay_status = payment["status"]
             if razorpay_status == "captured":
                 status_value = "completed"
+                captured_payment_ids[payment["order_id"]] = payment["id"]
             elif razorpay_status in UNPAID_STATUSES:
                 status_value = "pending"
             else:
@@ -120,6 +122,7 @@ class Command(BaseCommand):
             if status == RazorpayTransaction.TransactionStatusChoices.COMPLETED:
                 n = qs.count()
                 for transaction in qs:
+                    transaction.payment_id = captured_payment_ids[transaction.order_id]
                     mark_transaction_completed(transaction)
                     # A payment Razorpay captured but whose callback never
                     # reached us still has to hand over what it bought.
