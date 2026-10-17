@@ -146,8 +146,23 @@ class TestRegistrationPageIntegration(RegistrationPageCase):
         self.player("Arjun", "Kumar", tier=None)
         self.open_phone()
         self.assert_text("No players ready yet", "[data-pay-bar]")
-        help_button = 'a[title="Access Help Center"]'
-        self.assertLessEqual(self.rect(help_button, "bottom"), self.rect("[data-pay-bar]", "top"))
+        self.assert_help_clears_the_bar()
+        # However tall wrapping text (a narrower phone, bigger fonts) makes it.
+        self.execute_script("document.querySelector('[data-pay-bar]').style.paddingTop = '80px'")
+        self.assert_help_clears_the_bar()
+
+    def assert_help_clears_the_bar(self) -> None:
+        # The button glides up (a 300ms transition), so a slow machine can
+        # measure it on the way.
+        def gap() -> float:
+            help_bottom = self.rect('a[title="Access Help Center"]', "bottom")
+            return self.rect("[data-pay-bar]", "top") - help_bottom
+
+        for _ in range(20):
+            if gap() >= 0:
+                return
+            self.sleep(0.1)
+        self.assertGreaterEqual(gap(), 0)
 
     def test_add_dialog_shows_photos(self) -> None:
         pia = self.player("Pia", "Pic", entry=False)  # on the series roster

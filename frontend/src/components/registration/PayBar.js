@@ -1,4 +1,4 @@
-import { Show } from "solid-js";
+import { onCleanup, onMount, Show } from "solid-js";
 
 import { inr } from "../../money";
 import ReasonButton from "./ReasonButton";
@@ -7,6 +7,19 @@ import ReasonButton from "./ReasonButton";
 // bottom on phones (the page pads for it, and index.css lifts the
 // floating buttons above it), inline at the end of the roster step otherwise.
 const PayBar = props => {
+  let bar;
+  // The lift is the bar's real height, which its wrapped text decides.
+  onMount(() => {
+    const style = document.body.style;
+    const observer = new ResizeObserver(() =>
+      style.setProperty("--pay-bar-height", `${bar.offsetHeight}px`)
+    );
+    observer.observe(bar, { box: "border-box" });
+    onCleanup(() => {
+      observer.disconnect();
+      style.removeProperty("--pay-bar-height");
+    });
+  });
   const c = () => props.checkout;
   const n = () => c().ready_ids.length;
   const notes = () =>
@@ -21,6 +34,7 @@ const PayBar = props => {
       .join(" · ");
   return (
     <div
+      ref={bar}
       data-pay-bar
       class="fixed inset-x-0 bottom-0 z-20 flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-900 sm:static sm:rounded-xl sm:border sm:border-blue-200 sm:bg-blue-50 sm:dark:border-blue-800 sm:dark:bg-blue-900/20"
     >
