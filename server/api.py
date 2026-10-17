@@ -1117,6 +1117,7 @@ def accreditation(
         acc.certificate = certificate
         acc.date = accreditation_data["date"]
         acc.level = accreditation_data.get("level", Accreditation.AccreditationLevel.STANDARD)
+        acc.wfdf_id = accreditation_data["wfdf_id"]
 
     try:
         acc.full_clean()

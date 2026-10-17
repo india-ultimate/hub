@@ -1028,6 +1028,23 @@ class TestAccreditation(ApiBaseTestCase):
         self.assertEqual(self.player.id, response_data["player"])
         self.assertTrue(response_data["is_valid"])
 
+    def test_a_new_certificate_keeps_the_wfdf_id_given_with_it(self) -> None:
+        def upload(wfdf_id: int | None) -> int:
+            data = {"date": "2026-01-01", "level": "ADV", "player_id": self.player.id}
+            certificate = SimpleUploadedFile("c.pdf", b"x", content_type="application/pdf")
+            return self.client.post(
+                path="/api/accreditation",
+                data={
+                    "accreditation": json.dumps({**data, "wfdf_id": wfdf_id}),
+                    "certificate": certificate,
+                },
+                content_type=MULTIPART_CONTENT,
+            ).status_code
+
+        self.assertEqual(200, upload(None))
+        self.assertEqual(200, upload(777))
+        self.assertEqual(777, Accreditation.objects.get(player=self.player).wfdf_id)
+
     def test_accreditation_duplicate(self) -> None:
         c = self.client
 
