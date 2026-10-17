@@ -305,7 +305,7 @@ class PublicPlayerSchema(Schema):
 class PublicPersonSchema(ModelSchema):
     class Meta:
         model = UCPerson
-        fields = ["first_name", "last_name", "image_url"]
+        fields = ["id", "first_name", "last_name", "image_url"]
 
 
 class PublicMatchScoreSchema(ModelSchema):

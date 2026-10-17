@@ -1641,6 +1641,8 @@ class TestTournaments(ApiBaseTestCase):
             id=valid_match.id
         )
         self.assertEqual(self.player2.ultimate_central_id, mvp)
+        # The director's spirit form starts from the saved MVP.
+        self.assertEqual(mvp, match["spirit_score_team_2"]["mvp"]["id"])
         self.assertEqual(2, match["self_spirit_score_team_1"]["rules"])
         self.assertEqual(2, match["self_spirit_score_team_1"]["fouls"])
         self.assertEqual("Good game!", match["self_spirit_score_team_1"]["comments"])
