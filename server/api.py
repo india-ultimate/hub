@@ -816,6 +816,8 @@ def edit_registration(
         player = Player.objects.get(id=registration.player_id)
     except Player.DoesNotExist:
         return 400, {"message": "Player does not exist"}
+    if not may_see(request.user, player):
+        return 400, {"message": "Only this player or their guardian can edit their profile"}
 
     player_data = PlayerFormSchema(**registration.model_dump()).model_dump()
     player_data["id"] = registration.player_id
@@ -1054,6 +1056,8 @@ def vaccination(
         player = Player.objects.get(id=vaccination.player_id)
     except Player.DoesNotExist:
         return 400, {"message": "Player does not exist"}
+    if not may_see(request.user, player):
+        return 400, {"message": "Only this player or their guardian can add their vaccination"}
 
     try:
         vaccine = player.vaccination
@@ -1093,6 +1097,8 @@ def accreditation(
         player = Player.objects.get(id=accreditation.player_id)
     except Player.DoesNotExist:
         return 400, {"message": "Player does not exist"}
+    if not may_see(request.user, player):
+        return 400, {"message": "Only this player or their guardian can add their accreditation"}
 
     try:
         acc = player.accreditation
@@ -1220,6 +1226,8 @@ def upsert_commentary_info(
         player = Player.objects.get(id=commentary_info.player_id)
     except Player.DoesNotExist:
         return 400, {"message": "Player does not exist"}
+    if not may_see(request.user, player):
+        return 400, {"message": "Only this player or their guardian can edit their commentary info"}
 
     com_info, _created = CommentaryInfo.objects.update_or_create(
         player=player, defaults=commentary_info.model_dump()
