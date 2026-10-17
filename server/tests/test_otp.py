@@ -252,17 +252,24 @@ class TestExpiry(OTPTestCase):
         self.assertEqual(response.status_code, 403)
         self.assertEqual(response.json()["message"], self.expired)
 
+    # Both edge tests stop the clock: a second passing mid-request on a slow
+    # machine would move the code to the other side of an edge.
     def test_a_code_from_the_future_is_refused(self) -> None:
-        ts = int(timezone.now().timestamp()) + 31
-        response = self.guess("a@x.com", self.code("a@x.com", ts), ts)
+        moment = timezone.now()
+        ts = int(moment.timestamp()) + 31
+        with at(moment):
+            response = self.guess("a@x.com", self.code("a@x.com", ts), ts)
         self.assertEqual(response.status_code, 403)
         self.assertEqual(response.json()["message"], self.expired)
 
     def test_a_code_just_inside_both_edges_signs_in(self) -> None:
+        moment = timezone.now()
         for offset in (-590, 25):
             self.client.logout()
-            ts = int(timezone.now().timestamp()) + offset
-            self.assertEqual(self.guess("a@x.com", self.code("a@x.com", ts), ts).status_code, 200)
+            ts = int(moment.timestamp()) + offset
+            with at(moment):
+                response = self.guess("a@x.com", self.code("a@x.com", ts), ts)
+            self.assertEqual(response.status_code, 200)
 
 
 class TestPruning(OTPTestCase):
