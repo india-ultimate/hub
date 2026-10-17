@@ -16,7 +16,15 @@ from django.test.utils import CaptureQueriesContext
 from django.utils.timezone import now
 
 from server.core.accounts import find_login_user
-from server.core.models import Guardianship, Player, UCPerson, User
+from server.core.models import (
+    Accreditation,
+    CommentaryInfo,
+    Guardianship,
+    Player,
+    UCPerson,
+    User,
+    Vaccination,
+)
 from server.duplicates.merge import merge_accounts
 from server.duplicates.models import EmailAlias
 from server.passkey_utils import ClientResponse
@@ -1040,6 +1048,7 @@ class TestAccreditation(ApiBaseTestCase):
 
         user = User.objects.create(username=username, email=email)
         player = Player.objects.create(date_of_birth="2000-01-01", user=user)
+        Guardianship.objects.create(relation="LG", user=self.user, player=player)
         data["player_id"] = player.id
         response = c.post(
             path="/api/accreditation",
@@ -1048,6 +1057,73 @@ class TestAccreditation(ApiBaseTestCase):
         )
         self.assertEqual(400, response.status_code)
         self.assertIn("Wfdf id already exists", response.json()["message"])
+
+
+class TestSomeoneElsesProfile(ApiBaseTestCase):
+    """Each of these takes the player's id from the request, so it must check
+    the requester may change that player."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        stranger = User.objects.create(username="stranger@foo.com", email="stranger@foo.com")
+        Player.objects.create(user=stranger, date_of_birth="1990-01-01")
+        self.client.force_login(stranger)
+
+    def post(self, path: str, data: dict[str, Any]) -> int:
+        return self.client.post(path, data=data, content_type=MULTIPART_CONTENT).status_code
+
+    def test_their_profile_cannot_be_edited(self) -> None:
+        response = self.client.put(
+            "/api/registration",
+            data={
+                "player_id": self.player.id,
+                "phone": "+1234567890",
+                "date_of_birth": "1990-01-01",
+                "gender": "F",
+                "match_up": "F",
+                "city": "Nowhere",
+                "first_name": "Hacked",
+                "last_name": "Quinn",
+            },
+            content_type="application/json",
+        )
+
+        self.assertEqual(400, response.status_code)
+        self.player.refresh_from_db()
+        self.assertEqual("John", self.player.user.first_name)
+        self.assertEqual("", self.player.city)
+
+    def test_their_vaccination_cannot_be_set(self) -> None:
+        data = {"is_vaccinated": False, "explain_not_vaccinated": "x", "player_id": self.player.id}
+        self.assertEqual(400, self.post("/api/vaccination", {"vaccination": json.dumps(data)}))
+        self.assertFalse(Vaccination.objects.filter(player=self.player).exists())
+
+    def test_their_accreditation_cannot_be_set(self) -> None:
+        data = {"date": "2026-01-01", "level": "ADV", "player_id": self.player.id, "wfdf_id": 1}
+        certificate = SimpleUploadedFile("c.pdf", b"x", content_type="application/pdf")
+        status = self.post(
+            "/api/accreditation", {"accreditation": json.dumps(data), "certificate": certificate}
+        )
+        self.assertEqual(400, status)
+        self.assertFalse(Accreditation.objects.filter(player=self.player).exists())
+
+    def test_their_commentary_info_cannot_be_set(self) -> None:
+        response = self.client.post(
+            "/api/commentary-info",
+            data={
+                "player_id": self.player.id,
+                "jersey_number": 7,
+                "ultimate_origin": "x",
+                "ultimate_attraction": "x",
+                "ultimate_fav_role": "x",
+                "ultimate_fav_exp": "x",
+                "interests": "x",
+                "fun_fact": "x",
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(400, response.status_code)
+        self.assertFalse(CommentaryInfo.objects.filter(player=self.player).exists())
 
 
 class TestWaiver(ApiBaseTestCase):
