@@ -227,10 +227,11 @@
 }
 
 /* The team registration pay bar is fixed to the bottom on phones (below
-   Tailwind's sm); lift the floating help and scroll-up buttons above it. */
+   Tailwind's sm); lift the floating help and scroll-up buttons above it, by
+   the height PayBar.js measures. */
 @media (max-width: 639px) {
   body:has([data-pay-bar]) [data-floating] {
-    transform: translateY(-6rem);
+    transform: translateY(calc(-1 * var(--pay-bar-height, 6rem)));
   }
 }
 
