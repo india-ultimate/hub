@@ -30,12 +30,22 @@ sudo nginx -t
 
 # Start the server using gunicorn
 export PATH="$HOME/.local/bin:$PATH"
+# Each worker writes its metrics here, and deploy/metrics.py adds them up for
+# Fly's scraper. Emptied first: a previous boot's counts would be added in.
+export PROMETHEUS_MULTIPROC_DIR="${PROMETHEUS_MULTIPROC_DIR:-/tmp/prometheus}"
+rm -rf "${PROMETHEUS_MULTIPROC_DIR:?}"/*
+mkdir -p "$PROMETHEUS_MULTIPROC_DIR"
+# Started again if it dies, for as long as gunicorn ($$, after the exec below) runs.
+while kill -0 $$ 2>/dev/null; do
+  python deploy/metrics.py || true
+  sleep 1
+done &
 # gthread + 300s: an agent turn holds its connection for the whole turn.
 # Counts come from fly.toml [env]. Recycling caps RSS growth (the PDF stack
 # alone is ~70MB on first use); jitter staggers the restarts.
 # Accepted: a turn in flight on a recycling worker can be cut short, and
 # graceful-timeout can't usefully exceed fly's 30s kill_timeout anyway.
-exec gunicorn -w "${GUNICORN_WORKERS:-4}" -k gthread --threads "${GUNICORN_THREADS:-6}" \
+exec gunicorn -c deploy/gunicorn.conf.py -w "${GUNICORN_WORKERS:-4}" -k gthread --threads "${GUNICORN_THREADS:-6}" \
   --timeout 300 --graceful-timeout 25 \
   --max-requests "${GUNICORN_MAX_REQUESTS:-1000}" \
   --max-requests-jitter "${GUNICORN_MAX_REQUESTS_JITTER:-100}" hub.wsgi
