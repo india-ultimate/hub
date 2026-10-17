@@ -6,7 +6,7 @@ from typing import Any, cast
 from django.test import TestCase
 from django.utils import timezone
 
-from server.core.models import User
+from server.core.models import Guardianship, Player, User
 from server.election.api import AuthenticatedHttpRequest
 from server.election.models import (
     Candidate,
@@ -758,3 +758,111 @@ class TestElectionNotification(TestCase):
 
         self.assertEqual(response.status_code, 200, response.content)
         self.assertIn("queued for sending to 1 eligible voters", response.json()["message"])
+
+
+class TestCastingVotes(TestCase):
+    def setUp(self) -> None:
+        self.voter = User.objects.create_user(username="v@example.com", email="v@example.com")
+        Player.objects.create(user=self.voter, date_of_birth="1990-01-01")
+        self.client.force_login(self.voter)
+        self.election = self.make_election(timezone.now() - timedelta(days=1), days_left=1)
+        self.candidates = [
+            Candidate.objects.create(election=self.election, user=User.objects.create_user(
+                username=f"c{i}@example.com", email=f"c{i}@example.com"
+            ), bio="-")
+            for i in range(2)
+        ]  # fmt: skip
+
+    def make_election(
+        self, start: Any, days_left: int, is_active: bool = True, voter: User | None = None
+    ) -> Election:
+        election = Election.objects.create(
+            title="E",
+            description="-",
+            start_date=start,
+            end_date=timezone.now() + timedelta(days=days_left),
+            is_active=is_active,
+        )
+        EligibleVoter.objects.create(election=election, user=voter or self.voter)
+        return election
+
+    def vote(
+        self, election: Election, token: str, ranks: list[tuple[int, int]] | None = None
+    ) -> Any:
+        ranks = ranks or [(self.candidates[0].id, 1), (self.candidates[1].id, 2)]
+        return self.client.post(
+            f"/api/election/{election.id}/vote/",
+            data={
+                "verification_token": token,
+                "choices": [{"candidate_id": c, "rank": r} for c, r in ranks],
+            },
+            content_type="application/json",
+        )
+
+    def token(self, election: Election) -> str:
+        return VoterVerification.generate_token(election.id, self.voter.id)
+
+    def test_a_vote_in_an_open_election_is_counted(self) -> None:
+        response = self.vote(self.election, self.token(self.election))
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertEqual(RankedVote.objects.count(), 1)
+
+    def test_votes_are_refused_before_the_election_opens(self) -> None:
+        election = self.make_election(timezone.now() + timedelta(days=1), days_left=2)
+        token = self.token(election)
+        self.assertEqual(self.client.get(f"/api/election/{election.id}/verify/").status_code, 400)
+        self.assertEqual(self.vote(election, token).status_code, 400)
+        self.assertFalse(RankedVote.objects.exists())
+
+    def test_votes_are_refused_after_the_election_closes(self) -> None:
+        election = self.make_election(timezone.now() - timedelta(days=2), days_left=-1)
+        token = self.token(election)
+        self.assertEqual(self.client.get(f"/api/election/{election.id}/verify/").status_code, 400)
+        self.assertEqual(self.vote(election, token).status_code, 400)
+        self.assertFalse(RankedVote.objects.exists())
+
+    def test_votes_are_refused_when_the_election_is_inactive(self) -> None:
+        self.election.is_active = False
+        self.election.save()
+        self.assertEqual(self.vote(self.election, self.token(self.election)).status_code, 400)
+
+    def test_a_guardian_cannot_vote_for_a_ward_after_the_election_closes(self) -> None:
+        election = self.make_election(timezone.now() - timedelta(days=2), days_left=-1)
+        ward_user = User.objects.create_user(username="w@example.com", email="w@example.com")
+        ward = Player.objects.create(user=ward_user, date_of_birth="2015-01-01")
+        Guardianship.objects.create(user=self.voter, player=ward, relation=Guardianship.Relation.MO)
+        EligibleVoter.objects.create(election=election, user=ward_user)
+        token = VoterVerification.generate_token(election.id, ward_user.id)
+        response = self.client.post(
+            f"/api/election/{election.id}/vote-for-ward/?ward_id={ward.id}",
+            data={
+                "verification_token": token,
+                "choices": [{"candidate_id": self.candidates[0].id, "rank": 1}],
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(RankedVote.objects.exists())
+
+    def test_a_bad_choice_leaves_no_ballot_and_the_voter_can_retry(self) -> None:
+        token = self.token(self.election)
+        other = self.make_election(timezone.now() - timedelta(days=1), days_left=1)
+        stray = Candidate.objects.create(election=other, user=self.voter, bio="-")
+        response = self.vote(self.election, token, [(self.candidates[0].id, 1), (stray.id, 2)])
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(RankedVote.objects.exists())
+        self.assertFalse(RankedVoteChoice.objects.exists())
+        self.assertTrue(VoterVerification.objects.filter(verification_token=token).exists())
+        self.assertEqual(self.vote(self.election, token).status_code, 200)
+
+    def test_repeated_ranks_leave_no_ballot(self) -> None:
+        token = self.token(self.election)
+        ranks = [(self.candidates[0].id, 1), (self.candidates[1].id, 1)]
+        self.assertEqual(self.vote(self.election, token, ranks).status_code, 400)
+        self.assertFalse(RankedVote.objects.exists())
+
+    def test_a_used_token_cannot_vote_again(self) -> None:
+        token = self.token(self.election)
+        self.assertEqual(self.vote(self.election, token).status_code, 200)
+        self.assertGreaterEqual(self.vote(self.election, token).status_code, 400)
+        self.assertEqual(RankedVote.objects.count(), 1)
