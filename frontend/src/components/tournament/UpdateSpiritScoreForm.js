@@ -3,6 +3,7 @@ import { createMutation, createQuery } from "@tanstack/solid-query";
 import { createSignal, Show } from "solid-js";
 
 import { fetchTournamentTeamBySlugV1, updateMatch } from "../../queries";
+import { spiritInitialValues, withSpiritComments } from "../../spirit";
 import Select from "../Select";
 import TextInput from "../TextInput";
 
@@ -32,38 +33,8 @@ const UpdateSpiritScoreForm = props => {
       )
   );
 
-  const initialValues = {
-    spirit_score_team_1: {
-      rules: 2,
-      fouls: 2,
-      fair: 2,
-      positive: 2,
-      communication: 2
-    },
-    spirit_score_team_2: {
-      rules: 2,
-      fouls: 2,
-      fair: 2,
-      positive: 2,
-      communication: 2
-    },
-    self_spirit_score_team_1: {
-      rules: 2,
-      fouls: 2,
-      fair: 2,
-      positive: 2,
-      communication: 2
-    },
-    self_spirit_score_team_2: {
-      rules: 2,
-      fouls: 2,
-      fair: 2,
-      positive: 2,
-      communication: 2
-    }
-  };
   const [_tournamentForm, { Form, Field }] = createForm({
-    initialValues,
+    initialValues: spiritInitialValues(props.match),
     validateOn: "touched",
     revalidateOn: "touched"
   });
@@ -88,7 +59,7 @@ const UpdateSpiritScoreForm = props => {
 
     updateSpiritScoreMutation.mutate({
       match_id: props?.match?.id,
-      body: values
+      body: withSpiritComments(values, props.match)
     });
   };
 

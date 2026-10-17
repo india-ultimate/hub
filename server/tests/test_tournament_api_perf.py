@@ -180,7 +180,7 @@ class TestMatchLists(TournamentApiTestCase):
         self.assertEqual("Great game", spirit["comments"])
         self.assertEqual("Great game", match["self_spirit_score_team_2"]["comments"])
         self.assertEqual({"id", "full_name"}, set(spirit["mvp_v2"]))
-        self.assertEqual({"first_name", "last_name", "image_url"}, set(spirit["mvp"]))
+        self.assertEqual({"id", "first_name", "last_name", "image_url"}, set(spirit["mvp"]))
         self.assertEqual(10, spirit["total"])
         suggested = match["suggested_score_team_1"]
         self.assertEqual(15, suggested["score_team_1"])
