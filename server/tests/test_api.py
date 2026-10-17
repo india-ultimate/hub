@@ -1296,6 +1296,14 @@ class TestValidateTransactions(ApiBaseTestCase):
         self.assertEqual(1, ManualTransaction.objects.filter(validated=False).count())
         self.assertFalse(ManualTransaction.objects.get(transaction_id="33680091811DC").validated)
 
+    def test_validate_unknown_transaction(self) -> None:
+        response = self.client.post(
+            path="/api/transactions/validate",
+            data={"transaction_id": "nope", "validation_comment": "x"},
+            content_type="application/json",
+        )
+        self.assertEqual(400, response.status_code)
+
 
 class TestCheckSubscriptions(ApiBaseTestCase, SubscriptionStatusTestCase):
     def setUp(self) -> None:

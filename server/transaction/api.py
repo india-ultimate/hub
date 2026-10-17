@@ -227,7 +227,7 @@ def validate_transaction(
 
     try:
         transaction = ManualTransaction.objects.get(transaction_id=data.transaction_id)
-    except Player.DoesNotExist:
+    except ManualTransaction.DoesNotExist:
         return 400, {"message": "Transaction does not exist"}
 
     transaction.validation_comment = data.validation_comment
