@@ -1,3 +1,4 @@
+import importlib.util
 import re
 import shutil
 import subprocess
@@ -109,6 +110,21 @@ class TestFlyConfig(SimpleTestCase):
             list(range(1, int(splits.group(1)) + 1)), job["strategy"]["matrix"]["group"]
         )
         self.assertIs(False, job["strategy"]["fail-fast"])
+
+    def test_ci_fits_in_the_free_plan_s_twenty_runners(self) -> None:
+        # More would queue, and a queued group finishes last.
+        jobs = yaml.safe_load((ROOT / ".github/workflows/test.yml").read_text())["jobs"]
+        groups = len(jobs["integration-tests"]["strategy"]["matrix"]["group"])
+        alongside = [name for name in jobs if "needs" not in jobs[name]]
+        self.assertGreaterEqual(groups, 15)
+        self.assertLessEqual(groups + len(alongside) - 1, 20)
+
+    def test_the_unit_tests_run_on_every_core(self) -> None:
+        jobs = yaml.safe_load((ROOT / ".github/workflows/test.yml").read_text())["jobs"]
+        command = next(
+            s["run"] for s in jobs["run-django-tests"]["steps"] if "pytest" in s.get("run", "")
+        )
+        self.assertIn("-n auto", command)
 
     def test_the_required_check_still_reports(self) -> None:
         # main's branch protection requires "run-integration-tests"; the matrix
@@ -246,4 +262,32 @@ class TestAppStart(SimpleTestCase):
                 "sudo nginx",
             ],
             self.start(),
+        )
+
+
+class TestDurations(SimpleTestCase):
+    def test_ci_timings_become_pytest_split_ids(self) -> None:
+        spec = importlib.util.spec_from_file_location(
+            "update_test_durations", ROOT / "scripts/update-test-durations.py"
+        )
+        assert spec and spec.loader  # noqa: S101 - narrows the type
+        script = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(script)
+        folder = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, folder)
+        (folder / "1").mkdir()
+        (folder / "1" / "1.xml").write_text(
+            "<testsuites><testsuite>"
+            '<testcase classname="server.tests.test_ui.TestIntegration" name="test_a" time="12.3456"/>'
+            '<testcase classname="server.tests.test_ui.TestIntegration" name="test_b" time="1">'
+            "<skipped/></testcase>"
+            '<testcase classname="server.tests.test_x" name="test_c" time="2"/>'
+            "</testsuite></testsuites>"
+        )
+        self.assertEqual(
+            {
+                "server/tests/test_ui.py::TestIntegration::test_a": 12.346,
+                "server/tests/test_x.py::test_c": 2.0,
+            },
+            script.durations(folder),
         )
