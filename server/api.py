@@ -1536,6 +1536,22 @@ def event_roster_player_search(
     return found if request.user.is_staff else found[:USER_SEARCH_LIMIT]
 
 
+def playing_roster_error(event: Event) -> message_response | None:
+    # Rostering here would skip paying the player fee.
+    if event.player_fee:
+        return {
+            "message": "This tournament has a player fee — add players from the team's registration page."
+        }
+
+    if not is_today_in_between_dates(
+        from_date=event.player_registration_start_date,
+        to_date=event.player_registration_end_date,
+    ):
+        return {"message": "Rostering has closed, you can't roster players now !"}
+
+    return None
+
+
 @api.post(
     "/tournament/{event_id}/team/{team_id}/roster",
     response={200: TournamentPlayerRegistrationSchema, 400: Response, 401: Response},
@@ -1553,17 +1569,8 @@ def add_player_to_roster(
     except (Event.DoesNotExist, Team.DoesNotExist, Tournament.DoesNotExist):
         return 400, {"message": "Team/Event/Tournament does not exist"}
 
-    # Rostering here would skip paying the player fee.
-    if event.player_fee:
-        return 400, {
-            "message": "This tournament has a player fee — add players from the team's registration page."
-        }
-
-    if not is_today_in_between_dates(
-        from_date=tournament.event.player_registration_start_date,
-        to_date=tournament.event.player_registration_end_date,
-    ):
-        return 400, {"message": "Rostering has closed, you can't roster players now !"}
+    if error := playing_roster_error(event):
+        return 400, error
 
     if team not in tournament.teams.all():
         return 400, {"message": f"{team.name} is not registered for ${event.title} !"}
@@ -1680,6 +1687,8 @@ def update_registration(
     # Taking a playing spot here has to pass the same caps as being added to
     # one; otherwise staff could be rostered onto a full event and promoted.
     if registration.is_playing and not was_playing:
+        if closed := playing_roster_error(event):
+            return 400, closed
         can_register, error = can_register_player_to_series_event(
             event=event, team=team, player=registration.player
         )

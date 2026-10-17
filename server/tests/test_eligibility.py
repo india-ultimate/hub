@@ -300,6 +300,39 @@ class TestRosterEligibilityThroughTheApi(TestCase):
         response = self.add(self.one_off, nobody, is_playing=True)
         self.assertEqual(200, response.status_code, response.content)
 
+    def test_a_staff_entry_cannot_become_a_player_without_paying_the_fee(self) -> None:
+        coach = self.member("coach@example.com", None)
+        registration = Registration.objects.get(
+            id=self.add(self.one_off, coach, is_playing=False).json()["id"]
+        )
+        Event.objects.filter(pk=self.one_off.pk).update(player_fee=100000)
+        response = self.promote(registration)
+        self.assertEqual(400, response.status_code)
+        self.assertIn("registration page", response.json()["message"])
+        registration.refresh_from_db()
+        self.assertFalse(registration.is_playing)
+
+    def test_a_staff_entry_cannot_become_a_player_once_rostering_closed(self) -> None:
+        coach = self.member("coach@example.com", None)
+        registration = Registration.objects.get(
+            id=self.add(self.one_off, coach, is_playing=False).json()["id"]
+        )
+        Event.objects.filter(pk=self.one_off.pk).update(
+            player_registration_end_date=today() - datetime.timedelta(days=1)
+        )
+        response = self.promote(registration)
+        self.assertEqual(400, response.status_code)
+        self.assertIn("closed", response.json()["message"])
+        registration.refresh_from_db()
+        self.assertFalse(registration.is_playing)
+
+    def promote(self, registration: Registration) -> Any:
+        return self.client.put(
+            f"/api/tournament/{registration.event_id}/team/{self.team.id}/roster/{registration.id}",
+            data={"is_playing": True},
+            content_type="application/json",
+        )
+
     def test_editing_a_staff_entry_into_a_player_is_checked(self) -> None:
         self.one_off.is_subscription_needed = True
         self.one_off.save()

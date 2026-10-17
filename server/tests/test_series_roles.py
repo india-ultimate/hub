@@ -1,5 +1,6 @@
 """A place on a series roster is decided by the role, not by a flag."""
 
+import datetime
 from typing import Any
 
 from django.test import TestCase
@@ -10,6 +11,7 @@ from server.series.models import Role, Series, SeriesRegistration, SeriesRosterI
 from server.series.utils import change_series_role, register_player
 from server.subscription.models import Subscription, SubscriptionPlan, SubscriptionType
 from server.tournament.models import Event, Registration, Tournament
+from server.utils import today
 
 from .test_eligibility import make_series
 from .test_subscription_model import make_player
@@ -150,8 +152,8 @@ class TestEventCapOnRoleChange(TestCase):
             end_date="2026-11-03",
             team_registration_start_date="2026-10-01",
             team_registration_end_date="2026-10-10",
-            player_registration_start_date="2026-10-01",
-            player_registration_end_date="2026-10-10",
+            player_registration_start_date=today() - datetime.timedelta(days=1),
+            player_registration_end_date=today() + datetime.timedelta(days=10),
             series=self.series,
         )
         self.tournament = Tournament.objects.create(event=self.event)
