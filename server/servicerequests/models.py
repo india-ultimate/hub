@@ -147,7 +147,7 @@ Updated: {service_request.updated_at.strftime('%B %d, %Y at %I:%M %p')}
         if service_request.service_players.exists():
             plain_message += "Players Affected:\n"
             for player in service_request.service_players.all():
-                plain_message += f"- {player.user.get_full_name()} ({player.user.email})\n"
+                plain_message += f"- {player.user.get_full_name()}\n"
             plain_message += "\n"
 
         if service_request.status == ServiceRequestStatus.APPROVED:
