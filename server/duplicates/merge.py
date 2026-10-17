@@ -265,13 +265,14 @@ def resolvable_fields() -> tuple[frozenset[str], frozenset[str]]:
     the two cannot drift apart.
 
     email is absent by construction: username is the address and sign in
-    resolves on it, so an edit here would lock the person out.
+    resolves on it, so an edit here would lock the person out. The picture
+    isn't on the form, but either account's upload may be kept.
     """
     from server.schema import PlayerFormSchema, UserFormSchema
 
     return (
         frozenset(UserFormSchema.model_fields),
-        frozenset(PlayerFormSchema.model_fields) - NOT_RESOLVABLE,
+        frozenset(PlayerFormSchema.model_fields) - NOT_RESOLVABLE | {"profile_pic_url"},
     )
 
 

@@ -211,6 +211,51 @@ class TestRegistration(ApiBaseTestCase):
         self.player.refresh_from_db()
         self.assertFalse(self.player.sponsored, "a player set their own fee discount")
 
+    def test_editing_a_profile_keeps_its_picture(self) -> None:
+        """The form has no picture field, so the picture is never sent."""
+        self.player.profile_pic_url = "https://res.cloudinary.com/x/me.jpg"
+        self.player.save()
+
+        response = self.client.put(
+            "/api/registration",
+            data={
+                "player_id": self.player.id,
+                "phone": "+1234567890",
+                "date_of_birth": "1990-01-01",
+                "gender": "F",
+                "match_up": "F",
+                "city": "Bangalore",
+                "first_name": "Nora",
+                "last_name": "Quinn",
+            },
+            content_type="application/json",
+        )
+
+        self.assertEqual(200, response.status_code)
+        self.player.refresh_from_db()
+        self.assertEqual("https://res.cloudinary.com/x/me.jpg", self.player.profile_pic_url)
+
+    def test_the_picture_is_set_only_by_uploading_one(self) -> None:
+        response = self.client.put(
+            "/api/registration",
+            data={
+                "player_id": self.player.id,
+                "phone": "+1234567890",
+                "date_of_birth": "1990-01-01",
+                "gender": "F",
+                "match_up": "F",
+                "city": "Bangalore",
+                "first_name": "Nora",
+                "last_name": "Quinn",
+                "profile_pic_url": "https://elsewhere.example/tracker.gif",
+            },
+            content_type="application/json",
+        )
+
+        self.assertEqual(200, response.status_code)
+        self.player.refresh_from_db()
+        self.assertIsNone(self.player.profile_pic_url)
+
     def test_a_player_cannot_choose_their_iu_id(self) -> None:
         """The number is printed on waivers and certificates. A self-chosen
         one -- IU-22-0001 to look like a founding member -- is forgery."""
