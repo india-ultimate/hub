@@ -309,6 +309,10 @@ class TestStatusPage(MergeFlowTestCase):
             self.assertNotIn("email", profile)
             self.assertNotIn("password", profile)
 
+    def test_the_review_step_can_keep_either_picture(self) -> None:
+        _, player_fields = resolvable_fields()
+        self.assertIn("profile_pic_url", player_fields)
+
 
 class TestWhereYouStand(MergeFlowTestCase):
     def test_a_signed_in_outsider_is_told_which_account_they_are_in(self) -> None:

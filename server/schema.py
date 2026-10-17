@@ -518,7 +518,9 @@ class PlayerFormSchema(ModelSchema):
         # a row came from, and iu_id is printed on waivers and
         # certificates -- a self-chosen one is identity forgery. All three are
         # administrative and none may be set by the person registering, so
-        # they are not input fields at all.
+        # they are not input fields at all. The picture is set only by
+        # uploading one, and the form doesn't send it: as a field here, every
+        # profile edit would save it as empty.
         exclude = [
             "user",
             "teams",
@@ -527,6 +529,7 @@ class PlayerFormSchema(ModelSchema):
             "sponsored",
             "imported_data",
             "iu_id",
+            "profile_pic_url",
         ]
         fields_optional = "__all__"
 
