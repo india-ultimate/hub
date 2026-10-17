@@ -420,6 +420,71 @@ class TestRegistration(ApiBaseTestCase):
         self.assertEqual(user.username, "nora-quinn")
         self.assertEqual(user.email, "nora-quinn")
 
+    def test_registering_someone_else_leaves_their_account_details(self) -> None:
+        """An address that already has an account is that person's: their
+        name and phone are theirs to change, not whoever registers them."""
+        User.objects.create(
+            username="vic@x.com", email="vic@x.com", first_name="Victoria", phone="+91123"
+        )
+        response = self.client.post(
+            "/api/registration/others",
+            data={
+                "email": "vic@x.com",
+                "phone": "+919999999999",
+                "date_of_birth": "1990-01-01",
+                "gender": "F",
+                "match_up": "F",
+                "city": "Bangalore",
+                "first_name": "Zed",
+                "last_name": "Typo",
+            },
+            content_type="application/json",
+        )
+
+        self.assertEqual(200, response.status_code)
+        vic = User.objects.get(username="vic@x.com")
+        self.assertEqual(("Victoria", "+91123"), (vic.first_name, vic.phone))
+
+    def test_registering_someone_who_only_signed_in_names_them(self) -> None:
+        User.objects.create(username="new@x.com", email="new@x.com")
+        response = self.client.post(
+            "/api/registration/others",
+            data={
+                "email": "new@x.com",
+                "phone": "+919999999999",
+                "date_of_birth": "1990-01-01",
+                "gender": "F",
+                "match_up": "F",
+                "city": "Bangalore",
+                "first_name": "Nora",
+                "last_name": "Quinn",
+            },
+            content_type="application/json",
+        )
+
+        self.assertEqual(200, response.status_code)
+        user = User.objects.get(username="new@x.com")
+        self.assertEqual(("Nora", "Quinn"), (user.first_name, user.last_name))
+
+    def test_two_children_with_one_name_and_no_email_are_two_players(self) -> None:
+        dob = str((now() - datetime.timedelta(days=15 * 365)).date())
+        child = {
+            "phone": "+1234567890",
+            "date_of_birth": dob,
+            "gender": "M",
+            "match_up": "M",
+            "city": "Bangalore",
+            "first_name": "Aarav",
+            "last_name": "Shah",
+            "relation": "MO",
+        }
+        for _ in range(2):
+            response = self.client.post(
+                "/api/registration/ward", data=child, content_type="application/json"
+            )
+            self.assertEqual(200, response.status_code, response.content)
+        self.assertEqual(2, Player.objects.filter(user__first_name="Aarav").count())
+
     def test_register_guardian_non_minor_fail(self) -> None:
         c = self.client
         self.user.player_profile.delete()

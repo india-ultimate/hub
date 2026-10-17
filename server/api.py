@@ -844,7 +844,10 @@ def do_register(
     user: User,
     registration: RegistrationSchema | RegistrationOthersSchema | RegistrationWardSchema,
     guardian: User | None = None,
+    own_account: bool = True,
 ) -> tuple[int, Player | message_response]:
+    """own_account is False when registering someone else: what their
+    account already has is theirs, so the form only fills in blanks."""
     try:
         Player.objects.get(user=user)
         return 400, {"message": "Player already exists"}
@@ -867,7 +870,8 @@ def do_register(
 
     user_data = UserFormSchema(**registration.model_dump()).model_dump()
     for attr, value in user_data.items():
-        setattr(user, attr, value)
+        if own_account or not getattr(user, attr):
+            setattr(user, attr, value)
     user.save()
 
     if player.ultimate_central_id is None:
@@ -901,7 +905,7 @@ def register_others(
         first_name=registration.first_name,  # type: ignore[attr-defined]
         last_name=registration.last_name,  # type: ignore[attr-defined]
     )
-    return do_register(user, registration)
+    return do_register(user, registration, own_account=False)
 
 
 @api.post("/registration/ward", response={200: PlayerSchema, 400: Response})
@@ -914,7 +918,13 @@ def register_ward(
         return 400, {"message": "Use the players form instead of the guardians form"}
 
     if email is None:
-        email = slugify(f"{registration.first_name} {registration.last_name}")  # type: ignore[attr-defined]
+        # A child without an address gets a name for one, and another child
+        # can have the same name.
+        name = slugify(f"{registration.first_name} {registration.last_name}")  # type: ignore[attr-defined]
+        email, n = name, 1
+        while User.objects.filter(username=email).exists():
+            n += 1
+            email = f"{name}-{n}"
     user = resolve_login_user(
         email,
         phone=registration.phone,  # type: ignore[attr-defined]
@@ -924,7 +934,7 @@ def register_ward(
     # An address the guardian's own account absorbed in a merge is them.
     if user.pk == request.user.pk:
         return 400, {"message": "Use the players form instead of the guardians form"}
-    return do_register(user, registration, guardian=request.user)
+    return do_register(user, registration, guardian=request.user, own_account=False)
 
 
 @api.post("/registration/guardian", response={200: PlayerSchema, 400: Response})
