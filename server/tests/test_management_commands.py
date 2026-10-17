@@ -845,6 +845,30 @@ class TestSubscriptionCommandFailures(TestCase):
             RazorpayTransaction.objects.get(order_id="order_refundable").status,
         )
 
+    def test_sync_razorpay_transactions_stores_the_captured_payment_id(self) -> None:
+        player = make_player("payer@x.com")
+        RazorpayTransaction.objects.create(
+            order_id="order_captured",
+            amount=75000,
+            currency="INR",
+            user=player.user,
+            status=RazorpayTransaction.TransactionStatusChoices.PENDING,
+        )
+        payments = [
+            # A failed try and the capture that followed share one order.
+            {"id": "pay_failed", "order_id": "order_captured", "status": "failed"},
+            {"id": "pay_captured", "order_id": "order_captured", "status": "captured"},
+        ]
+        command = "server.management.commands.sync_razorpay_transactions"
+        with mock.patch(f"{command}.get_transactions", return_value=payments), mock.patch(
+            f"{command}.get_refunds", return_value=[]
+        ), mock.patch(f"{command}.apply_transaction"):
+            self.run_command("sync_razorpay_transactions")
+
+        transaction = RazorpayTransaction.objects.get(order_id="order_captured")
+        self.assertEqual(RazorpayTransaction.TransactionStatusChoices.COMPLETED, transaction.status)
+        self.assertEqual("pay_captured", transaction.payment_id)
+
 
 class TestSubscriptionMigrationReport(TestCase):
     def setUp(self) -> None:
