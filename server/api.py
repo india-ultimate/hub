@@ -568,8 +568,8 @@ def update_team_name(
     unique_slug = slug
 
     number = 1
-    while Team.objects.filter(slug=unique_slug).exists():
-        unique_slug = f"{unique_slug}-{number}"
+    while Team.objects.filter(slug=unique_slug).exclude(id=team.id).exists():
+        unique_slug = f"{slug}-{number}"
         number += 1
 
     team.slug = unique_slug
