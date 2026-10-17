@@ -5332,4 +5332,4 @@ resolved_reference = "f546edc5b3c2c16e8d5755064540400d77c68a40"
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11.5"
-content-hash = "5f83a792ff44a34c1b8ca5e055850ae68208d3ed8bd8edf21d8bc92c450ecb83"
+content-hash = "dfbd2d4ed189c1ec77a92a245ec6fb068a70ba56887e47a1162576dab2d03c99"

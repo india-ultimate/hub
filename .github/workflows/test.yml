@@ -70,21 +70,24 @@ jobs:
       - name: Install dependencies
         run: poetry install --no-root --with=dev
 
+      # One process per core: each gets its own copy of the test database.
       - name: Run Django unit tests
         env:
           TOPSCORE_CLIENT_ID: "fake-client-id"
           TOPSCORE_CLIENT_SECRET: "fake-client-secret"
           TOPSCORE_SITE_SLUG: "upai"
         run: |
-          poetry run pytest --disable-warnings -k 'not Integration'
+          poetry run pytest --disable-warnings -k 'not Integration' -n auto
 
   integration-tests:
     runs-on: ubuntu-latest
-    # Three runners, each with a third of the browser tests by .test_durations.
+    # Fifteen runners, balanced by .test_durations (scripts/update-test-durations
+    # refreshes it). Each starts its own servers, on fixed ports, so they can't
+    # share a runner.
     strategy:
       fail-fast: false
       matrix:
-        group: [1, 2, 3]
+        group: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
     steps:
       - uses: actions/checkout@v3
 
@@ -122,8 +125,17 @@ jobs:
         # A fresh Firefox's first command now and then loses its connection to
         # geckodriver ("Remote end closed connection"); only that is retried.
         run: |
-          poetry run pytest --disable-warnings -k Integration --firefox --splits 3 --group ${{ matrix.group }} \
+          poetry run pytest --disable-warnings -k Integration --firefox --splits 15 --group ${{ matrix.group }} \
+            --splitting-algorithm least_duration --junitxml=durations/${{ matrix.group }}.xml \
             --reruns 2 --only-rerun "ProtocolError|RemoteDisconnected"
+
+      - name: Upload test durations
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: durations-${{ matrix.group }}
+          path: durations/
+          retention-days: 7
 
       - name: Upload selenium base logs as artifacts
         if: failure() # Upload the artifact even if a previous step fails
@@ -167,8 +179,17 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+      - uses: docker/setup-buildx-action@v3
+      # Layers whose inputs didn't change come from the last build.
       - name: Build docker image
-        run: docker build --tag india-ultimate/hub .
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: india-ultimate/hub:latest
+          cache-from: type=gha
+          # A fork's PR can read the cache but not write it.
+          cache-to: type=gha,mode=max,ignore-error=true
       - name: Run the migrations
         run: docker run india-ultimate/hub:latest python manage.py migrate
       - name: Run the deploy checks
