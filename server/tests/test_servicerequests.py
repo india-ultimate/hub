@@ -134,6 +134,24 @@ class ServiceRequestSignalTest(TestCase):
         self.assertIn("🎉 Great news! Your service request has been approved", email.body)
         self.assertIn("text/html", email.alternatives[0][1])  # type: ignore[union-attr]
 
+    def test_email_lists_affected_players_by_name_only(self) -> None:
+        service_request = ServiceRequest.objects.create(
+            user=self.user,
+            type=ServiceRequestType.REQUEST_SPONSORED_SUBSCRIPTION,
+            season=self.season,
+        )
+        service_request.service_players.add(self.player)
+        mail.outbox = []
+
+        service_request.status = ServiceRequestStatus.APPROVED
+        service_request.save()
+
+        email = mail.outbox[0]
+        html = email.alternatives[0][0]  # type: ignore[union-attr]
+        self.assertIn("Players Affected", email.body)
+        self.assertNotIn(f"({self.user.email})", email.body)
+        self.assertNotIn(f"({self.user.email})", str(html))
+
     def test_email_sent_on_rejection(self) -> None:
         """Test that an email is sent when a service request is rejected"""
         # Clear the outbox
