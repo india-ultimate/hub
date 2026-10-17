@@ -19,8 +19,9 @@ import {
   fetchMyFormResponses,
   submitFormResponse
 } from "../../queries";
+import { openCheckout } from "../../razorpay";
 import { useStore } from "../../store";
-import { fetchUserData, getCookie } from "../../utils";
+import { fetchUserData } from "../../utils";
 import Breadcrumbs from "../Breadcrumbs";
 
 const FormView = () => {
@@ -71,36 +72,20 @@ const FormView = () => {
     myResponsesQuery.refetch();
   };
 
-  const openRazorpay = order => {
-    const paymentObject = new window.Razorpay({
-      ...order,
-      handler: response => {
-        fetch("/api/transactions/razorpay/callback", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-CSRFToken": getCookie("csrftoken")
-          },
-          body: JSON.stringify(response),
-          credentials: "same-origin"
-        }).then(async res => {
-          if (res.ok) {
-            fetchUserData(userFetchSuccess, userFetchFailure);
-            finishSuccess();
-          } else {
-            const body = await res.json().catch(() => ({}));
-            setStatus(`Error: ${body.message || res.statusText}`);
-            setSubmitting(false);
-          }
-        });
-      }
+  const openRazorpay = order =>
+    openCheckout(order, {
+      onSuccess: () => {
+        fetchUserData(userFetchSuccess, userFetchFailure);
+        finishSuccess();
+      },
+      onFailure: message => {
+        setStatus(`Error: ${message}`);
+        setSubmitting(false);
+      },
+      onDismiss: () => setSubmitting(false),
+      // The payment may have gone through, so Submit stays off.
+      onUnconfirmed: setStatus
     });
-    paymentObject.on("payment.failed", response => {
-      setStatus(`Error: ${response.error.description}`);
-      setSubmitting(false);
-    });
-    paymentObject.open();
-  };
 
   const handleSubmit = async e => {
     e.preventDefault();
