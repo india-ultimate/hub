@@ -33,6 +33,25 @@ class TestProductionSettings(SimpleTestCase):
     def test_staging_runs_on_sqlite(self) -> None:
         self.assertEqual(0, self.load(FLY_APP_NAME="upai-hub-staging").returncode)
 
+    def test_production_counts_its_queries(self) -> None:
+        # The plain engine would leave every database metric at zero.
+        script = "import hub.production as s; print(s.DATABASES['default']['ENGINE'])"
+        result = subprocess.run(  # noqa: S603
+            [sys.executable, "-c", script],
+            env={
+                **os.environ,
+                "FLY_APP_NAME": "upai-hub",
+                "DATABASE_URL": "postgres://u:p@h:5432/db",
+            },
+            cwd=Path(__file__).parents[2],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(
+            "django_prometheus.db.backends.postgresql", result.stdout.strip(), result.stderr
+        )
+
     def test_production_keeps_its_connections(self) -> None:
         script = (
             "import hub.production as s; d = s.DATABASES['default']; "

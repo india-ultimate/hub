@@ -81,6 +81,13 @@ kill_timeout = "30s"
       # Fly sends the machine's IP, which Debian's default nginx site would answer.
       Host = "hub.indiaultimate.org"
 
+# Scraped by Fly into its Prometheus over the private network, so not a
+# public port. deploy/grafana/hub.json is a dashboard of them.
+[metrics]
+  port = 9091
+  path = "/metrics"
+  processes = ["app"]
+
 # Fly's default gives up after 10 failures, e.g. through a long Postgres
 # outage, and then no emails go out and no nightly jobs run.
 [[restart]]
