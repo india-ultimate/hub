@@ -131,3 +131,34 @@ class TestAdminsArePrivate(TestCase):
             sorted(a["id"] for a in response.json()["admins"]), sorted([self.admin.id, other.id])
         )
         self.assert_no_addresses(response.content)
+
+
+class TestTeamRename(TestCase):
+    def setUp(self) -> None:
+        self.me = user("me")
+        self.team = Team.objects.create(
+            name="No Fly Zone", slug="no-fly-zone", category="Club", state_ut="TN", city="Chennai"
+        )
+        self.team.admins.add(self.me)
+        self.client.force_login(self.me)
+
+    def rename(self, name: str) -> str | None:
+        body = {"id": str(self.team.id), "name": name}
+        response = self.client.put("/api/teams/edit-name", body, content_type="application/json")
+        self.assertEqual(200, response.status_code)
+        self.team.refresh_from_db()
+        return self.team.slug
+
+    def test_a_trivial_rename_keeps_the_slug(self) -> None:
+        self.assertEqual("no-fly-zone", self.rename("No Fly Zone!"))
+
+    def test_a_taken_slug_gets_one_number(self) -> None:
+        Team.objects.create(name="Other", slug="flyers", category="Club")
+        Team.objects.create(name="Other 2", slug="flyers-1", category="Club")
+        self.assertEqual("flyers-2", self.rename("Flyers"))
+
+    def test_a_numbered_slug_is_kept_when_still_right(self) -> None:
+        Team.objects.create(name="Other", slug="flyers", category="Club")
+        self.team.slug = "flyers-1"
+        self.team.save()
+        self.assertEqual("flyers-1", self.rename("Flyers"))
