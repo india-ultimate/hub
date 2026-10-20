@@ -12,6 +12,7 @@ from django.db.models.functions import Coalesce
 from django.http import HttpRequest
 from django.shortcuts import get_object_or_404
 from django.template.loader import render_to_string
+from django.utils import timezone
 from ninja import Router
 from ninja.files import UploadedFile
 from ninja.pagination import PageNumberPagination, paginate
@@ -57,6 +58,7 @@ Sort = Literal["relevance", "newest", "upvotes"]
 PAGE_SIZE = 20
 DUPLICATE_NAME = "A category with that name already exists"
 MAX_ORDER = 32767  # what a PositiveSmallIntegerField holds
+TITLE_MAX_LENGTH = 200
 
 
 def _count(rows: QuerySet[Any]) -> Coalesce:
@@ -387,19 +389,28 @@ def update_ticket(
     if request.user.is_staff and (error := _category_error(data.category, ticket.category_id)):
         return 400, {"message": error}
 
+    # The creator and staff can fix the title and description
+    if is_creator or request.user.is_staff:
+        for field in ("title", "description"):
+            if getattr(data, field) is None:
+                continue
+            value = getattr(data, field).strip()
+            if not value:
+                return 400, {"message": f"The {field} can't be empty"}
+            if field == "title" and len(value) > TITLE_MAX_LENGTH:
+                return 400, {"message": f"The title can be at most {TITLE_MAX_LENGTH} characters"}
+            if value != getattr(ticket, field):
+                setattr(ticket, field, value)
+                ticket.edited_at = timezone.now()
+
     # The creator and the handlers can set the status; handlers also the priority,
-    # and only staff the rest
+    # and only staff the category
     if data.status:
         ticket.status = data.status
     if is_handler and data.priority:
         ticket.priority = data.priority
-    if request.user.is_staff:
-        if data.title:
-            ticket.title = data.title
-        if data.description:
-            ticket.description = data.description
-        if data.category:
-            ticket.category_id = data.category
+    if request.user.is_staff and data.category:
+        ticket.category_id = data.category
 
     # Both the creator and staff can hide a ticket, or show it again
     if data.is_private is not None and (is_creator or request.user.is_staff):

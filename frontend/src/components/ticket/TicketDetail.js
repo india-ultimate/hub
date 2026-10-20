@@ -33,6 +33,7 @@ import ErrorAlert from "../alerts/Error";
 import Breadcrumbs from "../Breadcrumbs";
 import FileInput from "../FileInput";
 import Assignees from "./Assignees";
+import Description from "./Description";
 import UpvoteButton from "./UpvoteButton";
 
 const card =
@@ -96,10 +97,11 @@ const TicketDetail = () => {
   const isCreator = () => me() && me().id === ticket()?.created_by.id;
   const canManage = () => isStaff() || ticket()?.can_handle || isCreator();
 
-  const refresh = () => {
-    queryClient.invalidateQueries(["ticket", params.id]);
-    queryClient.invalidateQueries(["tickets"]);
-  };
+  const refresh = () =>
+    Promise.all([
+      queryClient.invalidateQueries(["ticket", params.id]),
+      queryClient.invalidateQueries(["tickets"])
+    ]);
 
   const replyMutation = createMutation({
     mutationFn: data => addTicketMessage(params.id, data),
@@ -344,17 +346,7 @@ const TicketDetail = () => {
               </aside>
 
               <div class="space-y-4 lg:order-1 lg:col-span-2">
-                <section class={card} aria-labelledby="description-heading">
-                  <h2
-                    id="description-heading"
-                    class="text-base font-semibold text-gray-900 dark:text-white"
-                  >
-                    Description
-                  </h2>
-                  <p class="mt-2 whitespace-pre-wrap break-words text-gray-800 dark:text-gray-200">
-                    {ticket().description}
-                  </p>
-                </section>
+                <Description class={card} ticket={ticket()} onSaved={refresh} />
 
                 <section class={card} aria-labelledby="conversation-heading">
                   <h2

@@ -96,16 +96,24 @@ class TicketDetailSchema(TicketCategoryFields):
     has_upvoted: bool
     created_at: datetime
     updated_at: datetime
+    edited_at: datetime | None = None
     created_by: UserSchema
     assignees: list[AssigneeSchema]
     messages: list[TicketMessageSchema]
     can_handle: bool
+    # The title and description: only their author and staff
+    can_edit: bool
     # Slugs, so the assignee picker can list these committees first
     routed_committees: list[str]
 
     @staticmethod
     def resolve_can_handle(ticket: Ticket, context: dict[str, Any]) -> bool:
         return can_handle(context["request"].user, ticket)
+
+    @staticmethod
+    def resolve_can_edit(ticket: Ticket, context: dict[str, Any]) -> bool:
+        user = context["request"].user
+        return bool(user.is_staff or ticket.created_by_id == user.id)
 
     @staticmethod
     def resolve_routed_committees(ticket: Ticket) -> list[str]:

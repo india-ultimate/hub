@@ -78,6 +78,8 @@ class Ticket(models.Model):
     upvoters = models.ManyToManyField(User, blank=True, related_name="upvoted_tickets")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    # Its title or description's last change; updated_at moves with the status too.
+    edited_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self) -> str:
         return f"{self.id} - {self.title}"
