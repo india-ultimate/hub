@@ -33,7 +33,7 @@ from server.subscription import sponsorship
 from server.subscription.models import Subscription, SubscriptionPlan, SubscriptionType
 from server.tests.base import ApiBaseTestCase, create_pool, fake_id, fake_order, start_tournament
 from server.tests.test_subscription import SubscriptionStatusTestCase
-from server.tournament.models import Match, UCRegistration
+from server.tournament.models import Match, Registration, SpiritScore, UCRegistration
 from server.transaction.models import (
     ManualTransaction,
     RazorpayTransaction,
@@ -1736,6 +1736,114 @@ class TestTournaments(ApiBaseTestCase):
             content_type="application/json",
         )
         self.assertEqual(401, response.status_code)
+
+    def _team_1_vs_2_match(self, status: str = Match.Status.COMPLETED) -> Match:
+        match = (
+            Match.objects.filter(tournament=self.tournament)
+            .filter(team_1=self.teams[0])
+            .filter(team_2=self.teams[1])[0]
+        )
+        match.status = status
+        match.save()
+        return match
+
+    def _submit_spirit(
+        self, match: Match, opponent: dict[str, Any] | None = None, **own: Any
+    ) -> Any:
+        scores = {"rules": 2, "fouls": 2, "fair": 2, "positive": 2, "communication": 2}
+        self.client.force_login(self.user)
+        return self.client.post(
+            f"/api/match/{match.id}/submit-spirit-score",
+            data={
+                "opponent": {**scores, **(opponent or {})},
+                "self": {**scores, **own},
+                "team_id": self.teams[0].id,
+            },
+            content_type="application/json",
+        )
+
+    def test_submit_spirit_score_rejects_scores_outside_0_to_4(self) -> None:
+        match = self._team_1_vs_2_match()
+        for bad in (5, -1):
+            for side in ("opponent", "self"):
+                if side == "opponent":
+                    response = self._submit_spirit(match, opponent={"fair": bad})
+                else:
+                    response = self._submit_spirit(match, fair=bad)
+                self.assertEqual(422, response.status_code, (side, bad))
+        self.assertEqual(0, SpiritScore.objects.count())
+        response = self._submit_spirit(match, opponent={"rules": 0, "fouls": 4})
+        self.assertEqual(200, response.status_code)
+
+    def test_submit_spirit_score_rejects_overlong_comments(self) -> None:
+        response = self._submit_spirit(self._team_1_vs_2_match(), comments="x" * 501)
+        self.assertEqual(422, response.status_code)
+
+    def test_submit_spirit_score_rejects_bad_mvp_ids_without_saving(self) -> None:
+        match = self._team_1_vs_2_match()
+        own_team_person = str(self.player.ultimate_central_id)
+        for key in ("mvp_id", "msp_id"):
+            for bad in ("999999", "abc", own_team_person):
+                response = self._submit_spirit(match, opponent={key: bad})
+                self.assertEqual(400, response.status_code, (key, bad))
+                self.assertIn(key, response.json()["message"])
+        self.assertEqual(0, SpiritScore.objects.count())
+
+    def test_submit_spirit_score_checks_opponent_roster_for_players(self) -> None:
+        self.tournament.use_uc_registrations = False
+        self.tournament.save()
+        Registration.objects.create(
+            event=self.event, team=self.teams[0], player=self.player, role=Registration.Role.CAPTAIN
+        )
+        Registration.objects.create(event=self.event, team=self.teams[1], player=self.player2)
+        match = self._team_1_vs_2_match()
+
+        for bad in (str(self.player.id), "999999", "abc"):
+            response = self._submit_spirit(match, opponent={"mvp_id": bad})
+            self.assertEqual(400, response.status_code, bad)
+        response = self._submit_spirit(match, opponent={"mvp_id": str(self.player2.id)})
+        self.assertEqual(200, response.status_code)
+
+    def test_submit_spirit_score_needs_a_match_that_can_be_scored(self) -> None:
+        match = self._team_1_vs_2_match(Match.Status.YET_TO_FIX)
+        self.assertEqual(400, self._submit_spirit(match).status_code)
+
+        match.status = Match.Status.SCHEDULED
+        match.save()
+        self.assertEqual(400, self._submit_spirit(match).status_code)
+
+    def test_update_match_validates_spirit_scores_like_submit(self) -> None:
+        match = self._team_1_vs_2_match()
+        self.user.is_staff = True
+        self.user.save()
+        self.client.force_login(self.user)
+        scores = {"rules": 2, "fouls": 2, "fair": 2, "positive": 2, "communication": 2}
+
+        def update(block: str, **extra: Any) -> Any:
+            return self.client.post(
+                f"/api/match/{match.id}/update",
+                data={block: {**scores, **extra}},
+                content_type="application/json",
+            )
+
+        self.assertEqual(422, update("spirit_score_team_1", rules=9).status_code)
+        self.assertEqual(422, update("self_spirit_score_team_2", comments="x" * 501).status_code)
+        # Team 1's received block nominates from team 1's roster, not team 2's.
+        person2 = str(self.player2.ultimate_central_id)
+        own = str(self.player.ultimate_central_id)
+        self.assertEqual(400, update("spirit_score_team_1", mvp_id=person2).status_code)
+        self.assertEqual(400, update("spirit_score_team_1", mvp_id="999999").status_code)
+        self.assertEqual(200, update("spirit_score_team_1", mvp_id=own).status_code)
+
+    def test_submit_score_rejects_negative_scores(self) -> None:
+        match = self._team_1_vs_2_match(Match.Status.SCHEDULED)
+        self.client.force_login(self.user)
+        response = self.client.post(
+            f"/api/match/{match.id}/submit-score",
+            data={"team_1_score": -1, "team_2_score": 14},
+            content_type="application/json",
+        )
+        self.assertEqual(422, response.status_code)
 
     def test_delete_match(self) -> None:
         match = Match.objects.filter()[0]

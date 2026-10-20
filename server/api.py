@@ -171,6 +171,7 @@ from server.tournament.schema import (
     RecentMatchSchema,
     RosterPointsSchema,
     SpiritScoreSubmitSchema,
+    SpiritScoreUpdateSchema,
     SwissRoundCreateSchema,
     SwissRoundSchema,
     TournamentCardsSchema,
@@ -191,6 +192,7 @@ from server.tournament.schema import (
     public_matches,
 )
 from server.tournament.utils import (
+    SpiritScoreError,
     as_match_time,
     build_bracket,
     build_pool,
@@ -2871,6 +2873,30 @@ def submit_match_score(
     return 200, match
 
 
+SPIRIT_BLOCK_TEAMS = {
+    "spirit_score_team_1": 1,
+    "spirit_score_team_2": 2,
+    "self_spirit_score_team_1": 1,
+    "self_spirit_score_team_2": 2,
+}
+
+
+def _save_spirit_blocks(
+    match: Match, blocks: dict[str, SpiritScoreUpdateSchema]
+) -> message_response | None:
+    """Replace the named spirit blocks of `match`, all or none."""
+    try:
+        with transaction.atomic():
+            for attr, score in blocks.items():
+                team_id = match.team_1_id if SPIRIT_BLOCK_TEAMS[attr] == 1 else match.team_2_id
+                if team_id is None:
+                    raise SpiritScoreError("The match does not have both teams yet")
+                setattr(match, attr, create_spirit_scores(score, match.tournament, team_id))
+    except SpiritScoreError as exc:
+        return {"message": str(exc)}
+    return None
+
+
 @api.post("/match/{match_id}/update", response={200: MatchSchema, 400: Response, 401: Response})
 def update_match(
     request: AuthenticatedHttpRequest, match_id: int, match_details: MatchUpdateSchema
@@ -2901,42 +2927,27 @@ def update_match(
 
         match.field = field
 
-    use_uc_reg = match.tournament.use_uc_registrations
-
     if match_details.video_url:
         match.video_url = match_details.video_url
 
     if match_details.duration_mins:
         match.duration_mins = match_details.duration_mins
 
-    if match_details.spirit_score_team_1:
-        match.spirit_score_team_1 = create_spirit_scores(
-            match_details.spirit_score_team_1, use_uc_reg
-        )
-
-    if match_details.spirit_score_team_2:
-        match.spirit_score_team_2 = create_spirit_scores(
-            match_details.spirit_score_team_2, use_uc_reg
-        )
-
-    if match_details.self_spirit_score_team_1:
-        match.self_spirit_score_team_1 = create_spirit_scores(
-            match_details.self_spirit_score_team_1, use_uc_reg
-        )
-
-    if match_details.self_spirit_score_team_2:
-        match.self_spirit_score_team_2 = create_spirit_scores(
-            match_details.self_spirit_score_team_2, use_uc_reg
-        )
+    blocks = {
+        attr: score
+        for attr in SPIRIT_BLOCK_TEAMS
+        if (score := getattr(match_details, attr)) is not None
+    }
+    if blocks:
+        if match.status == Match.Status.YET_TO_FIX:
+            return 400, {"message": "Spirit scores cant be saved in current status"}
+        error = _save_spirit_blocks(match, blocks)
+        if error:
+            return 400, error
 
     match.save()
 
-    if (
-        match_details.spirit_score_team_1
-        or match_details.spirit_score_team_2
-        or match_details.self_spirit_score_team_1
-        or match_details.self_spirit_score_team_2
-    ):
+    if blocks:
         update_tournament_spirit_rankings(match.tournament)
 
     return 200, match
@@ -2959,16 +2970,31 @@ def submit_match_spirit_score(
     if spirit_score.team_id not in admin_team_ids:
         return 401, {"message": "User not authorised to add score for this match"}
 
-    use_uc_reg = match.tournament.use_uc_registrations
+    if match.status not in {Match.Status.SCHEDULED, Match.Status.COMPLETED}:
+        return 400, {"message": "Spirit scores cant be submitted in current status"}
 
     if match.team_1 is not None and match.team_1.id == spirit_score.team_id:
-        match.spirit_score_team_2 = create_spirit_scores(spirit_score.opponent, use_uc_reg)
-        match.self_spirit_score_team_1 = create_spirit_scores(spirit_score.self, use_uc_reg)
+        own, opponent = "1", "2"
     elif match.team_2 is not None and match.team_2.id == spirit_score.team_id:
-        match.spirit_score_team_1 = create_spirit_scores(spirit_score.opponent, use_uc_reg)
-        match.self_spirit_score_team_2 = create_spirit_scores(spirit_score.self, use_uc_reg)
+        own, opponent = "2", "1"
     else:
         return 401, {"message": "User not authorised to add score for this match"}
+
+    if (
+        match.status == Match.Status.SCHEDULED
+        and getattr(match, f"suggested_score_team_{own}") is None
+    ):
+        return 400, {"message": "Submit the match score before the spirit scores"}
+
+    error = _save_spirit_blocks(
+        match,
+        {
+            f"spirit_score_team_{opponent}": spirit_score.opponent,
+            f"self_spirit_score_team_{own}": spirit_score.self,
+        },
+    )
+    if error:
+        return 400, error
 
     match.save()
     update_tournament_spirit_rankings(match.tournament)

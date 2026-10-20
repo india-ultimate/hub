@@ -724,7 +724,9 @@ def _spirit_block(match: Match, name: str, block: dict[str, Any]) -> SpiritScore
     )
 
 
-def _write_spirit_block(match: Match, attr: str, score: SpiritScoreUpdateSchema) -> None:
+def _write_spirit_block(
+    match: Match, attr: str, team_id: int, score: SpiritScoreUpdateSchema
+) -> None:
     """Record one spirit block, reusing the row already on the match if there is one.
 
     `create_spirit_scores` always inserts. Pointing the match at a fresh row would
@@ -734,7 +736,7 @@ def _write_spirit_block(match: Match, attr: str, score: SpiritScoreUpdateSchema)
     """
     existing = getattr(match, attr)
     if existing is None:
-        setattr(match, attr, create_spirit_scores(score, False))
+        setattr(match, attr, create_spirit_scores(score, match.tournament, team_id))
         return
 
     for component in SPIRIT_COMPONENTS:
@@ -764,8 +766,10 @@ def _spirit_scores(tournament: Tournament, payload: dict[str, Any]) -> dict[str,
         raise ProposalApplyError("No spirit blocks in this proposal")
 
     for name, block in given.items():
-        attr, _team = SPIRIT_TARGETS[name]
-        _write_spirit_block(match, attr, _spirit_block(match, name, block))
+        attr, team_number = SPIRIT_TARGETS[name]
+        team_id = match.team_1_id if team_number == 1 else match.team_2_id
+        assert team_id is not None  # noqa: S101 — checked above
+        _write_spirit_block(match, attr, team_id, _spirit_block(match, name, block))
     match.save()
     update_tournament_spirit_rankings(tournament)
 

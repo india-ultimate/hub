@@ -1856,7 +1856,33 @@ def is_submitted_scores_equal(match: Match) -> bool:
     )
 
 
-def create_spirit_scores(spirit_score: SpiritScoreUpdateSchema, use_uc_reg: bool) -> SpiritScore:
+class SpiritScoreError(ValueError):
+    pass
+
+
+def _nominee_on_roster(tournament: Tournament, team_id: int, raw_id: str, label: str) -> int:
+    try:
+        nominee_id = int(raw_id)
+    except ValueError:
+        raise SpiritScoreError(f"{label}: {raw_id!r} is not a valid player id") from None
+
+    if tournament.use_uc_registrations:
+        on_roster = UCRegistration.objects.filter(
+            event=tournament.event, team_id=team_id, person_id=nominee_id
+        ).exists()
+    else:
+        on_roster = Registration.objects.filter(
+            event=tournament.event, team_id=team_id, player_id=nominee_id
+        ).exists()
+    if not on_roster:
+        raise SpiritScoreError(f"{label}: player {nominee_id} is not on the roster of the team")
+    return nominee_id
+
+
+def create_spirit_scores(
+    spirit_score: SpiritScoreUpdateSchema, tournament: Tournament, team_id: int
+) -> SpiritScore:
+    """Save the spirit score about `team_id`; MVP and MSP must be on that team's roster."""
     score = SpiritScore(
         rules=spirit_score.rules,
         fouls=spirit_score.fouls,
@@ -1873,25 +1899,20 @@ def create_spirit_scores(spirit_score: SpiritScoreUpdateSchema, use_uc_reg: bool
         comments=spirit_score.comments if spirit_score.comments else None,
     )
 
-    if spirit_score.mvp_id:
-        if use_uc_reg:
-            mvp = UCPerson.objects.get(id=spirit_score.mvp_id)
-            score.mvp = mvp
-            with contextlib.suppress(Player.DoesNotExist):
-                score.mvp_v2 = Player.objects.get(ultimate_central_id=spirit_score.mvp_id)
-        else:
-            mvp_v2 = Player.objects.get(id=spirit_score.mvp_id)
-            score.mvp_v2 = mvp_v2
+    nominees = {
+        label: _nominee_on_roster(tournament, team_id, raw_id, label)
+        for label, raw_id in (("mvp_id", spirit_score.mvp_id), ("msp_id", spirit_score.msp_id))
+        if raw_id
+    }
 
-    if spirit_score.msp_id:
-        if use_uc_reg:
-            msp = UCPerson.objects.get(id=spirit_score.msp_id)
-            score.msp = msp
+    for label, nominee_id in nominees.items():
+        field = label.removesuffix("_id")
+        if tournament.use_uc_registrations:
+            setattr(score, field, UCPerson.objects.get(id=nominee_id))
             with contextlib.suppress(Player.DoesNotExist):
-                score.msp_v2 = Player.objects.get(ultimate_central_id=spirit_score.msp_id)
+                setattr(score, f"{field}_v2", Player.objects.get(ultimate_central_id=nominee_id))
         else:
-            msp_v2 = Player.objects.get(id=spirit_score.msp_id)
-            score.msp_v2 = msp_v2
+            setattr(score, f"{field}_v2", Player.objects.get(id=nominee_id))
 
     score.save()
     return score
