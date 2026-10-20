@@ -94,6 +94,9 @@ class TicketMessage(models.Model):
     message = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     attachment = models.URLField(max_length=512, null=True, blank=True)
+    edited_at = models.DateTimeField(null=True, blank=True)
+    # Kept, its text and attachment cleared, so the conversation still reads.
+    is_deleted = models.BooleanField(default=False, db_default=False)
 
     def __str__(self) -> str:
         return f"Message on ticket {self.ticket.id} by {self.sender.username}"

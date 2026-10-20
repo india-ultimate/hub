@@ -7,14 +7,15 @@ import {
 import clsx from "clsx";
 import { Icon } from "solid-heroicons";
 import {
-  arrowDownTray,
   chatBubbleOvalLeftEllipsis,
   lockClosed
 } from "solid-heroicons/outline";
-import { createSignal, For, Match, Show, Switch } from "solid-js";
+import { createEffect, createSignal, For, Match, Show, Switch } from "solid-js";
+import { createStore, reconcile } from "solid-js/store";
 
 import {
   addTicketMessage,
+  deleteTicketMessage,
   fetchTicketDetail,
   fetchUser,
   updateTicket
@@ -32,41 +33,16 @@ import { MAX_CLOUDINARY_PIXELS, uploadError } from "../../uploads";
 import ErrorAlert from "../alerts/Error";
 import Breadcrumbs from "../Breadcrumbs";
 import FileInput from "../FileInput";
+import Modal from "../Modal";
 import Assignees from "./Assignees";
 import Description from "./Description";
+import Message from "./Message";
 import UpvoteButton from "./UpvoteButton";
 
 const card =
   "rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800 sm:p-6";
 const primary =
   "inline-flex min-h-[44px] items-center justify-center rounded-lg bg-blue-700 px-5 text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus-visible:ring-blue-800";
-const IMAGE = /\.(jpe?g|png|gif|webp|bmp|tiff)$/i;
-
-const fileName = url => {
-  try {
-    return new URL(url).pathname.split("/").pop() || "attachment";
-  } catch {
-    return "attachment";
-  }
-};
-
-const download = async url => {
-  try {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error("Failed to fetch file");
-    const href = window.URL.createObjectURL(await response.blob());
-    const link = document.createElement("a");
-    link.href = href;
-    link.download = fileName(url);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(href);
-  } catch {
-    window.open(url, "_blank");
-  }
-};
-
 const TicketDetail = () => {
   const params = useParams();
   const queryClient = useQueryClient();
@@ -129,6 +105,31 @@ const TicketDetail = () => {
     e.preventDefault();
     if (!reply().trim() || replyMutation.isLoading) return;
     replyMutation.mutate({ message: reply(), attachment: attachment() });
+  };
+
+  // Kept in place by id, so a refetch doesn't draw a reply again and close
+  // its open edit.
+  const [messages, setMessages] = createStore([]);
+  createEffect(() =>
+    setMessages(reconcile(ticket()?.messages || [], { key: "id" }))
+  );
+  const replyCount = () => messages.filter(m => !m.is_deleted).length;
+
+  let deleteDialog;
+  const [deleting, setDeleting] = createSignal(null);
+  const deleteMutation = createMutation({
+    mutationFn: id => deleteTicketMessage(params.id, id),
+    onSuccess: async () => {
+      await refresh();
+      deleteDialog.close();
+      // Its Delete button is gone: land back in the conversation instead.
+      document.getElementById("conversation-heading")?.focus();
+    }
+  });
+  const askDelete = message => {
+    deleteMutation.reset();
+    setDeleting(message);
+    deleteDialog.showModal();
   };
 
   return (
@@ -351,99 +352,28 @@ const TicketDetail = () => {
                 <section class={card} aria-labelledby="conversation-heading">
                   <h2
                     id="conversation-heading"
-                    class="text-base font-semibold text-gray-900 dark:text-white"
+                    tabIndex={-1}
+                    class="text-base font-semibold text-gray-900 focus:outline-none dark:text-white"
                   >
-                    Conversation ({ticket().messages.length})
+                    Conversation ({replyCount()})
                   </h2>
-                  <Show when={ticket().messages.length === 0}>
+                  <Show when={messages.length === 0}>
                     <p class="mt-3 text-sm text-gray-600 dark:text-gray-400">
                       No replies yet.
                     </p>
                   </Show>
                   <ol class="mt-4 space-y-4">
-                    <For each={ticket().messages}>
-                      {message => {
-                        const mine = () => message.sender.id === me().id;
-                        return (
-                          <li
-                            class={clsx(
-                              "flex",
-                              mine() ? "justify-end" : "justify-start"
-                            )}
-                          >
-                            <div
-                              class={clsx(
-                                "max-w-[85%] rounded-2xl px-4 py-3",
-                                mine()
-                                  ? "rounded-br-sm bg-blue-700 text-white dark:bg-blue-600"
-                                  : "rounded-bl-sm bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-100"
-                              )}
-                            >
-                              <p
-                                class={clsx(
-                                  "text-xs",
-                                  mine()
-                                    ? "text-blue-100"
-                                    : "text-gray-600 dark:text-gray-300"
-                                )}
-                              >
-                                <span class="font-semibold">
-                                  {mine() ? "You" : fullName(message.sender)}
-                                </span>{" "}
-                                ·{" "}
-                                <time datetime={message.created_at}>
-                                  {formatDateTime(message.created_at)}
-                                </time>
-                                <Show when={isStaff() && !mine()}>
-                                  {" "}
-                                  (
-                                  <a
-                                    href={`mailto:${message.sender.username}`}
-                                    class="break-all underline"
-                                  >
-                                    {message.sender.username}
-                                  </a>
-                                  )
-                                </Show>
-                              </p>
-                              <p class="mt-1 whitespace-pre-wrap break-words">
-                                {message.message}
-                              </p>
-                              <Show when={message.attachment}>
-                                <div class="mt-2 space-y-2">
-                                  <Show when={IMAGE.test(message.attachment)}>
-                                    <img
-                                      src={message.attachment}
-                                      alt={`Attachment from ${fullName(
-                                        message.sender
-                                      )}`}
-                                      loading="lazy"
-                                      class="max-h-48 max-w-full rounded-lg object-contain"
-                                    />
-                                  </Show>
-                                  <button
-                                    type="button"
-                                    onClick={() => download(message.attachment)}
-                                    class={clsx(
-                                      "inline-flex min-h-[44px] items-center gap-1.5 text-sm font-medium underline",
-                                      mine()
-                                        ? "text-white"
-                                        : "text-blue-700 dark:text-blue-300"
-                                    )}
-                                  >
-                                    <Icon
-                                      path={arrowDownTray}
-                                      class="h-4 w-4"
-                                      aria-hidden="true"
-                                    />
-                                    Download {fileName(message.attachment)}
-                                  </button>
-                                </div>
-                              </Show>
-                            </div>
-                          </li>
-                        );
-                      }}
+                    <For each={messages}>
+                      {message => (
+                        <Message
+                          message={message}
+                          me={me()}
+                          isStaff={isStaff()}
+                          ticketId={params.id}
+                          onChanged={refresh}
+                          onDelete={askDelete}
+                        />
+                      )}
                     </For>
                   </ol>
 
@@ -522,6 +452,44 @@ const TicketDetail = () => {
           </Match>
         </Switch>
       </Show>
+
+      <Modal
+        ref={el => (deleteDialog = el)}
+        title={
+          <span class="font-semibold text-gray-900 dark:text-white">
+            Delete this reply?
+          </span>
+        }
+        close={() => deleteDialog.close()}
+      >
+        <p class="text-sm">
+          It's removed from the ticket for everyone. Anyone already emailed
+          keeps their copy.
+        </p>
+        <Show when={deleteMutation.isError}>
+          <p role="alert" class="mt-2 text-sm text-red-700 dark:text-red-400">
+            {deleteMutation.error?.message}
+          </p>
+        </Show>
+        <div class="mt-4 flex flex-wrap justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => deleteDialog.close()}
+            class="inline-flex min-h-[44px] items-center rounded-lg px-4 text-sm font-semibold text-gray-700 hover:bg-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:text-gray-200 dark:hover:bg-gray-700"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            id="confirm-delete-reply"
+            disabled={deleteMutation.isLoading}
+            onClick={() => deleteMutation.mutate(deleting().id)}
+            class="inline-flex min-h-[44px] items-center rounded-lg bg-red-700 px-4 text-sm font-semibold text-white hover:bg-red-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2 disabled:opacity-50"
+          >
+            Delete
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 };

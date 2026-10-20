@@ -8,7 +8,7 @@ from server.committee.routing import committees_for
 from server.core.models import User
 from server.schema import profile_pic_url, viewer_is_staff
 from server.ticket.access import can_handle
-from server.ticket.models import Ticket
+from server.ticket.models import Ticket, TicketMessage
 
 
 def _blank_is_none(value: object) -> object:
@@ -67,12 +67,30 @@ class TicketMessageCreateSchema(Schema):
     message: str
 
 
+class TicketMessageEditSchema(Schema):
+    message: str
+
+
 class TicketMessageSchema(Schema):
     id: int
     message: str
     sender: UserSchema
     created_at: datetime
+    edited_at: datetime | None = None
+    is_deleted: bool
     attachment: str | None = None  # URL to the attachment (Cloudinary)
+    # Only its sender edits a reply; staff can delete anyone's
+    can_edit: bool
+    can_delete: bool
+
+    @staticmethod
+    def resolve_can_edit(message: TicketMessage, context: dict[str, Any]) -> bool:
+        return not message.is_deleted and message.sender_id == context["request"].user.id
+
+    @staticmethod
+    def resolve_can_delete(message: TicketMessage, context: dict[str, Any]) -> bool:
+        user = context["request"].user
+        return not message.is_deleted and (message.sender_id == user.id or user.is_staff)
 
 
 class TicketCategoryFields(Schema):

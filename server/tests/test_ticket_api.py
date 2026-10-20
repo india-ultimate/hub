@@ -1,6 +1,7 @@
 import datetime
 import json
 from typing import Any
+from unittest import mock
 
 from django.core import mail
 from django.test import Client, SimpleTestCase, TestCase
@@ -403,7 +404,9 @@ class TestCategoryValidation(TicketTestCase):
         self.assertIsNone(response.json()["category"])
 
 
-class TestEditingTickets(TicketTestCase):
+class HandledTicketTestCase(TicketTestCase):
+    """The ticket routes to Competitions, whose member handles it."""
+
     def setUp(self) -> None:
         super().setUp()
         self.ticket.category_id = "Competitions"
@@ -420,6 +423,8 @@ class TestEditingTickets(TicketTestCase):
         data: dict[str, Any] = self.as_user(user).get(f"/api/ticket/{self.ticket.id}").json()
         return data
 
+
+class TestEditingTickets(HandledTicketTestCase):
     def test_creator_edits_title_and_description(self) -> None:
         self.assertIsNone(self.detail(self.creator)["edited_at"])
         response = self.put(self.creator, {"title": "My new address", "description": "Fixed"})
@@ -460,3 +465,131 @@ class TestEditingTickets(TicketTestCase):
         response = self.put(self.creator, {"title": "My address", "description": "Sensitive"})
         self.assertEqual(200, response.status_code)
         self.assertIsNone(response.json()["edited_at"])
+
+
+class TestEditingReplies(HandledTicketTestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        self.reply = TicketMessage.objects.create(
+            ticket=self.ticket,
+            sender=self.creator,
+            message="My emial is wrong",
+            attachment="https://res.cloudinary.com/hub/image/upload/v17/ticket_attachments/id_x1.png",
+        )
+
+    def url(self, message: TicketMessage | None = None) -> str:
+        return f"/api/ticket/{self.ticket.id}/message/{(message or self.reply).id}"
+
+    def edit(self, user: User, text: str, message: TicketMessage | None = None) -> Any:
+        return self.as_user(user).patch(
+            self.url(message), data=json.dumps({"message": text}), content_type="application/json"
+        )
+
+    def delete(self, user: User, message: TicketMessage | None = None) -> Any:
+        with mock.patch("cloudinary.uploader.destroy") as destroy:
+            response = self.as_user(user).delete(self.url(message))
+        self.destroyed = destroy.call_args_list
+        return response
+
+    def shown(self, user: User) -> dict[str, Any]:
+        message: dict[str, Any] = self.detail(user)["messages"][0]
+        return message
+
+    def test_sender_edits_a_reply(self) -> None:
+        self.assertIsNone(self.shown(self.creator)["edited_at"])
+        response = self.edit(self.creator, "  My email is wrong ")
+        self.assertEqual(200, response.status_code, response.content)
+        message = response.json()["messages"][0]
+        self.assertEqual("My email is wrong", message["message"])
+        self.assertIsNotNone(message["edited_at"])
+        self.assertEqual(self.reply.attachment, message["attachment"])
+
+    def test_only_the_sender_may_edit(self) -> None:
+        self.assertTrue(self.shown(self.creator)["can_edit"])
+        for user in (self.staff, self.handler, self.outsider):
+            self.assertFalse(self.shown(user)["can_edit"])
+            self.assertEqual(403, self.edit(user, "Not yours").status_code)
+        self.reply.refresh_from_db()
+        self.assertEqual("My emial is wrong", self.reply.message)
+
+    def test_edit_rules(self) -> None:
+        response = self.edit(self.creator, "   ")
+        self.assertEqual(400, response.status_code)
+        self.assertIn("message", response.json())
+        self.assertEqual(200, self.edit(self.creator, "My emial is wrong").status_code)
+        self.reply.refresh_from_db()
+        self.assertIsNone(self.reply.edited_at)
+        self.assertEqual("My emial is wrong", self.reply.message)
+
+    def test_sender_and_staff_may_delete(self) -> None:
+        theirs = TicketMessage.objects.create(ticket=self.ticket, sender=self.handler, message="Hi")
+        self.assertTrue(self.shown(self.creator)["can_delete"])
+        self.assertTrue(self.shown(self.staff)["can_delete"])
+        for user in (self.handler, self.outsider):
+            self.assertFalse(self.shown(user)["can_delete"])
+            self.assertEqual(403, self.delete(user).status_code)
+        self.assertEqual(403, self.delete(self.creator, theirs).status_code)
+
+        self.assertEqual(200, self.delete(self.creator).status_code)
+        self.assertEqual(200, self.delete(self.staff, theirs).status_code)
+        self.assertTrue(TicketMessage.objects.get(pk=theirs.pk).is_deleted)
+
+    def test_deleted_reply_shows_nothing_and_takes_no_edits(self) -> None:
+        response = self.delete(self.creator)
+        self.assertEqual(200, response.status_code, response.content)
+        message = response.json()["messages"][0]
+        self.assertTrue(message["is_deleted"])
+        self.assertEqual(("", None), (message["message"], message["attachment"]))
+        self.assertFalse(message["can_edit"] or message["can_delete"])
+        self.reply.refresh_from_db()
+        self.assertEqual(("", None), (self.reply.message, self.reply.attachment))
+        self.assertEqual(404, self.edit(self.creator, "Back").status_code)
+        self.assertEqual(404, self.delete(self.creator).status_code)
+
+    def test_delete_removes_the_attachment_from_cloudinary(self) -> None:
+        self.delete(self.creator)
+        self.assertEqual(
+            [mock.call("ticket_attachments/id_x1", resource_type="image", invalidate=True)],
+            self.destroyed,
+        )
+        pdf = TicketMessage.objects.create(
+            ticket=self.ticket,
+            sender=self.creator,
+            message="Receipt",
+            attachment="https://res.cloudinary.com/hub/raw/upload/v1/ticket_attachments/r.pdf",
+        )
+        self.delete(self.creator, pdf)
+        self.assertEqual(
+            [mock.call("ticket_attachments/r.pdf", resource_type="raw", invalidate=True)],
+            self.destroyed,
+        )
+
+    def test_a_failed_cloudinary_delete_still_deletes_the_reply(self) -> None:
+        with mock.patch("cloudinary.uploader.destroy", side_effect=Exception("down")):
+            response = self.as_user(self.creator).delete(self.url())
+        self.assertEqual(200, response.status_code)
+        self.reply.refresh_from_db()
+        self.assertTrue(self.reply.is_deleted)
+
+    def test_deleted_reply_is_not_counted(self) -> None:
+        self.delete(self.creator)
+        items = self.as_user(self.creator).get("/api/ticket/").json()["items"]
+        self.assertEqual(0, items[0]["message_count"])
+
+    def test_a_reply_on_another_ticket_is_404(self) -> None:
+        other = Ticket.objects.create(title="Other", description="-", created_by=self.creator)
+        elsewhere = TicketMessage.objects.create(ticket=other, sender=self.creator, message="x")
+        self.assertEqual(404, self.edit(self.creator, "Moved", elsewhere).status_code)
+        self.assertEqual(404, self.delete(self.creator, elsewhere).status_code)
+
+    def test_a_reply_on_a_ticket_gone_private_is_404(self) -> None:
+        mine = TicketMessage.objects.create(ticket=self.ticket, sender=self.outsider, message="x")
+        self.ticket.is_private = True
+        self.ticket.save()
+        self.assertEqual(404, self.edit(self.outsider, "Still here", mine).status_code)
+        self.assertEqual(404, self.delete(self.outsider, mine).status_code)
+
+    def test_no_email_on_edit_or_delete(self) -> None:
+        self.edit(self.creator, "Fixed")
+        self.delete(self.creator)
+        self.assertEqual([], mail.outbox)
