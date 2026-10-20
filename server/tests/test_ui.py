@@ -1281,6 +1281,29 @@ class TestIntegration(BaseCase):
         ticket.refresh_from_db()
         self.assertEqual((Ticket.Status.RESOLVED, True), (ticket.status, ticket.is_private))
 
+    # Breaks if: whoever opened a ticket can no longer fix its title and description.
+    def test_editing_a_ticket(self) -> None:
+        creator = make_player("asker@example.com")
+        ticket = Ticket.objects.create(
+            title="Card declind", description="Twice on 18 Oct", created_by=creator
+        )
+
+        self.sign_in_as(creator)
+        self.open(f"{APP_URL}/tickets/{ticket.id}")
+        self.click("#edit-ticket")
+        self.assertEqual("Card declind", self.get_value("#edit-title"))
+        self.type("#edit-title", "Card declined")
+        self.type("#edit-description", "Twice on 18 Oct, please refund one")
+        self.click('form:has(#edit-title) button[type="submit"]')
+        self.assert_text("Card declined", "#ticket-header")
+        self.assert_text("Twice on 18 Oct, please refund one")
+        self.assert_text("Edited")
+        self.assert_element("#edit-ticket")
+
+        ticket.refresh_from_db()
+        self.assertEqual("Card declined", ticket.title)
+        self.assertIsNotNone(ticket.edited_at)
+
     # Breaks if: a long email on the ticket page makes a phone scroll sideways
     # for staff, who see everyone's address.
     def test_long_emails_fit_on_a_phone(self) -> None:

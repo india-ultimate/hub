@@ -1,12 +1,15 @@
+import datetime
 import json
 from typing import Any
 
 from django.core import mail
 from django.test import Client, SimpleTestCase, TestCase
 
+from server.committee.models import Committee, Role
 from server.core.models import User
 from server.ticket.models import Ticket, TicketMessage
 from server.ticket.search import search_words
+from server.utils import today
 
 
 def make_user(username: str, is_staff: bool = False) -> User:
@@ -398,3 +401,62 @@ class TestCategoryValidation(TicketTestCase):
         response = self.create("")
         self.assertEqual(201, response.status_code)
         self.assertIsNone(response.json()["category"])
+
+
+class TestEditingTickets(TicketTestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        self.ticket.category_id = "Competitions"
+        self.ticket.save()
+        self.handler = make_user("handler")
+        Role.objects.create(
+            committee=Committee.objects.get(slug="competitions"),
+            user=self.handler,
+            title="Member",
+            start_date=today() - datetime.timedelta(days=30),
+        )
+
+    def detail(self, user: User) -> dict[str, Any]:
+        data: dict[str, Any] = self.as_user(user).get(f"/api/ticket/{self.ticket.id}").json()
+        return data
+
+    def test_creator_edits_title_and_description(self) -> None:
+        self.assertIsNone(self.detail(self.creator)["edited_at"])
+        response = self.put(self.creator, {"title": "My new address", "description": "Fixed"})
+        self.assertEqual(200, response.status_code, response.content)
+        self.assertEqual("My new address", response.json()["title"])
+        self.assertEqual("Fixed", response.json()["description"])
+        self.assertIsNotNone(response.json()["edited_at"])
+
+    def test_who_can_edit(self) -> None:
+        self.assertTrue(self.detail(self.creator)["can_edit"])
+        self.assertTrue(self.detail(self.staff)["can_edit"])
+        self.assertFalse(self.detail(self.handler)["can_edit"])
+        self.assertFalse(self.detail(self.outsider)["can_edit"])
+        self.assertEqual(200, self.put(self.staff, {"title": "By staff"}).status_code)
+
+    def test_a_handler_title_is_ignored(self) -> None:
+        response = self.put(self.handler, {"title": "Not theirs", "status": "PRG"})
+        self.assertEqual(200, response.status_code)
+        self.ticket.refresh_from_db()
+        self.assertEqual(("My address", "PRG"), (self.ticket.title, self.ticket.status))
+        self.assertIsNone(self.ticket.edited_at)
+
+    def test_blank_or_long_text_is_400(self) -> None:
+        for data in ({"title": "  "}, {"description": ""}, {"title": "x" * 201}):
+            response = self.put(self.creator, data)
+            self.assertEqual(400, response.status_code, data)
+            self.assertIn("message", response.json())
+        self.ticket.refresh_from_db()
+        self.assertEqual(("My address", "Sensitive"), (self.ticket.title, self.ticket.description))
+
+    def test_status_only_update_by_the_creator_still_works(self) -> None:
+        self.assertEqual(200, self.put(self.creator, {"status": "RES"}).status_code)
+        self.ticket.refresh_from_db()
+        self.assertEqual("RES", self.ticket.status)
+        self.assertIsNone(self.ticket.edited_at)
+
+    def test_unchanged_text_is_not_an_edit(self) -> None:
+        response = self.put(self.creator, {"title": "My address", "description": "Sensitive"})
+        self.assertEqual(200, response.status_code)
+        self.assertIsNone(response.json()["edited_at"])
