@@ -14,6 +14,7 @@ from django.core.validators import URLValidator
 from django.db import transaction
 from django.db.models import BooleanField, Case, Count, Prefetch, Q, QuerySet, Value, When
 from django.http import HttpRequest
+from django.utils import timezone
 from django.utils.text import slugify
 from ninja import Router, UploadedFile
 from ninja.params.functions import File
@@ -33,6 +34,7 @@ from server.announcements.schema import (
     AnnouncementSchema,
     AnnouncementUpdateSchema,
     CommentCreateSchema,
+    CommentEditSchema,
     CommentSchema,
     EmailInSchema,
     ImageSchema,
@@ -404,6 +406,12 @@ def get_comments(
     return _with_comment_reactions(request.user, list(comments))
 
 
+def _body_error(body: str) -> str:
+    if not body or len(body) > Comment.MAX_LENGTH:
+        return "A comment must be 1 to 2,000 characters."
+    return ""
+
+
 # ponytail: counts in the default cache, Redis in production (no limit in
 # development, whose cache is a dummy). Per user; add a per-post cap if spam gets past it.
 @router.post(
@@ -420,8 +428,8 @@ def create_comment(
     if not announcement.allow_comments:
         return 403, {"message": "Comments are turned off for this announcement."}
     body = payload.body.strip()
-    if not body or len(body) > Comment.MAX_LENGTH:
-        return 400, {"message": "A comment must be 1 to 2,000 characters."}
+    if error := _body_error(body):
+        return 400, {"message": error}
     parent_id = None
     if payload.parent_id is not None:
         parent = Comment.objects.filter(
@@ -460,6 +468,30 @@ def _reactable_comment(
     if isinstance(comment, Comment) and comment.is_deleted:
         return 404, {"message": "Comment not found"}
     return comment
+
+
+@router.patch(
+    "/comments/{comment_id}",
+    response={200: CommentSchema, 400: Message, 403: Message, 404: Message},
+    throttle=_limit("announcement_comment", "10/m"),
+)
+def edit_comment(
+    request: AuthenticatedHttpRequest, comment_id: int, payload: CommentEditSchema
+) -> tuple[int, Comment | Message]:
+    comment = _reactable_comment(request, comment_id)
+    if isinstance(comment, tuple):
+        return comment
+    if comment.author_id != request.user.id:
+        return 403, {"message": "You can only edit your own comments."}
+    if not comment.announcement.allow_comments:
+        return 403, {"message": "Comments are turned off for this announcement."}
+    body = payload.body.strip()
+    if error := _body_error(body):
+        return 400, {"message": error}
+    if body != comment.body:
+        comment.body, comment.edited_at = body, timezone.now()
+        comment.save(update_fields=["body", "edited_at"])
+    return 200, _with_comment_reactions(request.user, [comment])[0]
 
 
 @router.delete("/comments/{comment_id}", response={204: None, 403: Message, 404: Message})

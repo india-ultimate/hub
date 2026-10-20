@@ -74,10 +74,11 @@ const fullDate = iso =>
     timeStyle: "short"
   });
 
-// A textarea for a comment or a reply, with its Post/Reply button.
+// A textarea for a comment or a reply, with its Post/Reply button; given
+// `save`, it edits one instead.
 const Composer = props => {
   const queryClient = useQueryClient();
-  const [text, setText] = createSignal("");
+  const [text, setText] = createSignal(props.initial ?? "");
   let textarea, form;
 
   const grow = () => {
@@ -87,13 +88,18 @@ const Composer = props => {
 
   const mutation = createMutation({
     mutationFn: body =>
-      request(`/api/announcements/${props.slug}/comments`, {
-        method: "POST",
-        body: JSON.stringify({ body, parent_id: props.parentId ?? null })
-      }),
+      props.save
+        ? props.save(body)
+        : request(`/api/announcements/${props.slug}/comments`, {
+            method: "POST",
+            body: JSON.stringify({ body, parent_id: props.parentId ?? null })
+          }),
     onSuccess: async comment => {
-      setText("");
-      grow();
+      // An edit box closes instead, once the saved text is shown.
+      if (!props.save) {
+        setText("");
+        grow();
+      }
       await Promise.all([
         queryClient.invalidateQueries({
           queryKey: ["announcement-comments", props.slug]
@@ -114,7 +120,13 @@ const Composer = props => {
   };
   const left = () => MAX_LENGTH - text().length;
 
-  onMount(() => props.autofocus && textarea.focus());
+  onMount(() => {
+    grow();
+    if (props.autofocus) {
+      textarea.focus();
+      textarea.setSelectionRange(text().length, text().length);
+    }
+  });
 
   return (
     <form ref={form} onSubmit={submit} class="mt-3">
@@ -136,6 +148,9 @@ const Composer = props => {
           if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
             e.preventDefault();
             form.requestSubmit();
+          } else if (e.key === "Escape" && props.onCancel) {
+            e.preventDefault();
+            props.onCancel();
           }
         }}
         class="block max-h-48 w-full resize-none overflow-y-auto rounded-lg border border-gray-300 bg-white p-2.5 text-base text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-400 sm:text-sm"
@@ -171,7 +186,11 @@ const Composer = props => {
             focusRing
           )}
         >
-          {mutation.isLoading ? "Posting…" : props.submitLabel}
+          {mutation.isLoading
+            ? props.save
+              ? "Saving…"
+              : "Posting…"
+            : props.submitLabel}
         </button>
       </div>
     </form>
@@ -203,6 +222,12 @@ const Avatar = props => (
 // One comment: who, when, what, and what you can do with it.
 const Row = props => {
   const c = () => props.comment;
+  const [editing, setEditing] = createSignal(false);
+  let editButton;
+  const stopEditing = () => {
+    setEditing(false);
+    queueMicrotask(() => editButton?.focus());
+  };
   return (
     <div
       class={clsx(
@@ -248,44 +273,88 @@ const Row = props => {
             >
               {timeAgo(c().created_at)}
             </time>
+            <Show when={c().edited_at}>
+              <span
+                title={`Edited ${fullDate(c().edited_at)}`}
+                class="text-xs italic text-gray-600 dark:text-gray-400"
+              >
+                · edited
+              </span>
+            </Show>
           </div>
-          <p class="mt-1 whitespace-pre-line break-words text-sm text-gray-800 dark:text-gray-200">
-            {c().body}
-          </p>
-          <div class="mt-1">
-            <Reactions
-              compact
-              testId={`comment-reactions-${c().id}`}
-              reactions={c().reactions}
-              onToggle={(kind, on) => props.onReact(c(), kind, on)}
-              failed={props.reactionFailed}
-            >
-              <Show when={props.onReply}>
-                <button
-                  type="button"
-                  onClick={() => props.onReply()}
-                  class={clsx(
-                    action,
-                    "hover:text-blue-700 dark:hover:text-blue-300"
-                  )}
-                >
-                  Reply
-                </button>
-              </Show>
-              <Show when={c().can_delete}>
-                <button
-                  type="button"
-                  onClick={() => props.onDelete(c())}
-                  class={clsx(
-                    action,
-                    "hover:text-red-700 dark:hover:text-red-400"
-                  )}
-                >
-                  Delete
-                </button>
-              </Show>
-            </Reactions>
-          </div>
+          <Show
+            when={!editing()}
+            fallback={
+              <Composer
+                id={`edit-${c().id}`}
+                label="Edit your comment"
+                submitLabel="Save"
+                initial={c().body}
+                save={body =>
+                  request(`/api/announcements/comments/${c().id}`, {
+                    method: "PATCH",
+                    body: JSON.stringify({ body })
+                  })
+                }
+                slug={props.slug}
+                autofocus
+                onPosted={stopEditing}
+                onCancel={stopEditing}
+              />
+            }
+          >
+            <p class="mt-1 whitespace-pre-line break-words text-sm text-gray-800 dark:text-gray-200">
+              {c().body}
+            </p>
+            <div class="mt-1">
+              <Reactions
+                compact
+                testId={`comment-reactions-${c().id}`}
+                reactions={c().reactions}
+                onToggle={(kind, on) => props.onReact(c(), kind, on)}
+                failed={props.reactionFailed}
+              >
+                <Show when={props.onReply}>
+                  <button
+                    type="button"
+                    onClick={() => props.onReply()}
+                    class={clsx(
+                      action,
+                      "hover:text-blue-700 dark:hover:text-blue-300"
+                    )}
+                  >
+                    Reply
+                  </button>
+                </Show>
+                <Show when={c().can_edit && props.allowComments}>
+                  <button
+                    ref={editButton}
+                    type="button"
+                    aria-label="Edit your comment"
+                    onClick={() => setEditing(true)}
+                    class={clsx(
+                      action,
+                      "hover:text-blue-700 dark:hover:text-blue-300"
+                    )}
+                  >
+                    Edit
+                  </button>
+                </Show>
+                <Show when={c().can_delete}>
+                  <button
+                    type="button"
+                    onClick={() => props.onDelete(c())}
+                    class={clsx(
+                      action,
+                      "hover:text-red-700 dark:hover:text-red-400"
+                    )}
+                  >
+                    Delete
+                  </button>
+                </Show>
+              </Reactions>
+            </div>
+          </Show>
         </Show>
       </div>
     </div>
@@ -418,6 +487,8 @@ const Comments = props => {
               <li id={`comment-${comment.id}`}>
                 <Row
                   comment={comment}
+                  slug={props.slug}
+                  allowComments={props.allowComments}
                   highlighted={highlighted() === comment.id}
                   onReply={
                     props.allowComments && !comment.is_deleted
@@ -438,6 +509,8 @@ const Comments = props => {
                           <li id={`comment-${reply.id}`}>
                             <Row
                               comment={reply}
+                              slug={props.slug}
+                              allowComments={props.allowComments}
                               highlighted={highlighted() === reply.id}
                               onDelete={askDelete}
                               onReact={react}
