@@ -28,6 +28,18 @@ class AuthHintCookieTest(TestCase):
         self.assertEqual(cookie.value, "1")
         self.assertFalse(cookie["httponly"])
 
+    def test_signing_in_sets_the_hint(self) -> None:
+        # The session cookie is added after this middleware runs, so only the
+        # session itself shows the response is a sign in.
+        response = self.client.post(
+            "/api/login",
+            data={"username": "hint@example.com", "password": TEST_PASSWORD},
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.cookies[AUTH_HINT_COOKIE].value, "1")
+
     def test_hint_is_refreshed_while_signed_in(self) -> None:
         self.client.force_login(self.user)
         self.client.get("/api/me")

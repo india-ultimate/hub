@@ -24,11 +24,12 @@ class AuthHintCookieMiddleware:
         response = self.get_response(request)
 
         # Reading request.user forces a session read, so only look when a session
-        # cookie is in play -- anonymous requests then cost no extra query. The
-        # outbound check covers login, which has no inbound cookie yet.
-        touches_session = (
-            settings.SESSION_COOKIE_NAME in request.COOKIES
-            or settings.SESSION_COOKIE_NAME in response.cookies
+        # cookie is in play -- anonymous requests then cost no extra query. A
+        # sign in has no inbound cookie yet, and SessionMiddleware adds the
+        # outbound one after this runs, but login() leaves the session modified.
+        session = getattr(request, "session", None)
+        touches_session = settings.SESSION_COOKIE_NAME in request.COOKIES or bool(
+            session is not None and session.modified
         )
         if touches_session:
             user = getattr(request, "user", None)
