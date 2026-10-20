@@ -113,7 +113,7 @@ from server.subscription import eligibility
 from server.subscription.api import may_see
 from server.subscription.api import router as subscription_router
 from server.subscription.bulk_check import get_subscription_status
-from server.subscription.models import SponsorshipGrant, Subscription
+from server.subscription.models import Subscription
 from server.task.api import router as task_router
 from server.ticket.api import ticket_api
 from server.top_score_utils import TopScoreClient
@@ -387,11 +387,11 @@ def search_users(request: AuthenticatedHttpRequest, text: str = "") -> QuerySet[
 # Players ##########
 
 
-def _attach_subscription_prefetch(players: list[Player], *, need_sponsored: bool) -> None:
-    """Bulk-load what schema.py's subscription/sponsored resolvers need.
+def _attach_subscription_prefetch(players: list[Player]) -> None:
+    """Bulk-load what schema.py's subscription resolver needs.
 
-    `Player.current_subscription` and the sponsorship check each run their own
-    query per player; for a page of players that's several queries per row.
+    `Player.current_subscription` runs its own query per player; for a page of
+    players that's several queries per row.
     Load it all here in a handful of queries, fixed regardless of page size,
     and stash it on each player for the resolvers to pick up.
     """
@@ -420,23 +420,9 @@ def _attach_subscription_prefetch(players: list[Player], *, need_sponsored: bool
         ):
             future_by_player.setdefault(sub.player_id, sub)
 
-    grant_pairs: set[tuple[int, int]] = set()
-    if need_sponsored:
-        season_ids = [current_season.id] if current_season is not None else []
-        if season_ids:
-            grant_pairs = set(
-                SponsorshipGrant.objects.filter(
-                    player_id__in=ids, season_id__in=season_ids
-                ).values_list("player_id", "season_id")
-            )
-
     for player in players:
         held_current = held_current_by_player.get(player.id)
         player._prefetched_subscription = held_current or future_by_player.get(player.id)
-        if need_sponsored:
-            player._prefetched_sponsored = (
-                current_season is not None and (player.id, current_season.id) in grant_pairs
-            )
 
 
 @api.get("/players", response={200: list[dict[str, Any]], 403: Response})
@@ -450,7 +436,7 @@ def list_players(
     # This list is not paginated, and both schemas read a player's name, email,
     # phone, subscription and teams -- five queries each over every player there is.
     players = list(Player.objects.select_related("user").prefetch_related("teams"))
-    _attach_subscription_prefetch(players, need_sponsored=full_schema)
+    _attach_subscription_prefetch(players)
     return 200, [schema.model_validate(p).model_dump(mode="json") for p in players]
 
 

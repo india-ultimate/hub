@@ -21,7 +21,6 @@ from server.payment_account.models import viewable_by
 from server.season.models import Season
 from server.subscription.models import Subscription
 from server.subscription.schema import SubscriptionSchema
-from server.subscription.sponsorship import has_grant
 from server.utils import mask_string
 
 
@@ -240,19 +239,6 @@ class PlayerSchema(ModelSchema):
             subscription = player.current_subscription
         return subscription
 
-    sponsored: bool
-
-    @staticmethod
-    def resolve_sponsored(player: Player) -> bool:
-        """A grant for the season this person would buy next.
-
-        Computed, not the legacy `Player.sponsored` column: grants are per
-        season now, and someone sponsored last season has to ask again.
-        """
-        if hasattr(player, "_prefetched_sponsored"):
-            return bool(player._prefetched_sponsored)
-        return has_grant(player, Season.current())
-
     vaccination: VaccinationSchema | None = None
 
     @staticmethod
@@ -316,7 +302,7 @@ class PlayerSchema(ModelSchema):
 
     class Meta:
         model = Player
-        fields = "__all__"
+        exclude = ["sponsored"]
 
 
 class PlayerTinySchema(ModelSchema):
@@ -361,7 +347,6 @@ class PlayerTinySchema(ModelSchema):
             "state_ut",
             "teams",
             "educational_institution",
-            "sponsored",
         ]
 
 

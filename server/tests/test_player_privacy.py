@@ -77,6 +77,7 @@ class TestPlayerDetail(PlayerPrivacyTestCase):
             data = response.json()
             self.assertEqual((EMAIL, PHONE), (data["email"], data["phone"]))
             self.assertEqual(DOB.isoformat(), data["date_of_birth"])
+            self.assertNotIn("sponsored", data)
 
     def test_a_stranger_is_refused(self) -> None:
         self.client.force_login(self.stranger)
@@ -236,6 +237,12 @@ class TestPlayerSearchByEmail(PlayerPrivacyTestCase):
 
 
 class TestPlayersInOtherResponses(PlayerPrivacyTestCase):
+    def test_player_search_does_not_say_who_is_sponsored(self) -> None:
+        Player.objects.filter(pk=self.player.pk).update(sponsored=True)
+        self.client.force_login(self.stranger)
+        [found] = self.client.get("/api/players/search?text=secret").json()["items"]
+        self.assertNotIn("sponsored", found)
+
     def test_player_search_masks_the_email(self) -> None:
         # The service request picker shows it to tell people apart.
         self.client.force_login(self.stranger)
