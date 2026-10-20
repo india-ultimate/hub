@@ -39,14 +39,14 @@ kill_timeout = "30s"
 [[vm]]
   processes = ["app"]
   cpu_kind = "shared"
-  cpus = 2
+  cpus = 1
   memory = "1gb"
 
 [[vm]]
   processes = ["worker"]
   cpu_kind = "shared"
   cpus = 1
-  memory = "1gb"
+  memory = "512mb"
 
 [[services]]
   protocol = "tcp"
@@ -68,7 +68,7 @@ kill_timeout = "30s"
   [services.concurrency]
     type = "connections"
     hard_limit = 32
-    soft_limit = 12
+    soft_limit = 16
 
   # Answered by nginx, which start.sh starts only once gunicorn answers.
   [[services.http_checks]]

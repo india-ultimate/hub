@@ -35,8 +35,8 @@ class TestFlyConfig(SimpleTestCase):
         )
         vms = {tuple(vm["processes"]): vm for vm in config["vm"]}
         size = ("cpu_kind", "cpus", "memory")
-        self.assertEqual(("shared", 2, "1gb"), tuple(vms[("app",)][k] for k in size))
-        self.assertEqual(("shared", 1, "1gb"), tuple(vms[("worker",)][k] for k in size))
+        self.assertEqual(("shared", 1, "1gb"), tuple(vms[("app",)][k] for k in size))
+        self.assertEqual(("shared", 1, "512mb"), tuple(vms[("worker",)][k] for k in size))
 
     def test_only_app_machines_serve_and_suspend_when_idle(self) -> None:
         (service,) = load("fly.toml")["services"]
