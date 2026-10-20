@@ -39,7 +39,7 @@ kill_timeout = "30s"
 [[vm]]
   processes = ["app"]
   cpu_kind = "shared"
-  cpus = 1
+  cpus = 2
   memory = "1gb"
 
 [[vm]]
