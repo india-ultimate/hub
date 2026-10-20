@@ -411,3 +411,56 @@ class TestSeriesInvitationPermissions(TestCase):
     def test_the_player_can_still_accept(self) -> None:
         self.client.force_login(self.ward.user)
         self.assertEqual(200, self.respond("accept").status_code)
+
+    def guardian_of_ward(self) -> User:
+        guardian = User.objects.create(username="mum@example.com", email="mum@example.com")
+        Guardianship.objects.create(user=guardian, player=self.ward, relation="MO")
+        return guardian
+
+    def test_a_guardian_of_another_player_is_refused(self) -> None:
+        other = make_player("other@example.com")
+        guardian = User.objects.create(username="dad@example.com", email="dad@example.com")
+        Guardianship.objects.create(user=guardian, player=other, relation="FA")
+        self.client.force_login(guardian)
+        self.assertEqual(401, self.respond("accept").status_code)
+        self.assertEqual(401, self.respond("decline").status_code)
+
+    def test_an_accepted_invitation_cannot_be_revoked(self) -> None:
+        self.client.force_login(self.ward.user)
+        self.respond("accept")
+        self.client.force_login(self.admin)
+        response = self.revoke()
+        self.assertEqual(400, response.status_code)
+        self.invitation.refresh_from_db()
+        self.assertEqual(SeriesRosterInvitation.Status.ACCEPTED, self.invitation.status)
+
+    def test_a_revoked_invitation_says_so_on_accept_and_decline(self) -> None:
+        self.client.force_login(self.admin)
+        self.revoke()
+        self.client.force_login(self.ward.user)
+        for action in ("accept", "decline"):
+            response = self.respond(action)
+            self.assertEqual(400, response.status_code)
+            self.assertEqual("This invitation has been revoked", response.json()["message"])
+
+    def test_a_guardian_without_a_player_sees_their_wards_pending_invitations(self) -> None:
+        self.client.force_login(self.guardian_of_ward())
+        response = self.client.get(f"/api/series/{self.series.slug}/invitations-received")
+        self.assertEqual([self.invitation.id], [i["id"] for i in response.json()])
+
+    def test_a_guardian_who_plays_sees_their_ward_rows_too(self) -> None:
+        guardian = self.guardian_of_ward()
+        Player.objects.create(user=guardian, date_of_birth="1980-01-01")
+        self.client.force_login(guardian)
+        for url in (
+            f"/api/series/{self.series.slug}/invitations-received",
+            f"/api/series/{self.series.slug}/team/{self.team.slug}/invitations-received",
+        ):
+            rows = self.client.get(url).json()
+            self.assertEqual([self.invitation.id], [i["id"] for i in rows])
+            self.assertEqual(self.ward.id, rows[0]["to_player"]["id"])
+
+        self.invitation.status = SeriesRosterInvitation.Status.DECLINED
+        self.invitation.save()
+        url = f"/api/series/{self.series.slug}/invitations-received"
+        self.assertEqual([], self.client.get(url).json())

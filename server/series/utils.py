@@ -3,6 +3,7 @@ from typing import cast
 
 from django.conf import settings
 from django.core import mail
+from django.db.models import Q, QuerySet
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 
@@ -209,6 +210,14 @@ def may_answer_for(user: User, player: Player) -> bool:
     return (
         player.user_id == user.id
         or Guardianship.objects.filter(player=player, user_id=user.id).exists()
+    )
+
+
+def invitations_for(user: User) -> QuerySet[SeriesRosterInvitation]:
+    wards = Guardianship.objects.filter(user=user).values("player_id")
+    return SeriesRosterInvitation.objects.filter(
+        Q(to_player__user=user)
+        | Q(to_player_id__in=wards, status=SeriesRosterInvitation.Status.PENDING)
     )
 
 

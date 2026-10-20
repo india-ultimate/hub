@@ -71,6 +71,13 @@ const InvitationCard = props => {
   return (
     <div class="rounded-lg border border-gray-300 bg-gray-100 p-4">
       <div class="space-x-2">
+        <span>For:</span>
+        <span class="font-semibold text-gray-600">
+          {props.invitation?.to_player?.full_name}
+        </span>
+      </div>
+
+      <div class="space-x-2">
         <span>From:</span>
         <span class="font-semibold text-gray-600">
           {props.invitation?.team?.name}
