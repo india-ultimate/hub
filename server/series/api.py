@@ -24,6 +24,7 @@ from .schema import (
 from .utils import (
     change_series_role,
     get_details_from_invitation_token,
+    invitations_for,
     invite_to_series,
     may_answer_for,
     register_player,
@@ -382,6 +383,9 @@ def accept_series_invitation(
                 "message": f"You already accepted this invitation on {invitation.rsvp_date}"
             }
 
+        case SeriesRosterInvitation.Status.REVOKED:
+            return 400, {"message": "This invitation has been revoked"}
+
         case SeriesRosterInvitation.Status.PENDING:
             series_registration, error = register_player(
                 series=invitation.series,
@@ -429,6 +433,9 @@ def decline_series_invitation(
                 "message": f"You already declined this invitation on {invitation.rsvp_date}"
             }
 
+        case SeriesRosterInvitation.Status.REVOKED:
+            return 400, {"message": "This invitation has been revoked"}
+
         case SeriesRosterInvitation.Status.PENDING:
             invitation.status = SeriesRosterInvitation.Status.DECLINED
             invitation.rsvp_date = today()
@@ -450,12 +457,7 @@ def series_roster_invitations_received(
     except Series.DoesNotExist:
         return 400, {"message": "Series does not exist"}
 
-    try:
-        player = Player.objects.get(user=request.user)
-    except Player.DoesNotExist:
-        return 400, {"message": "Player does not exist"}
-
-    return 200, SeriesRosterInvitation.objects.filter(series=series, to_player=player)
+    return 200, invitations_for(request.user).filter(series=series)
 
 
 @router.get(
@@ -475,12 +477,7 @@ def series_team_roster_invitations_received(
     except Team.DoesNotExist:
         return 400, {"message": "Team does not exist"}
 
-    try:
-        player = Player.objects.get(user=request.user)
-    except Player.DoesNotExist:
-        return 400, {"message": "Player does not exist"}
-
-    return 200, SeriesRosterInvitation.objects.filter(series=series, team=team, to_player=player)
+    return 200, invitations_for(request.user).filter(series=series, team=team)
 
 
 @router.get(
