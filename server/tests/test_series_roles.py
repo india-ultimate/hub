@@ -326,3 +326,71 @@ class TestSeriesRoleEndpoint(TestCase):
         self.assertEqual(400, response.status_code)
         self.assertEqual("Invalid role", response.json()["message"])
         self.assertFalse(SeriesRosterInvitation.objects.exists())
+
+
+class TestSeriesInvitationPermissions(TestCase):
+    def setUp(self) -> None:
+        self.season = Season.objects.get(name="Season 2026-2027")
+        self.series = make_series(self.season)
+        self.team = Team.objects.create(name="Team A")
+        self.series.teams.add(self.team)
+        self.admin = User.objects.create(username="admin@example.com", email="admin@example.com")
+        self.co_admin = User.objects.create(username="co@example.com", email="co@example.com")
+        self.team.admins.add(self.admin, self.co_admin)
+        self.ward = make_player("ward@example.com")
+        Subscription.objects.create(
+            player=self.ward,
+            season=self.season,
+            plan=SubscriptionPlan.objects.get(season=self.season, type__slug="regular"),
+            is_active=True,
+            waiver_valid=True,
+            coc_agreed=True,
+            start_date=self.season.start_date,
+            end_date=self.season.end_date,
+        )
+        self.invitation = SeriesRosterInvitation.objects.create(
+            series=self.series, team=self.team, from_user=self.admin, to_player=self.ward
+        )
+
+    def revoke(self) -> Any:
+        return self.client.delete(f"/api/series/invitation/{self.invitation.id}")
+
+    def respond(self, action: str) -> Any:
+        return self.client.put(f"/api/series/invitation/{self.invitation.id}/{action}")
+
+    def sent(self) -> Any:
+        return self.client.get(
+            f"/api/series/{self.series.slug}/team/{self.team.slug}/invitations-sent"
+        )
+
+    def test_a_co_admin_sees_invitations_another_admin_sent(self) -> None:
+        self.client.force_login(self.co_admin)
+        self.assertEqual([self.invitation.id], [i["id"] for i in self.sent().json()])
+
+    def test_a_co_admin_can_revoke_another_admins_invitation(self) -> None:
+        self.client.force_login(self.co_admin)
+        self.assertEqual(200, self.revoke().status_code)
+        self.invitation.refresh_from_db()
+        self.assertEqual(SeriesRosterInvitation.Status.REVOKED, self.invitation.status)
+
+    def test_an_admin_of_another_team_cannot_revoke(self) -> None:
+        other = Team.objects.create(name="Team B")
+        outsider = User.objects.create(username="out@example.com", email="out@example.com")
+        other.admins.add(outsider)
+        self.client.force_login(outsider)
+        self.assertEqual(401, self.revoke().status_code)
+        self.invitation.refresh_from_db()
+        self.assertEqual(SeriesRosterInvitation.Status.PENDING, self.invitation.status)
+
+    def test_a_stranger_or_staff_cannot_answer_for_a_player(self) -> None:
+        staff = User.objects.create(username="s@example.com", email="s@example.com", is_staff=True)
+        for user in (self.admin, staff):
+            self.client.force_login(user)
+            self.assertEqual(401, self.respond("accept").status_code)
+            self.assertEqual(401, self.respond("decline").status_code)
+        self.invitation.refresh_from_db()
+        self.assertEqual(SeriesRosterInvitation.Status.PENDING, self.invitation.status)
+
+    def test_the_player_can_still_accept(self) -> None:
+        self.client.force_login(self.ward.user)
+        self.assertEqual(200, self.respond("accept").status_code)

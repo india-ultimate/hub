@@ -341,10 +341,8 @@ def revoke_series_invitation(
     except SeriesRosterInvitation.DoesNotExist:
         return 400, {"messsage": "Series/Invitation does not exist"}
 
-    if request.user != invitation.from_user:
-        return 401, {
-            "message": "You cannot revoke this invitation since this invitation wasn't sent by you"
-        }
+    if request.user not in invitation.team.admins.all():
+        return 401, {"message": "Only team admins can revoke this invitation"}
 
     if invitation.status != SeriesRosterInvitation.Status.PENDING:
         return 400, {
@@ -502,11 +500,9 @@ def series_team_roster_invitations_sent(
         return 400, {"message": "Team does not exist"}
 
     if request.user not in team.admins.all():
-        return 401, {"message": "Only team admins can see all the invitiations they've sent"}
+        return 401, {"message": "Only team admins can see the team's invitations"}
 
-    return 200, SeriesRosterInvitation.objects.filter(
-        series=series, team=team, from_user=request.user
-    )
+    return 200, SeriesRosterInvitation.objects.filter(series=series, team=team)
 
 
 @router.get(
