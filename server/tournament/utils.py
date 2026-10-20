@@ -1860,11 +1860,16 @@ class SpiritScoreError(ValueError):
     pass
 
 
-def _nominee_on_roster(tournament: Tournament, team_id: int, raw_id: str, label: str) -> int:
+def _nominee_on_roster(
+    tournament: Tournament, team_id: int, raw_id: str, label: str, saved_id: int | None
+) -> int:
     try:
         nominee_id = int(raw_id)
     except ValueError:
         raise SpiritScoreError(f"{label}: {raw_id!r} is not a valid player id") from None
+
+    if nominee_id == saved_id:
+        return nominee_id
 
     if tournament.use_uc_registrations:
         on_roster = UCRegistration.objects.filter(
@@ -1880,9 +1885,16 @@ def _nominee_on_roster(tournament: Tournament, team_id: int, raw_id: str, label:
 
 
 def create_spirit_scores(
-    spirit_score: SpiritScoreUpdateSchema, tournament: Tournament, team_id: int
+    spirit_score: SpiritScoreUpdateSchema,
+    tournament: Tournament,
+    team_id: int,
+    replacing: SpiritScore | None = None,
 ) -> SpiritScore:
-    """Save the spirit score about `team_id`; MVP and MSP must be on that team's roster."""
+    """Save the spirit score about `team_id`.
+
+    A new MVP or MSP must be on that team's roster; one `replacing` already
+    holds is kept as is, since the roster may have changed since.
+    """
     score = SpiritScore(
         rules=spirit_score.rules,
         fouls=spirit_score.fouls,
@@ -1899,8 +1911,17 @@ def create_spirit_scores(
         comments=spirit_score.comments if spirit_score.comments else None,
     )
 
+    def saved(field: str) -> int | None:
+        if replacing is None:
+            return None
+        return getattr(
+            replacing, f"{field}_id" if tournament.use_uc_registrations else f"{field}_v2_id"
+        )
+
     nominees = {
-        label: _nominee_on_roster(tournament, team_id, raw_id, label)
+        label: _nominee_on_roster(
+            tournament, team_id, raw_id, label, saved(label.removesuffix("_id"))
+        )
         for label, raw_id in (("mvp_id", spirit_score.mvp_id), ("msp_id", spirit_score.msp_id))
         if raw_id
     }

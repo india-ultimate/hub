@@ -2891,7 +2891,16 @@ def _save_spirit_blocks(
                 team_id = match.team_1_id if SPIRIT_BLOCK_TEAMS[attr] == 1 else match.team_2_id
                 if team_id is None:
                     raise SpiritScoreError("The match does not have both teams yet")
-                setattr(match, attr, create_spirit_scores(score, match.tournament, team_id))
+                if attr.startswith("self_"):
+                    no_nominees = {"mvp_id": None, "msp_id": None}
+                    given = score.model_copy(update=no_nominees)
+                else:
+                    given = score
+                setattr(
+                    match,
+                    attr,
+                    create_spirit_scores(given, match.tournament, team_id, getattr(match, attr)),
+                )
     except SpiritScoreError as exc:
         return {"message": str(exc)}
     return None
