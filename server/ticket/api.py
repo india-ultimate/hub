@@ -1,5 +1,9 @@
+import logging
+import os
+import re
 from collections.abc import Iterable
 from typing import Any, Literal
+from urllib.parse import unquote, urlparse
 
 import cloudinary
 import cloudinary.uploader
@@ -31,6 +35,7 @@ from server.ticket.schema import (
     TicketDetailSchema,
     TicketListItemSchema,
     TicketMessageCreateSchema,
+    TicketMessageEditSchema,
     TicketRouteSchema,
     TicketRouteUpdateSchema,
     TicketUpdateSchema,
@@ -50,6 +55,7 @@ class AuthenticatedHttpRequest(HttpRequest):
     user: User
 
 
+logger = logging.getLogger(__name__)
 ticket_api = Router()
 
 
@@ -279,7 +285,7 @@ def list_tickets(
     is never matched, listed or counted.
     """
     query: QuerySet[Ticket] = visible_tickets(request.user).annotate(
-        message_count=_count(TicketMessage.objects.filter(ticket=OuterRef("pk")))
+        message_count=_count(TicketMessage.objects.filter(ticket=OuterRef("pk"), is_deleted=False))
     )
     if status:
         query = query.filter(status__in=status)
@@ -533,6 +539,73 @@ def add_message(
             print(f"Error sending email notification: {e}")
 
     return 201, ticket
+
+
+def _reply(
+    request: AuthenticatedHttpRequest, ticket_id: int, message_id: int
+) -> tuple[Ticket, TicketMessage]:
+    """A reply that isn't deleted, on a ticket the user can see, or a 404."""
+    ticket = get_object_or_404(visible_tickets(request.user), id=ticket_id)
+    message = get_object_or_404(TicketMessage, id=message_id, ticket=ticket, is_deleted=False)
+    return ticket, message
+
+
+def _destroy_attachment(url: str) -> None:
+    """Remove a deleted reply's upload from Cloudinary. The reply is gone either
+    way, so a failure is only logged."""
+    match = re.search(r"/(image|video|raw)/upload/(?:v\d+/)?(.+)$", unquote(urlparse(url).path))
+    if not match:
+        return
+    kind, public_id = match.groups()
+    if kind != "raw":  # images and videos are named without their extension
+        public_id = os.path.splitext(public_id)[0]
+    try:
+        cloudinary.uploader.destroy(public_id, resource_type=kind, invalidate=True)
+    except Exception:
+        logger.exception("Couldn't delete the ticket attachment %s", url)
+
+
+@ticket_api.patch(
+    "/{ticket_id}/message/{message_id}",
+    response={200: TicketDetailSchema, 400: message_response, 403: message_response},
+)
+def edit_message(
+    request: AuthenticatedHttpRequest,
+    ticket_id: int,
+    message_id: int,
+    data: TicketMessageEditSchema,
+) -> tuple[int, Ticket | dict[str, str]]:
+    """Fix your own reply. No one is emailed again: their copy stays as sent."""
+    ticket, message = _reply(request, ticket_id, message_id)
+    if message.sender_id != request.user.id:
+        return 403, {"message": "You can only edit your own replies"}
+    text = data.message.strip()
+    if not text:
+        return 400, {"message": "A reply can't be empty"}
+    if text != message.message.strip():
+        message.message, message.edited_at = text, timezone.now()
+        message.save(update_fields=["message", "edited_at"])
+    return 200, ticket
+
+
+@ticket_api.delete(
+    "/{ticket_id}/message/{message_id}",
+    response={200: TicketDetailSchema, 403: message_response},
+)
+def delete_message(
+    request: AuthenticatedHttpRequest, ticket_id: int, message_id: int
+) -> tuple[int, Ticket | dict[str, str]]:
+    """Take back a reply, or for staff remove anyone's. It leaves a placeholder,
+    so the conversation still reads."""
+    ticket, message = _reply(request, ticket_id, message_id)
+    if message.sender_id != request.user.id and not request.user.is_staff:
+        return 403, {"message": "You can only delete your own replies"}
+    attachment = message.attachment
+    message.is_deleted, message.message, message.attachment = True, "", None
+    message.save(update_fields=["is_deleted", "message", "attachment"])
+    if attachment:
+        _destroy_attachment(attachment)
+    return 200, ticket
 
 
 @ticket_api.post("/{ticket_id}/upvote", response={200: TicketDetailSchema, 400: message_response})

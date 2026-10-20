@@ -1840,6 +1840,33 @@ export const addTicketMessage = async (ticketId, data) => {
   return responseData;
 };
 
+const changeTicketMessage = async (ticketId, messageId, options) => {
+  const response = await fetch(`/api/ticket/${ticketId}/message/${messageId}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin"
+  });
+  const responseData = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(
+      responseData?.message || "Couldn't change the reply. Try again."
+    );
+  }
+  return responseData;
+};
+
+export const editTicketMessage = (ticketId, messageId, message) =>
+  changeTicketMessage(ticketId, messageId, {
+    method: "PATCH",
+    body: JSON.stringify({ message })
+  });
+
+export const deleteTicketMessage = (ticketId, messageId) =>
+  changeTicketMessage(ticketId, messageId, { method: "DELETE" });
+
 export const setTicketUpvote = async (ticketId, upvote) => {
   const response = await fetch(`/api/ticket/${ticketId}/upvote`, {
     method: upvote ? "POST" : "DELETE",

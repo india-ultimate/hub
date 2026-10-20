@@ -1304,6 +1304,34 @@ class TestIntegration(BaseCase):
         self.assertEqual("Card declined", ticket.title)
         self.assertIsNotNone(ticket.edited_at)
 
+    # Breaks if: someone can no longer fix or take back their own reply.
+    def test_editing_and_deleting_a_reply(self) -> None:
+        creator = make_player("asker@example.com")
+        ticket = Ticket.objects.create(title="Card declined", description="-", created_by=creator)
+        reply = TicketMessage.objects.create(
+            ticket=ticket, sender=creator, message="My emial is asker@example.com"
+        )
+        item = f"#message-{reply.id}"
+
+        self.sign_in_as(creator)
+        self.open(f"{APP_URL}/tickets/{ticket.id}")
+        self.assert_text("Conversation (1)")
+        self.click(f'{item} button[aria-label="Edit your reply"]')
+        self.type(f"#edit-message-{reply.id}", "My email is asker@example.com")
+        self.click(f'{item} button[type="submit"]')
+        self.assert_text("My email is asker@example.com", item)
+        self.assert_text("edited", item)
+
+        self.click(f'{item} button[aria-label="Delete your reply"]')
+        self.wait_for_element_visible('dialog:contains("Delete this reply?")', timeout=3)
+        self.click("#confirm-delete-reply")
+        self.assert_text("Message deleted", item)
+        self.assert_text("Conversation (0)")
+        self.assert_element_absent(f'{item} button[aria-label="Edit your reply"]')
+
+        reply.refresh_from_db()
+        self.assertEqual((True, ""), (reply.is_deleted, reply.message))
+
     # Breaks if: a long email on the ticket page makes a phone scroll sideways
     # for staff, who see everyone's address.
     def test_long_emails_fit_on_a_phone(self) -> None:
