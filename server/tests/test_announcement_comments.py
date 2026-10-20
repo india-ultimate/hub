@@ -244,6 +244,59 @@ class AnnouncementCommentsTestCase(TestCase):
         self._delete(reply)
         self.assertFalse(Comment.objects.exists())
 
+    def _edit(self, comment_id: int, body: str) -> Any:
+        return self.client.patch(
+            f"/api/announcements/comments/{comment_id}",
+            {"body": body},
+            content_type="application/json",
+        )
+
+    def test_author_edits_a_comment(self) -> None:
+        top = self._comment("Teh final")
+        reply = self._comment("Me too", top)
+        self.assertIsNone(self._comments()[0]["edited_at"])
+
+        response = self._edit(top, "  The final  ")
+        self.assertEqual(200, response.status_code, response.content)
+        self.assertEqual("The final", response.json()["body"])
+        self.assertEqual(200, self._edit(reply, "Me three").status_code)
+
+        comment = self._comments()[0]
+        self.assertEqual("The final", comment["body"])
+        self.assertIsNotNone(comment["edited_at"])
+        self.assertEqual("Me three", comment["replies"][0]["body"])
+        self.assertIsNotNone(comment["replies"][0]["edited_at"])
+
+    def test_only_the_author_may_edit(self) -> None:
+        mine = self._comment("Mine")
+        self.assertTrue(self._comments()[0]["can_edit"])
+        for user in (self.other, self.staff):
+            self._as(user)
+            self.assertFalse(self._comments()[0]["can_edit"])
+            response = self._edit(mine, "Not yours")
+            self.assertEqual(403, response.status_code)
+            self.assertIn("message", response.json())
+        self.assertEqual("Mine", Comment.objects.get(pk=mine).body)
+
+    def test_edit_rules(self) -> None:
+        mine = self._comment("Mine")
+        for body in ("   ", "x" * 2001):
+            self.assertEqual(400, self._edit(mine, body).status_code)
+        self.assertEqual(200, self._edit(mine, "Mine").status_code)
+        self.assertIsNone(Comment.objects.get(pk=mine).edited_at)
+
+        self.post.allow_comments = False
+        self.post.save()
+        self.assertEqual(403, self._edit(mine, "Closed").status_code)
+        self.post.allow_comments = True
+        self.post.save()
+
+        self._comment("Reply", mine)
+        self._delete(mine)
+        self.assertEqual(404, self._edit(mine, "Back").status_code)
+        self.assertEqual("", Comment.objects.get(pk=mine).body)
+        self.assertEqual(404, self._edit(mine + 100, "Nothing").status_code)
+
     def test_comment_count_leaves_out_deleted_comments(self) -> None:
         top = self._comment("Question")
         self._comment("Answer", top)

@@ -122,6 +122,7 @@ class CommentSchema(ModelSchema):
     author: UserNameSchema
     author_profile_pic_url: str | None = None
     author_is_staff: bool
+    can_edit: bool
     can_delete: bool
     reactions: list[ReactionCountSchema]
     replies: list["CommentSchema"]
@@ -133,6 +134,12 @@ class CommentSchema(ModelSchema):
     @staticmethod
     def resolve_author_is_staff(comment: Comment) -> bool:
         return comment.author.is_staff
+
+    # Only the author: staff may remove someone's words, never change them.
+    # Whether comments are still on is the page's to check.
+    @staticmethod
+    def resolve_can_edit(comment: Comment, context: dict[str, Any]) -> bool:
+        return not comment.is_deleted and comment.author_id == context["request"].user.id
 
     @staticmethod
     def resolve_can_delete(comment: Comment, context: dict[str, Any]) -> bool:
@@ -151,12 +158,16 @@ class CommentSchema(ModelSchema):
 
     class Meta:
         model = Comment
-        fields = ["id", "body", "is_deleted", "created_at"]
+        fields = ["id", "body", "is_deleted", "created_at", "edited_at"]
 
 
 class CommentCreateSchema(Schema):
     body: str
     parent_id: int | None = None
+
+
+class CommentEditSchema(Schema):
+    body: str
 
 
 class AnnouncementHeadlineSchema(ModelSchema):

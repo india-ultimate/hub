@@ -84,6 +84,26 @@ class TestAnnouncementCommentsIntegration(BaseCase):
         self.wait_for_text_not_visible("Next Monday", timeout=5)
         self.assertFalse(Comment.objects.filter(pk=reply.pk).exists())
 
+    def test_editing_a_comment(self) -> None:
+        comment = Comment.objects.create(
+            announcement=self.post, author=self.player, body="Registraton opens Monday"
+        )
+        self.open_post()
+        edit = f'#comment-{comment.id} button[aria-label="Edit your comment"]'
+        self.click(edit)
+        self.assertEqual("Registraton opens Monday", self.get_value(f"#edit-{comment.id}"))
+        self.send_keys(f"#edit-{comment.id}", "")  # Escape
+        self.wait_for_element_absent(f"#edit-{comment.id}", timeout=3)
+
+        self.click(edit)
+        self.type(f"#edit-{comment.id}", "Registration opens Monday")
+        self.click(f'#comment-{comment.id} button:contains("Save")')
+        self.wait_for_text("Registration opens Monday", f"#comment-{comment.id}", timeout=5)
+        self.assert_text("edited", f"#comment-{comment.id}")
+        self.wait_for_element_absent(f"#edit-{comment.id}", timeout=3)
+        comment.refresh_from_db()
+        self.assertEqual("Registration opens Monday", comment.body)
+
     def test_comments_turned_off_hide_the_composer(self) -> None:
         Comment.objects.create(announcement=self.post, author=self.player, body="Earlier note")
         self.open_post(allow_comments=False)

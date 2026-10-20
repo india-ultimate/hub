@@ -98,6 +98,7 @@ class Comment(models.Model):
     # Kept, with its body cleared, while it still has replies.
     is_deleted = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
+    edited_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["created_at"]
