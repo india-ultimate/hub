@@ -468,6 +468,26 @@ class TestRosterWrites(ApiCase):
         self.assertEqual(409, self.web.delete(f"{self.base}/roster/{paid.id}").status_code)
         self.assertEqual(404, self.web.delete(f"{self.base}/roster/99999").status_code)
 
+    def test_legacy_remove_keeps_a_paid_player(self) -> None:
+        paid = self.player("p@x.com", entry=False)
+        registration = Registration.objects.create(event=self.event, team=self.team, player=paid)
+        response = self.web.delete(
+            f"/api/tournament/{self.event.id}/team/{self.team.id}/roster/{registration.id}"
+        )
+        self.assertEqual(400, response.status_code)
+        self.assertIn("Request a change", response.json()["message"])
+        self.assertTrue(Registration.objects.filter(pk=registration.pk).exists())
+
+    def test_legacy_remove_works_on_a_free_tournament(self) -> None:
+        Event.objects.filter(pk=self.event.pk).update(player_fee=0)
+        p = self.player("a@x.com", entry=False)
+        registration = Registration.objects.create(event=self.event, team=self.team, player=p)
+        response = self.web.delete(
+            f"/api/tournament/{self.event.id}/team/{self.team.id}/roster/{registration.id}"
+        )
+        self.assertEqual(200, response.status_code)
+        self.assertFalse(Registration.objects.filter(pk=registration.pk).exists())
+
     def test_undo_on_a_free_tournament_takes_them_off_the_roster(self) -> None:
         # Nothing was paid, so the Add dialog's Undo works after rostering.
         Event.objects.filter(pk=self.event.pk).update(player_fee=0)

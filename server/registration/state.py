@@ -422,6 +422,20 @@ def _evaluate(ctx: Context) -> tuple[dict[int, Reason], dict[str, int]]:
     return reasons, counts
 
 
+PAID_REMOVAL_REFUSED = "Already paid, or being paid. Request a change instead."
+
+
+def is_undo(event: Event, reason: Reason, *, rostering_open: bool) -> bool:
+    """Nothing was paid on a free tournament, so taking them off is an undo."""
+    return reason.kind == "done" and not event.player_fee and rostering_open
+
+
+def removal_refused(event: Event, reason: Reason, *, rostering_open: bool) -> bool:
+    return reason.kind in ("done", "progress") and not is_undo(
+        event, reason, rostering_open=rostering_open
+    )
+
+
 def entry_reasons(ctx: Context) -> dict[int, Reason]:
     return _evaluate(ctx)[0]
 
