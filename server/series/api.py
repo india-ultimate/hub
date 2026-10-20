@@ -25,6 +25,7 @@ from .utils import (
     change_series_role,
     get_details_from_invitation_token,
     invite_to_series,
+    may_answer_for,
     register_player,
 )
 
@@ -366,7 +367,7 @@ def accept_series_invitation(
     except SeriesRosterInvitation.DoesNotExist:
         return 400, {"messsage": "Invitation does not exist"}
 
-    if request.user != invitation.to_player.user:
+    if not may_answer_for(request.user, invitation.to_player):
         return 401, {"message": "This invitation was not sent to you !"}
 
     match invitation.status:
@@ -413,7 +414,7 @@ def decline_series_invitation(
         invitation = SeriesRosterInvitation.objects.get(id=invitation_id)
     except SeriesRosterInvitation.DoesNotExist:
         return 400, {"messsage": "Invitation does not exist"}
-    if request.user != invitation.to_player.user:
+    if not may_answer_for(request.user, invitation.to_player):
         return 401, {"message": "This invitation was not sent to you !"}
 
     match invitation.status:

@@ -6,7 +6,7 @@ from django.core import mail
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 
-from server.core.models import Player, Team, User
+from server.core.models import Guardianship, Player, Team, User
 from server.subscription import eligibility
 from server.types import message_response
 
@@ -203,6 +203,13 @@ def change_series_role(registration: SeriesRegistration, role: str) -> message_r
     registration.role = role
     registration.save(update_fields=["role"])
     return None
+
+
+def may_answer_for(user: User, player: Player) -> bool:
+    return (
+        player.user_id == user.id
+        or Guardianship.objects.filter(player=player, user_id=user.id).exists()
+    )
 
 
 def generate_invitation_token(invitation_id: int) -> str:

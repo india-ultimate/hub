@@ -5,7 +5,7 @@ from typing import Any
 
 from django.test import TestCase
 
-from server.core.models import Player, Team, User
+from server.core.models import Guardianship, Player, Team, User
 from server.season.models import Season
 from server.series.models import Role, Series, SeriesRegistration, SeriesRosterInvitation
 from server.series.utils import change_series_role, register_player
@@ -381,6 +381,23 @@ class TestSeriesInvitationPermissions(TestCase):
         self.assertEqual(401, self.revoke().status_code)
         self.invitation.refresh_from_db()
         self.assertEqual(SeriesRosterInvitation.Status.PENDING, self.invitation.status)
+
+    def test_a_guardian_can_accept_for_their_ward(self) -> None:
+        guardian = User.objects.create(username="mum@example.com", email="mum@example.com")
+        Guardianship.objects.create(user=guardian, player=self.ward, relation="MO")
+        self.client.force_login(guardian)
+        response = self.respond("accept")
+        self.assertEqual(200, response.status_code, response.content)
+        self.invitation.refresh_from_db()
+        self.assertEqual(SeriesRosterInvitation.Status.ACCEPTED, self.invitation.status)
+
+    def test_a_guardian_can_decline_for_their_ward(self) -> None:
+        guardian = User.objects.create(username="mum@example.com", email="mum@example.com")
+        Guardianship.objects.create(user=guardian, player=self.ward, relation="MO")
+        self.client.force_login(guardian)
+        self.assertEqual(200, self.respond("decline").status_code)
+        self.invitation.refresh_from_db()
+        self.assertEqual(SeriesRosterInvitation.Status.DECLINED, self.invitation.status)
 
     def test_a_stranger_or_staff_cannot_answer_for_a_player(self) -> None:
         staff = User.objects.create(username="s@example.com", email="s@example.com", is_staff=True)
