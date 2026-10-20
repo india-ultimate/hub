@@ -65,6 +65,12 @@ from server.passkey_utils import PassKeyClient
 from server.payment_account.api import router as payment_account_router
 from server.receipts.api import router as receipts_router
 from server.registration.api import router as registration_router
+from server.registration.state import (
+    PAID_REMOVAL_REFUSED,
+    build_context,
+    entry_reasons,
+    removal_refused,
+)
 from server.schema import (
     AccreditationFormSchema,
     AccreditationSchema,
@@ -1612,10 +1618,11 @@ def remove_from_roster(
         if tournament.event.player_late_penalty_end_date
         else tournament.event.player_registration_end_date
     )
-    if not is_today_in_between_dates(
+    rostering_open = is_today_in_between_dates(
         from_date=tournament.event.player_registration_start_date,
         to_date=end_date,
-    ):
+    )
+    if not rostering_open:
         return 400, {"message": "Rostering has closed, you can't remove players now !"}
 
     if request.user not in team.admins.all():
@@ -1623,11 +1630,14 @@ def remove_from_roster(
 
     try:
         registration = Registration.objects.get(id=registration_id, event=event, team=team)
-        registration.delete()
-        return 200, {"message": "Player registration removed successfully"}
-
     except Registration.DoesNotExist:
         return 400, {"message": "Registration does not exist"}
+
+    reason = entry_reasons(build_context(event, team, request.user)).get(registration.player_id)
+    if reason is not None and removal_refused(event, reason, rostering_open=rostering_open):
+        return 400, {"message": PAID_REMOVAL_REFUSED}
+    registration.delete()
+    return 200, {"message": "Player registration removed successfully"}
 
 
 @api.put(

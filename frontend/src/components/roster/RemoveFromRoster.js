@@ -1,5 +1,6 @@
 import { Icon } from "solid-heroicons";
 import { xMark } from "solid-heroicons/solid";
+import { Show } from "solid-js";
 
 import Modal from "../Modal";
 
@@ -10,7 +11,10 @@ const RemoveFromRoster = props => {
     <div>
       <button
         class="rounded-md text-red-400 outline outline-2 outline-red-400"
-        onClick={() => modalRef.showModal()}
+        onClick={() => {
+          props.removeMutation.reset();
+          modalRef.showModal();
+        }}
       >
         <Icon path={xMark} class="inline h-6 w-6" />
         <span class="sr-only">Remove from roster</span>
@@ -28,6 +32,9 @@ const RemoveFromRoster = props => {
         <span>Do you want to remove </span>
         <span class="inline font-semibold">{props.playerName}</span> from the
         roster ?
+        <Show when={props.removeMutation.error}>
+          <p class="mt-2 text-red-600">{props.removeMutation.error.message}</p>
+        </Show>
         <div class="mt-4">
           <button
             type="button"

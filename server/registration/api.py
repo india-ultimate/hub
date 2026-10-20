@@ -21,10 +21,13 @@ from server.registration.schema import (
 )
 from server.registration.state import (
     HOLD_MINUTES,
+    PAID_REMOVAL_REFUSED,
     build_context,
     checkout_quote,
     entry_reasons,
+    is_undo,
     preview_swap,
+    removal_refused,
     status_payload,
 )
 from server.schema import Response
@@ -174,10 +177,10 @@ def remove_entry(
     reason = entry_reasons(build_context(event, team, request.user)).get(player_id)
     if reason is None:
         return 404, {"message": "Not on this roster"}
-    # Nothing was paid on a free tournament, so taking them off is an undo.
-    undo = reason.kind == "done" and not event.player_fee and _rostering_open(event)
-    if reason.kind in ("done", "progress") and not undo:
-        return 409, {"message": "Already paid, or being paid. Request a change instead."}
+    rostering_open = _rostering_open(event)
+    if removal_refused(event, reason, rostering_open=rostering_open):
+        return 409, {"message": PAID_REMOVAL_REFUSED}
+    undo = is_undo(event, reason, rostering_open=rostering_open)
     if undo:
         Registration.objects.filter(event=event, team=team, player_id=player_id).delete()
     if event.series is not None:
