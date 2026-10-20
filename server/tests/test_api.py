@@ -31,7 +31,14 @@ from server.passkey_utils import ClientResponse
 from server.season.models import Season
 from server.subscription import sponsorship
 from server.subscription.models import Subscription, SubscriptionPlan, SubscriptionType
-from server.tests.base import ApiBaseTestCase, create_pool, fake_id, fake_order, start_tournament
+from server.tests.base import (
+    ApiBaseTestCase,
+    create_pool,
+    fake_id,
+    fake_order,
+    not_none,
+    start_tournament,
+)
 from server.tests.test_subscription import SubscriptionStatusTestCase
 from server.tournament.models import Match, Registration, SpiritScore, UCRegistration
 from server.transaction.models import (
@@ -1834,6 +1841,66 @@ class TestTournaments(ApiBaseTestCase):
         self.assertEqual(400, update("spirit_score_team_1", mvp_id=person2).status_code)
         self.assertEqual(400, update("spirit_score_team_1", mvp_id="999999").status_code)
         self.assertEqual(200, update("spirit_score_team_1", mvp_id=own).status_code)
+
+    def _update(self, match: Match, **body: Any) -> Any:
+        self.user.is_staff = True
+        self.user.save()
+        self.client.force_login(self.user)
+        return self.client.post(
+            f"/api/match/{match.id}/update", data=body, content_type="application/json"
+        )
+
+    def test_update_match_saves_nothing_when_a_later_block_fails(self) -> None:
+        match = self._team_1_vs_2_match()
+        scores = {"rules": 2, "fouls": 2, "fair": 2, "positive": 2, "communication": 2}
+        own = str(self.player.ultimate_central_id)
+        response = self._update(
+            match,
+            spirit_score_team_1={**scores, "mvp_id": own},
+            spirit_score_team_2={**scores, "mvp_id": "999999"},
+        )
+        self.assertEqual(400, response.status_code)
+        match.refresh_from_db()
+        self.assertIsNone(match.spirit_score_team_1)
+        self.assertEqual(0, SpiritScore.objects.count())
+
+        response = self._update(match, spirit_score_team_1={**scores, "mvp_id": own})
+        self.assertEqual(200, response.status_code)
+        match.refresh_from_db()
+        self.assertEqual(
+            self.player.ultimate_central_id, not_none(match.spirit_score_team_1).mvp_id
+        )
+
+    def test_update_match_ignores_nominees_on_self_blocks(self) -> None:
+        match = self._team_1_vs_2_match()
+        scores = {"rules": 2, "fouls": 2, "fair": 2, "positive": 2, "communication": 2}
+        person2 = str(self.player2.ultimate_central_id)
+        response = self._update(match, self_spirit_score_team_1={**scores, "mvp_id": person2})
+        self.assertEqual(200, response.status_code)
+        match.refresh_from_db()
+        saved = not_none(match.self_spirit_score_team_1)
+        self.assertEqual(2, saved.rules)
+        self.assertIsNone(saved.mvp_id)
+
+    def test_update_match_keeps_a_saved_nominee_who_left_the_roster(self) -> None:
+        match = self._team_1_vs_2_match()
+        gone = UCPerson.objects.create(email="gone@foo.com", slug="gone")
+        match.spirit_score_team_1 = SpiritScore.objects.create(
+            rules=1, fouls=1, fair=1, positive=1, communication=1, total=5, mvp=gone
+        )
+        match.save()
+        scores = {"rules": 3, "fouls": 3, "fair": 3, "positive": 3, "communication": 3}
+        response = self._update(match, spirit_score_team_1={**scores, "mvp_id": str(gone.id)})
+        self.assertEqual(200, response.status_code)
+        match.refresh_from_db()
+        saved = not_none(match.spirit_score_team_1)
+        self.assertEqual(gone.id, saved.mvp_id)
+        self.assertEqual(3, saved.rules)
+
+    def test_update_match_without_spirit_blocks_works_on_a_yet_to_fix_match(self) -> None:
+        match = self._team_1_vs_2_match(Match.Status.YET_TO_FIX)
+        response = self._update(match, duration_mins=50)
+        self.assertEqual(200, response.status_code)
 
     def test_submit_score_rejects_negative_scores(self) -> None:
         match = self._team_1_vs_2_match(Match.Status.SCHEDULED)
