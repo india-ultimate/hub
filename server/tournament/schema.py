@@ -614,16 +614,16 @@ class MatchCreateSchema(Schema):
 
 
 class SpiritScoreUpdateSchema(Schema):
-    rules: int
-    fouls: int
-    fair: int
-    positive: int
-    communication: int
+    rules: int = Field(ge=0, le=4)
+    fouls: int = Field(ge=0, le=4)
+    fair: int = Field(ge=0, le=4)
+    positive: int = Field(ge=0, le=4)
+    communication: int = Field(ge=0, le=4)
 
     mvp_id: str | None = None
     msp_id: str | None = None
 
-    comments: str | None = None
+    comments: str | None = Field(default=None, max_length=500)
 
 
 class SpiritScoreSubmitSchema(Schema):
@@ -645,8 +645,8 @@ class MatchUpdateSchema(Schema):
 
 
 class MatchScoreSchema(Schema):
-    team_1_score: int
-    team_2_score: int
+    team_1_score: int = Field(ge=0)
+    team_2_score: int = Field(ge=0)
 
 
 class TournamentRulesSchema(Schema):
