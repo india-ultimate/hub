@@ -412,6 +412,46 @@ class TestSeriesInvitationPermissions(TestCase):
         self.client.force_login(self.ward.user)
         self.assertEqual(200, self.respond("accept").status_code)
 
+    def test_an_answered_invitation_says_how_without_saying_you(self) -> None:
+        self.client.force_login(self.guardian_of_ward())
+        self.invitation.rsvp_date = datetime.date(2026, 9, 1)
+        for status, action, message in (
+            (
+                SeriesRosterInvitation.Status.ACCEPTED,
+                "accept",
+                "This invitation was already accepted on 2026-09-01",
+            ),
+            (
+                SeriesRosterInvitation.Status.DECLINED,
+                "decline",
+                "This invitation was already declined on 2026-09-01",
+            ),
+        ):
+            self.invitation.status = status
+            self.invitation.save()
+            response = self.respond(action)
+            self.assertEqual(400, response.status_code)
+            self.assertEqual(message, response.json()["message"])
+
+    def test_someone_else_is_told_who_can_answer(self) -> None:
+        self.client.force_login(self.admin)
+        response = self.respond("accept")
+        self.assertEqual(
+            "Only the invited player or their guardian can answer this invitation",
+            response.json()["message"],
+        )
+
+    def test_a_missing_invitation_says_so(self) -> None:
+        self.client.force_login(self.ward.user)
+        missing = self.invitation.id + 1000
+        for response in (
+            self.client.put(f"/api/series/invitation/{missing}/accept"),
+            self.client.put(f"/api/series/invitation/{missing}/decline"),
+            self.client.delete(f"/api/series/invitation/{missing}"),
+        ):
+            self.assertEqual(400, response.status_code)
+            self.assertIn("does not exist", response.json()["message"])
+
     def guardian_of_ward(self) -> User:
         guardian = User.objects.create(username="mum@example.com", email="mum@example.com")
         Guardianship.objects.create(user=guardian, player=self.ward, relation="MO")

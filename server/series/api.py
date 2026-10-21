@@ -250,7 +250,7 @@ def accept_series_invitation_via_mail(
     try:
         invitation = SeriesRosterInvitation.objects.get(id=invitation_id)
     except SeriesRosterInvitation.DoesNotExist:
-        return 400, {"messsage": "Invitation does not exist"}
+        return 400, {"message": "Invitation does not exist"}
 
     match invitation.status:
         case SeriesRosterInvitation.Status.EXPIRED:
@@ -261,7 +261,7 @@ def accept_series_invitation_via_mail(
 
         case SeriesRosterInvitation.Status.ACCEPTED:
             return 400, {
-                "message": f"You already accepted this invitation on {invitation.rsvp_date}"
+                "message": f"This invitation was already accepted on {invitation.rsvp_date}"
             }
 
         case SeriesRosterInvitation.Status.REVOKED:
@@ -305,7 +305,7 @@ def decline_series_invitation_via_mail(
     try:
         invitation = SeriesRosterInvitation.objects.get(id=invitation_id)
     except SeriesRosterInvitation.DoesNotExist:
-        return 400, {"messsage": "Invitation does not exist"}
+        return 400, {"message": "Invitation does not exist"}
 
     match invitation.status:
         case SeriesRosterInvitation.Status.EXPIRED:
@@ -316,7 +316,7 @@ def decline_series_invitation_via_mail(
 
         case SeriesRosterInvitation.Status.DECLINED:
             return 400, {
-                "message": f"You already declined this invitation on {invitation.rsvp_date}"
+                "message": f"This invitation was already declined on {invitation.rsvp_date}"
             }
 
         case SeriesRosterInvitation.Status.REVOKED:
@@ -341,7 +341,7 @@ def revoke_series_invitation(
     try:
         invitation = SeriesRosterInvitation.objects.get(id=invitation_id)
     except SeriesRosterInvitation.DoesNotExist:
-        return 400, {"messsage": "Series/Invitation does not exist"}
+        return 400, {"message": "Series/Invitation does not exist"}
 
     if request.user not in invitation.team.admins.all():
         return 401, {"message": "Only team admins can revoke this invitation"}
@@ -366,10 +366,12 @@ def accept_series_invitation(
     try:
         invitation = SeriesRosterInvitation.objects.get(id=invitation_id)
     except SeriesRosterInvitation.DoesNotExist:
-        return 400, {"messsage": "Invitation does not exist"}
+        return 400, {"message": "Invitation does not exist"}
 
     if not may_answer_for(request.user, invitation.to_player):
-        return 401, {"message": "This invitation was not sent to you !"}
+        return 401, {
+            "message": "Only the invited player or their guardian can answer this invitation"
+        }
 
     match invitation.status:
         case SeriesRosterInvitation.Status.EXPIRED:
@@ -380,7 +382,7 @@ def accept_series_invitation(
 
         case SeriesRosterInvitation.Status.ACCEPTED:
             return 400, {
-                "message": f"You already accepted this invitation on {invitation.rsvp_date}"
+                "message": f"This invitation was already accepted on {invitation.rsvp_date}"
             }
 
         case SeriesRosterInvitation.Status.REVOKED:
@@ -417,9 +419,11 @@ def decline_series_invitation(
     try:
         invitation = SeriesRosterInvitation.objects.get(id=invitation_id)
     except SeriesRosterInvitation.DoesNotExist:
-        return 400, {"messsage": "Invitation does not exist"}
+        return 400, {"message": "Invitation does not exist"}
     if not may_answer_for(request.user, invitation.to_player):
-        return 401, {"message": "This invitation was not sent to you !"}
+        return 401, {
+            "message": "Only the invited player or their guardian can answer this invitation"
+        }
 
     match invitation.status:
         case SeriesRosterInvitation.Status.EXPIRED:
@@ -430,7 +434,7 @@ def decline_series_invitation(
 
         case SeriesRosterInvitation.Status.DECLINED:
             return 400, {
-                "message": f"You already declined this invitation on {invitation.rsvp_date}"
+                "message": f"This invitation was already declined on {invitation.rsvp_date}"
             }
 
         case SeriesRosterInvitation.Status.REVOKED:
