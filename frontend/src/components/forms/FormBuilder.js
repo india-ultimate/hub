@@ -54,6 +54,8 @@ const FormBuilder = () => {
   const [fields, setFields] = createStore([]);
   const [sections, setSections] = createStore([]);
   const [status, setStatus] = createSignal("");
+  const [refusal, setRefusal] = createSignal("");
+  const [loaded, setLoaded] = createSignal(!isEdit());
   const [saving, setSaving] = createSignal(false);
 
   let keyCounter = 0;
@@ -188,18 +190,22 @@ const FormBuilder = () => {
     if (isEdit()) {
       try {
         const form = await fetchForm(params.slug);
+        if (!form.can_manage) {
+          setRefusal("Only this form's creator or staff can edit it.");
+          return;
+        }
         setTitle(form.title);
         setDescription(form.description || "");
-        if (editorRef) {
-          editorRef.innerHTML = form.description || "";
-        }
         setPaymentAmount(
           form.payment_amount ? String(toRupees(form.payment_amount)) : ""
         );
         setIsActive(form.is_active !== false);
-        const loaded = form.sections?.length ? form.sections : [newSection()];
+        const loadedSections = form.sections?.length
+          ? form.sections
+          : [newSection()];
+        const first = loadedSections[0];
         setSections(
-          loaded.map(s => ({
+          loadedSections.map(s => ({
             key: s.key,
             title: s.title || "",
             description: s.description || "",
@@ -213,13 +219,17 @@ const FormBuilder = () => {
             type: f.type,
             required: f.required,
             optionsText: (f.options || []).join("\n"),
-            section: f.section || loaded[0].key,
+            section: f.section || first.key,
             branch: Object.keys(f.goto || {}).length > 0,
             goto: { ...f.goto }
           }))
         );
+        setLoaded(true);
+        if (editorRef) {
+          editorRef.innerHTML = form.description || "";
+        }
       } catch (err) {
-        setStatus(`Error: ${err.message}`);
+        setRefusal(err.message);
       }
     } else if (fields.length === 0) {
       const section = newSection();
@@ -288,361 +298,385 @@ const FormBuilder = () => {
           { name: isEdit() ? "Edit form" : "New form" }
         ]}
       />
-      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
-        {isEdit() ? "Edit form" : "New form"}
-      </h1>
+      <Show
+        when={loaded() && !refusal()}
+        fallback={
+          <Show
+            when={refusal()}
+            fallback={<p class="mt-3 text-gray-500">Loading...</p>}
+          >
+            <p role="alert" class="mt-3 text-red-700 dark:text-red-400">
+              {refusal()}
+            </p>
+          </Show>
+        }
+      >
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+          {isEdit() ? "Edit form" : "New form"}
+        </h1>
 
-      <div class="mt-4 rounded-lg bg-blue-50 p-4 text-sm text-blue-800 dark:bg-gray-800 dark:text-blue-300">
-        The submitter's name, email, and phone are captured automatically and
-        shown to staff with each response — you don't need to add fields for
-        them.
-      </div>
-
-      <form class="mt-6 space-y-5" onSubmit={handleSubmit}>
-        <div>
-          <label class="mb-1 block text-sm font-medium text-gray-900 dark:text-white">
-            Title <span class="text-red-500">*</span>
-          </label>
-          <input
-            id="form-title"
-            required
-            value={title()}
-            onInput={e => setTitle(e.target.value)}
-            class="w-full rounded-lg border border-gray-300 p-2.5 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-          />
+        <div class="mt-4 rounded-lg bg-blue-50 p-4 text-sm text-blue-800 dark:bg-gray-800 dark:text-blue-300">
+          The submitter's name, email, and phone are captured automatically and
+          shown to whoever manages this form — you don't need to add fields for
+          them.
         </div>
 
-        <div>
-          <label class="mb-1 block text-sm font-medium text-gray-900 dark:text-white">
-            Description
-          </label>
-          <div class="overflow-hidden rounded-lg border border-gray-300 dark:border-gray-600">
-            <div class="flex gap-1 border-b border-gray-300 bg-gray-50 p-1 dark:border-gray-600 dark:bg-gray-800">
-              <button
-                type="button"
-                title="Bold"
-                onClick={() => exec("bold")}
-                class="h-8 w-8 rounded font-bold hover:bg-gray-200 dark:text-white dark:hover:bg-gray-700"
-              >
-                B
-              </button>
-              <button
-                type="button"
-                title="Italic"
-                onClick={() => exec("italic")}
-                class="h-8 w-8 rounded italic hover:bg-gray-200 dark:text-white dark:hover:bg-gray-700"
-              >
-                I
-              </button>
-              <button
-                type="button"
-                title="Underline"
-                onClick={() => exec("underline")}
-                class="h-8 w-8 rounded underline hover:bg-gray-200 dark:text-white dark:hover:bg-gray-700"
-              >
-                U
-              </button>
-              <button
-                type="button"
-                title="Add link"
-                onClick={addLink}
-                class="h-8 w-8 rounded text-blue-600 hover:bg-gray-200 dark:text-blue-400 dark:hover:bg-gray-700"
-              >
-                🔗
-              </button>
-            </div>
-            <div
-              ref={el => (editorRef = el)}
-              contentEditable={true}
-              onInput={syncDescription}
-              class="prose prose-sm min-h-[5rem] max-w-none p-2.5 dark:prose-invert focus:outline-none dark:text-white [&_a]:text-blue-600 [&_a]:underline"
+        <form class="mt-6 space-y-5" onSubmit={handleSubmit}>
+          <div>
+            <label class="mb-1 block text-sm font-medium text-gray-900 dark:text-white">
+              Title <span class="text-red-500">*</span>
+            </label>
+            <input
+              id="form-title"
+              required
+              value={title()}
+              onInput={e => setTitle(e.target.value)}
+              class="w-full rounded-lg border border-gray-300 p-2.5 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
             />
           </div>
-        </div>
 
-        <div>
-          <label class="mb-1 block text-sm font-medium text-gray-900 dark:text-white">
-            Payment amount (₹) — leave blank for a free form
-          </label>
-          <input
-            type="number"
-            min="0"
-            step="1"
-            value={paymentAmount()}
-            onInput={e => setPaymentAmount(e.target.value)}
-            class="w-full rounded-lg border border-gray-300 p-2.5 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-          />
-        </div>
-
-        <label class="flex items-center gap-2 text-sm text-gray-900 dark:text-white">
-          <input
-            type="checkbox"
-            checked={isActive()}
-            onChange={e => setIsActive(e.target.checked)}
-          />
-          Accepting responses
-        </label>
-
-        <div class="space-y-6">
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-            Sections
-          </h2>
-          <For each={sections}>
-            {(section, i) => {
-              const destinations = () => (
-                <>
-                  <option value="">Continue to next section</option>
-                  <For each={sections.slice(i() + 1)}>
-                    {(later, j) => (
-                      <option value={later.key}>
-                        {sectionName(later, i() + 1 + j())}
-                      </option>
-                    )}
-                  </For>
-                  <option value="submit">Submit form</option>
-                </>
-              );
-              return (
-                <div
-                  data-section={i()}
-                  class="rounded-lg border border-gray-200 p-4 dark:border-gray-700"
+          <div>
+            <label class="mb-1 block text-sm font-medium text-gray-900 dark:text-white">
+              Description
+            </label>
+            <div class="overflow-hidden rounded-lg border border-gray-300 dark:border-gray-600">
+              <div class="flex gap-1 border-b border-gray-300 bg-gray-50 p-1 dark:border-gray-600 dark:bg-gray-800">
+                <button
+                  type="button"
+                  title="Bold"
+                  onClick={() => exec("bold")}
+                  class="h-8 w-8 rounded font-bold hover:bg-gray-200 dark:text-white dark:hover:bg-gray-700"
                 >
-                  <div class="flex items-center justify-between gap-3">
-                    <h3 class="text-base font-semibold text-gray-900 dark:text-white">
-                      Section {i() + 1}
-                    </h3>
-                    <Show when={i() > 0}>
-                      <button
-                        type="button"
-                        onClick={() => removeSection(section.key)}
-                        class="min-h-[44px] rounded-lg border border-red-300 px-3 text-sm text-red-600 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 dark:border-red-700 dark:text-red-400 dark:hover:bg-gray-800"
-                      >
-                        Remove section
-                      </button>
-                    </Show>
-                  </div>
-                  <label class="mt-2 block">
-                    <span class={labelClass}>Section title</span>
-                    <input
-                      placeholder="Section title"
-                      value={section.title}
-                      onInput={e => setSections(i(), "title", e.target.value)}
-                      class={inputClass}
-                    />
-                  </label>
-                  <label class="mt-2 block">
-                    <span class={labelClass}>Section description</span>
-                    <textarea
-                      placeholder="Section description"
-                      value={section.description}
-                      onInput={e =>
-                        setSections(i(), "description", e.target.value)
-                      }
-                      rows="2"
-                      class={inputClass}
-                    />
-                  </label>
+                  B
+                </button>
+                <button
+                  type="button"
+                  title="Italic"
+                  onClick={() => exec("italic")}
+                  class="h-8 w-8 rounded italic hover:bg-gray-200 dark:text-white dark:hover:bg-gray-700"
+                >
+                  I
+                </button>
+                <button
+                  type="button"
+                  title="Underline"
+                  onClick={() => exec("underline")}
+                  class="h-8 w-8 rounded underline hover:bg-gray-200 dark:text-white dark:hover:bg-gray-700"
+                >
+                  U
+                </button>
+                <button
+                  type="button"
+                  title="Add link"
+                  onClick={addLink}
+                  class="h-8 w-8 rounded text-blue-600 hover:bg-gray-200 dark:text-blue-400 dark:hover:bg-gray-700"
+                >
+                  🔗
+                </button>
+              </div>
+              <div
+                ref={el => (editorRef = el)}
+                contentEditable={true}
+                onInput={syncDescription}
+                class="prose prose-sm min-h-[5rem] max-w-none p-2.5 dark:prose-invert focus:outline-none dark:text-white [&_a]:text-blue-600 [&_a]:underline"
+              />
+            </div>
+          </div>
 
-                  <div class="mt-4 space-y-4">
-                    <For each={fields.filter(f => f.section === section.key)}>
-                      {field => (
-                        <div class="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
-                          <div class="flex flex-wrap items-center gap-3">
-                            <label class="min-w-[12rem] flex-1">
-                              <span class={labelClass}>Question</span>
-                              <input
-                                required
-                                placeholder="Question"
-                                value={field.label}
-                                onInput={e =>
-                                  updateField(
-                                    field.key,
-                                    "label",
-                                    e.target.value
-                                  )
-                                }
-                                class={inputClass}
-                              />
-                            </label>
-                            <select
-                              aria-label="Question type"
-                              value={field.type}
-                              onChange={e => {
-                                updateField(field.key, "type", e.target.value);
-                                updateField(field.key, "branch", false);
-                              }}
-                              class={`${inputClass} w-auto`}
-                            >
-                              <For each={FIELD_TYPES}>
-                                {t => (
-                                  <option value={t.value}>{t.label}</option>
-                                )}
-                              </For>
-                            </select>
-                            <label class="flex min-h-[44px] items-center gap-2 text-sm text-gray-900 dark:text-white">
-                              <input
-                                type="checkbox"
-                                checked={field.required}
-                                onChange={e =>
-                                  updateField(
-                                    field.key,
-                                    "required",
-                                    e.target.checked
-                                  )
-                                }
-                              />
-                              Required
-                            </label>
-                            <button
-                              type="button"
-                              onClick={() => removeField(field.key)}
-                              class="min-h-[44px] rounded-lg px-3 text-sm text-red-600 hover:underline focus:outline-none focus:ring-2 focus:ring-red-500 dark:text-red-400"
-                            >
-                              Remove
-                            </button>
-                          </div>
-                          <Show when={sections.length > 1}>
-                            <label class="mt-3 block text-sm text-gray-900 dark:text-white">
-                              <span class={labelClass}>Section</span>
+          <div>
+            <label class="mb-1 block text-sm font-medium text-gray-900 dark:text-white">
+              Payment amount (₹) — leave blank for a free form
+            </label>
+            <input
+              type="number"
+              min="0"
+              step="1"
+              value={paymentAmount()}
+              onInput={e => setPaymentAmount(e.target.value)}
+              class="w-full rounded-lg border border-gray-300 p-2.5 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+            />
+          </div>
+
+          <label class="flex items-center gap-2 text-sm text-gray-900 dark:text-white">
+            <input
+              type="checkbox"
+              checked={isActive()}
+              onChange={e => setIsActive(e.target.checked)}
+            />
+            Accepting responses
+          </label>
+
+          <div class="space-y-6">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+              Sections
+            </h2>
+            <For each={sections}>
+              {(section, i) => {
+                const destinations = () => (
+                  <>
+                    <option value="">Continue to next section</option>
+                    <For each={sections.slice(i() + 1)}>
+                      {(later, j) => (
+                        <option value={later.key}>
+                          {sectionName(later, i() + 1 + j())}
+                        </option>
+                      )}
+                    </For>
+                    <option value="submit">Submit form</option>
+                  </>
+                );
+                return (
+                  <div
+                    data-section={i()}
+                    class="rounded-lg border border-gray-200 p-4 dark:border-gray-700"
+                  >
+                    <div class="flex items-center justify-between gap-3">
+                      <h3 class="text-base font-semibold text-gray-900 dark:text-white">
+                        Section {i() + 1}
+                      </h3>
+                      <Show when={i() > 0}>
+                        <button
+                          type="button"
+                          onClick={() => removeSection(section.key)}
+                          class="min-h-[44px] rounded-lg border border-red-300 px-3 text-sm text-red-600 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 dark:border-red-700 dark:text-red-400 dark:hover:bg-gray-800"
+                        >
+                          Remove section
+                        </button>
+                      </Show>
+                    </div>
+                    <label class="mt-2 block">
+                      <span class={labelClass}>Section title</span>
+                      <input
+                        placeholder="Section title"
+                        value={section.title}
+                        onInput={e => setSections(i(), "title", e.target.value)}
+                        class={inputClass}
+                      />
+                    </label>
+                    <label class="mt-2 block">
+                      <span class={labelClass}>Section description</span>
+                      <textarea
+                        placeholder="Section description"
+                        value={section.description}
+                        onInput={e =>
+                          setSections(i(), "description", e.target.value)
+                        }
+                        rows="2"
+                        class={inputClass}
+                      />
+                    </label>
+
+                    <div class="mt-4 space-y-4">
+                      <For each={fields.filter(f => f.section === section.key)}>
+                        {field => (
+                          <div class="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
+                            <div class="flex flex-wrap items-center gap-3">
+                              <label class="min-w-[12rem] flex-1">
+                                <span class={labelClass}>Question</span>
+                                <input
+                                  required
+                                  placeholder="Question"
+                                  value={field.label}
+                                  onInput={e =>
+                                    updateField(
+                                      field.key,
+                                      "label",
+                                      e.target.value
+                                    )
+                                  }
+                                  class={inputClass}
+                                />
+                              </label>
                               <select
-                                value={field.section}
-                                onChange={e =>
-                                  moveField(field.key, e.target.value)
-                                }
+                                aria-label="Question type"
+                                value={field.type}
+                                onChange={e => {
+                                  updateField(
+                                    field.key,
+                                    "type",
+                                    e.target.value
+                                  );
+                                  updateField(field.key, "branch", false);
+                                }}
                                 class={`${inputClass} w-auto`}
                               >
-                                <For each={sections}>
-                                  {(s, j) => (
-                                    <option value={s.key}>
-                                      {sectionName(s, j())}
-                                    </option>
+                                <For each={FIELD_TYPES}>
+                                  {t => (
+                                    <option value={t.value}>{t.label}</option>
                                   )}
                                 </For>
                               </select>
-                            </label>
-                          </Show>
-                          <Show when={CHOICE_TYPES.includes(field.type)}>
-                            <label class="mt-3 block">
-                              <span class={labelClass}>Options</span>
-                              <textarea
-                                placeholder="Options (one per line)"
-                                value={field.optionsText}
-                                onInput={e =>
-                                  updateField(
-                                    field.key,
-                                    "optionsText",
-                                    e.target.value
-                                  )
-                                }
-                                rows="3"
-                                class={inputClass}
-                              />
-                            </label>
-                          </Show>
-                          <Show when={BRANCH_TYPES.includes(field.type)}>
-                            <label class="mt-3 flex min-h-[44px] items-center gap-2 text-sm text-gray-900 dark:text-white">
-                              <input
-                                type="checkbox"
-                                checked={field.branch}
-                                disabled={
+                              <label class="flex min-h-[44px] items-center gap-2 text-sm text-gray-900 dark:text-white">
+                                <input
+                                  type="checkbox"
+                                  checked={field.required}
+                                  onChange={e =>
+                                    updateField(
+                                      field.key,
+                                      "required",
+                                      e.target.checked
+                                    )
+                                  }
+                                />
+                                Required
+                              </label>
+                              <button
+                                type="button"
+                                onClick={() => removeField(field.key)}
+                                class="min-h-[44px] rounded-lg px-3 text-sm text-red-600 hover:underline focus:outline-none focus:ring-2 focus:ring-red-500 dark:text-red-400"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                            <Show when={sections.length > 1}>
+                              <label class="mt-3 block text-sm text-gray-900 dark:text-white">
+                                <span class={labelClass}>Section</span>
+                                <select
+                                  value={field.section}
+                                  onChange={e =>
+                                    moveField(field.key, e.target.value)
+                                  }
+                                  class={`${inputClass} w-auto`}
+                                >
+                                  <For each={sections}>
+                                    {(s, j) => (
+                                      <option value={s.key}>
+                                        {sectionName(s, j())}
+                                      </option>
+                                    )}
+                                  </For>
+                                </select>
+                              </label>
+                            </Show>
+                            <Show when={CHOICE_TYPES.includes(field.type)}>
+                              <label class="mt-3 block">
+                                <span class={labelClass}>Options</span>
+                                <textarea
+                                  placeholder="Options (one per line)"
+                                  value={field.optionsText}
+                                  onInput={e =>
+                                    updateField(
+                                      field.key,
+                                      "optionsText",
+                                      e.target.value
+                                    )
+                                  }
+                                  rows="3"
+                                  class={inputClass}
+                                />
+                              </label>
+                            </Show>
+                            <Show when={BRANCH_TYPES.includes(field.type)}>
+                              <label class="mt-3 flex min-h-[44px] items-center gap-2 text-sm text-gray-900 dark:text-white">
+                                <input
+                                  type="checkbox"
+                                  checked={field.branch}
+                                  disabled={
+                                    !field.branch && hasBranchingSibling(field)
+                                  }
+                                  onChange={e =>
+                                    updateField(
+                                      field.key,
+                                      "branch",
+                                      e.target.checked
+                                    )
+                                  }
+                                />
+                                Go to section based on answer
+                              </label>
+                              <Show
+                                when={
                                   !field.branch && hasBranchingSibling(field)
                                 }
-                                onChange={e =>
-                                  updateField(
-                                    field.key,
-                                    "branch",
-                                    e.target.checked
-                                  )
-                                }
-                              />
-                              Go to section based on answer
-                            </label>
-                            <Show
-                              when={!field.branch && hasBranchingSibling(field)}
-                            >
-                              <p class="text-sm text-gray-600 dark:text-gray-400">
-                                Another question in this section already decides
-                                where to go
-                              </p>
+                              >
+                                <p class="text-sm text-gray-600 dark:text-gray-400">
+                                  Another question in this section already
+                                  decides where to go
+                                </p>
+                              </Show>
+                              <Show when={field.branch}>
+                                <div class="mt-2 space-y-2 border-l-2 border-gray-200 pl-3 dark:border-gray-700">
+                                  <For each={optionList(field)}>
+                                    {option => (
+                                      <label class="flex flex-wrap items-center gap-2 text-sm text-gray-900 dark:text-white">
+                                        <span class="min-w-[6rem]">
+                                          {option}
+                                        </span>
+                                        <select
+                                          data-option={option}
+                                          value={field.goto?.[option] || ""}
+                                          onChange={e =>
+                                            updateField(
+                                              field.key,
+                                              "goto",
+                                              option,
+                                              e.target.value
+                                            )
+                                          }
+                                          class={`${inputClass} w-auto`}
+                                        >
+                                          {destinations()}
+                                        </select>
+                                      </label>
+                                    )}
+                                  </For>
+                                </div>
+                              </Show>
                             </Show>
-                            <Show when={field.branch}>
-                              <div class="mt-2 space-y-2 border-l-2 border-gray-200 pl-3 dark:border-gray-700">
-                                <For each={optionList(field)}>
-                                  {option => (
-                                    <label class="flex flex-wrap items-center gap-2 text-sm text-gray-900 dark:text-white">
-                                      <span class="min-w-[6rem]">{option}</span>
-                                      <select
-                                        data-option={option}
-                                        value={field.goto?.[option] || ""}
-                                        onChange={e =>
-                                          updateField(
-                                            field.key,
-                                            "goto",
-                                            option,
-                                            e.target.value
-                                          )
-                                        }
-                                        class={`${inputClass} w-auto`}
-                                      >
-                                        {destinations()}
-                                      </select>
-                                    </label>
-                                  )}
-                                </For>
-                              </div>
-                            </Show>
-                          </Show>
-                        </div>
-                      )}
-                    </For>
-                    <button
-                      type="button"
-                      onClick={() => addField(section.key)}
-                      class={buttonClass}
-                    >
-                      + Add question
-                    </button>
-                  </div>
-
-                  <Show when={i() < sections.length - 1}>
-                    <label class="mt-4 block text-sm text-gray-900 dark:text-white">
-                      <span class={labelClass}>After this section</span>
-                      <select
-                        data-next
-                        value={section.next}
-                        onChange={e => setSections(i(), "next", e.target.value)}
-                        class={`${inputClass} w-auto`}
+                          </div>
+                        )}
+                      </For>
+                      <button
+                        type="button"
+                        onClick={() => addField(section.key)}
+                        class={buttonClass}
                       >
-                        {destinations()}
-                      </select>
-                    </label>
-                  </Show>
-                  <Show when={unreachable().has(i())}>
-                    <p class="mt-3 rounded-lg bg-amber-50 p-2 text-sm text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
-                      No answer leads to this section yet.
-                    </p>
-                  </Show>
-                </div>
-              );
-            }}
-          </For>
-          <button type="button" onClick={addSection} class={buttonClass}>
-            + Add section
+                        + Add question
+                      </button>
+                    </div>
+
+                    <Show when={i() < sections.length - 1}>
+                      <label class="mt-4 block text-sm text-gray-900 dark:text-white">
+                        <span class={labelClass}>After this section</span>
+                        <select
+                          data-next
+                          value={section.next}
+                          onChange={e =>
+                            setSections(i(), "next", e.target.value)
+                          }
+                          class={`${inputClass} w-auto`}
+                        >
+                          {destinations()}
+                        </select>
+                      </label>
+                    </Show>
+                    <Show when={unreachable().has(i())}>
+                      <p class="mt-3 rounded-lg bg-amber-50 p-2 text-sm text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+                        No answer leads to this section yet.
+                      </p>
+                    </Show>
+                  </div>
+                );
+              }}
+            </For>
+            <button type="button" onClick={addSection} class={buttonClass}>
+              + Add section
+            </button>
+          </div>
+
+          <Show when={status()}>
+            <p class="text-sm text-red-500">{status()}</p>
+          </Show>
+
+          <button
+            type="submit"
+            disabled={saving()}
+            class="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-400"
+          >
+            {saving() ? "Saving..." : isEdit() ? "Save changes" : "Create form"}
           </button>
-        </div>
-
-        <Show when={status()}>
-          <p class="text-sm text-red-500">{status()}</p>
-        </Show>
-
-        <button
-          type="submit"
-          disabled={saving()}
-          class="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-400"
-        >
-          {saving() ? "Saving..." : isEdit() ? "Save changes" : "Create form"}
-        </button>
-      </form>
+        </form>
+      </Show>
     </div>
   );
 };

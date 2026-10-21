@@ -367,18 +367,18 @@ export default function App() {
                   <UserRoute
                     path="/forms/new"
                     component={FormBuilder}
-                    admin={true}
+                    creator={true}
                   />
                   <UserRoute path="/forms/:slug" component={FormView} />
                   <UserRoute
                     path="/forms/:slug/edit"
                     component={FormBuilder}
-                    admin={true}
+                    creator={true}
                   />
                   <UserRoute
                     path="/forms/:slug/responses"
                     component={FormResponses}
-                    admin={true}
+                    creator={true}
                   />
                   {/* Simulations */}
                   <Route

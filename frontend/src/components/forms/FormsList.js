@@ -30,7 +30,7 @@ const FormsList = () => {
       />
       <div class="flex items-center justify-between">
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Forms</h1>
-        <Show when={store.data.is_staff}>
+        <Show when={store.data.can_create_forms}>
           <A
             href="/forms/new"
             class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
@@ -73,7 +73,7 @@ const FormsList = () => {
                         </p>
                       </Show>
                     </div>
-                    <Show when={store.data.is_staff}>
+                    <Show when={form.can_manage}>
                       <div class="flex gap-3 text-sm">
                         <A
                           href={`/forms/${form.slug}/edit`}

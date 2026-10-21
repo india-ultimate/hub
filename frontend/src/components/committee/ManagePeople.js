@@ -47,8 +47,8 @@ const ManagePeople = props => {
     queryClient.invalidateQueries({ queryKey: ["committee"] });
   };
 
-  const setCanPost = async (id, can_post_announcements) => {
-    await updateCommitteeRole({ id, can_post_announcements });
+  const setRoleFlag = async (id, flags) => {
+    await updateCommitteeRole({ id, ...flags });
     props.onSaved();
     queryClient.invalidateQueries({ queryKey: ["committee"] });
     await queryClient.invalidateQueries(
@@ -115,7 +115,19 @@ const ManagePeople = props => {
                   committee().can_post_announcements
                 }
                 disabled={committee().can_post_announcements}
-                onChange={checked => setCanPost(role.id, checked)}
+                onChange={can_post_announcements =>
+                  setRoleFlag(role.id, { can_post_announcements })
+                }
+              />
+              <PostSwitch
+                label={`Can create forms${
+                  committee().can_create_forms ? " (via committee)" : ""
+                }`}
+                checked={role.can_create_forms || committee().can_create_forms}
+                disabled={committee().can_create_forms}
+                onChange={can_create_forms =>
+                  setRoleFlag(role.id, { can_create_forms })
+                }
               />
               <div class="flex gap-2">
                 <button

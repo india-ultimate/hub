@@ -1,4 +1,4 @@
-import { useNavigate, useParams, useSearchParams } from "@solidjs/router";
+import { A, useNavigate, useParams, useSearchParams } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
 import DOMPurify from "dompurify";
 import { documentText } from "solid-heroicons/solid";
@@ -171,9 +171,27 @@ const FormView = () => {
       />
       <Suspense fallback={<p class="text-gray-500">Loading...</p>}>
         <Show when={formQuery.data} fallback={<p>Form not found.</p>}>
-          <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
-            {formQuery.data.title}
-          </h1>
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+              {formQuery.data.title}
+            </h1>
+            <Show when={formQuery.data.can_manage}>
+              <div class="flex gap-3 text-sm">
+                <A
+                  href={`/forms/${params.slug}/edit`}
+                  class="inline-flex min-h-[44px] items-center text-gray-600 hover:underline dark:text-gray-300"
+                >
+                  Edit
+                </A>
+                <A
+                  href={`/forms/${params.slug}/responses`}
+                  class="inline-flex min-h-[44px] items-center text-gray-600 hover:underline dark:text-gray-300"
+                >
+                  Responses
+                </A>
+              </div>
+            </Show>
+          </div>
           <Show when={formQuery.data.description}>
             <div
               class="prose prose-sm mt-2 max-w-none whitespace-pre-line text-gray-600 dark:prose-invert dark:text-gray-300 [&_a]:text-blue-600 [&_a]:underline dark:[&_a]:text-blue-400"
