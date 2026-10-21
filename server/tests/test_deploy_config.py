@@ -38,6 +38,13 @@ class TestFlyConfig(SimpleTestCase):
         self.assertEqual(("shared", 2, "1gb"), tuple(vms[("app",)][k] for k in size))
         self.assertEqual(("shared", 1, "512mb"), tuple(vms[("worker",)][k] for k in size))
 
+    def test_everything_runs_in_one_region(self) -> None:
+        # A database in another region costs a round trip per query.
+        self.assertEqual("sin", load("fly.toml")["primary_region"])
+        self.assertEqual("sin", load("fly.metabase.toml")["primary_region"])
+        # Metabase keeps its data in Postgres; a volume would pin it to a region.
+        self.assertNotIn("mounts", load("fly.metabase.toml"))
+
     def test_only_app_machines_serve_and_suspend_when_idle(self) -> None:
         (service,) = load("fly.toml")["services"]
         self.assertEqual(["app"], service["processes"])
