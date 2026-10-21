@@ -137,6 +137,7 @@ def add_role(
         title=data.title,
         is_chair=data.is_chair,
         can_post_announcements=data.can_post_announcements,
+        can_create_forms=data.can_create_forms,
         start_date=data.start_date,
     )
     if not _save_unless_overlapping(role):

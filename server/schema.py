@@ -17,6 +17,7 @@ from server.core.models import (
     Vaccination,
 )
 from server.duplicates.identity import mask_email
+from server.forms.access import can_create_forms
 from server.payment_account.models import viewable_by
 from server.season.models import Season
 from server.subscription.models import Subscription
@@ -473,10 +474,15 @@ class MeSchema(UserSchema):
 
     payment_accounts: list[dict[str, str]]
     can_post_announcements: bool
+    can_create_forms: bool
 
     @staticmethod
     def resolve_can_post_announcements(user: User) -> bool:
         return can_post(user)
+
+    @staticmethod
+    def resolve_can_create_forms(user: User) -> bool:
+        return can_create_forms(user)
 
     @staticmethod
     def resolve_payment_accounts(user: User) -> list[dict[str, str]]:
