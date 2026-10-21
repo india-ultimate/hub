@@ -1,6 +1,6 @@
 from typing import Any
 
-from django.db.models import QuerySet
+from django.db.models import Q, QuerySet
 from django.http import HttpResponse
 from ninja import Router
 
@@ -9,6 +9,7 @@ from server.transaction.models import AuthenticatedHttpRequest
 from server.types import message_response
 from server.utils import slugify_max
 
+from .access import can_manage_form, request_can_create_forms
 from .models import Form, FormResponse
 from .schema import (
     FormCreateSchema,
@@ -43,7 +44,12 @@ def _unique_slug(title: str) -> str:
 
 @router.get("/", response={200: list[FormListSchema]})
 def list_forms(request: AuthenticatedHttpRequest) -> QuerySet[Form]:
-    forms = Form.objects.all() if request.user.is_staff else Form.objects.filter(is_active=True)
+    forms = Form.objects.all()
+    if not request.user.is_staff:
+        visible = Q(is_active=True)
+        if request_can_create_forms(request):
+            visible |= Q(created_by=request.user)
+        forms = forms.filter(visible)
     return forms.order_by("-created_at")
 
 
@@ -51,8 +57,8 @@ def list_forms(request: AuthenticatedHttpRequest) -> QuerySet[Form]:
 def create_form(
     request: AuthenticatedHttpRequest, data: FormCreateSchema
 ) -> tuple[int, Form | message_response]:
-    if not request.user.is_staff:
-        return 401, {"message": "Only Admins can create forms"}
+    if not request_can_create_forms(request):
+        return 401, {"message": "Only form creators can create forms"}
 
     sections = [s.model_dump() for s in data.sections]
     fields = [f.model_dump() for f in data.fields]
@@ -85,13 +91,12 @@ def get_form(request: AuthenticatedHttpRequest, slug: str) -> tuple[int, Form | 
 def update_form(
     request: AuthenticatedHttpRequest, slug: str, data: FormCreateSchema
 ) -> tuple[int, Form | message_response]:
-    if not request.user.is_staff:
-        return 401, {"message": "Only Admins can edit forms"}
-
     try:
         form = Form.objects.get(slug=slug)
     except Form.DoesNotExist:
         return 404, {"message": "Form does not exist"}
+    if not can_manage_form(request.user, form):
+        return 401, {"message": "Only this form's creator or staff can edit it"}
 
     sections = [s.model_dump() for s in data.sections]
     fields = [f.model_dump() for f in data.fields]
@@ -159,13 +164,12 @@ def submit_response(
 def list_responses(
     request: AuthenticatedHttpRequest, slug: str
 ) -> tuple[int, QuerySet[FormResponse] | message_response]:
-    if not request.user.is_staff:
-        return 401, {"message": "Only Admins can view responses"}
-
     try:
         form = Form.objects.get(slug=slug)
     except Form.DoesNotExist:
         return 404, {"message": "Form does not exist"}
+    if not can_manage_form(request.user, form):
+        return 401, {"message": "Only this form's creator or staff can view its responses"}
 
     # Only finalized submissions count. Unpaid rows on paid forms are transient
     # payment-tracking state (free-form responses are marked paid on submit).
@@ -182,13 +186,12 @@ def list_responses(
 def export_responses_csv(
     request: AuthenticatedHttpRequest, slug: str
 ) -> HttpResponse | tuple[int, message_response]:
-    if not request.user.is_staff:
-        return 401, {"message": "Only Admins can download responses"}
-
     try:
         form = Form.objects.get(slug=slug)
     except Form.DoesNotExist:
         return 404, {"message": "Form does not exist"}
+    if not can_manage_form(request.user, form):
+        return 401, {"message": "Only this form's creator or staff can download its responses"}
 
     responses = form.responses.filter(is_paid=True).select_related("user").order_by("-submitted_at")
     csv_content = build_responses_csv(form, responses)

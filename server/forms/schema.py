@@ -2,6 +2,7 @@ from typing import Any
 
 from ninja import ModelSchema, Schema
 
+from .access import request_can_create_forms
 from .models import Form, FormResponse
 
 
@@ -31,13 +32,24 @@ class FormCreateSchema(Schema):
     is_active: bool = True
 
 
-class FormListSchema(ModelSchema):
+class CanManageMixin(Schema):
+    can_manage: bool
+
+    @staticmethod
+    def resolve_can_manage(form: Form, context: dict[str, Any]) -> bool:
+        request = context["request"]
+        return request.user.is_staff or (
+            form.created_by_id == request.user.id and request_can_create_forms(request)
+        )
+
+
+class FormListSchema(CanManageMixin, ModelSchema):
     class Meta:
         model = Form
         fields = ["id", "title", "description", "slug", "payment_amount", "is_active"]
 
 
-class FormSchema(ModelSchema):
+class FormSchema(CanManageMixin, ModelSchema):
     class Meta:
         model = Form
         fields = [

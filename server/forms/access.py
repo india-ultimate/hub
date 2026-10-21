@@ -5,6 +5,7 @@ from django.db.models import Q
 from server.committee.models import Role
 from server.core.models import User
 from server.forms.models import Form
+from server.transaction.models import AuthenticatedHttpRequest
 
 
 def can_create_forms(user: User) -> bool:
@@ -19,3 +20,10 @@ def can_create_forms(user: User) -> bool:
 def can_manage_form(user: User, form: Form) -> bool:
     """Staff manage every form; a creator, the ones they made."""
     return user.is_staff or (form.created_by_id == user.id and can_create_forms(user))
+
+
+def request_can_create_forms(request: AuthenticatedHttpRequest) -> bool:
+    """can_create_forms for the request's user, worked out once per request."""
+    if not hasattr(request, "_can_create_forms"):
+        setattr(request, "_can_create_forms", can_create_forms(request.user))  # noqa: B010
+    return bool(getattr(request, "_can_create_forms"))  # noqa: B009
