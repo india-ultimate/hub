@@ -23,7 +23,7 @@ const CHOICE_TYPES = ["dropdown", "checkbox", "radio"];
 const BRANCH_TYPES = ["dropdown", "radio"];
 
 const inputClass =
-  "w-full rounded-lg border border-gray-300 p-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white";
+  "w-full rounded-lg border border-gray-300 p-2.5 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white";
 const labelClass =
   "mb-1 block text-sm font-medium text-gray-900 dark:text-white";
 const buttonClass =
@@ -290,7 +290,7 @@ const FormBuilder = () => {
   };
 
   return (
-    <div>
+    <div class="pb-24">
       <Breadcrumbs
         icon={documentText}
         pageList={[
@@ -305,13 +305,13 @@ const FormBuilder = () => {
             when={refusal()}
             fallback={<p class="mt-3 text-gray-500">Loading...</p>}
           >
-            <p role="alert" class="mt-3 text-red-700 dark:text-red-400">
+            <p role="alert" class="mt-3 text-red-600 dark:text-red-400">
               {refusal()}
             </p>
           </Show>
         }
       >
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+        <h1 class="break-words text-2xl font-bold text-gray-900 dark:text-white">
           {isEdit() ? "Edit form" : "New form"}
         </h1>
 
@@ -331,7 +331,7 @@ const FormBuilder = () => {
               required
               value={title()}
               onInput={e => setTitle(e.target.value)}
-              class="w-full rounded-lg border border-gray-300 p-2.5 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+              class="w-full rounded-lg border border-gray-300 p-2.5 text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
             />
           </div>
 
@@ -378,7 +378,7 @@ const FormBuilder = () => {
                 ref={el => (editorRef = el)}
                 contentEditable={true}
                 onInput={syncDescription}
-                class="prose prose-sm min-h-[5rem] max-w-none p-2.5 dark:prose-invert focus:outline-none dark:text-white [&_a]:text-blue-600 [&_a]:underline"
+                class="prose prose-sm min-h-[5rem] max-w-none p-2.5 text-gray-900 dark:prose-invert focus:outline-none dark:text-white [&_a]:text-blue-600 [&_a]:underline"
               />
             </div>
           </div>
@@ -393,11 +393,11 @@ const FormBuilder = () => {
               step="1"
               value={paymentAmount()}
               onInput={e => setPaymentAmount(e.target.value)}
-              class="w-full rounded-lg border border-gray-300 p-2.5 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+              class="w-full rounded-lg border border-gray-300 p-2.5 text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
             />
           </div>
 
-          <label class="flex items-center gap-2 text-sm text-gray-900 dark:text-white">
+          <label class="flex min-h-[44px] items-center gap-2 text-sm text-gray-900 dark:text-white">
             <input
               type="checkbox"
               checked={isActive()}
@@ -430,7 +430,7 @@ const FormBuilder = () => {
                     data-section={i()}
                     class="rounded-lg border border-gray-200 p-4 dark:border-gray-700"
                   >
-                    <div class="flex items-center justify-between gap-3">
+                    <div class="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                       <h3 class="text-base font-semibold text-gray-900 dark:text-white">
                         Section {i() + 1}
                       </h3>
@@ -469,9 +469,12 @@ const FormBuilder = () => {
                     <div class="mt-4 space-y-4">
                       <For each={fields.filter(f => f.section === section.key)}>
                         {field => (
-                          <div class="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
-                            <div class="flex flex-wrap items-center gap-3">
-                              <label class="min-w-[12rem] flex-1">
+                          <div
+                            data-question
+                            class="rounded-lg border border-gray-200 p-4 dark:border-gray-700"
+                          >
+                            <div class="flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                              <label class="sm:min-w-[12rem] sm:flex-1">
                                 <span class={labelClass}>Question</span>
                                 <input
                                   required
@@ -498,7 +501,7 @@ const FormBuilder = () => {
                                   );
                                   updateField(field.key, "branch", false);
                                 }}
-                                class={`${inputClass} w-auto`}
+                                class={`${inputClass} sm:w-auto`}
                               >
                                 <For each={FIELD_TYPES}>
                                   {t => (
@@ -523,7 +526,7 @@ const FormBuilder = () => {
                               <button
                                 type="button"
                                 onClick={() => removeField(field.key)}
-                                class="min-h-[44px] rounded-lg px-3 text-sm text-red-600 hover:underline focus:outline-none focus:ring-2 focus:ring-red-500 dark:text-red-400"
+                                class="min-h-[44px] self-start rounded-lg px-0 text-sm text-red-600 hover:underline focus:outline-none focus:ring-2 focus:ring-red-500 dark:text-red-400 sm:px-3"
                               >
                                 Remove
                               </button>
@@ -536,7 +539,7 @@ const FormBuilder = () => {
                                   onChange={e =>
                                     moveField(field.key, e.target.value)
                                   }
-                                  class={`${inputClass} w-auto`}
+                                  class={`${inputClass} sm:w-auto`}
                                 >
                                   <For each={sections}>
                                     {(s, j) => (
@@ -598,8 +601,8 @@ const FormBuilder = () => {
                                 <div class="mt-2 space-y-2 border-l-2 border-gray-200 pl-3 dark:border-gray-700">
                                   <For each={optionList(field)}>
                                     {option => (
-                                      <label class="flex flex-wrap items-center gap-2 text-sm text-gray-900 dark:text-white">
-                                        <span class="min-w-[6rem]">
+                                      <label class="flex flex-col gap-1 text-sm text-gray-900 dark:text-white sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
+                                        <span class="break-words sm:min-w-[6rem]">
                                           {option}
                                         </span>
                                         <select
@@ -613,7 +616,7 @@ const FormBuilder = () => {
                                               e.target.value
                                             )
                                           }
-                                          class={`${inputClass} w-auto`}
+                                          class={`${inputClass} sm:w-auto`}
                                         >
                                           {destinations()}
                                         </select>
@@ -644,7 +647,7 @@ const FormBuilder = () => {
                           onChange={e =>
                             setSections(i(), "next", e.target.value)
                           }
-                          class={`${inputClass} w-auto`}
+                          class={`${inputClass} sm:w-auto`}
                         >
                           {destinations()}
                         </select>
@@ -665,13 +668,13 @@ const FormBuilder = () => {
           </div>
 
           <Show when={status()}>
-            <p class="text-sm text-red-500">{status()}</p>
+            <p class="text-sm text-red-600 dark:text-red-400">{status()}</p>
           </Show>
 
           <button
             type="submit"
             disabled={saving()}
-            class="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-400"
+            class="min-h-[44px] rounded-lg bg-blue-600 px-5 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-gray-400"
           >
             {saving() ? "Saving..." : isEdit() ? "Save changes" : "Create form"}
           </button>

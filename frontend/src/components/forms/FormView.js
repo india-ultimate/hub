@@ -161,7 +161,7 @@ const FormView = () => {
     Array.isArray(value) ? value.join(", ") : value === "" ? "-" : value;
 
   return (
-    <div>
+    <div class="pb-24">
       <Breadcrumbs
         icon={documentText}
         pageList={[
@@ -172,20 +172,20 @@ const FormView = () => {
       <Suspense fallback={<p class="text-gray-500">Loading...</p>}>
         <Show when={formQuery.data} fallback={<p>Form not found.</p>}>
           <div class="flex flex-wrap items-center justify-between gap-3">
-            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+            <h1 class="min-w-0 break-words text-2xl font-bold text-gray-900 dark:text-white">
               {formQuery.data.title}
             </h1>
             <Show when={formQuery.data.can_manage}>
-              <div class="flex gap-3 text-sm">
+              <div class="flex flex-wrap gap-2">
                 <A
                   href={`/forms/${params.slug}/edit`}
-                  class="inline-flex min-h-[44px] items-center text-gray-600 hover:underline dark:text-gray-300"
+                  class="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
                 >
                   Edit
                 </A>
                 <A
                   href={`/forms/${params.slug}/responses`}
-                  class="inline-flex min-h-[44px] items-center text-gray-600 hover:underline dark:text-gray-300"
+                  class="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
                 >
                   Responses
                 </A>
@@ -284,7 +284,7 @@ const FormView = () => {
                           <textarea
                             id={field.key}
                             required={field.required}
-                            class="w-full rounded-lg border border-gray-300 p-2.5 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                            class="w-full rounded-lg border border-gray-300 p-2.5 text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                             rows="4"
                             value={answers[field.key] || ""}
                             onInput={e => setValue(field.key, e.target.value)}
@@ -294,7 +294,7 @@ const FormView = () => {
                           <select
                             id={field.key}
                             required={field.required}
-                            class="w-full rounded-lg border border-gray-300 p-2.5 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                            class="w-full rounded-lg border border-gray-300 p-2.5 text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                             onChange={e => setValue(field.key, e.target.value)}
                           >
                             <option value="">Select...</option>
@@ -314,7 +314,7 @@ const FormView = () => {
                           <div class="space-y-1">
                             <For each={field.options}>
                               {opt => (
-                                <label class="flex items-center gap-2 text-sm text-gray-900 dark:text-white">
+                                <label class="flex min-h-[44px] items-center gap-2 text-sm text-gray-900 dark:text-white">
                                   <input
                                     type="radio"
                                     name={field.key}
@@ -333,7 +333,7 @@ const FormView = () => {
                           <div class="space-y-1">
                             <For each={field.options}>
                               {opt => (
-                                <label class="flex items-center gap-2 text-sm text-gray-900 dark:text-white">
+                                <label class="flex min-h-[44px] items-center gap-2 text-sm text-gray-900 dark:text-white">
                                   <input
                                     type="checkbox"
                                     value={opt}
@@ -368,7 +368,7 @@ const FormView = () => {
                             }
                             required={field.required}
                             value={untrack(() => answers[field.key]) || ""}
-                            class="w-full rounded-lg border border-gray-300 p-2.5 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                            class="w-full rounded-lg border border-gray-300 p-2.5 text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                             onInput={e => setValue(field.key, e.target.value)}
                           />
                         </Match>
@@ -378,7 +378,9 @@ const FormView = () => {
                 </For>
 
                 <Show when={status() && !done()}>
-                  <p class="text-sm text-red-500">{status()}</p>
+                  <p class="text-sm text-red-600 dark:text-red-400">
+                    {status()}
+                  </p>
                 </Show>
 
                 <div class="flex items-center justify-between gap-3">
