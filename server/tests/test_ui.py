@@ -31,6 +31,7 @@ from server.duplicates.models import (
     DuplicateCluster,
     EmailAlias,
 )
+from server.forms.models import Form, FormResponse
 from server.registration.models import RosterEntry
 from server.season.models import Season
 from server.servicerequests.models import ServiceRequestStatus
@@ -1375,3 +1376,74 @@ class TestIntegration(BaseCase):
 
         self.click("label[for='is_private']")
         self.assert_element_absent("#ticket-suggestions")
+
+    def test_a_form_skips_sections_by_answer(self) -> None:
+        field = {"required": True, "options": []}
+        form = Form.objects.create(
+            title="Trial signup",
+            slug="trial-signup",
+            sections=[
+                {"key": "s_a", "title": "About you", "description": "", "next": ""},
+                {"key": "s_b", "title": "Playing", "description": "", "next": ""},
+                {"key": "s_c", "title": "Wrap up", "description": "", "next": ""},
+            ],
+            fields=[
+                {
+                    **field,
+                    "key": "playing",
+                    "label": "Playing?",
+                    "type": "radio",
+                    "options": ["Yes", "No"],
+                    "section": "s_a",
+                    "goto": {"No": "s_c"},
+                },
+                {**field, "key": "nick", "label": "Nickname", "type": "text", "section": "s_a"},
+                {**field, "key": "pos", "label": "Position", "type": "text", "section": "s_b"},
+                {**field, "key": "age", "label": "Age", "type": "number", "section": "s_b"},
+                {**field, "key": "note", "label": "Comments", "type": "text", "section": "s_c"},
+            ],
+        )
+        self.sign_in_as(make_player("forms@example.com"))
+        self.open(f"{APP_URL}/forms/{form.slug}")
+
+        self.assert_text("Section 1")
+        self.type("#nick", "Rahul")
+        self.click("label:contains('Yes')")
+        self.click("button:contains('Next')")
+        self.assert_text("Section 2")
+        self.assert_element("label:contains('Position')")
+
+        self.type("#age", "1e")
+        self.send_keys("#age", "1")
+        self.assertEqual("1e1", self.get_value("#age"))
+        self.click("button:contains('Back')")
+        self.assert_text("Section 1")
+        self.assertTrue(self.is_selected("input[value='Yes']"))
+        self.click("button:contains('Next')")
+        self.assertEqual("1e1", self.get_value("#age"))
+
+        self.open(f"{APP_URL}/forms/{form.slug}?section=s_b")
+        self.assert_element_absent("label:contains('Position')")
+        self.assert_element("label:contains('Nickname')")
+        self.assertIn("section=s_a", self.get_current_url())
+        self.type("#nick", "Rahul")
+        self.click("label:contains('Yes')")
+        self.click("button:contains('Next')")
+        self.assert_element("label:contains('Position')")
+        self.click("button:contains('Back')")
+        self.assert_element("label:contains('Nickname')")
+        self.assertIn(f"/forms/{form.slug}", self.get_current_url())
+
+        self.click("label:contains('No')")
+        self.click("button:contains('Next')")
+        self.assert_element("label:contains('Comments')")
+        self.assert_element_absent("label:contains('Position')")
+        self.assert_text("Section 2")
+        self.assert_element("button:contains('Submit')")
+        self.type("#note", "Hello")
+        self.click("button:contains('Submit')")
+        self.assert_text("Submitted successfully")
+
+        answers = FormResponse.objects.get(form=form).answers
+        self.assertEqual(answers["note"], "Hello")
+        self.assertNotIn("pos", answers)

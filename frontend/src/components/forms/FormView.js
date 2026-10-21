@@ -1,18 +1,23 @@
-import { useParams } from "@solidjs/router";
+import { useNavigate, useParams, useSearchParams } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
 import DOMPurify from "dompurify";
 import { documentText } from "solid-heroicons/solid";
 import {
+  createEffect,
+  createMemo,
   createSignal,
   For,
   Match,
+  on,
   onMount,
   Show,
   Suspense,
-  Switch
+  Switch,
+  untrack
 } from "solid-js";
 import { createStore } from "solid-js/store";
 
+import { groupSections, nextSectionIndex } from "../../formSections";
 import { inr } from "../../money";
 import {
   fetchForm,
@@ -26,12 +31,16 @@ import Breadcrumbs from "../Breadcrumbs";
 
 const FormView = () => {
   const params = useParams();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [, { userFetchSuccess, userFetchFailure }] = useStore();
 
   const [answers, setAnswers] = createStore({});
   const [status, setStatus] = createSignal("");
   const [submitting, setSubmitting] = createSignal(false);
   const [done, setDone] = createSignal(false);
+  const [visited, setVisited] = createSignal([0]);
+  let heading;
 
   const formQuery = createQuery(
     () => ["form", params.slug],
@@ -43,6 +52,42 @@ const FormView = () => {
     () => ["form-my-responses", params.slug],
     () => fetchMyFormResponses(params.slug),
     { refetchOnWindowFocus: false }
+  );
+
+  const groups = createMemo(() =>
+    groupSections(formQuery.data?.sections || [], formQuery.data?.fields || [])
+  );
+  const current = createMemo(() => {
+    const index = groups().findIndex(
+      g => g.section.key === searchParams.section
+    );
+    return visited().includes(index) ? index : visited()[0];
+  });
+  const next = createMemo(() => nextSectionIndex(groups(), current(), answers));
+  const position = () => visited().indexOf(current());
+
+  createEffect(() => {
+    if (
+      groups().length > 1 &&
+      searchParams.section &&
+      searchParams.section !== groups()[current()].section.key
+    ) {
+      setSearchParams(
+        { section: groups()[visited()[0]].section.key },
+        { replace: true }
+      );
+    }
+  });
+
+  createEffect(
+    on(
+      current,
+      () => {
+        window.scrollTo(0, 0);
+        heading?.focus();
+      },
+      { defer: true }
+    )
   );
 
   onMount(() => {
@@ -89,6 +134,11 @@ const FormView = () => {
 
   const handleSubmit = async e => {
     e.preventDefault();
+    if (next() !== null) {
+      setVisited([...visited().slice(0, position() + 1), next()]);
+      setSearchParams({ section: groups()[next()].section.key });
+      return;
+    }
     setStatus("");
     setSubmitting(true);
     try {
@@ -178,7 +228,28 @@ const FormView = () => {
               }
             >
               <form class="mt-6 space-y-5" onSubmit={handleSubmit}>
-                <For each={formQuery.data.fields}>
+                <Show when={groups().length > 1}>
+                  <div>
+                    <div
+                      ref={heading}
+                      tabindex="-1"
+                      class="focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                    >
+                      <p class="text-sm font-medium text-gray-500 dark:text-gray-400">
+                        Section {position() + 1}
+                      </p>
+                      <Show when={groups()[current()].section.title}>
+                        <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
+                          {groups()[current()].section.title}
+                        </h2>
+                      </Show>
+                    </div>
+                    <p class="mt-1 whitespace-pre-line text-sm text-gray-600 dark:text-gray-300">
+                      {groups()[current()].section.description}
+                    </p>
+                  </div>
+                </Show>
+                <For each={groups()[current()].fields}>
                   {field => (
                     <div>
                       <label
@@ -197,6 +268,7 @@ const FormView = () => {
                             required={field.required}
                             class="w-full rounded-lg border border-gray-300 p-2.5 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                             rows="4"
+                            value={answers[field.key] || ""}
                             onInput={e => setValue(field.key, e.target.value)}
                           />
                         </Match>
@@ -209,7 +281,14 @@ const FormView = () => {
                           >
                             <option value="">Select...</option>
                             <For each={field.options}>
-                              {opt => <option value={opt}>{opt}</option>}
+                              {opt => (
+                                <option
+                                  value={opt}
+                                  selected={answers[field.key] === opt}
+                                >
+                                  {opt}
+                                </option>
+                              )}
                             </For>
                           </select>
                         </Match>
@@ -223,6 +302,7 @@ const FormView = () => {
                                     name={field.key}
                                     value={opt}
                                     required={field.required}
+                                    checked={answers[field.key] === opt}
                                     onChange={() => setValue(field.key, opt)}
                                   />
                                   {opt}
@@ -239,6 +319,9 @@ const FormView = () => {
                                   <input
                                     type="checkbox"
                                     value={opt}
+                                    checked={(
+                                      answers[field.key] || []
+                                    ).includes(opt)}
                                     onChange={e =>
                                       toggleCheckbox(
                                         field.key,
@@ -266,6 +349,7 @@ const FormView = () => {
                                     : "text"
                             }
                             required={field.required}
+                            value={untrack(() => answers[field.key]) || ""}
                             class="w-full rounded-lg border border-gray-300 p-2.5 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                             onInput={e => setValue(field.key, e.target.value)}
                           />
@@ -279,20 +363,33 @@ const FormView = () => {
                   <p class="text-sm text-red-500">{status()}</p>
                 </Show>
 
-                <button
-                  type="submit"
-                  disabled={submitting()}
-                  class="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-400"
-                >
-                  <Show
-                    when={formQuery.data.payment_amount}
-                    fallback={submitting() ? "Submitting..." : "Submit"}
-                  >
-                    {submitting()
-                      ? "Processing..."
-                      : `Pay ${inr(formQuery.data.payment_amount)} & Submit`}
+                <div class="flex items-center justify-between gap-3">
+                  <Show when={position() > 0} fallback={<span />}>
+                    <button
+                      type="button"
+                      onClick={() => navigate(-1)}
+                      class="min-h-[44px] rounded-lg border border-gray-300 px-5 py-2.5 text-sm font-medium text-gray-900 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-gray-600 dark:text-white dark:hover:bg-gray-700"
+                    >
+                      Back
+                    </button>
                   </Show>
-                </button>
+                  <button
+                    type="submit"
+                    disabled={submitting()}
+                    class="min-h-[44px] rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-gray-400"
+                  >
+                    <Show when={next() === null} fallback="Next">
+                      <Show
+                        when={formQuery.data.payment_amount}
+                        fallback={submitting() ? "Submitting..." : "Submit"}
+                      >
+                        {submitting()
+                          ? "Processing..."
+                          : `Pay ${inr(formQuery.data.payment_amount)} & Submit`}
+                      </Show>
+                    </Show>
+                  </button>
+                </div>
               </form>
             </Show>
           </Show>
