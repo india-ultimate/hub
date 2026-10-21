@@ -1088,6 +1088,7 @@ Available Tools:
                 "is_valid": accreditation.is_valid,
                 "level": accreditation.get_level_display(),
                 "date": accreditation.date.isoformat(),
+                "expiry_date": str(accreditation.expiry_date),
             }
         except Player.DoesNotExist:
             return None

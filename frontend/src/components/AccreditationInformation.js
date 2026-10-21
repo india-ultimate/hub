@@ -1,3 +1,5 @@
+import { Show } from "solid-js";
+
 import { accreditationChoices } from "../constants";
 import { displayDate, getLabel } from "../utils";
 
@@ -41,6 +43,28 @@ const AccreditationInformation = props => {
             </th>
             <td class="px-6 py-4">{displayDate(props?.accreditation?.date)}</td>
           </tr>
+          <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
+            <th
+              scope="row"
+              class="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white"
+            >
+              Expiry Date
+            </th>
+            <td class="px-6 py-4">
+              {displayDate(props?.accreditation?.expiry_date)}
+            </td>
+          </tr>
+          <Show when={props?.accreditation?.certificate_code}>
+            <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
+              <th
+                scope="row"
+                class="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white"
+              >
+                Certificate Code
+              </th>
+              <td class="px-6 py-4">{props.accreditation.certificate_code}</td>
+            </tr>
+          </Show>
           <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
             <th
               scope="row"

@@ -3,6 +3,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from dateutil.relativedelta import relativedelta
 from django.core.files.base import ContentFile
 from django.core.management.base import BaseCommand, CommandParser
 from django.utils.text import slugify
@@ -184,6 +185,9 @@ class Command(BaseCommand):
                     try:
                         acc_date = datetime.strptime(doa, options["date_format"])  # noqa: DTZ007
                         accreditation_data["date"] = acc_date.date()
+                        accreditation_data["expiry_date"] = acc_date.date() + relativedelta(
+                            months=18
+                        )
                         accreditation_data["is_valid"] = True
                     except ValueError:
                         self.stderr.write(self.style.ERROR(f"Invalid date: {doa}"))

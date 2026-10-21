@@ -225,6 +225,7 @@ from server.utils import (
     slugify_max,
     today,
 )
+from server.wfdf import read_certificate
 from server.wrapped.api import router as wrapped_router
 
 # Initialize Cloudinary
@@ -1104,24 +1105,23 @@ def accreditation(
     if not may_see(request.user, player):
         return 400, {"message": "Only this player or their guardian can add their accreditation"}
 
+    details = read_certificate(certificate)
+    if details is None:
+        return 400, {
+            "message": "This isn't a WFDF Academy certificate we can read. "
+            "Upload the PDF you downloaded from WFDF Academy."
+        }
+    certificate.seek(0)
+
     try:
         acc = player.accreditation
-        edit = True
     except Accreditation.DoesNotExist:
-        edit = False
-
-    accreditation_data = accreditation.model_dump()
-    accreditation_data["certificate"] = certificate
-    accreditation_data["player"] = player
-    accreditation_data["is_valid"] = False
-
-    if not edit:
-        acc = Accreditation(**accreditation_data)
-    else:
-        acc.certificate = certificate
-        acc.date = accreditation_data["date"]
-        acc.level = accreditation_data.get("level", Accreditation.AccreditationLevel.STANDARD)
-        acc.wfdf_id = accreditation_data["wfdf_id"]
+        acc = Accreditation(player=player)
+    acc.certificate = certificate
+    acc.certificate_code = details.code
+    acc.level = details.level
+    acc.date = details.issued
+    acc.expiry_date = details.expires
 
     try:
         acc.full_clean()

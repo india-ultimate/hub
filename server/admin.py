@@ -1108,8 +1108,9 @@ class AccreditationAdmin(admin.ModelAdmin[Accreditation]):
         "player__user__last_name",
         "player__user__username",
         "player__user__email",
+        "certificate_code",
     ]
-    list_display = ["get_email", "is_valid", "level"]
+    list_display = ["get_email", "is_valid", "level", "certificate_code"]
     autocomplete_fields = ["player"]
     list_filter = ["is_valid", "level"]
 

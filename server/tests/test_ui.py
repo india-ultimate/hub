@@ -3,6 +3,7 @@ import email
 import os
 import random
 import re
+import tempfile
 import zlib
 from contextlib import ExitStack
 from email.utils import getaddresses
@@ -20,7 +21,7 @@ from seleniumbase import BaseCase
 
 from hub.settings import BASE_DIR
 from server.committee.models import Committee, Role
-from server.core.models import Guardianship, OTPAttempt, Player, Team, User
+from server.core.models import Accreditation, Guardianship, OTPAttempt, Player, Team, User
 from server.duplicates.clusters import close_finished, detect_and_create
 from server.duplicates.emails import notify
 from server.duplicates.flow import dismiss, merge_pair, request_merge, request_staff
@@ -38,6 +39,7 @@ from server.season.models import Season
 from server.servicerequests.models import ServiceRequestStatus
 from server.subscription import sponsorship
 from server.task.models import Task
+from server.tests.base import wfdf_certificate_pdf
 from server.tests.localserver import APP_URL, DJANGO_URL, running_test_server
 from server.tests.razorpay_checkout import complete_razorpay_test_payment
 from server.tests.utils import create_empty_directory
@@ -406,6 +408,33 @@ class TestIntegration(BaseCase):
         self.assert_text("Successful Registration")
         child_player.refresh_from_db()
         self.assertEqual("Mysuru", child_player.city)
+
+    # Breaks if: the form stops sending the PDF on its own, stops showing
+    # why one was refused, or the details stop showing what was read.
+    def test_adding_a_wfdf_academy_certificate(self) -> None:
+        user = make_player("player@example.com")
+        player = Player.objects.get(user=user)
+        folder = Path(tempfile.mkdtemp())
+        (folder / "other.pdf").write_bytes(wfdf_certificate_pdf(code="none"))
+        issued = datetime.date(2026, 10, 1)
+        certificate = folder / "certificate.pdf"
+        certificate.write_bytes(
+            wfdf_certificate_pdf(issued=issued, expires=datetime.date(2028, 3, 31))
+        )
+
+        self.sign_in_as(user)
+        self.open(f"{APP_URL}/accreditation/{player.id}")
+        self.choose_file("input#certificate", str(folder / "other.pdf"))
+        self.click('button:contains("Submit")')
+        self.assert_text("isn't a WFDF Academy certificate we can read")
+        self.assertFalse(Accreditation.objects.exists())
+
+        self.choose_file("input#certificate", str(certificate))
+        self.click('button:contains("Submit")')
+        self.assert_text("5905130059NR", "table")
+        self.assert_text("31 March 2028", "table")
+        self.save_screenshot_to_logs("accreditation-saved.png")
+        self.assertEqual(issued, Accreditation.objects.get(player=player).date)
 
     # Breaks if: a gap in the season timeline stops being a real answer and
     # starts looking like a failure, or starts offering tiers anyway.

@@ -30,6 +30,7 @@ xhtml2pdf = "^0.2.23"
 num2words = "^0.5.14"
 cryptography = "^50.0.2"
 nh3 = "^0.3.7"
+pypdf = "^6.20.0"
 
 [tool.poetry.group.dev.dependencies]
 ipython = "^9.17.1"

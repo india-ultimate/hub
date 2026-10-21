@@ -243,9 +243,10 @@ const ValidateRoster = () => {
     if (!event()) {
       return player?.accreditation?.is_valid;
     }
-    let lastValid = new Date(event()?.event?.end_date);
-    lastValid.setMonth(lastValid.getMonth() - 18); // 18 months validity for accreditations
-    return new Date(player?.accreditation?.date) > lastValid;
+    return (
+      new Date(player?.accreditation?.expiry_date) >=
+      new Date(event()?.event?.end_date)
+    );
   };
 
   const subscriptionValidForEvent = player => {

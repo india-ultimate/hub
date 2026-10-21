@@ -103,6 +103,58 @@ def fake_order(amount: int) -> dict[str, Any]:
     }
 
 
+def wfdf_certificate_pdf(
+    code: str = "5905130059NR",
+    level: str = "Advanced",
+    issued: datetime.date | None = None,
+    expires: datetime.date | None = None,
+    glued: bool = False,
+) -> bytes:
+    """A one page PDF with the text of a WFDF Academy certificate, in the
+    order pypdf reads it out of a real one. Some certificates read with the
+    expiry glued to its label."""
+    issued = issued or now().date() - datetime.timedelta(days=10)
+    expires = expires or issued + datetime.timedelta(days=545)
+    lines = [
+        "Rahul Sharma",
+        f"{issued.day} {issued:%B %Y}",
+        "2",
+        "Talent",
+        f"Ultimate Rules {level} Accreditation",
+        code,
+        "Date of Issue:",
+        "Certificate Code:",
+        f"{expires.day} {expires:%B %Y}" + ("Date of Expiry:" if glued else ""),
+    ]
+    if not glued:
+        lines.insert(7, "Date of Expiry:")
+    text = " ".join(f"({line}) Tj 0 -20 Td" for line in lines)
+    stream = f"BT /F1 12 Tf 50 750 Td {text} ET".encode()
+    objects = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        (
+            b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R"
+            b" /Resources << /Font << /F1 5 0 R >> >> >>"
+        ),
+        b"<< /Length %d >>\nstream\n%s\nendstream" % (len(stream), stream),
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    ]
+    pdf = b"%PDF-1.7\n"
+    offsets = []
+    for number, body in enumerate(objects, 1):
+        offsets.append(len(pdf))
+        pdf += b"%d 0 obj\n%s\nendobj\n" % (number, body)
+    xref = len(pdf)
+    pdf += b"xref\n0 %d\n0000000000 65535 f \n" % (len(objects) + 1)
+    pdf += b"".join(b"%010d 00000 n \n" % offset for offset in offsets)
+    pdf += b"trailer\n<< /Size %d /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n" % (
+        len(objects) + 1,
+        xref,
+    )
+    return pdf
+
+
 def create_player(user: User) -> Player:
     return Player.objects.create(user=user, date_of_birth=now().date())
 
