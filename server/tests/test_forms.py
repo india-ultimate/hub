@@ -4,7 +4,9 @@ import io
 import json
 from typing import Any
 
+from django.db import connection
 from django.test import Client, TestCase
+from django.test.utils import CaptureQueriesContext
 
 from server.committee.models import Committee, Role
 from server.core.models import User
@@ -461,3 +463,133 @@ class FormAccessTestCase(TestCase):
             client = Client()
             client.force_login(user)
             self.assertEqual(expected, client.get("/api/me").json()["can_create_forms"])
+
+
+class FormCreatorAPITestCase(TestCase):
+    def setUp(self) -> None:
+        committee = Committee.objects.create(name="Media", slug="media")
+        self.staff = User.objects.create_user(
+            username="staff", email="s@example.com", phone="1", is_staff=True
+        )
+        self.creator = User.objects.create_user(username="c", email="c@example.com", phone="2")
+        self.rival = User.objects.create_user(username="r", email="r@example.com", phone="3")
+        self.plain = User.objects.create_user(username="p", email="p@example.com", phone="4")
+        self.roles = [
+            Role.objects.create(
+                committee=committee,
+                user=user,
+                title="Member",
+                start_date=today() - datetime.timedelta(days=30),
+                can_create_forms=True,
+            )
+            for user in (self.creator, self.rival)
+        ]
+        self.mine = self.make_form("mine", self.creator)
+        self.staffs = self.make_form("staffs", self.staff)
+
+    def make_form(self, slug: str, user: User, is_active: bool = True) -> Form:
+        return Form.objects.create(
+            title=slug,
+            slug=slug,
+            created_by=user,
+            is_active=is_active,
+            fields=[{"key": "q", "label": "Q", "type": "text"}],
+        )
+
+    def as_user(self, user: User) -> Client:
+        client = Client()
+        client.force_login(user)
+        return client
+
+    def body(self, **extra: Any) -> str:
+        data = {"title": "T", "fields": [{"key": "q", "label": "Q", "type": "text"}], **extra}
+        return json.dumps(data)
+
+    def put(self, user: User, form: Form, **extra: Any) -> Any:
+        return self.as_user(user).put(
+            f"/api/forms/{form.slug}", data=self.body(**extra), content_type="application/json"
+        )
+
+    def end_creator_role(self) -> None:
+        Role.objects.filter(user=self.creator).update(end_date=today())
+
+    def test_creator_creates_a_form_they_own(self) -> None:
+        response = self.as_user(self.creator).post(
+            "/api/forms/", data=self.body(), content_type="application/json"
+        )
+
+        self.assertEqual(200, response.status_code, response.content)
+        self.assertEqual(self.creator, Form.objects.get(slug=response.json()["slug"]).created_by)
+
+    def test_plain_member_cannot_create(self) -> None:
+        response = self.as_user(self.plain).post(
+            "/api/forms/", data=self.body(), content_type="application/json"
+        )
+
+        self.assertEqual(401, response.status_code)
+
+    def test_creator_edits_own_form_and_can_deactivate_it(self) -> None:
+        response = self.put(self.creator, self.mine, is_active=False)
+
+        self.assertEqual(200, response.status_code, response.content)
+        self.mine.refresh_from_db()
+        self.assertFalse(self.mine.is_active)
+
+    def test_creator_cannot_edit_staffs_or_a_rivals_form(self) -> None:
+        self.assertEqual(401, self.put(self.creator, self.staffs).status_code)
+        self.assertEqual(401, self.put(self.rival, self.mine).status_code)
+
+    def test_creator_reads_responses_of_own_form_only(self) -> None:
+        client = self.as_user(self.creator)
+
+        for suffix in ("responses", "responses/csv"):
+            self.assertEqual(200, client.get(f"/api/forms/mine/{suffix}").status_code)
+            self.assertEqual(401, client.get(f"/api/forms/staffs/{suffix}").status_code)
+
+    def test_ended_role_loses_access_but_staff_keeps_it(self) -> None:
+        self.end_creator_role()
+
+        self.assertEqual(401, self.put(self.creator, self.mine).status_code)
+        client = self.as_user(self.creator)
+        self.assertEqual(401, client.get("/api/forms/mine/responses").status_code)
+        self.assertEqual(401, client.get("/api/forms/mine/responses/csv").status_code)
+        self.assertEqual(200, self.put(self.staff, self.mine).status_code)
+        self.assertEqual(200, self.as_user(self.staff).get("/api/forms/mine/responses").status_code)
+
+    def slugs(self, user: User) -> set[str]:
+        return {f["slug"] for f in self.as_user(user).get("/api/forms/").json()}
+
+    def test_list_shows_each_person_what_they_may_see(self) -> None:
+        self.make_form("mine-hidden", self.creator, is_active=False)
+        self.make_form("rival-hidden", self.rival, is_active=False)
+
+        self.assertEqual({"mine", "staffs", "mine-hidden"}, self.slugs(self.creator))
+        self.assertEqual({"mine", "staffs", "mine-hidden", "rival-hidden"}, self.slugs(self.staff))
+        self.assertEqual({"mine", "staffs"}, self.slugs(self.plain))
+
+    def test_can_manage_on_list_and_detail(self) -> None:
+        expected = {
+            self.creator: {"mine": True, "staffs": False},
+            self.rival: {"mine": False, "staffs": False},
+            self.plain: {"mine": False, "staffs": False},
+            self.staff: {"mine": True, "staffs": True},
+        }
+        for user, want in expected.items():
+            client = self.as_user(user)
+            listed = {f["slug"]: f["can_manage"] for f in client.get("/api/forms/").json()}
+            self.assertEqual(want, listed)
+            for slug, can in want.items():
+                self.assertEqual(can, client.get(f"/api/forms/{slug}").json()["can_manage"])
+
+    def test_list_query_count_does_not_grow_with_forms(self) -> None:
+        client = self.as_user(self.creator)
+
+        with CaptureQueriesContext(connection) as two:
+            client.get("/api/forms/")
+        for i in range(3):
+            self.make_form(f"extra-{i}", self.creator)
+        with CaptureQueriesContext(connection) as five:
+            client.get("/api/forms/")
+
+        self.assertEqual(5, len(client.get("/api/forms/").json()))
+        self.assertEqual(len(two), len(five))
