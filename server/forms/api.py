@@ -22,6 +22,7 @@ from .schema import (
 from .utils import (
     build_responses_csv,
     create_form_payment_order,
+    path_fields,
     send_form_submission_email,
     validate_answers,
     validate_structure,
@@ -133,7 +134,12 @@ def submit_response(
     if error:
         return 400, {"message": error}
 
-    response = FormResponse.objects.create(form=form, user=request.user, answers=data.answers)
+    answers = {
+        f["key"]: data.answers[f["key"]]
+        for f in path_fields(form, data.answers)
+        if f["key"] in data.answers
+    }
+    response = FormResponse.objects.create(form=form, user=request.user, answers=answers)
 
     if form.needs_payment:
         order = create_form_payment_order(request, form, response)

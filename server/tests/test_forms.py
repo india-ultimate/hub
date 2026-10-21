@@ -216,6 +216,96 @@ class FormsAPITestCase(TestCase):
         self.assertEqual(response.json()["status"], "ok")
         self.assertEqual(FormResponse.objects.filter(is_paid=True).count(), 1)
 
+    def _branching_form(self, a_next: str = "", goto: bool = True) -> Form:
+        def text(key: str, label: str, section: str) -> dict[str, Any]:
+            return {
+                "key": key,
+                "label": label,
+                "type": "text",
+                "required": True,
+                "options": [],
+                "section": section,
+            }
+
+        radio: dict[str, Any] = {
+            "key": "route",
+            "label": "Route",
+            "type": "radio",
+            "required": False,
+            "options": ["Skip", "All"],
+            "section": "s_a",
+        }
+        if goto:
+            radio["goto"] = {"Skip": "s_c", "All": ""}
+        return Form.objects.create(
+            title="Branching",
+            slug="branching",
+            sections=[
+                {"key": "s_a", "title": "A", "description": "", "next": a_next},
+                {"key": "s_b", "title": "B", "description": "", "next": ""},
+                {"key": "s_c", "title": "C", "description": "", "next": ""},
+            ],
+            fields=[
+                radio,
+                text("a", "A field", "s_a"),
+                text("b", "B field", "s_b"),
+                text("c", "C field", "s_c"),
+            ],
+            is_active=True,
+            created_by=self.staff,
+        )
+
+    def _submit(self, form: Form, answers: dict[str, Any]) -> Any:
+        self._login(self.user)
+        return self.client.post(
+            f"/api/forms/{form.slug}/responses",
+            data=json.dumps({"answers": answers}),
+            content_type="application/json",
+        )
+
+    def test_branch_skips_required_section(self) -> None:
+        form = self._branching_form()
+        response = self._submit(form, {"route": "Skip", "a": "1", "c": "3"})
+        self.assertEqual(response.status_code, 200)
+
+    def test_branch_on_path_still_required(self) -> None:
+        form = self._branching_form()
+        response = self._submit(form, {"route": "All", "a": "1", "c": "3"})
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("B field", response.json()["message"])
+
+    def test_abandoned_branch_answers_not_stored(self) -> None:
+        form = self._branching_form()
+        self._submit(form, {"route": "Skip", "a": "1", "b": "2", "c": "3"})
+        self.assertEqual(set(FormResponse.objects.get().answers), {"route", "a", "c"})
+
+    def test_unanswered_optional_branch_falls_through(self) -> None:
+        form = self._branching_form()
+        response = self._submit(form, {"a": "1", "c": "3"})
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("B field", response.json()["message"])
+
+    def test_section_next_submit_ends_form(self) -> None:
+        form = self._branching_form(a_next="submit", goto=False)
+        response = self._submit(form, {"a": "1", "b": "2", "c": "3"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(FormResponse.objects.get().answers, {"a": "1"})
+
+    def test_legacy_form_unchanged(self) -> None:
+        self.assertEqual(self._submit(self.form, {"rating": "Good"}).status_code, 400)
+        response = self._submit(self.form, {"comments": "Hi", "rating": "Good"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(FormResponse.objects.get().answers, {"comments": "Hi", "rating": "Good"})
+
+    def test_unknown_answer_keys_not_stored(self) -> None:
+        self._submit(self.form, {"comments": "Hi", "extra": "x"})
+        self.assertEqual(FormResponse.objects.get().answers, {"comments": "Hi"})
+
+    def test_non_string_branch_answer_is_invalid_choice(self) -> None:
+        form = self._branching_form()
+        response = self._submit(form, {"route": ["Skip"], "a": "1", "b": "2", "c": "3"})
+        self.assertEqual(response.status_code, 400)
+
     def test_inactive_forms_hidden_from_non_staff_list(self) -> None:
         self.form.is_active = False
         self.form.save(update_fields=["is_active"])
