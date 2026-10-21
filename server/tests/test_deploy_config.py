@@ -59,6 +59,13 @@ class TestFlyConfig(SimpleTestCase):
         slots = int(config["env"]["GUNICORN_WORKERS"]) * int(config["env"]["GUNICORN_THREADS"])
         self.assertLessEqual(config["services"][0]["concurrency"]["soft_limit"], slots)
 
+    def test_metabase_deploys_with_its_own_token(self) -> None:
+        # The staging org's token is unauthorized for upai-hub-metabase.
+        workflow = yaml.safe_load((ROOT / ".github/workflows/deploy-metabase.yml").read_text())
+        (step,) = [s for s in workflow["jobs"]["deploy"]["steps"] if "run" in s]
+        self.assertEqual("${{ secrets.FLY_API_TOKEN_METABASE }}", step["env"]["FLY_API_TOKEN"])
+        self.assertIn("--ha=false", step["run"])
+
     def test_each_deploy_keeps_three_app_machines(self) -> None:
         # Fly has no count in fly.toml; the proxy only starts machines that exist.
         workflow = (ROOT / ".github/workflows/deploy.yml").read_text()
