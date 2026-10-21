@@ -21,3 +21,23 @@ export const nextSectionIndex = (groups, index, answers) => {
   const next = target && to > index ? to : index + 1;
   return next < groups.length ? next : null;
 };
+
+// Indices of sections no path can reach, following every goto target and each section's next.
+export const unreachableSections = groups => {
+  const reached = new Set([0]);
+  groups.forEach(({ section, fields }, index) => {
+    if (!reached.has(index)) return;
+    const targets = [
+      section.next || "",
+      ...fields.flatMap(f =>
+        Object.values(f.goto || {}).map(t => t || section.next || "")
+      )
+    ];
+    for (const target of targets) {
+      if (target === "submit") continue;
+      const to = groups.findIndex(g => g.section.key === target);
+      reached.add(target && to > index ? to : index + 1);
+    }
+  });
+  return new Set(groups.map((_, i) => i).filter(i => !reached.has(i)));
+};

@@ -1377,6 +1377,49 @@ class TestIntegration(BaseCase):
         self.click("label[for='is_private']")
         self.assert_element_absent("#ticket-suggestions")
 
+    def test_staff_build_a_form_with_a_branch(self) -> None:
+        staff = make_player("staff@example.com")
+        User.objects.filter(pk=staff.pk).update(is_staff=True)
+        self.sign_in_as(staff)
+        self.open(f"{APP_URL}/forms/new")
+
+        self.type("#form-title", "Trial signup")
+        first = "[data-section='0']"
+        self.type(f"{first} input[placeholder='Question']", "Playing?")
+        self.select_option_by_text(f"{first} select[aria-label='Question type']", "Single choice")
+        self.type(f"{first} textarea[placeholder='Options (one per line)']", "Yes\nNo")
+
+        self.click("button:contains('+ Add section')")
+        second = "[data-section='1']"
+        self.type(f"{second} input[placeholder='Section title']", "Team details")
+        self.type(f"{second} input[placeholder='Question']", "Position")
+
+        self.click(f"{first} button:contains('+ Add question')")
+        self.find_elements(f"{first} input[placeholder='Question']")[1].send_keys("Shirt size")
+
+        self.select_option_by_text(f"{first} select[data-next]", "Submit form")
+        self.click(f"{first} label:contains('Go to section based on answer')")
+        self.assert_text("No answer leads to this section yet.", second)
+        self.select_option_by_text(f"{first} select[data-option='No']", "Submit form")
+        self.click("button:contains('Create form')")
+        self.assert_element("h1:contains('Trial signup')")
+
+        form = Form.objects.get(title="Trial signup")
+        self.assertEqual(2, len(form.sections))
+        radio = form.fields[0]
+        self.assertEqual({"Yes": "", "No": "submit"}, radio["goto"])
+        self.assertEqual(
+            [form.sections[0]["key"], form.sections[0]["key"], form.sections[1]["key"]],
+            [f["section"] for f in form.fields],
+        )
+        self.assertEqual(["Playing?", "Shirt size", "Position"], [f["label"] for f in form.fields])
+
+        self.open(f"{APP_URL}/forms/{form.slug}/edit")
+        self.wait_for_element("[data-section='1']")
+        self.assertEqual(
+            "Team details", self.get_value("[data-section='1'] input[placeholder='Section title']")
+        )
+
     def test_a_form_skips_sections_by_answer(self) -> None:
         field = {"required": True, "options": []}
         form = Form.objects.create(
