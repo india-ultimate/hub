@@ -1547,6 +1547,11 @@ class TestIntegration(BaseCase):
             self.assertTrue(fits, f"{path} scrolls sideways")
             self.assertEqual([], stray, f"{path} has controls outside their box")
             self.assertEqual([], small, f"{path} has small tap targets")
+            crumbs = self.execute_script(
+                "const d = document.querySelector('iframe').contentDocument;"
+                "return d.querySelector('nav[aria-label=Breadcrumb]').offsetHeight"
+            )
+            self.assertLess(crumbs, 48, f"{path} breadcrumb wraps onto several lines")
             if path.endswith("/responses"):
                 cards = self.execute_script(
                     "const d = document.querySelector('iframe').contentDocument;"
