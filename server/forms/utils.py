@@ -89,13 +89,43 @@ def validate_structure(sections: list[dict[str, Any]], fields: list[dict[str, An
     return None
 
 
+def group_sections(form: Form) -> list[tuple[dict[str, Any], list[dict[str, Any]]]]:
+    """Pair each section with its fields; a form without sections is one implicit section."""
+    if not form.sections:
+        return [({"key": "", "next": ""}, form.fields)]
+    return [
+        (section, [f for f in form.fields if f.get("section", "") == section["key"]])
+        for section in form.sections
+    ]
+
+
+def path_fields(form: Form, answers: dict[str, Any]) -> list[dict[str, Any]]:
+    """The fields a responder with these answers passes through, in order."""
+    groups = group_sections(form)
+    index_of = {section["key"]: i for i, (section, _) in enumerate(groups)}
+    path: list[dict[str, Any]] = []
+    i = 0
+    while i < len(groups):
+        section, fields = groups[i]
+        path.extend(fields)
+        target = section.get("next", "")
+        for field in fields:
+            answer = answers.get(field["key"])
+            if field.get("goto") and isinstance(answer, str):
+                target = field["goto"].get(answer, "") or target
+        if target == "submit":
+            break
+        i = index_of[target] if target in index_of and index_of[target] > i else i + 1
+    return path
+
+
 def validate_answers(form: Form, answers: dict[str, Any]) -> str | None:
-    """Validate submitted answers against the form's field definitions.
+    """Validate submitted answers against the fields on the responder's path.
 
     Returns an error message, or None if the answers are valid.
     """
-    for field in form.fields:
-        key = field.get("key")
+    for field in path_fields(form, answers):
+        key = field["key"]
         label = field.get("label", key)
         field_type = field.get("type")
         required = field.get("required", False)
