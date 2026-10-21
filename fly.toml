@@ -4,7 +4,7 @@
 #
 
 app = "upai-hub"
-primary_region = "ams"
+primary_region = "sin"
 kill_signal = "SIGTERM"
 kill_timeout = "30s"
 # No swap_size_mb: Fly can't suspend a machine with swap (see auto_stop_machines).
