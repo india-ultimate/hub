@@ -16,6 +16,8 @@ class Committee(models.Model):
     order = models.PositiveSmallIntegerField(default=0)
     # Everyone with a current role here may post announcements
     can_post_announcements = models.BooleanField(default=False, db_default=False)
+    # Everyone with a current role here may create forms
+    can_create_forms = models.BooleanField(default=False, db_default=False)
 
     class Meta:
         ordering = ["order", "name"]
@@ -43,6 +45,8 @@ class Role(models.Model):
     is_chair = models.BooleanField(default=False)
     # This person may post announcements, whatever their committee allows
     can_post_announcements = models.BooleanField(default=False, db_default=False)
+    # This person may create forms, whatever their committee allows
+    can_create_forms = models.BooleanField(default=False, db_default=False)
     start_date = models.DateField()
     end_date = models.DateField(null=True, blank=True)
 

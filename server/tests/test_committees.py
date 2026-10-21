@@ -576,3 +576,48 @@ class TestMigrations(TestCase):
 
         self.assertEqual([assignee], list(ticket.assignees.all()))
         self.assertEqual([], list(unassigned.assignees.all()))
+
+
+class TestFormCreatorSwitches(CommitteeTestCase):
+    def test_staff_sets_the_committee_switch_without_touching_the_other(self) -> None:
+        response = self.call(
+            "put", "/committees/finance", self.staff, {"name": "Finance", "can_create_forms": True}
+        )
+        self.assertEqual(200, response.status_code)
+        self.assertTrue(response.json()["can_create_forms"])
+        self.assertFalse(response.json()["can_post_announcements"])
+
+        response = self.call(
+            "put",
+            "/committees/finance",
+            self.staff,
+            {"name": "Finance", "can_post_announcements": True},
+        )
+        self.assertTrue(response.json()["can_create_forms"])
+        self.assertTrue(response.json()["can_post_announcements"])
+
+    def test_staff_sets_the_role_switch_on_create_and_update(self) -> None:
+        response = self.call(
+            "post",
+            "/committees/finance/roles",
+            self.staff,
+            {
+                "user_id": self.outsider.id,
+                "title": "Treasurer",
+                "can_create_forms": True,
+                "start_date": today().isoformat(),
+            },
+        )
+        self.assertEqual(201, response.status_code)
+        self.assertTrue(response.json()["can_create_forms"])
+        self.assertFalse(response.json()["can_post_announcements"])
+
+        role = Role.objects.get(user=self.outsider)
+        response = self.call(
+            "put",
+            f"/committees/roles/{role.id}",
+            self.staff,
+            {"can_create_forms": False, "can_post_announcements": True},
+        )
+        self.assertFalse(response.json()["can_create_forms"])
+        self.assertTrue(response.json()["can_post_announcements"])

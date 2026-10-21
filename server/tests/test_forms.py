@@ -1,12 +1,16 @@
 import csv
+import datetime
 import io
 import json
 from typing import Any
 
 from django.test import Client, TestCase
 
+from server.committee.models import Committee, Role
 from server.core.models import User
+from server.forms.access import can_create_forms, can_manage_form
 from server.forms.models import Form, FormResponse
+from server.utils import today
 
 TEST_PASSWORD = "test_password_123"  # nosec B105
 
@@ -364,3 +368,96 @@ class FormsAPITestCase(TestCase):
         self._login(self.user)
         response = self.client.get(f"/api/forms/{self.form.slug}/responses/csv")
         self.assertEqual(response.status_code, 401)
+
+
+class FormAccessTestCase(TestCase):
+    def setUp(self) -> None:
+        self.committee = Committee.objects.create(name="Media", slug="media")
+        self.staff = User.objects.create_user(
+            username="staff", email="s@example.com", phone="1", is_staff=True
+        )
+        self.member = User.objects.create_user(username="m", email="m@example.com", phone="2")
+        self.other = User.objects.create_user(username="o", email="o@example.com", phone="3")
+        self.form = Form.objects.create(title="F", slug="f", created_by=self.member)
+
+    def give_role(
+        self,
+        user: User,
+        start: datetime.date | None = None,
+        end: datetime.date | None = None,
+        **switches: bool,
+    ) -> Role:
+        return Role.objects.create(
+            committee=self.committee,
+            user=user,
+            title="Member",
+            start_date=start or today() - datetime.timedelta(days=30),
+            end_date=end,
+            **switches,
+        )
+
+    def test_staff_can_create(self) -> None:
+        self.assertTrue(can_create_forms(self.staff))
+
+    def test_a_role_switch_allows_that_person(self) -> None:
+        self.give_role(self.member, can_create_forms=True)
+        self.give_role(self.other)
+
+        self.assertTrue(can_create_forms(self.member))
+        self.assertFalse(can_create_forms(self.other))
+
+    def test_a_committee_switch_allows_its_people(self) -> None:
+        Committee.objects.update(can_create_forms=True)
+        self.give_role(self.member)
+
+        self.assertTrue(can_create_forms(self.member))
+        self.assertFalse(can_create_forms(self.other))
+
+    def test_a_role_without_a_switch_does_not_allow(self) -> None:
+        self.give_role(self.member)
+
+        self.assertFalse(can_create_forms(self.member))
+
+    def test_a_past_or_future_role_does_not_allow(self) -> None:
+        Committee.objects.update(can_create_forms=True)
+        past = self.give_role(
+            self.member, today() - datetime.timedelta(days=30), today(), can_create_forms=True
+        )
+        self.assertFalse(can_create_forms(self.member))
+
+        past.delete()
+        self.give_role(self.member, today() + datetime.timedelta(days=1), can_create_forms=True)
+        self.assertFalse(can_create_forms(self.member))
+
+    def test_no_role_does_not_allow(self) -> None:
+        Committee.objects.update(can_create_forms=True)
+
+        self.assertFalse(can_create_forms(self.member))
+
+    def test_who_can_manage_a_form(self) -> None:
+        role = self.give_role(self.member, can_create_forms=True)
+        self.give_role(self.other, can_create_forms=True)
+
+        self.assertTrue(can_manage_form(self.staff, self.form))
+        self.assertTrue(can_manage_form(self.member, self.form))
+        self.assertFalse(can_manage_form(self.other, self.form))
+
+        role.end_date = today()
+        role.save()
+        self.assertFalse(can_manage_form(self.member, self.form))
+
+    def test_a_form_with_no_creator_is_managed_by_staff_only(self) -> None:
+        orphan = Form.objects.create(title="O", slug="o", created_by=None)
+        self.give_role(self.member, can_create_forms=True)
+
+        self.assertTrue(can_manage_form(self.staff, orphan))
+        self.assertFalse(can_manage_form(self.member, orphan))
+        self.assertFalse(can_manage_form(self.other, orphan))
+
+    def test_me_says_whether_the_user_can_create_forms(self) -> None:
+        self.give_role(self.member, can_create_forms=True)
+
+        for user, expected in [(self.member, True), (self.other, False), (self.staff, True)]:
+            client = Client()
+            client.force_login(user)
+            self.assertEqual(expected, client.get("/api/me").json()["can_create_forms"])
