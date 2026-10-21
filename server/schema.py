@@ -543,12 +543,8 @@ class VaccinatedFormSchema(Schema):
     name: str
 
 
-class AccreditationFormSchema(ModelSchema):
+class AccreditationFormSchema(Schema):
     player_id: int
-
-    class Meta:
-        model = Accreditation
-        fields = ["level", "date", "wfdf_id"]
 
 
 class CollegeIdFormSchema(ModelSchema):

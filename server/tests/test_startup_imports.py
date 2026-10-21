@@ -62,3 +62,10 @@ class TestAuthImportCost(SimpleTestCase):
         script = URL_CONF_SCRIPT.format(names={"jwt", "cryptography"})
         answer = _run(script)
         self.assertEqual(answer.returncode, 0, answer.stderr)
+
+
+class TestAccreditationImportCost(SimpleTestCase):
+    def test_url_conf_leaves_pypdf_alone(self) -> None:
+        script = URL_CONF_SCRIPT.format(names={"pypdf"})
+        answer = _run(script)
+        self.assertEqual(answer.returncode, 0, answer.stderr)

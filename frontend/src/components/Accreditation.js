@@ -1,20 +1,17 @@
-import { createForm, maxRange, minRange, required } from "@modular-forms/solid";
+import { createForm, required } from "@modular-forms/solid";
 import { useParams } from "@solidjs/router";
 import { Icon } from "solid-heroicons";
 import { inboxStack } from "solid-heroicons/solid";
 import { pencilSquare } from "solid-heroicons/solid-mini";
 import { createEffect, createSignal, Show } from "solid-js";
 
-import { accreditationChoices } from "../constants";
 import { useStore } from "../store";
 import { withinUploadLimits } from "../uploads";
 import { getCookie, getPlayer } from "../utils";
 import AccreditationInformation from "./AccreditationInformation";
 import Breadcrumbs from "./Breadcrumbs";
 import FileInput from "./FileInput";
-import Select from "./Select";
 import StatusStepper from "./StatusStepper";
-import TextInput from "./TextInput";
 
 const Accreditation = () => {
   const [store, { setPlayerById }] = useStore();
@@ -37,15 +34,10 @@ const Accreditation = () => {
     setPlayer(player);
   });
 
-  const maxDate = new Date().toISOString().split("T")[0];
-
   // handleSubmit function to handle form submission
   const handleSubmit = async values => {
-    const { certificate, ...accreditationData } = values;
-    let data = { ...accreditationData, player_id: player()?.id };
-    if (data.wfdf_id === "") {
-      data.wfdf_id = null;
-    }
+    const { certificate } = values;
+    const data = { player_id: player()?.id };
 
     const formData = new FormData();
     formData.append("accreditation", JSON.stringify(data));
@@ -128,23 +120,6 @@ const Accreditation = () => {
             >
               <div class="space-y-8">
                 <Field
-                  name="level"
-                  validate={required("Please select your accreditation level.")}
-                >
-                  {(field, props) => (
-                    <Select
-                      {...props}
-                      value={field.value}
-                      error={field.error}
-                      options={accreditationChoices}
-                      type="text"
-                      label="Accreditation level"
-                      placeholder="Standard/Advanced?"
-                      required
-                    />
-                  )}
-                </Field>
-                <Field
                   name="certificate"
                   type="File"
                   validate={[
@@ -155,83 +130,15 @@ const Accreditation = () => {
                   {(field, props) => (
                     <FileInput
                       {...props}
-                      accept={"image/*,application/pdf"}
+                      accept={"application/pdf"}
                       value={field.value}
                       error={field.error}
-                      label="Upload Accreditation Certificate"
-                      subLabel="Note: Uploading directly from Google Drive is not supported. Please download to device and upload as a file."
+                      label="Upload Accreditation Certificate (PDF)"
+                      subLabel="Upload the PDF you downloaded from WFDF Academy. We read the level, dates and Certificate Code from it. Certificates from the old rules.wfdf.sport site can't be added. Uploading directly from Google Drive is not supported, so download it to your device first."
                       required
                     />
                   )}
                 </Field>
-                <Field
-                  name="date"
-                  validate={[required("Please enter date of accreditation.")]}
-                >
-                  {(field, props) => (
-                    <TextInput
-                      {...props}
-                      value={field.value}
-                      error={field.error}
-                      type="date"
-                      max={maxDate}
-                      label="Date of Accreditation"
-                      placeholder={maxDate}
-                      required
-                    />
-                  )}
-                </Field>
-                <Field
-                  name="wfdf_id"
-                  validate={[
-                    minRange(1, "Enter a valid WFDF ID"),
-                    maxRange(99999999, "Enter a valid WFDF ID")
-                  ]}
-                >
-                  {(field, props) => (
-                    <TextInput
-                      {...props}
-                      value={field.value}
-                      error={field.error}
-                      type="number"
-                      label="WFDF User ID"
-                      placeholder="99999"
-                    />
-                  )}
-                </Field>
-                <div
-                  class="mx-10 my-0 mb-4 rounded-lg bg-blue-50 p-4 px-8 text-sm text-blue-800 dark:bg-gray-800 dark:text-blue-400 lg:px-10"
-                  role="alert"
-                >
-                  <details>
-                    <summary>How to find my WFDF ID?</summary>
-                    <ol class="mt-2 list-decimal space-y-1 pl-5 text-sm">
-                      <li>
-                        Login to your{" "}
-                        <a
-                          class="text-blue-600 underline hover:no-underline dark:text-blue-500"
-                          href="https://rules.wfdf.org"
-                        >
-                          WFDF account
-                        </a>
-                      </li>
-                      <li>
-                        Navigate to the{" "}
-                        <a
-                          class="text-blue-600 underline hover:no-underline dark:text-blue-500"
-                          href="https://rules.wfdf.org/my-results"
-                        >
-                          "My Results"
-                        </a>{" "}
-                        page
-                      </li>
-                      <li>
-                        Click on "My Account" in the top nav-bar and copy the
-                        User ID displayed!
-                      </li>
-                    </ol>
-                  </details>
-                </div>
                 <button
                   type="submit"
                   class="w-full rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 sm:w-auto"

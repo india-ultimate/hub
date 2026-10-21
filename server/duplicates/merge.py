@@ -83,7 +83,12 @@ ROW_PREFERENCE = {
     # one of them says which request granted it. Keep the one with the paper
     # trail rather than the primary's by default.
     "server.SponsorshipGrant": lambda row: (row.request_id is not None,),
-    "server.Accreditation": lambda row: (row.is_valid, row.date, row.wfdf_id is not None),
+    "server.Accreditation": lambda row: (
+        row.is_valid,
+        row.date,
+        row.certificate_code is not None,
+        row.wfdf_id is not None,
+    ),
     "server.Vaccination": lambda row: (row.is_vaccinated, bool(row.certificate)),
     "server.CollegeId": lambda row: (row.expiry,),
     # A used verification records that this person has already voted. Losing

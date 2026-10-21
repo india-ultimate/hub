@@ -21,7 +21,7 @@ from PIL import Image
 
 from server.storage import kinds, shrink
 from server.storage.cloudinary import CloudinaryStorage
-from server.tests.base import ApiBaseTestCase
+from server.tests.base import ApiBaseTestCase, wfdf_certificate_pdf
 
 CLOUD = "https://res.cloudinary.com/india-ultimate"
 
@@ -303,8 +303,10 @@ CLOUDINARY_STORAGES = {
 class TestUploadsThroughTheApi(ApiBaseTestCase):
     def post_certificate(self) -> Any:
         self.client.force_login(self.user)
-        cert = SimpleUploadedFile("cert.pdf", b"%PDF", content_type="application/pdf")
-        data = {"date": "2026-01-01", "level": "ADV", "player_id": self.player.id, "wfdf_id": 7}
+        cert = SimpleUploadedFile(
+            "cert.pdf", wfdf_certificate_pdf(), content_type="application/pdf"
+        )
+        data = {"player_id": self.player.id}
         return self.client.post(
             "/api/accreditation",
             data={"accreditation": json.dumps(data), "certificate": cert},
