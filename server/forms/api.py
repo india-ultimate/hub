@@ -24,6 +24,7 @@ from .utils import (
     create_form_payment_order,
     send_form_submission_email,
     validate_answers,
+    validate_structure,
 )
 
 router = Router()
@@ -52,11 +53,18 @@ def create_form(
     if not request.user.is_staff:
         return 401, {"message": "Only Admins can create forms"}
 
+    sections = [s.model_dump() for s in data.sections]
+    fields = [f.model_dump() for f in data.fields]
+    error = validate_structure(sections, fields)
+    if error:
+        return 400, {"message": error}
+
     form = Form.objects.create(
         title=data.title,
         description=data.description,
         slug=_unique_slug(data.title),
-        fields=[f.model_dump() for f in data.fields],
+        sections=sections,
+        fields=fields,
         payment_amount=data.payment_amount,
         is_active=data.is_active,
         created_by=request.user,
@@ -72,7 +80,7 @@ def get_form(request: AuthenticatedHttpRequest, slug: str) -> tuple[int, Form | 
         return 404, {"message": "Form does not exist"}
 
 
-@router.put("/{slug}", response={200: FormSchema, 401: Response, 404: Response})
+@router.put("/{slug}", response={200: FormSchema, 400: Response, 401: Response, 404: Response})
 def update_form(
     request: AuthenticatedHttpRequest, slug: str, data: FormCreateSchema
 ) -> tuple[int, Form | message_response]:
@@ -84,12 +92,28 @@ def update_form(
     except Form.DoesNotExist:
         return 404, {"message": "Form does not exist"}
 
+    sections = [s.model_dump() for s in data.sections]
+    fields = [f.model_dump() for f in data.fields]
+    error = validate_structure(sections, fields)
+    if error:
+        return 400, {"message": error}
+
     form.title = data.title
     form.description = data.description
-    form.fields = [f.model_dump() for f in data.fields]
+    form.sections = sections
+    form.fields = fields
     form.payment_amount = data.payment_amount
     form.is_active = data.is_active
-    form.save(update_fields=["title", "description", "fields", "payment_amount", "is_active"])
+    form.save(
+        update_fields=[
+            "title",
+            "description",
+            "sections",
+            "fields",
+            "payment_amount",
+            "is_active",
+        ]
+    )
     return 200, form
 
 

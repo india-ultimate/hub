@@ -45,6 +45,50 @@ def build_responses_csv(form: Form, responses: QuerySet[FormResponse] | list[For
     return buffer.getvalue()
 
 
+def validate_structure(sections: list[dict[str, Any]], fields: list[dict[str, Any]]) -> str | None:
+    """Check section keys and branching targets of a form being saved.
+
+    Returns an error message, or None if the structure is valid.
+    """
+    keys = [s["key"] for s in sections]
+    if any(not key for key in keys):
+        return "Section keys cannot be empty"
+    if len(set(keys)) != len(keys):
+        return "Section keys must be unique"
+    index = {key: i for i, key in enumerate(keys)}
+
+    for section in sections:
+        target = section.get("next", "")
+        if target not in ("", "submit") and index.get(target, -1) <= index[section["key"]]:
+            return f"Section '{section['key']}' must continue to a later section"
+
+    branching: set[str] = set()
+    for field in fields:
+        label = field.get("label") or field.get("key")
+        section = field.get("section", "")
+        goto = field.get("goto") or {}
+        if not sections:
+            if section or goto:
+                return f"Question '{label}' cannot have a section or branching without sections"
+            continue
+        if section not in index:
+            return f"Question '{label}' is in an unknown section"
+        if not goto:
+            continue
+        if field.get("type") not in (FieldType.RADIO, FieldType.DROPDOWN):
+            return f"Question '{label}' cannot branch; only single choice and dropdown can"
+        if section in branching:
+            return f"Section '{section}' has more than one branching question"
+        branching.add(section)
+        options = field.get("options") or []
+        for option, target in goto.items():
+            if option not in options:
+                return f"Question '{label}' branches on '{option}', which is not an option"
+            if target not in ("", "submit") and index.get(target, -1) <= index[section]:
+                return f"Question '{label}' must go to a later section for '{option}'"
+    return None
+
+
 def validate_answers(form: Form, answers: dict[str, Any]) -> str | None:
     """Validate submitted answers against the form's field definitions.
 

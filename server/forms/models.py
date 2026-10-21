@@ -26,8 +26,12 @@ class Form(ExportModelOperationsMixin("form"), models.Model):  # type: ignore[mi
     description = models.TextField(blank=True)
     slug = models.SlugField(max_length=255, unique=True)
     # List of field definitions, each:
-    # {"key": str, "label": str, "type": FieldType, "required": bool, "options": [str]}
+    # {"key": str, "label": str, "type": FieldType, "required": bool, "options": [str],
+    # "section": str, "goto": {option: target}}
     fields = models.JSONField(default=list)
+    # Ordered list of {"key": str, "title": str, "description": str, "next": str}.
+    # Empty means one implicit section holding every field.
+    sections = models.JSONField(default=list, blank=True)
     # Amount in paise. Null/blank means the form is free.
     payment_amount = models.PositiveIntegerField(blank=True, null=True)
     is_active = models.BooleanField(default=True)
