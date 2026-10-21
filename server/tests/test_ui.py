@@ -1458,6 +1458,103 @@ class TestIntegration(BaseCase):
             "Team details", self.get_value("[data-section='1'] input[placeholder='Section title']")
         )
 
+    def test_form_pages_fit_a_phone(self) -> None:
+        staff = make_player("staff@example.com")
+        User.objects.filter(pk=staff.pk).update(is_staff=True)
+        field = {"required": True, "options": []}
+        form = Form.objects.create(
+            title="Annual inter-university trial signup and kit order for every playing member",
+            slug="long-signup",
+            payment_amount=50000,
+            sections=[
+                {"key": "s_a", "title": "About you", "description": "", "next": ""},
+                {"key": "s_b", "title": "Playing", "description": "", "next": ""},
+            ],
+            fields=[
+                {
+                    **field,
+                    "key": "playing",
+                    "label": "Are you available for the whole tournament?",
+                    "type": "radio",
+                    "options": ["Yes", "No"],
+                    "section": "s_a",
+                    "goto": {"No": "s_b"},
+                },
+                {**field, "key": "pos", "label": "Position", "type": "text", "section": "s_b"},
+            ],
+            created_by=staff,
+        )
+        for address in ("one@example.com", "two@example.com"):
+            FormResponse.objects.create(
+                form=form,
+                user=make_player(address),
+                answers={"playing": "Yes", "pos": "Handler"},
+                is_paid=True,
+            )
+        self.sign_in_as(staff)
+        self.open(f"{APP_URL}/forms")
+
+        # Headless Firefox is no narrower than about 450px, so each page loads
+        # in a 360px frame of its own.
+        pages = {
+            "/forms": 4,
+            f"/forms/{form.slug}": 3,
+            f"/forms/{form.slug}/edit": 10,
+            f"/forms/{form.slug}/responses": 2,
+        }
+        check = """
+            const d = document.querySelector('iframe').contentDocument;
+            const card = el => el.closest('[data-question], li, form > div, [data-section], [data-testid]');
+            const right = el => el.getBoundingClientRect().right;
+            const controls = [...d.querySelectorAll('section.grow button, section.grow a')]
+                .filter(el => el.offsetParent);
+            const stray = controls
+                .filter(el => el.offsetParent && !el.closest('.overflow-x-auto'))
+                .filter(el => right(el) > d.documentElement.clientWidth ||
+                    (card(el) && right(el) > right(card(el)) + 0.5))
+                .map(el => el.textContent.trim());
+            const rows = [...d.querySelectorAll('section.grow label:has(input[type=radio]), '
+                + 'section.grow label:has(input[type=checkbox])')]
+                .filter(el => el.offsetParent && !el.closest('[data-section]'));
+            const small = [...d.querySelectorAll('section.grow a, section.grow button')]
+                .filter(el => /^(New form|Edit|Responses)$/.test(el.textContent.trim()))
+                .filter(el => el.getBoundingClientRect().height < 44 ||
+                    el.getBoundingClientRect().width < 44)
+                .concat(rows.filter(el => el.getBoundingClientRect().height < 44))
+                .map(el => el.textContent.trim());
+            return [d.documentElement.scrollWidth <= d.documentElement.clientWidth, stray, small,
+                controls.length, rows.length];
+        """
+        for path, minimum in pages.items():
+            self.execute_script(
+                'document.body.innerHTML = \'<iframe style="width:360px;height:900px" '
+                f'src="{APP_URL}{path}"></iframe>\';'
+            )
+            self.wait_for_element("iframe")
+            for _ in range(40):
+                if self.execute_script(
+                    "const d = document.querySelector('iframe').contentDocument;"
+                    "return !!d.querySelector('h1') && !d.body.innerText.includes('Loading')"
+                ):
+                    break
+                self.sleep(0.25)
+            else:
+                self.fail(f"{path} did not finish rendering")
+            fits, stray, small, found, rows = self.execute_script(check)
+            self.assertGreaterEqual(found, minimum, f"{path} shows too few controls to check")
+            if path == f"/forms/{form.slug}":
+                self.assertEqual(2, rows, "the radio answers were not checked")
+            self.assertTrue(fits, f"{path} scrolls sideways")
+            self.assertEqual([], stray, f"{path} has controls outside their box")
+            self.assertEqual([], small, f"{path} has small tap targets")
+            if path.endswith("/responses"):
+                cards = self.execute_script(
+                    "const d = document.querySelector('iframe').contentDocument;"
+                    "return [...d.querySelectorAll('[data-testid=response-card]')]"
+                    ".filter(el => el.offsetParent).length"
+                )
+                self.assertEqual(2, cards)
+
     def test_a_form_skips_sections_by_answer(self) -> None:
         field = {"required": True, "options": []}
         form = Form.objects.create(

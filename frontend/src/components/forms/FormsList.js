@@ -23,17 +23,17 @@ const FormsList = () => {
   });
 
   return (
-    <div>
+    <div class="pb-24">
       <Breadcrumbs
         icon={documentText}
         pageList={[{ url: "/dashboard", name: "Dashboard" }, { name: "Forms" }]}
       />
-      <div class="flex items-center justify-between">
+      <div class="flex flex-wrap items-center justify-between gap-3">
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Forms</h1>
         <Show when={store.data.can_create_forms}>
           <A
             href="/forms/new"
-            class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            class="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-blue-600 px-4 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
           >
             New form
           </A>
@@ -49,8 +49,8 @@ const FormsList = () => {
             <For each={query.data}>
               {form => (
                 <li class="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
-                  <div class="flex items-center justify-between">
-                    <div>
+                  <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div class="min-w-0 break-words">
                       <A
                         href={`/forms/${form.slug}`}
                         class="text-lg font-medium text-blue-600 hover:underline dark:text-blue-400"
@@ -74,16 +74,16 @@ const FormsList = () => {
                       </Show>
                     </div>
                     <Show when={form.can_manage}>
-                      <div class="flex gap-3 text-sm">
+                      <div class="flex shrink-0 flex-wrap gap-2">
                         <A
                           href={`/forms/${form.slug}/edit`}
-                          class="text-gray-600 hover:underline dark:text-gray-300"
+                          class="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
                         >
                           Edit
                         </A>
                         <A
                           href={`/forms/${form.slug}/responses`}
-                          class="text-gray-600 hover:underline dark:text-gray-300"
+                          class="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
                         >
                           Responses
                         </A>
