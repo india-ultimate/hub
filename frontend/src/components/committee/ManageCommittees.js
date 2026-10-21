@@ -151,7 +151,23 @@ const CommitteeForm = props => {
               email: c.email,
               description: c.description,
               order: c.order,
-              can_post_announcements
+              can_post_announcements,
+              can_create_forms: c.can_create_forms
+            })
+          }
+        />
+        <PostSwitch
+          label="Everyone in this committee can create forms"
+          checked={c.can_create_forms}
+          onChange={can_create_forms =>
+            setCanPost({
+              slug: c.slug,
+              name: c.name,
+              email: c.email,
+              description: c.description,
+              order: c.order,
+              can_post_announcements: c.can_post_announcements,
+              can_create_forms
             })
           }
         />

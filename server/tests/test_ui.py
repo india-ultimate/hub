@@ -19,6 +19,7 @@ from selenium.webdriver.common.keys import Keys
 from seleniumbase import BaseCase
 
 from hub.settings import BASE_DIR
+from server.committee.models import Committee, Role
 from server.core.models import Guardianship, OTPAttempt, Player, Team, User
 from server.duplicates.clusters import close_finished, detect_and_create
 from server.duplicates.emails import notify
@@ -42,6 +43,7 @@ from server.tests.razorpay_checkout import complete_razorpay_test_payment
 from server.tests.utils import create_empty_directory
 from server.ticket.models import Ticket, TicketMessage
 from server.tournament.models import Event
+from server.utils import today
 
 MAIL_DIR = BASE_DIR.joinpath("tmp")
 # Django's file backend appends each message to the file after a line of 79
@@ -1376,6 +1378,42 @@ class TestIntegration(BaseCase):
 
         self.click("label[for='is_private']")
         self.assert_element_absent("#ticket-suggestions")
+
+    def test_a_committee_member_creates_a_form_and_sees_its_responses(self) -> None:
+        member = make_player("member@example.com")
+        other = make_player("other@example.com")
+        committee = Committee.objects.create(name="Zonal", slug="zonal", order=99)
+        Role.objects.create(
+            committee=committee,
+            user=member,
+            title="Member",
+            can_create_forms=True,
+            start_date=today() - datetime.timedelta(days=30),
+        )
+        theirs = Form.objects.create(title="Theirs", slug="theirs", created_by=other)
+        self.sign_in_as(member)
+        self.open(f"{APP_URL}/forms")
+        self.click("a:contains('New form')")
+        self.type("#form-title", "Club signup")
+        first = "[data-section='0']"
+        self.type(f"{first} input[placeholder='Question']", "Name?")
+        self.click("button:contains('Create form')")
+        self.assert_element("h1:contains('Club signup')")
+        self.click("a:contains('Responses')")
+        self.assert_element("h1:contains('Responses')")
+
+        self.open(f"{APP_URL}/forms")
+        self.assert_element("li:contains('Club signup') a:contains('Edit')")
+        self.assert_element_absent("li:contains('Theirs') a:contains('Edit')")
+        self.open(f"{APP_URL}/forms/{theirs.slug}/responses")
+        self.assert_text("Only this form's creator or staff can view its responses")
+        self.assert_element_absent("button:contains('Download CSV')")
+        self.assert_element_absent("button:contains('Stop accepting responses')")
+        self.assert_text_not_visible("No responses yet.")
+        self.open(f"{APP_URL}/forms/{theirs.slug}/edit")
+        self.assert_text("Only this form's creator or staff can edit it.")
+        self.assert_element_absent("#form-title")
+        self.assert_element_absent("button:contains('Save changes')")
 
     def test_staff_build_a_form_with_a_branch(self) -> None:
         staff = make_player("staff@example.com")

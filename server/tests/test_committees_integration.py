@@ -88,6 +88,21 @@ class TestCommitteesIntegration(BaseCase):
         role.refresh_from_db()
         self.assertEqual(role.end_date, today())
 
+    def test_staff_let_a_role_create_forms(self) -> None:
+        role = self.hold(self.zonal, self.asha, "Secretary")
+        self.sign_in_as(self.staff)
+        self.open(f"{APP_URL}/committees/manage")
+        self.wait_for_element("#people-committee", timeout=10)
+        self.select_option_by_text("#people-committee", "Zonal")
+        self.click("label:contains('Can create forms')")
+        for _ in range(50):
+            role.refresh_from_db()
+            if role.can_create_forms:
+                break
+            self.sleep(0.1)
+        self.assertTrue(role.can_create_forms)
+        self.assertFalse(role.can_post_announcements)
+
     def test_a_handler_adds_and_removes_an_assignee(self) -> None:
         self.hold(self.zonal, self.meera, "Chair", is_chair=True)
         ticket = Ticket.objects.create(

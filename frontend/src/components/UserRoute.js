@@ -19,6 +19,9 @@ const WithUserData = props => {
     if (props.poster) {
       return store.userFetched && store?.data?.can_post_announcements;
     }
+    if (props.creator) {
+      return store.userFetched && store?.data?.can_create_forms;
+    }
     if (!props.admin) {
       return true;
     }
@@ -68,6 +71,7 @@ const UserRoute = props => {
             admin={props.admin}
             staffOrDirector={props.staffOrDirector}
             poster={props.poster}
+            creator={props.creator}
           >
             {props.element}
           </WithUserData>
@@ -84,6 +88,7 @@ const UserRoute = props => {
             admin={props.admin}
             staffOrDirector={props.staffOrDirector}
             poster={props.poster}
+            creator={props.creator}
           >
             <props.component />
           </WithUserData>
