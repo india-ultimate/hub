@@ -11,11 +11,21 @@ class FormFieldSchema(Schema):
     type: str
     required: bool = False
     options: list[str] = []
+    section: str = ""
+    goto: dict[str, str] = {}
+
+
+class FormSectionSchema(Schema):
+    key: str
+    title: str = ""
+    description: str = ""
+    next: str = ""
 
 
 class FormCreateSchema(Schema):
     title: str
     description: str = ""
+    sections: list[FormSectionSchema] = []
     fields: list[FormFieldSchema]
     payment_amount: int | None = None
     is_active: bool = True
@@ -35,6 +45,7 @@ class FormSchema(ModelSchema):
             "title",
             "description",
             "slug",
+            "sections",
             "fields",
             "payment_amount",
             "is_active",

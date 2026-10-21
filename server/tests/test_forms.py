@@ -1,6 +1,7 @@
 import csv
 import io
 import json
+from typing import Any
 
 from django.test import Client, TestCase
 
@@ -57,6 +58,118 @@ class FormsAPITestCase(TestCase):
 
     def _login(self, user: User) -> None:
         self.client.force_login(user)
+
+    def _payload(self, sections: list[dict[str, Any]], fields: list[dict[str, Any]]) -> Any:
+        self._login(self.staff)
+        return self.client.post(
+            "/api/forms/",
+            data=json.dumps({"title": "Sectioned", "sections": sections, "fields": fields}),
+            content_type="application/json",
+        )
+
+    def test_create_form_with_sections_round_trips(self) -> None:
+        sections = [
+            {"key": "s1", "title": "One", "description": "", "next": "submit"},
+            {"key": "s2", "title": "Two", "description": "", "next": ""},
+        ]
+        fields = [
+            {
+                "key": "q",
+                "label": "Q",
+                "type": "radio",
+                "required": True,
+                "options": ["Yes", "No"],
+                "section": "s1",
+                "goto": {"Yes": "s2", "No": ""},
+            }
+        ]
+        response = self._payload(sections, fields)
+        self.assertEqual(response.status_code, 200, response.content)
+        got = self.client.get(f"/api/forms/{response.json()['slug']}").json()
+        self.assertEqual(got["sections"], sections)
+        self.assertEqual(got["fields"][0]["goto"], {"Yes": "s2", "No": ""})
+
+    def test_create_legacy_payload_still_works(self) -> None:
+        self._login(self.staff)
+        response = self.client.post(
+            "/api/forms/",
+            data=json.dumps(
+                {
+                    "title": "Old",
+                    "fields": [{"key": "a", "label": "A", "type": "text"}],
+                }
+            ),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertEqual(response.json()["sections"], [])
+
+    def test_structure_rejections(self) -> None:
+        def sec(key: str, nxt: str = "") -> dict[str, Any]:
+            return {"key": key, "title": "", "description": "", "next": nxt}
+
+        def fld(
+            section: str = "s1",
+            type: str = "radio",
+            goto: dict[str, str] | None = None,
+            key: str = "q",
+        ) -> dict[str, Any]:
+            return {
+                "key": key,
+                "label": key,
+                "type": type,
+                "options": ["Yes", "No"] if type == "radio" else [],
+                "section": section,
+                "goto": goto or {},
+            }
+
+        two = [sec("s1"), sec("s2")]
+        cases = {
+            "duplicate key": ([sec("s1"), sec("s1")], [fld()]),
+            "empty key": ([sec("")], [fld("")]),
+            "unknown field section": (two, [fld("zzz")]),
+            "section without sections": ([], [fld("s1")]),
+            "goto without sections": ([], [fld("", goto={"Yes": "submit"})]),
+            "goto on text": (two, [fld(type="text", goto={"Yes": "s2"})]),
+            "goto key not option": (two, [fld(goto={"Maybe": "s2"})]),
+            "goto own section": (two, [fld(goto={"Yes": "s1"})]),
+            "goto earlier section": (two, [fld("s2", goto={"Yes": "s1"})]),
+            "goto unknown": (two, [fld(goto={"Yes": "nope"})]),
+            "next backwards": ([sec("s1"), sec("s2", "s1")], [fld("s2")]),
+            "two branching in a section": (
+                two,
+                [fld(goto={"Yes": "s2"}), fld(goto={"No": "s2"}, key="r")],
+            ),
+        }
+        for name, (sections, fields) in cases.items():
+            with self.subTest(name):
+                response = self._payload(sections, fields)
+                self.assertEqual(response.status_code, 400, response.content)
+                self.assertTrue(response.json()["message"])
+
+    def test_update_rejects_bad_structure(self) -> None:
+        self._login(self.staff)
+        sections = [
+            {"key": "s1", "title": "", "description": "", "next": ""},
+            {"key": "s2", "title": "", "description": "", "next": ""},
+        ]
+        field = {
+            "key": "q",
+            "label": "Q",
+            "type": "radio",
+            "options": ["Yes"],
+            "section": "s2",
+            "goto": {"Yes": "s1"},
+        }
+        response = self.client.put(
+            f"/api/forms/{self.form.slug}",
+            data=json.dumps({"title": "Changed", "sections": sections, "fields": [field]}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 400, response.content)
+        self.form.refresh_from_db()
+        self.assertEqual(self.form.title, "Feedback Form")
+        self.assertEqual(self.form.sections, [])
 
     def test_update_form_can_stop_accepting_responses(self) -> None:
         self._login(self.staff)
