@@ -53,7 +53,8 @@ from server.registration.models import RosterSwap
 from server.season.models import Season
 from server.series.models import Series, SeriesRegistration, SeriesRosterInvitation
 from server.servicerequests.models import ServiceRequest, ServiceRequestStatus, ServiceRequestType
-from server.subscription import catalog, sponsorship
+from server.servicerequests.service import approve_sponsorship
+from server.subscription import catalog
 from server.subscription.models import (
     SponsorshipGrant,
     Subscription,
@@ -1282,23 +1283,10 @@ class ServiceRequestAdmin(admin.ModelAdmin[ServiceRequest]):
         post_save fires. Granting here is what actually entitles them.
         """
         for item in queryset.filter(type=ServiceRequestType.REQUEST_SPONSORED_SUBSCRIPTION):
-            season = item.season or Season.current()
+            season, players = approve_sponsorship(item, request.user)  # type: ignore[arg-type]
             if season is None:
                 self.message_user(request, f"Request {item.pk}: no season to grant", messages.ERROR)
                 continue
-            # Granted before the status is saved, so this records who approved
-            # it: the status signal grants too, and whichever runs first wins.
-            players = list(item.service_players.all())
-            for player in players:
-                sponsorship.grant(
-                    player,
-                    season,
-                    by=request.user,  # type: ignore[arg-type]
-                    request=item,
-                )
-            if item.status != ServiceRequestStatus.APPROVED:
-                item.status = ServiceRequestStatus.APPROVED
-                item.save()
             self.message_user(
                 request, f"Request {item.pk}: {len(players)} player(s) sponsored for {season.name}"
             )

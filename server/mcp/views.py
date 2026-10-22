@@ -127,6 +127,7 @@ def mcp(request: HttpRequest) -> HttpResponse:
                 "outcome": outcome,
                 "ms": round((time.monotonic() - started) * 1000),
                 **({"traceparent": audit["traceparent"]} if "traceparent" in audit else {}),
+                **({"reveal": audit["reveal"]} if "reveal" in audit else {}),
             }
         )
     )
