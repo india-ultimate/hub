@@ -500,6 +500,13 @@ class TestSignDocument(ProfileTestCase):
         self.assertTrue(result["isError"])
         self.assertIn("Not allowed", result["structuredContent"]["message"])
 
+    def test_no_membership_points_to_buying_one(self) -> None:
+        result = self.ask(self.me)
+
+        self.assertTrue(result["isError"])
+        self.assertIn("membership", result["structuredContent"]["message"])
+        self.assertEqual("get_membership_options", result["structuredContent"]["hint"].split()[0])
+
     def test_the_code_of_conduct_is_signed_the_same_way(self) -> None:
         sub = self.subscribe(self.me)
 

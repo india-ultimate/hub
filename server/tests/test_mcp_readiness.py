@@ -22,6 +22,7 @@ from server.tests.base import create_event
 from server.tests.test_mcp_auth import make_token
 from server.tests.test_mcp_protocol import McpProtocolTestCase
 from server.tournament.models import Registration
+from server.transaction.models import RazorpayTransaction, RazorpayTransactionPlayer
 
 TODAY = datetime.date(2026, 10, 20)
 HUB = "https://hub.example.org"
@@ -297,6 +298,27 @@ class TestNextSteps(ReadinessCase):
         steps: list[dict[str, Any]] = self.data(arguments)["players"][0]["next_steps"]
         return steps
 
+    def test_a_player_with_nothing_is_walked_through_in_order(self) -> None:
+        steps = self.steps({"player_id": self.me.id})
+
+        self.assertEqual(
+            ["subscription", "waiver", "coc", "accreditation", "commentary_info"],
+            [s["item"] for s in steps],
+        )
+        self.assertEqual(
+            [
+                ("get_membership_options", {"player_ids": [self.me.id]}),
+                ("sign_document", {"player_id": self.me.id, "document": "waiver"}),
+                ("sign_document", {"player_id": self.me.id, "document": "coc"}),
+                ("create_upload_link", {"kind": "accreditation", "player_id": self.me.id}),
+                ("update_profile", {"player_id": self.me.id}),
+            ],
+            [(s["tool"], s["arguments"]) for s in steps],
+        )
+        self.assertTrue(all(s["why"] for s in steps))
+        self.assertIn("buy_membership", steps[0]["why"])
+        self.assertIn("membership", steps[1]["why"])
+
     def test_a_college_student_is_also_sent_to_upload_a_card(self) -> None:
         self.me.occupation = "College-Student"
         self.me.save()
@@ -328,6 +350,46 @@ class TestNextSteps(ReadinessCase):
         )
         flags = [s["required_to_play"] for s in steps]
         self.assertEqual(sorted(flags, reverse=True), flags)
+
+    def test_an_unpaid_membership_order_points_to_the_existing_pay_link(self) -> None:
+        order = RazorpayTransaction.objects.create(
+            order_id="order_unpaid1",
+            status="created",
+            amount=5000,
+            currency="INR",
+            payment_id="",
+            payment_signature="",
+            user=self.user,
+            season=self.season,
+            type=RazorpayTransaction.TransactionTypeChoices.ANNUAL_SUBSCRIPTION,
+        )
+        RazorpayTransactionPlayer.objects.create(transaction=order, player=self.me, amount=5000)
+
+        step = self.steps({"player_id": self.me.id})[0]
+
+        self.assertEqual("subscription", step["item"])
+        self.assertEqual("list_my_payments", step["tool"])
+        self.assertEqual({"kind": "unpaid"}, step["arguments"])
+        self.assertEqual(f"{HUB}/pay/order_unpaid1", step["pay_url"])
+        self.assertTrue(step["required_to_play"])
+
+    def test_a_failed_order_does_not_hide_the_membership_step(self) -> None:
+        order = RazorpayTransaction.objects.create(
+            order_id="order_failed1",
+            status="failed",
+            amount=5000,
+            currency="INR",
+            payment_id="",
+            payment_signature="",
+            user=self.user,
+            season=self.season,
+        )
+        RazorpayTransactionPlayer.objects.create(transaction=order, player=self.me, amount=5000)
+
+        step = self.steps({"player_id": self.me.id})[0]
+
+        self.assertEqual("get_membership_options", step["tool"])
+        self.assertNotIn("pay_url", step)
 
     def test_a_ready_player_has_no_steps(self) -> None:
         self.complete(self.me)
