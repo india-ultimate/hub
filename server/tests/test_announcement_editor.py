@@ -235,6 +235,11 @@ class TestCleaning(TestCase):
             self.assertIn(part, html)
         self.assertNotRegex(html, "autoplay|muted|loop|onplay")
 
+    def test_code_blocks_and_inline_code_stay(self) -> None:
+        html = clean_content("<pre><code>paste this</code></pre><p>Use <code>this</code></p>")
+
+        self.assertEqual("<pre><code>paste this</code></pre><p>Use <code>this</code></p>", html)
+
     def test_old_videos_keep_their_sources(self) -> None:
         html = clean_content('<video><source src="/media/a.mp4" type="video/mp4"></video>')
 
