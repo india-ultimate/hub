@@ -217,11 +217,14 @@ from server.tournament_agent.api import router as tournament_agent_router
 from server.transaction.api import router as transaction_router
 from server.types import message_response
 from server.utils import (
+    IMAGE_TYPES,
+    PDF_TYPE,
     if_dates_are_not_in_order,
     if_today,
     is_today_in_between_dates,
     slugify_max,
     today,
+    upload_problem,
 )
 from server.wrapped.api import router as wrapped_router
 
@@ -584,6 +587,8 @@ def update_team(
 
     if request.user not in team.admins.all():
         return 400, {"message": "User not an admin of the team"}
+    if image is not None and (problem := upload_problem(image, IMAGE_TYPES, "team logo")):
+        return 400, {"message": problem}
 
     if team_details.admin_ids is not None and len(team_details.admin_ids) == 0:
         return 400, {"message": "Admin IDs cant be empty"}
@@ -630,6 +635,8 @@ def create_team(
 ) -> tuple[int, Team | message_response]:
     if not image:
         return 400, {"message": "Team logo needs to be uploaded!"}
+    if problem := upload_problem(image, IMAGE_TYPES, "team logo"):
+        return 400, {"message": problem}
 
     team = Team(
         name=team_details.name,
@@ -1054,6 +1061,10 @@ def vaccination(
 ) -> tuple[int, Vaccination | message_response]:
     if vaccination.is_vaccinated and not certificate:
         return 400, {"message": "Certificate needs to be uploaded!"}
+    if certificate and (
+        problem := upload_problem(certificate, (*IMAGE_TYPES, PDF_TYPE), "vaccination certificate")
+    ):
+        return 400, {"message": problem}
 
     try:
         player = Player.objects.get(id=vaccination.player_id)
@@ -1098,6 +1109,9 @@ def college_id(
         return 400, {"message": "ID Card front side needs to be uploaded!"}
     if not card_back:
         return 400, {"message": "ID Card back side needs to be uploaded!"}
+    for side, card in (("front", card_front), ("back", card_back)):
+        if problem := upload_problem(card, IMAGE_TYPES, f"ID card {side}"):
+            return 400, {"message": problem}
 
     try:
         player = Player.objects.get(id=college_id.player_id)

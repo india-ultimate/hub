@@ -10,6 +10,7 @@ from server.schema import Response
 from server.subscription.api import may_see
 from server.transaction.models import AuthenticatedHttpRequest
 from server.types import message_response
+from server.utils import PDF_TYPE, upload_problem
 
 router = Router()
 
@@ -20,6 +21,8 @@ def add_accreditation(
     accreditation: AccreditationFormSchema,
     certificate: UploadedFile = File(...),  # noqa: B008
 ) -> tuple[int, Accreditation | message_response]:
+    if problem := upload_problem(certificate, (PDF_TYPE,), "certificate"):
+        return 400, {"message": problem}
     try:
         player = Player.objects.get(id=accreditation.player_id)
     except Player.DoesNotExist:
