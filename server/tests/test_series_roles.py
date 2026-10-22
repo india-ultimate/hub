@@ -3,12 +3,16 @@
 import datetime
 from typing import Any
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
 
 from server.core.models import Guardianship, Player, Team, User
 from server.season.models import Season
 from server.series.models import Role, Series, SeriesRegistration, SeriesRosterInvitation
-from server.series.utils import change_series_role, register_player
+from server.series.utils import (
+    change_series_role,
+    generate_invitation_token,
+    register_player,
+)
 from server.subscription.models import Subscription, SubscriptionPlan, SubscriptionType
 from server.tournament.models import Event, Registration, Tournament
 from server.utils import today
@@ -482,6 +486,36 @@ class TestSeriesInvitationPermissions(TestCase):
             response = self.respond(action)
             self.assertEqual(400, response.status_code)
             self.assertEqual("This invitation has been revoked", response.json()["message"])
+
+    def test_an_invitation_past_its_date_cannot_be_answered(self) -> None:
+        self.invitation.expires_on = today() - datetime.timedelta(days=1)
+        self.invitation.save()
+        self.client.force_login(self.ward.user)
+        for action in ("accept", "decline"):
+            response = self.respond(action)
+            self.assertEqual(400, response.status_code)
+            self.assertEqual(
+                "This invitation has expired. Ask the team admin to invite you again.",
+                response.json()["message"],
+            )
+        self.invitation.refresh_from_db()
+        self.assertEqual(SeriesRosterInvitation.Status.PENDING, self.invitation.status)
+
+    @override_settings(EMAIL_SECRET_KEY="secret")  # noqa: S106
+    def test_the_email_links_refuse_an_invitation_past_its_date_too(self) -> None:
+        self.invitation.expires_on = today() - datetime.timedelta(days=1)
+        self.invitation.save()
+        token = generate_invitation_token(self.invitation.id)
+        for action in ("accept", "decline"):
+            response = self.client.get(f"/api/series/invitation/{action}", {"token": token})
+            self.assertEqual(400, response.status_code)
+            self.assertIn("has expired", response.json()["message"])
+
+    def test_the_last_day_still_counts(self) -> None:
+        self.invitation.expires_on = today()
+        self.invitation.save()
+        self.client.force_login(self.ward.user)
+        self.assertEqual(200, self.respond("decline").status_code)
 
     def test_a_guardian_without_a_player_sees_their_wards_pending_invitations(self) -> None:
         self.client.force_login(self.guardian_of_ward())

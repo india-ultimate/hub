@@ -31,6 +31,7 @@ from .utils import (
 )
 
 router = Router()
+INVITATION_EXPIRED = "This invitation has expired. Ask the team admin to invite you again."
 
 
 class AuthenticatedHttpRequest(HttpRequest):
@@ -254,7 +255,7 @@ def accept_series_invitation_via_mail(
 
     match invitation.status:
         case SeriesRosterInvitation.Status.EXPIRED:
-            return 400, {"message": "This invitation has expired 😔"}
+            return 400, {"message": INVITATION_EXPIRED}
 
         case SeriesRosterInvitation.Status.DECLINED:
             return 400, {"message": "You cannot accept an invitation that was declined"}
@@ -266,6 +267,9 @@ def accept_series_invitation_via_mail(
 
         case SeriesRosterInvitation.Status.REVOKED:
             return 400, {"message": "This invitation has been revoked"}
+
+        case SeriesRosterInvitation.Status.PENDING if invitation.expires_on < today():
+            return 400, {"message": INVITATION_EXPIRED}
 
         case SeriesRosterInvitation.Status.PENDING:
             series_registration, error = register_player(
@@ -309,7 +313,7 @@ def decline_series_invitation_via_mail(
 
     match invitation.status:
         case SeriesRosterInvitation.Status.EXPIRED:
-            return 400, {"message": "This invitation has expired 😔"}
+            return 400, {"message": INVITATION_EXPIRED}
 
         case SeriesRosterInvitation.Status.ACCEPTED:
             return 400, {"message": "You cannot decline an invitation that was accepted"}
@@ -321,6 +325,9 @@ def decline_series_invitation_via_mail(
 
         case SeriesRosterInvitation.Status.REVOKED:
             return 400, {"message": "This invitation has been revoked"}
+
+        case SeriesRosterInvitation.Status.PENDING if invitation.expires_on < today():
+            return 400, {"message": INVITATION_EXPIRED}
 
         case SeriesRosterInvitation.Status.PENDING:
             invitation.status = SeriesRosterInvitation.Status.DECLINED
@@ -375,7 +382,7 @@ def accept_series_invitation(
 
     match invitation.status:
         case SeriesRosterInvitation.Status.EXPIRED:
-            return 400, {"message": "This invitation has expired 😔"}
+            return 400, {"message": INVITATION_EXPIRED}
 
         case SeriesRosterInvitation.Status.DECLINED:
             return 400, {"message": "You cannot accept an invitation that was declined"}
@@ -387,6 +394,9 @@ def accept_series_invitation(
 
         case SeriesRosterInvitation.Status.REVOKED:
             return 400, {"message": "This invitation has been revoked"}
+
+        case SeriesRosterInvitation.Status.PENDING if invitation.expires_on < today():
+            return 400, {"message": INVITATION_EXPIRED}
 
         case SeriesRosterInvitation.Status.PENDING:
             series_registration, error = register_player(
@@ -427,7 +437,7 @@ def decline_series_invitation(
 
     match invitation.status:
         case SeriesRosterInvitation.Status.EXPIRED:
-            return 400, {"message": "This invitation has expired 😔"}
+            return 400, {"message": INVITATION_EXPIRED}
 
         case SeriesRosterInvitation.Status.ACCEPTED:
             return 400, {"message": "You cannot decline an invitation that was accepted"}
@@ -439,6 +449,9 @@ def decline_series_invitation(
 
         case SeriesRosterInvitation.Status.REVOKED:
             return 400, {"message": "This invitation has been revoked"}
+
+        case SeriesRosterInvitation.Status.PENDING if invitation.expires_on < today():
+            return 400, {"message": INVITATION_EXPIRED}
 
         case SeriesRosterInvitation.Status.PENDING:
             invitation.status = SeriesRosterInvitation.Status.DECLINED

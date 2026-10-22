@@ -455,6 +455,24 @@ class TestNextSteps(ReadinessCase):
         )
         self.assertEqual(("roster", None), (last["item"], last["tool"]))
 
+    def test_invited_with_the_invitation_id(self) -> None:
+        event = self.make_event()
+        invitation = SeriesRosterInvitation.objects.create(
+            series=event.series, from_user=self.stranger.user, to_player=self.me, team=self.team
+        )
+
+        got = self.roster(self.me)
+        last = next(
+            s
+            for s in self.steps({"event_slug": "nats", "player_id": self.me.id})
+            if s["item"] == "roster"
+        )
+
+        self.assertEqual("invited", got["status"])
+        self.assertEqual(invitation.id, got["invitation_id"])
+        self.assertEqual("answer_series_invitation", last["tool"])
+        self.assertEqual({"invitation_id": invitation.id, "answer": "accept"}, last["arguments"])
+
     def test_a_wards_pending_invitation_is_shown_to_the_guardian(self) -> None:
         event = self.make_event()
         SeriesRosterInvitation.objects.create(
