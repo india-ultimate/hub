@@ -1,5 +1,6 @@
 from server.mcp.tools import (  # noqa: F401
     account,
+    announcements,
     developer,
     director,
     documents,
@@ -13,6 +14,7 @@ from server.mcp.tools import (  # noqa: F401
     readiness,
     staff_members,
     staff_ops,
+    stats,
     team_admin,
     team_registration,
     tournaments,
