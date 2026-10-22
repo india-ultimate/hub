@@ -154,6 +154,26 @@ class TestAnnouncements(HandlersTestCase):
         self.assertEqual("<p>Line &lt;b&gt;one&lt;/b&gt;</p><p>Line two</p>", row.content)
         self.assertEqual(row.slug, result["structuredContent"]["slug"])
 
+    def test_a_post_can_be_tagged(self) -> None:
+        result = self.call(
+            "create_announcement_draft", {"title": "MCP", "content": "Hi", "type": "tech"}
+        )
+        row = Announcement.objects.get(slug=result["structuredContent"]["slug"])
+        self.assertEqual("tech", row.type)
+
+        self.call("update_announcement", {"slug": row.slug, "type": "operations"})
+
+        row.refresh_from_db()
+        self.assertEqual("operations", row.type)
+
+    def test_an_unknown_tag_is_refused(self) -> None:
+        result = self.call(
+            "create_announcement_draft", {"title": "MCP", "content": "Hi", "type": "gossip"}
+        )
+
+        self.assertTrue(result["isError"])
+        self.assertEqual(0, Announcement.objects.count())
+
     def test_a_bad_button_is_refused(self) -> None:
         result = self.call(
             "create_announcement_draft",

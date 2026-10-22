@@ -2,6 +2,7 @@ import hashlib
 import re
 from typing import Any
 
+from server.announcements.models import Announcement
 from server.mcp.confirm import confirm_then
 from server.mcp.dispatch import call_api, denied, refuse
 from server.mcp.markdown import markdown, to_markdown
@@ -11,7 +12,8 @@ from server.mcp.shape import SLUG_SCHEMA, cap, clip, slug_problem
 SHOWN_CHARS = 1500
 PAGE_SIZE = 20
 MAX_TEXT = 20000
-EDITABLE = ("title", "content", "is_members_only", "action_text", "action_url")
+EDITABLE = ("title", "content", "type", "is_members_only", "action_text", "action_url")
+TYPE = {"type": "string", "enum": Announcement.Type.values, "description": "The post's tag."}
 # What Markdown can't say, so new text would drop it.
 MEDIA = re.compile(r"<(?:img|video|source|table|u)\b", re.IGNORECASE)
 MARKDOWN = (
@@ -131,6 +133,7 @@ def _summary(row: dict[str, Any]) -> dict[str, Any]:
         "properties": {
             "title": {"type": "string", "minLength": 1, "maxLength": 200},
             "content": {"type": "string", "minLength": 1, "maxLength": 20000},
+            "type": TYPE,
             "is_members_only": {"type": "boolean"},
             "action_text": {"type": "string", "maxLength": 100},
             "action_url": {"type": "string", "maxLength": 500},
@@ -209,6 +212,7 @@ def publish_announcement(ctx: ToolContext, args: dict[str, Any]) -> ToolResult:
             "slug": SLUG_SCHEMA,
             "title": {"type": "string", "minLength": 1, "maxLength": 200},
             "content": {"type": "string", "minLength": 1, "maxLength": 20000},
+            "type": TYPE,
             "is_members_only": {"type": "boolean"},
             "action_text": {"type": "string", "maxLength": 100},
             "action_url": {"type": "string", "maxLength": 500},
@@ -261,6 +265,8 @@ def update_announcement(ctx: ToolContext, args: dict[str, Any]) -> ToolResult:
         lines.append(f"New title: {changes['title']}")
     if "is_members_only" in changes:
         lines.append(f"Readable by: {'members only' if changes['is_members_only'] else 'everyone'}")
+    if "type" in changes:
+        lines.append(f"Tag: {Announcement.Type(changes['type']).label}")
     if "action_text" in changes or "action_url" in changes:
         lines.append(f"Button: {button} ({link})" if button else "Button: removed")
     if "is_published" in changes:
