@@ -7,7 +7,7 @@ import nh3
 TAGS = {
     "p", "br", "h1", "h2", "h3", "h4", "strong", "b", "em", "i", "u", "s", "a", "ul", "ol", "li",
     "blockquote", "hr", "img", "table", "thead", "tbody", "tr", "th", "td", "colgroup", "col",
-    "span", "div", "video", "source",
+    "span", "div", "video", "source", "pre", "code",
 }  # fmt: skip
 ATTRIBUTES = {
     "a": {"href", "target"},

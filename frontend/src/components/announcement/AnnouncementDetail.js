@@ -11,7 +11,8 @@ import {
   lockClosed,
   tag
 } from "solid-heroicons/solid";
-import { createEffect, Show } from "solid-js";
+import { createEffect, createSignal, onCleanup, Show } from "solid-js";
+import { render } from "solid-js/web";
 
 import { postProse } from "../../announcements";
 import {
@@ -22,6 +23,7 @@ import { secondaryButton } from "../../committees";
 import { fetchAnnouncement } from "../../queries";
 import { useStore } from "../../store";
 import Comments from "./Comments";
+import CopyButton from "./CopyButton";
 import ReactionBar from "./ReactionBar";
 
 export default function AnnouncementDetail() {
@@ -34,15 +36,31 @@ export default function AnnouncementDetail() {
     () => fetchAnnouncement(params.slug)
   );
 
-  let contentRef;
+  // A signal, not a plain ref: the post renders after its data arrives.
+  const [contentRef, setContentRef] = createSignal();
+
+  // Each code block in a post, often a prompt to paste into an AI agent, gets a
+  // copy button; they are unmounted with the content they belong to.
+  const addCopyButton = pre => {
+    if (pre.parentElement?.dataset.copyable) return () => {};
+    const box = document.createElement("div");
+    box.dataset.copyable = "true";
+    box.className = "relative";
+    pre.replaceWith(box);
+    box.append(pre);
+    return render(() => <CopyButton text={() => pre.innerText} />, box);
+  };
 
   createEffect(() => {
     // When content loads, ensure tables are wide enough to trigger horizontal scroll if needed
-    if (contentRef && query.data) {
-      const tables = contentRef.querySelectorAll("table");
+    const content = contentRef();
+    if (content && query.data) {
+      const tables = content.querySelectorAll("table");
       tables.forEach(t => {
         t.classList.add("min-w-full");
       });
+      const unmount = [...content.querySelectorAll("pre")].map(addCopyButton);
+      onCleanup(() => unmount.forEach(dispose => dispose()));
     }
   });
 
@@ -206,7 +224,7 @@ export default function AnnouncementDetail() {
 
               <div class="max-w-full overflow-x-auto sm:overflow-visible">
                 <div
-                  ref={el => (contentRef = el)}
+                  ref={setContentRef}
                   class={postProse}
                   // eslint-disable-next-line solid/no-innerhtml
                   innerHTML={DOMPurify.sanitize(query.data.content)}
