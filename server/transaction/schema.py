@@ -99,6 +99,21 @@ class RazorpayOrderSchema(Schema):
     prefill: dict[str, Any]
 
 
+class OrderLineSchema(Schema):
+    particulars: str
+    people: list[str]
+    quantity: int
+    rate: int | None
+    amount: int
+
+
+class PayOrderSchema(RazorpayOrderSchema):
+    """An unpaid order for the pay page: checkout's fields, and what it buys."""
+
+    issues_receipt: bool
+    lines: list[OrderLineSchema]
+
+
 class RazorpayCallbackSchema(Schema):
     razorpay_order_id: str
     razorpay_payment_id: str

@@ -10,6 +10,8 @@ from django.db.models import Model, Q, QuerySet
 
 from server.core.models import Player, Team, User
 from server.payment_account.models import PaymentAccount
+from server.receipts.issue import rows_for_order
+from server.receipts.rows import Row, person_label, row
 from server.registration.models import RosterEntry
 from server.season.models import Season
 from server.series.models import Role, is_playing_role
@@ -106,6 +108,117 @@ def build_subscription_order(
     return season, lines
 
 
+def order_description(
+    kind: str,
+    buyer: str,
+    player_names: str,
+    *,
+    team_name: str = "",
+    event_title: str = "",
+    form_title: str = "",
+    single_line: tuple[str, str, str] | None = None,
+) -> str:
+    """What Razorpay shows for an order; single_line is (member, tier, season)."""
+    if kind in (Kinds.TEAM_REGISTRATION, Kinds.PARTIAL_TEAM_REGISTRATION):
+        description = f"Team registration payment by {buyer} for {team_name}, event: {event_title}"
+    elif kind == Kinds.PLAYER_REGISTRATION:
+        description = (
+            f"Player registration payment by {buyer} for {player_names}, event: {event_title}"
+        )
+    elif kind == Kinds.FORM_PAYMENT:
+        description = f"Payment by {buyer} for form: {form_title}"
+    elif single_line is not None:
+        member, tier, season = single_line
+        description = f"{tier.removesuffix(' Subscription')} subscription for {member}, {season}"
+    else:
+        description = f"Subscription group payment by {buyer} for {player_names}"
+    if len(description) > razorpay.RAZORPAY_DESCRIPTION_MAX:
+        description = description[:250] + "..."
+    return description
+
+
+def order_for_checkout(transaction: RazorpayTransaction) -> dict[str, Any]:
+    """An unpaid order as Razorpay checkout needs it, from what was saved."""
+    user, account = transaction.user, transaction.account
+    lines = list(
+        transaction.razorpaytransactionplayer_set.select_related(
+            "player__user", "plan__type", "plan__season"
+        )
+    )
+    form_response = transaction.formresponse_set.select_related("form").first()
+    single = lines[0] if len(lines) == 1 and lines[0].plan else None
+    return {
+        "order_id": transaction.order_id,
+        "amount": transaction.amount,
+        "currency": transaction.currency,
+        "receipt": "",
+        "key": account.key_id if account else settings.RAZORPAY_KEY_ID,
+        "name": account.name if account else settings.APP_NAME,
+        "image": settings.LOGO_URL,
+        "description": order_description(
+            transaction.type,
+            user.get_full_name(),
+            _names([line.player for line in lines]),
+            team_name=transaction.team.name if transaction.team else "",
+            event_title=transaction.event.title if transaction.event else "",
+            form_title=form_response.form.title if form_response else "",
+            single_line=(
+                (single.player.user.get_full_name(), single.plan.type.name, single.plan.season.name)
+                if single and single.plan
+                else None
+            ),
+        ),
+        "prefill": {"name": user.get_full_name(), "email": user.email, "contact": user.phone},
+    }
+
+
+def order_lines(transaction: RazorpayTransaction, description: str) -> list[Row]:
+    """What an unpaid order buys, in its receipt's rows. One row of the
+    description instead whenever the rows don't add up to the order."""
+    rows = _rows(transaction)
+    if not rows or sum(row["amount"] for row in rows) != transaction.amount:
+        return [row(description, [], transaction.amount)]
+    return rows
+
+
+def _rows(transaction: RazorpayTransaction) -> list[Row]:
+    if transaction.type == Kinds.ANNUAL_SUBSCRIPTION:
+        return rows_for_order(transaction)
+    if transaction.type == Kinds.FORM_PAYMENT:
+        response = transaction.formresponse_set.select_related("form").first()
+        return [row(f"Form: {response.form.title}", [], transaction.amount)] if response else []
+    event = transaction.event
+    if event is None or "base_amount" not in transaction.notes:
+        return []
+    base = int(transaction.notes["base_amount"])
+    late = int(transaction.notes.get("penalty_amount", 0))
+    days = int(transaction.notes.get("days_late", 0))
+    if transaction.type == Kinds.PLAYER_REGISTRATION:
+        lines = transaction.razorpaytransactionplayer_set.select_related("player__user")
+        people = sorted(
+            person_label(
+                line.player.user.first_name,
+                line.player.user.last_name,
+                line.player.user.username,
+                line.player.iu_id,
+            )
+            for line in lines
+        )
+        item = "Player fee"
+    else:
+        people = [transaction.team.name] if transaction.team else []
+        if transaction.type == Kinds.PARTIAL_TEAM_REGISTRATION:
+            item = "Partial team fee"
+        elif event.partial_team_fee and base == event.team_fee - event.partial_team_fee:
+            item = "Rest of the team fee"
+        else:
+            item = "Team fee"
+    rows = [row(f"{item}, {event.title}", people, base)]
+    if late:
+        rows.append(row(f"Late fee, {days} day{'' if days == 1 else 's'} late", people, late))
+    return rows
+
+
 def create_transaction(
     request: AuthenticatedHttpRequest,
     order: SubscriptionOrderSchema | PlayerRegistrationSchema | TeamRegistrationSchema,
@@ -117,6 +230,7 @@ def create_transaction(
     # has one. Subscriptions are always ours.
     account: PaymentAccount | None = None
     per_player_penalty = 0
+    player_names = ""
 
     if isinstance(order, PlayerRegistrationSchema):
         players = Player.objects.filter(id__in=order.player_ids)
@@ -357,18 +471,22 @@ def create_transaction(
             amount=event.player_fee + per_player_penalty
         )
 
-    transaction_user_name = user.get_full_name()
-    if isinstance(order, TeamRegistrationSchema):
-        description = f"Team registration payment by {transaction_user_name} for {team.name if team is not None else ''}, event: {event.title if event is not None else ''}"
-    elif isinstance(order, PlayerRegistrationSchema):
-        description = f"Player registration payment by {transaction_user_name} for {player_names}, event: {event.title if event is not None else ''}"
-    elif len(lines) == 1:
-        member, priced = lines[0]
-        description = f"{priced.plan.type.name} subscription for {member.user.get_full_name()}, {priced.plan.season.name}"
-    else:
-        description = f"Subscription group payment by {transaction_user_name} for {player_names}"
-    if len(description) > razorpay.RAZORPAY_DESCRIPTION_MAX:
-        description = description[:250] + "..."
+    description = order_description(
+        transaction.type,
+        user.get_full_name(),
+        player_names,
+        team_name=team.name if team is not None else "",
+        event_title=event.title if event is not None else "",
+        single_line=(
+            (
+                lines[0][0].user.get_full_name(),
+                lines[0][1].plan.type.name,
+                lines[0][1].plan.season.name,
+            )
+            if len(lines) == 1
+            else None
+        ),
+    )
     data.update(
         {
             "name": account.name if account else settings.APP_NAME,

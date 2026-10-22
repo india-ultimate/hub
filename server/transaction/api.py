@@ -29,6 +29,7 @@ from .models import (
 from .schema import (
     ManualTransactionSchema,
     ManualTransactionValidationFormSchema,
+    PayOrderSchema,
     PhonePeTransactionSchema,
     PlayerRegistrationSchema,
     RazorpayCallbackSchema,
@@ -41,6 +42,8 @@ from .utils import (
     apply_transaction,
     create_transaction,
     list_transactions_by_type,
+    order_for_checkout,
+    order_lines,
 )
 
 router = Router()
@@ -234,3 +237,29 @@ def validate_transaction(
     transaction.validated = True
     transaction.save(update_fields=["validation_comment", "validated"])
     return 200, transaction
+
+
+@router.get(
+    "/razorpay/orders/{order_id}", response={200: PayOrderSchema, 404: Response, 409: Response}
+)
+def get_razorpay_order(
+    request: AuthenticatedHttpRequest, order_id: str
+) -> tuple[int, message_response | dict[str, Any]]:
+    transaction = (
+        RazorpayTransaction.objects.select_related("account", "user", "team", "event")
+        .filter(order_id=order_id, user_id=request.user.id)
+        .first()
+    )
+    if transaction is None:
+        return 404, {"message": "No order found."}
+    if transaction.status in RazorpayTransaction.SETTLED:
+        reason = "already paid" if transaction.status == "completed" else "refunded"
+        return 409, {"message": f"This order is {reason}"}
+    checkout = order_for_checkout(transaction)
+    return 200, {
+        **checkout,
+        # Only a subscription is issued a numbered receipt.
+        "issues_receipt": transaction.type
+        == RazorpayTransaction.TransactionTypeChoices.ANNUAL_SUBSCRIPTION,
+        "lines": order_lines(transaction, checkout["description"]),
+    }

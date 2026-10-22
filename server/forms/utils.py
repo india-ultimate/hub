@@ -9,6 +9,7 @@ from django.db.models import QuerySet
 
 from server.transaction.client import razorpay
 from server.transaction.models import AuthenticatedHttpRequest, RazorpayTransaction
+from server.transaction.utils import order_description
 
 from .models import CHOICE_FIELD_TYPES, FieldType, Form, FormResponse
 
@@ -217,9 +218,12 @@ def create_form_payment_order(
     response.transaction = transaction
     response.save(update_fields=["transaction"])
 
-    description = f"Payment by {user.get_full_name()} for form: {form.title}"
-    if len(description) > razorpay.RAZORPAY_DESCRIPTION_MAX:
-        description = description[:250] + "..."
+    description = order_description(
+        RazorpayTransaction.TransactionTypeChoices.FORM_PAYMENT,
+        user.get_full_name(),
+        "",
+        form_title=form.title,
+    )
 
     # Return a clean, JSON-serializable order (RazorpayOrderSchema shape) for the
     # frontend Razorpay checkout — no model instances.
