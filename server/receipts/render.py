@@ -48,7 +48,7 @@ def _logo_data_uri() -> str:
 
 def _context(receipt: Receipt, mode: Mode) -> dict[str, Any]:
     refund = receipt.kind == Receipt.Kind.REFUND
-    hub = settings.EMAIL_INVITATION_BASE_URL
+    hub = settings.PUBLIC_URL
     return {
         "mode": mode,
         "doc": receipt,

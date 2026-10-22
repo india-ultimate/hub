@@ -587,7 +587,7 @@ def send_election_notification(
     subject = f"Vote for {election.title}!"
 
     # Create the election URL
-    election_url = f"{settings.EMAIL_INVITATION_BASE_URL}/election/{election.id}"
+    election_url = f"{settings.PUBLIC_URL}/election/{election.id}"
 
     # Get candidates for the election
     candidates = Candidate.objects.filter(election=election).select_related("user")
@@ -643,7 +643,7 @@ def send_election_notification(
         {
             "election": election,
             "election_url": election_url,
-            "site_url": settings.EMAIL_INVITATION_BASE_URL,
+            "site_url": settings.PUBLIC_URL,
             "candidates": users,
             "days_remaining": days_remaining,
             "current_time": now_ist,

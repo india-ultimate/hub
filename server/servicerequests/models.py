@@ -122,7 +122,7 @@ def send_service_request_notification_email(service_request: ServiceRequest) -> 
         context = {
             "service_request": service_request,
             "season": season,
-            "site_url": settings.EMAIL_INVITATION_BASE_URL,
+            "site_url": settings.PUBLIC_URL,
         }
 
         # Render HTML message

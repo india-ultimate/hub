@@ -25,9 +25,9 @@ def build_confirmation(subscription: Subscription) -> EmailMultiAlternatives:
         "start_date": subscription.start_date,
         "end_date": subscription.end_date,
         "waiver_signed": subscription.waiver_valid,
-        "waiver_url": f"{settings.EMAIL_INVITATION_BASE_URL}/waiver/{player.id}",
+        "waiver_url": f"{settings.PUBLIC_URL}/waiver/{player.id}",
         "coc_agreed": subscription.coc_agreed,
-        "coc_url": f"{settings.EMAIL_INVITATION_BASE_URL}/code-of-conduct/{player.id}",
+        "coc_url": f"{settings.PUBLIC_URL}/code-of-conduct/{player.id}",
     }
     html = render_to_string("emails/subscription_confirmation.html", context)
     message = EmailMultiAlternatives(
@@ -53,7 +53,7 @@ def build_sponsorship_reset(player: Player, season: Season) -> EmailMultiAlterna
     context = {
         "first_name": player.user.first_name,
         "season": season.name,
-        "subscription_url": f"{settings.EMAIL_INVITATION_BASE_URL}/subscription/{player.id}",
+        "subscription_url": f"{settings.PUBLIC_URL}/subscription/{player.id}",
     }
     html = render_to_string("emails/sponsorship_reset.html", context)
     message = EmailMultiAlternatives(
@@ -76,7 +76,7 @@ def build_code_of_conduct_request(
         "player_name": player.user.get_full_name(),
         "for_minor": to != player.user,
         "season": season.name,
-        "coc_url": f"{settings.EMAIL_INVITATION_BASE_URL}/code-of-conduct/{player.id}",
+        "coc_url": f"{settings.PUBLIC_URL}/code-of-conduct/{player.id}",
     }
     html = render_to_string("emails/code_of_conduct_request.html", context)
     message = EmailMultiAlternatives(

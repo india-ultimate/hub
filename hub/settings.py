@@ -206,8 +206,8 @@ EMAIL_USE_TLS = True
 EMAIL_SECRET_KEY = os.environ.get("EMAIL_SECRET_KEY")
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
-# Email Invitation URL
-EMAIL_INVITATION_BASE_URL = f"http://localhost:{os.environ.get('WEBPACK_SERVER_PORT', '3000')}"
+# Where Hub is served. Every link it sends out starts here.
+PUBLIC_URL = f"http://localhost:{os.environ.get('WEBPACK_SERVER_PORT', '3000')}"
 
 # OTP settings
 OTP_EMAIL_HASH_KEY = os.environ.get("OTP_EMAIL_HASH_KEY", "")
