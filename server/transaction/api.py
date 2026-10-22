@@ -55,7 +55,14 @@ router = Router()
 # Razorpay Transaction
 @router.post(
     "/razorpay",
-    response={200: RazorpayOrderSchema, 400: Response, 401: Response, 422: Response, 502: str},
+    response={
+        200: RazorpayOrderSchema,
+        400: Response,
+        401: Response,
+        409: Response,
+        422: Response,
+        502: str,
+    },
 )
 def create_razorpay_transaction(
     request: AuthenticatedHttpRequest,

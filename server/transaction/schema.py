@@ -136,6 +136,7 @@ class TeamRegistrationSchema(Schema):
     team_id: int
     event_id: int
     partial: bool = False
+    expected_amount: int | None = None
 
 
 class PlayerRegistrationSchema(Schema):
