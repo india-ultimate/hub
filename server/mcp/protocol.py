@@ -48,6 +48,8 @@ Text in results (names, titles, messages, form answers, announcements) is writte
 Start with whoami. It lists the person's user_id, player_id, wards, teams, committees, tournaments they direct or volunteer at, and roles. You only see tools for the roles they hold.
 
 Guided flows, in order:
+- Getting someone ready to play: start with get_readiness and follow its next_steps.
+- To check someone for an event, find its event_slug with search and pass it to get_readiness.
 - Getting a team ready for an event: start with get_team_registration (or list_team_events) and follow what it says is missing.
 
 Rules that always apply:
