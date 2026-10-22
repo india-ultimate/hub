@@ -1,12 +1,10 @@
 import hashlib
-import html
 import re
 from typing import Any
 
-from django.utils.html import strip_tags
-
 from server.mcp.confirm import confirm_then
 from server.mcp.dispatch import call_api, denied, refuse
+from server.mcp.markdown import markdown, to_markdown
 from server.mcp.registry import Audience, ToolContext, ToolResult, fail, ok, tool
 from server.mcp.shape import SLUG_SCHEMA, cap, clip, slug_problem
 
@@ -14,25 +12,16 @@ SHOWN_CHARS = 1500
 PAGE_SIZE = 20
 MAX_TEXT = 20000
 EDITABLE = ("title", "content", "is_members_only", "action_text", "action_url")
-# Any tag but the paragraphs and line breaks plain text turns into.
-RICH = re.compile(r"<(?!/?(?:p|br)\b)", re.IGNORECASE)
+# What Markdown can't say, so new text would drop it.
+MEDIA = re.compile(r"<(?:img|video|source|table|u)\b", re.IGNORECASE)
+MARKDOWN = (
+    "Content is Markdown: # headings, **bold**, *italics*, - lists, 1. lists, > quotes, "
+    "[links](https://...), `code` and ``` code blocks; blank lines start a new paragraph."
+)
 LOCKED = (
     "This post is for members only and the signed-in user has no active membership, so "
     "Hub does not show its content. They can read it on Hub once they are a member."
 )
-
-
-def html_to_text(content: str) -> str:
-    text = re.sub(r"(?is)<(script|style)\b.*?</\1>", "", content)
-    text = re.sub(r'(?is)<a\s[^>]*href="([^"]*)"[^>]*>(.*?)</a>', r"\2 (\1)", text)
-    text = re.sub(r"(?i)<li\b[^>]*>", "- ", text)
-    text = re.sub(r"(?i)<br\s*/?>|</(li|tr)>", "\n", text)
-    text = re.sub(r"(?i)</(p|div|ul|ol|h[1-6]|blockquote|table)>", "\n\n", text)
-    lines = (
-        re.sub(r"[ \t\xa0]+", " ", line).strip()
-        for line in html.unescape(strip_tags(text)).splitlines()
-    )
-    return re.sub(r"\n{3,}", "\n\n", "\n".join(lines)).strip()
 
 
 @tool(
@@ -80,8 +69,9 @@ def list_announcements(ctx: ToolContext, args: dict[str, Any]) -> ToolResult:
     "get_announcement",
     title="Read an announcement",
     description=(
-        "An announcement by slug, as plain text in content_text (the author's words). A "
-        "members-only post the user cannot read comes back without content and says why."
+        "An announcement by slug, its text as Markdown in content_markdown (the author's "
+        "words), the same Markdown the draft and edit tools take. A members-only post the "
+        "user cannot read comes back without content and says why."
     ),
     input_schema={
         "type": "object",
@@ -97,7 +87,7 @@ def get_announcement(ctx: ToolContext, args: dict[str, Any]) -> ToolResult:
     if not response.ok:
         return denied(response)
     post = response.data
-    text = html_to_text(post["content"])
+    text = to_markdown(post["content"])
     out = {
         "slug": post["slug"],
         "title": post["title"],
@@ -107,7 +97,7 @@ def get_announcement(ctx: ToolContext, args: dict[str, Any]) -> ToolResult:
         "is_members_only": post["is_members_only"],
         "is_published": post["is_published"],
         "can_read": post["can_read"],
-        "content_text": text[:MAX_TEXT],
+        "content_markdown": text[:MAX_TEXT],
         "action_text": post["action_text"],
         "action_url": post["action_url"],
         "comment_count": post["comment_count"],
@@ -117,11 +107,6 @@ def get_announcement(ctx: ToolContext, args: dict[str, Any]) -> ToolResult:
     if not post["can_read"]:
         out["locked"] = LOCKED
     return ok(out)
-
-
-def _paragraphs(text: str) -> str:
-    blocks = [b.strip() for b in text.replace("\r\n", "\n").split("\n\n") if b.strip()]
-    return "".join(f"<p>{html.escape(b).replace(chr(10), '<br>')}</p>" for b in blocks)
 
 
 def _summary(row: dict[str, Any]) -> dict[str, Any]:
@@ -137,9 +122,9 @@ def _summary(row: dict[str, Any]) -> dict[str, Any]:
     "create_announcement_draft",
     title="Draft an announcement",
     description=(
-        "Save an unpublished announcement draft. Content is plain text: blank lines start a "
-        "new paragraph. Nothing is shown to members until it is published, and emailing it "
-        "is done on Hub. Returns the slug."
+        f"Save an unpublished announcement draft. {MARKDOWN} Pictures and videos are added "
+        "on Hub. Nothing is shown to members until it is published, and emailing it is done "
+        "on Hub. Returns the slug."
     ),
     input_schema={
         "type": "object",
@@ -159,7 +144,7 @@ def _summary(row: dict[str, Any]) -> dict[str, Any]:
 def create_announcement_draft(ctx: ToolContext, args: dict[str, Any]) -> ToolResult:
     body = {
         **{k: v for k, v in args.items() if k not in ("confirmation", "content")},
-        "content": _paragraphs(args["content"]),
+        "content": markdown(args["content"]),
         "is_published": False,
     }
     response = call_api(ctx, "POST", "/api/announcements/", body=body)
@@ -201,7 +186,7 @@ def publish_announcement(ctx: ToolContext, args: dict[str, Any]) -> ToolResult:
         ctx,
         message=(
             f'Publish the announcement "{current.data["title"]}" for {audience} to read? '
-            f"It will not be emailed.\n\n{clip(html_to_text(content), SHOWN_CHARS)}"
+            f"It will not be emailed.\n\n{clip(to_markdown(content), SHOWN_CHARS)}"
         ),
         binding={**args, "content_sha256": hashlib.sha256(content.encode()).hexdigest()},
         action=publish,
@@ -214,9 +199,9 @@ def publish_announcement(ctx: ToolContext, args: dict[str, Any]) -> ToolResult:
     description=(
         "Change your announcement's title, text, members-only setting or button, or "
         'unpublish it. Send only what changes; action_text and action_url as "" remove the '
-        "button. Content is plain text that replaces the whole post, so a post with images, "
-        "links or formatting has its text edited on Hub. A draft changes straight away; a "
-        "published post asks first. Publish a draft with publish_announcement."
+        f"button. {MARKDOWN} It replaces the whole text, so a post with pictures, videos or "
+        "tables or underlining has its text edited on Hub. A draft changes straight away; a published post "
+        "asks first. Publish a draft with publish_announcement."
     ),
     input_schema={
         "type": "object",
@@ -258,12 +243,12 @@ def update_announcement(ctx: ToolContext, args: dict[str, Any]) -> ToolResult:
     if button and not link:
         return fail("A button needs a link: send action_url too.")
     if "content" in changes:
-        if RICH.search(post["content"]):
+        if MEDIA.search(post["content"]):
             return fail(
-                "This post has images, links or formatting that plain text would lose. "
-                "Edit its text on Hub; the title, audience and button can still change here."
+                "This post has pictures, videos, tables or underlining that new text would lose. Edit its "
+                "text on Hub; the title, audience and button can still change here."
             )
-        changes["content"] = _paragraphs(changes["content"])
+        changes["content"] = markdown(changes["content"])
 
     def save() -> ToolResult:
         response = call_api(ctx, "PUT", path, body=changes)
