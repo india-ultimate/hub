@@ -1,6 +1,7 @@
 from server.mcp.tools import (  # noqa: F401
     account,
     documents,
+    handlers,
     membership,
     metrics,
     profile,
