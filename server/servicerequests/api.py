@@ -8,7 +8,7 @@ from server.season.models import Season
 from server.subscription.models import SubscriptionPlan
 from server.types import message_response
 
-from .models import ServiceRequest, ServiceRequestType
+from .models import ServiceRequest, ServiceRequestStatus, ServiceRequestType
 from .schema import ServiceRequestCreateSchema, ServiceRequestSchema
 
 router = Router()
@@ -60,6 +60,21 @@ def create_service_request(
         if plan is None:
             return 400, {"message": "This season has no sponsored subscription to request"}
         season = plan.season
+        waiting = (
+            Player.objects.filter(
+                service_requests__type=service_request_data.type,
+                service_requests__season=season,
+                service_requests__status=ServiceRequestStatus.PENDING,
+                id__in=[p.id for p in service_players],
+            )
+            .select_related("user")
+            .first()
+        )
+        if waiting is not None:
+            return 400, {
+                "message": f"A sponsorship request for {waiting.user.get_full_name()} "
+                "is already waiting for review"
+            }
 
     # Create the service request
     service_request = ServiceRequest(
