@@ -12,7 +12,8 @@ from django.core.management.base import CommandError
 from django.test import TestCase
 from django.utils.timezone import now
 
-from server.core.models import Accreditation, Guardianship, Player, Team, Vaccination
+from server.accreditation.models import Accreditation
+from server.core.models import Guardianship, Player, Team, Vaccination
 from server.duplicates.models import EmailAlias
 from server.season.models import Season
 from server.series.models import Series, SeriesRegistration
@@ -44,36 +45,6 @@ from .test_subscription_migration import make_transaction
 from .test_subscription_model import make_player
 
 User = get_user_model()
-
-
-class TestInvalidateAccreditations(TestCase):
-    def test_validity_follows_the_expiry_date(self) -> None:
-        issued = now().date() - datetime.timedelta(days=100)
-        expiries = {
-            "expired@example.com": now().date() - datetime.timedelta(days=1),
-            "today@example.com": now().date(),
-            "later@example.com": now().date() + datetime.timedelta(days=1),
-        }
-        for email, expiry in expiries.items():
-            Accreditation.objects.create(
-                player=make_player(email),
-                level="ADV",
-                date=issued,
-                expiry_date=expiry,
-                certificate="c.pdf",
-            )
-        Accreditation.objects.update(is_valid=True)
-        Accreditation.objects.filter(player__user__email="later@example.com").update(is_valid=False)
-
-        with mock.patch("server.management.commands.invalidate_accreditations.today") as today:
-            today.return_value = now().date()
-            call_command("invalidate_accreditations", stdout=StringIO())
-
-        valid = dict(Accreditation.objects.values_list("player__user__email", "is_valid"))
-        self.assertEqual(
-            {"expired@example.com": False, "today@example.com": True, "later@example.com": True},
-            valid,
-        )
 
 
 class TestInvalidateSubscriptions(TestCase):

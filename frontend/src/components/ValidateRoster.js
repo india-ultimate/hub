@@ -20,7 +20,7 @@ import { onMount } from "solid-js";
 import { accreditationChoices, matchUpChoices, minAge } from "../constants";
 import { useStore } from "../store";
 import { fetchUrl, getAge, getLabel, isCollegeIdActive } from "../utils";
-import AccreditationInformation from "./AccreditationInformation";
+import AccreditationInformation from "./accreditation/AccreditationInformation";
 import CollegeIDInformation from "./CollegeIDInformation";
 import Modal from "./Modal";
 

@@ -20,8 +20,9 @@ from selenium.webdriver.common.keys import Keys
 from seleniumbase import BaseCase
 
 from hub.settings import BASE_DIR
+from server.accreditation.models import Accreditation
 from server.committee.models import Committee, Role
-from server.core.models import Accreditation, Guardianship, OTPAttempt, Player, Team, User
+from server.core.models import Guardianship, OTPAttempt, Player, Team, User
 from server.duplicates.clusters import close_finished, detect_and_create
 from server.duplicates.emails import notify
 from server.duplicates.flow import dismiss, merge_pair, request_merge, request_staff

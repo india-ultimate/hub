@@ -12,10 +12,10 @@ from django.db.models.query import QuerySet
 from django.test import SimpleTestCase, TestCase, override_settings
 from django.utils.timezone import now
 
+from server.accreditation.models import Accreditation
 from server.admin import _describe
 from server.chat.models import ChatSession
 from server.core.models import (
-    Accreditation,
     CollegeId,
     CommentaryInfo,
     Guardianship,

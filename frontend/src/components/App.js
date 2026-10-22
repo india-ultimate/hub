@@ -36,7 +36,7 @@ const PrivacyPolicy = lazy(() => import("./PrivacyPolicy"));
 const ContactUs = lazy(() => import("./ContactUs"));
 const Subscription = lazy(() => import("./subscription"));
 const Vaccination = lazy(() => import("./Vaccination"));
-const Accreditation = lazy(() => import("./Accreditation"));
+const Accreditation = lazy(() => import("./accreditation/Accreditation"));
 const CommentaryInfo = lazy(() => import("./CommentaryInfo"));
 const Waiver = lazy(() => import("./Waiver"));
 const CodeOfConduct = lazy(() => import("./CodeOfConduct"));

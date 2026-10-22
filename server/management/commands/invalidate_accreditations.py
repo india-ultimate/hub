@@ -2,7 +2,7 @@ from typing import Any
 
 from django.core.management.base import BaseCommand
 
-from server.core.models import Accreditation
+from server.accreditation.models import Accreditation
 from server.utils import today
 
 

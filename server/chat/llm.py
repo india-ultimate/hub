@@ -21,7 +21,8 @@ if TYPE_CHECKING:
         ChatCompletionUserMessageParam,
     )
 
-from server.core.models import Accreditation, Player, Team, User
+from server.accreditation.models import Accreditation
+from server.core.models import Player, Team, User
 from server.season.models import Season
 from server.series.models import Series, SeriesRegistration
 from server.subscription.models import Subscription

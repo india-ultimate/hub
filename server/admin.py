@@ -14,9 +14,10 @@ from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.text import capfirst
 
+from server.accreditation.models import Accreditation
 from server.admin_views import REFUND_PERM
 from server.announcements.models import Announcement, Comment, CommentReaction, Reaction
-from server.core.models import Accreditation, Guardianship, Player, Team, User
+from server.core.models import Guardianship, Player, Team, User
 from server.duplicates import review
 from server.duplicates.flow import FlowError, approve_staff, reject_staff
 from server.duplicates.merge import (

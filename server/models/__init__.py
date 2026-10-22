@@ -1,5 +1,8 @@
 # https://docs.djangoproject.com/en/5.0/topics/db/models/#organizing-models-in-a-package
 
+from server.accreditation.models import (  # noqa: F401
+    Accreditation,
+)
 from server.announcements.models import (  # noqa: F401
     Announcement,
 )
@@ -13,7 +16,6 @@ from server.committee.models import (  # noqa: F401
     TicketRoute,
 )
 from server.core.models import (  # noqa: F401
-    Accreditation,
     CollegeId,
     CommentaryInfo,
     Guardianship,
