@@ -23,6 +23,7 @@ const ManageCommittees = lazy(() => import("./committee/Manage"));
 const Dashboard = lazy(() => import("./Dashboard"));
 const PaymentAccount = lazy(() => import("./payments/PaymentAccount"));
 const PayOrder = lazy(() => import("./pay/PayOrder"));
+const UploadPage = lazy(() => import("./upload/UploadPage"));
 const ReceiptPage = lazy(() => import("./receipts/ReceiptPage"));
 const Home = lazy(() => import("./Home"));
 const Login = lazy(() => import("./Login"));
@@ -158,6 +159,7 @@ export default function App() {
                   <Route path="/committees/:slug" component={CommitteeDetail} />
                   <UserRoute path="/dashboard" component={Dashboard} />
                   <UserRoute path="/pay/:orderId" component={PayOrder} />
+                  <UserRoute path="/upload/:token" component={UploadPage} />
                   <UserRoute path="/receipts/:id" component={ReceiptPage} />
                   <UserRoute
                     path="/payments/:slug"
