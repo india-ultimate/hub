@@ -1,7 +1,7 @@
 import { Show } from "solid-js";
 
-import { accreditationChoices } from "../constants";
-import { displayDate, getLabel } from "../utils";
+import { accreditationChoices } from "../../constants";
+import { displayDate, getLabel } from "../../utils";
 
 const AccreditationInformation = props => {
   const url = (

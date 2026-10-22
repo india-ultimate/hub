@@ -37,6 +37,7 @@ from ninja.params.functions import File, Query
 from ninja.security import django_auth
 from ninja.utils import check_csrf
 
+from server.accreditation.api import router as accreditation_router
 from server.announcements.api import router as announcements_router
 from server.announcements.models import Announcement
 from server.announcements.schema import AnnouncementHeadlineSchema
@@ -45,7 +46,6 @@ from server.committee.api import router as committees_router
 from server.core import otp as otp_limits
 from server.core.accounts import find_user, resolve_login_user
 from server.core.models import (
-    Accreditation,
     CollegeId,
     CommentaryInfo,
     Guardianship,
@@ -72,8 +72,6 @@ from server.registration.state import (
     removal_refused,
 )
 from server.schema import (
-    AccreditationFormSchema,
-    AccreditationSchema,
     CodeOfConductFormSchema,
     CollegeIdFormSchema,
     CollegeIdSchema,
@@ -225,7 +223,6 @@ from server.utils import (
     slugify_max,
     today,
 )
-from server.wfdf import read_certificate
 from server.wrapped.api import router as wrapped_router
 
 # Initialize Cloudinary
@@ -277,6 +274,7 @@ def _deny_unless_manager(user: User, tournament: Tournament) -> tuple[int, messa
 api.add_router("/seasons", season_router)
 api.add_router("/", subscription_router)
 api.add_router("/", receipts_router)
+api.add_router("/", accreditation_router)
 api.add_router("/registration", registration_router)
 api.add_router("/series/", series_router)
 api.add_router("/transactions", transaction_router)
@@ -1084,52 +1082,6 @@ def vaccination(
     vaccine.full_clean()
     vaccine.save()
     return 200, vaccine
-
-
-# Accreditation ##########
-
-
-@api.post("/accreditation", response={200: AccreditationSchema, 400: Response})
-def accreditation(
-    request: AuthenticatedHttpRequest,
-    accreditation: AccreditationFormSchema,
-    certificate: UploadedFile = File(...),  # noqa: B008
-) -> tuple[int, Accreditation | message_response]:
-    if not certificate:
-        return 400, {"message": "Certificate needs to be uploaded!"}
-
-    try:
-        player = Player.objects.get(id=accreditation.player_id)
-    except Player.DoesNotExist:
-        return 400, {"message": "Player does not exist"}
-    if not may_see(request.user, player):
-        return 400, {"message": "Only this player or their guardian can add their accreditation"}
-
-    details = read_certificate(certificate)
-    if details is None:
-        return 400, {
-            "message": "This isn't a WFDF Academy certificate we can read. "
-            "Upload the PDF you downloaded from WFDF Academy."
-        }
-    certificate.seek(0)
-
-    try:
-        acc = player.accreditation
-    except Accreditation.DoesNotExist:
-        acc = Accreditation(player=player)
-    acc.certificate = certificate
-    acc.certificate_code = details.code
-    acc.level = details.level
-    acc.date = details.issued
-    acc.expiry_date = details.expires
-
-    try:
-        acc.full_clean()
-    except ValidationError as e:
-        return 400, {"message": " ".join(e.messages)}
-
-    acc.save()
-    return 200, acc
 
 
 # College ID Card ##########

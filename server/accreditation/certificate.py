@@ -2,7 +2,7 @@ import datetime
 import re
 from typing import IO, NamedTuple
 
-from server.core.models import Accreditation
+from server.accreditation.models import Accreditation
 
 # No \b at the ends: a value can run straight into the next label, as in
 # "2 February 2028Date of Expiry:".

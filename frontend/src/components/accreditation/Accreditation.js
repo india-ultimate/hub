@@ -5,13 +5,13 @@ import { inboxStack } from "solid-heroicons/solid";
 import { pencilSquare } from "solid-heroicons/solid-mini";
 import { createEffect, createSignal, Show } from "solid-js";
 
-import { useStore } from "../store";
-import { withinUploadLimits } from "../uploads";
-import { getCookie, getPlayer } from "../utils";
+import { useStore } from "../../store";
+import { withinUploadLimits } from "../../uploads";
+import { getCookie, getPlayer } from "../../utils";
+import Breadcrumbs from "../Breadcrumbs";
+import FileInput from "../FileInput";
+import StatusStepper from "../StatusStepper";
 import AccreditationInformation from "./AccreditationInformation";
-import Breadcrumbs from "./Breadcrumbs";
-import FileInput from "./FileInput";
-import StatusStepper from "./StatusStepper";
 
 const Accreditation = () => {
   const [store, { setPlayerById }] = useStore();

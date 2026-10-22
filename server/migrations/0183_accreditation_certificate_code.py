@@ -4,7 +4,7 @@ from django.apps.registry import Apps
 from django.db import migrations, models
 from django.db.backends.base.schema import BaseDatabaseSchemaEditor
 
-import server.core.models
+import server.accreditation.models
 
 
 def set_expiry_dates(apps: Apps, schema_editor: BaseDatabaseSchemaEditor) -> None:
@@ -49,6 +49,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name="accreditation",
             name="date",
-            field=models.DateField(validators=[server.core.models.not_in_the_future]),
+            field=models.DateField(validators=[server.accreditation.models.not_in_the_future]),
         ),
     ]

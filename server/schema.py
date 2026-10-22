@@ -3,10 +3,11 @@ from typing import Any
 from django.utils.timezone import now
 from ninja import ModelSchema, Schema
 
+from server.accreditation.models import Accreditation
+from server.accreditation.schema import AccreditationSchema
 from server.announcements.access import can_post
 from server.constants import MIN_AGE
 from server.core.models import (
-    Accreditation,
     CollegeId,
     CommentaryInfo,
     Guardianship,
@@ -72,12 +73,6 @@ class UserFormSchema(ModelSchema):
 class VaccinationSchema(ModelSchema):
     class Meta:
         model = Vaccination
-        fields = "__all__"
-
-
-class AccreditationSchema(ModelSchema):
-    class Meta:
-        model = Accreditation
         fields = "__all__"
 
 
@@ -541,10 +536,6 @@ class VaccinatedFormSchema(Schema):
     player_id: int
     is_vaccinated: bool
     name: str
-
-
-class AccreditationFormSchema(Schema):
-    player_id: int
 
 
 class CollegeIdFormSchema(ModelSchema):
