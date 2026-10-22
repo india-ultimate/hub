@@ -6,6 +6,7 @@ from server.mcp.tools import (  # noqa: F401
     readiness,
     staff_members,
     staff_ops,
+    team_admin,
     team_registration,
     tournaments,
 )

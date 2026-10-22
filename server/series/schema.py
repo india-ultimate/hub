@@ -132,7 +132,7 @@ class SeriesTeamRosterSchema(ModelSchema):
     class Meta:
         model = SeriesRegistration
         # role lets the roster page list non-playing staff apart from players.
-        fields = ["player", "role"]
+        fields = ["id", "player", "role"]
 
 
 class SeriesRegistrationAddSchema(Schema):
