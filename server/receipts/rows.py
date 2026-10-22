@@ -35,16 +35,21 @@ def group(items: list[tuple[str, str | None, int, int]]) -> list[Row]:
     return list(grouped.values())
 
 
-def legacy_row(season_name: str | None, people: list[str], total: int) -> Row:
-    """An order from before per-person amounts: one row for all of it."""
+def row(particulars: str, people: list[str], amount: int) -> Row:
+    """One row for an amount shared by its people, or a single item when there are none."""
     quantity = max(len(people), 1)
     return {
-        "particulars": f"Subscription, {season_name}" if season_name else "Subscription",
+        "particulars": particulars,
         "people": people,
         "quantity": quantity,
-        "rate": total // quantity if total % quantity == 0 else None,
-        "amount": total,
+        "rate": amount // quantity if amount % quantity == 0 else None,
+        "amount": amount,
     }
+
+
+def legacy_row(season_name: str | None, people: list[str], total: int) -> Row:
+    """An order from before per-person amounts: one row for all of it."""
+    return row(f"Subscription, {season_name}" if season_name else "Subscription", people, total)
 
 
 def summary(rows: list[Row]) -> str:
