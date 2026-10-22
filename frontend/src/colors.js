@@ -124,7 +124,8 @@ export const announcementTypeColors = {
   development:
     "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-300",
   operations:
-    "bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-300"
+    "bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-300",
+  tech: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300"
 };
 
 /**
@@ -140,7 +141,8 @@ export const announcementTypeLabels = {
   safeguarding: "Safeguarding",
   college: "College",
   development: "Development",
-  operations: "Operations"
+  operations: "Operations",
+  tech: "Tech"
 };
 
 /**
