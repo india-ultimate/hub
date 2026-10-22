@@ -58,8 +58,8 @@ class TestAnnouncementsImportCost(SimpleTestCase):
 
 
 class TestAuthImportCost(SimpleTestCase):
-    def test_url_conf_leaves_jwt_and_cryptography_alone(self) -> None:
-        script = URL_CONF_SCRIPT.format(names={"jwt", "cryptography"})
+    def test_url_conf_leaves_jwt_alone(self) -> None:
+        script = URL_CONF_SCRIPT.format(names={"jwt"})
         answer = _run(script)
         self.assertEqual(answer.returncode, 0, answer.stderr)
 

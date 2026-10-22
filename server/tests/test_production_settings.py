@@ -33,6 +33,41 @@ class TestProductionSettings(SimpleTestCase):
     def test_staging_runs_on_sqlite(self) -> None:
         self.assertEqual(0, self.load(FLY_APP_NAME="upai-hub-staging").returncode)
 
+    def test_the_public_url_is_configurable_and_feeds_the_mcp_settings(self) -> None:
+        script = (
+            "import hub.production as s; "
+            "print(s.PUBLIC_URL, s.MCP_RESOURCE_URL, "
+            "s.OAUTH2_PROVIDER['OIDC_ISS_ENDPOINT'])"
+        )
+        for env, base in [
+            ({}, "https://hub.indiaultimate.org"),
+            ({"PUBLIC_URL": "https://staging.example"}, "https://staging.example"),
+        ]:
+            clean = {k: v for k, v in os.environ.items() if k not in {"DATABASE_URL", "PUBLIC_URL"}}
+            result = subprocess.run(  # noqa: S603
+                [sys.executable, "-c", script],
+                env={**clean, "FLY_APP_NAME": "upai-hub-staging", **env},
+                cwd=Path(__file__).parents[2],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(f"{base} {base}/mcp {base}", result.stdout.strip(), result.stderr)
+
+    def test_mcp_is_off_unless_the_environment_turns_it_on(self) -> None:
+        for module in ("hub.settings", "hub.production"):
+            for env, expected in [({}, "False"), ({"MCP_ENABLED": "1"}, "True")]:
+                clean = {k: v for k, v in os.environ.items() if k not in {"MCP_ENABLED"}}
+                result = subprocess.run(  # noqa: S603
+                    [sys.executable, "-c", f"import {module} as s; print(s.MCP_ENABLED)"],
+                    env={**clean, "FLY_APP_NAME": "upai-hub-staging", **env},
+                    cwd=Path(__file__).parents[2],
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                self.assertEqual(expected, result.stdout.strip(), (module, env, result.stderr))
+
     def test_production_counts_its_queries(self) -> None:
         # The plain engine would leave every database metric at zero.
         script = "import hub.production as s; print(s.DATABASES['default']['ENGINE'])"
