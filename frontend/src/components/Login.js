@@ -14,6 +14,16 @@ import { getCookie } from "../utils";
 import Breadcrumbs from "./Breadcrumbs";
 import PillTabs from "./tabs/PillTabs";
 
+const finishLogin = (navigate, redirect) => {
+  const isSafe =
+    redirect && redirect.startsWith("/") && !redirect.startsWith("//");
+  if (isSafe && redirect.startsWith("/o/")) {
+    window.location.assign(redirect);
+  } else {
+    navigate(isSafe ? redirect : "/dashboard", { replace: true });
+  }
+};
+
 const PasswordLogin = props => {
   const csrftoken = getCookie("csrftoken");
   const [username, setUsername] = createSignal("");
@@ -25,11 +35,7 @@ const PasswordLogin = props => {
     const redirect = new URL(window.location.href).searchParams.get("redirect");
 
     if (store.loggedIn) {
-      const navigate = useNavigate();
-
-      const isSafe =
-        redirect && redirect.startsWith("/") && !redirect.startsWith("//");
-      navigate(isSafe ? redirect : "/dashboard", { replace: true });
+      finishLogin(useNavigate(), redirect);
     }
   });
 
@@ -151,10 +157,7 @@ const SendEmailOTP = props => {
     const redirect = new URL(window.location.href).searchParams.get("redirect");
 
     if (store.loggedIn) {
-      const navigate = useNavigate();
-      const isSafe =
-        redirect && redirect.startsWith("/") && !redirect.startsWith("//");
-      navigate(isSafe ? redirect : "/dashboard", { replace: true });
+      finishLogin(useNavigate(), redirect);
     }
   });
 
@@ -342,11 +345,7 @@ const PasskeyLogin = props => {
     const redirect = new URL(window.location.href).searchParams.get("redirect");
 
     if (store.loggedIn) {
-      const navigate = useNavigate();
-
-      const isSafe =
-        redirect && redirect.startsWith("/") && !redirect.startsWith("//");
-      navigate(isSafe ? redirect : "/dashboard", { replace: true });
+      finishLogin(useNavigate(), redirect);
     }
   });
 

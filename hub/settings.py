@@ -36,6 +36,7 @@ ALLOWED_HOSTS = [
 # Application definition
 
 AUTH_USER_MODEL = "server.User"
+LOGIN_URL = "/login"
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -48,6 +49,7 @@ INSTALLED_APPS = [
     "django_prometheus",
     "ckeditor",
     "ckeditor_uploader",
+    "oauth2_provider",
     "server",
 ]
 
@@ -156,6 +158,7 @@ LOGGING = {
         "handlers": ["console"],
         "level": "WARNING",
     },
+    "loggers": {"server.mcp": {"level": "INFO"}},
 }
 
 
@@ -280,6 +283,38 @@ CKEDITOR_CONFIGS = {
         "allowedContent": True,
         "extraAllowedContent": "a[target]",
     }
+}
+
+# MCP server: AI agents act as the signed-in user through OAuth.
+MCP_ENABLED = bool(int(os.environ.get("MCP_ENABLED", "0")))
+MCP_RESOURCE_URL = f"{PUBLIC_URL}/mcp"
+OAUTH2_PROVIDER = {
+    "SCOPES": {"hub:read": "See your Hub data", "hub:write": "Act for you in Hub"},
+    "DEFAULT_SCOPES": ["hub:read"],
+    "ACCESS_TOKEN_EXPIRE_SECONDS": 3600,
+    "REFRESH_TOKEN_EXPIRE_SECONDS": 60 * 60 * 24 * 30,
+    "ROTATE_REFRESH_TOKEN": True,
+    "REFRESH_TOKEN_REUSE_PROTECTION": True,
+    "PKCE_REQUIRED": True,
+    "COMPLIANT_BCP_RFC9700_PKCE_METHOD": True,
+    "COMPLIANT_BCP_RFC9700_AUTHZ_RESPONSE_ISS": True,
+    "COMPLIANT_BCP_RFC9700_ACCESS_TOKEN_TRANSPORT": True,
+    "COMPLIANT_BCP_RFC9700_IMPLICIT_GRANT": True,
+    "COMPLIANT_BCP_RFC9700_PASSWORD_GRANT": True,
+    "CIMD_ENABLED": True,
+    "CIMD_METADATA_FETCHER": "server.mcp.redirects.PolicyMetadataFetcher",
+    "DCR_ENABLED": True,
+    "DCR_REGISTRATION_PERMISSION_CLASSES": ("oauth2_provider.dcr.AllowAllDCRPermission",),
+    "ALLOWED_REDIRECT_URI_SCHEMES": ["https", "http"],
+    "ALLOW_LOCALHOST_LOOPBACK": True,
+    "OAUTH2_RESPONSE_TYPES_SUPPORTED": ["code"],
+    "OAUTH2_GRANT_TYPES_SUPPORTED": ["authorization_code", "refresh_token"],
+    "OAUTH2_TOKEN_ENDPOINT_AUTH_METHODS_SUPPORTED": [
+        "none",
+        "client_secret_post",
+        "client_secret_basic",
+    ],
+    "RESOURCE_SERVER_TOKEN_RESOURCE_VALIDATOR": "server.mcp.auth.resource_matches",
 }
 
 # Ticket Email Notifications

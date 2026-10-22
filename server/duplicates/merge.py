@@ -17,6 +17,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import F, Model, Q
 from django.db.models.fields.related import ForeignObjectRel
 from django.db.models.fields.reverse_related import ManyToManyRel
+from oauth2_provider import models as oauth
 
 from server.core.models import Guardianship, Player, User
 from server.duplicates.clusters import close_emptied
@@ -418,6 +419,20 @@ def _breaks_uniqueness(rel: ForeignObjectRel) -> bool:
     if getattr(rel.field, "unique", False):
         return True
     return any(field_name in combo for combo in rel.field.model._meta.unique_together)
+
+
+def _delete_oauth_rows(users: Sequence[User], keeper: User) -> None:
+    """Sign-ins are credentials, not history: the apps must ask the survivor afresh.
+    Applications they registered go to the survivor, so other users' sign-ins on them stay."""
+    for model in (
+        oauth.get_refresh_token_model(),
+        oauth.get_access_token_model(),
+        oauth.get_id_token_model(),
+        oauth.get_grant_model(),
+        oauth.get_device_grant_model(),
+    ):
+        model._default_manager.filter(user__in=users).delete()
+    oauth.get_application_model()._default_manager.filter(user__in=users).update(user=keeper)
 
 
 def _move_rows(
@@ -936,6 +951,8 @@ def merge_accounts(
             record.destroyed(duplicate_player, "explicit")
             duplicate_player.delete()
             _fill_blanks(primary_player, duplicate_player, PLAYER_FILLABLE, record)
+
+        _delete_oauth_rows(duplicates, primary)
 
         for duplicate in duplicates:
             for rel in inbound_relations(User):

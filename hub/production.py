@@ -11,6 +11,8 @@ CSRF_COOKIE_SECURE = True
 SECURE_SSL_REDIRECT = bool(int(os.environ.get("SECURE_SSL_REDIRECT", "1")))
 SECRET_KEY = os.environ.get("SECRET_KEY", SECRET_KEY)  # noqa: F405
 PUBLIC_URL = os.environ.get("PUBLIC_URL", "https://hub.indiaultimate.org")
+MCP_RESOURCE_URL = f"{PUBLIC_URL}/mcp"
+OAUTH2_PROVIDER["OIDC_ISS_ENDPOINT"] = PUBLIC_URL  # noqa: F405
 
 if os.environ.get("REDIS_HOST"):
     from redis.backoff import NoBackoff

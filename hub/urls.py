@@ -59,6 +59,8 @@ admin.site.get_urls = _admin_get_urls  # type: ignore[method-assign]
 urlpatterns = [
     # Before server.urls, whose catch-all would serve the app for /media/.
     path("media/<path:name>", old_media_link),
+    # Before server.urls, whose catch-all would serve the app for these.
+    path("", include("server.mcp.urls")),
     path("", include("server.urls")),
     path("ckeditor/upload/", ckeditor_upload),
     path("ckeditor/", include("ckeditor_uploader.urls")),

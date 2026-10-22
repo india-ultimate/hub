@@ -1064,6 +1064,30 @@ Django = ">=3.1"
 pydantic = ">=2.0,<3.0.0"
 
 [[package]]
+name = "django-oauth-toolkit"
+version = "3.4.1"
+description = "OAuth 2.0 authorization server for Django"
+optional = false
+python-versions = ">=3.10"
+groups = ["main"]
+files = [
+    {file = "django_oauth_toolkit-3.4.1-py3-none-any.whl", hash = "sha256:c47f2a70e83bade0a47a5e9b20e86030d8ed9c0a8f10ec4ed30446cad7291f2d"},
+    {file = "django_oauth_toolkit-3.4.1.tar.gz", hash = "sha256:c4de73c0765eed55a99ea0fa8433b20664dcc1f43930149cff569abed166c5c2"},
+]
+
+[package.dependencies]
+django = ">=4.2"
+jwcrypto = ">=1.5.0"
+oauthlib = ">=3.3.0"
+requests = ">=2.13.0"
+urllib3 = ">=1.26"
+
+[package.extras]
+dev = ["coverage", "django-ninja", "djangorestframework", "myst-parser", "pytest", "pytest-cov", "pytest-django", "pytest-mock", "pytest-xdist", "ruff", "sphinx (==7.2.6)", "sphinx-rtd-theme (==2.0.0)"]
+docs = ["myst-parser", "sphinx (==7.2.6)", "sphinx-rtd-theme (==2.0.0)"]
+test = ["coverage", "django-ninja", "djangorestframework", "pytest", "pytest-cov", "pytest-django", "pytest-mock", "pytest-xdist"]
+
+[[package]]
 name = "django-prometheus"
 version = "2.5.0"
 description = "Django middlewares to monitor your application with Prometheus.io."
@@ -1636,6 +1660,22 @@ MarkupSafe = ">=2.0"
 
 [package.extras]
 i18n = ["Babel (>=2.7)"]
+
+[[package]]
+name = "jwcrypto"
+version = "1.6.1"
+description = "Implementation of JOSE Web standards"
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "jwcrypto-1.6.1-py3-none-any.whl", hash = "sha256:77e856818e514cb3d64a1043b6885a7d52f5cc37773f5e944de02103c8d3a54f"},
+    {file = "jwcrypto-1.6.1.tar.gz", hash = "sha256:a1e1570da5c2e35dbcd375ec1d2891a24de8eb35ee2c1fe8e91978efb72cfe90"},
+]
+
+[package.dependencies]
+cryptography = ">=49.0.0"
+typing_extensions = ">=4.5.0"
 
 [[package]]
 name = "librt"
@@ -2543,6 +2583,23 @@ files = [
 
 [package.dependencies]
 docopt = ">=0.6.2"
+
+[[package]]
+name = "oauthlib"
+version = "4.0.0"
+description = "A generic, spec-compliant, thorough implementation of the OAuth request-signing logic"
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "oauthlib-4.0.0-py3-none-any.whl", hash = "sha256:624c28c13a0a59cabf9747dfa52af63be3e512a7f2714df16e91b5b3a145e6cd"},
+    {file = "oauthlib-4.0.0.tar.gz", hash = "sha256:efb274799819440f95b4ab3b818869f1ce9ae26c5beacba0201d1a1b76b54f86"},
+]
+
+[package.extras]
+rsa = ["cryptography (>=3.0.0)"]
+signals = ["blinker (>=1.4.0)"]
+signedtoken = ["cryptography (>=3.0.0)", "pyjwt (>=2.0.0,<3)"]
 
 [[package]]
 name = "oscrypto"
@@ -5332,4 +5389,4 @@ resolved_reference = "f546edc5b3c2c16e8d5755064540400d77c68a40"
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11.5"
-content-hash = "1391d8e8ac5a106eec8e49ed8bf72d16be6decca658a38ef2385045ee2d5b39c"
+content-hash = "71a5233a63f02c1b253c984a7ee4b94e990125e723df6d4e58164649d9abe449"
