@@ -172,7 +172,7 @@ class TestAnnouncements(HandlersTestCase):
         row.refresh_from_db()
         self.assertTrue(row.is_published)
 
-    def test_publishing_shows_the_content_as_plain_text(self) -> None:
+    def test_publishing_shows_the_content_as_markdown(self) -> None:
         row = Announcement.objects.create(
             title="Trials",
             content="<p>Hi &amp; welcome</p><p>Bring <b>water</b></p>",
@@ -184,7 +184,7 @@ class TestAnnouncements(HandlersTestCase):
         text = asked["needs_confirmation"]
         self.assertIn("Trials", text)
         self.assertIn("Hi & welcome", text)
-        self.assertIn("Bring water", text)
+        self.assertIn("Bring **water**", text)
         self.assertNotIn("<p>", text)
 
     def test_a_long_draft_is_cut_in_the_question(self) -> None:
@@ -308,7 +308,30 @@ class TestAnnouncements(HandlersTestCase):
         self.assertTrue(result["isError"])
         self.assertIn("needs a link", result["structuredContent"]["message"])
 
-    def test_text_with_images_or_links_is_left_to_hub(self) -> None:
+    def test_markdown_becomes_formatted_text_that_can_be_edited_again(self) -> None:
+        row = Announcement.objects.create(title="Trials", content="<p>Hi</p>", author=self.user)
+
+        for text in ("## When\n\n**Sunday**, 6 am", "## When\n\n**Saturday**, 6 am"):
+            result = self.call("update_announcement", {"slug": row.slug, "content": text})
+            self.assertFalse(result["isError"], result)
+
+        row.refresh_from_db()
+        self.assertEqual("<h2>When</h2><p><strong>Saturday</strong>, 6 am</p>", row.content)
+
+    def test_text_with_videos_or_tables_is_left_to_hub(self) -> None:
+        for content in (
+            '<p>Hi</p><video src="https://x.org/v.mp4"></video>',
+            "<table><tr><td>a</td></tr></table>",
+        ):
+            row = Announcement.objects.create(title="T", content=content, author=self.user)
+
+            result = self.call("update_announcement", {"slug": row.slug, "content": "Plain"})
+
+            self.assertTrue(result["isError"], content)
+            row.refresh_from_db()
+            self.assertEqual(content.split("<")[1][:3], row.content.split("<")[1][:3])
+
+    def test_text_with_images_is_left_to_hub(self) -> None:
         row = Announcement.objects.create(
             title="Trials",
             content='<p>See <a href="https://example.com">the form</a></p><img src="x.png">',

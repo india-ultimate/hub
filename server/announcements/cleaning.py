@@ -15,6 +15,7 @@ ATTRIBUTES = {
     "th": {"colspan", "rowspan"},
     "td": {"colspan", "rowspan"},
     "col": {"span"},
+    "ol": {"start"},
     "video": {"src"},
     "source": {"src", "type"},  # old posts' videos
 }

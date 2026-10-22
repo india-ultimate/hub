@@ -2,7 +2,7 @@ from django.test import SimpleTestCase
 
 from server.announcements.models import Announcement
 from server.core.models import Player, Team, User
-from server.mcp.tools.announcements import html_to_text
+from server.mcp.markdown import to_markdown
 from server.tests.base import create_event
 from server.tests.test_mcp_invitations import McpToolCase
 from server.tournament.models import Registration
@@ -16,17 +16,17 @@ HTML = (
 )
 
 
-class TestHtmlToText(SimpleTestCase):
-    def test_readable_text(self) -> None:
+class TestToMarkdown(SimpleTestCase):
+    def test_a_post_reads_as_markdown(self) -> None:
         self.assertEqual(
-            "Nationals & more\n\nDates are out.\nSee the page (https://x.org/dates).\n\n"
+            "## Nationals & more\n\nDates are **out**.\nSee [the page](https://x.org/dates).\n\n"
             "- Bring ID\n- Bring water\n\nFee is ₹500",
-            html_to_text(HTML),
+            to_markdown(HTML),
         )
 
     def test_plain_text_and_nothing(self) -> None:
-        self.assertEqual("hello", html_to_text("hello"))
-        self.assertEqual("", html_to_text(""))
+        self.assertEqual("hello", to_markdown("hello"))
+        self.assertEqual("", to_markdown(""))
 
 
 class TestGetMyStats(McpToolCase):
@@ -136,14 +136,14 @@ class TestAnnouncements(McpToolCase):
         self.assertEqual(5, len(second["announcements"]))
         self.assertFalse(second["has_more"])
 
-    def test_reads_a_post_as_text(self) -> None:
+    def test_reads_a_post_as_markdown(self) -> None:
         self.by_poster("Dates", content=HTML, is_published=True, action_text="Register")
 
         data = self.data("get_announcement", {"slug": "dates"})
 
         self.assertEqual("Dates", data["title"])
-        self.assertTrue(data["content_text"].startswith("Nationals & more"))
-        self.assertNotIn("<", data["content_text"])
+        self.assertTrue(data["content_markdown"].startswith("## Nationals & more"))
+        self.assertNotIn("<", data["content_markdown"])
         self.assertTrue(data["can_read"])
         self.assertEqual("Register", data["action_text"])
 
@@ -155,7 +155,7 @@ class TestAnnouncements(McpToolCase):
         data = self.data("get_announcement", {"slug": "members"})
 
         self.assertFalse(data["can_read"])
-        self.assertEqual("", data["content_text"])
+        self.assertEqual("", data["content_markdown"])
         self.assertIn("members", data["locked"])
         self.assertNotIn("Secret", str(data))
 
@@ -168,7 +168,7 @@ class TestAnnouncements(McpToolCase):
 
         data = self.data("get_announcement", {"slug": "members"})
 
-        self.assertEqual("Secret plan", data["content_text"])
+        self.assertEqual("Secret plan", data["content_markdown"])
         self.assertNotIn("locked", data)
 
     def test_a_draft_is_not_found_for_others(self) -> None:

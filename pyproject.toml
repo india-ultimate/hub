@@ -32,6 +32,7 @@ cryptography = "^50.0.2"
 nh3 = "^0.3.7"
 pypdf = "^6.20.0"
 django-oauth-toolkit = "^3.4.1"
+markdown-it-py = "^4.2.0"
 
 [tool.poetry.group.dev.dependencies]
 ipython = "^9.17.1"
