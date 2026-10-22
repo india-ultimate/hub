@@ -4,5 +4,6 @@ from server.mcp.tools import (  # noqa: F401
     metrics,
     staff_members,
     staff_ops,
+    team_registration,
     tournaments,
 )
