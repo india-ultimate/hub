@@ -416,11 +416,11 @@ class TestIntegration(BaseCase):
         user = make_player("player@example.com")
         player = Player.objects.get(user=user)
         folder = Path(tempfile.mkdtemp())
-        (folder / "other.pdf").write_bytes(wfdf_certificate_pdf(code="none"))
+        (folder / "other.pdf").write_bytes(wfdf_certificate_pdf("Rahul Sharma", code="none"))
         issued = datetime.date(2026, 10, 1)
         certificate = folder / "certificate.pdf"
         certificate.write_bytes(
-            wfdf_certificate_pdf(issued=issued, expires=datetime.date(2028, 3, 31))
+            wfdf_certificate_pdf("Rahul Sharma", issued=issued, expires=datetime.date(2028, 3, 31))
         )
 
         self.sign_in_as(user)

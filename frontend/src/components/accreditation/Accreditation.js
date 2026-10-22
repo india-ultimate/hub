@@ -134,7 +134,7 @@ const Accreditation = () => {
                       value={field.value}
                       error={field.error}
                       label="Upload Accreditation Certificate (PDF)"
-                      subLabel="Upload the PDF you downloaded from WFDF Academy. We read the level, dates and Certificate Code from it. Certificates from the old rules.wfdf.sport site can't be added. Uploading directly from Google Drive is not supported, so download it to your device first."
+                      subLabel="Upload the PDF you downloaded from WFDF Academy. We read the level, dates and Certificate Code from it, and the name on it must match the player's. Certificates from the old rules.wfdf.sport site can't be added. Uploading directly from Google Drive is not supported, so download it to your device first."
                       required
                     />
                   )}

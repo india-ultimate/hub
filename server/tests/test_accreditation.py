@@ -12,6 +12,7 @@ from django.test.client import MULTIPART_CONTENT
 from django.utils.timezone import now
 from pypdf import PdfReader, PdfWriter
 
+from server.accreditation.certificate import name_words
 from server.accreditation.models import Accreditation
 from server.core.models import Guardianship, Player, User
 from server.tests.base import ApiBaseTestCase, wfdf_certificate_pdf
@@ -93,7 +94,7 @@ class TestAccreditation(ApiBaseTestCase):
         self.assertEqual(400, self.upload(pdf.getvalue()).status_code)
 
     def test_a_date_that_does_not_exist_is_refused(self) -> None:
-        pdf = wfdf_certificate_pdf().replace(b"Rahul Sharma", b"31 June 2026")
+        pdf = wfdf_certificate_pdf(name="Rahul Sharma").replace(b"Rahul Sharma", b"31 June 2026")
         self.assertEqual(400, self.upload(pdf).status_code)
 
     def test_a_pdf_that_is_not_a_wfdf_academy_certificate_is_refused(self) -> None:
@@ -125,12 +126,52 @@ class TestAccreditation(ApiBaseTestCase):
 
         username = email = "foo@example.com"
 
-        user = User.objects.create(username=username, email=email)
+        user = User.objects.create(
+            username=username, email=email, first_name="John", last_name="Williamson"
+        )
         player = Player.objects.create(date_of_birth="2000-01-01", user=user)
         Guardianship.objects.create(relation="LG", user=self.user, player=player)
         response = self.upload(player_id=player.id)
         self.assertEqual(400, response.status_code)
         self.assertIn("already on another player's profile", response.json()["message"])
+
+    def test_one_word_of_the_name_is_enough(self) -> None:
+        response = self.upload(wfdf_certificate_pdf(name="Johnny Williamson"))
+        self.assertEqual(200, response.status_code)
+
+    def test_case_is_ignored(self) -> None:
+        response = self.upload(wfdf_certificate_pdf(name="JOHN W."))
+        self.assertEqual(200, response.status_code)
+
+    def test_accents_are_ignored(self) -> None:
+        self.assertEqual({"jose", "nunez"}, name_words("José Núñez"))
+
+    def test_apostrophes_and_hyphens_match_either_way(self) -> None:
+        self.assertEqual({"dsouza", "souza"}, name_words("D'Souza"))
+        self.assertEqual({"dsouza", "souza"}, name_words("D\u2019Souza"))
+        self.assertEqual({"maryjane", "mary", "jane"}, name_words("Mary-Jane"))
+
+    def test_indian_scripts_keep_their_words_whole(self) -> None:
+        self.assertEqual(2, len(name_words("राहुल शर्मा")))
+        self.assertFalse(name_words("राहुल शर्मा") & name_words("रोहित वर्मा"))
+
+    def test_someone_elses_certificate_is_refused(self) -> None:
+        response = self.upload(wfdf_certificate_pdf(name="Priya Nair"))
+        self.assertEqual(400, response.status_code)
+        self.assertIn("Priya Nair", response.json()["message"])
+        self.assertFalse(Accreditation.objects.exists())
+
+    def test_initials_alone_are_not_a_match(self) -> None:
+        response = self.upload(wfdf_certificate_pdf(name="J W"))
+        self.assertEqual(400, response.status_code)
+
+    def test_a_guardian_uploads_with_the_childs_name(self) -> None:
+        child = User.objects.create(username="kid@example.com", first_name="Tiny", last_name="Tim")
+        player = Player.objects.create(user=child, date_of_birth="2015-01-01")
+        Guardianship.objects.create(relation="LG", user=self.user, player=player)
+        self.assertEqual(400, self.upload(wfdf_certificate_pdf(), player_id=player.id).status_code)
+        response = self.upload(wfdf_certificate_pdf(name="Tiny Tim"), player_id=player.id)
+        self.assertEqual(200, response.status_code)
 
     def test_without_an_expiry_it_lasts_18_months(self) -> None:
         accreditation = Accreditation.objects.create(

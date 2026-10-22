@@ -33,6 +33,12 @@ def add_accreditation(
             "message": "This isn't a WFDF Academy certificate we can read. "
             "Upload the PDF you downloaded from WFDF Academy."
         }
+    if not details.is_for(player.user):
+        return 400, {
+            "message": f"This certificate is for {details.name}, not "
+            f"{player.user.get_full_name() or 'this player'}. Upload the player's own certificate, or "
+            "correct the name on their profile if it's wrong."
+        }
     certificate.seek(0)
 
     try:
