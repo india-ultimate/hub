@@ -1,6 +1,22 @@
 import datetime
 
+from django.core.files.uploadedfile import UploadedFile
 from django.template.defaultfilters import slugify
+
+MAX_UPLOAD_BYTES = 10 * 1024 * 1024
+IMAGE_TYPES = ("image/jpeg", "image/png", "image/gif", "image/webp", "image/bmp", "image/tiff")
+PDF_TYPE = "application/pdf"
+
+
+def upload_problem(file: UploadedFile, types: tuple[str, ...], what: str) -> str | None:
+    """What is wrong with an upload, or None if it can be stored."""
+    if file.content_type not in types:
+        pdf = "a PDF" if PDF_TYPE in types else ""
+        images = "an image" if set(types) & set(IMAGE_TYPES) else ""
+        return f"The {what} must be {' or '.join(filter(None, [images, pdf]))}."
+    if file.size is not None and file.size > MAX_UPLOAD_BYTES:
+        return f"The {what} must not exceed 10MB."
+    return None
 
 
 def mask_string(s: str) -> str:
