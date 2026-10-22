@@ -1,4 +1,4 @@
-import { Navigate, Route } from "@solidjs/router";
+import { Navigate, Route, useLocation } from "@solidjs/router";
 import { children, createResource, Match, Suspense, Switch } from "solid-js";
 
 import { Spinner } from "../icons";
@@ -7,6 +7,7 @@ import { canManageTournaments, fetchUserData } from "../utils";
 
 const WithUserData = props => {
   const [store, { userFetchSuccess, userFetchFailure }] = useStore();
+  const location = useLocation();
   const c = children(() => props.children);
   const [userData] = createResource(!store.userFetched, () =>
     fetchUserData(userFetchSuccess, userFetchFailure)
@@ -53,7 +54,12 @@ const WithUserData = props => {
         <Match
           when={userData() || (store.userFetched && !store?.data?.username)}
         >
-          <Navigate href="/login" />
+          {/* Back here after signing in, as a link from an email or a chat expects. */}
+          <Navigate
+            href={`/login?redirect=${encodeURIComponent(
+              location.pathname + location.search
+            )}`}
+          />
         </Match>
       </Switch>
     </Suspense>
