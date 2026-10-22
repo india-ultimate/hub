@@ -104,6 +104,7 @@ def fake_order(amount: int) -> dict[str, Any]:
 
 
 def wfdf_certificate_pdf(
+    name: str = "John Williamson",
     code: str = "5905130059NR",
     level: str = "Advanced",
     issued: datetime.date | None = None,
@@ -116,7 +117,7 @@ def wfdf_certificate_pdf(
     issued = issued or now().date() - datetime.timedelta(days=10)
     expires = expires or issued + datetime.timedelta(days=545)
     lines = [
-        "Rahul Sharma",
+        name,
         f"{issued.day} {issued:%B %Y}",
         "2",
         "Talent",
