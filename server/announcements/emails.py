@@ -103,7 +103,7 @@ def _queue_announcement_emails(
             seen_normalized[normalized] = email
             unique_recipients.append(email)
 
-    site_url = settings.EMAIL_INVITATION_BASE_URL
+    site_url = settings.PUBLIC_URL
     announcement_url = f"{site_url}/announcement/{announcement.slug}"
 
     # Strip HTML tags for plain text version

@@ -24,7 +24,7 @@ SUBJECT = "You may have more than one India Ultimate Hub account"
 def build_messages(cluster: DuplicateCluster) -> list[EmailMultiAlternatives]:
     """One message per account in the cluster that can actually receive it."""
     members = list(cluster.members.select_related("user").order_by("user_id"))
-    base_url = settings.EMAIL_INVITATION_BASE_URL
+    base_url = settings.PUBLIC_URL
     messages = []
 
     for member in members:
@@ -186,7 +186,7 @@ CODE_SUBJECT = "Your code to merge India Ultimate Hub accounts"
 
 def group_url(member: ClusterMember) -> str:
     """The group's page, opened as this row. Every email ends with one."""
-    return f"{settings.EMAIL_INVITATION_BASE_URL}/merge-accounts/{member.claim_token}"
+    return f"{settings.PUBLIC_URL}/merge-accounts/{member.claim_token}"
 
 
 def send_code_email(row: ClusterMember, keeper: User, code: str) -> None:

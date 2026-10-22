@@ -313,8 +313,8 @@ def invite_to_series(
         to_player=player,
         team=team,
         series=series,
-        accept_invitation_link=f"{settings.EMAIL_INVITATION_BASE_URL}/invitation/accept?token={token}",
-        decline_invitation_link=f"{settings.EMAIL_INVITATION_BASE_URL}/invitation/decline?token={token}",
+        accept_invitation_link=f"{settings.PUBLIC_URL}/invitation/accept?token={token}",
+        decline_invitation_link=f"{settings.PUBLIC_URL}/invitation/decline?token={token}",
     )
     return invitation, None
 

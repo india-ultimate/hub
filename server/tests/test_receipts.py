@@ -470,7 +470,7 @@ class TestReceiptEmail(ReceiptTestCase):
         self.assertEqual(mail["subject"], f"Receipt {receipt.number} — India Ultimate")
         self.assertIn(receipt.number, mail["html_content"])
         self.assertIn("750.00", mail["html_content"])
-        base = settings.EMAIL_INVITATION_BASE_URL
+        base = settings.PUBLIC_URL
         self.assertTrue(base.startswith("http"), base)
         self.assertIn(f'href="{base}/receipts/{receipt.pk}"', mail["html_content"])
         self.assertIn(f'src="{base}/static/assets/logo-vertical.png"', mail["html_content"])

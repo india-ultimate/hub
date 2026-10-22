@@ -110,7 +110,7 @@ def _notify_assigned(ticket: Ticket, users: Iterable[User]) -> None:
         plain_message += f"{ticket.title}\n"
         plain_message += f"Priority: {ticket.get_priority_display()}\n\n"
         plain_message += "You can view and respond to this ticket on the website."
-        context = {"ticket": ticket, "site_url": settings.EMAIL_INVITATION_BASE_URL}
+        context = {"ticket": ticket, "site_url": settings.PUBLIC_URL}
         send_mail(
             subject=f"Ticket #{ticket.id} assigned to you: {ticket.title}",
             message=plain_message,
@@ -355,7 +355,7 @@ def create_ticket(
             # HTML version with template
             context = {
                 "ticket": ticket,
-                "site_url": settings.EMAIL_INVITATION_BASE_URL,
+                "site_url": settings.PUBLIC_URL,
             }
             html_message = render_to_string("emails/new_ticket.html", context)
 
@@ -520,7 +520,7 @@ def add_message(
                 "ticket": ticket,
                 "sender": request.user,
                 "message": message,
-                "site_url": settings.EMAIL_INVITATION_BASE_URL,
+                "site_url": settings.PUBLIC_URL,
             }
             html_message = render_to_string("emails/ticket_message.html", context)
 
