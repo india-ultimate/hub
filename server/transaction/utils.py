@@ -11,6 +11,7 @@ from django.db.models import Model, Q, QuerySet
 from server.core.models import Player, Team, User
 from server.payment_account.models import PaymentAccount
 from server.receipts.issue import rows_for_order
+from server.receipts.money import rupees
 from server.receipts.rows import Row, person_label, row
 from server.registration.models import RosterEntry
 from server.season.models import Season
@@ -330,6 +331,8 @@ def create_transaction(
             )
         base_amount = amount
         amount += penalty
+        if order.expected_amount is not None and order.expected_amount != amount:
+            return 409, {"message": f"The team fee is now {rupees(amount)}. Quote it again."}
 
         notes = {
             "user_id": user.id,

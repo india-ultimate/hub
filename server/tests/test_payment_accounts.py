@@ -192,6 +192,17 @@ class TestRoutedOrders(RoutedTestCase):
             {k: transaction.notes[k] for k in ("base_amount", "penalty_amount", "days_late")},
         )
 
+    def test_a_team_fee_that_moved_since_the_quote_is_refused_before_an_order(self) -> None:
+        data = {"team_id": self.team.id, "event_id": self.event.id}
+        response, create = self.place({**data, "expected_amount": TEAM_FEE - 1})
+        self.assertEqual(409, response.status_code, response.content)
+        self.assertEqual("The team fee is now ₹5,000. Quote it again.", response.json()["message"])
+        create.assert_not_called()
+        self.assertFalse(RazorpayTransaction.objects.exists())
+
+        response, _ = self.place({**data, "expected_amount": TEAM_FEE})
+        self.assertEqual(200, response.status_code, response.content)
+
     def test_a_player_fee_is_ordered_on_the_events_account(self) -> None:
         self.tournament.teams.add(self.team)
         friend = make_player("friend@example.com")
