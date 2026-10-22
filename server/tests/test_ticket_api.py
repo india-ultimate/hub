@@ -44,6 +44,38 @@ class TicketTestCase(TestCase):
         return [ticket["id"] for ticket in response.json()["items"]]
 
 
+class TestCreateValidation(TicketTestCase):
+    def create(self, **fields: Any) -> Any:
+        data = {"title": "Help", "description": "Please", **fields}
+        return self.as_user(self.outsider).post(
+            "/api/ticket/", data=json.dumps(data), content_type="application/json"
+        )
+
+    def test_a_title_over_the_limit_is_refused(self) -> None:
+        response = self.create(title="x" * 201)
+
+        self.assertEqual(400, response.status_code)
+        self.assertEqual("The title can be at most 200 characters", response.json()["message"])
+        self.assertEqual(1, Ticket.objects.count())
+
+    def test_a_title_at_the_limit_is_kept(self) -> None:
+        self.assertEqual(201, self.create(title="x" * 200).status_code)
+
+    def test_an_unknown_priority_is_refused(self) -> None:
+        response = self.create(priority="SOON")
+
+        self.assertEqual(400, response.status_code)
+        self.assertEqual(
+            "The priority must be one of LOW, MED, HIG, URG", response.json()["message"]
+        )
+        self.assertEqual(1, Ticket.objects.count())
+
+    def test_each_known_priority_is_kept(self) -> None:
+        for priority in ("LOW", "MED", "HIG", "URG"):
+            with self.subTest(priority=priority):
+                self.assertEqual(201, self.create(priority=priority).status_code)
+
+
 class TestPrivateTickets(TicketTestCase):
     def setUp(self) -> None:
         super().setUp()

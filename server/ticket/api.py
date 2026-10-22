@@ -322,6 +322,10 @@ def create_ticket(
     request: AuthenticatedHttpRequest, data: TicketCreateSchema
 ) -> tuple[int, Ticket | dict[str, str]]:
     """Create a new ticket"""
+    if len(data.title) > TITLE_MAX_LENGTH:
+        return 400, {"message": f"The title can be at most {TITLE_MAX_LENGTH} characters"}
+    if data.priority not in Ticket.Priority.values:
+        return 400, {"message": f"The priority must be one of {', '.join(Ticket.Priority.values)}"}
     if error := _category_error(data.category):
         return 400, {"message": error}
     ticket = Ticket.objects.create(
