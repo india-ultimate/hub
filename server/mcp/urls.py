@@ -1,7 +1,8 @@
 from django.urls import URLPattern, URLResolver, include, path
+from django.views.decorators.csrf import csrf_exempt
 from oauth2_provider import views as oauth
 
-from server.mcp import redirects, views
+from server.mcp import redirects, upload, views
 from server.mcp.views import enabled_only
 from server.mcp.wellknown import ProtectedResourceMetadataView
 
@@ -34,4 +35,9 @@ urlpatterns: list[URLPattern | URLResolver] = [
     path(".well-known/oauth-protected-resource", protected_resource),
     path(".well-known/oauth-protected-resource/mcp", protected_resource),
     path("mcp", views.mcp, name="mcp"),
+    path(
+        "mcp/upload/<str:token>",
+        enabled_only(csrf_exempt(upload.upload)),
+        name="mcp-upload",
+    ),
 ]

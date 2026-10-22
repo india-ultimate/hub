@@ -51,6 +51,7 @@ Start with whoami. It lists the person's user_id, player_id, wards, teams, commi
 Rules that always apply:
 - Writes ask the person for confirmation first, except saving a draft, upvoting, and proposing or rejecting a tournament change (confirming one asks). Say plainly who is emailed, how much it costs and what happens, then wait for their yes. Never confirm on their behalf: pass the confirmation back only after they say yes.
 - Payment happens on a Hub pay page. Tools return a pay link; give it to the person to open. Never ask for card details.
+- Files (certificates, IDs, logos) go through create_upload_link: give the person the link and a curl command to upload with. Never ask them to paste file contents.
 - Sending email is limited per hour. Do not retry a failed send in a loop.
 - A "Not allowed" message is Hub's decision. Explain it and point to the Hub page instead of looking for a workaround.
 
