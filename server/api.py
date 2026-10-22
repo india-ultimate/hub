@@ -61,6 +61,7 @@ from server.duplicates.api import router as merge_router
 from server.duplicates.identity import full_email_match
 from server.election.api import router as election_router
 from server.forms.api import router as forms_router
+from server.mcp.apps_api import router as connected_apps_router
 from server.passkey_utils import PassKeyClient
 from server.payment_account.api import router as payment_account_router
 from server.receipts.api import router as receipts_router
@@ -293,6 +294,7 @@ api.add_router("/announcements", announcements_router)
 api.add_router("/committees", committees_router)
 api.add_router("/task", task_router)
 api.add_router("/wrapped", wrapped_router)
+api.add_router("/", connected_apps_router)
 
 # User #########
 

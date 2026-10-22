@@ -16,6 +16,7 @@ import { MAX_CLOUDINARY_PIXELS, uploadError as checkUpload } from "../uploads";
 import { registerPasskey, showPlayerStatus } from "../utils";
 import { getCookie } from "../utils";
 import Accordion from "./Accordion";
+import ConnectedApps from "./connected-apps/ConnectedApps";
 import IUIDBadge from "./IUIDBadge";
 import Player from "./Player";
 import ReceiptList from "./receipts/ReceiptList";
@@ -413,6 +414,7 @@ const Dashboard = () => {
             setError={setError}
           />
         </Accordion>
+        <ConnectedApps />
         <Accordion
           group="dashboard"
           id="registrations"
