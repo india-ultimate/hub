@@ -1,4 +1,4 @@
-"""Redis access for the page cache: versions, pages and lookups.
+"""Redis access for the page cache, and for libraries that keep notes in the cache.
 
 Knows nothing about URLs, views or models. Every call fails open.
 """
@@ -45,8 +45,18 @@ def safe(call: Callable[[], T], default: T) -> T:
     except Exception:
         # One slow or dead cache costs one timeout per process per PAUSE, not one per call.
         _state["down_until"] = time.monotonic() + PAUSE
-        log.warning("Public page cache unavailable", exc_info=True)
+        log.warning("Cache unavailable", exc_info=True)
         return default
+
+
+class FailOpenCache:
+    """The cache for a library that calls it directly, failing open like the rest of Hub."""
+
+    def get(self, key: str, default: Any = None) -> Any:
+        return safe(lambda: cache.get(key, default), default)
+
+    def set(self, key: str, value: Any, timeout: int | None = None) -> None:
+        safe(lambda: cache.set(key, value, timeout), None)
 
 
 def _version_key(tid: str) -> str:

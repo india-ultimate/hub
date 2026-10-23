@@ -52,5 +52,7 @@ class ServerConfig(AppConfig):
 
     def ready(self) -> None:
         from server.cache.invalidation import connect
+        from server.mcp.redirects import fail_open
 
         connect()
+        fail_open()
