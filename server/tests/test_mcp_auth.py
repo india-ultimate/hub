@@ -53,6 +53,36 @@ def make_token(
     )
 
 
+JWT_BEARER = "urn:ietf:params:oauth:grant-type:jwt-bearer"
+# As Claude and ChatGPT published them (October 2026).
+CLAUDE_DOCUMENT: dict[str, Any] = {
+    "client_id": "https://claude.ai/oauth/mcp-oauth-client-metadata",
+    "client_name": "Claude",
+    "client_uri": "https://claude.ai",
+    "redirect_uris": ["https://claude.ai/api/mcp/auth_callback"],
+    "grant_types": [
+        "authorization_code",
+        "refresh_token",
+        JWT_BEARER,
+    ],
+    "response_types": ["code"],
+    "token_endpoint_auth_method": "none",
+}
+CHATGPT_DOCUMENT: dict[str, Any] = {
+    "client_id": "https://chatgpt.com/oauth/client.json",
+    "client_name": "ChatGPT",
+    "client_uri": "https://chatgpt.com/",
+    "redirect_uris": ["https://chatgpt.com/connector_platform_oauth_redirect"],
+    "token_endpoint_auth_method": "private_key_jwt",
+    "token_endpoint_auth_methods_supported": ["none", "private_key_jwt"],
+    "grant_types": ["authorization_code", "refresh_token"],
+    "response_types": ["code"],
+    "logo_uri": "https://persistent.oaistatic.com/sonic/misc/openai-logo.png",
+    "token_endpoint_auth_signing_alg": "RS256",
+    "jwks_uri": "https://chatgpt.com/oauth/jwks.json",
+}
+
+
 class McpAuthTestCase(TestCase):
     def setUp(self) -> None:
         self.user = User.objects.create(username="a@x.com", email="a@x.com")
@@ -245,6 +275,51 @@ class TestConsent(McpAuthTestCase):
         self.assertNotIn("Runs on your computer", html)
         self.assertIn("Hub can't verify this name.", html)
 
+    def test_claude_and_chatgpt_sign_in_with_their_published_documents(self) -> None:
+        self.client.force_login(self.user)
+        for document in (CLAUDE_DOCUMENT, CHATGPT_DOCUMENT):
+            client_id, callback = document["client_id"], document["redirect_uris"][0]
+            with (
+                self.subTest(client=document["client_name"]),
+                mock.patch.object(SafeMetadataFetcher, "fetch", return_value=(document, 300)),
+            ):
+                page = self.client.get(self.authorize_url(callback, client_id))
+                location = self.allow(client_id, "S256", redirect_uri=callback)
+                bearer = self.exchange(location, client_id, redirect_uri=callback)["access_token"]
+
+                self.assertContains(page, f"Connect {document['client_name']}")
+                application = Application.objects.get(client_id=client_id)
+                self.assertEqual(Application.CLIENT_PUBLIC, application.client_type)
+                self.assertEqual(
+                    Application.GRANT_AUTHORIZATION_CODE, application.authorization_grant_type
+                )
+                self.assertIsNotNone(self.authenticate(bearer))
+
+    def test_a_document_that_only_signs_with_a_key_is_refused(self) -> None:
+        self.client.force_login(self.user)
+        document = {
+            **CHATGPT_DOCUMENT,
+            "token_endpoint_auth_methods_supported": ["private_key_jwt"],
+        }
+
+        with mock.patch.object(SafeMetadataFetcher, "fetch", return_value=(document, 300)):
+            response = self.client.get(
+                self.authorize_url(document["redirect_uris"][0], document["client_id"])
+            )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(Application.objects.filter(client_id=document["client_id"]).exists())
+
+    def test_an_error_page_has_the_logo(self) -> None:
+        self.client.force_login(self.user)
+
+        response = self.client.get(
+            self.authorize_url("https://claude.ai/api/mcp/auth_callback", "no-such-client")
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertContains(response, 'src="data:image/png;base64,', status_code=400)
+
     def test_a_metadata_document_client_names_where_its_name_comes_from(self) -> None:
         application = make_token(self.user).application
         Application.objects.filter(pk=application.pk).update(
@@ -300,7 +375,13 @@ class TestConsent(McpAuthTestCase):
         self.assertTemplateUsed(response, "mcp/consent.html")
         self.assertIn("couldn't start this connection", response.content.decode())
 
-    def allow(self, client_id: str, method: str, resource: str | None = "default") -> str:
+    def allow(
+        self,
+        client_id: str,
+        method: str,
+        resource: str | None = "default",
+        redirect_uri: str = "https://claude.ai/api/mcp/auth_callback",
+    ) -> str:
         self.client.force_login(self.user)
         fields = {"resource": settings.MCP_RESOURCE_URL} if resource == "default" else {}
         response = self.client.post(
@@ -310,7 +391,7 @@ class TestConsent(McpAuthTestCase):
                 "allow": "Authorize",
                 "response_type": "code",
                 "client_id": client_id,
-                "redirect_uri": "https://claude.ai/api/mcp/auth_callback",
+                "redirect_uri": redirect_uri,
                 "scope": "hub:read",
                 "state": "xyz",
                 "code_challenge": "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM",
@@ -320,7 +401,12 @@ class TestConsent(McpAuthTestCase):
         self.assertEqual(response.status_code, 302)
         return str(response["Location"])
 
-    def exchange(self, location: str, client_id: str) -> dict[str, str]:
+    def exchange(
+        self,
+        location: str,
+        client_id: str,
+        redirect_uri: str = "https://claude.ai/api/mcp/auth_callback",
+    ) -> dict[str, str]:
         code = parse_qs(urlparse(location).query)["code"][0]
         response = self.client.post(
             "/o/token/",
@@ -328,7 +414,7 @@ class TestConsent(McpAuthTestCase):
                 "grant_type": "authorization_code",
                 "code": code,
                 "client_id": client_id,
-                "redirect_uri": "https://claude.ai/api/mcp/auth_callback",
+                "redirect_uri": redirect_uri,
                 "code_verifier": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk",
             },
         )
@@ -539,7 +625,7 @@ class TestRedirectPolicy(TestCase):
         ]:
             self.assertEqual(self.register(uri), 201, uri)
 
-    def fetch(self, *uris: str, **extra: object) -> object:
+    def fetch(self, *uris: str, **extra: object) -> Any:
         document = {"redirect_uris": list(uris), "client_name": "App", **extra}
         with mock.patch.object(SafeMetadataFetcher, "fetch", return_value=(document, 300)):
             return PolicyMetadataFetcher().fetch("https://app.example/client.json")
@@ -560,6 +646,21 @@ class TestRedirectPolicy(TestCase):
             self.fetch("http://localhost/cb", grant_types=["client_credentials"])
         with self.assertRaises(CIMDError):
             self.fetch("http://localhost/cb", response_types=["token"])
+
+    def test_cimd_keeps_only_the_grants_and_auth_hub_offers(self) -> None:
+        document, _ = self.fetch(
+            "http://localhost/cb",
+            grant_types=["authorization_code", "client_credentials", JWT_BEARER],
+            token_endpoint_auth_method="private_key_jwt",  # noqa: S106
+            token_endpoint_auth_methods_supported=["none", "private_key_jwt"],
+        )
+
+        self.assertEqual(document["grant_types"], ["authorization_code"])
+        self.assertEqual(document["token_endpoint_auth_method"], "none")
+
+    def test_cimd_refuses_a_client_without_the_authorization_code_grant(self) -> None:
+        with self.assertRaises(CIMDError):
+            self.fetch("http://localhost/cb", grant_types=[JWT_BEARER])
 
     def test_cimd_accepts_hosted_agents_and_loopback(self) -> None:
         self.fetch(

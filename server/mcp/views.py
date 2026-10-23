@@ -46,7 +46,6 @@ class ConsentView(AuthorizationView):
 
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
         context: dict[str, Any] = super().get_context_data(**kwargs)
-        context["logo"] = logo()
         application = context.get("application")
         if application:
             hosts = {urlparse(uri).hostname for uri in application.redirect_uris.split()}
@@ -59,6 +58,10 @@ class ConsentView(AuthorizationView):
                 urlparse(client_id).hostname if client_id.startswith("https://") else None
             )
         return context
+
+    def render_to_response(self, context: dict[str, Any], **kwargs: Any) -> HttpResponse:
+        # Error pages come straight from the library, without get_context_data.
+        return super().render_to_response({"logo": logo(), **context}, **kwargs)
 
     def dispatch(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
         posting = request.method == "POST"
