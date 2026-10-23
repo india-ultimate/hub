@@ -1,22 +1,19 @@
 from typing import Any
 
 from django.core.management.base import BaseCommand
-from django.utils.timezone import now
 
 from server.tournament.models import Tournament
+from server.utils import today
 
 
 class Command(BaseCommand):
-    help = (
-        "Check if registrations are open or closed today, and update tournament status accordingly"
-    )
+    help = "List every draft tournament whose team registration has opened"
 
     def handle(self, *args: Any, **options: Any) -> None:
-        today = now().date()
-
-        team_registrations_open_today = Tournament.objects.filter(
-            event__team_registration_start_date__exact=today, status=Tournament.Status.DRAFT
+        # On or before today, so dates edited after a run, or a missed run, still list it.
+        opened = Tournament.objects.filter(
+            event__team_registration_start_date__lte=today(), status=Tournament.Status.DRAFT
         )
-
-        if team_registrations_open_today.count() > 0:
-            team_registrations_open_today.update(status=Tournament.Status.SCHEDULING)
+        for tournament in opened.select_related("event"):
+            self.stdout.write(f"Listing {tournament.event.title} ({tournament.pk})")
+        opened.update(status=Tournament.Status.SCHEDULING)

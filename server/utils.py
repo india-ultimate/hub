@@ -62,14 +62,6 @@ def if_dates_are_not_in_order(first_date: str, second_date: str) -> bool:
     )
 
 
-def if_today(date: str) -> bool:
-    ind_tz = datetime.timezone(datetime.timedelta(hours=5, minutes=30), name="IND")
-    return (
-        datetime.datetime.strptime(date, "%Y-%m-%d").astimezone(ind_tz).date()
-        == datetime.datetime.now(ind_tz).date()
-    )
-
-
 def is_today_in_between_dates(from_date: datetime.date, to_date: datetime.date) -> bool:
     return from_date <= today() <= to_date
 
