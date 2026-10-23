@@ -86,7 +86,7 @@ class ProfileTestCase(McpProtocolTestCase):
 class TestCreateProfile(ProfileTestCase):
     def test_for_me_creates_the_callers_profile(self) -> None:
         asked = self.call("create_profile", {"for": "me", **ME})["structuredContent"]
-        self.assertIn("a@x.com", asked["needs_confirmation"])
+        self.assertNotIn("@", asked["needs_confirmation"])
         self.assertFalse(Player.objects.filter(user=self.user).exists())
 
         result = self.confirmed("create_profile", {"for": "me", **ME})
@@ -119,7 +119,7 @@ class TestCreateProfile(ProfileTestCase):
 
         asked = self.call("create_profile", args)["structuredContent"]["needs_confirmation"]
         self.assertIn("Wren Rao", asked)
-        self.assertIn("wren@x.com", asked)
+        self.assertNotIn("wren@", asked)
         self.assertIn("guardian", asked)
         result = self.confirmed("create_profile", args)
 
@@ -155,7 +155,7 @@ class TestCreateProfile(ProfileTestCase):
         }
 
         asked = self.call("create_profile", args)["structuredContent"]["needs_confirmation"]
-        self.assertIn("ravi@x.com", asked)
+        self.assertNotIn("ravi@", asked)
         result = self.confirmed("create_profile", args)
 
         self.assertFalse(result["isError"], result)

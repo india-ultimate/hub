@@ -323,7 +323,8 @@ def _candidate(row: dict[str, Any], group: str) -> dict[str, Any]:
         "Find players a team admin could add for an event, by name or by full email "
         "address (one lookup each, at most 20). Says whether adding someone also emails them "
         "a series invitation, and why they could not be added. With no text or emails, lists "
-        "the series roster and past teammates."
+        "the series roster and past teammates. Results for emails give email_position (from 1) "
+        "rather than the address."
     ),
     input_schema={
         "type": "object",
@@ -351,7 +352,7 @@ def find_team_candidates(ctx: ToolContext, args: dict[str, Any]) -> ToolResult:
         return fail(f"emails: give at most {MAX_PLAYERS}")
     queries = emails or [args.get("text", "")]
     results = []
-    for query in queries:
+    for position, query in enumerate(queries, 1):
         response = call_api(
             ctx,
             "GET",
@@ -361,7 +362,9 @@ def find_team_candidates(ctx: ToolContext, args: dict[str, Any]) -> ToolResult:
         if not response.ok:
             return denied(response)
         found = [_candidate(p, g["key"]) for g in response.data["groups"] for p in g["players"]]
-        results.append({"query": query, "found": bool(found), "candidates": found})
+        # An email is named by its position in emails: the address never goes back.
+        asked = {"email_position": position} if emails else {"query": query}
+        results.append({**asked, "found": bool(found), "candidates": found})
     return ok(cap({"results": results}, list_key="results", hint="Search fewer emails at a time"))
 
 

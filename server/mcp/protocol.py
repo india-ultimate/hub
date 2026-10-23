@@ -9,6 +9,7 @@ from django.utils.timezone import now
 
 import server.mcp.tools  # noqa: F401
 from server.mcp.auth import TokenInfo, insufficient_scope
+from server.mcp.private import scrub
 from server.mcp.registry import (
     TOOLS,
     ToolContext,
@@ -58,6 +59,7 @@ Rules that always apply:
 - Files (certificates, IDs, logos) go through create_upload_link: give the person the link and a curl command to upload with. Never ask them to paste file contents.
 - Tournament directors change things in two steps: propose_tournament_change, then confirm_tournament_proposal once the person agrees.
 - Sending email is limited per hour. Do not retry a failed send in a loop.
+- Hub never shares anyone's email, phone number or date of birth, not even the person's own. Refer to people by name and id; where text shows [email hidden] or [phone hidden], that's on purpose.
 - A "Not allowed" message is Hub's decision. Explain it and point to the Hub page instead of looking for a workaround.
 
 Some things are only on Hub itself: refunds, account merges, announcement emails, price and season changes, permissions, elections and the in-app chat. Say so and link to Hub.
@@ -154,10 +156,11 @@ def _check_modern(
 
 def _output(result: ToolResult, modern: bool) -> dict[str, Any]:
     if result.input_required is not None:
-        return {"resultType": "input_required", **result.input_required}
+        return {"resultType": "input_required", **scrub(result.input_required)}
+    data = scrub(result.data)
     out: dict[str, Any] = {
-        "content": [{"type": "text", "text": json.dumps(result.data)}],
-        "structuredContent": result.data,
+        "content": [{"type": "text", "text": json.dumps(data)}],
+        "structuredContent": data,
         "isError": result.is_error,
     }
     if modern:

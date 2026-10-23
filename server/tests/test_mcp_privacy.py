@@ -1,7 +1,8 @@
-"""No read tool shows a stranger's email, phone or date of birth.
+"""No read tool shows anyone's email, phone or date of birth: not a stranger's, and not
+the caller's own.
 
 A stranger is on a roster, a series roster, a match and a public ticket, so they turn up
-in lists. Every read tool a plain player or a team admin can call is searched, whole.
+in lists. Every read tool a plain player, a team admin or staff can call is searched, whole.
 """
 
 import datetime
@@ -44,9 +45,11 @@ class TestStrangersStayPrivate(TournamentToolsTestCase):
         self.secrets += forms_of(email, phone, born)
         return Player.objects.create(user=user, date_of_birth=born, city="Pune")
 
-    def viewer(self, tag: str, team: Any = None) -> str:
-        user = User.objects.create(username=f"{tag}@x.com", email=f"{tag}@x.com")
-        Player.objects.create(user=user, date_of_birth=datetime.date(1995, 5, 5), city="Pune")
+    def viewer(self, tag: str, team: Any = None, staff: bool = False) -> str:
+        email, phone, born = f"{tag}@x.com", f"98{len(self.secrets):08d}", datetime.date(1995, 5, 5)
+        user = User.objects.create(username=email, email=email, phone=phone, is_staff=staff)
+        Player.objects.create(user=user, date_of_birth=born, city="Pune")
+        self.secrets += forms_of(email, phone, born)
         if team:
             team.admins.add(user)
         make_token(user, tag, scope="hub:read")
@@ -75,6 +78,7 @@ class TestStrangersStayPrivate(TournamentToolsTestCase):
             "other_admin": self.viewer("other", self.teams[2]),
             "own_admin": self.viewer("own", self.home),
             "second_admin": self.viewer("second", self.teams[3]),
+            "staff": self.viewer("staff", staff=True),
         }
 
     def calls(self) -> list[tuple[str, dict[str, Any]]]:
@@ -113,9 +117,16 @@ class TestStrangersStayPrivate(TournamentToolsTestCase):
             ("find_team_candidates", {"event_slug": SLUG, "team_slug": team, "text": "Hidden"}),
             ("find_team_candidates", {"event_slug": SLUG, "team_slug": team, "text": "amit"}),
             ("find_team_candidates", {"event_slug": SLUG, "team_slug": self.teams[3].slug}),
+            ("find_member", {"query": "Hidden"}),
+            ("find_member", {"query": "amit.hidden@example.org"}),
+            ("get_member_status", {"player_id": self.one.pk}),
+            ("lookup_payment", {"email": "amit.hidden@example.org"}),
+            ("get_staff_inbox", {}),
+            ("list_service_requests", {"status": "all"}),
+            ("get_membership_report", {"kind": "active"}),
         ]
 
-    def test_no_read_tool_shows_a_strangers_contact_details_or_birthday(self) -> None:
+    def test_no_read_tool_shows_contact_details_or_birthdays(self) -> None:
         seen = False
         for who, bearer in self.viewers.items():
             roles = roles_of(User.objects.get(username=f"{bearer}@x.com"))

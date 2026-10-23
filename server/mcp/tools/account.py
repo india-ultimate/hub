@@ -30,7 +30,6 @@ def whoami(ctx: ToolContext, args: dict[str, Any]) -> ToolResult:
         {
             "user_id": me["id"],
             "full_name": me["full_name"],
-            "email": me["email"],
             "is_staff": me["is_staff"],
             "player_id": player["id"] if player else None,
             "wards": [{"player_id": w["id"], "full_name": w["full_name"]} for w in me["wards"]],

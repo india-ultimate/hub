@@ -8,7 +8,6 @@ from django.utils.timezone import now
 
 from server.core.models import Player
 from server.duplicates import review
-from server.duplicates.identity import mask_email
 from server.duplicates.merge import check_blockers
 from server.duplicates.models import ClusterMember, DuplicateCluster
 from server.mcp.confirm import confirm_then
@@ -146,7 +145,8 @@ def _tier(sub: Subscription | None) -> str | None:
     description=(
         "Members for a season (default: this one), up to 200 rows of player_id, full_name and "
         "tier. kind is active, not_renewed (members last season who have none this season), "
-        "sponsored, or check_emails (pass emails to see which are active members)."
+        "sponsored, or check_emails (pass emails to see which are active members; not_active "
+        "lists the positions, from 1, of the emails that are not)."
     ),
     input_schema={
         "type": "object",
@@ -181,7 +181,8 @@ def get_membership_report(ctx: ToolContext, args: dict[str, Any]) -> ToolResult:
         for grant in SponsorshipGrant.objects.filter(season=season):
             subs.setdefault(grant.player_id, None)
     elif kind == "check_emails":
-        emails = [e.strip().lower() for e in args.get("emails", []) if e.strip()]
+        given = [e.strip().lower() for e in args.get("emails", [])]
+        emails = [e for e in given if e]
         if not emails:
             return fail("Pass emails to check")
         found = {
@@ -191,7 +192,8 @@ def get_membership_report(ctx: ToolContext, args: dict[str, Any]) -> ToolResult:
             .filter(address__in=emails)
         }
         subs = {s.player_id: s for s in found.values()}
-        extra = {"not_active_emails": sorted(set(emails) - set(found))}
+        # By position in the list passed in: the addresses themselves never go back.
+        extra = {"not_active": [n for n, e in enumerate(given, 1) if e and e not in found]}
     else:
         last = previous_season(season)
         kept = set(here.values_list("player_id", flat=True))
@@ -234,7 +236,6 @@ def _account_row(row: dict[str, Any]) -> dict[str, Any]:
         "type": row["type"],
         "for": row["for"],
         "payer_name": row["payer"]["name"],
-        "payer_email": mask_email(row["payer"]["email"]),
         "players": row["players"],
         **money(row["amount"]),
         "refunded": money(row["refunded"]),

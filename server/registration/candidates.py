@@ -42,7 +42,7 @@ History = dict[int, tuple[Any, str, set[str]]]
 
 
 def _name(player: Player) -> str:
-    return player.user.get_full_name() or player.user.email.split("@")[0]
+    return player.user.get_full_name() or f"player {player.pk}"
 
 
 def _history(event: Event, team: Team) -> History:
