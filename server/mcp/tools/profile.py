@@ -9,6 +9,7 @@ from server.core.models import Guardianship, Player, StatesUTs
 from server.mcp.confirm import confirm_then
 from server.mcp.dispatch import ApiResponse, call_api, denied, refuse
 from server.mcp.pay import pay_link, unpaid_membership
+from server.mcp.private import is_private
 from server.mcp.registry import ToolContext, ToolResult, fail, ok, tool
 from server.mcp.shape import full_name
 
@@ -214,12 +215,11 @@ def create_profile(ctx: ToolContext, args: dict[str, Any]) -> ToolResult:
     if mode != "me":
         body.setdefault("occupation", "Student")
     name = f"{args['first_name']} {args['last_name']}"
-    born = f"{name}, born {args['date_of_birth']}, {args['city']}"
+    born = f"{name}, {args['city']}"
     if mode == "me":
-        message = f"Create your Hub player profile: {born}, on your account {ctx.user.email}."
+        message = f"Create your Hub player profile: {born}, on the account you're signed in with."
     elif mode == "ward":
-        email = args.get("email")
-        account = f"using {email}" if email else "with no email address"
+        account = "using the email address given" if args.get("email") else "with no email address"
         message = (
             f"Create a player profile for {born}, a minor, with you as their "
             f"{RELATIONS[args['relation']]} and guardian. Hub creates an account for "
@@ -229,8 +229,8 @@ def create_profile(ctx: ToolContext, args: dict[str, Any]) -> ToolResult:
         guardian = f"{args['guardian_first_name']} {args['guardian_last_name']}"
         message = (
             f"Create your player profile: {born}. Hub creates an account for your "
-            f"{RELATIONS[args['relation']]} {guardian} ({args['guardian_email']}) as your guardian; "
-            "they can log in with that email to sign documents for you."
+            f"{RELATIONS[args['relation']]} {guardian} as your guardian, with the email address given; "
+            "they can log in with it to sign documents for you."
         )
 
     def action() -> ToolResult:
@@ -250,8 +250,10 @@ def create_profile(ctx: ToolContext, args: dict[str, Any]) -> ToolResult:
     return confirm_then(ctx, message=message, binding=args, action=action)
 
 
-def _describe(old: Any, new: Any) -> str:
-    return f"{old if old not in (None, '') else '(empty)'} -> {new}"
+def _describe(field: str, old: Any, new: Any) -> str:
+    if is_private(field):
+        return f"{field}: changed"
+    return f"{field}: {old if old not in (None, '') else '(empty)'} -> {new}"
 
 
 @tool(
@@ -295,7 +297,7 @@ def update_profile(ctx: ToolContext, args: dict[str, Any]) -> ToolResult:
     data = current.data
 
     fields = {k: v for k, v in changes.items() if k != "commentary_info"}
-    lines = [f"{k}: {_describe(data.get(k), v)}" for k, v in fields.items() if data.get(k) != v]
+    lines = [_describe(k, data.get(k), v) for k, v in fields.items() if data.get(k) != v]
     commentary: dict[str, Any] | None = None
     if "commentary_info" in changes:
         existing = {k: (data.get("commentary_info") or {}).get(k) for k in COMMENTARY_FIELDS}

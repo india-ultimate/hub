@@ -7,7 +7,6 @@ from django.urls import reverse
 from django.utils.text import slugify
 
 from server.core.models import Player
-from server.duplicates.identity import mask_email
 from server.mcp.registry import Audience, ToolContext, ToolResult, fail, ok, tool
 from server.mcp.shape import SLUG_SCHEMA, full_name, money
 from server.season.models import Season
@@ -22,7 +21,6 @@ from server.transaction.models import (
 )
 from server.utils import today
 
-MIN_REASON = 5
 FIND_LIMIT = 10
 PAYMENT_LIMIT = 10
 
@@ -45,36 +43,24 @@ def previous_season(season: Season) -> Season | None:
     return Season.objects.filter(end_date__lt=season.start_date).order_by("-end_date").first()
 
 
-def _mask_phone(phone: str) -> str:
-    return "*" * max(len(phone) - 4, 0) + phone[-4:]
-
-
 @tool(
     "find_member",
     title="Find a member",
     audience=Audience.STAFF,
     description=(
-        "Search players by name, email, phone or IU id (up to 10). Email and phone are masked. "
-        "Set reveal to true with a reason of at least 5 characters to see them in full; the "
-        "reason and the people revealed are written to the audit log. "
-        "Don't put contact details in the reason; it is logged."
+        "Search players by name, email, phone or IU id (up to 10). Gives names and ids only: "
+        "Hub never shares anyone's contact details with an AI agent."
     ),
     input_schema={
         "type": "object",
         "properties": {
             "query": {"type": "string", "minLength": 2, "maxLength": 100},
-            "reveal": {"type": "boolean"},
-            "reason": {"type": "string", "maxLength": 300},
         },
         "required": ["query"],
         "additionalProperties": False,
     },
 )
 def find_member(ctx: ToolContext, args: dict[str, Any]) -> ToolResult:
-    reveal = bool(args.get("reveal"))
-    reason = str(args.get("reason", "")).strip()
-    if reveal and len(reason) < MIN_REASON:
-        return fail("Say why you need the contact details: reason must be at least 5 characters.")
     text = args["query"]
     players = list(
         Player.objects.select_related("user")
@@ -87,8 +73,6 @@ def find_member(ctx: ToolContext, args: dict[str, Any]) -> ToolResult:
         )
         .order_by("user__first_name", "user__last_name", "pk")[:FIND_LIMIT]
     )
-    if reveal:
-        ctx.audit["reveal"] = {"reason": reason, "player_ids": [p.pk for p in players]}
     return ok(
         {
             "members": [
@@ -98,9 +82,6 @@ def find_member(ctx: ToolContext, args: dict[str, Any]) -> ToolResult:
                     "full_name": full_name(p.user),
                     "iu_id": p.iu_id,
                     "city": p.city,
-                    "email": p.user.email if reveal else mask_email(p.user.email),
-                    "phone": p.user.phone if reveal else _mask_phone(p.user.phone),
-                    "revealed": reveal,
                 }
                 for p in players
             ],

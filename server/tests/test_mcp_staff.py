@@ -145,36 +145,13 @@ class TestFindMember(StaffTestCase):
                 members = self.data("find_member", {"query": query})["members"]
                 self.assertEqual([self.mira.pk], [m["player_id"] for m in members])
 
-    def test_contact_details_are_masked(self) -> None:
-        (member,) = self.data("find_member", {"query": "Mira"})["members"]
+    def test_gives_names_and_ids_but_no_contact_details(self) -> None:
+        result = self.call("find_member", {"query": "mira@example.com"})
 
-        self.assertNotIn("mira@", member["email"])
-        self.assertTrue(member["email"].endswith("@example.com"))
-        self.assertEqual("********5678", member["phone"][-12:].rjust(12))
-        self.assertNotIn("+9198123", member["phone"])
-        self.assertFalse(member["revealed"])
-
-    def test_reveal_needs_a_reason(self) -> None:
-        result = self.call("find_member", {"query": "Mira", "reveal": True, "reason": "abc"})
-
-        self.assertTrue(result["isError"])
-
-    def test_reveal_shows_details_and_audits_who_and_why(self) -> None:
-        with self.assertLogs("server.mcp", "INFO") as logs:
-            (member,) = self.data(
-                "find_member", {"query": "Mira", "reveal": True, "reason": "refund dispute"}
-            )["members"]
-
-        self.assertEqual("mira@example.com", member["email"])
-        self.assertEqual("+919812345678", member["phone"])
-        line = json.loads(logs.records[0].getMessage())
-        self.assertEqual({"reason": "refund dispute", "player_ids": [self.mira.pk]}, line["reveal"])
-
-    def test_a_plain_search_leaves_no_reveal_in_the_audit(self) -> None:
-        with self.assertLogs("server.mcp", "INFO") as logs:
-            self.data("find_member", {"query": "Mira"})
-
-        self.assertNotIn("reveal", json.loads(logs.records[0].getMessage()))
+        (member,) = result["structuredContent"]["members"]
+        self.assertEqual({"player_id", "user_id", "full_name", "iu_id", "city"}, set(member))
+        self.assertNotIn("mira@", json.dumps(result))
+        self.assertNotIn("5678", json.dumps(result))
 
     def test_at_most_ten(self) -> None:
         for n in range(12):
@@ -483,10 +460,11 @@ class TestMembershipReport(StaffTestCase):
         self.assertEqual({self.kept.pk, granted.pk}, {r["player_id"] for r in got["rows"]})
 
     def test_check_emails(self) -> None:
-        got = self.report("check_emails", emails=["KEPT@example.com", "ghost@example.com"])
+        got = self.report("check_emails", emails=["KEPT@example.com", " ", "ghost@example.com"])
 
         self.assertEqual([self.kept.pk], [r["player_id"] for r in got["rows"]])
-        self.assertEqual(["ghost@example.com"], got["not_active_emails"])
+        self.assertEqual([3], got["not_active"])
+        self.assertNotIn("ghost@", json.dumps(got))
         self.assertTrue(self.call("get_membership_report", {"kind": "check_emails"})["isError"])
 
     def test_another_season_and_a_bad_one(self) -> None:

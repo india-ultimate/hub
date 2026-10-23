@@ -14,10 +14,10 @@ from django.shortcuts import redirect
 from django.utils.timezone import now
 
 from server.core.models import User
-from server.duplicates.identity import mask_email
 from server.mcp.auth import TokenInfo
 from server.mcp.dispatch import call_api
 from server.mcp.models import McpNonce
+from server.mcp.private import scrub
 from server.mcp.registry import ToolContext
 from server.utils import IMAGE_TYPES, MAX_UPLOAD_BYTES, PDF_TYPE
 
@@ -81,7 +81,7 @@ def mint(user_pk: int, kind: str, ids: dict[str, int], part: dict[str, Any] | No
 
 
 def _error(status: int, message: str) -> JsonResponse:
-    return JsonResponse({"ok": False, "message": message}, status=status)
+    return JsonResponse({"ok": False, "message": scrub(message)}, status=status)
 
 
 def upload(request: HttpRequest, token: str) -> HttpResponse:
@@ -116,7 +116,7 @@ def _describe(
             "ok": True,
             "what": _name(payload["k"]),
             "mine": mine,
-            "sign_in_as": None if mine else mask_email(owner.email),
+            "sign_in_as": None if mine else owner.get_full_name() or "another Hub account",
             "max_bytes": MAX_UPLOAD_BYTES,
             "fields": [
                 {

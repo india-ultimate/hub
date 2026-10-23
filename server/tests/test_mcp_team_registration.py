@@ -168,7 +168,8 @@ class TestFindTeamCandidates(Case):
         self.assertEqual(other.id, found["candidates"][0]["player_id"])
         self.assertTrue(found["candidates"][0]["would_email_invite"])
         self.assertFalse(missing["found"])
-        self.assertNotIn("new@x.com", json.dumps(found["candidates"]))
+        self.assertEqual([1, 2], [found["email_position"], missing["email_position"]])
+        self.assertNotIn("@x.com", json.dumps(data))
 
     def test_too_many_emails_are_refused(self) -> None:
         result = self.call("find_team_candidates", {**self.args, "emails": ["a@x.com"] * 21})

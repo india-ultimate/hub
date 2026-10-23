@@ -412,8 +412,11 @@ class TestUploadPage(UploadTestCase):
                 response = self.describe(token)
 
                 self.assertFalse(response.json()["mine"])
-                self.assertContains(response, "usxxxxme@foo.com")
-                self.assertNotContains(response, "username@foo.com")
+                self.assertEqual(
+                    self.user.get_full_name() or "another Hub account",
+                    response.json()["sign_in_as"],
+                )
+                self.assertNotContains(response, "@foo.com")
 
     def test_a_bad_link_is_404_an_expired_or_used_one_410(self) -> None:
         self.assertEqual(404, self.describe("nonsense").status_code)
