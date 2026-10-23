@@ -54,11 +54,26 @@ def unsupported(metadata: dict[str, Any]) -> bool:
     )
 
 
+def as_public_client(metadata: dict[str, Any]) -> dict[str, Any]:
+    """An agent's metadata document as the public, authorization-code client Hub has it
+    sign in as. Agents list more than they use here: Claude names a jwt-bearer grant too,
+    and ChatGPT says it signs with private_key_jwt but supports none, which is all Hub
+    offers. Grants Hub doesn't offer are left out, so nothing can use them."""
+    grants = metadata.get("grant_types", ["authorization_code"])
+    if isinstance(grants, list) and "authorization_code" in grants:
+        metadata = {**metadata, "grant_types": [g for g in grants if g in GRANT_TYPES]}
+    methods = metadata.get("token_endpoint_auth_methods_supported")
+    if isinstance(methods, list) and "none" in methods:
+        metadata = {**metadata, "token_endpoint_auth_method": "none"}
+    return metadata
+
+
 class PolicyMetadataFetcher(SafeMetadataFetcher):
     def fetch(self, client_id: str) -> Any:
         metadata, max_age = super().fetch(client_id)
         if disallowed(metadata.get("redirect_uris")):
             raise CIMDError("redirect_uris must be a known AI agent callback or loopback")
+        metadata = as_public_client(metadata)
         if unsupported(metadata):
             raise CIMDError("Only the authorization_code and refresh_token grants are supported")
         return metadata, max_age
