@@ -221,7 +221,6 @@ from server.utils import (
     IMAGE_TYPES,
     PDF_TYPE,
     if_dates_are_not_in_order,
-    if_today,
     is_today_in_between_dates,
     slugify_max,
     today,
@@ -1963,7 +1962,6 @@ def create_tournament(
     if not request.user.is_staff:
         return 401, {"message": "Only Admins can create tournament"}
 
-    datetime.timezone(datetime.timedelta(hours=5, minutes=30), name="IND")
     if if_dates_are_not_in_order(tournament_details.start_date, tournament_details.end_date):
         return 400, {"message": "Start date can't be after end date"}
 
@@ -2075,7 +2073,7 @@ def create_tournament(
 
     tournament.rules = get_default_rules()
 
-    if if_today(tournament_details.team_registration_start_date):
+    if datetime.date.fromisoformat(tournament_details.team_registration_start_date) <= today():
         tournament.status = Tournament.Status.SCHEDULING
 
     tournament.save()
