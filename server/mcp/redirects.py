@@ -4,13 +4,14 @@ from urllib.parse import urlsplit
 
 from django.core.cache import cache
 from django.http import HttpRequest, HttpResponse, JsonResponse
+from oauth2_provider import cimd
 from oauth2_provider.cimd import CIMDError, SafeMetadataFetcher
 from oauth2_provider.views import (
     DynamicClientRegistrationManagementView,
     DynamicClientRegistrationView,
 )
 
-from server.cache.store import safe
+from server.cache.store import FailOpenCache, safe
 from server.core.otp import client_ip
 
 # Hosted agents' own callbacks. Agents that run on the person's computer use loopback.
@@ -66,6 +67,12 @@ def as_public_client(metadata: dict[str, Any]) -> dict[str, Any]:
     if isinstance(methods, list) and "none" in methods:
         metadata = {**metadata, "token_endpoint_auth_method": "none"}
     return metadata
+
+
+def fail_open() -> None:
+    # The library only notes which documents failed lately: a slow or restarting
+    # Redis should mean fetching again, not a failed sign-in.
+    cimd.cache = FailOpenCache()
 
 
 class PolicyMetadataFetcher(SafeMetadataFetcher):

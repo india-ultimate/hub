@@ -11,6 +11,7 @@ from django.utils.timezone import now
 from oauth2_provider.cimd import CIMDError, SafeMetadataFetcher
 from oauth2_provider.models import AccessToken, Application
 from oauth2_provider.settings import oauth2_settings
+from redis.exceptions import TimeoutError as RedisTimeoutError
 
 from server.cache import store
 from server.core.models import User
@@ -294,6 +295,20 @@ class TestConsent(McpAuthTestCase):
                     Application.GRANT_AUTHORIZATION_CODE, application.authorization_grant_type
                 )
                 self.assertIsNotNone(self.authenticate(bearer))
+
+    def test_an_agent_signs_in_while_redis_times_out(self) -> None:
+        self.client.force_login(self.user)
+        client_id, callback = CLAUDE_DOCUMENT["client_id"], CLAUDE_DOCUMENT["redirect_uris"][0]
+        self.addCleanup(store.reset)
+
+        with (
+            mock.patch.object(SafeMetadataFetcher, "fetch", return_value=(CLAUDE_DOCUMENT, 300)),
+            mock.patch.object(cache, "get", side_effect=RedisTimeoutError("timed out")),
+            mock.patch.object(cache, "set", side_effect=RedisTimeoutError("timed out")),
+        ):
+            page = self.client.get(self.authorize_url(callback, client_id))
+
+        self.assertContains(page, "Connect Claude")
 
     def test_a_document_that_only_signs_with_a_key_is_refused(self) -> None:
         self.client.force_login(self.user)
