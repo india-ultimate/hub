@@ -5,7 +5,6 @@ from server.mcp.tools import (  # noqa: F401
     director,
     documents,
     forms,
-    handlers,
     help,
     invitations,
     membership,

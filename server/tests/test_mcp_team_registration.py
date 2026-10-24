@@ -3,6 +3,7 @@ import json
 from typing import Any
 from unittest import mock
 
+from django.conf import settings
 from django.core import mail
 from django.test import SimpleTestCase, override_settings
 from razorpay.resources.order import Order
@@ -256,7 +257,8 @@ class TestRemoveFromRoster(Case):
         self.assertFalse(data["done"])
         self.assertEqual(1, data["failed"])
         self.assertEqual(
-            "Already paid, or being paid: ask Hub to change it (create_ticket).",
+            f"Already paid, or being paid: ask Hub in a help ticket ({settings.PUBLIC_URL}"
+            "/tickets/new).",
             data["players"][0]["message"],
         )
         self.assertTrue(data["players"][1]["done"])

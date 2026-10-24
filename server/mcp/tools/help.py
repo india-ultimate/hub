@@ -1,12 +1,11 @@
-import json
 from typing import Any
 
+from django.conf import settings
 from django.db.models import OuterRef, Subquery
 
 from server.committee.models import Role, TicketRoute
 from server.core.models import User
-from server.mcp.confirm import confirm_then
-from server.mcp.dispatch import ApiResponse, call_api, denied
+from server.mcp.dispatch import call_api, denied
 from server.mcp.registry import (
     CHECKS,
     Audience,
@@ -16,10 +15,10 @@ from server.mcp.registry import (
     ok,
     tool,
 )
-from server.mcp.shape import cap, clip, full_name
+from server.mcp.shape import cap, full_name
 from server.ticket.access import routed_to
-from server.ticket.api import PAGE_SIZE, TITLE_MAX_LENGTH, visible_tickets
-from server.ticket.models import Ticket, TicketCategory, TicketMessage
+from server.ticket.api import PAGE_SIZE, visible_tickets
+from server.ticket.models import Ticket, TicketMessage
 
 STATUSES = ["OPN", "PRG", "RES"]
 SORTS = ["relevance", "newest", "upvotes"]
@@ -31,6 +30,7 @@ NO_TICKET = "Ticket not found, or you can't see it."
 def _summary(ticket: dict[str, Any]) -> dict[str, Any]:
     return {
         "ticket_id": ticket["id"],
+        "url": f"{settings.PUBLIC_URL}/tickets/{ticket['id']}",
         "title": ticket["title"],
         "status": ticket["status"],
         "priority": ticket["priority"],
@@ -107,6 +107,7 @@ def _waiting_on_us(ctx: ToolContext, category: str | None) -> ToolResult:
     waiting = [
         {
             "ticket_id": t.pk,
+            "url": f"{settings.PUBLIC_URL}/tickets/{t.pk}",
             "title": t.title,
             "status": t.status,
             "priority": t.priority,
@@ -126,11 +127,14 @@ def _waiting_on_us(ctx: ToolContext, category: str | None) -> ToolResult:
     title="List help tickets",
     description=(
         "Hub help tickets you may see (public ones, your own, and those routed to your "
-        "committees), 20 a page, newest first. Filter by q (words), status (OPN open, PRG in "
-        "progress, RES resolved), category key, mine (raised by you), assigned (assigned to "
-        "you) and sort. Handlers (staff and committee "
-        "members) can set waiting_on_us=true for open tickets in their queue whose latest "
-        "message is not from a handler; that looks at the newest 100 open tickets."
+        "committees), 20 a page, newest first, each with its Hub url. Filter by q (words), "
+        "status (OPN open, PRG in progress, RES resolved), category key, mine (raised by you), "
+        "assigned (assigned to you) and sort. Handlers (staff and committee members) can set "
+        "waiting_on_us=true for open tickets in their queue whose latest message is not from a "
+        "handler; that looks at the newest 100 open tickets. Tickets are read-only here: to "
+        "reply, triage or upvote, send the user to the ticket's Hub page (url); to raise one, "
+        "send them to "
+        f"{settings.PUBLIC_URL}/tickets/new."
     ),
     input_schema={
         "type": "object",
@@ -170,8 +174,8 @@ def list_tickets(ctx: ToolContext, args: dict[str, Any]) -> ToolResult:
     title="Read a help ticket",
     description=(
         "A help ticket by ticket_id: its description and the conversation, each message with "
-        "message_id, from, at, text and has_attachment. Attachments are not included; send the "
-        "user to the Hub page to open them."
+        "message_id, from, at, text and has_attachment. Read-only: to open attachments, reply, "
+        "triage or upvote, send the user to its Hub page (url)."
     ),
     input_schema={
         "type": "object",
@@ -198,147 +202,3 @@ def get_ticket(ctx: ToolContext, args: dict[str, Any]) -> ToolResult:
     kept = capped["messages"]
     capped["messages"] = kept[:1] + kept[:0:-1]
     return ok(capped)
-
-
-def _category_hint(response: ApiResponse) -> ToolResult:
-    result = denied(response)
-    if "category" in response.message.lower():
-        keys = TicketCategory.objects.filter(is_retired=False).values_list("key", flat=True)
-        result.data["valid_categories"] = list(keys)
-    return result
-
-
-@tool(
-    "create_ticket",
-    title="Raise a help ticket",
-    description=(
-        "Open a Hub help ticket as the user, from what they asked for. Needs title (200 "
-        "characters at most) and description. category is a category key (an unknown one "
-        "lists the valid keys); priority is LOW, MED (default), HIG or URG; is_private "
-        "shows it only to them and the people who handle it. Hub emails the committee "
-        "chairs who handle the category, so the user is asked to confirm first."
-    ),
-    input_schema={
-        "type": "object",
-        "properties": {
-            "title": {"type": "string", "minLength": 1, "maxLength": TITLE_MAX_LENGTH},
-            "description": {"type": "string", "minLength": 1, "maxLength": 10000},
-            "category": {"type": "string", "maxLength": 100},
-            "priority": {"type": "string", "enum": list(Ticket.Priority.values)},
-            "is_private": {"type": "boolean"},
-        },
-        "required": ["title", "description"],
-        "additionalProperties": False,
-    },
-    writes=True,
-    emails=True,
-)
-def create_ticket(ctx: ToolContext, args: dict[str, Any]) -> ToolResult:
-    def create() -> ToolResult:
-        response = call_api(ctx, "POST", "/api/ticket/", body=args)
-        if not response.ok:
-            return _category_hint(response)
-        return ok({"done": True, **_thread(response.data)})
-
-    shown = clip(args["description"], 300)
-    privacy = "private" if args.get("is_private") else "public"
-    return confirm_then(
-        ctx,
-        message=(
-            f'Open a help ticket "{args["title"]}" (category: {args.get("category", "none")}, '
-            f"{privacy})? Hub emails the committee chairs who handle it.\n\n{shown}"
-        ),
-        binding=args,
-        action=create,
-    )
-
-
-@tool(
-    "reply_to_ticket",
-    title="Reply to a help ticket",
-    description=(
-        "Add a message to a ticket by ticket_id. Hub emails the ticket's creator, its "
-        "assignees and people who replied before, so the user is asked to confirm first. "
-        "To attach a file, get a link from create_upload_link with kind=ticket_attachment."
-    ),
-    input_schema={
-        "type": "object",
-        "properties": {
-            "ticket_id": ID,
-            "message": {"type": "string", "minLength": 1, "maxLength": 10000},
-        },
-        "required": ["ticket_id", "message"],
-        "additionalProperties": False,
-    },
-    writes=True,
-    emails=True,
-)
-def reply_to_ticket(ctx: ToolContext, args: dict[str, Any]) -> ToolResult:
-    found = call_api(ctx, "GET", f"/api/ticket/{args['ticket_id']}")
-    if not found.ok:
-        return denied(found, NO_TICKET)
-    ticket = found.data
-    me = ctx.user
-    people = {full_name(ticket["created_by"]), *(full_name(a) for a in ticket["assignees"])}
-    people |= {full_name(m["sender"]) for m in ticket["messages"]}
-    people.discard(full_name(me))
-    who = ", ".join(sorted(people)) or "no one else yet"
-    private = (
-        " It is private, so only people who can open it are emailed."
-        if ticket["is_private"]
-        else ""
-    )
-
-    def post() -> ToolResult:
-        details = json.dumps({"message": args["message"]})
-        response = call_api(
-            ctx,
-            "POST",
-            f"/api/ticket/{args['ticket_id']}/message",
-            body={"message_details": details},
-            files={},
-        )
-        if not response.ok:
-            return denied(response, NO_TICKET)
-        return ok({"done": True, **_thread(response.data)})
-
-    return confirm_then(
-        ctx,
-        message=(
-            f'Post this reply on ticket #{ticket["id"]} "{ticket["title"]}"? '
-            f"Hub emails the people on it ({who}).{private}\n\n{args['message']}"
-        ),
-        binding=args,
-        action=post,
-    )
-
-
-@tool(
-    "upvote_ticket",
-    title="Upvote a help ticket",
-    description=(
-        "Say a public ticket matters to you too, by ticket_id; undo=true takes the upvote back. "
-        "You cannot upvote your own or a private ticket."
-    ),
-    input_schema={
-        "type": "object",
-        "properties": {"ticket_id": ID, "undo": {"type": "boolean"}},
-        "required": ["ticket_id"],
-        "additionalProperties": False,
-    },
-    writes=True,
-)
-def upvote_ticket(ctx: ToolContext, args: dict[str, Any]) -> ToolResult:
-    method = "DELETE" if args.get("undo") else "POST"
-    response = call_api(ctx, method, f"/api/ticket/{args['ticket_id']}/upvote")
-    if not response.ok:
-        return denied(response, NO_TICKET)
-    ticket = response.data
-    return ok(
-        {
-            "done": True,
-            "ticket_id": ticket["id"],
-            "upvote_count": ticket["upvote_count"],
-            "has_upvoted": ticket["has_upvoted"],
-        }
-    )

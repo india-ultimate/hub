@@ -1,16 +1,15 @@
 import datetime
+import inspect
+import sys
 from typing import Any
-from unittest import mock
 
-from django.core import mail
-from django.core.cache import cache
+from django.conf import settings
 from django.db import connection
-from django.test import override_settings
 from django.test.utils import CaptureQueriesContext
-from django.utils.timezone import now
 
 from server.committee.models import Committee, Role, TicketRoute
 from server.core.models import User
+from server.mcp.registry import TOOLS
 from server.tests.test_mcp_auth import make_token
 from server.tests.test_mcp_invitations import McpToolCase
 from server.ticket.models import Ticket, TicketCategory, TicketMessage
@@ -177,151 +176,23 @@ class TestGetTicket(HelpCase):
         self.assertTrue(self.failure("get_ticket", {"ticket_id": 99999}))
 
 
-class TestCreateTicket(HelpCase):
-    def create(self, args: dict[str, Any]) -> dict[str, Any]:
-        result = self.confirmed("create_ticket", args)
-        self.assertFalse(result["isError"], result)
-        return dict(result["structuredContent"])
+class TestAgentsOnlyRead(HelpCase):
+    def test_raising_replying_triaging_and_upvoting_are_left_to_hub(self) -> None:
+        gone = {"create_ticket", "reply_to_ticket", "update_ticket", "upvote_ticket"}
+        self.assertEqual(set(), gone & TOOLS.keys())
+        self.assertFalse(TOOLS["list_tickets"].writes or TOOLS["get_ticket"].writes)
+        for tool in TOOLS.values():
+            if tool.writes:
+                module = sys.modules[tool.handler.__module__]
+                self.assertNotIn("/api/ticket", inspect.getsource(module), tool.name)
+        kinds = TOOLS["create_upload_link"].input_schema["properties"]["kind"]["enum"]
+        self.assertNotIn("ticket_attachment", kinds)
 
-    def test_asks_first_and_shows_what_will_be_sent(self) -> None:
-        args = {
-            "title": "Cannot pay",
-            "description": "Card fails " + "x" * 400,
-            "category": "payments",
-            "is_private": True,
-        }
+    def test_each_ticket_links_to_its_hub_page(self) -> None:
+        ticket = self.ticket(category=self.category)
+        url = f"{settings.PUBLIC_URL}/tickets/{ticket.pk}"
 
-        asked = self.ask("create_ticket", args)
-
-        text = asked["needs_confirmation"]
-        for words in ("Cannot pay", "payments", "private", "Card fails", "emails"):
-            self.assertIn(words, text)
-        self.assertLess(len(text), 600)
-        self.assertEqual(0, Ticket.objects.count())
-
-    def test_creates_after_the_yes(self) -> None:
-        data = self.create(
-            {"title": "Cannot pay", "description": "Card fails", "category": "payments"}
-        )
-
-        ticket = Ticket.objects.get(pk=data["ticket_id"])
-        self.assertEqual(self.user, ticket.created_by)
-        self.assertEqual("MED", ticket.priority)
-        self.assertFalse(ticket.is_private)
-        self.assertEqual("payments", ticket.category_id)
-
-    def test_private_and_priority(self) -> None:
-        data = self.create(
-            {"title": "ID", "description": "d", "priority": "URG", "is_private": True},
-        )
-
-        ticket = Ticket.objects.get(pk=data["ticket_id"])
-        self.assertTrue(ticket.is_private)
-        self.assertEqual("URG", ticket.priority)
-
-    def test_a_long_title_is_refused(self) -> None:
-        self.assertTrue(self.failure("create_ticket", {"title": "x" * 201, "description": "d"}))
-        self.assertEqual(0, Ticket.objects.count())
-
-    def test_an_unknown_priority_is_refused(self) -> None:
-        self.assertTrue(
-            self.failure("create_ticket", {"title": "t", "description": "d", "priority": "SOON"})
-        )
-
-    def test_an_unknown_category_lists_the_real_ones(self) -> None:
-        result = self.confirmed(
-            "create_ticket", {"title": "t", "description": "d", "category": "zzz"}
-        )
-
-        self.assertTrue(result["isError"])
-        self.assertIn("payments", result["structuredContent"]["valid_categories"])
-        self.assertEqual(0, Ticket.objects.count())
-
-    def test_the_hourly_email_limit_applies(self) -> None:
-        args = {"title": "t", "description": "d"}
-        state = self.ask("create_ticket", args)["confirmation"]
-
-        with mock.patch("server.mcp.registry.over_limit", return_value=True):
-            result = self.call("create_ticket", {**args, "confirmation": state})
-
-        self.assertIn("a lot of emails", result["structuredContent"]["message"])
-        self.assertEqual(0, Ticket.objects.count())
-
-    @override_settings(
-        CACHES={"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
-    )
-    def test_only_a_confirmed_ticket_spends_the_budget(self) -> None:
-        self.addCleanup(cache.clear)
-        key = f"mcp-email:{self.user.pk}:{int(now().timestamp() // 3600)}"
-
-        self.failure("create_ticket", {"title": "x" * 201, "description": "d"})
-        self.ask("create_ticket", {"title": "t", "description": "d"})
-        self.assertIsNone(cache.get(key))
-        self.create({"title": "t", "description": "d"})
-
-        self.assertEqual(1, cache.get(key))
-
-
-class TestReplyToTicket(HelpCase):
-    def test_asks_then_posts_and_emails(self) -> None:
-        ticket = self.ticket()
-        args = {"ticket_id": ticket.id, "message": "Thanks, still waiting"}
-
-        asked = self.ask("reply_to_ticket", args)
-        self.assertIn("Refund help", asked["needs_confirmation"])
-        self.assertIn("Hub emails", asked["needs_confirmation"])
-        self.assertEqual(0, ticket.messages.count())
-        result = self.call("reply_to_ticket", {**args, "confirmation": asked["confirmation"]})
-
-        self.assertFalse(result["isError"], result)
-        self.assertEqual(["Thanks, still waiting"], [m.message for m in ticket.messages.all()])
-        self.assertEqual(self.user, ticket.messages.get().sender)
-        self.assertEqual(["o@x.com"], [to for m in mail.outbox for to in m.to])
-
-    def test_the_callers_own_name_is_not_among_those_emailed(self) -> None:
-        self.user.first_name = "Asha "
-        self.user.save()
-        ticket = self.ticket()
-        TicketMessage.objects.create(ticket=ticket, sender=self.user, message="first")
-
-        asked = self.ask("reply_to_ticket", {"ticket_id": ticket.id, "message": "again"})
-
-        self.assertIn("(Om Das)", asked["needs_confirmation"])
-
-    def test_a_private_ticket_of_someone_else_is_not_found(self) -> None:
-        ticket = self.ticket(is_private=True)
-
-        message = self.failure("reply_to_ticket", {"ticket_id": ticket.id, "message": "hi"})
-
-        self.assertTrue(message.startswith("Ticket not found"), message)
-        self.assertEqual(0, ticket.messages.count())
-
-    def test_the_hourly_email_limit_applies(self) -> None:
-        ticket = self.ticket()
-        args = {"ticket_id": ticket.id, "message": "hi"}
-        state = self.ask("reply_to_ticket", args)["confirmation"]
-
-        with mock.patch("server.mcp.registry.over_limit", return_value=True):
-            result = self.call("reply_to_ticket", {**args, "confirmation": state})
-
-        self.assertTrue(result["isError"])
-        self.assertEqual(0, ticket.messages.count())
-
-
-class TestUpvoteTicket(HelpCase):
-    def test_upvote_and_undo(self) -> None:
-        ticket = self.ticket()
-
-        up = self.data("upvote_ticket", {"ticket_id": ticket.id})
-        self.assertEqual(1, up["upvote_count"])
-        self.assertTrue(up["has_upvoted"])
-        down = self.data("upvote_ticket", {"ticket_id": ticket.id, "undo": True})
-        self.assertEqual(0, down["upvote_count"])
-        self.assertFalse(down["has_upvoted"])
-
-    def test_not_your_own_or_a_private_ticket(self) -> None:
-        own = self.ticket(created_by=self.user)
-        private = self.ticket(is_private=True)
-
-        self.assertIn("own ticket", self.failure("upvote_ticket", {"ticket_id": own.id}))
-        self.assertTrue(self.failure("upvote_ticket", {"ticket_id": private.id}))
+        self.assertEqual(url, self.data("list_tickets", {})["tickets"][0]["url"])
+        self.assertEqual(url, self.data("get_ticket", {"ticket_id": ticket.pk})["url"])
+        waiting = self.data("list_tickets", {"waiting_on_us": True}, bearer=self.handler())
+        self.assertEqual([url], [t["url"] for t in waiting["tickets"]])
