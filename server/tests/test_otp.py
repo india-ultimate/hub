@@ -55,6 +55,15 @@ class OTPTestCase(TestCase):
         )
 
 
+class TestSend(OTPTestCase):
+    def test_an_address_without_an_at_sign_is_refused_and_sends_nothing(self) -> None:
+        response = self.send("asha1708gmail.com")
+
+        self.assertEqual(response.status_code, 400, response.content)
+        self.assertEqual(response.json()["message"], "Enter a valid email address.")
+        self.assertEqual(mail.outbox, [])
+
+
 class TestSendLimits(OTPTestCase):
     def test_the_fourth_send_to_an_email_in_ten_minutes_is_refused_and_sends_nothing(self) -> None:
         for _ in range(3):
@@ -90,7 +99,7 @@ class TestSendLimits(OTPTestCase):
         self.assertEqual(self.send("a@x.com").status_code, 200)
 
     def test_gmail_dot_variants_share_one_email_limit(self) -> None:
-        for email in ("victim@gmail.com", "v.ictim@gmail.com", "V..I.ctim@Gmail.com"):
+        for email in ("victim@gmail.com", "v.ictim@gmail.com", "V.i.c.tim@Gmail.com"):
             self.assertEqual(self.send(email).status_code, 200)
 
         self.assert_too_many(self.send("vic.tim@gmail.com"))
