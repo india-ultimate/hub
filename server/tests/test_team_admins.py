@@ -3,7 +3,9 @@
 import json
 from typing import cast
 
+from django.db import connection
 from django.test import TestCase
+from django.test.utils import CaptureQueriesContext
 
 from server.core.models import Team, User
 from server.schema import TeamSchema
@@ -131,6 +133,19 @@ class TestAdminsArePrivate(TestCase):
             sorted(a["id"] for a in response.json()["admins"]), sorted([self.admin.id, other.id])
         )
         self.assert_no_addresses(response.content)
+
+    def test_listing_teams_takes_the_same_queries_however_many(self) -> None:
+        def count(url: str) -> int:
+            with CaptureQueriesContext(connection) as queries:
+                self.assertEqual(200, self.client.get(url).status_code)
+            return len(queries)
+
+        urls = ("/api/teams", "/api/teams/search?text=zone")
+        before = [count(url) for url in urls]
+        for i in range(3):
+            team = Team.objects.create(name=f"Zone {i}", slug=f"zone-{i}", category="Club")
+            team.admins.add(user(f"admin{i}"))
+        self.assertEqual(before, [count(url) for url in urls])
 
 
 class TestTeamRename(TestCase):

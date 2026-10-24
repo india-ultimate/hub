@@ -525,13 +525,17 @@ def health(request: HttpRequest) -> dict[str, str]:
 
 @api.get("/teams", auth=None, response={200: list[TeamSchema]})
 def list_teams(request: AuthenticatedHttpRequest) -> QuerySet[Team]:
-    return Team.objects.all().order_by("name")
+    return Team.objects.prefetch_related("admins").order_by("name")
 
 
 @api.get("/teams/search", auth=None, response={200: list[TeamSchema]})
 @paginate(PageNumberPagination, page_size=10)
 def search_teams(request: AuthenticatedHttpRequest, text: str = "") -> QuerySet[Team]:
-    return Team.objects.filter(name__icontains=text.lower()).order_by("name")
+    return (
+        Team.objects.filter(name__icontains=text.lower())
+        .prefetch_related("admins")
+        .order_by("name")
+    )
 
 
 @api.get("/team/{team_slug}", auth=None, response={200: TeamSchema, 400: Response})
