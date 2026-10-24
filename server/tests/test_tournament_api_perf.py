@@ -556,3 +556,11 @@ class TestUCRoster(TournamentApiTestCase):
         rows = self.client.get(self.url).json()
         self.assertIsNone(rows[-1]["person"]["player"])
         self.assertEqual(rows[-1]["person"]["first_name"], "Z")
+
+
+class TestPlayerProfile(TournamentApiTestCase):
+    def test_no_personal_data(self) -> None:
+        player = self.make_player()
+        Registration.objects.create(event=self.event, team=self.team_1, player=player)
+        self.make_match()
+        self.assert_no_personal_data(f"/api/player-profile/{player.slug}")

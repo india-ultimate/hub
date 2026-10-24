@@ -65,6 +65,7 @@ from server.forms.api import router as forms_router
 from server.mcp.apps_api import router as connected_apps_router
 from server.passkey_utils import PassKeyClient
 from server.payment_account.api import router as payment_account_router
+from server.player_profile.api import router as player_profile_router
 from server.receipts.api import router as receipts_router
 from server.registration.api import router as registration_router
 from server.registration.state import (
@@ -294,6 +295,7 @@ api.add_router("/announcements", announcements_router)
 api.add_router("/committees", committees_router)
 api.add_router("/task", task_router)
 api.add_router("/wrapped", wrapped_router)
+api.add_router("/player-profile", player_profile_router)
 api.add_router("/", connected_apps_router)
 
 # User #########
