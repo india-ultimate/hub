@@ -3,13 +3,16 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from django.contrib.auth.models import AbstractUser
-from django.db import models
+from django.db import IntegrityError, models, transaction
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 from django.utils.crypto import get_random_string
 from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 from django_prometheus.models import ExportModelOperationsMixin
 
 from server.constants import MAJOR_AGE
+from server.player_profile.slugs import has_base, slug_base, unique_slug
 from server.utils import slugify_max, today
 
 if TYPE_CHECKING:
@@ -160,9 +163,35 @@ class Player(ExportModelOperationsMixin("player"), models.Model):  # type: ignor
     iu_id = models.CharField(max_length=20, unique=True, blank=True, null=True)
     sponsored = models.BooleanField(default=False)
     imported_data = models.BooleanField(default=False)
+    slug = models.SlugField(max_length=60, unique=True, null=True, blank=True)
 
     def __str__(self) -> str:
         return self.user.get_full_name()
+
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        if self.slug:
+            super().save(*args, **kwargs)
+        else:
+            self.assign_slug()
+            if kwargs.get("update_fields") is not None:
+                kwargs["update_fields"] = {*kwargs["update_fields"], "slug"}
+            self.save_new_slug(*args, **kwargs)
+
+    def save_new_slug(self, *args: Any, **kwargs: Any) -> None:
+        try:
+            with transaction.atomic():
+                super().save(*args, **kwargs)
+        except IntegrityError:
+            if not Player.objects.filter(slug=self.slug).exclude(pk=self.pk).exists():
+                raise
+            self.assign_slug()
+            super().save(*args, **kwargs)
+
+    def assign_slug(self) -> None:
+        base = slug_base(self.user.first_name, self.user.last_name)
+        others = Player.objects.filter(slug__startswith=base).exclude(pk=self.pk)
+        taken = {slug for slug in others.values_list("slug", flat=True) if slug}
+        self.slug = unique_slug(base, taken)
 
     def age_on(self, day: datetime.date) -> float:
         """Age on a day, worked out as getAge in frontend/src/utils.js does."""
@@ -196,6 +225,22 @@ class Player(ExportModelOperationsMixin("player"), models.Model):  # type: ignor
         dob = self.date_of_birth
         age = (date.year - dob.year) + (date.month - dob.month) / 12 + (date.day - dob.day) / 365
         return age < MAJOR_AGE
+
+
+@receiver(post_save, sender=User)
+def sync_player_slug(sender: Any, instance: User, **kwargs: Any) -> None:
+    update_fields = kwargs.get("update_fields")
+    if kwargs.get("raw") or (
+        update_fields is not None and not {"first_name", "last_name"} & set(update_fields)
+    ):
+        return
+    player = Player.objects.filter(user=instance).first()
+    if player is None or has_base(player.slug, slug_base(instance.first_name, instance.last_name)):
+        return
+    player.user = instance
+    player.slug = None
+    player.assign_slug()
+    player.save_new_slug(update_fields=["slug"])
 
 
 class UCPerson(ExportModelOperationsMixin("uc_person"), models.Model):  # type: ignore[misc]
