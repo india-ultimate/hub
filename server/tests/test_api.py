@@ -141,6 +141,22 @@ class TestPasskey(ApiBaseTestCase):
             )
         self.assertEqual(response.status_code, 400)
 
+    def test_a_passkey_hanko_does_not_know_is_a_warning_not_an_error(self) -> None:
+        refused = mock.Mock(status_code=401, text='{"title":"failed to validate assertion"}')
+        with (
+            mock.patch("server.passkey_utils.requests.post", return_value=refused),
+            self.assertLogs("server.passkey_utils", "WARNING") as logs,
+        ):
+            response = self.client.post(
+                "/api/passkey/login/finish",
+                data={"passkey_request": "{}"},
+                content_type="application/json",
+            )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("Sign in with your email", response.json()["message"])
+        self.assertEqual(["WARNING"], [record.levelname for record in logs.records])
+
 
 class TestRegistration(ApiBaseTestCase):
     def setUp(self) -> None:
