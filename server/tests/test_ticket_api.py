@@ -377,6 +377,11 @@ class TestListing(TicketTestCase):
         liked.upvoters.add(self.outsider)
         self.assertEqual(["Liked"], self.titles(self.outsider, "upvoted=true"))
 
+    def test_assigned_to_me(self) -> None:
+        self.make("Theirs").assignees.add(self.outsider)
+        self.make("Shared").assignees.add(self.staff, self.outsider)
+        self.assertEqual(["Shared"], self.titles(self.staff, "assigned=true"))
+
 
 class TestPrivacyEverywhere(TicketTestCase):
     """Each rule the spec lists, for someone who is neither creator nor staff."""
@@ -405,6 +410,10 @@ class TestPrivacyEverywhere(TicketTestCase):
     def test_not_under_upvoted_after_going_private(self) -> None:
         self.ticket.upvoters.add(self.outsider)  # while it was public
         self.assertEqual([], self.page(self.outsider, "upvoted=true")["items"])
+
+    def test_not_under_assigned_once_they_cannot_open_it(self) -> None:
+        self.ticket.assignees.add(self.outsider)  # while they held a role
+        self.assertEqual([], self.page(self.outsider, "assigned=true")["items"])
 
     def test_exclude_private_leaves_out_own_and_for_staff(self) -> None:
         for user in (self.creator, self.staff):
@@ -454,6 +463,20 @@ class HandledTicketTestCase(TicketTestCase):
     def detail(self, user: User) -> dict[str, Any]:
         data: dict[str, Any] = self.as_user(user).get(f"/api/ticket/{self.ticket.id}").json()
         return data
+
+
+class TestWhoCanBeAssigned(HandledTicketTestCase):
+    def test_me_says_who_tickets_can_be_assigned_to(self) -> None:
+        Role.objects.create(
+            committee=Committee.objects.get(slug="competitions"),
+            user=self.creator,
+            title="Member",
+            start_date=today() - datetime.timedelta(days=30),
+            end_date=today() - datetime.timedelta(days=1),
+        )
+        for user, expected in ((self.staff, True), (self.handler, True), (self.creator, False)):
+            me = self.as_user(user).get("/api/me").json()
+            self.assertEqual(expected, me["can_be_assigned_tickets"], user.username)
 
 
 class TestEditingTickets(HandledTicketTestCase):

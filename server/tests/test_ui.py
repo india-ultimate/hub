@@ -1285,6 +1285,39 @@ class TestIntegration(BaseCase):
         self.assert_element("#tickets-empty")
         self.assertEqual("Payment", self.get_value("#filter-category"))
 
+    # Breaks if: the chip stops reaching the API or the URL, or shows to
+    # someone no ticket can be assigned to.
+    def test_assigned_to_me_in_the_help_center(self) -> None:
+        asker = make_player("asker@example.com")
+        staff = make_player("staff@example.com", first="Sita")
+        User.objects.filter(pk=staff.pk).update(is_staff=True)
+        Ticket.objects.create(
+            title="Card declined", description="-", created_by=asker
+        ).assignees.add(staff)
+        Ticket.objects.create(title="Scores not updating", description="-", created_by=asker)
+
+        self.sign_in_as(asker)
+        self.open(f"{APP_URL}/tickets")
+        self.assert_text("Scores not updating")
+        self.assert_element_absent("#filter-assigned")
+        self.open(f"{APP_URL}/tickets?assigned=1")
+        self.assert_attribute("#filter-assigned", "aria-pressed", "true")
+
+        self.sign_in_as(staff)
+        self.open(f"{APP_URL}/tickets")
+        self.click("#filter-assigned")
+        self.assert_attribute("#filter-assigned", "aria-pressed", "true")
+        self.assert_text("Showing 1\u20131 of 1", "#ticket-count")
+        self.assert_text("Card declined")
+        self.assert_text_not_visible("Scores not updating")
+        self.assertIn("assigned=1", self.get_current_url())
+
+        self.click("#filter-assigned")
+        self.assert_text("Showing 1\u20132 of 2", "#ticket-count")
+
+        self.open(f"{APP_URL}/tickets?assigned=1&status=resolved")
+        self.assert_text("Nothing assigned to you", "#tickets-empty")
+
     # Breaks if: replying, changing status or the privacy switch stops
     # reaching the API from the redesigned ticket page.
     def test_managing_a_ticket(self) -> None:
