@@ -495,7 +495,8 @@ class TestEntryReasons(StateTestCase):
 
     def test_suggested_tier_is_the_cheapest_that_covers_playing(self) -> None:
         p = make_player("n@x.com")
-        tier = suggested_tier(p, self.season, Scope.PLAY_CHAMPIONSHIPS)
+        ctx = build_context(self.event, self.team, self.admin, extra_player_ids=[p.id])
+        tier = suggested_tier(ctx, p, Scope.PLAY_CHAMPIONSHIPS)
         cheapest = min(
             (
                 plan

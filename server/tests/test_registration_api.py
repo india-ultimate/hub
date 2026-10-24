@@ -1181,3 +1181,24 @@ class TestSwap(ApiCase):
         # 55 measured: at most one try per (playing, gender) pair of paid
         # players; trying every paid player took 175.
         self.assertLessEqual(len(queries), 60)
+
+    def test_status_takes_the_same_queries_however_many_players(self) -> None:
+        n = iter(range(100))
+
+        def add() -> None:
+            i = next(n)
+            self.player(f"ready{i}@x.com")
+            self.player(f"none{i}@x.com", tier=None)
+            self.player(f"low{i}@x.com", tier="community")
+            self.player(f"waiver{i}@x.com", waiver=False)
+
+        def count() -> int:
+            with CaptureQueriesContext(connection) as queries:
+                self.assertEqual(200, self.status().status_code)
+            return len(queries)
+
+        add()
+        before = count()
+        add()
+        add()
+        self.assertEqual(before, count())
