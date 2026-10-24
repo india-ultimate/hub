@@ -275,6 +275,7 @@ def list_tickets(
     status: list[Status] = Query(None),  # noqa: B008  # repeatable: ?status=OPN&status=PRG
     category: str | None = None,
     mine: bool = False,
+    assigned: bool = False,
     upvoted: bool = False,
     exclude_private: bool = False,
     sort: Sort | None = None,
@@ -293,6 +294,8 @@ def list_tickets(
         query = query.filter(category__key=category)
     if mine:
         query = query.filter(created_by=request.user)
+    if assigned:
+        query = query.filter(assignees=request.user)
     if upvoted:
         query = query.filter(upvoters=request.user)
     if exclude_private:

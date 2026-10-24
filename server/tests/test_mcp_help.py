@@ -75,6 +75,8 @@ class TestListTickets(HelpCase):
         self.assertEqual({"Open one", "Mine"}, titles(status=["OPN"]))
         self.assertEqual({"Done one"}, titles(status=["RES"]))
         self.assertEqual({"Mine"}, titles(mine=True))
+        self.ticket("Assigned").assignees.add(self.user)
+        self.assertEqual({"Assigned"}, titles(assigned=True))
         self.assertEqual({"Open one"}, titles(q="open"))
 
     def test_someone_elses_private_ticket_is_invisible(self) -> None:

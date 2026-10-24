@@ -1759,6 +1759,7 @@ export const fetchTickets = async ({
   status = [],
   category = "",
   mine = false,
+  assigned = false,
   upvoted = false,
   excludePrivate = false,
   sort = "",
@@ -1769,6 +1770,7 @@ export const fetchTickets = async ({
   status.forEach(value => queryParams.append("status", value));
   if (category) queryParams.set("category", category);
   if (mine) queryParams.set("mine", "true");
+  if (assigned) queryParams.set("assigned", "true");
   if (upvoted) queryParams.set("upvoted", "true");
   if (excludePrivate) queryParams.set("exclude_private", "true");
   if (sort) queryParams.set("sort", sort);

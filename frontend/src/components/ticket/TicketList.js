@@ -72,13 +72,27 @@ const TicketList = props => {
   const page = () => Math.max(1, Number(params.page) || 1);
   const filtered = () =>
     searching() ||
-    Boolean(params.status || params.category || params.mine || params.upvoted);
+    Boolean(
+      params.status ||
+      params.category ||
+      params.mine ||
+      params.assigned ||
+      params.upvoted
+    );
+
+  const assignedOnly = () =>
+    params.assigned === "1" &&
+    !searching() &&
+    !params.category &&
+    !params.mine &&
+    !params.upvoted;
 
   const request = () => ({
     q: params.q ?? "",
     status: VIEWS[view()],
     category: params.category ?? "",
     mine: params.mine === "1",
+    assigned: params.assigned === "1",
     upvoted: params.upvoted === "1",
     sort: params.sort ?? "",
     page: page()
@@ -146,6 +160,7 @@ const TicketList = props => {
       status: null,
       category: null,
       mine: null,
+      assigned: null,
       upvoted: null,
       sort: null,
       page: null
@@ -216,6 +231,20 @@ const TicketList = props => {
         >
           Mine
         </button>
+        {/* An old link keeps the chip, so the filter can be turned off */}
+        <Show
+          when={props.user.can_be_assigned_tickets || params.assigned === "1"}
+        >
+          <button
+            type="button"
+            id="filter-assigned"
+            aria-pressed={params.assigned === "1"}
+            class={chip(params.assigned === "1")}
+            onClick={() => toggle("assigned")}
+          >
+            Assigned to me
+          </button>
+        </Show>
         <button
           type="button"
           id="filter-upvoted"
@@ -350,10 +379,16 @@ const TicketList = props => {
                 <h2 class="mt-3 break-words text-lg font-semibold text-gray-900 dark:text-white">
                   {searching()
                     ? `No tickets match "${params.q}"`
-                    : "No tickets match these filters"}
+                    : assignedOnly()
+                      ? "Nothing assigned to you"
+                      : "No tickets match these filters"}
                 </h2>
                 <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                  Try other words, or ask for help in a new ticket.
+                  {assignedOnly()
+                    ? view() === "active"
+                      ? "No open tickets are assigned to you. Choose All to see resolved ones too."
+                      : "Tickets assigned to you show up here."
+                    : "Try other words, or ask for help in a new ticket."}
                 </p>
               </Show>
               <div class="mt-6 flex flex-wrap justify-center gap-3">

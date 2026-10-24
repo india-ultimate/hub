@@ -127,7 +127,8 @@ def _waiting_on_us(ctx: ToolContext, category: str | None) -> ToolResult:
     description=(
         "Hub help tickets you may see (public ones, your own, and those routed to your "
         "committees), 20 a page, newest first. Filter by q (words), status (OPN open, PRG in "
-        "progress, RES resolved), category key, mine, and sort. Handlers (staff and committee "
+        "progress, RES resolved), category key, mine (raised by you), assigned (assigned to "
+        "you) and sort. Handlers (staff and committee "
         "members) can set waiting_on_us=true for open tickets in their queue whose latest "
         "message is not from a handler; that looks at the newest 100 open tickets."
     ),
@@ -138,6 +139,7 @@ def _waiting_on_us(ctx: ToolContext, category: str | None) -> ToolResult:
             "status": {"type": "array", "items": {"type": "string", "enum": STATUSES}},
             "category": {"type": "string", "maxLength": 100},
             "mine": {"type": "boolean"},
+            "assigned": {"type": "boolean"},
             "sort": {"type": "string", "enum": SORTS},
             "page": {"type": "integer", "minimum": 1},
             "waiting_on_us": {"type": "boolean"},

@@ -23,6 +23,7 @@ from server.payment_account.models import viewable_by
 from server.season.models import Season
 from server.subscription.models import Subscription
 from server.subscription.schema import SubscriptionSchema
+from server.ticket.access import can_be_assigned
 from server.utils import mask_string
 
 
@@ -470,6 +471,7 @@ class MeSchema(UserSchema):
     payment_accounts: list[dict[str, str]]
     can_post_announcements: bool
     can_create_forms: bool
+    can_be_assigned_tickets: bool
 
     @staticmethod
     def resolve_can_post_announcements(user: User) -> bool:
@@ -478,6 +480,10 @@ class MeSchema(UserSchema):
     @staticmethod
     def resolve_can_create_forms(user: User) -> bool:
         return can_create_forms(user)
+
+    @staticmethod
+    def resolve_can_be_assigned_tickets(user: User) -> bool:
+        return can_be_assigned(user)
 
     @staticmethod
     def resolve_payment_accounts(user: User) -> list[dict[str, str]]:
