@@ -40,7 +40,7 @@ class AuthenticatedHttpRequest(HttpRequest):
 
 @router.get("/all", auth=None, response={200: list[SeriesSchema]})
 def get_all_series(request: AuthenticatedHttpRequest) -> tuple[int, QuerySet[Series]]:
-    return 200, Series.objects.all()
+    return 200, Series.objects.prefetch_related("teams", "seriesregistration_set")
 
 
 @router.get("/", auth=None, response={200: SeriesSchema, 400: Response})
