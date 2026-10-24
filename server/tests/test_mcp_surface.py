@@ -8,7 +8,6 @@ from server.mcp import protocol
 from server.mcp.registry import TOOLS, Tool
 
 NO_CONFIRM = {
-    "upvote_ticket",
     "create_announcement_draft",
     "propose_tournament_change",
     "reject_tournament_proposal",
@@ -22,8 +21,8 @@ def descriptors() -> list[dict[str, object]]:
 
 
 class TestToolSurface(SimpleTestCase):
-    def test_there_are_sixty_six_tools_with_unique_valid_names(self) -> None:
-        self.assertEqual(66, len(TOOLS))
+    def test_there_are_sixty_two_tools_with_unique_valid_names(self) -> None:
+        self.assertEqual(62, len(TOOLS))
         for name in TOOLS:
             self.assertRegex(name, r"^[a-z0-9_]{1,64}$")
 

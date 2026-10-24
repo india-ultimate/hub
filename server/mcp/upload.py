@@ -34,7 +34,6 @@ NAMES = {
     "profile_pic": "profile picture",
     "image": "logo",
     "new_team": "team logo",
-    "ticket_attachment": "attachment",
 }
 
 
@@ -62,12 +61,6 @@ KINDS = {
     "profile_pic": Kind(
         "/api/profile-pic", None, {"profile_pic": IMAGES}, "Profile picture saved."
     ),
-    "ticket_attachment": Kind(
-        "/api/ticket/{ticket_id}/message",
-        "message_details",
-        {"attachment": DOCUMENT},
-        "Message sent with the attachment.",
-    ),
     "team_logo": Kind("/api/teams/edit", "team_details", {"image": IMAGES}, "Team logo saved."),
     "new_team": Kind("/api/teams", "team_details", {"image": IMAGES}, "Team created."),
 }
@@ -94,9 +87,9 @@ def upload(request: HttpRequest, token: str) -> HttpResponse:
         return _error(HTTPStatus.GONE, "This upload link has expired. Ask for a new one.")
     except signing.BadSignature:
         return _error(HTTPStatus.NOT_FOUND, "This upload link is not valid.")
-    kind = KINDS[payload["k"]]
+    kind = KINDS.get(payload["k"])
     owner = User.objects.filter(pk=payload["u"], is_active=True).first()
-    if owner is None:
+    if kind is None or owner is None:
         return _error(HTTPStatus.GONE, "This upload link is no longer valid.")
     if request.method == "GET":
         return _describe(request, payload, kind, owner)

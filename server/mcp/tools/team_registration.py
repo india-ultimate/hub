@@ -2,6 +2,7 @@ from collections.abc import Callable
 from http import HTTPStatus
 from typing import Any
 
+from django.conf import settings
 from django.db.models import Q
 
 from server.core.models import Player, Team
@@ -21,7 +22,7 @@ MAX_PLAYERS = 20
 MAX_PAIRS = 20
 HOLD_MINUTES = 20
 NOT_ADMIN = "Only team admins can change this roster"
-CHANGE_IT = "Already paid, or being paid: ask Hub to change it (create_ticket)."
+CHANGE_IT = "Already paid, or being paid: ask Hub in a help ticket ({}/tickets/new)."
 PLAYER_IDS = {
     "type": "array",
     "items": {"type": "integer", "minimum": 1},
@@ -387,7 +388,7 @@ def _outcome(player_id: int, name: str, response: ApiResponse, done: str) -> dic
         state = response.data.get("state") if isinstance(response.data, dict) else None
         row["message"] = state["text"] if state else done
     elif response.status == HTTPStatus.CONFLICT:
-        row["message"] = CHANGE_IT
+        row["message"] = CHANGE_IT.format(settings.PUBLIC_URL)
     else:
         row["message"] = denied(response).data["message"]
     return row
@@ -482,8 +483,8 @@ def add_to_roster(ctx: ToolContext, args: dict[str, Any]) -> ToolResult:
     title="Remove players from a team's roster",
     description=(
         "Take unpaid players off a team's roster for an event, and cancel their pending "
-        "series invitation. Players who have paid cannot be removed here: use create_ticket "
-        "to ask Hub to change it. Asks the user first."
+        "series invitation. Players who have paid cannot be removed here: send the user to "
+        f"{settings.PUBLIC_URL}/tickets/new to ask Hub. Asks the user first."
     ),
     input_schema={
         "type": "object",

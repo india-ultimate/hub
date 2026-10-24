@@ -80,16 +80,6 @@ class TestCreateUploadLink(UploadTestCase):
             ({"kind": "accreditation", "player_id": self.player.pk}, "WFDF certificate for"),
             (
                 {
-                    "kind": "ticket_attachment",
-                    "ticket_id": Ticket.objects.create(
-                        title="T", description="-", created_by=self.user
-                    ).pk,
-                    "details": {"message": "see attached"},
-                },
-                "'see attached'; this emails",
-            ),
-            (
-                {
                     "kind": "new_team",
                     "details": {
                         "name": "Wolves",
@@ -134,19 +124,6 @@ class TestCreateUploadLink(UploadTestCase):
         self.assertTrue(result.is_error)
         self.assertIn("Not allowed", result.data["message"])
 
-    def test_refuses_a_ticket_the_user_cannot_see(self) -> None:
-        other = User.objects.create(username="o@x.com", email="o@x.com")
-        ticket = Ticket.objects.create(
-            title="T", description="-", created_by=other, is_private=True
-        )
-
-        result = TOOLS["create_upload_link"].handler(
-            self.ctx(),
-            {"kind": "ticket_attachment", "ticket_id": ticket.pk, "details": {"message": "hi"}},
-        )
-
-        self.assertTrue(result.is_error)
-
     def test_refuses_a_logo_for_a_team_the_user_does_not_administer(self) -> None:
         result = TOOLS["create_upload_link"].handler(
             self.ctx(), {"kind": "team_logo", "team_id": self.teams[0].pk}
@@ -166,24 +143,16 @@ class TestCreateUploadLink(UploadTestCase):
         self.link(kind="accreditation", player_id=ward.pk)
 
     def test_long_details_are_refused(self) -> None:
-        ticket = Ticket.objects.create(title="T", description="-", created_by=self.user)
-        cases: list[dict[str, Any]] = [
-            {
-                "kind": "ticket_attachment",
-                "ticket_id": ticket.pk,
-                "details": {"message": "x" * 1001},
-            },
+        result = TOOLS["create_upload_link"].handler(
+            self.ctx(),
             {
                 "kind": "new_team",
                 "details": {"name": "n", "category": "Club", "state_ut": "KA", "city": "c" * 31},
             },
-        ]
-        for args in cases:
-            with self.subTest(kind=args["kind"]):
-                result = TOOLS["create_upload_link"].handler(self.ctx(), args)
+        )
 
-                self.assertTrue(result.is_error)
-                self.assertIn("at most", result.data["message"])
+        self.assertTrue(result.is_error)
+        self.assertIn("at most", result.data["message"])
 
     def test_missing_details_are_named(self) -> None:
         result = TOOLS["create_upload_link"].handler(
@@ -253,23 +222,14 @@ class TestUploadKinds(UploadTestCase):
             "https://x.org/me.png", Player.objects.get(pk=self.player.pk).profile_pic_url
         )
 
-    def test_ticket_attachment(self) -> None:
+    def test_a_link_for_a_kind_hub_no_longer_takes_is_turned_away(self) -> None:
         ticket = Ticket.objects.create(title="T", description="-", created_by=self.user)
-        token = self.link(
-            kind="ticket_attachment", ticket_id=ticket.pk, details={"message": "See attached"}
+        token = upload.mint(
+            self.user.pk, "ticket_attachment", {"ticket_id": ticket.pk}, {"message": "hi"}
         )
 
-        with mock.patch(
-            "cloudinary.uploader.upload", return_value={"secure_url": "https://x.org/a.pdf"}
-        ):
-            response = self.send(token, attachment=pdf())
-
-        self.assertEqual(200, response.status_code, response.content)
-        self.assertEqual(ticket.pk, response.json()["ticket_id"])
-        message = ticket.messages.get()
-        self.assertEqual(
-            ("See attached", "https://x.org/a.pdf"), (message.message, message.attachment)
-        )
+        self.assertEqual(410, self.send(token, attachment=pdf()).status_code)
+        self.assertFalse(ticket.messages.exists())
 
     def test_team_logo(self) -> None:
         team = Team.objects.create(name="Mine", category="Club")

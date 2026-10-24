@@ -9,19 +9,16 @@ from server.core.models import Player, Team, Vaccination
 from server.mcp import upload
 from server.mcp.confirm import confirm_then
 from server.mcp.registry import ToolContext, ToolResult, fail, ok, tool
-from server.mcp.shape import clip, full_name
+from server.mcp.shape import full_name
 from server.subscription.api import may_see
-from server.ticket.api import visible_tickets
 
 NOT_ALLOWED = "Not allowed: {}"
 DETAILS = {
     "college_id": ("expiry",),
     "vaccination": ("vaccine_name",),
-    "ticket_attachment": ("message",),
     "new_team": ("name", "category", "state_ut", "city"),
 }
 MAX_LENGTH = {
-    "message": 1000,
     "name": cast(int, Team._meta.get_field("name").max_length),
     "city": cast(int, Team._meta.get_field("city").max_length),
     "category": 20,
@@ -47,9 +44,6 @@ def _problem(ctx: ToolContext, kind: str, args: dict[str, Any], details: dict[st
     elif kind == "profile_pic":
         if not Player.objects.filter(user=ctx.user).exists():
             return "You have no player profile to put a picture on."
-    elif kind == "ticket_attachment":
-        if not visible_tickets(ctx.user).filter(pk=args.get("ticket_id", 0)).exists():
-            return "ticket_id is required, and must be a ticket you can see."
     elif (
         kind == "team_logo"
         and not Team.objects.filter(pk=args.get("team_id", 0), admins=ctx.user).exists()
@@ -88,11 +82,6 @@ def _what(ctx: ToolContext, kind: str, args: dict[str, Any], details: dict[str, 
             )
         case "profile_pic":
             return "Replace your profile picture with the uploaded image"
-        case "ticket_attachment":
-            return (
-                f"Post a reply with an attachment on ticket #{args['ticket_id']}: "
-                f"'{clip(str(details['message']), 200)}'; this emails the people handling the ticket"
-            )
         case "team_logo":
             team = Team.objects.get(pk=args["team_id"])
             return f"Replace the logo of {team.name} with the uploaded image"
@@ -114,8 +103,6 @@ def _part(kind: str, args: dict[str, Any], details: dict[str, Any]) -> dict[str,
                 "is_vaccinated": True,
                 "name": details["vaccine_name"],
             }
-        case "ticket_attachment":
-            return {"message": details["message"]}
         case "team_logo":
             return {"id": str(args["team_id"])}
         case "new_team":
@@ -128,11 +115,11 @@ def _part(kind: str, args: dict[str, Any], details: dict[str, Any]) -> dict[str,
     title="Create a file upload link",
     description=(
         "Make a one-time link, valid for 15 minutes, to upload a file to Hub. kind: accreditation "
-        "(WFDF PDF), college_id, vaccination, profile_pic, ticket_attachment, team_logo, new_team. "
+        "(WFDF PDF), college_id, vaccination, profile_pic, team_logo, new_team. "
         "If you can run shell commands (a coding agent, say), run the returned curl "
         "command yourself with the user's file path, then tell them it's done; otherwise give "
         "them upload_url to open. details: expiry (college_id, YYYY-MM-DD), vaccine_name "
-        "(vaccination: CVSHLD, CVXN, MDRN, SPTNK or JNJ), message (ticket_attachment), name, "
+        "(vaccination: CVSHLD, CVXN, MDRN, SPTNK or JNJ), name, "
         "category, state_ut, city (new_team). Hub asks the user to confirm first."
     ),
     input_schema={
@@ -140,7 +127,6 @@ def _part(kind: str, args: dict[str, Any], details: dict[str, Any]) -> dict[str,
         "properties": {
             "kind": {"type": "string", "enum": list(upload.KINDS)},
             "player_id": {"type": "integer"},
-            "ticket_id": {"type": "integer"},
             "team_id": {"type": "integer"},
             "details": {"type": "object"},
         },
@@ -148,16 +134,13 @@ def _part(kind: str, args: dict[str, Any], details: dict[str, Any]) -> dict[str,
         "additionalProperties": False,
     },
     writes=True,
-    emails=True,
 )
 def create_upload_link(ctx: ToolContext, args: dict[str, Any]) -> ToolResult:
     kind = args["kind"]
     details = args.get("details", {})
     if problem := _problem(ctx, kind, args, details):
         return fail(problem)
-    ids: dict[str, int] = {
-        k: int(args[k]) for k in ("player_id", "ticket_id", "team_id") if k in args
-    }
+    ids: dict[str, int] = {k: int(args[k]) for k in ("player_id", "team_id") if k in args}
 
     def mint() -> ToolResult:
         token = upload.mint(ctx.user.pk, kind, ids, _part(kind, args, details))
@@ -178,5 +161,4 @@ def create_upload_link(ctx: ToolContext, args: dict[str, Any]) -> ToolResult:
         message=f"{_what(ctx, kind, args, details)}. Make a one-time upload link for it?",
         binding=args,
         action=mint,
-        emails=int(kind == "ticket_attachment"),
     )
