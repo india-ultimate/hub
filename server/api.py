@@ -972,8 +972,10 @@ def register_guardian(
 
 @api.get("/events", auth=None, response={200: list[EventSchema]})
 def list_events(request: AuthenticatedHttpRequest, include_all: bool = False) -> QuerySet[Event]:
-    today = now().date()
-    return Event.objects.all() if include_all else Event.objects.filter(start_date__gte=today)
+    events = Event.objects.select_related("series", "payment_account").prefetch_related(
+        "series__teams", "series__seriesregistration_set"
+    )
+    return events if include_all else events.filter(start_date__gte=now().date())
 
 
 # Registrations ##########

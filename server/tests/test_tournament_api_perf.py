@@ -8,8 +8,9 @@ from django.test.utils import CaptureQueriesContext
 from django.utils.timezone import now
 
 from server.core.models import CommentaryInfo, Player, Team, UCPerson, User
-from server.series.models import Series
+from server.series.models import Series, SeriesRegistration
 from server.tests.base import ApiBaseTestCase, create_event
+from server.tests.test_eligibility import make_series
 from server.tournament.models import (
     Bracket,
     CrossPool,
@@ -364,6 +365,31 @@ class TestRosterPoints(TournamentApiTestCase):
                 self.add_player(3, 5)
 
         self.assert_constant(self.url, grow)
+
+
+class TestSeriesLists(TournamentApiTestCase):
+    def add_series(self) -> None:
+        self.n += 1
+        series = make_series(self.season)
+        series.name = f"Series {self.n}"  # names are unique in a season
+        series.save()
+        series.teams.set(self.teams[:3])
+        event = create_event(f"Series event {self.n}")
+        event.series = series
+        event.save()
+        for team in self.teams[:2]:
+            SeriesRegistration.objects.create(series=series, team=team, player=self.make_player())
+
+    def test_queries_dont_grow_with_series(self) -> None:
+        self.add_series()
+        for url in ("/api/series/all", "/api/events"):
+            self.assert_constant(url, self.add_series)
+
+    def test_counts_each_teams_registrations(self) -> None:
+        self.add_series()
+        (series,) = self.client.get("/api/series/all").json()
+        counts = {c["team_id"]: c["count"] for c in series["reg_count"]}
+        self.assertEqual({self.teams[0].id: 1, self.teams[1].id: 1, self.teams[2].id: 0}, counts)
 
 
 class TestTournaments(TournamentApiTestCase):
