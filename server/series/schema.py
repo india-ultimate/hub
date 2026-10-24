@@ -1,3 +1,4 @@
+from collections import Counter
 from datetime import date
 
 from ninja import ModelSchema, Schema
@@ -32,12 +33,10 @@ class SeriesSchema(ModelSchema):
 
     @staticmethod
     def resolve_reg_count(series: Series) -> list[RegistrationCount]:
+        # Counted from the rows, so a caller can prefetch them for many series at once.
+        counts = Counter(r.team_id for r in series.seriesregistration_set.all())
         return [
-            RegistrationCount(
-                team_id=team.id,
-                count=SeriesRegistration.objects.filter(team=team, series=series).count(),
-            )
-            for team in series.teams.all()
+            RegistrationCount(team_id=team.id, count=counts[team.id]) for team in series.teams.all()
         ]
 
     class Meta:
