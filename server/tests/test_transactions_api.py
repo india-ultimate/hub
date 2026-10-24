@@ -1,7 +1,14 @@
-from django.core.files.uploadedfile import SimpleUploadedFile
+import uuid
 
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
+
+from server.core.models import Player, User
+from server.series.models import SeriesRegistration
 from server.tests.base import ApiBaseTestCase
-from server.transaction.models import ManualTransaction, RazorpayTransaction
+from server.tests.test_eligibility import make_series
+from server.transaction.models import ManualTransaction, PhonePeTransaction, RazorpayTransaction
 
 
 class TestTransactionsApi(ApiBaseTestCase):
@@ -40,3 +47,35 @@ class TestTransactionsApi(ApiBaseTestCase):
         message = response.json()["message"]
         self.assertIn("Chq/Ref Number", message)
         self.assertIn("Credit Amount", message)
+
+    def test_listing_every_transaction_takes_the_same_queries_however_many(self) -> None:
+        series = make_series(self.season)
+        series.teams.set(self.teams[:3])
+        self.event.series = series
+        self.event.save()
+        n = iter(range(100))
+
+        def pay() -> None:
+            i = next(n)
+            user = User.objects.create(username=f"payer{i}@example.com", first_name="P")
+            player = Player.objects.create(user=user, date_of_birth="1990-01-01")
+            SeriesRegistration.objects.create(series=series, team=self.teams[0], player=player)
+            for model, extra in (
+                (ManualTransaction, {"transaction_id": f"M{i}"}),
+                (RazorpayTransaction, {"order_id": f"o{i}", "status": "completed"}),
+                (PhonePeTransaction, {"transaction_id": uuid.uuid4(), "status": "completed"}),
+            ):
+                paid = model.objects.create(amount=100, user=user, event=self.event, **extra)
+                paid.players.add(player)
+
+        pay()
+        url = "/api/transactions/?user_only=false"
+        with CaptureQueriesContext(connection) as before:
+            self.assertEqual(200, self.client.get(url).status_code)
+        for _ in range(3):
+            pay()
+        with CaptureQueriesContext(connection) as after:
+            rows = self.client.get(url).json()
+
+        self.assertEqual(12, len(rows))
+        self.assertEqual(len(before), len(after))

@@ -735,4 +735,11 @@ def list_transactions_by_type(
         if only_invalid:
             transactions = transactions.filter(validated=False)  # type: ignore[misc]
 
-    return transactions.distinct().order_by(order_by)
+    return (
+        transactions.distinct()
+        .order_by(order_by)
+        .select_related("user", "event__series", "event__payment_account")
+        .prefetch_related(
+            "players__user", "event__series__teams", "event__series__seriesregistration_set"
+        )
+    )
