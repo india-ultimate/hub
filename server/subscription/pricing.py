@@ -31,12 +31,7 @@ def quote(player: Player, plan: SubscriptionPlan) -> Quote:
     The amount always comes from the plan, never from the caller. A person
     buying their way up a tier pays only the difference.
     """
-    if not plan.is_available:
-        raise NotForSale(f"{plan.type.name} is not on sale for {plan.season.name}.")
-
-    if plan.type.requires_grant and not has_grant(player, plan.season):
-        raise NeedsGrant(f"{plan.type.name} has to be approved before it can be bought.")
-
+    granted = not plan.type.requires_grant or has_grant(player, plan.season)
     # An inactive row is left over from the old order-time creation, or is a
     # staff placeholder; a refunded one no longer counts. Both are bought over.
     held = (
@@ -45,6 +40,18 @@ def quote(player: Player, plan: SubscriptionPlan) -> Quote:
         .select_related("plan__type")
         .first()
     )
+    return price(plan, held, granted)
+
+
+def price(plan: SubscriptionPlan, held: Subscription | None, granted: bool) -> Quote:
+    """quote() with the person's active subscription for the plan's season, and whether
+    they hold a grant for it, already looked up."""
+    if not plan.is_available:
+        raise NotForSale(f"{plan.type.name} is not on sale for {plan.season.name}.")
+
+    if not granted:
+        raise NeedsGrant(f"{plan.type.name} has to be approved before it can be bought.")
+
     if held is None:
         return Quote(kind=NEW, amount=plan.amount, plan=plan)
 

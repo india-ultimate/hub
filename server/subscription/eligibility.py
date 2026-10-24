@@ -1,5 +1,7 @@
 """Whether a person may be rostered, and in what role."""
 
+from collections.abc import Callable
+
 from server.core.models import Player
 from server.season.models import Season
 from server.series.models import Series
@@ -43,8 +45,20 @@ def check(player: Player, target: Event | Series, is_playing: bool) -> message_r
     """None if this person may be rostered here, otherwise why not."""
     if not _needs_subscription(target):
         return None
-
     season = _season_of(target)
+    subscription = Subscription.objects.filter(player=player).for_season(season).first()
+    return judge(player, season, subscription, is_playing)
+
+
+def judge(
+    player: Player,
+    season: Season | None,
+    subscription: Subscription | None,
+    is_playing: bool,
+    tiers_allowing: Callable[[str], str] = _tiers_allowing,
+) -> message_response | None:
+    """check() for a target that needs a subscription, with its season and the person's
+    subscription for it already looked up: a roster looks up everyone's at once."""
     if season is None:
         return {
             "message": "No season for this event",
@@ -54,7 +68,6 @@ def check(player: Player, target: Event | Series, is_playing: bool) -> message_r
             ),
         }
 
-    subscription = Subscription.objects.filter(player=player).for_season(season).first()
     if subscription is None or not subscription.is_active:
         return {
             "message": "Subscription missing",
@@ -91,7 +104,7 @@ def check(player: Player, target: Event | Series, is_playing: bool) -> message_r
             "message": f"Subscription does not cover {doing} here",
             "description": (
                 f"{held} does not cover {doing} here. "
-                f"{doing.capitalize()} needs {_tiers_allowing(scope)}."
+                f"{doing.capitalize()} needs {tiers_allowing(scope)}."
             ),
             "action_name": "Upgrade subscription" if is_playing else "Change subscription",
             "action_href": f"/subscription/{player.id}",

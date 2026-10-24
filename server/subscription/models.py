@@ -43,10 +43,8 @@ class SubscriptionType(models.Model):
         return [line.strip() for line in self.features.splitlines() if line.strip()]
 
     def allows(self, scope: str) -> bool:
-        # A forward query (rather than the `scopes` related manager) sidesteps
-        # a django-stubs quirk: it can't yet see a reverse relation to a model
-        # defined later in the same file.
-        return SubscriptionTypeScope.objects.filter(type=self, scope=scope).exists()
+        # Read through `scopes`, so a caller can prefetch them for many tiers at once.
+        return any(s.scope == scope for s in self.scopes.all())
 
 
 class SubscriptionTypeScope(models.Model):

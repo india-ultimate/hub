@@ -6,7 +6,8 @@ and what checkout accepts can never disagree.
 """
 
 import datetime
-from collections.abc import Iterable
+import functools
+from collections.abc import Callable, Iterable
 from dataclasses import asdict, dataclass, field
 from typing import Any
 from urllib.parse import urlencode
@@ -26,8 +27,8 @@ from server.series.models import (
 from server.series.utils import playing_registrations
 from server.servicerequests.models import ServiceRequest, ServiceRequestStatus, ServiceRequestType
 from server.subscription import catalog, eligibility
-from server.subscription.models import Scope
-from server.subscription.pricing import NeedsGrant, NotForSale, quote
+from server.subscription.models import Scope, SponsorshipGrant, Subscription, SubscriptionPlan
+from server.subscription.pricing import NeedsGrant, NotForSale, price
 from server.tournament.models import Event, Registration, Tournament
 from server.transaction.models import RazorpayTransaction, RazorpayTransactionPlayer
 from server.utils import calculate_late_penalty
@@ -84,6 +85,11 @@ class Context:
     awaiting_approval: set[int] = field(default_factory=set)
     series_roster_taken: int = 0  # playing registrations + pending playing invites
     team_paid: bool = False  # in event.tournament.teams
+    # Everyone's subscription for the season, and what is on sale in it, looked up once.
+    subscriptions: dict[int, Subscription] = field(default_factory=dict)
+    granted: set[int] = field(default_factory=set)  # players with a grant for the season
+    plans: list[SubscriptionPlan] = field(default_factory=list)  # cheapest first
+    tiers_allowing: Callable[[str], str] = eligibility._tiers_allowing
 
 
 def _open_hold(entry: RosterEntry) -> RazorpayTransaction | None:
@@ -151,6 +157,24 @@ def build_context(
                 role__in=PLAYING_ROLES,
             ).count()
         )
+    if ctx.season is not None and eligibility._needs_subscription(event):
+        ctx.subscriptions = {
+            s.player_id: s
+            for s in Subscription.objects.filter(player_id__in=ids)
+            .for_season(ctx.season)
+            .select_related("plan__type")
+            .prefetch_related("plan__type__scopes")
+        }
+        ctx.granted = set(
+            SponsorshipGrant.objects.filter(season=ctx.season, player_id__in=ids).values_list(
+                "player_id", flat=True
+            )
+        )
+        ctx.plans = sorted(
+            catalog.plans_for(ctx.season).select_related("season").prefetch_related("type__scopes"),
+            key=lambda p: p.amount,
+        )
+        ctx.tiers_allowing = functools.cache(eligibility._tiers_allowing)
     if ctx.season is not None:
         ctx.awaiting_approval = set(
             ServiceRequest.objects.filter(
@@ -163,13 +187,16 @@ def build_context(
     return ctx
 
 
-def suggested_tier(player: Player, season: Season, scope: str) -> tuple[str, int] | None:
+def suggested_tier(ctx: Context, player: Player, scope: str) -> tuple[str, int] | None:
     """The cheapest plan this person could be bought that covers the scope."""
-    for plan in sorted(catalog.plans_for(season), key=lambda p: p.amount):
+    held = ctx.subscriptions.get(player.id)
+    held = held if held is not None and held.is_active else None
+    for plan in ctx.plans:
         if not plan.type.allows(scope):
             continue
+        granted = not plan.type.requires_grant or player.id in ctx.granted
         try:
-            priced = quote(player, plan)
+            priced = price(plan, held, granted)
         except (NotForSale, NeedsGrant):
             continue
         return plan.type.slug, priced.amount
@@ -213,7 +240,10 @@ def _not_open(ctx: Context) -> Reason | None:
 def _subscription_reason(ctx: Context, entry: RosterEntry) -> Reason | None:
     player = entry.player
     playing = _is_playing(ctx, player.id)
-    error = eligibility.check(player, ctx.event, is_playing=playing)
+    if not eligibility._needs_subscription(ctx.event):
+        return None
+    subscription = ctx.subscriptions.get(player.id)
+    error = eligibility.judge(player, ctx.season, subscription, playing, ctx.tiers_allowing)
     if error is None:
         return None
     message = error["message"]
@@ -232,7 +262,7 @@ def _subscription_reason(ctx: Context, entry: RosterEntry) -> Reason | None:
     if message == "Subscription missing":
         if player.id in ctx.awaiting_approval:
             return Reason("waiting.approval", "waiting", "Subscription awaiting approval")
-        if ctx.season is not None and suggested_tier(player, ctx.season, scope) is None:
+        if ctx.season is not None and suggested_tier(ctx, player, scope) is None:
             # Nothing on sale they may buy, so nobody can pay for one yet.
             return Reason(
                 "waiting.approval",
@@ -241,7 +271,7 @@ def _subscription_reason(ctx: Context, entry: RosterEntry) -> Reason | None:
             )
         return Reason("action.subscription", "action", "No subscription")
     if message.startswith("Subscription does not cover") and ctx.season is not None:
-        tier = suggested_tier(player, ctx.season, scope)
+        tier = suggested_tier(ctx, player, scope)
         if tier is None:
             return Reason("waiting.approval", "waiting", "Waiting on staff approval")
         slug, amount = tier
@@ -696,7 +726,7 @@ def _handoff(ctx: Context, reasons: dict[int, Reason], page_path: str) -> dict[s
     tiers = []
     for pid in need:
         scope = Scope.PLAY_CHAMPIONSHIPS if _is_playing(ctx, pid) else Scope.STAFF_CHAMPIONSHIPS
-        if tier := suggested_tier(players[pid], ctx.season, scope):
+        if tier := suggested_tier(ctx, players[pid], scope):
             tiers.append((pid, tier))
     if not tiers:
         return None
