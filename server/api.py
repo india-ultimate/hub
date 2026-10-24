@@ -23,7 +23,7 @@ from django.core.exceptions import ValidationError
 from django.core.files.storage import default_storage
 from django.core.validators import validate_email
 from django.db import transaction
-from django.db.models import Count, F, OuterRef, Q, QuerySet, Subquery, Value
+from django.db.models import Avg, Count, F, OuterRef, Q, QuerySet, Subquery, Value
 from django.db.models.functions import Concat, ExtractYear
 from django.db.utils import IntegrityError
 from django.http import HttpRequest, HttpResponse
@@ -1738,35 +1738,19 @@ def get_tournament_team_roster_points(
     except (Event.DoesNotExist, Team.DoesNotExist):
         return 400, {"message": "Tournament/Team does not exist"}
 
-    roster_regs = Registration.objects.filter(event=event, team=team)
-
-    total_points = 0.0
-    total_points_count = 0
-
-    for roster_reg in roster_regs:
-        player_regs = Registration.objects.filter(
-            player=roster_reg.player, event__end_date__lt=event.start_date
+    # Each roster player's average from earlier events, then the average of those above 0.
+    averages = list(
+        Registration.objects.filter(
+            player__in=Registration.objects.filter(event=event, team=team).values("player"),
+            event__end_date__lt=event.start_date,
+            points__isnull=False,
         )
-
-        player_points = 0.0
-        player_points_count = 0
-
-        for player_reg in player_regs:
-            if player_reg.points is not None:
-                player_points += player_reg.points
-                player_points_count += 1
-
-        if player_points_count > 0:
-            player_points = player_points / player_points_count
-
-        if player_points > 0:
-            total_points += player_points
-            total_points_count += 1
-
-    avg_points = 0.0
-
-    if total_points_count > 0:
-        avg_points = round(total_points / total_points_count, 1)
+        .values("player")
+        .annotate(average=Avg("points"))
+        .filter(average__gt=0)
+        .values_list("average", flat=True)
+    )
+    avg_points = round(sum(averages) / len(averages), 1) if averages else 0.0
 
     return 200, {"points": avg_points}
 

@@ -13,6 +13,7 @@ from server.tests.base import ApiBaseTestCase, create_event
 from server.tournament.models import (
     Bracket,
     CrossPool,
+    Event,
     Match,
     MatchEvent,
     MatchScore,
@@ -330,6 +331,39 @@ class TestRoster(TournamentApiTestCase):
         self.add_player(jersey=None)
         (entry,) = self.client.get(self.url).json()
         self.assertIsNone(entry["player"]["commentary_info"])
+
+
+class TestRosterPoints(TournamentApiTestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        self.url = f"/api/v2/tournament/{self.event.slug}/team/{self.team_1.slug}/roster-points"
+        self.past = [create_event(f"Past {i}") for i in range(2)]
+        before = self.event.start_date - datetime.timedelta(days=10)
+        Event.objects.filter(pk__in=[e.pk for e in self.past]).update(
+            start_date=before, end_date=before
+        )
+
+    def add_player(self, *points: int | None) -> None:
+        player = self.make_player()
+        Registration.objects.create(event=self.event, team=self.team_1, player=player)
+        for event, score in zip(self.past, points, strict=False):
+            Registration.objects.create(event=event, team=self.team_2, player=player, points=score)
+
+    def test_averages_each_players_past_points_skipping_those_without(self) -> None:
+        self.add_player(4, 6)
+        self.add_player(8, None)
+        self.add_player(0)
+        self.add_player()
+        self.assertEqual({"points": 6.5}, self.client.get(self.url).json())
+
+    def test_queries_dont_grow_with_players(self) -> None:
+        self.add_player(4, 6)
+
+        def grow() -> None:
+            for _ in range(5):
+                self.add_player(3, 5)
+
+        self.assert_constant(self.url, grow)
 
 
 class TestTournaments(TournamentApiTestCase):
