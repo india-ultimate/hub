@@ -296,6 +296,7 @@ class PositionPoolCreateSchema(Schema):
 class PublicPlayerSchema(Schema):
     id: int
     full_name: str
+    slug: str | None = None
 
     @staticmethod
     def resolve_full_name(player: Player) -> str:
@@ -660,6 +661,7 @@ class PublicCommentaryInfoSchema(Schema):
 class PublicRosterPlayerSchema(Schema):
     id: int
     full_name: str
+    slug: str | None = None
     profile_pic_url: str | None = None
     gender: str
     commentary_info: PublicCommentaryInfoSchema | None = None

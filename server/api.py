@@ -3177,8 +3177,9 @@ def get_tournament_leaderboard(
             last_name=F("scored_by__user__last_name"),
             team_name=F("team__name"),
             gender=F("scored_by__gender"),
+            slug=F("scored_by__slug"),
         )
-        .values("player_id", "first_name", "last_name", "team_name", "gender")
+        .values("player_id", "first_name", "last_name", "team_name", "gender", "slug")
         .annotate(num_scores=Count("player_id"))
         .order_by("-num_scores")
     )
@@ -3191,8 +3192,9 @@ def get_tournament_leaderboard(
             last_name=F("assisted_by__user__last_name"),
             team_name=F("team__name"),
             gender=F("assisted_by__gender"),
+            slug=F("assisted_by__slug"),
         )
-        .values("player_id", "first_name", "last_name", "team_name", "gender")
+        .values("player_id", "first_name", "last_name", "team_name", "gender", "slug")
         .annotate(num_assists=Count("player_id"))
         .order_by("-num_assists")
     )
@@ -3205,8 +3207,9 @@ def get_tournament_leaderboard(
             last_name=F("block_by__user__last_name"),
             team_name=F("team__name"),
             gender=F("block_by__gender"),
+            slug=F("block_by__slug"),
         )
-        .values("player_id", "first_name", "last_name", "team_name", "gender")
+        .values("player_id", "first_name", "last_name", "team_name", "gender", "slug")
         .annotate(num_blocks=Count("player_id"))
         .order_by("-num_blocks")
     )

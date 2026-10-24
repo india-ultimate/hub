@@ -356,7 +356,7 @@ class PlayerMinSchema(ModelSchema):
 
     class Meta:
         model = Player
-        fields = ["id", "state_ut", "match_up"]
+        fields = ["id", "slug", "state_ut", "match_up"]
 
 
 class SubscriptionStatusSchema(ModelSchema):
