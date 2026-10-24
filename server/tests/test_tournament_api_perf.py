@@ -181,12 +181,12 @@ class TestMatchLists(TournamentApiTestCase):
         spirit = match["spirit_score_team_1"]
         self.assertEqual("Great game", spirit["comments"])
         self.assertEqual("Great game", match["self_spirit_score_team_2"]["comments"])
-        self.assertEqual({"id", "full_name"}, set(spirit["mvp_v2"]))
+        self.assertEqual({"id", "full_name", "slug"}, set(spirit["mvp_v2"]))
         self.assertEqual({"id", "first_name", "last_name", "image_url"}, set(spirit["mvp"]))
         self.assertEqual(10, spirit["total"])
         suggested = match["suggested_score_team_1"]
         self.assertEqual(15, suggested["score_team_1"])
-        self.assertEqual({"id", "full_name"}, set(suggested["entered_by"]))
+        self.assertEqual({"id", "full_name", "slug"}, set(suggested["entered_by"]))
         self.assertEqual(team_keys, set(match["stats"]["current_possession"]))
         self.assertTrue(match["field"]["name"].startswith("F"))
 
@@ -263,7 +263,7 @@ class TestMatchStats(TournamentApiTestCase):
         self.assertEqual(self.team_2.id, stats["current_possession"]["id"])
         (event,) = stats["events"]
         self.assertEqual(self.team_1.id, event["team"]["id"])
-        self.assertEqual({"id", "full_name"}, set(event["scored_by"]))
+        self.assertEqual({"id", "full_name", "slug"}, set(event["scored_by"]))
         self.assertEqual(2, len(event["players"]))
         names = [p["full_name"] for p in event["players"]]
         self.assertEqual(sorted(names), names)
@@ -321,6 +321,7 @@ class TestRoster(TournamentApiTestCase):
             {
                 "id": player.id,
                 "full_name": player.user.get_full_name(),
+                "slug": player.slug,
                 "profile_pic_url": None,
                 "gender": "F",
                 "commentary_info": {"jersey_number": 23},

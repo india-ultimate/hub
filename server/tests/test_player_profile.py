@@ -8,7 +8,9 @@ from django.utils.timezone import now
 
 from server.core.models import Player, Team, User
 from server.player_profile.slugs import has_base, unique_slug
+from server.series.models import SeriesRegistration
 from server.tests.base import create_event, create_player
+from server.tests.test_eligibility import make_series
 from server.tests.test_tournament_api_perf import TournamentApiTestCase
 from server.tournament.models import (
     Match,
@@ -18,6 +20,7 @@ from server.tournament.models import (
     SpiritScore,
     Tournament,
 )
+from server.wrapped.models import PlayerWrapped
 
 
 def make_player(first: str, last: str) -> Player:
@@ -301,3 +304,62 @@ class TestProfileApi(TournamentApiTestCase):
                 self.match_in(tournament, spirit_score_team_1=self.nominated(mvp_v2=self.p))
 
         self.assert_constant(self.url, grow)
+
+
+class TestSlugsInPayloads(TournamentApiTestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        self.p = self.make_player()
+
+    def add_event(self, kind: str, **fields: Player) -> MatchEvent:
+        stats = self.make_match().stats
+        event = MatchEvent.objects.create(stats=stats, team=self.team_1, type=kind, **fields)
+        event.players.add(self.p)
+        return event
+
+    def test_roster_has_slug(self) -> None:
+        Registration.objects.create(
+            event=self.tournament.event, team=self.team_1, player=self.p, role="PLA"
+        )
+        url = f"/api/v2/tournament/{self.tournament.event.slug}/team/{self.team_1.slug}/roster"
+        (entry,) = self.client.get(url).json()
+        self.assertEqual(entry["player"]["slug"], self.p.slug)
+
+    def test_leaderboard_has_slug(self) -> None:
+        self.add_event("SC", scored_by=self.p, assisted_by=self.p)
+        self.add_event("BL", block_by=self.p)
+        body = self.client.get(f"/api/tournament/{self.tournament.event.slug}/leaderboard").json()
+        for key in ("scores", "assists", "blocks", "total"):
+            self.assertEqual([row["slug"] for row in body[key]], [self.p.slug], key)
+
+    def test_match_events_have_slug(self) -> None:
+        event = self.add_event("SC", scored_by=self.p)
+        response = self.client.get(f"/api/match/{event.stats.match_id}/stats")
+        (got,) = response.json()["events"]
+        self.assertEqual(got["scored_by"]["slug"], self.p.slug)
+        self.assertEqual(got["players"][0]["slug"], self.p.slug)
+
+    def test_series_roster_has_slug(self) -> None:
+        series = make_series(None)
+        SeriesRegistration.objects.create(series=series, team=self.team_1, player=self.p)
+        response = self.client.get(f"/api/series/{series.slug}/team/{self.team_1.slug}/roster")
+        (entry,) = response.json()
+        self.assertEqual(entry["player"]["slug"], self.p.slug)
+
+    def test_me_has_slug(self) -> None:
+        self.login()
+        player = self.client.get("/api/me").json()["player"]
+        self.assertEqual(player["slug"], self.player.slug)
+
+    def test_wrapped_teammate_slugs(self) -> None:
+        q, r = self.make_player(), self.make_player()
+        row = {"player_name": "x", "count": 3}
+        PlayerWrapped.objects.create(
+            player=self.player,
+            year=2026,
+            top_teammates_i_assisted=[{"player_id": q.id, **row}],
+            top_teammates_who_assisted_me=[{"player_id": r.id, **row}],
+        )
+        self.login()
+        body = self.client.get("/api/wrapped/2026").json()
+        self.assertEqual(body["teammate_slugs"], {str(q.id): q.slug, str(r.id): r.slug})
