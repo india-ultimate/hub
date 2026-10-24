@@ -7,6 +7,7 @@ from django.conf import settings
 
 BASE_URL = "https://passkeys.hanko.io/"
 HTTP_SUCCESS = 200
+HTTP_UNAUTHORIZED = 401
 
 logger = logging.getLogger(__name__)
 
@@ -96,6 +97,13 @@ class PassKeyClient:
         except requests.exceptions.RequestException as e:
             logger.error("Failed to finalize login passkey: %s", e)
             return ClientResponse(error="Failed to finalize login passkey")
+
+        if response.status_code == HTTP_UNAUTHORIZED:
+            # The device offered a passkey Hanko doesn't accept, often one since removed.
+            logger.warning("Hanko refused a login passkey: %s", response.text)
+            return ClientResponse(
+                error="This passkey didn't work. Sign in with your email, then add it again."
+            )
 
         if response.status_code != HTTP_SUCCESS:
             logger.error(
