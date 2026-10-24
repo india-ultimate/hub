@@ -21,6 +21,7 @@ from django.contrib.auth.base_user import AbstractBaseUser
 from django.core import mail
 from django.core.exceptions import ValidationError
 from django.core.files.storage import default_storage
+from django.core.validators import validate_email
 from django.db import transaction
 from django.db.models import Count, F, OuterRef, Q, QuerySet, Subquery, Value
 from django.db.models.functions import Concat, ExtractYear
@@ -687,11 +688,15 @@ def get_email_hash(email: str) -> str:
     return b32encode(email_hash.hexdigest().encode("utf-8")).decode("utf-8")
 
 
-@api.post("/send-otp", auth=None, response={200: OTPRequestResponse, 429: Response})
+@api.post("/send-otp", auth=None, response={200: OTPRequestResponse, 400: Response, 429: Response})
 def get_otp(
     request: HttpRequest, credentials: OTPRequestCredentials
 ) -> tuple[int, dict[str, int] | message_response]:
     credentials.email = credentials.email.strip().lower()
+    try:
+        validate_email(credentials.email)
+    except ValidationError:
+        return 400, {"message": "Enter a valid email address."}
     ip = otp_limits.client_ip(request)
     if wait := otp_limits.attempt(OTPAttempt.Kind.SEND, credentials.email, ip):
         return 429, otp_limits.too_many(wait)
