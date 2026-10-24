@@ -44,6 +44,7 @@ from server.announcements.schema import (
     VideoUploadSchema,
     _can_read,
 )
+from server.cache.store import FailOpenCache
 from server.core.models import User
 from server.storage.ckeditor import upload_error
 from server.storage.cloudinary import CloudinaryStorage
@@ -63,6 +64,7 @@ def _limit(scope: str, rate: str) -> AuthRateThrottle:
     share the "auth" scope, so one would eat into another's count."""
     throttle = AuthRateThrottle(rate)
     throttle.scope = scope
+    throttle.cache = FailOpenCache()  # type: ignore[assignment]  # ninja calls only get and set
     return throttle
 
 

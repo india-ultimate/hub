@@ -1,12 +1,15 @@
 import json
 from typing import Any
+from unittest import mock
 
 from django.core.cache import cache
 from django.db import connection
 from django.test import TestCase, override_settings
 from django.test.utils import CaptureQueriesContext
+from redis.exceptions import TimeoutError as RedisTimeoutError
 
 from server.announcements.models import Announcement, Comment, CommentReaction, Reaction
+from server.cache import store
 from server.core.models import Player, User
 
 LOCMEM = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
@@ -329,6 +332,15 @@ class AnnouncementCommentsTestCase(TestCase):
         for _ in range(30):
             self._react("like")
         self.assertEqual(429, self._react("like").status_code)
+
+    def test_reacting_while_redis_times_out(self) -> None:
+        self.addCleanup(store.reset)
+        with (
+            mock.patch.object(cache, "get", side_effect=RedisTimeoutError("timed out")),
+            mock.patch.object(cache, "set", side_effect=RedisTimeoutError("timed out")),
+        ):
+            response = self._react("like")
+        self.assertEqual(200, response.status_code, response.content)
 
     # Comment reactions
 
