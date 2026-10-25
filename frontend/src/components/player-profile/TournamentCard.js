@@ -146,7 +146,24 @@ const TournamentCard = props => {
         href={`/tournament/${t().slug}/team/${t().team.slug}`}
         class="mt-3 flex min-h-[44px] items-center gap-2 rounded-lg px-1 py-2 text-sm hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:bg-gray-700"
       >
-        <Initials name={t().team.name} class="h-7 w-7 rounded-full text-xs" />
+        <Show
+          when={t().team.image || t().team.image_url}
+          fallback={
+            <Initials
+              name={t().team.name}
+              class="h-7 w-7 rounded-full text-xs"
+            />
+          }
+        >
+          <img
+            src={t().team.image || t().team.image_url}
+            alt=""
+            width="28"
+            height="28"
+            loading="lazy"
+            class="h-7 w-7 rounded-full object-cover"
+          />
+        </Show>
         <span class="font-medium text-gray-800 dark:text-gray-200">
           {t().team.name}
         </span>
