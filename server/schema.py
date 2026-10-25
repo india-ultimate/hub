@@ -24,7 +24,7 @@ from server.season.models import Season
 from server.subscription.models import Subscription
 from server.subscription.schema import SubscriptionSchema
 from server.ticket.access import can_be_assigned
-from server.utils import mask_string
+from server.utils import full_name, mask_string
 
 
 class Credentials(Schema):
@@ -113,7 +113,7 @@ class UserNameSchema(ModelSchema):
 
     @staticmethod
     def resolve_full_name(user: User) -> str:
-        return user.get_full_name()
+        return full_name(user)
 
     class Meta:
         model = User
@@ -128,7 +128,7 @@ class UserSearchSchema(ModelSchema):
 
     @staticmethod
     def resolve_full_name(user: User) -> str:
-        return user.get_full_name()
+        return full_name(user)
 
     username: str
 
@@ -352,7 +352,7 @@ class PlayerMinSchema(ModelSchema):
 
     @staticmethod
     def resolve_full_name(player: Player) -> str:
-        return player.user.get_full_name()
+        return full_name(player.user)
 
     class Meta:
         model = Player

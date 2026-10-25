@@ -1,7 +1,11 @@
 import datetime
+from typing import TYPE_CHECKING
 
 from django.core.files.uploadedfile import UploadedFile
 from django.template.defaultfilters import slugify
+
+if TYPE_CHECKING:
+    from server.core.models import User
 
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 IMAGE_TYPES = ("image/jpeg", "image/png", "image/gif", "image/webp", "image/bmp", "image/tiff")
@@ -97,3 +101,8 @@ def slugify_max(text: str, max_length: int = 50) -> str:
         return trimmed_slug
     # First word is > max_length chars, so we have to break it
     return slug[:max_length]
+
+
+def full_name(user: "User") -> str:
+    """The user's name with no stray or doubled spaces."""
+    return " ".join(user.get_full_name().split())
