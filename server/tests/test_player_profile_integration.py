@@ -126,6 +126,14 @@ class TestPlayerProfileIntegration(BaseCase):
         self.open(f"{APP_URL}/player/{self.player.slug}")
         self.assert_element('article:contains("Goa Beach Hat") img[data-logo="light"]')
 
+    def test_team_logo_or_initials_on_cards(self) -> None:
+        self.pirates.image = "team_logos/pirates.png"
+        self.pirates.save()
+        self.open(f"{APP_URL}/player/{self.player.slug}")
+        self.assert_element('article:contains("Pune Open") a[href*="/team/"] img')
+        self.assert_element_absent('article:contains("Goa Beach Hat") a[href*="/team/"] img')
+        self.assert_text("SC", 'article:contains("Goa Beach Hat") a[href*="/team/"]')
+
     def test_direct_visit_shows_breadcrumbs(self) -> None:
         url = f"{APP_URL}/player/{self.player.slug}"
         self.open(url)

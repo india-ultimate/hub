@@ -14,7 +14,7 @@ const TeamCard = props => (
     class="mx-auto mt-4 flex min-h-[44px] w-full max-w-[260px] items-center gap-3 rounded-xl bg-white px-3 py-2 text-left shadow-sm ring-1 ring-gray-200 transition duration-200 hover:ring-blue-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:bg-gray-700 dark:ring-gray-600 md:mx-0 md:mt-0 md:w-auto md:max-w-sm md:px-4 md:py-3"
   >
     <Show
-      when={props.team.image ?? props.team.image_url}
+      when={props.team.image || props.team.image_url}
       fallback={
         <Initials
           name={props.team.name}
@@ -23,7 +23,7 @@ const TeamCard = props => (
       }
     >
       <img
-        src={props.team.image ?? props.team.image_url}
+        src={props.team.image || props.team.image_url}
         alt=""
         width="40"
         height="40"
