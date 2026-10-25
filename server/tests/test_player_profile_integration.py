@@ -359,6 +359,11 @@ class TestPlayerProfileIntegration(BaseCase):
         self.assert_text("MVP in this match", "body")
         self.assert_text("View full profile", "body")
 
+    def state_team(self) -> Team:
+        return Team.objects.create(
+            name="Karnataka Open", slug="karnataka-open", category="State", state_ut="KA"
+        )
+
     def test_season_card_label(self) -> None:
         self.open(f"{APP_URL}/player/{self.player.slug}")
         self.assert_text(f"{self.label} team", "[data-season-card]")
@@ -373,3 +378,44 @@ class TestPlayerProfileIntegration(BaseCase):
         self.open(f"{APP_URL}/player/{self.player.slug}")
         self.assert_text("Ananya Rao", "h1")
         self.assert_element_absent("[data-season-card]")
+
+    def test_ribbon_text_and_link(self) -> None:
+        state = self.state_team()
+        tournament = self.make_tournament("Nationals", -400, state, role="DFLT")
+        self.player.state_ut = "MH"
+        self.player.save()
+        self.open(f"{APP_URL}/player/{self.player.slug}")
+        year = tournament.event.start_date.year
+        self.assert_text(f"Represented Karnataka \u00b7 {year}", "[data-ribbon]")
+        href = self.get_attribute("[data-ribbon]", "href")
+        self.assertTrue(href.endswith(f"/tournament/{tournament.event.slug}/team/karnataka-open"))
+        self.assert_text("Maharashtra", "[data-state-chip]")
+        self.assert_element("[data-season-card]")
+
+    def test_ribbon_without_card_when_season_team_is_state_team(self) -> None:
+        tournament = self.make_tournament("State Open", 90, self.state_team(), role="DFLT")
+        self.open(f"{APP_URL}/player/{self.player.slug}")
+        year = tournament.event.start_date.year
+        self.assert_text(f"Represented Karnataka \u00b7 {year}", "[data-ribbon]")
+        self.assert_element_absent("[data-season-card]")
+
+    def test_home_state_chip_hidden_when_it_matches_the_ribbon(self) -> None:
+        self.make_tournament("State Open", 90, self.state_team(), role="DFLT")
+        self.player.state_ut = "KA"
+        self.player.save()
+        self.open(f"{APP_URL}/player/{self.player.slug}")
+        self.assert_element("[data-ribbon]")
+        self.assert_element_absent("[data-state-chip]")
+
+    def test_long_state_name_ribbon_keeps_year_together(self) -> None:
+        andaman = Team.objects.create(
+            name="Andaman", slug="andaman", category="State", state_ut="AN"
+        )
+        tournament = self.make_tournament("Island Cup", 90, andaman, role="DFLT")
+        self.open(f"{APP_URL}/player/{self.player.slug}")
+        year = tournament.event.start_date.year
+        self.assert_text(
+            f"Represented Andaman and Nicobar Islands \u00b7 {year}",
+            "[data-ribbon]",
+        )
+        self.assert_text(f"\u00b7 {year}", "[data-ribbon] span.whitespace-nowrap")

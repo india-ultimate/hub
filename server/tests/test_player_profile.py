@@ -198,6 +198,7 @@ class TestProfileApi(TournamentApiTestCase):
                 "state",
                 "jersey_number",
                 "season_team",
+                "represented",
                 "tournaments",
             },
         )
@@ -267,6 +268,11 @@ class TestProfileApi(TournamentApiTestCase):
         tournament.event.save()
         return self.register(tournament, team, role)
 
+    def make_state(self, team: Team, state: str | None = "KA") -> Team:
+        team.category, team.state_ut = "State", state
+        team.save()
+        return team
+
     def test_season_team_inside_current_season(self) -> None:
         season = self.current_season()
         self.tournament_on(-10, self.team_2)
@@ -301,6 +307,40 @@ class TestProfileApi(TournamentApiTestCase):
         self.current_season()
         self.tournament_on(20, self.team_2, status="SCH")
         self.assertEqual(self.get()["season_team"]["team"]["id"], self.team_2.id)
+
+    def test_represented_picks_newest_state_playing_registration(self) -> None:
+        self.current_season()
+        older = self.make_state(Team.objects.create(name="Old KA"), "KA")
+        newer = self.make_state(Team.objects.create(name="New TN"), "TN")
+        self.tournament_on(-300, older)
+        self.tournament_on(-200, newer, role="CAP")
+        self.tournament_on(-5, self.team_2)
+        data = self.get()
+        rep = data["represented"]
+        self.assertEqual(rep["state"], "Tamil Nadu")
+        self.assertEqual(rep["team"]["id"], newer.id)
+        self.assertEqual(rep["year"], (today() - datetime.timedelta(days=200)).year)
+        self.assertIn(rep["tournament_slug"], [t["slug"] for t in data["tournaments"]])
+        self.assertEqual(data["season_team"]["team"]["id"], self.team_2.id)
+
+    def test_coach_on_state_team_is_not_represented(self) -> None:
+        self.tournament_on(-5, self.make_state(self.team_2), role="COACH")
+        self.assertIsNone(self.get()["represented"])
+
+    def test_club_team_is_not_represented(self) -> None:
+        self.tournament_on(-5, self.team_2)
+        self.assertIsNone(self.get()["represented"])
+
+    def test_state_label_falls_back_to_team_name(self) -> None:
+        self.tournament_on(-5, self.make_state(self.team_2, None))
+        self.assertEqual(self.get()["represented"]["state"], self.team_2.name)
+
+    def test_season_team_is_dropped_when_it_is_the_honour(self) -> None:
+        self.current_season()
+        self.tournament_on(-5, self.make_state(self.team_2))
+        data = self.get()
+        self.assertIsNone(data["season_team"])
+        self.assertEqual(data["represented"]["state"], "Karnataka")
 
     def test_stats_counted(self) -> None:
         stats = self.stats_for(self.tournament)[0]

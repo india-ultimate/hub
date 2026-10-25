@@ -1,6 +1,6 @@
 import { A } from "@solidjs/router";
 import { Icon } from "solid-heroicons";
-import { chevronRight, mapPin } from "solid-heroicons/solid";
+import { chevronRight, mapPin, shieldCheck } from "solid-heroicons/solid";
 import { Show } from "solid-js";
 
 import Initials from "./Initials";
@@ -43,6 +43,26 @@ const TeamCard = props => (
   </A>
 );
 
+const Ribbon = props => (
+  <A
+    href={`/tournament/${props.represented.tournament_slug}/team/${props.represented.team.slug}`}
+    data-ribbon
+    class="relative mt-2 inline-flex touch-manipulation items-start gap-1.5 rounded-3xl bg-blue-50 px-3 py-2 text-left text-sm font-semibold leading-5 text-blue-800 ring-1 ring-blue-300 transition duration-200 before:absolute before:-inset-y-1 before:inset-x-0 before:content-[''] hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 active:bg-blue-200 dark:bg-blue-900 dark:text-blue-200 dark:ring-blue-700"
+  >
+    <Icon class="mt-0.5 h-4 w-4 shrink-0 text-blue-600" path={shieldCheck} />
+    <span>
+      Represented {props.represented.state}{" "}
+      <span class="whitespace-nowrap">· {props.represented.year}</span>
+      <span class="sr-only"> team roster</span>
+    </span>
+    <Icon
+      class="-mr-1 mt-0.5 h-4 w-4 shrink-0 text-blue-500"
+      path={chevronRight}
+      aria-hidden="true"
+    />
+  </A>
+);
+
 const Hero = props => {
   const teams = () => new Set(props.profile.tournaments.map(t => t.team.id));
   const count = (n, word) => `${n === 1 ? word : word + "s"}`;
@@ -68,20 +88,28 @@ const Hero = props => {
         <h1 class="mt-3 bg-gradient-to-r from-blue-500 to-green-500 bg-clip-text text-3xl font-extrabold text-transparent md:mt-0 md:text-4xl">
           {props.profile.full_name}
         </h1>
+        <Show when={props.profile.represented}>
+          <Ribbon represented={props.profile.represented} />
+        </Show>
         <div class="mt-2 flex flex-wrap justify-center gap-2 text-xs md:justify-start">
           <span
             class={
               props.profile.match_up === "F"
-                ? "rounded-full bg-purple-100 px-2.5 py-0.5 text-purple-800 dark:bg-purple-900 dark:text-purple-300"
-                : "rounded-full bg-blue-100 px-2.5 py-0.5 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
+                ? "rounded-full bg-white px-2.5 py-0.5 text-purple-800 ring-1 ring-inset ring-purple-300 dark:bg-gray-800 dark:text-purple-300 dark:ring-purple-700"
+                : "rounded-full bg-white px-2.5 py-0.5 text-teal-800 ring-1 ring-inset ring-teal-300 dark:bg-gray-800 dark:text-teal-200 dark:ring-teal-700"
             }
           >
             {props.profile.match_up === "F"
               ? "Female matching"
               : "Male matching"}
           </span>
-          <Show when={props.profile.state}>
-            <span class={chip}>
+          <Show
+            when={
+              props.profile.state &&
+              props.profile.state !== props.profile.represented?.state
+            }
+          >
+            <span class={chip} data-state-chip>
               <Icon class="h-3 w-3" path={mapPin} />
               {props.profile.state}
             </span>
