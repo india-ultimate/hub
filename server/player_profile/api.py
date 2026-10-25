@@ -1,3 +1,4 @@
+from collections import Counter
 from typing import Any
 
 from django.db.models import Count, Q
@@ -40,11 +41,20 @@ def build_profile(player: Player) -> dict[str, Any]:
             ),
         )
     }
-    games = dict(
-        Match.objects.filter(stats__events__players=player, tournament_id__in=ids)
-        .values_list("tournament_id")
-        .annotate(n=Count("id", distinct=True))
-    )
+    appearances = [
+        MatchEvent.objects.filter(stats__tournament_id__in=ids, **{field: player}).values_list(
+            "stats__match_id", "stats__tournament_id"
+        )
+        for field in (
+            "players",
+            "scored_by",
+            "assisted_by",
+            "block_by",
+            "drop_by",
+            "throwaway_by",
+        )
+    ]
+    games = Counter(tournament_id for _, tournament_id in appearances[0].union(*appearances[1:]))
     tracked = set(
         MatchStats.objects.filter(tournament_id__in=ids)
         .values_list("tournament_id", flat=True)

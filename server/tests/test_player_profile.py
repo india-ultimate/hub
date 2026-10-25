@@ -257,6 +257,31 @@ class TestProfileApi(TournamentApiTestCase):
             {"goals": 2, "assists": 1, "blocks": 2, "games": 2},
         )
 
+    def test_game_counted_when_player_only_scored(self) -> None:
+        stats = self.stats_for(self.tournament)[0]
+        MatchEvent.objects.create(stats=stats, team=self.team_1, type="SC", scored_by=self.p)
+        MatchEvent.objects.create(stats=stats, team=self.team_1, type="TA", throwaway_by=self.p)
+        self.assertEqual(self.get()["tournaments"][0]["stats"]["games"], 1)
+
+    def test_game_not_double_counted(self) -> None:
+        stats = self.stats_for(self.tournament)[0]
+        self.add_event(stats, "SC", scored_by=self.p)
+        self.add_event(stats, "SC", scored_by=self.p, assisted_by=self.p)
+        self.add_event(stats, "BL", block_by=self.p)
+        self.assertEqual(self.get()["tournaments"][0]["stats"]["games"], 1)
+
+    def test_game_with_no_appearance_counts_zero(self) -> None:
+        stats = self.stats_for(self.tournament)[0]
+        MatchEvent.objects.create(
+            stats=stats, team=self.team_1, type="SC", scored_by=make_player("Other", "Person")
+        )
+        self.assertEqual(self.get()["tournaments"][0]["stats"]["games"], 0)
+
+    def test_line_and_score_in_one_event_counts_one_game(self) -> None:
+        stats = self.stats_for(self.tournament)[0]
+        self.add_event(stats, "SC", scored_by=self.p)
+        self.assertEqual(self.get()["tournaments"][0]["stats"]["games"], 1)
+
     def test_untracked_tournament_stats_none(self) -> None:
         self.assertIsNone(self.get()["tournaments"][0]["stats"])
 
