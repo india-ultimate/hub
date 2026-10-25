@@ -2967,3 +2967,24 @@ export const checkoutRoster = ({ expectedAmount, expectedIds, ...args }) =>
       expected_ids: expectedIds
     })
   });
+
+export const fetchPlayerProfile = async slug => {
+  const response = await fetch(`/api/player-profile/${slug}`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      XrCSRFToken: getCookie("csrftoken")
+    },
+    credentials: "same-origin"
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    const error = new Error(data?.message || JSON.stringify(data));
+    error.status = response.status;
+    throw error;
+  }
+
+  return data;
+};

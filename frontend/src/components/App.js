@@ -20,6 +20,7 @@ const AnnouncementEditor = lazy(
 const Committees = lazy(() => import("./committee/Committees"));
 const CommitteeDetail = lazy(() => import("./committee/CommitteeDetail"));
 const ManageCommittees = lazy(() => import("./committee/Manage"));
+const PlayerProfile = lazy(() => import("./player-profile/PlayerProfile"));
 const Dashboard = lazy(() => import("./Dashboard"));
 const PaymentAccount = lazy(() => import("./payments/PaymentAccount"));
 const PayOrder = lazy(() => import("./pay/PayOrder"));
@@ -229,6 +230,7 @@ export default function App() {
                   {/* Team Public Routes */}
                   <Route path={"/teams"} component={Teams} />
                   <Route path={"/team/:slug"} component={ViewTeam} />
+                  <Route path={"/player/:slug"} component={PlayerProfile} />
                   {/* Team Private Routes */}
                   <UserRoute path="/teams/new" component={CreateTeam} />
                   <UserRoute path="/team/:slug/edit" component={EditTeam} />
