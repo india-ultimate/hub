@@ -35,6 +35,13 @@ class SeasonTeamSchema(Schema):
     season: str
 
 
+class RepresentedSchema(Schema):
+    state: str
+    year: int
+    tournament_slug: str
+    team: TeamMinSchema
+
+
 class PlayerProfileSchema(Schema):
     slug: str
     full_name: str
@@ -43,4 +50,5 @@ class PlayerProfileSchema(Schema):
     state: str | None
     jersey_number: int | None
     season_team: SeasonTeamSchema | None
+    represented: RepresentedSchema | None
     tournaments: list[ProfileTournamentSchema]

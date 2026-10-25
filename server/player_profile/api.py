@@ -5,9 +5,10 @@ from django.db.models import Count, Q
 from django.http import HttpRequest
 from ninja import Router
 
-from server.core.models import CommentaryInfo, Player
+from server.core.models import CommentaryInfo, Player, Team
 from server.schema import Response
 from server.season.models import Season
+from server.series.models import PLAYING_ROLES
 from server.tournament.models import Match, MatchEvent, MatchStats, Registration, Tournament
 from server.types import message_response
 from server.utils import full_name, today
@@ -143,6 +144,14 @@ def build_profile(player: Player) -> dict[str, Any]:
     except CommentaryInfo.DoesNotExist:
         jersey_number = None
     season_team = _season_team(registrations)
+    honour = next(
+        (
+            r
+            for r in registrations
+            if r.role in PLAYING_ROLES and r.team.category == Team.CategoryTypes.STATE
+        ),
+        None,
+    )
     return {
         "slug": player.slug,
         "full_name": full_name(player.user),
@@ -151,7 +160,19 @@ def build_profile(player: Player) -> dict[str, Any]:
         "state": player.get_state_ut_display() if player.state_ut else None,
         "jersey_number": jersey_number,
         "season_team": (
-            {"team": season_team[0].team, "season": season_team[1]} if season_team else None
+            {"team": season_team[0].team, "season": season_team[1]}
+            if season_team and season_team[0].id != getattr(honour, "id", None)
+            else None
+        ),
+        "represented": (
+            {
+                "state": honour.team.get_state_ut_display() or honour.team.name,
+                "year": honour.event.start_date.year,
+                "tournament_slug": honour.event.slug,
+                "team": honour.team,
+            }
+            if honour
+            else None
         ),
         "tournaments": tournaments,
     }
