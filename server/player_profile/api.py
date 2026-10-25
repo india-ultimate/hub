@@ -7,13 +7,29 @@ from ninja import Router
 
 from server.core.models import CommentaryInfo, Player
 from server.schema import Response
+from server.season.models import Season
 from server.tournament.models import Match, MatchEvent, MatchStats, Registration, Tournament
 from server.types import message_response
-from server.utils import full_name
+from server.utils import full_name, today
 
 from .schema import PlayerProfileSchema
 
 router = Router()
+
+
+def _season_team(registrations: list[Registration]) -> tuple[Registration, str] | None:
+    season = Season.containing(today())
+    if season is None:
+        return None
+    reg = next(
+        (r for r in registrations if season.start_date <= r.event.start_date <= season.end_date),
+        None,
+    )
+    if reg is None:
+        return None
+    first, last = season.start_date.year, season.end_date.year
+    label = str(first) if first == last else f"{first}\u2013{str(last)[-2:]}"
+    return reg, label
 
 
 def build_profile(player: Player) -> dict[str, Any]:
@@ -126,6 +142,7 @@ def build_profile(player: Player) -> dict[str, Any]:
         jersey_number = player.commentary_info.jersey_number
     except CommentaryInfo.DoesNotExist:
         jersey_number = None
+    season_team = _season_team(registrations)
     return {
         "slug": player.slug,
         "full_name": full_name(player.user),
@@ -133,7 +150,9 @@ def build_profile(player: Player) -> dict[str, Any]:
         "match_up": player.match_up,
         "state": player.get_state_ut_display() if player.state_ut else None,
         "jersey_number": jersey_number,
-        "current_team": tournaments[0]["team"] if tournaments else None,
+        "season_team": (
+            {"team": season_team[0].team, "season": season_team[1]} if season_team else None
+        ),
         "tournaments": tournaments,
     }
 

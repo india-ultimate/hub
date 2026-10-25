@@ -38,7 +38,7 @@ const QuickLook = props => {
     profile()?.tournaments.find(t => t.slug === props.from?.tournamentSlug);
   const subtitle = () =>
     [
-      tournament()?.team.name ?? profile()?.current_team?.name,
+      tournament()?.team.name ?? profile()?.season_team?.team.name,
       profile()?.jersey_number != null && `#${profile().jersey_number}`,
       ROLES[tournament()?.role]
     ]

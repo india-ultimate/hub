@@ -9,11 +9,13 @@ from django.utils.timezone import now
 from server.core.models import Player, Team, User
 from server.player_profile.slugs import has_base, unique_slug
 from server.schema import PlayerMinSchema
+from server.season.models import Season
 from server.series.models import SeriesRegistration
 from server.tests.base import create_event, create_player
 from server.tests.test_eligibility import make_series
 from server.tests.test_tournament_api_perf import TournamentApiTestCase
 from server.tournament.models import (
+    Event,
     Match,
     MatchEvent,
     MatchStats,
@@ -22,6 +24,7 @@ from server.tournament.models import (
     Tournament,
 )
 from server.tournament.schema import PublicPlayerSchema, PublicRosterPlayerSchema
+from server.utils import today
 from server.wrapped.models import PlayerWrapped
 
 
@@ -194,7 +197,7 @@ class TestProfileApi(TournamentApiTestCase):
                 "match_up",
                 "state",
                 "jersey_number",
-                "current_team",
+                "season_team",
                 "tournaments",
             },
         )
@@ -243,7 +246,61 @@ class TestProfileApi(TournamentApiTestCase):
         )
         self.assertEqual(data["tournaments"][0]["role"], "CAP")
         self.assertEqual(data["tournaments"][0]["team"]["id"], self.team_2.id)
-        self.assertEqual(data["current_team"]["id"], self.team_2.id)
+
+    def make_season(self, start: datetime.date, end: datetime.date) -> Season:
+        Event.objects.filter(pk=self.event.pk).update(
+            start_date=start - datetime.timedelta(days=400)
+        )
+        return Season.objects.create(name="S", start_date=start, end_date=end)
+
+    def current_season(self) -> Season:
+        day = today()
+        return self.make_season(
+            day - datetime.timedelta(days=100), day + datetime.timedelta(days=200)
+        )
+
+    def tournament_on(
+        self, offset: int, team: Team, role: str = "DFLT", status: str = "COM"
+    ) -> Registration:
+        tournament = self.make_tournament(status)
+        tournament.event.start_date = today() + datetime.timedelta(days=offset)
+        tournament.event.save()
+        return self.register(tournament, team, role)
+
+    def test_season_team_inside_current_season(self) -> None:
+        season = self.current_season()
+        self.tournament_on(-10, self.team_2)
+        label = f"{season.start_date.year}\u2013{str(season.end_date.year)[-2:]}"
+        data = self.get()
+        self.assertEqual(data["season_team"]["team"]["id"], self.team_2.id)
+        self.assertEqual(data["season_team"]["season"], label)
+
+    def test_no_season_team_when_newest_tournament_before_season(self) -> None:
+        day = today()
+        self.make_season(day - datetime.timedelta(days=10), day + datetime.timedelta(days=300))
+        self.tournament_on(-50, self.team_2)
+        self.assertIsNone(self.get()["season_team"])
+
+    def test_no_season_team_without_current_season(self) -> None:
+        self.tournament_on(-1, self.team_2)
+        with mock.patch.object(Season, "containing", return_value=None):
+            self.assertIsNone(self.get()["season_team"])
+
+    def test_season_boundaries_are_inclusive(self) -> None:
+        day = today()
+        self.make_season(day - datetime.timedelta(days=10), day + datetime.timedelta(days=10))
+        self.tournament_on(11, self.team_2)
+        self.assertIsNone(self.get()["season_team"])
+        self.tournament_on(10, self.team_2)
+        self.assertEqual(self.get()["season_team"]["team"]["id"], self.team_2.id)
+        Registration.objects.filter(team=self.team_2).delete()
+        self.tournament_on(-10, self.team_2)
+        self.assertEqual(self.get()["season_team"]["team"]["id"], self.team_2.id)
+
+    def test_upcoming_tournament_in_season_counts(self) -> None:
+        self.current_season()
+        self.tournament_on(20, self.team_2, status="SCH")
+        self.assertEqual(self.get()["season_team"]["team"]["id"], self.team_2.id)
 
     def test_stats_counted(self) -> None:
         stats = self.stats_for(self.tournament)[0]
