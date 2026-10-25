@@ -3,6 +3,7 @@ from contextlib import ExitStack
 
 import pytest
 from django.utils.timezone import now
+from selenium.webdriver.common.keys import Keys
 from seleniumbase import BaseCase
 
 from server.core.models import Team, User
@@ -123,7 +124,7 @@ class TestPlayerProfileIntegration(BaseCase):
         self.older.logo_light = "tournament_logos/goa.png"
         self.older.save()
         self.open(f"{APP_URL}/player/{self.player.slug}")
-        self.assert_element('article:contains("Goa Beach Hat") img[data-logo]')
+        self.assert_element('article:contains("Goa Beach Hat") img[data-logo="light"]')
 
     def test_direct_visit_shows_breadcrumbs(self) -> None:
         url = f"{APP_URL}/player/{self.player.slug}"
@@ -255,3 +256,88 @@ class TestPlayerProfileIntegration(BaseCase):
         self.sleep(0.5)
         after = self.execute_script("return window.scrollY")
         self.assertLess(abs(after - before), 60)
+
+    def test_leaderboard_ties_share_a_rank(self) -> None:
+        stats = MatchStats.objects.get(tournament=self.newer)
+        scorers = [(self.player, 2)]
+        for n, goals in enumerate((2, 1)):
+            user = User.objects.create(username=f"t{n}", first_name=f"Tie{n}", last_name="Roe")
+            other = create_player(user)
+            Registration.objects.create(
+                event=self.newer.event, team=self.pirates, player=other, role="PLA"
+            )
+            scorers.append((other, goals))
+        for scorer, goals in scorers:
+            for _ in range(goals):
+                MatchEvent.objects.create(
+                    stats=stats, team=self.pirates, type="SC", scored_by=scorer
+                )
+        self.open(f"{APP_URL}/tournament/{self.newer.event.slug}/leaderboard?tab=scores")
+        self.wait_for_element('[role="listitem"] a')
+        ranks = [
+            self.get_text(f'[role="listitem"]:nth-of-type({i}) a').splitlines()[0]
+            for i in (1, 2, 3)
+        ]
+        self.assertEqual(ranks, ["1", "1", "3"])
+
+    def add_goal(self) -> Match:
+        match = Match.objects.get(tournament=self.newer)
+        user = User.objects.create(username="meera", first_name="Meera", last_name="Iyer")
+        other = create_player(user)
+        MatchEvent.objects.create(
+            stats=match.stats,
+            team=self.pirates,
+            type="SC",
+            scored_by=self.player,
+            assisted_by=other,
+        )
+        line = MatchEvent.objects.create(stats=match.stats, team=self.pirates, type="LS")
+        line.players.add(
+            create_player(
+                User.objects.create(username="kabir", first_name="Kabir", last_name="Das")
+            )
+        )
+        return match
+
+    def assert_this_match(self, name: str, goals: int, assists: int, blocks: int) -> None:
+        self.click(f'button:contains("{name}")')
+        for stat, expected in (("goals", goals), ("assists", assists), ("blocks", blocks)):
+            self.assertEqual(
+                self.get_text(f'dialog[open] [data-stat="{stat}"] div:first-child'), str(expected)
+            )
+        self.send_keys("body", Keys.ESCAPE)
+        self.wait_for_element_absent("dialog[open]")
+
+    def test_live_feed_quick_look(self) -> None:
+        match = self.add_goal()
+        live = f"{APP_URL}/tournament/{self.newer.event.slug}/match/{match.id}/live"
+        self.open(live)
+        self.click('button:contains("Ananya Rao")')
+        self.assert_text("Ananya Rao", "dialog[open]")
+        self.assert_text("THIS MATCH", "dialog[open]")
+        self.assert_text("Career: 1 goal · 1 MVP · 1 MSP", "dialog[open]")
+        self.send_keys("body", Keys.ESCAPE)
+        self.wait_for_element_absent("dialog[open]")
+        self.assertEqual(self.get_current_url(), live)
+        self.assert_this_match("Ananya Rao", 1, 0, 0)
+        self.assert_this_match("Meera Iyer", 0, 1, 0)
+        self.assert_this_match("Kabir Das", 0, 0, 0)
+        self.click('button:contains("Ananya Rao")')
+        self.click('dialog[open] a:contains("View full profile")')
+        self.assert_text("Ananya Rao", "h1")
+        self.assert_text("Pune Pirates vs Sand Crabs", "[data-back-pill]")
+        self.go_back()
+        self.assert_element('button:contains("Ananya Rao")')
+        self.assertEqual(self.get_current_url(), live)
+
+    def test_match_card_mvp_quick_look(self) -> None:
+        Match.objects.filter(tournament=self.newer).update(
+            time=datetime.datetime.combine(
+                self.newer.event.start_date, datetime.time(12), tzinfo=datetime.UTC
+            )
+        )
+        self.open(f"{APP_URL}/tournament/{self.newer.event.slug}/schedule")
+        self.click('button:contains("SoTG")')
+        self.click('dialog[open] button:contains("Ananya Rao")')
+        self.assert_text("MVP in this match", "body")
+        self.assert_text("View full profile", "body")
