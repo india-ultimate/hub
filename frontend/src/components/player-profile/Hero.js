@@ -11,7 +11,8 @@ const chip =
 const TeamCard = props => (
   <A
     href={`/team/${props.team.slug}`}
-    class="mx-auto mt-4 flex min-h-[44px] w-full max-w-[260px] items-center gap-3 rounded-xl bg-white px-3 py-2 text-left shadow-sm ring-1 ring-gray-200 transition duration-200 hover:ring-blue-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:bg-gray-700 dark:ring-gray-600 md:mx-0 md:mt-0 md:w-auto md:max-w-sm md:px-4 md:py-3"
+    data-season-card
+    class="mx-auto mt-4 flex min-h-[44px] w-full max-w-[260px] touch-manipulation items-center gap-3 rounded-xl bg-white px-3 py-2 text-left shadow-sm ring-1 ring-gray-200 transition duration-200 hover:ring-blue-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 active:bg-gray-50 dark:bg-gray-700 dark:ring-gray-600 md:mx-0 md:mt-0 md:w-auto md:max-w-sm md:px-4 md:py-3"
   >
     <Show
       when={props.team.image || props.team.image_url}
@@ -32,7 +33,7 @@ const TeamCard = props => (
     </Show>
     <span class="min-w-0 flex-1">
       <span class="block text-xs text-gray-500 dark:text-gray-400">
-        Current team
+        {props.season} team
       </span>
       <span class="block break-words font-semibold text-gray-900 dark:text-white">
         {props.team.name}
@@ -100,8 +101,11 @@ const Hero = props => {
           </p>
         </Show>
       </div>
-      <Show when={props.profile.current_team}>
-        <TeamCard team={props.profile.current_team} />
+      <Show when={props.profile.season_team}>
+        <TeamCard
+          team={props.profile.season_team.team}
+          season={props.profile.season_team.season}
+        />
       </Show>
     </div>
   );

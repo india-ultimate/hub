@@ -7,6 +7,7 @@ from selenium.webdriver.common.keys import Keys
 from seleniumbase import BaseCase
 
 from server.core.models import Team, User
+from server.season.models import Season
 from server.tests import test_ui
 from server.tests.base import create_event, create_player
 from server.tests.localserver import APP_URL, running_test_server
@@ -18,6 +19,7 @@ from server.tournament.models import (
     SpiritScore,
     Tournament,
 )
+from server.utils import today
 
 
 @pytest.mark.django_db(transaction=True)
@@ -49,12 +51,19 @@ class TestPlayerProfileIntegration(BaseCase):
         self.newer.current_seeding = {"3": self.pirates.id}
         self.newer.save()
         self.add_stats(self.newer)
+        day = today()
+        self.season = Season.objects.create(
+            name="Now",
+            start_date=day - datetime.timedelta(days=100),
+            end_date=day + datetime.timedelta(days=200),
+        )
+        self.label = f"{self.season.start_date.year}\u2013{str(self.season.end_date.year)[-2:]}"
 
     def make_tournament(
-        self, title: str, days: int, team: Team, role: str = "PLA", status: str = "COM"
+        self, title: str, days: int, team: Team, role: str = "DFLT", status: str = "COM"
     ) -> Tournament:
         event = create_event(title)
-        event.start_date = now().date() + datetime.timedelta(days=days)
+        event.start_date = today() + datetime.timedelta(days=days)
         event.end_date = event.start_date + datetime.timedelta(days=2)
         event.save()
         tournament = Tournament.objects.create(event=event, status=status)
@@ -349,3 +358,18 @@ class TestPlayerProfileIntegration(BaseCase):
         self.click('dialog[open] button:contains("Ananya Rao")')
         self.assert_text("MVP in this match", "body")
         self.assert_text("View full profile", "body")
+
+    def test_season_card_label(self) -> None:
+        self.open(f"{APP_URL}/player/{self.player.slug}")
+        self.assert_text(f"{self.label} team", "[data-season-card]")
+        self.assert_text("Pune Pirates", "[data-season-card]")
+        self.assert_element_absent("[data-ribbon]")
+
+    def test_no_season_card_when_not_on_a_roster_this_season(self) -> None:
+        Season.objects.filter(pk=self.season.pk).update(
+            start_date=today() + datetime.timedelta(days=400),
+            end_date=today() + datetime.timedelta(days=700),
+        )
+        self.open(f"{APP_URL}/player/{self.player.slug}")
+        self.assert_text("Ananya Rao", "h1")
+        self.assert_element_absent("[data-season-card]")

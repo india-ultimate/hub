@@ -30,6 +30,11 @@ class ProfileTournamentSchema(Schema):
     msp: int
 
 
+class SeasonTeamSchema(Schema):
+    team: TeamMinSchema
+    season: str
+
+
 class PlayerProfileSchema(Schema):
     slug: str
     full_name: str
@@ -37,5 +42,5 @@ class PlayerProfileSchema(Schema):
     match_up: str
     state: str | None
     jersey_number: int | None
-    current_team: TeamMinSchema | None
+    season_team: SeasonTeamSchema | None
     tournaments: list[ProfileTournamentSchema]
