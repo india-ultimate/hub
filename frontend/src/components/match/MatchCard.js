@@ -2,15 +2,23 @@ import { A } from "@solidjs/router";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { clsx } from "clsx";
 import { Icon } from "solid-heroicons";
-import { arrowRight, chevronRight, pencil, play } from "solid-heroicons/solid";
+import {
+  arrowRight,
+  chevronRight,
+  pencil,
+  play,
+  star
+} from "solid-heroicons/solid";
 import { createEffect, createSignal, Match, Show, Switch } from "solid-js";
 
 import {
   matchCardColorToButtonStyles,
   matchCardColorToRingColorMap
 } from "../../colors";
+import { usePrefetchPlayer } from "../../playerLinks";
 import { fetchUserAccessByTournamentSlug } from "../../queries";
 import { getMatchCardColor } from "../../utils";
+import QuickLook from "../player-profile/QuickLook";
 import MatchScoreForm from "../tournament/MatchScoreForm";
 import MatchSpiritScoreForm from "../tournament/MatchSpiritScoreForm";
 import SpiritScoreTable from "../tournament/SpiritScoreTable";
@@ -20,6 +28,48 @@ import CreateStatsButton from "./stats/CreateStatsButton";
 import ViewStatsButton from "./stats/ViewStatsButton";
 import SubmitScore from "./SubmitScore";
 import SubmitSpiritScore from "./SubmitSpiritScore";
+
+const AwardRow = props => {
+  const prefetch = usePrefetchPlayer();
+  const warm = () => props.player?.slug && prefetch(props.player.slug);
+  return (
+    <button
+      type="button"
+      aria-haspopup="dialog"
+      class={clsx(
+        "flex min-h-[44px] w-full touch-manipulation items-center gap-3 rounded-lg px-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:bg-gray-800 dark:hover:bg-gray-700 dark:active:bg-gray-600",
+        props.award === "MVP"
+          ? "bg-yellow-50 hover:bg-yellow-100 active:bg-yellow-200"
+          : "bg-green-50 hover:bg-green-100 active:bg-green-200"
+      )}
+      onPointerEnter={warm}
+      onTouchStart={warm}
+      onFocus={warm}
+      onClick={() => props.onOpen(props.player, props.award)}
+    >
+      <Icon
+        path={star}
+        class={clsx(
+          "h-4 w-4 flex-none",
+          props.award === "MVP" ? "text-yellow-600" : "text-green-600"
+        )}
+      />
+      <span class="text-xs uppercase text-gray-500 dark:text-gray-400">
+        {props.award}
+      </span>
+      <span class="flex-1">
+        <span class="block font-semibold text-gray-900 dark:text-white">
+          {props.player.full_name}
+        </span>
+        <span class="block text-sm text-gray-500 dark:text-gray-400">
+          {props.team}
+        </span>
+      </span>
+      <Icon path={chevronRight} class="h-5 w-5 flex-none text-gray-400" />
+    </button>
+  );
+};
+
 /**
  * Returns a match block between 2 teams.
  * If a team should appear first, pass `currentTeamNo` = team id in match object (1 or 2).
@@ -35,6 +85,12 @@ import SubmitSpiritScore from "./SubmitSpiritScore";
 const TournamentMatch = props => {
   const queryClient = useQueryClient();
 
+  const [look, setLook] = createSignal({});
+  let lookRef;
+  const openLook = (player, award) => {
+    setLook({ player, award });
+    lookRef.showModal();
+  };
   const [currTeamNo, setCurrTeamNo] = createSignal(1);
   const [oppTeamNo, setOppTeamNo] = createSignal(2);
   const [startTime, setStartTime] = createSignal("");
@@ -393,7 +449,7 @@ const TournamentMatch = props => {
                   props.match[`self_spirit_score_team_${oppTeamNo()}`]
                 }
               />
-              <h2 class="text-center font-bold text-blue-600 dark:text-blue-500">
+              <h2 class="mb-1 text-center font-bold text-blue-600 dark:text-blue-500">
                 MVPs
               </h2>
 
@@ -404,16 +460,15 @@ const TournamentMatch = props => {
                     props.match[`spirit_score_team_${currTeamNo()}`].mvp_v2
                   }
                 >
-                  <div class="mx-2 font-medium dark:text-white">
-                    <div>
-                      {
+                  <div class="mx-2">
+                    <AwardRow
+                      award="MVP"
+                      player={
                         props.match[`spirit_score_team_${currTeamNo()}`].mvp_v2
-                          ?.full_name
                       }
-                    </div>
-                    <div class="text-sm text-gray-500 dark:text-gray-400">
-                      {props.match[`team_${currTeamNo()}`].name}
-                    </div>
+                      team={props.match[`team_${currTeamNo()}`].name}
+                      onOpen={openLook}
+                    />
                   </div>
                 </Match>
                 <Match
@@ -454,16 +509,15 @@ const TournamentMatch = props => {
                     props.match[`spirit_score_team_${oppTeamNo()}`].mvp_v2
                   }
                 >
-                  <div class="mx-2 font-medium dark:text-white">
-                    <div>
-                      {
+                  <div class="mx-2">
+                    <AwardRow
+                      award="MVP"
+                      player={
                         props.match[`spirit_score_team_${oppTeamNo()}`].mvp_v2
-                          ?.full_name
                       }
-                    </div>
-                    <div class="text-sm text-gray-500 dark:text-gray-400">
-                      {props.match[`team_${oppTeamNo()}`].name}
-                    </div>
+                      team={props.match[`team_${oppTeamNo()}`].name}
+                      onOpen={openLook}
+                    />
                   </div>
                 </Match>
                 <Match
@@ -497,7 +551,7 @@ const TournamentMatch = props => {
                 </Match>
               </Switch>
 
-              <h2 class="text-center font-bold text-blue-600 dark:text-blue-500">
+              <h2 class="mb-1 mt-3 text-center font-bold text-blue-600 dark:text-blue-500">
                 MSPs
               </h2>
               <Switch>
@@ -507,18 +561,15 @@ const TournamentMatch = props => {
                     props.match[`spirit_score_team_${currTeamNo()}`].msp_v2
                   }
                 >
-                  <div class="mx-2 flex items-center space-x-4">
-                    <div class="font-medium dark:text-white">
-                      <div>
-                        {
-                          props.match[`spirit_score_team_${currTeamNo()}`]
-                            .msp_v2?.full_name
-                        }
-                      </div>
-                      <div class="text-sm text-gray-500 dark:text-gray-400">
-                        {props.match[`team_${currTeamNo()}`].name}
-                      </div>
-                    </div>
+                  <div class="mx-2">
+                    <AwardRow
+                      award="MSP"
+                      player={
+                        props.match[`spirit_score_team_${currTeamNo()}`].msp_v2
+                      }
+                      team={props.match[`team_${currTeamNo()}`].name}
+                      onOpen={openLook}
+                    />
                   </div>
                 </Match>
                 <Match
@@ -558,18 +609,15 @@ const TournamentMatch = props => {
                     props.match[`spirit_score_team_${oppTeamNo()}`].msp_v2
                   }
                 >
-                  <div class="mx-2 flex items-center space-x-4">
-                    <div class="font-medium dark:text-white">
-                      <div>
-                        {
-                          props.match[`spirit_score_team_${oppTeamNo()}`].msp_v2
-                            ?.full_name
-                        }
-                      </div>
-                      <div class="text-sm text-gray-500 dark:text-gray-400">
-                        {props.match[`team_${oppTeamNo()}`].name}
-                      </div>
-                    </div>
+                  <div class="mx-2">
+                    <AwardRow
+                      award="MSP"
+                      player={
+                        props.match[`spirit_score_team_${oppTeamNo()}`].msp_v2
+                      }
+                      team={props.match[`team_${oppTeamNo()}`].name}
+                      onOpen={openLook}
+                    />
                   </div>
                 </Match>
                 <Match
@@ -655,6 +703,15 @@ const TournamentMatch = props => {
                 </Show>
               </Show>
             </div>
+            <QuickLook
+              ref={lookRef}
+              player={look().player}
+              award={look().award}
+              from={{
+                label: `${props.match.team_1.name} vs ${props.match.team_2.name}`,
+                tournamentSlug: props.tournamentSlug
+              }}
+            />
           </FinalSpiritScores>
         </Show>
       </div>

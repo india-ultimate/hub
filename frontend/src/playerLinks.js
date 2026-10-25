@@ -16,11 +16,18 @@ export const usePrefetchPlayer = () => {
     });
 };
 
-const inert = cls =>
-  cls
-    ?.split(/\s+/)
-    .filter(c => !/(^|:)(hover|focus-visible):|^transition/.test(c))
-    .join(" ");
+export const careerTotals = tournaments => {
+  const tracked = tournaments.filter(t => t.stats);
+  const sum = (list, pick) => list.reduce((total, t) => total + pick(t), 0);
+  return {
+    tracked: tracked.length,
+    goals: sum(tracked, t => t.stats.goals),
+    assists: sum(tracked, t => t.stats.assists),
+    blocks: sum(tracked, t => t.stats.blocks),
+    mvp: sum(tournaments, t => t.mvp),
+    msp: sum(tournaments, t => t.msp)
+  };
+};
 
 const saveScroll = () =>
   history.replaceState({ ...history.state, scrollY: window.scrollY }, "");
@@ -36,6 +43,12 @@ export const useRestoreScroll = ready => {
     })
   );
 };
+
+const inert = cls =>
+  cls
+    ?.split(/\s+/)
+    .filter(c => !/(^|:)(hover|focus-visible):|^transition/.test(c))
+    .join(" ");
 
 export const PlayerLink = props => {
   const [local, rest] = splitProps(props, ["slug", "from", "children"]);

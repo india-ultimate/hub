@@ -1,6 +1,6 @@
 import { For, Show } from "solid-js";
 
-const sum = (list, pick) => list.reduce((total, t) => total + pick(t), 0);
+import { careerTotals } from "../../playerLinks";
 
 const Tile = props => (
   <div
@@ -12,26 +12,41 @@ const Tile = props => (
     >
       {props.value}
     </div>
-    <div class="text-[11px] uppercase tracking-wide md:text-xs">
-      {props.label}
-    </div>
+    <div class="text-xs uppercase tracking-wide">{props.label}</div>
   </div>
 );
 
+const DESKTOP_COLS = {
+  1: "md:grid-cols-1",
+  2: "md:grid-cols-2",
+  3: "md:grid-cols-3",
+  4: "md:grid-cols-4",
+  5: "md:grid-cols-5"
+};
+
 const CareerStrip = props => {
-  const tracked = () => props.tournaments.filter(t => t.stats);
-  const mvp = () => sum(props.tournaments, t => t.mvp);
-  const msp = () => sum(props.tournaments, t => t.msp);
+  const totals = () => careerTotals(props.tournaments);
+  const tracked = () => totals().tracked;
+  const mvp = () => totals().mvp;
+  const msp = () => totals().msp;
   const play = () => [
-    ["Goals", sum(tracked(), t => t.stats.goals)],
-    ["Assists", sum(tracked(), t => t.stats.assists)],
-    ["Blocks", sum(tracked(), t => t.stats.blocks)]
+    ["Goals", totals().goals],
+    ["Assists", totals().assists],
+    ["Blocks", totals().blocks]
   ];
 
+  const caption = () =>
+    `Goals, assists and blocks across ${tracked()} ${tracked() === 1 ? "tournament" : "tournaments"} with stats`;
+  const awards = () => (mvp() > 0 ? 1 : 0) + (msp() > 0 ? 1 : 0);
+  const awardSpan = () => (awards() === 1 ? "col-span-6" : "col-span-3");
+  const columns = () => (tracked() ? 3 : 0) + awards();
+
   return (
-    <Show when={tracked().length || mvp() > 0 || msp() > 0}>
-      <div class="mt-5 grid grid-cols-6 gap-2 md:grid-cols-5 md:gap-4">
-        <Show when={tracked().length}>
+    <Show when={tracked() || mvp() > 0 || msp() > 0}>
+      <div
+        class={`mt-5 grid grid-cols-6 gap-2 md:gap-4 ${DESKTOP_COLS[columns()]}`}
+      >
+        <Show when={tracked()}>
           <For each={play()}>
             {([label, value]) => (
               <div class="col-span-2 md:col-span-1">
@@ -44,9 +59,12 @@ const CareerStrip = props => {
               </div>
             )}
           </For>
+          <p class="col-span-6 text-center text-xs text-gray-500 dark:text-gray-400 md:hidden">
+            {caption()}
+          </p>
         </Show>
         <Show when={mvp() > 0}>
-          <div class="col-span-3 md:col-span-1">
+          <div class={`${awardSpan()} md:col-span-1`}>
             <Tile
               id="mvp"
               label="MVP"
@@ -57,7 +75,7 @@ const CareerStrip = props => {
           </div>
         </Show>
         <Show when={msp() > 0}>
-          <div class="col-span-3 md:col-span-1">
+          <div class={`${awardSpan()} md:col-span-1`}>
             <Tile
               id="msp"
               label="MSP"
@@ -68,10 +86,9 @@ const CareerStrip = props => {
           </div>
         </Show>
       </div>
-      <Show when={tracked().length}>
-        <p class="mt-1.5 text-center text-xs text-gray-500 dark:text-gray-400">
-          Goals, assists and blocks across {tracked().length}{" "}
-          {tracked().length === 1 ? "tournament" : "tournaments"} with stats
+      <Show when={tracked()}>
+        <p class="mt-1.5 hidden text-center text-xs text-gray-500 dark:text-gray-400 md:block">
+          {caption()}
         </p>
       </Show>
     </Show>
