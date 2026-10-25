@@ -1,9 +1,15 @@
 import { createQuery } from "@tanstack/solid-query";
 import { domToPng } from "modern-screenshot";
 import { Icon } from "solid-heroicons";
-import { arrowDownTray, sparkles, trophy } from "solid-heroicons/solid";
+import {
+  arrowDownTray,
+  chevronRight,
+  sparkles,
+  trophy
+} from "solid-heroicons/solid";
 import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
 
+import { PlayerLink } from "../../playerLinks";
 import { fetchUser, fetchWrappedData } from "../../queries";
 import { assetURL } from "../../utils";
 
@@ -70,7 +76,8 @@ const WrappedYearDisplay = props => {
       const dataUrl = await domToPng(cardRef, {
         quality: 1.0,
         scale: 8,
-        backgroundColor: "#ffffff"
+        backgroundColor: "#ffffff",
+        filter: node => !node.hasAttribute?.("data-no-export")
       });
 
       const link = document.createElement("a");
@@ -199,14 +206,32 @@ const WrappedYearDisplay = props => {
                         each={wrapped()?.top_teammates_i_assisted.slice(0, 3)}
                       >
                         {teammate => (
-                          <div class="flex items-center gap-1">
+                          <PlayerLink
+                            slug={
+                              wrapped()?.teammate_slugs?.[teammate.player_id]
+                            }
+                            from={{ label: `Your ${wrapped()?.year} Wrapped` }}
+                            class="flex min-h-[44px] touch-manipulation items-center gap-1 rounded-lg hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 active:bg-blue-200 dark:hover:bg-gray-700 dark:active:bg-gray-600"
+                          >
                             <span class="font-semibold text-blue-600 dark:text-blue-400">
                               {formatPlayerName(teammate.player_name)}
                             </span>
                             <span class="text-sm font-medium text-blue-600 dark:text-blue-400">
                               ({teammate.count})
                             </span>
-                          </div>
+                            <Show
+                              when={
+                                wrapped()?.teammate_slugs?.[teammate.player_id]
+                              }
+                            >
+                              <Icon
+                                path={chevronRight}
+                                class="h-4 w-4 text-blue-400"
+                                aria-hidden="true"
+                                data-no-export
+                              />
+                            </Show>
+                          </PlayerLink>
                         )}
                       </For>
                     </div>
@@ -231,14 +256,32 @@ const WrappedYearDisplay = props => {
                         )}
                       >
                         {teammate => (
-                          <div class="flex items-center gap-1">
+                          <PlayerLink
+                            slug={
+                              wrapped()?.teammate_slugs?.[teammate.player_id]
+                            }
+                            from={{ label: `Your ${wrapped()?.year} Wrapped` }}
+                            class="flex min-h-[44px] touch-manipulation items-center gap-1 rounded-lg hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 active:bg-blue-200 dark:hover:bg-gray-700 dark:active:bg-gray-600"
+                          >
                             <span class="font-semibold text-blue-600 dark:text-blue-400">
                               {formatPlayerName(teammate.player_name)}
                             </span>
                             <span class="text-sm font-medium text-blue-600 dark:text-blue-400">
                               ({teammate.count})
                             </span>
-                          </div>
+                            <Show
+                              when={
+                                wrapped()?.teammate_slugs?.[teammate.player_id]
+                              }
+                            >
+                              <Icon
+                                path={chevronRight}
+                                class="h-4 w-4 text-blue-400"
+                                aria-hidden="true"
+                                data-no-export
+                              />
+                            </Show>
+                          </PlayerLink>
                         )}
                       </For>
                     </div>

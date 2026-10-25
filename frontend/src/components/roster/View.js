@@ -8,6 +8,7 @@ import { Icon } from "solid-heroicons";
 import { star, trophy } from "solid-heroicons/solid";
 import { createEffect, createSignal, For, Show } from "solid-js";
 
+import { useRestoreScroll } from "../../playerLinks";
 import {
   fetchTeamBySlug,
   fetchTournamentBySlug,
@@ -92,6 +93,13 @@ const Roster = () => {
   const currentUserIsTeamAdmin = () =>
     teamQuery.data?.admins.filter(user => user.id === store.data.id).length ==
     1;
+
+  useRestoreScroll(() => rosterQuery.isSuccess);
+
+  const rosterFrom = () => ({
+    label: `${tournamentQuery.data?.event?.title} · ${teamQuery.data?.name} roster`,
+    tournamentSlug: params.tournament_slug
+  });
 
   const isPlayer = registration => registration?.is_playing;
 
@@ -296,6 +304,7 @@ const Roster = () => {
               <For each={players()}>
                 {registration => (
                   <Registration
+                    from={rosterFrom()}
                     registration={registration}
                     isTeamAdmin={currentUserIsTeamAdmin()}
                     canRemovePlayer={
@@ -322,6 +331,7 @@ const Roster = () => {
               <For each={nonPlayers()}>
                 {registration => (
                   <Registration
+                    from={rosterFrom()}
                     registration={registration}
                     isTeamAdmin={currentUserIsTeamAdmin()}
                     canRemovePlayer={

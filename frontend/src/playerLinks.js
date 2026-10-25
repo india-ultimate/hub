@@ -1,6 +1,6 @@
 import { A } from "@solidjs/router";
 import { useQueryClient } from "@tanstack/solid-query";
-import { Show, splitProps } from "solid-js";
+import { createEffect, on, Show, splitProps } from "solid-js";
 
 import { fetchPlayerProfile } from "./queries";
 
@@ -22,6 +22,21 @@ const inert = cls =>
     .filter(c => !/(^|:)(hover|focus-visible):|^transition/.test(c))
     .join(" ");
 
+const saveScroll = () =>
+  history.replaceState({ ...history.state, scrollY: window.scrollY }, "");
+
+export const useRestoreScroll = ready => {
+  let restored = false;
+  createEffect(
+    on(ready, isReady => {
+      const y = history.state?.scrollY;
+      if (!isReady || restored || !y) return;
+      restored = true;
+      requestAnimationFrame(() => window.scrollTo(0, y));
+    })
+  );
+};
+
 export const PlayerLink = props => {
   const [local, rest] = splitProps(props, ["slug", "from", "children"]);
   const prefetch = usePrefetchPlayer();
@@ -36,6 +51,7 @@ export const PlayerLink = props => {
         {...rest}
         href={`/player/${local.slug}`}
         state={{ from: local.from }}
+        onClick={saveScroll}
         onPointerEnter={warm}
         onFocus={warm}
         onTouchStart={warm}
