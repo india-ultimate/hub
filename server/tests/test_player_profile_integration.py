@@ -6,13 +6,23 @@ from django.utils.timezone import now
 from seleniumbase import BaseCase
 
 from server.core.models import Team, User
+from server.tests import test_ui
 from server.tests.base import create_event, create_player
 from server.tests.localserver import APP_URL, running_test_server
-from server.tournament.models import Match, MatchStats, Registration, SpiritScore, Tournament
+from server.tournament.models import (
+    Match,
+    MatchEvent,
+    MatchStats,
+    Registration,
+    SpiritScore,
+    Tournament,
+)
 
 
 @pytest.mark.django_db(transaction=True)
 class TestPlayerProfileIntegration(BaseCase):
+    sign_in_as = test_ui.TestIntegration.sign_in_as
+
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
@@ -192,3 +202,56 @@ class TestPlayerProfileIntegration(BaseCase):
         self.execute_script("window.fetch = window.realFetch")
         self.click('button:contains("Try again")')
         self.assert_text("Ananya Rao", "h1")
+
+    def test_roster_row_links_to_profile(self) -> None:
+        slug = self.newer.event.slug
+        self.open(f"{APP_URL}/tournament/{slug}/team/{self.pirates.slug}/roster")
+        self.click('a:contains("Ananya Rao")')
+        self.assert_text("Ananya Rao", "h1")
+        self.assert_text("Pune Open · Pune Pirates roster", "[data-back-pill]")
+
+    def test_dashboard_profile_card(self) -> None:
+        self.sign_in_as(self.player.user)
+        self.open(f"{APP_URL}/dashboard")
+        self.click('a:contains("Your public profile")')
+        self.assert_text("Ananya Rao", "h1")
+
+    def test_leaderboard_round_trip(self) -> None:
+        stats = MatchStats.objects.get(tournament=self.newer)
+        for n in range(30):
+            user = User.objects.create(
+                username=f"p{n}", first_name=f"Player{n:02}", last_name="Roe"
+            )
+            other = create_player(user)
+            Registration.objects.create(
+                event=self.newer.event, team=self.pirates, player=other, role="PLA"
+            )
+            MatchEvent.objects.create(
+                stats=stats,
+                team=self.pirates,
+                type="SC",
+                scored_by=self.player,
+                assisted_by=other,
+            )
+        self.set_window_size(1100, 700)
+        self.open(f"{APP_URL}/tournament/{self.newer.event.slug}/leaderboard")
+        self.click("button#assists-tab")
+        self.wait_for_element('a[href^="/player/"]')
+        self.assertIn("tab=assists", self.get_current_url())
+        row = '[role="listitem"]:nth-of-type(20) a'
+        self.scroll_to(row)
+        self.sleep(1)
+        before = self.execute_script("return window.scrollY")
+        self.assertGreater(before, 100)
+        name = self.get_text(row).splitlines()[1].split(" (")[0]
+        self.click(row)
+        self.assert_text(name, "h1")
+        self.assert_text("Pune Open · Leaderboard", "[data-back-pill]")
+        self.assert_text("AT PUNE OPEN")
+        self.click("[data-back-pill]")
+        self.wait_for_element('a[href^="/player/"]')
+        self.assertIn("tab=assists", self.get_current_url())
+        self.assertIn("bg-blue-600", self.get_attribute("button#assists-tab", "class"))
+        self.sleep(0.5)
+        after = self.execute_script("return window.scrollY")
+        self.assertLess(abs(after - before), 60)

@@ -6,11 +6,12 @@ import {
 } from "@tanstack/solid-query";
 import clsx from "clsx";
 import { Icon } from "solid-heroicons";
-import { trophy } from "solid-heroicons/solid";
+import { chevronRight, trophy } from "solid-heroicons/solid";
 import { trash } from "solid-heroicons/solid";
 import { createEffect, createSignal, For, Match, Show, Switch } from "solid-js";
 
 import { playerRoles } from "../../constants";
+import { PlayerLink } from "../../playerLinks";
 import {
   fetchSeriesBySlug,
   fetchSeriesTeamBySlug,
@@ -50,17 +51,30 @@ const RosterList = props => (
     <For each={props.registrations}>
       {registration => (
         <div class="mr-6 flex w-full items-center justify-between space-x-4 py-2 pr-2">
-          <div class="font-medium">
-            {registration.player?.full_name}
-            <Show when={registration.player?.match_up}>
-              {` (${registration.player?.match_up})`}
+          <PlayerLink
+            slug={registration.player?.slug}
+            from={props.from}
+            class="flex min-h-[52px] flex-1 touch-manipulation items-center rounded-lg font-medium transition-colors hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 active:bg-gray-200 dark:hover:bg-gray-800 dark:active:bg-gray-700"
+          >
+            <span>
+              {registration.player?.full_name}
+              <Show when={registration.player?.match_up}>
+                {` (${registration.player?.match_up})`}
+              </Show>
+              <Show when={registration.role && registration.role !== "DFLT"}>
+                <span class="ml-2 text-sm text-gray-500">
+                  {roleLabel(registration.role)}
+                </span>
+              </Show>
+            </span>
+            <Show when={registration.player?.slug}>
+              <Icon
+                path={chevronRight}
+                class="ml-auto h-5 w-5 text-gray-400"
+                aria-hidden="true"
+              />
             </Show>
-            <Show when={registration.role && registration.role !== "DFLT"}>
-              <span class="ml-2 text-sm text-gray-500">
-                {roleLabel(registration.role)}
-              </span>
-            </Show>
-          </div>
+          </PlayerLink>
         </div>
       )}
     </For>
@@ -128,6 +142,10 @@ const SeriesRoster = () => {
       setLatestInvitationsPerPlayer(latestInvitations);
       setNumPendingInvitations(pendingInvitations);
     }
+  });
+
+  const rosterFrom = () => ({
+    label: `${seriesQuery.data?.name} · ${teamQuery.data?.name}`
   });
 
   const currentUserIsTeamAdmin = () =>
@@ -270,14 +288,14 @@ const SeriesRoster = () => {
                 when={players().length !== 0}
                 fallback={<Info text="No Players in the roster yet" />}
               >
-                <RosterList registrations={players()} />
+                <RosterList registrations={players()} from={rosterFrom()} />
               </Show>
 
               <Show when={staff().length !== 0}>
                 <h4 class="mb-2 mt-4 text-xl font-bold text-blue-500 underline underline-offset-2">
                   Staff {`(${staff().length})`}
                 </h4>
-                <RosterList registrations={staff()} />
+                <RosterList registrations={staff()} from={rosterFrom()} />
               </Show>
             </div>
 

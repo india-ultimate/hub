@@ -1,8 +1,10 @@
-import { A, useParams } from "@solidjs/router";
+import { A, useParams, useSearchParams } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
-import { trophy } from "solid-heroicons/solid";
-import { createSignal, For, Show } from "solid-js";
+import { Icon } from "solid-heroicons";
+import { chevronRight, trophy } from "solid-heroicons/solid";
+import { createMemo, For, Show } from "solid-js";
 
+import { PlayerLink, useRestoreScroll } from "../../playerLinks";
 import {
   fetchTournamentBySlug,
   fetchTournamentLeaderboard
@@ -11,11 +13,26 @@ import { getTournamentBreadcrumbName } from "../../utils";
 import Breadcrumbs from "../Breadcrumbs";
 import PillTabs from "../tabs/PillTabs";
 
+const TABS = [
+  { id: "total", label: "Total", column: "Total", field: "num_total" },
+  { id: "scores", label: "Scores", column: "Goals", field: "num_scores" },
+  { id: "assists", label: "Assists", column: "Ast", field: "num_assists" },
+  { id: "blocks", label: "Blocks", column: "Blk", field: "num_blocks" }
+];
+
 const TournamentStandings = () => {
   const params = useParams();
-  const [selectedTeam, setSelectedTeam] = createSignal("all");
-  const [selectedGender, setSelectedGender] = createSignal("all");
-  const [activeTab, setActiveTab] = createSignal("total");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const setParam = (key, value, fallback) =>
+    setSearchParams(
+      { [key]: value === fallback ? undefined : value },
+      { replace: true }
+    );
+  const activeTab = () =>
+    TABS.some(t => t.id === searchParams.tab) ? searchParams.tab : "total";
+  const activeTabConfig = () => TABS.find(t => t.id === activeTab());
+  const selectedTeam = () => searchParams.team || "all";
+  const selectedGender = () => searchParams.gender || "all";
 
   const tournamentQuery = createQuery(
     () => ["tournaments", params.slug],
@@ -26,6 +43,27 @@ const TournamentStandings = () => {
     () => ["tournaments", params.slug, "leaderboard"],
     () => fetchTournamentLeaderboard(params.slug)
   );
+
+  useRestoreScroll(() => tournamentLeaderboardQuery.isSuccess);
+
+  const rows = () =>
+    (tournamentLeaderboardQuery.data?.[activeTab()] ?? [])
+      .filter(p => selectedTeam() === "all" || p?.team_name === selectedTeam())
+      .filter(
+        p => selectedGender() === "all" || p?.gender === selectedGender()
+      );
+  const ranks = createMemo(() => {
+    const field = activeTabConfig().field;
+    const list = rows();
+    return list.map(
+      p => list.findIndex(q => (q?.[field] ?? 0) === (p?.[field] ?? 0)) + 1
+    );
+  });
+
+  const from = () => ({
+    label: `${tournamentQuery.data?.event?.title} · Leaderboard`,
+    tournamentSlug: params.slug
+  });
 
   return (
     <Show
@@ -62,250 +100,105 @@ const TournamentStandings = () => {
         <div class="col-span-8">
           <select
             id="teams"
-            onChange={e => setSelectedTeam(e.target.value)}
+            onChange={e => setParam("team", e.target.value, "all")}
             class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
           >
-            <option selected value="all">
+            <option selected={selectedTeam() === "all"} value="all">
               All Teams
             </option>
             <For each={tournamentQuery.data?.teams}>
-              {team => <option value={team.name}>{team.name}</option>}
+              {team => (
+                <option
+                  selected={selectedTeam() === team.name}
+                  value={team.name}
+                >
+                  {team.name}
+                </option>
+              )}
             </For>
           </select>
         </div>
         <div class="col-span-4">
           <select
             id="gender"
-            onChange={e => setSelectedGender(e.target.value)}
+            onChange={e => setParam("gender", e.target.value, "all")}
             class="col-span-2 block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
           >
-            <option selected value="all">
+            <option selected={selectedGender() === "all"} value="all">
               M/F
             </option>
-            <option value="M">M</option>
-            <option value="F">F</option>
+            <option selected={selectedGender() === "M"} value="M">
+              M
+            </option>
+            <option selected={selectedGender() === "F"} value="F">
+              F
+            </option>
           </select>
         </div>
       </div>
 
       <PillTabs
-        tabs={[
-          { id: "total", label: "Total" },
-          { id: "scores", label: "Scores" },
-          { id: "assists", label: "Assists" },
-          { id: "blocks", label: "Blocks" }
-        ]}
+        tabs={TABS.map(({ id, label }) => ({ id, label }))}
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={id => setParam("tab", id, "total")}
       />
 
-      <Show when={activeTab() === "total"}>
-        <div class="rounded-lg">
-          <div class="relative overflow-x-auto rounded-lg shadow-lg">
-            <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
-              <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
-                <tr>
-                  <th scope="col" class="px-4 py-3">
-                    Player
-                  </th>
-                  <th scope="col" class="px-4 py-3">
-                    Team
-                  </th>
-                  <th scope="col" class="px-4 py-3">
-                    Total
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                <For
-                  each={tournamentLeaderboardQuery.data?.total
-                    ?.filter(
-                      player =>
-                        player?.team_name === selectedTeam() ||
-                        selectedTeam() === "all"
-                    )
-                    .filter(
-                      player =>
-                        player?.gender === selectedGender() ||
-                        selectedGender() === "all"
-                    )}
-                >
-                  {player => (
-                    <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
-                      <td class="px-4 py-3 font-semibold">{`${player?.first_name.trim()} ${player?.last_name.trim()} (${
-                        player?.gender
-                      })`}</td>
-                      <td class="px-4 py-3">{player?.team_name}</td>
-                      <td class="px-4 py-3">{player?.num_total}</td>
-                    </tr>
-                  )}
-                </For>
-              </tbody>
-            </table>
-            <Show when={tournamentLeaderboardQuery.data?.total?.length === 0}>
-              <div class="w-full py-2 text-center text-sm italic">
-                No Players To Show
-              </div>
-            </Show>
-          </div>
+      <div class="overflow-hidden rounded-lg shadow-lg">
+        <div
+          aria-hidden="true"
+          class="flex gap-3 bg-gray-50 px-3 py-2 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400"
+        >
+          <span class="w-4" />
+          <span class="flex-1">Player</span>
+          <span class="hidden w-48 md:block">Team</span>
+          <span class="w-12 text-right">{activeTabConfig().column}</span>
+          <span class="w-5" />
         </div>
-      </Show>
-
-      <Show when={activeTab() === "scores"}>
-        <div class="rounded-lg">
-          <div class="relative overflow-x-auto rounded-lg shadow-lg">
-            <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
-              <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
-                <tr>
-                  <th scope="col" class="px-4 py-3">
-                    Player
-                  </th>
-                  <th scope="col" class="px-4 py-3">
-                    Team
-                  </th>
-                  <th scope="col" class="px-4 py-3">
-                    Goals
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                <For
-                  each={tournamentLeaderboardQuery.data?.scores
-                    ?.filter(
-                      player =>
-                        player?.team_name === selectedTeam() ||
-                        selectedTeam() === "all"
-                    )
-                    .filter(
-                      player =>
-                        player?.gender === selectedGender() ||
-                        selectedGender() === "all"
-                    )}
+        <div role="list">
+          <For each={rows()}>
+            {(player, index) => (
+              <div role="listitem">
+                <PlayerLink
+                  slug={player?.slug}
+                  from={from()}
+                  class="flex min-h-[52px] touch-manipulation items-center gap-3 border-b bg-white px-3 text-sm transition-colors hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 active:bg-blue-100 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700 dark:active:bg-gray-600"
                 >
-                  {player => (
-                    <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
-                      <td class="px-4 py-3 font-semibold">{`${player?.first_name.trim()} ${player?.last_name.trim()} (${
+                  <span class="w-4 text-xs text-gray-500">
+                    {ranks()[index()]}
+                  </span>
+                  <span class="flex-1">
+                    <span class="block font-semibold text-gray-900 dark:text-white">
+                      {`${player?.first_name.trim()} ${player?.last_name.trim()} (${
                         player?.gender
-                      })`}</td>
-                      <td class="px-4 py-3">{player?.team_name}</td>
-                      <td class="px-4 py-3">{player?.num_scores}</td>
-                    </tr>
-                  )}
-                </For>
-              </tbody>
-            </table>
-            <Show when={tournamentLeaderboardQuery.data?.scores?.length === 0}>
-              <div class="w-full py-2 text-center text-sm italic">
-                No Players To Show
+                      })`}
+                    </span>
+                    <span class="text-xs text-gray-500 md:hidden">
+                      {player?.team_name}
+                    </span>
+                  </span>
+                  <span class="hidden w-48 md:block">{player?.team_name}</span>
+                  <span class="w-12 text-right font-bold tabular-nums text-gray-900 dark:text-white">
+                    <span class="sr-only">{activeTabConfig().label}: </span>
+                    {player?.[activeTabConfig().field] ?? 0}
+                  </span>
+                  <Show when={player?.slug} fallback={<span class="w-5" />}>
+                    <Icon
+                      path={chevronRight}
+                      class="h-5 w-5 text-gray-400"
+                      aria-hidden="true"
+                    />
+                  </Show>
+                </PlayerLink>
               </div>
-            </Show>
-          </div>
+            )}
+          </For>
         </div>
-      </Show>
-
-      <Show when={activeTab() === "assists"}>
-        <div class="rounded-lg">
-          <div class="relative overflow-x-auto rounded-lg shadow-lg">
-            <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
-              <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
-                <tr>
-                  <th scope="col" class="px-4 py-3">
-                    Player
-                  </th>
-                  <th scope="col" class="px-4 py-3">
-                    Team
-                  </th>
-                  <th scope="col" class="px-4 py-3">
-                    Assists
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                <For
-                  each={tournamentLeaderboardQuery.data?.assists
-                    ?.filter(
-                      player =>
-                        player?.team_name === selectedTeam() ||
-                        selectedTeam() === "all"
-                    )
-                    .filter(
-                      player =>
-                        player?.gender === selectedGender() ||
-                        selectedGender() === "all"
-                    )}
-                >
-                  {player => (
-                    <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
-                      <td class="px-4 py-3 font-semibold">{`${player?.first_name.trim()} ${player?.last_name.trim()} (${
-                        player?.gender
-                      })`}</td>
-                      <td class="px-4 py-3">{player?.team_name}</td>
-                      <td class="px-4 py-3">{player?.num_assists}</td>
-                    </tr>
-                  )}
-                </For>
-              </tbody>
-            </table>
-            <Show when={tournamentLeaderboardQuery.data?.assists?.length === 0}>
-              <div class="w-full py-2 text-center text-sm italic">
-                No Players To Show
-              </div>
-            </Show>
+        <Show when={rows().length === 0}>
+          <div class="w-full bg-white py-2 text-center text-sm italic dark:bg-gray-800">
+            No Players To Show
           </div>
-        </div>
-      </Show>
-
-      <Show when={activeTab() === "blocks"}>
-        <div class="rounded-lg">
-          <div class="relative overflow-x-auto rounded-lg shadow-lg">
-            <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
-              <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
-                <tr>
-                  <th scope="col" class="px-4 py-3">
-                    Player
-                  </th>
-                  <th scope="col" class="px-4 py-3">
-                    Team
-                  </th>
-                  <th scope="col" class="px-4 py-3">
-                    Blocks
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                <For
-                  each={tournamentLeaderboardQuery.data?.blocks
-                    ?.filter(
-                      player =>
-                        player?.team_name === selectedTeam() ||
-                        selectedTeam() === "all"
-                    )
-                    .filter(
-                      player =>
-                        player?.gender === selectedGender() ||
-                        selectedGender() === "all"
-                    )}
-                >
-                  {player => (
-                    <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
-                      <td class="px-4 py-3 font-semibold">{`${player?.first_name.trim()} ${player?.last_name.trim()} (${
-                        player?.gender
-                      })`}</td>
-                      <td class="px-4 py-3">{player?.team_name}</td>
-                      <td class="px-4 py-3">{player?.num_blocks}</td>
-                    </tr>
-                  )}
-                </For>
-              </tbody>
-            </table>
-            <Show when={tournamentLeaderboardQuery.data?.blocks?.length === 0}>
-              <div class="w-full py-2 text-center text-sm italic">
-                No Players To Show
-              </div>
-            </Show>
-          </div>
-        </div>
-      </Show>
+        </Show>
+      </div>
     </Show>
   );
 };

@@ -2,9 +2,10 @@ import { supported } from "@github/webauthn-json/browser-ponyfill";
 import { A } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
 import { Icon } from "solid-heroicons";
-import { camera, star } from "solid-heroicons/solid";
+import { camera, chevronRight, star } from "solid-heroicons/solid";
 import { createEffect, createSignal, For, Show } from "solid-js";
 
+import { PlayerLink } from "../playerLinks";
 import {
   fetchMine,
   fetchUserRegistrations,
@@ -356,6 +357,43 @@ const Dashboard = () => {
         </h1>
         <IUIDBadge id={store?.data?.player?.iu_id} />
       </div>
+      <Show when={store.data.player?.slug}>
+        <PlayerLink
+          slug={store.data.player.slug}
+          from={{ label: "Dashboard" }}
+          class="mb-4 flex min-h-[52px] touch-manipulation items-center gap-4 rounded-xl border border-gray-200 bg-gradient-to-r from-blue-50 to-green-50 p-4 shadow-sm transition hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 active:brightness-95 dark:border-gray-700 dark:from-gray-800 dark:to-gray-800"
+        >
+          <Show
+            when={store.data.player.profile_pic_url}
+            fallback={
+              <span class="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-blue-200 to-green-200 font-bold text-blue-800 ring-2 ring-gray-300 dark:from-gray-700 dark:to-gray-700 dark:text-gray-300 dark:ring-blue-500">
+                {store.data.player.full_name?.charAt(0)?.toUpperCase()}
+              </span>
+            }
+          >
+            <img
+              src={store.data.player.profile_pic_url}
+              alt=""
+              width="48"
+              height="48"
+              class="h-12 w-12 rounded-full object-cover ring-2 ring-gray-300 dark:ring-blue-500"
+            />
+          </Show>
+          <span class="flex-1">
+            <span class="block font-semibold text-gray-900 dark:text-white">
+              Your public profile
+            </span>
+            <span class="text-sm text-gray-500 dark:text-gray-400">
+              See what everyone else sees
+            </span>
+          </span>
+          <Icon
+            path={chevronRight}
+            class="h-5 w-5 text-gray-400"
+            aria-hidden="true"
+          />
+        </PlayerLink>
+      </Show>
       <Show when={openMergeGroups().length > 0}>
         <div
           id="merge-groups-notice"
