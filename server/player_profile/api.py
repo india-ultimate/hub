@@ -9,6 +9,7 @@ from server.core.models import CommentaryInfo, Player
 from server.schema import Response
 from server.tournament.models import Match, MatchEvent, MatchStats, Registration, Tournament
 from server.types import message_response
+from server.utils import full_name
 
 from .schema import PlayerProfileSchema
 
@@ -127,7 +128,7 @@ def build_profile(player: Player) -> dict[str, Any]:
         jersey_number = None
     return {
         "slug": player.slug,
-        "full_name": player.user.get_full_name(),
+        "full_name": full_name(player.user),
         "profile_pic_url": player.profile_pic_url,
         "match_up": player.match_up,
         "state": player.get_state_ut_display() if player.state_ut else None,

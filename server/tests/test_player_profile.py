@@ -8,6 +8,7 @@ from django.utils.timezone import now
 
 from server.core.models import Player, Team, User
 from server.player_profile.slugs import has_base, unique_slug
+from server.schema import PlayerMinSchema
 from server.series.models import SeriesRegistration
 from server.tests.base import create_event, create_player
 from server.tests.test_eligibility import make_series
@@ -20,6 +21,7 @@ from server.tournament.models import (
     SpiritScore,
     Tournament,
 )
+from server.tournament.schema import PublicPlayerSchema, PublicRosterPlayerSchema
 from server.wrapped.models import PlayerWrapped
 
 
@@ -281,6 +283,17 @@ class TestProfileApi(TournamentApiTestCase):
         stats = self.stats_for(self.tournament)[0]
         self.add_event(stats, "SC", scored_by=self.p)
         self.assertEqual(self.get()["tournaments"][0]["stats"]["games"], 1)
+
+    def test_name_has_no_stray_spaces(self) -> None:
+        self.p.user.first_name = "Karan "
+        self.p.user.last_name = "Sharma"
+        self.p.user.save()
+        self.p.refresh_from_db()
+        self.assertEqual(self.p.slug, "karan-sharma")
+        self.assertEqual(self.get()["full_name"], "Karan Sharma")
+        schemas = (PublicPlayerSchema, PublicRosterPlayerSchema, PlayerMinSchema)
+        for schema in schemas:
+            self.assertEqual(schema.resolve_full_name(self.p), "Karan Sharma", schema)
 
     def test_untracked_tournament_stats_none(self) -> None:
         self.assertIsNone(self.get()["tournaments"][0]["stats"])

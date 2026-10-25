@@ -12,6 +12,7 @@ from server.schema import (
     TeamSchema,
 )
 from server.series.schema import SeriesSchema, TournamentSeriesSchema
+from server.utils import full_name
 
 from .models import (
     Bracket,
@@ -300,7 +301,7 @@ class PublicPlayerSchema(Schema):
 
     @staticmethod
     def resolve_full_name(player: Player) -> str:
-        return player.user.get_full_name()
+        return full_name(player.user)
 
 
 class PublicPersonSchema(ModelSchema):
@@ -668,7 +669,7 @@ class PublicRosterPlayerSchema(Schema):
 
     @staticmethod
     def resolve_full_name(player: Player) -> str:
-        return player.user.get_full_name()
+        return full_name(player.user)
 
     @staticmethod
     def resolve_commentary_info(player: Player) -> CommentaryInfo | None:
