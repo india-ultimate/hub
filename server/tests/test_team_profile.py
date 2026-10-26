@@ -10,6 +10,7 @@ from server.season.models import Season
 from server.tests.base import create_event
 from server.tests.test_tournament_api_perf import TournamentApiTestCase
 from server.tournament.models import (
+    Event,
     Match,
     MatchEvent,
     MatchStats,
@@ -105,8 +106,10 @@ class TestTeamProfileApi(TournamentApiTestCase):
         self.assertEqual(self.get()["admins"], [{"full_name": "No Player", "slug": None}])
 
     def test_tournaments_newest_first_without_drafts(self) -> None:
-        older = self.make_tournament(days=-50)
-        newer = self.make_tournament(days=50)
+        Event.objects.filter(pk=self.event.pk).update(start_date=today())
+        older, newer = self.make_tournament(), self.make_tournament()
+        self.in_season(older, -50)
+        self.in_season(newer, 50)
         self.make_tournament(status="DFT", days=99)
         self.make_tournament(days=98, teams=False)
         slugs = [x["slug"] for x in self.get()["tournaments"]]
@@ -236,14 +239,14 @@ class TestTeamProfileApi(TournamentApiTestCase):
         tournament.event.start_date = today() + datetime.timedelta(days=offset)
         tournament.event.save()
 
-    def test_no_roster_without_season_or_registrations(self) -> None:
-        self.assertIsNone(self.get()["roster"])
+    def test_no_rosters_without_season_or_registrations(self) -> None:
+        self.assertEqual(self.get()["rosters"], [])
         t = self.make_tournament()
         self.register(t, "P", "DFLT")
         with mock.patch.object(Season, "containing", return_value=None):
-            self.assertIsNone(self.get()["roster"])
+            self.assertEqual(self.get()["rosters"], [])
         self.in_season(t)
-        self.assertIsNotNone(self.get()["roster"])
+        self.assertEqual(len(self.get()["rosters"]), 1)
 
     def test_roster_ordered_by_role_then_name(self) -> None:
         season = self.current_season()
@@ -259,9 +262,11 @@ class TestTeamProfileApi(TournamentApiTestCase):
             ("Cap", "CAP"),
         ]:
             self.register(t, name, role)
-        roster = self.get()["roster"]
+        roster = self.get()["rosters"][0]
         self.assertEqual(roster["season"], season.label)
         self.assertEqual(roster["tournament_slug"], t.event.slug)
+        self.assertEqual(roster["division"], "Mixed")
+        self.assertEqual(roster["start_date"], t.event.start_date.isoformat())
         self.assertEqual(
             [(p["full_name"], p["role"]) for p in roster["players"]],
             [
@@ -287,7 +292,162 @@ class TestTeamProfileApi(TournamentApiTestCase):
         self.in_season(outside, 900)
         for t in (old, new, draft, outside):
             self.register(t, "P", "DFLT")
-        self.assertEqual(self.get()["roster"]["tournament_slug"], new.event.slug)
+        rosters = self.get()["rosters"]
+        self.assertEqual([r["tournament_slug"] for r in rosters], [new.event.slug])
+
+    def test_one_roster_per_division_newest_first(self) -> None:
+        self.current_season()
+        plan = [("MXD", -5, "a"), ("MXD", -2, "b"), ("OPN", -1, "c"), ("WMN", -3, "d")]
+        made = {}
+        for division, offset, name in plan:
+            t = self.make_tournament()
+            t.event.type = division
+            self.in_season(t, offset)
+            self.register(t, name, "DFLT")
+            made[name] = t
+        rosters = self.get()["rosters"]
+        self.assertEqual(
+            [(r["division"], r["tournament_slug"]) for r in rosters],
+            [
+                ("Opens", made["c"].event.slug),
+                ("Mixed", made["b"].event.slug),
+                ("Womens", made["d"].event.slug),
+            ],
+        )
+        self.assertEqual([p["full_name"] for p in rosters[1]["players"]], ["b Z"])
+        Registration.objects.filter(event=made["b"].event).update(is_playing=False)
+        self.assertEqual([p["is_playing"] for p in self.get()["rosters"][1]["players"]], [False])
+
+    def nationals(
+        self,
+        days_ago: int,
+        ranks: dict[Team, int],
+        status: str = "COM",
+        skill: str | None = None,
+        division: str = "MXD",
+        title: str | None = None,
+        **tags: Any,
+    ) -> Tournament:
+        self.n += 1
+        event = create_event(title or f"Nationals {self.n}")
+        event.start_date = today() - datetime.timedelta(days=days_ago)
+        event.end_date = event.start_date + datetime.timedelta(days=2)
+        event.stage, event.type, event.skill_division = "Nationals", division, skill
+        event.level = tags.pop("level", "Club")
+        for field, value in tags.items():
+            setattr(event, field, value)
+        event.save()
+        return Tournament.objects.create(
+            event=event,
+            status=status,
+            current_seeding={str(pos): team.id for team, pos in ranks.items()},
+        )
+
+    def rankings(self) -> list[dict[str, Any]]:
+        result: list[dict[str, Any]] = self.get()["rankings"]
+        return result
+
+    def test_ranking_fields(self) -> None:
+        t = self.nationals(10, {self.rival: 1, self.t: 4}, title="National Cup")
+        self.assertEqual(
+            self.rankings(),
+            [
+                {
+                    "rank": 4,
+                    "division": "Mixed",
+                    "label": "Mixed",
+                    "tier": None,
+                    "tournament_slug": t.event.slug,
+                    "tournament_title": "National Cup",
+                    "year": t.event.start_date.year,
+                }
+            ],
+        )
+
+    def test_split_edition_gives_tier(self) -> None:
+        self.nationals(10, {self.t: 2}, skill="Elite")
+        self.nationals(9, {self.rival: 1}, skill="Challenger")
+        self.assertEqual([(r["rank"], r["tier"]) for r in self.rankings()], [(2, "Elite")])
+
+    def test_team_only_in_challenger_gets_challenger_tier(self) -> None:
+        self.nationals(10, {self.rival: 1}, skill="Elite")
+        self.nationals(9, {self.t: 1}, skill="Challenger")
+        self.assertEqual([r["tier"] for r in self.rankings()], ["Challenger"])
+
+    def test_single_tier_edition_has_no_tier(self) -> None:
+        self.nationals(10, {self.t: 1}, skill="Elite")
+        self.assertIsNone(self.rankings()[0]["tier"])
+
+    def test_only_latest_edition_counts(self) -> None:
+        self.nationals(500, {self.t: 1})
+        self.nationals(100, {self.t: 5})
+        self.assertEqual([r["rank"] for r in self.rankings()], [5])
+        self.nationals(20, {self.rival: 1})
+        self.assertEqual(self.rankings(), [])
+
+    def test_thirty_day_grouping(self) -> None:
+        self.nationals(41, {self.t: 2}, skill="Elite")
+        self.nationals(10, {self.rival: 1}, skill="Challenger")
+        self.assertEqual(self.rankings(), [])
+        self.nationals(35, {self.t: 3}, skill="Elite")
+        self.assertEqual([(r["rank"], r["tier"]) for r in self.rankings()], [(3, "Elite")])
+
+    def test_recency_cutoff(self) -> None:
+        self.nationals(549, {self.t: 1})
+        self.assertEqual(self.rankings(), [])
+        self.nationals(548, {self.t: 2}, division="OPN")
+        self.assertEqual([r["rank"] for r in self.rankings()], [2])
+
+    def test_label_qualifiers(self) -> None:
+        self.nationals(10, {self.t: 1}, division="OPN", surface="Beach")
+        self.nationals(10, {self.t: 1}, division="MXD", age="Masters")
+        self.nationals(10, {self.t: 1}, division="WMN", is_adaptive=True)
+        self.nationals(10, {self.t: 1}, division="WMN", age="U18", surface="Beach")
+        self.nationals(10, {self.t: 1}, division="OPN", age="Open", surface="Grass")
+        self.assertEqual(
+            [r["label"] for r in self.rankings()],
+            ["Masters Mixed", "Beach Opens", "Opens", "Beach U18 Womens", "Wheelchair Womens"],
+        )
+
+    def test_null_tags_group_with_defaults(self) -> None:
+        self.nationals(17, {self.rival: 1}, skill="Elite", age=None, surface=None)
+        self.nationals(10, {self.t: 2}, skill="Challenger", age="Open", surface="Grass")
+        self.assertEqual([(r["rank"], r["tier"]) for r in self.rankings()], [(2, "Challenger")])
+
+    def test_non_numeric_seeding_key_is_skipped(self) -> None:
+        t = self.nationals(10, {self.t: 1})
+        t.current_seeding = {"x": self.t.id, "2": self.t.id}
+        t.save()
+        self.assertEqual([r["rank"] for r in self.rankings()], [2])
+
+    def test_one_badge_per_category_keeps_best_rank(self) -> None:
+        self.nationals(12, {self.t: 4})
+        self.nationals(10, {self.t: 2})
+        self.assertEqual([r["rank"] for r in self.rankings()], [2])
+
+    def test_tier_event_just_outside_recency_still_groups(self) -> None:
+        self.nationals(560, {self.rival: 1}, skill="Elite")
+        self.nationals(540, {self.t: 1}, skill="Challenger")
+        self.assertEqual([r["tier"] for r in self.rankings()], ["Challenger"])
+
+    def test_ranking_order(self) -> None:
+        self.nationals(10, {self.t: 3}, division="WMN")
+        self.nationals(10, {self.t: 3}, division="OPN")
+        self.nationals(10, {self.t: 1}, division="WMN", surface="Beach")
+        self.nationals(10, {self.t: 3}, division="MXD")
+        self.assertEqual(
+            [(r["rank"], r["division"]) for r in self.rankings()],
+            [(1, "Womens"), (3, "Mixed"), (3, "Opens"), (3, "Womens")],
+        )
+
+    def test_unfinished_and_non_nationals_ignored(self) -> None:
+        self.nationals(10, {self.t: 1}, status="DFT")
+        self.nationals(10, {self.t: 1}, status="SCH")
+        self.nationals(10, {self.t: 1}, status="LIV")
+        other = self.nationals(10, {self.t: 1})
+        other.event.stage = "Regionals"
+        other.event.save()
+        self.assertEqual(self.rankings(), [])
 
     def stats(self, match: Match) -> MatchStats:
         return MatchStats.objects.create(
@@ -385,6 +545,7 @@ class TestTeamProfileApi(TournamentApiTestCase):
         self.add_event(stats, "SC", scored_by=self.named("S"), assisted_by=self.named("T"))
 
         def grow() -> None:
+            self.nationals(5, {self.t: 2}, division="OPN")
             for _ in range(3):
                 other = Team.objects.create(name=f"Other {self.n}")
                 t = self.make_tournament()

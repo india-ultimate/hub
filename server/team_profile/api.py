@@ -10,7 +10,7 @@ from server.core.models import Player, Team
 from server.schema import Response
 from server.season.models import Season
 from server.series.models import Role
-from server.tournament.models import Match, MatchEvent, Registration, SpiritScore, Tournament
+from server.tournament.models import Event, Match, MatchEvent, Registration, SpiritScore, Tournament
 from server.types import message_response
 from server.utils import full_name, today
 
@@ -22,6 +22,9 @@ FORM_LENGTH = 5
 LEADER_COUNT = 3
 RIVAL_COUNT = 5
 MIN_RIVAL_MATCHES = 2
+RANKING_EDITION_DAYS = 30
+RANKING_RECENCY_DAYS = 548
+DIVISION_ORDER = ["Mixed", "Opens", "Womens"]
 ROLE_ORDER: list[str] = [Role.CAPTAIN, Role.SPIRIT_CAPTAIN, Role.DEFAULT]
 ROLE_ORDER += [Role.COACH, Role.ASSISTANT_COACH, Role.MANAGER]
 IST = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
@@ -93,11 +96,11 @@ def _leaders(team: Team, tournament_ids: list[int], matches: list[Match]) -> dic
     }
 
 
-def _roster(team: Team) -> dict[str, Any] | None:
+def _rosters(team: Team) -> list[dict[str, Any]]:
     season = Season.containing(today())
     if season is None:
-        return None
-    registrations = list(
+        return []
+    registrations = (
         Registration.objects.filter(
             team=team,
             event__tournament__isnull=False,
@@ -108,17 +111,90 @@ def _roster(team: Team) -> dict[str, Any] | None:
         .select_related("event", "player__user")
         .order_by("-event__start_date", "-event_id")
     )
-    if not registrations:
-        return None
-    event = registrations[0].event
-    mine = [r for r in registrations if r.event_id == event.id]
-    mine.sort(key=lambda r: (ROLE_ORDER.index(r.role), full_name(r.player.user).lower()))
-    return {
-        "season": season.label,
-        "tournament_slug": event.slug,
-        "tournament_title": event.title,
-        "players": [{**_player(r.player), "role": r.role} for r in mine],
-    }
+    newest: dict[str, Event] = {}
+    for r in registrations:
+        newest.setdefault(r.event.type, r.event)
+    rosters = []
+    for event in newest.values():
+        mine = [r for r in registrations if r.event_id == event.id]
+        mine.sort(key=lambda r: (ROLE_ORDER.index(r.role), full_name(r.player.user).lower()))
+        rosters.append(
+            {
+                "division": event.get_type_display(),
+                "start_date": event.start_date,
+                "season": season.label,
+                "tournament_slug": event.slug,
+                "tournament_title": event.title,
+                "players": [
+                    {**_player(r.player), "role": r.role, "is_playing": r.is_playing} for r in mine
+                ],
+            }
+        )
+    return rosters
+
+
+def _rankings(team: Team) -> list[dict[str, Any]]:
+    editions: dict[tuple[Any, ...], list[Tournament]] = {}
+    window = datetime.timedelta(days=RANKING_RECENCY_DAYS + RANKING_EDITION_DAYS)
+    for t in Tournament.objects.filter(
+        status=Tournament.Status.COMPLETED,
+        event__stage=Event.Stage.NATIONALS,
+        event__start_date__gte=today() - window,
+    ).select_related("event"):
+        e = t.event
+        key = (
+            e.level,
+            e.type,
+            e.age or Event.Age.OPEN,
+            e.surface or Event.Surface.GRASS,
+            bool(e.is_adaptive),
+        )
+        editions.setdefault(key, []).append(t)
+
+    cutoff = today() - datetime.timedelta(days=RANKING_RECENCY_DAYS)
+    rankings: list[dict[str, Any]] = []
+    for group in editions.values():
+        latest = max(t.event.start_date for t in group)
+        if latest < cutoff:
+            continue
+        edition = [t for t in group if (latest - t.event.start_date).days <= RANKING_EDITION_DAYS]
+        split = len({t.event.skill_division for t in edition if t.event.skill_division}) > 1
+        found: list[dict[str, Any]] = []
+        for t in edition:
+            e = t.event
+            rank = next(
+                (
+                    int(pos)
+                    for pos, tid in (t.current_seeding or {}).items()
+                    if tid == team.id and str(pos).isdigit()
+                ),
+                None,
+            )
+            if rank is None:
+                continue
+            division = e.get_type_display()
+            label = ""
+            if e.surface == Event.Surface.BEACH:
+                label += "Beach "
+            if e.age and e.age != Event.Age.OPEN:
+                label += f"{e.age} "
+            if e.is_adaptive:
+                label += "Wheelchair "
+            found.append(
+                {
+                    "rank": rank,
+                    "division": division,
+                    "label": label + division,
+                    "tier": e.skill_division if split else None,
+                    "tournament_slug": e.slug,
+                    "tournament_title": e.title,
+                    "year": e.start_date.year,
+                }
+            )
+        if found:
+            rankings.append(min(found, key=lambda r: r["rank"]))
+    rankings.sort(key=lambda r: (r["rank"], DIVISION_ORDER.index(r["division"]), r["label"]))
+    return rankings
 
 
 def build_team_profile(team: Team) -> dict[str, Any]:
@@ -250,7 +326,8 @@ def build_team_profile(team: Team) -> dict[str, Any]:
             }
             for tid, rs in rivals
         ],
-        "roster": _roster(team),
+        "rankings": _rankings(team),
+        "rosters": _rosters(team),
         "leaders": _leaders(team, ids, matches),
         "tournaments": rows,
     }
