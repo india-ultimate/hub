@@ -2988,3 +2988,26 @@ export const fetchPlayerProfile = async slug => {
 
   return data;
 };
+
+export const teamProfileQueryKey = slug => ["team-profile", slug];
+
+export const fetchTeamProfile = async slug => {
+  const response = await fetch(`/api/team-profile/${slug}`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      XrCSRFToken: getCookie("csrftoken")
+    },
+    credentials: "same-origin"
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    const error = new Error(data?.message || JSON.stringify(data));
+    error.status = response.status;
+    throw error;
+  }
+
+  return data;
+};

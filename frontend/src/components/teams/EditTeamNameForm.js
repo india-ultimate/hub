@@ -5,7 +5,7 @@ import {
   toTrimmed
 } from "@modular-forms/solid";
 import { useNavigate } from "@solidjs/router";
-import { createMutation } from "@tanstack/solid-query";
+import { createMutation, useQueryClient } from "@tanstack/solid-query";
 import { createSignal, Match, Show, Switch } from "solid-js";
 
 import { updateTeamName } from "../../queries";
@@ -15,6 +15,7 @@ import TextInput from "../TextInput";
 
 const EditTeamNameForm = props => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [error, setError] = createSignal("");
 
   const [editNameForm, { Form, Field }] = createForm({
@@ -27,7 +28,10 @@ const EditTeamNameForm = props => {
 
   const updateTeamNameMutation = createMutation({
     mutationFn: updateTeamName,
-    onSuccess: data => navigate(`/team/${data.slug}`, { replace: true }),
+    onSuccess: data => {
+      queryClient.invalidateQueries({ queryKey: ["team-profile"] });
+      navigate(`/team/${data.slug}`, { replace: true });
+    },
     onError: error => setError(error.message)
   });
 

@@ -1,79 +1,14 @@
 import { A } from "@solidjs/router";
 import { Icon } from "solid-heroicons";
-import { calendar, chevronRight, star, trophy } from "solid-heroicons/solid";
+import { calendar, chevronRight, star } from "solid-heroicons/solid";
 import { Show } from "solid-js";
 
-import CaptainBadge from "../roster/role-badges/Captain";
-import CoachBadge from "../roster/role-badges/Coach";
-import ManagerBadge from "../roster/role-badges/Manager";
-import SpiritCaptainBadge from "../roster/role-badges/SpiritCaptain";
+import { formatDates } from "../../dates";
+import RoleBadge from "../roster/role-badges/RoleBadge";
 import Initials from "./Initials";
-
-const ROLE_BADGES = {
-  CAP: CaptainBadge,
-  SCAP: SpiritCaptainBadge,
-  COACH: CoachBadge,
-  ACOACH: CoachBadge,
-  MNGR: ManagerBadge
-};
+import Placement from "./Placement";
 
 const NON_PLAYING = new Set(["COACH", "ACOACH", "MNGR"]);
-
-const PODIUM = {
-  1: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300",
-  2: "bg-blue-50 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
-  3: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
-};
-
-const ordinal = n => {
-  const suffixes = { 1: "st", 2: "nd", 3: "rd" };
-  return `${n}${n > 10 && n < 20 ? "th" : (suffixes[n % 10] ?? "th")}`;
-};
-
-const formatDates = (start, end) => {
-  const local = iso => {
-    const [y, m, d] = iso.split("-").map(Number);
-    return new Date(y, m - 1, d);
-  };
-  const from = local(start);
-  const to = local(end);
-  const month = d => d.toLocaleDateString("en-IN", { month: "short" });
-  if (from.getTime() === to.getTime())
-    return `${from.getDate()} ${month(from)}`;
-  if (from.getMonth() === to.getMonth())
-    return `${from.getDate()}–${to.getDate()} ${month(to)}`;
-  return `${from.getDate()} ${month(from)} – ${to.getDate()} ${month(to)}`;
-};
-
-const Placement = props => (
-  <Show
-    when={props.t.status === "LIV"}
-    fallback={
-      <Show when={props.t.placement}>
-        <Show
-          when={PODIUM[props.t.placement]}
-          fallback={
-            <span class="h-fit rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 dark:bg-gray-700 dark:text-gray-300">
-              {ordinal(props.t.placement)}
-            </span>
-          }
-        >
-          <span
-            class={`inline-flex h-fit items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${PODIUM[props.t.placement]}`}
-          >
-            <Icon class="h-3.5 w-3.5" path={trophy} />
-            {ordinal(props.t.placement)}
-          </span>
-        </Show>
-      </Show>
-    }
-  >
-    <span class="inline-flex h-fit items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-900 dark:text-red-300">
-      <span class="h-1.5 w-1.5 animate-pulse rounded-full bg-red-500 motion-reduce:animate-none" />
-      Live
-    </span>
-  </Show>
-);
 
 const StatChip = props => (
   <span class="rounded-md bg-gray-100 px-2 py-1 dark:bg-gray-700">
@@ -99,7 +34,6 @@ const Note = props => (
 
 const TournamentCard = props => {
   const t = () => props.tournament;
-  const RoleBadge = () => ROLE_BADGES[t().role];
   const logo = (src, theme, hide) => (
     <img
       src={src}
@@ -167,7 +101,7 @@ const TournamentCard = props => {
         <span class="font-medium text-gray-800 dark:text-gray-200">
           {t().team.name}
         </span>
-        <Show when={RoleBadge()}>{RoleBadge()()}</Show>
+        <RoleBadge role={t().role} />
         <Icon class="ml-auto h-4 w-4 text-gray-400" path={chevronRight} />
       </A>
       <Show

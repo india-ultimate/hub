@@ -241,6 +241,8 @@ class TestAdminRoundTrip(AdminPageCase):
 # or multiplies by 100 must be listed here as not being money.
 NOT_MONEY = {
     ("utils.js", "length * 100"),  # a percentage
+    ("components/team-profile/TeamStats.js", "played) * 100"),  # a win rate
+    ("components/team-profile/HeadToHead.js", "played) * 100"),  # a win share bar
     ("components/ValidateRoster.js", "status / 100"),  # an HTTP status class
     ("components/ValidateRoster.js", "age * 100) / 100"),  # an age to 2 places
 }
