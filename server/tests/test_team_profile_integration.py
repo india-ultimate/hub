@@ -3,6 +3,7 @@ from contextlib import ExitStack
 
 import pytest
 from django.utils.timezone import now
+from selenium.webdriver.common.keys import Keys
 from seleniumbase import BaseCase
 
 from server.core.models import Player, Team, User
@@ -72,9 +73,15 @@ class TestTeamProfileIntegration(BaseCase):
         for days, key, scores, place in HISTORY:
             self.tournaments.append(self.play(days, key, scores, place))
         newest = self.tournaments[0]
-        for player, role in ((self.captain, "CAP"), (self.mvp, "DFLT"), (self.coach, "COACH")):
+        self.bench = self.person("Rahul", "Bench")
+        for player, role, playing in (
+            (self.captain, "CAP", True),
+            (self.mvp, "DFLT", True),
+            (self.coach, "COACH", False),
+            (self.bench, "DFLT", False),
+        ):
             Registration.objects.create(
-                event=newest.event, team=self.team, player=player, role=role
+                event=newest.event, team=self.team, player=player, role=role, is_playing=playing
             )
         stats = MatchStats.objects.create(
             match=Match.objects.get(tournament=newest, sequence_number=1),
@@ -156,8 +163,11 @@ class TestTeamProfileIntegration(BaseCase):
         self.assert_text(f"{wins}\u2013{losses}", '[data-tile="record"]')
         self.assert_text("WON\u2013LOST", '[data-tile="record"]')
         self.assert_text(f"{round(wins / len(played) * 100)}%", '[data-tile="win-rate"]')
-        self.assertEqual(self.get_text('[data-tile="titles"] div:first-child'), "1")
-        self.assertEqual(self.get_text('[data-tile="podiums"] div:first-child'), "3")
+        self.assertEqual(self.get_text('[data-tile="titles"] dd'), "1")
+        self.assertEqual(self.get_text('[data-tile="titles"] dt').lower(), "tournament won")
+        self.assertEqual(self.get_text('[data-tile="podiums"] dd'), "3")
+        self.assertIn("bg-green-50", self.get_attribute('[data-tile="titles"]', "class"))
+        self.assertIn("bg-yellow-50", self.get_attribute('[data-tile="spirit"]', "class"))
         self.assert_text("10.0", '[data-tile="spirit"]')
 
     def test_no_title_or_podium_tiles_without_podiums(self) -> None:
@@ -173,7 +183,9 @@ class TestTeamProfileIntegration(BaseCase):
         self.open(self.url)
         rows = 'section[aria-labelledby="form-heading"] li'
         self.assertEqual(len(self.find_elements(rows)), 5)
-        letters = self.get_text('section[aria-labelledby="form-heading"] ul')
+        self.assert_text("Recent matches", "#form-heading")
+        self.assertNotIn("Latest first", self.get_text("body"))
+        letters = self.get_text('section[aria-labelledby="form-heading"] ol')
         self.assertIn("15\u20139", letters)
         self.assertIn("12\u201313", letters)
         self.assertIn("W", letters)
@@ -189,6 +201,15 @@ class TestTeamProfileIntegration(BaseCase):
         self.assert_text("Captain", roster)
         self.assert_text("Coach", roster)
         self.assert_text("Meera Iyer", roster)
+        groups = self.find_elements(f"{roster} ul")
+        self.assertEqual(len(groups), 2)
+        self.assertIn("Ananya Rao", groups[0].text)
+        self.assertNotIn("Vikram Singh", groups[0].text)
+        self.assertNotIn("Rahul Bench", groups[0].text)
+        self.assertIn("Vikram Singh", groups[1].text)
+        self.assertIn("Rahul Bench", groups[1].text)
+        self.assertIn("non-players", self.get_text(roster).lower())
+        self.assertNotIn("staff", self.get_text(roster).lower())
         self.click(f'{roster} a:contains("Ananya Rao")')
         self.assert_text("Ananya Rao", "h1")
         self.assertTrue(self.get_current_url().endswith(f"/player/{self.captain.slug}"))
@@ -282,16 +303,166 @@ class TestTeamProfileIntegration(BaseCase):
     def test_tournament_team_header_links_here(self) -> None:
         slug = self.tournaments[0].event.slug
         self.open(f"{APP_URL}/tournament/{slug}/team/{self.team.slug}")
-        self.click("h1 a")
+        self.assert_element_absent("h1 a")
+        self.assert_element_absent("div.my-2 a")
+        self.assert_element("h1 + div a")
+        self.assert_text("View team profile", "h1 + div a")
+        self.click('h1 + div a:contains("View team profile")')
         self.assert_text("This season")
         self.assertTrue(self.get_current_url().endswith(f"/team/{self.team.slug}"))
 
     def test_no_horizontal_scroll_at_narrowest_width(self) -> None:
         self.set_window_size(375, 900)
         self.open(self.url)
-        self.assert_text("Recent form")
+        self.assert_text("Recent matches")
         self.click('button:contains("Show 2 earlier tournaments")')
         overflow = self.execute_script(
             "const d = document.documentElement; return d.scrollWidth - d.clientWidth"
         )
         self.assertLessEqual(overflow, 0)
+
+    def nationals(
+        self, title: str, rank: int, typ: str, skill: str | None, **tags: str
+    ) -> Tournament:
+        event = create_event(title)
+        event.start_date = today() - datetime.timedelta(days=20)
+        event.end_date = event.start_date + datetime.timedelta(days=2)
+        event.stage, event.type, event.skill_division, event.level = "Nationals", typ, skill, "Club"
+        for field, value in tags.items():
+            setattr(event, field, value)
+        event.save()
+        return Tournament.objects.create(
+            event=event, status="COM", current_seeding={str(rank): self.team.id}
+        )
+
+    def seed_rankings(self) -> list[Tournament]:
+        made = [
+            self.nationals("Nationals 2026 Elite", 1, "MXD", "Elite"),
+            self.nationals("Nationals 2026 Challenger", 4, "MXD", "Challenger"),
+            self.nationals("Opens Nationals (Challenger)", 1, "OPN", "Challenger"),
+            self.nationals("Opens Nationals (Elite)", 1, "OPN", "Elite"),
+            self.nationals("Womens Nationals", 3, "WMN", None),
+            self.nationals("Masters Nationals", 5, "MXD", None, age="Masters"),
+        ]
+        return made
+
+    def test_rankings_badges(self) -> None:
+        made = self.seed_rankings()
+        Tournament.objects.filter(pk__in=[made[1].pk, made[3].pk]).update(current_seeding={})
+        self.open(self.url)
+        self.assert_element('ul[aria-label="National rankings"]')
+        badges = self.find_elements("a[data-ranking]")
+        self.assertEqual(len(badges), 4)
+        texts = [b.text for b in badges]
+        self.assertIn("#1", texts[0])
+        self.assertIn("Mixed \u00b7 Elite", texts[0])
+        self.assertIn("Nationals 2026", texts[0])
+        self.assertEqual(texts[0].count("Elite"), 1)
+        self.assertIn("Opens \u00b7 Challenger", texts[1])
+        self.assertIn("#3", texts[2])
+        self.assertIn("Womens", texts[2])
+        self.assertIn("#5", texts[3])
+        self.assertIn("Masters Mixed", texts[3])
+        classes = [b.get_attribute("class") for b in badges]
+        self.assertIn("border-l-amber-400", classes[0])
+        self.assertNotIn("amber", classes[1])
+        self.assertIn("border-l-gray-200", classes[1])
+        self.assertIn("border-l-orange-500", classes[2])
+        self.assertIn("border-l-gray-200", classes[3])
+        self.assertEqual(
+            self.execute_script(
+                "return document.querySelector('a[data-ranking]').textContent.includes('Ranked 1st, ')"
+            ),
+            True,
+        )
+        href = self.get_attribute("a[data-ranking]", "href")
+        self.assertTrue(href.endswith(f"/tournament/{made[0].event.slug}/team/{self.team.slug}"))
+        self.click("a[data-ranking]")
+        self.assert_text("Learning to Fly", "h1")
+        self.assertIn(f"/tournament/{made[0].event.slug}/team/", self.get_current_url())
+
+    def test_no_rankings_list_when_unranked(self) -> None:
+        self.open(self.url)
+        self.assert_text("Learning to Fly", "h1")
+        self.assert_element_absent('ul[aria-label="National rankings"]')
+
+    def test_team_links_are_not_underlined(self) -> None:
+        self.open(self.url)
+        self.assert_text("Recent matches")
+        classes = self.execute_script(
+            "return [...document.querySelectorAll('a[href^=\"/team/\"], section a')]"
+            ".map(a => a.className).join(' ')"
+        )
+        self.assertNotIn("underline", classes)
+
+    def add_roster(
+        self, days: int, typ: str, first: str, last: str, team: Team | None = None
+    ) -> None:
+        team = team or self.team
+        event = create_event(f"{typ} Cup {team.name}")
+        event.start_date = today() + datetime.timedelta(days=days)
+        event.end_date = event.start_date + datetime.timedelta(days=2)
+        event.type = typ
+        event.save()
+        Tournament.objects.create(event=event, status="COM")
+        Registration.objects.create(
+            event=event, team=team, player=self.person(first, last), role="DFLT"
+        )
+
+    def test_roster_division_tabs(self) -> None:
+        self.add_roster(-20, "OPN", "Zara", "Khan")
+        self.add_roster(-30, "WMN", "Priya", "Das")
+        self.open(self.url)
+        self.assert_element('[role="tablist"][aria-label="Roster by division"]')
+        tabs = "[role=tablist] [role=tab]"
+        self.assertTrue(self.find_elements(tabs)[0].text.startswith("Mixed 2"))
+        self.assertEqual(
+            [t.text.split()[0] for t in self.find_elements(tabs)], ["Mixed", "Opens", "Womens"]
+        )
+        selected = lambda i: self.get_attribute(f"#roster-tab-{i}", "aria-selected")  # noqa: E731
+        self.assertEqual([selected(i) for i in range(3)], ["true", "false", "false"])
+        self.assert_text("Meera Iyer", "#roster-panel")
+        self.assertEqual(self.get_attribute("#roster-panel", "role"), "tabpanel")
+        self.click("#roster-tab-1")
+        self.assert_text("Zara Khan", "#roster-panel")
+        self.assertNotIn("Meera Iyer", self.get_text("#roster-panel"))
+        self.assertEqual(selected(1), "true")
+        self.send_keys("#roster-tab-1", Keys.ARROW_RIGHT)
+        self.assert_text("Priya Das", "#roster-panel")
+        self.assertEqual(selected(2), "true")
+        self.assertEqual(self.execute_script("return document.activeElement.id"), "roster-tab-2")
+        self.assertEqual(self.get_attribute("#roster-tab-2", "aria-controls"), "roster-panel")
+        self.assertEqual(self.get_attribute("#roster-panel", "aria-labelledby"), "roster-tab-2")
+        self.assertEqual(self.get_attribute("#roster-tab-2", "tabindex"), "0")
+        self.send_keys("#roster-tab-2", Keys.ARROW_RIGHT)
+        self.assertEqual(selected(0), "true")
+        self.send_keys("#roster-tab-0", Keys.ARROW_LEFT)
+        self.assertEqual(selected(2), "true")
+        self.send_keys("#roster-tab-2", Keys.HOME)
+        self.assertEqual(selected(0), "true")
+        self.send_keys("#roster-tab-0", Keys.END)
+        self.assertEqual(selected(2), "true")
+        self.assertEqual(self.get_attribute("#roster-tab-0", "tabindex"), "-1")
+
+    def test_single_division_has_no_tablist(self) -> None:
+        self.open(self.url)
+        self.assert_text("Meera Iyer", "#roster-panel")
+        self.assert_element_absent('[role="tablist"]')
+
+    def test_roster_tab_resets_when_navigating_to_another_team(self) -> None:
+        self.add_roster(-20, "OPN", "Zara", "Khan")
+        rival = self.opponents["bb"]
+        self.add_roster(-15, "MXD", "Nina", "Paul", rival)
+        self.add_roster(-25, "OPN", "Omar", "Ali", rival)
+        self.open(f"{APP_URL}/team/{rival.slug}")
+        self.assert_text("Nina Paul", "#roster-panel")
+        self.click('section[aria-labelledby="h2h-heading"] a:contains("Learning to Fly")')
+        self.assert_text("Learning to Fly", "h1")
+        self.click("#roster-tab-1")
+        self.assertEqual(self.get_attribute("#roster-tab-1", "aria-selected"), "true")
+        self.click('section[aria-labelledby="form-heading"] li a:contains("Bangalore Breakers")')
+        self.assert_text("Bangalore Breakers", "h1")
+        self.assert_text("Nina Paul", "#roster-panel")
+        self.assertEqual(self.get_attribute("#roster-tab-0", "aria-selected"), "true")
+        self.assertEqual(self.get_attribute("#roster-tab-0", "tabindex"), "0")
+        self.assertEqual(self.get_attribute("#roster-tab-1", "tabindex"), "-1")
