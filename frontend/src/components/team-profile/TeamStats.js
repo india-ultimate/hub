@@ -37,10 +37,10 @@ const tiles = team => {
   if (titles)
     list.push({
       id: "titles",
-      label: titles === 1 ? "Title" : "Titles",
+      label: titles === 1 ? "Tournament won" : "Tournaments won",
       value: titles,
-      bg: "bg-yellow-50 dark:bg-gray-800",
-      text: "text-yellow-700 dark:text-yellow-300"
+      bg: "bg-green-50 dark:bg-gray-800",
+      text: "text-green-800 dark:text-green-300"
     });
   if (podiums)
     list.push({
@@ -48,15 +48,15 @@ const tiles = team => {
       label: podiums === 1 ? "Podium" : "Podiums",
       value: podiums,
       bg: "bg-blue-50 dark:bg-gray-800",
-      text: "text-blue-700 dark:text-blue-300"
+      text: "text-blue-800 dark:text-blue-300"
     });
   if (spirit != null)
     list.push({
       id: "spirit",
       label: "Spirit avg",
       value: spirit.toFixed(1),
-      bg: "bg-green-50 dark:bg-gray-800",
-      text: "text-green-700 dark:text-green-300"
+      bg: "bg-yellow-50 dark:bg-gray-800",
+      text: "text-yellow-800 dark:text-yellow-300"
     });
   return list;
 };
@@ -65,25 +65,23 @@ const TeamStats = props => {
   const list = () => tiles(props.team);
   return (
     <Show when={list().length}>
-      <div
-        class={`mt-5 grid grid-cols-2 gap-2 md:gap-4 ${COLS[list().length]}`}
-      >
+      <dl class={`mt-5 grid grid-cols-2 gap-2 md:gap-4 ${COLS[list().length]}`}>
         <For each={list()}>
           {tile => (
             <div
               data-tile={tile.id}
-              class={`rounded-xl p-2 text-center last:odd:col-span-2 md:p-4 md:last:odd:col-span-1 ${tile.bg}`}
+              class={`flex flex-col-reverse rounded-xl p-2 text-center last:odd:col-span-2 md:p-4 md:last:odd:col-span-1 ${tile.bg}`}
             >
-              <div class={`text-2xl font-bold md:text-3xl ${tile.text}`}>
-                {tile.value}
-              </div>
-              <div class="text-xs uppercase tracking-wide text-gray-700 dark:text-gray-300">
+              <dt class="text-xs uppercase tracking-wide text-gray-700 dark:text-gray-300">
                 {tile.label}
-              </div>
+              </dt>
+              <dd class={`text-2xl font-bold md:text-3xl ${tile.text}`}>
+                {tile.value}
+              </dd>
             </div>
           )}
         </For>
-      </div>
+      </dl>
     </Show>
   );
 };

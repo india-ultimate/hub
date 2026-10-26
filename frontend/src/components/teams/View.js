@@ -166,10 +166,10 @@ const View = () => {
             <TeamStats team={team()} />
             <RecentForm form={team().form} />
 
-            <Show when={team().roster || hasLeaders(team())}>
+            <Show when={team().rosters.length || hasLeaders(team())}>
               <div class="mt-7 grid gap-7 md:grid-cols-2 md:items-start md:gap-6">
-                <Show when={team().roster}>
-                  <SeasonRoster roster={team().roster} team={team()} />
+                <Show when={team().rosters.length}>
+                  <SeasonRoster rosters={team().rosters} team={team()} />
                 </Show>
                 <Leaders leaders={team().leaders} team={team()} />
               </div>
@@ -245,7 +245,7 @@ const View = () => {
                         <PlayerLink
                           slug={admin.slug}
                           from={{ label: team().name }}
-                          class="inline-flex min-h-[44px] items-center rounded font-medium text-gray-900 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:text-white"
+                          class="inline-flex min-h-[44px] items-center rounded font-medium text-gray-900 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:text-white"
                         >
                           {admin.full_name}
                         </PlayerLink>

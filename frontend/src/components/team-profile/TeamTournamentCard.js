@@ -41,13 +41,17 @@ const TeamTournamentCard = props => {
           <h4 class="contents">
             <A
               href={`/tournament/${t().slug}`}
-              class="inline-flex min-h-[44px] items-center font-semibold text-gray-900 hover:text-blue-600 hover:underline focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:text-white dark:hover:text-blue-400"
+              class="inline-flex min-h-[44px] items-center font-semibold text-gray-900 hover:text-blue-600 focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 dark:text-white dark:hover:text-blue-400"
             >
               {t().title}
             </A>
           </h4>
           <div class="mt-0.5 flex items-start gap-1 text-xs text-gray-600 dark:text-gray-300">
-            <Icon class="mt-0.5 h-3.5 w-3.5 flex-none" path={calendar} />
+            <Icon
+              class="mt-0.5 h-3.5 w-3.5 flex-none"
+              path={calendar}
+              aria-hidden="true"
+            />
             <span class="min-w-0 break-words">
               {formatDates(t().start_date, t().end_date)}
               {t().location ? ` · ${t().location}` : ""}
@@ -77,12 +81,13 @@ const TeamTournamentCard = props => {
       </div>
       <A
         href={`/tournament/${t().slug}/team/${props.team.slug}`}
-        class="mt-2 flex min-h-[44px] items-center gap-2 rounded-lg px-1 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 active:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
+        class="mt-2 flex min-h-[44px] items-center gap-2 rounded-lg px-1 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 active:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
       >
         Matches &amp; roster
         <Icon
           class="ml-auto h-4 w-4 text-gray-500 dark:text-gray-400"
           path={chevronRight}
+          aria-hidden="true"
         />
       </A>
     </article>

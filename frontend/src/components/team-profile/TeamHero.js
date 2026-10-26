@@ -3,6 +3,7 @@ import { mapPin } from "solid-heroicons/solid";
 import { Show } from "solid-js";
 
 import Initials from "../player-profile/Initials";
+import Rankings from "./Rankings";
 
 const chip =
   "inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-0.5 text-gray-700 dark:bg-gray-700 dark:text-gray-300";
@@ -49,6 +50,7 @@ const TeamHero = props => {
             </span>
           </Show>
         </div>
+        <Rankings rankings={team().rankings} team={team()} />
         <Show when={count()}>
           <p class="mt-4 text-sm text-gray-600 dark:text-gray-300 md:mt-3">
             <b class="text-gray-900 dark:text-white">{count()}</b>{" "}

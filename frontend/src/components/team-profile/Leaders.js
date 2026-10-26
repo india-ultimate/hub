@@ -46,7 +46,7 @@ const Leaders = props => {
                         <PlayerLink
                           slug={entry.player.slug}
                           from={from()}
-                          class="flex min-h-[44px] min-w-0 flex-1 items-center gap-2 rounded-lg hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 active:bg-gray-100"
+                          class="flex min-h-[44px] min-w-0 flex-1 items-center gap-2 rounded-lg hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 active:bg-gray-100"
                         >
                           <Avatar
                             src={entry.player.profile_pic_url}
