@@ -122,6 +122,7 @@ from server.subscription.api import router as subscription_router
 from server.subscription.bulk_check import get_subscription_status
 from server.subscription.models import Subscription
 from server.task.api import router as task_router
+from server.team_profile.api import router as team_profile_router
 from server.ticket.api import ticket_api
 from server.top_score_utils import TopScoreClient
 from server.tournament.match_stats_min import (
@@ -296,6 +297,7 @@ api.add_router("/committees", committees_router)
 api.add_router("/task", task_router)
 api.add_router("/wrapped", wrapped_router)
 api.add_router("/player-profile", player_profile_router)
+api.add_router("/team-profile", team_profile_router)
 api.add_router("/", connected_apps_router)
 
 # User #########
