@@ -42,9 +42,12 @@ class PlayerSchema(Schema):
 
 class RosterPlayerSchema(PlayerSchema):
     role: str
+    is_playing: bool
 
 
 class RosterSchema(Schema):
+    division: str
+    start_date: datetime.date
     season: str
     tournament_slug: str
     tournament_title: str
@@ -85,6 +88,16 @@ class TournamentSchema(Schema):
     record: TournamentRecordSchema | None
 
 
+class RankingSchema(Schema):
+    rank: int
+    division: str
+    label: str
+    tier: str | None
+    tournament_slug: str
+    tournament_title: str
+    year: int
+
+
 class TeamProfileSchema(Schema):
     id: int
     slug: str | None
@@ -99,6 +112,7 @@ class TeamProfileSchema(Schema):
     spirit: float | None
     form: list[FormSchema]
     rivals: list[RivalSchema]
-    roster: RosterSchema | None
+    rankings: list[RankingSchema]
+    rosters: list[RosterSchema]
     leaders: LeadersSchema
     tournaments: list[TournamentSchema]
