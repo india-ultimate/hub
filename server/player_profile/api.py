@@ -28,9 +28,7 @@ def _season_team(registrations: list[Registration]) -> tuple[Registration, str] 
     )
     if reg is None:
         return None
-    first, last = season.start_date.year, season.end_date.year
-    label = str(first) if first == last else f"{first}\u2013{str(last)[-2:]}"
-    return reg, label
+    return reg, season.label
 
 
 def build_profile(player: Player) -> dict[str, Any]:

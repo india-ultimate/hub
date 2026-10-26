@@ -20,6 +20,11 @@ class Season(ExportModelOperationsMixin("season"), models.Model):  # type: ignor
     def __str__(self) -> str:
         return self.name
 
+    @property
+    def label(self) -> str:
+        first, last = self.start_date.year, self.end_date.year
+        return str(first) if first == last else f"{first}\u2013{str(last)[-2:]}"
+
     @classmethod
     def current(cls) -> "Season | None":
         """The season today falls inside, in IST."""
