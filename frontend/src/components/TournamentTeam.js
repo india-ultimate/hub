@@ -1,4 +1,4 @@
-import { useParams } from "@solidjs/router";
+import { A, useParams } from "@solidjs/router";
 import {
   createMutation,
   createQuery,
@@ -6,7 +6,7 @@ import {
 } from "@tanstack/solid-query";
 import clsx from "clsx";
 import { Icon } from "solid-heroicons";
-import { star, trophy } from "solid-heroicons/solid";
+import { chevronRight, star, trophy } from "solid-heroicons/solid";
 import { createEffect, createSignal, For, Show, Suspense } from "solid-js";
 
 import { matchCardColorToBorderColorMap } from "../colors";
@@ -217,7 +217,9 @@ const TournamentTeam = () => {
         <img
           class="mr-3 inline-block h-24 w-24 rounded-full p-1 ring-2 ring-blue-600 dark:ring-blue-500"
           src={teamQuery.data?.image ?? teamQuery.data?.image_url}
-          alt="Bordered avatar"
+          alt=""
+          width="96"
+          height="96"
         />
       </div>
       <h1 class="mt-2 text-center">
@@ -231,8 +233,21 @@ const TournamentTeam = () => {
           </Suspense>
         </span>
       </h1>
+      <Show when={teamQuery.data}>
+        <div class="flex justify-center">
+          <A
+            href={`/team/${params.team_slug}`}
+            class="inline-flex min-h-[44px] items-center gap-1 rounded-lg px-3 text-sm font-medium text-blue-700 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 active:bg-blue-100"
+          >
+            View team profile
+            <span class="sr-only"> for {teamQuery.data.name}</span>
+            <Icon class="h-4 w-4" path={chevronRight} aria-hidden="true" />
+          </A>
+        </div>
+      </Show>
       <div class="my-2 flex w-full justify-center">
-        <p class="mr-2 inline-flex items-center rounded bg-blue-100 p-1.5 text-sm font-semibold text-blue-600 dark:bg-blue-200 dark:text-blue-800">
+        <p class="inline-flex items-center rounded bg-blue-100 p-1.5 text-sm font-semibold text-blue-600 dark:bg-blue-200 dark:text-blue-800">
+          <span class="sr-only">Points </span>
           <Icon path={star} class="mr-1 h-4" />
           {rosterPointsQuery.data?.points || 0}
         </p>
