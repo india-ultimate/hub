@@ -398,6 +398,8 @@ class TestMergeAdmin(TeamMergeTestCase):
     def test_the_action_shows_a_review_first(self) -> None:
         self.staff("view_team", "change_team", "delete_team")
         response = self.post()
+        # A staff merge has no request to reject.
+        self.assertNotContains(response, "Reject request")  # type: ignore[arg-type]
         self.assertEqual(response.status_code, 200)  # type: ignore[attr-defined]
         self.assertContains(response, 'type="radio" name="keeper"', count=2)  # type: ignore[arg-type]
         self.assertContains(response, f'merge-gone">Goosebumps #{self.dup.pk}</span> will be deleted')  # type: ignore[arg-type]
@@ -581,6 +583,11 @@ class TestStaffDecideRequests(TeamMergeTestCase):
         self.assertEqual(self.asked.status, ServiceRequestStatus.APPROVED)
         self.assertEqual(self.asked.keep_team, self.keeper)
         self.assertEqual(mail.outbox[-1].to, [self.user.email])
+
+    def test_the_review_page_can_reject_too(self) -> None:
+        review = self.post("approve_team_merge")
+        self.assertContains(review, 'value="reject_team_merge"')
+        self.assertContains(review, "Reject request")
 
     def test_staff_reject(self) -> None:
         self.post("reject_team_merge")

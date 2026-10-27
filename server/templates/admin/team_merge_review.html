@@ -26,6 +26,7 @@
   .merge-outcome { max-width: 60em; line-height: 1.5; }
   .merge-outcome strong { color: var(--error-fg); }
   .merge-submit { display: flex; gap: 12px; align-items: center; }
+  .merge-reject { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--hairline-color); max-width: 60em; }
   .submit-row .merge-confirm { background: var(--delete-button-bg); color: var(--button-fg); }
   .submit-row .merge-confirm:hover, .submit-row .merge-confirm:focus-visible { background: var(--delete-button-hover-bg); }
 </style>
@@ -128,6 +129,16 @@
   </div>
   {% endif %}
 </form>
+
+{% if item %}
+<form method="post" class="merge-reject">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="reject_team_merge">
+  <input type="hidden" name="_selected_action" value="{{ item.pk }}">
+  <p>Not the same team? Rejecting closes the request and emails {{ item.user.get_full_name|default:item.user.email }}.</p>
+  <input type="submit" class="button" value="Reject request">
+</form>
+{% endif %}
 
 <script>
   document.querySelectorAll('.merge-teams input[name="keeper"]').forEach(function (radio) {
