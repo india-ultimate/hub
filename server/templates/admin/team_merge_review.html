@@ -1,0 +1,139 @@
+{% extends "admin/base_site.html" %}
+
+{% block extrastyle %}{{ block.super }}
+<style>
+  .merge-teams { border: 0; padding: 0; margin: 0 0 20px; min-width: 0; }
+  .merge-teams legend { font-size: 1rem; font-weight: 600; padding: 0; margin-bottom: 4px; color: var(--body-fg); }
+  .merge-scroll { overflow-x: auto; border: 1px solid var(--hairline-color); border-radius: 4px; }
+  .merge-scroll table { width: 100%; border-collapse: collapse; }
+  .merge-scroll th, .merge-scroll td { padding: 10px 12px; vertical-align: top; border-bottom: 1px solid var(--hairline-color); min-width: 130px; }
+  .merge-scroll tbody th { min-width: 110px; color: var(--body-quiet-color); font-weight: 400; white-space: nowrap; }
+  .merge-scroll tbody th, .merge-scroll thead th:first-child { position: sticky; left: 0; z-index: 1; background: var(--body-bg); box-shadow: 1px 0 0 var(--hairline-color); }
+  .merge-scroll thead th { background: var(--darkened-bg); }
+  .merge-scroll .is-keep { background: var(--selected-row); }
+  .merge-choice { display: flex; gap: 10px; align-items: center; min-height: 44px; border-radius: 4px; }
+  .merge-choice:has(input) { cursor: pointer; }
+  .merge-teams .help { font-size: 0.8125rem; }
+  .merge-choice:focus-within { outline: 2px solid var(--link-fg); outline-offset: 2px; }
+  .merge-choice input { width: 18px; height: 18px; margin: 0; flex: none; accent-color: var(--link-fg); }
+  .merge-logo { width: 36px; height: 36px; border-radius: 50%; flex: none; object-fit: cover; background: var(--body-bg); border: 1px solid var(--hairline-color); display: grid; place-items: center; font-weight: 600; color: var(--body-quiet-color); }
+  .merge-name { display: block; font-weight: 600; color: var(--body-fg); text-transform: none; font-size: 0.875rem; }
+  .merge-id { display: block; color: var(--body-quiet-color); font-weight: 400; text-transform: none; }
+  .merge-tag { display: none; margin-left: auto; padding: 2px 8px; border-radius: 10px; background: var(--header-bg); color: var(--header-link-color); font-size: 0.75rem; font-weight: 600; text-transform: none; }
+  .is-keep .merge-tag { display: inline-block; }
+  .merge-differs { color: var(--error-fg); font-weight: 600; margin-left: 4px; }
+  .merge-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .merge-outcome { max-width: 60em; line-height: 1.5; }
+  .merge-outcome strong { color: var(--error-fg); }
+  .merge-submit { display: flex; gap: 12px; align-items: center; }
+  .submit-row .merge-confirm { background: var(--delete-button-bg); color: var(--button-fg); }
+  .submit-row .merge-confirm:hover, .submit-row .merge-confirm:focus-visible { background: var(--delete-button-hover-bg); }
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">Home</a>
+  &rsaquo; <a href="{% url 'admin:server_team_changelist' %}">Teams</a>
+  &rsaquo; Merge
+</div>
+{% endblock %}
+
+{% block content %}
+{% if blockers %}
+  <div class="errornote" role="alert" id="merge-blocked">
+    <strong>They were both at the same event or series.</strong>
+    Teams that entered the same event or series are treated as separate teams.
+    <ul>{% for blocker in blockers %}<li>{{ blocker }}</li>{% endfor %}</ul>
+  </div>
+{% endif %}
+
+<form method="post">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="merge_teams">
+  {% for column in teams %}<input type="hidden" name="_selected_action" value="{{ column.team.pk }}">{% endfor %}
+  <input type="hidden" name="merge_confirmed" value="yes">
+
+  <fieldset class="merge-teams">
+    <legend>{% if blockers %}The teams side by side{% else %}Choose the team to keep{% endif %}</legend>
+    <p class="help">{% if not blockers %}Picked for you: the team in the most tournaments. {% endif %}<span class="merge-differs" aria-hidden="true">&ne;</span> marks details the teams disagree on.</p>
+    <div class="merge-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col"><span class="merge-sr">Detail</span></th>
+            {% for column in teams %}
+              <th scope="col" data-col="{{ forloop.counter }}" data-label="{{ column.label }}"{% if column.keep and not blockers %} class="is-keep"{% endif %}>
+                <label class="merge-choice">
+                  {% if not blockers %}<input type="radio" name="keeper" value="{{ column.team.pk }}"{% if column.keep %} checked{% endif %}>{% endif %}
+                  {% if column.logo %}
+                    <img class="merge-logo" src="{{ column.logo }}" alt="">
+                  {% else %}
+                    <span class="merge-logo" aria-hidden="true">{{ column.team.name|slice:":1"|upper }}</span>
+                  {% endif %}
+                  <span>
+                    {% if not blockers %}<span class="merge-sr">Keep </span>{% endif %}
+                    <span class="merge-name">{{ column.team.name }}</span>
+                    <span class="merge-id">#{{ column.team.pk }}</span>
+                  </span>
+                  <span class="merge-tag" aria-hidden="true">Keeping</span>
+                </label>
+              </th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for line in lines %}
+            <tr>
+              <th scope="row">
+                {{ line.label }}{% if line.differs %}<span class="merge-differs" aria-hidden="true">&ne;</span><span class="merge-sr"> (they differ)</span>{% endif %}
+              </th>
+              {% for value in line.values %}
+                <td data-col="{{ forloop.counter }}"{% if forloop.counter0 == keeper_index and not blockers %} class="is-keep"{% endif %}>{{ value|default:"&mdash;" }}</td>
+              {% endfor %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </fieldset>
+
+  {% if blockers %}
+  <div class="submit-row">
+    <a href="{% url 'admin:server_team_changelist' %}" class="button cancel-link">Back to teams</a>
+  </div>
+  {% else %}
+  <div class="merge-outcome">
+    <p>
+      <strong><span id="merge-gone">{{ gone }}</span> will be deleted. This cannot be undone.</strong>
+      Their tournaments, rosters, matches, series, players and admins move to <span id="merge-kept">{{ kept }}</span>.
+      Finished tournaments keep their standings, seeding and spirit rankings.
+    </p>
+    <p>The kept team keeps its own name, slug and category. Its blank logo, city, state and Ultimate Central ID are filled in from the others, oldest first. Links to the deleted teams&rsquo; pages stop working.</p>
+  </div>
+
+  <div class="submit-row merge-submit">
+    <input type="submit" class="merge-confirm" id="merge-confirm" value="Merge into {{ kept }}">
+    <a href="{% url 'admin:server_team_changelist' %}" class="button cancel-link">Cancel</a>
+  </div>
+  {% endif %}
+</form>
+
+<script>
+  document.querySelectorAll('.merge-teams input[name="keeper"]').forEach(function (radio) {
+    radio.addEventListener("change", function () {
+      var col = radio.closest("th").dataset.col;
+      var gone = [];
+      document.querySelectorAll(".merge-scroll [data-col]").forEach(function (cell) {
+        cell.classList.toggle("is-keep", cell.dataset.col === col);
+        if (cell.dataset.label && cell.dataset.col !== col) gone.push(cell.dataset.label);
+      });
+      var kept = radio.closest("th").dataset.label;
+      document.getElementById("merge-kept").textContent = kept;
+      document.getElementById("merge-confirm").value = "Merge into " + kept;
+      document.getElementById("merge-gone").textContent =
+        gone.length > 1 ? gone.slice(0, -1).join(", ") + " and " + gone[gone.length - 1] : gone[0];
+    });
+  });
+</script>
+{% endblock %}
