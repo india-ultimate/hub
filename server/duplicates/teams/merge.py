@@ -50,7 +50,7 @@ from server.tournament.models import (
 from server.wrapped.models import PlayerWrapped
 
 # Filled from an absorbed team only where the keeper has nothing.
-TEAM_FILLABLE = ("image", "image_url", "facebook_url", "city", "state_ut", "ultimate_central_id")
+TEAM_FILLABLE = ("facebook_url", "city", "state_ut", "ultimate_central_id")
 
 # Every JSON field holding team ids, by model. Seedings and byes map to a team,
 # standings tables are keyed by one, spirit ranking lists them.
@@ -228,8 +228,20 @@ def _rewrite_wrapped(source: Team, target: Team) -> None:
         PlayerWrapped.objects.filter(pk=row.pk).update(teams_played_for=list(merged.values()))
 
 
-def merge_teams(keeper: Team, others: list[Team], actor: User | None = None) -> TeamMerge:
-    """Fold others into keeper, then delete them."""
+def logo_of(team: Team) -> str | None:
+    return team.image.url if team.image else team.image_url
+
+
+def default_logo(keeper: Team, teams: list[Team]) -> Team | None:
+    """The team whose logo is kept: the keeper's own, else the oldest copy's."""
+    others = sorted((team for team in teams if team != keeper), key=lambda team: team.pk)
+    return next((team for team in [keeper, *others] if team.image or team.image_url), None)
+
+
+def merge_teams(
+    keeper: Team, others: list[Team], actor: User | None = None, logo: Team | None = None
+) -> TeamMerge:
+    """Fold others into keeper, then delete them. The logo comes from logo, if it has one."""
     with transaction.atomic():
         # Ordered by pk so two merges sharing a team cannot deadlock.
         locked = {
@@ -242,6 +254,9 @@ def merge_teams(keeper: Team, others: list[Team], actor: User | None = None) -> 
         if keeper.pk not in locked or not absorbed:
             raise TeamMergeBlockedError(["Pick a team to keep and at least one to merge into it"])
         keeper = locked[keeper.pk]
+        chosen = locked.get(logo.pk) if logo else None
+        if not (chosen and (chosen.image or chosen.image_url)):
+            chosen = default_logo(keeper, absorbed)
 
         places = _places([keeper, *absorbed])
         problems = blockers([keeper, *absorbed], places)
@@ -278,6 +293,10 @@ def merge_teams(keeper: Team, others: list[Team], actor: User | None = None) -> 
         )
         for team in absorbed:
             team.delete()
+        # Both fields, as a pair: a file left from one team would show over the other's URL.
+        if chosen and chosen != keeper:
+            keeper.image, keeper.image_url = chosen.image.name, chosen.image_url
+            keeper.save(update_fields=["image", "image_url"])
         # After the deletes: ultimate_central_id is unique.
         for team in absorbed:
             fill_blanks(keeper, team, TEAM_FILLABLE)

@@ -26,6 +26,9 @@
   .merge-outcome { max-width: 60em; line-height: 1.5; }
   .merge-outcome strong { color: var(--error-fg); }
   .merge-submit { display: flex; gap: 12px; align-items: center; }
+  .merge-logos { display: flex; flex-wrap: wrap; gap: 8px; }
+  .merge-logos .merge-choice { padding: 6px 12px 6px 8px; border: 1px solid var(--hairline-color); }
+  .merge-logos .merge-choice:has(input:checked) { background: var(--selected-row); border-color: var(--link-fg); }
   .merge-reject { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--hairline-color); max-width: 60em; }
   .submit-row .merge-confirm { background: var(--delete-button-bg); color: var(--button-fg); }
   .submit-row .merge-confirm:hover, .submit-row .merge-confirm:focus-visible { background: var(--delete-button-hover-bg); }
@@ -109,6 +112,22 @@
     </div>
   </fieldset>
 
+  {% if pick_logo and not blockers %}
+  <fieldset class="merge-teams">
+    <legend>Logo to keep</legend>
+    <p class="help">Picked for you: {% if logo_asked %}the logo they asked for{% else %}the kept team&rsquo;s, if it has one{% endif %}.</p>
+    <div class="merge-logos">
+      {% for column in teams %}{% if column.logo %}
+        <label class="merge-choice">
+          <input type="radio" name="logo" value="{{ column.team.pk }}"{% if column.logo_kept %} checked{% endif %}>
+          <img class="merge-logo" src="{{ column.logo }}" alt="">
+          <span><span class="merge-sr">Logo of </span><span class="merge-name">{{ column.team.name }}</span><span class="merge-id">#{{ column.team.pk }}</span></span>
+        </label>
+      {% endif %}{% endfor %}
+    </div>
+  </fieldset>
+  {% endif %}
+
   {% if blockers %}
   <div class="submit-row">
     <a href="{{ cancel_url }}" class="button cancel-link">Go back</a>
@@ -120,7 +139,7 @@
       Their tournaments, rosters, matches, series, players and admins move to <span id="merge-kept">{{ kept }}</span>.
       Finished tournaments keep their standings, seeding and spirit rankings.
     </p>
-    <p>The kept team keeps its own name, slug and category. Its blank logo, city, state and Ultimate Central ID are filled in from the others, oldest first. Links to the deleted teams&rsquo; pages stop working.</p>
+    <p>The kept team keeps its own name, slug and category{% if pick_logo %}, and takes the logo picked above{% endif %}. Its blank {% if not pick_logo %}logo, {% endif %}city, state and Ultimate Central ID are filled in from the others, oldest first. Links to the deleted teams&rsquo; pages stop working.</p>
   </div>
 
   <div class="submit-row merge-submit">
@@ -141,8 +160,15 @@
 {% endif %}
 
 <script>
+  // The logo follows the kept team, unless asked for or picked.
+  var logoPicked = {{ logo_asked|yesno:"true,false" }};
+  document.querySelectorAll('input[name="logo"]').forEach(function (radio) {
+    radio.addEventListener("change", function () { logoPicked = true; });
+  });
   document.querySelectorAll('.merge-teams input[name="keeper"]').forEach(function (radio) {
     radio.addEventListener("change", function () {
+      var logo = document.querySelector('input[name="logo"][value="' + radio.value + '"]');
+      if (logo && !logoPicked) logo.checked = true;
       var col = radio.closest("th").dataset.col;
       var gone = [];
       document.querySelectorAll(".merge-scroll [data-col]").forEach(function (cell) {
