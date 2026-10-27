@@ -134,7 +134,7 @@ class Subscription(ExportModelOperationsMixin("subscription"), models.Model):  #
 
     class Meta:
         # unique_together, not UniqueConstraint: the merge engine's
-        # _breaks_uniqueness and _conflicting_row read only unique_together,
+        # breaks_uniqueness and conflicting_row read only unique_together,
         # and with a constraint a merge of two accounts holding the same
         # season would raise IntegrityError and roll the whole merge back.
         unique_together = ("player", "season")

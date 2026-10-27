@@ -23,7 +23,6 @@ from server.duplicates.players.flow import FlowError, approve_staff, reject_staf
 from server.duplicates.players.merge import (
     MergeBlockedError,
     MergeFieldError,
-    MergeIncompleteError,
     RelationMove,
     build_plan,
     check_blockers,
@@ -36,6 +35,7 @@ from server.duplicates.players.models import (
     DuplicateCluster,
     EmailAlias,
 )
+from server.duplicates.relations import MergeIncompleteError
 from server.election.models import (
     Candidate,
     Election,

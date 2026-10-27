@@ -20,7 +20,6 @@ from server.duplicates.players.identity import mask_email
 from server.duplicates.players.merge import (
     MergeBlockedError,
     MergeFieldError,
-    MergeIncompleteError,
     resolvable_fields,
 )
 from server.duplicates.players.models import (
@@ -40,6 +39,7 @@ from server.duplicates.players.schema import (
     StaffRequestSchema,
     VerifySchema,
 )
+from server.duplicates.relations import MergeIncompleteError
 from server.types import message_response
 
 router = Router()
