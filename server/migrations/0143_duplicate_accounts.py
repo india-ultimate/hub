@@ -7,7 +7,7 @@ import django_prometheus.models
 from django.conf import settings
 from django.db import migrations, models
 
-import server.duplicates.models
+import server.duplicates.players.models
 
 
 class Migration(migrations.Migration):
@@ -57,7 +57,9 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "expires_at",
-                    models.DateTimeField(default=server.duplicates.models.default_claim_expiry),
+                    models.DateTimeField(
+                        default=server.duplicates.players.models.default_claim_expiry
+                    ),
                 ),
                 ("notified_at", models.DateTimeField(blank=True, null=True)),
                 ("account_id", models.IntegerField(blank=True, null=True)),

@@ -11,11 +11,11 @@ from django.utils.timezone import now
 
 from server.constants import CLAIM_TOKEN_DAYS
 from server.core.models import User
-from server.duplicates.codes import CODE_TTL
-from server.duplicates.detect import matched_on
-from server.duplicates.history import log
-from server.duplicates.identity import mask_email
-from server.duplicates.models import ClusterEvent, ClusterMember, DuplicateCluster
+from server.duplicates.players.codes import CODE_TTL
+from server.duplicates.players.detect import matched_on
+from server.duplicates.players.history import log
+from server.duplicates.players.identity import mask_email
+from server.duplicates.players.models import ClusterEvent, ClusterMember, DuplicateCluster
 from server.task.helpers import queue_emails
 
 SUBJECT = "You may have more than one India Ultimate Hub account"

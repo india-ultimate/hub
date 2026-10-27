@@ -9,8 +9,8 @@ from django.test import SimpleTestCase, TestCase
 from django.utils.timezone import now
 
 from server.core.models import Guardianship, Player, User
-from server.duplicates.clusters import create_clusters
-from server.duplicates.detect import (
+from server.duplicates.players.clusters import create_clusters
+from server.duplicates.players.detect import (
     BLOCK_DIFFERENT_GENDER,
     BLOCK_DIFFERENT_GUARDIANS,
     BLOCK_DIFFERENT_WARDS,
@@ -23,7 +23,7 @@ from server.duplicates.detect import (
     RULE_SLUG_DOB,
     find_clusters,
 )
-from server.duplicates.identity import (
+from server.duplicates.players.identity import (
     mask_email,
     name_slug,
     names_agree,
@@ -31,7 +31,7 @@ from server.duplicates.identity import (
     normalize_name,
     normalize_phone,
 )
-from server.duplicates.review import Line
+from server.duplicates.players.review import Line
 
 
 class TestNormalizeEmail(SimpleTestCase):

@@ -7,9 +7,9 @@ from django.db.models.functions import Lower
 from django.utils.timezone import now
 
 from server.core.models import Player
-from server.duplicates import review
-from server.duplicates.merge import check_blockers
-from server.duplicates.models import ClusterMember, DuplicateCluster
+from server.duplicates.players import review
+from server.duplicates.players.merge import check_blockers
+from server.duplicates.players.models import ClusterMember, DuplicateCluster
 from server.mcp.confirm import confirm_then
 from server.mcp.dispatch import call_api, denied, refuse
 from server.mcp.registry import Audience, ToolContext, ToolResult, fail, ok, tool

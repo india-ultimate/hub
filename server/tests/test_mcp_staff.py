@@ -7,7 +7,7 @@ from django.contrib.auth.models import Permission
 from django.utils.timezone import now
 
 from server.core.models import Player, User
-from server.duplicates.models import ClusterMember, DuplicateCluster
+from server.duplicates.players.models import ClusterMember, DuplicateCluster
 from server.mcp.tools.staff_members import find_season, season_slug
 from server.payment_account.models import PaymentAccount
 from server.receipts.models import Receipt

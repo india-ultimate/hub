@@ -5,7 +5,7 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import date, datetime
 
-from server.duplicates.identity import (
+from server.duplicates.players.identity import (
     name_slug,
     names_agree,
     normalize_email,

@@ -80,7 +80,7 @@ class EmailAlias(ExportModelOperationsMixin("email_alias"), models.Model):  # ty
         merge record: an alias user already held is not news, but it is the
         difference between an address this merge added and one it found.
         """
-        from server.duplicates.identity import normalize_email
+        from server.duplicates.players.identity import normalize_email
 
         # Skip only the address that already signs in by itself. Sign in
         # looks the username up exactly and an alias by its normalized form,
@@ -192,7 +192,7 @@ class ClusterMember(ExportModelOperationsMixin("cluster_member"), models.Model):
         "server.ServiceRequest", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
     )
 
-    # Only a keyed hash is kept; see server/duplicates/codes.py. When codes
+    # Only a keyed hash is kept; see server/duplicates/players/codes.py. When codes
     # were sent is not kept here: the limits count code-sent events across
     # every group (codes.check_budget), since a row is cheap to replace.
     code_hash = models.CharField(max_length=64, blank=True)
@@ -282,7 +282,7 @@ class ClusterEvent(ExportModelOperationsMixin("cluster_event"), models.Model):  
 def record_deleted_account(sender: Any, instance: User, **kwargs: Any) -> None:
     """An account deleted by hand, not merged. A merge clears its rows' user
     before deleting the account, so this only sees deletions outside one."""
-    from server.duplicates.history import log
+    from server.duplicates.players.history import log
 
     for row in ClusterMember.objects.filter(
         user=instance, state__in=ClusterMember.MERGEABLE

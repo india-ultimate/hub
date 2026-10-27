@@ -2,7 +2,7 @@ from typing import Any
 
 from django.core.management.base import BaseCommand, CommandParser
 
-from server.duplicates.emails import notify, unnotified
+from server.duplicates.players.emails import notify, unnotified
 
 
 class Command(BaseCommand):

@@ -17,7 +17,7 @@ from server.core.models import (
     User,
     Vaccination,
 )
-from server.duplicates.identity import mask_email
+from server.duplicates.players.identity import mask_email
 from server.forms.access import can_create_forms
 from server.payment_account.models import viewable_by
 from server.season.models import Season

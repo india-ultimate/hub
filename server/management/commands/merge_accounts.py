@@ -4,8 +4,8 @@ from django.core.management.base import BaseCommand, CommandError, CommandParser
 from prettytable import PrettyTable
 
 from server.core.models import User
-from server.duplicates import review
-from server.duplicates.merge import MergeBlockedError, merge_accounts
+from server.duplicates.players import review
+from server.duplicates.players.merge import MergeBlockedError, merge_accounts
 
 MIN_ACCOUNTS = 2
 

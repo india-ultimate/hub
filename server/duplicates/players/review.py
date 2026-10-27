@@ -4,14 +4,14 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from server.core.models import Player, User
-from server.duplicates.detect import (
+from server.duplicates.players.detect import (
     BLOCK_DIFFERENT_GENDER,
     BLOCK_DIFFERENT_GUARDIANS,
     BLOCK_DIFFERENT_WARDS,
     BLOCK_GUARDIANSHIP,
     BLOCK_NAME_MISMATCH,
 )
-from server.duplicates.identity import normalize_name
+from server.duplicates.players.identity import normalize_name
 
 IDENTITY = frozenset(
     {"Name", "Date of birth", "Gender", "City", "Has a player profile", "Ultimate Central id"}

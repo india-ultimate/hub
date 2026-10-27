@@ -58,8 +58,8 @@ from server.core.models import (
     User,
     Vaccination,
 )
-from server.duplicates.api import router as merge_router
-from server.duplicates.identity import full_email_match
+from server.duplicates.players.api import router as merge_router
+from server.duplicates.players.identity import full_email_match
 from server.election.api import router as election_router
 from server.forms.api import router as forms_router
 from server.mcp.apps_api import router as connected_apps_router

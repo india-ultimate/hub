@@ -22,17 +22,21 @@ from django.utils.timezone import now
 from server.api import get_email_hash
 from server.core.accounts import find_login_user, resolve_login_user
 from server.core.models import Guardianship, Player, User
-from server.duplicates import flow
-from server.duplicates.clusters import (
+from server.duplicates.players import flow
+from server.duplicates.players.clusters import (
     _dismissed_groups,
     close_finished,
     create_clusters,
     detect_and_create,
 )
-from server.duplicates.codes import MAX_CODES_PER_ACTOR_PER_DAY, MAX_CODES_PER_DAY, RESEND_AFTER
-from server.duplicates.detect import find_clusters
-from server.duplicates.emails import MERGED_SUBJECT, notify
-from server.duplicates.flow import (
+from server.duplicates.players.codes import (
+    MAX_CODES_PER_ACTOR_PER_DAY,
+    MAX_CODES_PER_DAY,
+    RESEND_AFTER,
+)
+from server.duplicates.players.detect import find_clusters
+from server.duplicates.players.emails import MERGED_SUBJECT, notify
+from server.duplicates.players.flow import (
     MAX_REQUESTS_PER_DAY,
     FlowError,
     approve_staff,
@@ -42,17 +46,17 @@ from server.duplicates.flow import (
     request_staff,
     verify_same_inbox,
 )
-from server.duplicates.history import log
-from server.duplicates.identity import mask_email
-from server.duplicates.merge import merge_accounts, resolvable_fields
-from server.duplicates.models import (
+from server.duplicates.players.history import log
+from server.duplicates.players.identity import mask_email
+from server.duplicates.players.merge import merge_accounts, resolvable_fields
+from server.duplicates.players.models import (
     AccountMerge,
     ClusterEvent,
     ClusterMember,
     DuplicateCluster,
     EmailAlias,
 )
-from server.duplicates.staff import close_request
+from server.duplicates.players.staff import close_request
 from server.schema import UserFormSchema
 from server.servicerequests.models import ServiceRequest, ServiceRequestStatus, ServiceRequestType
 from server.task.models import Task
@@ -487,11 +491,11 @@ class TestConfirmMergeEdges(MergeFlowTestCase):
         self.assertEqual(User.objects.filter(id=self.second.id).count(), 1)
 
     def test_a_refused_merge_is_a_message_not_a_500(self) -> None:
-        from server.duplicates.merge import MergeIncompleteError
+        from server.duplicates.players.merge import MergeIncompleteError
 
         self.confirmed(self.first, self.second)
         with mock.patch(
-            "server.duplicates.flow.merge_accounts",
+            "server.duplicates.players.flow.merge_accounts",
             side_effect=MergeIncompleteError({"server.Thing.user": 1}),
         ):
             response = self.confirm(self.token, self.second.id)
@@ -657,7 +661,7 @@ class TestMergedElsewhere(MergeFlowTestCase):
         so a group somebody else holds is closed once the merge commits."""
         self.client.force_login(self.first)
         self.confirmed(self.first, self.second)
-        with mock.patch("server.duplicates.clusters._lock_if_free", return_value=None):
+        with mock.patch("server.duplicates.players.clusters._lock_if_free", return_value=None):
             self.confirm(self.token, self.second.id)
         self.other.refresh_from_db()
         self.assertEqual(self.other.status, DuplicateCluster.Status.RESOLVED)
@@ -666,8 +670,10 @@ class TestMergedElsewhere(MergeFlowTestCase):
         self.client.force_login(self.first)
         self.confirmed(self.first, self.second)
         with (
-            mock.patch("server.duplicates.clusters._lock_if_free", return_value=None),
-            mock.patch("server.duplicates.clusters._close", side_effect=RuntimeError("down")),
+            mock.patch("server.duplicates.players.clusters._lock_if_free", return_value=None),
+            mock.patch(
+                "server.duplicates.players.clusters._close", side_effect=RuntimeError("down")
+            ),
             self.assertLogs("django", "ERROR"),
         ):
             response = self.confirm(self.token, self.second.id)
@@ -971,7 +977,7 @@ class TestOneChangeAtATime(RowActions):
     def test_same_inbox_is_not_verified_without_its_event(self) -> None:
         User.objects.filter(id=self.second.id).update(email="first@x.com")
         with (
-            mock.patch("server.duplicates.flow.log", side_effect=RuntimeError("down")),
+            mock.patch("server.duplicates.players.flow.log", side_effect=RuntimeError("down")),
             self.assertRaises(RuntimeError),
         ):
             verify_same_inbox(self.cluster, self.first)
@@ -979,7 +985,7 @@ class TestOneChangeAtATime(RowActions):
 
     def test_a_code_is_not_issued_without_its_event(self) -> None:
         with (
-            mock.patch("server.duplicates.flow.log", side_effect=RuntimeError("down")),
+            mock.patch("server.duplicates.players.flow.log", side_effect=RuntimeError("down")),
             self.assertRaises(RuntimeError),
         ):
             self.act("code", user_id=self.second.id)
@@ -989,7 +995,7 @@ class TestOneChangeAtATime(RowActions):
     def test_a_wrong_code_is_not_counted_without_its_event(self) -> None:
         self.act("code", user_id=self.second.id)
         with (
-            mock.patch("server.duplicates.flow.log", side_effect=RuntimeError("down")),
+            mock.patch("server.duplicates.players.flow.log", side_effect=RuntimeError("down")),
             self.assertRaises(RuntimeError),
         ):
             self.act("verify", user_id=self.second.id, code="nope")
@@ -1005,7 +1011,7 @@ class TestOneChangeAtATime(RowActions):
         """Not refunded: the code exists and can be guessed at whether or not
         its email arrived, so it has to count against the day's limit."""
         with mock.patch(
-            "server.duplicates.flow.send_code_email", side_effect=SMTPException("down")
+            "server.duplicates.players.flow.send_code_email", side_effect=SMTPException("down")
         ):
             response = self.act("code", user_id=self.second.id)
         self.assertEqual(response.status_code, 503)
@@ -1036,7 +1042,7 @@ class TestCodeEmailAfterCommit(TransactionTestCase):
             )
 
         self.client.force_login(keeper)
-        with mock.patch("server.duplicates.flow.send_code_email", side_effect=record):
+        with mock.patch("server.duplicates.players.flow.send_code_email", side_effect=record):
             response = self.client.post(
                 f"{BASE}/{mine.claim_token}/code",
                 data=json.dumps({"user_id": other.id}),
@@ -1091,7 +1097,7 @@ class TestRacingAMergeOnPostgres(TransactionTestCase):
         """Run the merge (by default, of X into K1) until it holds its
         accounts and reaches `at`, start `other`, wait until Postgres says it
         is blocked, then let the merge finish."""
-        from server.duplicates import merge
+        from server.duplicates.players import merge
 
         holding, go = threading.Event(), threading.Event()
         real = getattr(merge, at)
@@ -1122,10 +1128,10 @@ class TestRacingAMergeOnPostgres(TransactionTestCase):
             threading.Thread(target=run, args=("other", other), name="other"),
         ]
         with (
-            mock.patch(f"server.duplicates.merge.{at}", side_effect=paused),
-            mock.patch("server.duplicates.flow.send_code_email"),
-            mock.patch("server.duplicates.flow.notify_kept"),
-            mock.patch("server.duplicates.flow.notify_merged"),
+            mock.patch(f"server.duplicates.players.merge.{at}", side_effect=paused),
+            mock.patch("server.duplicates.players.flow.send_code_email"),
+            mock.patch("server.duplicates.players.flow.notify_kept"),
+            mock.patch("server.duplicates.players.flow.notify_merged"),
         ):
             threads[0].start()
             self.assertTrue(holding.wait(10))
@@ -1565,7 +1571,7 @@ class TestRequestingAMerge(MergeFlowTestCase):
         self.old.delete()
 
         with (
-            mock.patch("server.duplicates.flow.find_login_user", return_value=stale),
+            mock.patch("server.duplicates.players.flow.find_login_user", return_value=stale),
             self.assertRaises(FlowError) as refused,
         ):
             flow.request_merge(self.me, "me.old@example.com", "")
@@ -1584,7 +1590,7 @@ class TestRequestingAMerge(MergeFlowTestCase):
             User.objects.filter(pk=keeper.pk).delete()
             return flow.request_merge(keeper, email, note)
 
-        with mock.patch("server.duplicates.api.request_merge", side_effect=absorbed_first):
+        with mock.patch("server.duplicates.players.api.request_merge", side_effect=absorbed_first):
             response = self.start("me.old@example.com")
 
         self.assertEqual(response.status_code, 403)
@@ -2037,7 +2043,7 @@ class TestRacingTwoRequestsOnPostgres(TransactionTestCase):
             threading.Thread(target=run, args=("first", first, second.email), name="first"),
             threading.Thread(target=run, args=("second", second, first.email), name="second"),
         ]
-        with mock.patch("server.duplicates.flow.log", side_effect=paused):
+        with mock.patch("server.duplicates.players.flow.log", side_effect=paused):
             threads[0].start()
             self.assertTrue(holding.wait(10))
             threads[1].start()

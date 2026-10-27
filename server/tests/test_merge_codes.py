@@ -3,8 +3,8 @@ from unittest import mock
 
 from django.utils.timezone import now
 
-from server.duplicates.codes import MAX_ATTEMPTS, check, issue
-from server.duplicates.models import ClusterMember
+from server.duplicates.players.codes import MAX_ATTEMPTS, check, issue
+from server.duplicates.players.models import ClusterMember
 from server.tests.test_merge_flow import MergeFlowTestCase
 
 
@@ -26,7 +26,7 @@ class TestCodes(MergeFlowTestCase):
         self.assertIsNotNone(check(self.row, self.first, code))
 
     def test_spaces_and_leading_zeros_are_fine(self) -> None:
-        with mock.patch("server.duplicates.codes.secrets.randbelow", return_value=48213):
+        with mock.patch("server.duplicates.players.codes.secrets.randbelow", return_value=48213):
             code = issue(self.row, self.first)
         self.assertEqual(code, "048213")
         self.assertIsNone(check(self.row, self.first, " 048 213 "))
