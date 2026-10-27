@@ -4,7 +4,7 @@ import {
   required,
   setValues
 } from "@modular-forms/solid";
-import { useParams } from "@solidjs/router";
+import { A, useParams } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
 import { createMutation, useQueryClient } from "@tanstack/solid-query";
 import { createAsyncOptions, Select } from "@thisbeyond/solid-select";
@@ -226,6 +226,21 @@ const Edit = () => {
           </p>
         </Show>
         <p>{status()}</p>
+        <div class="mt-8 rounded-lg border border-gray-200 p-4 dark:border-gray-700">
+          <h2 class="font-semibold text-gray-900 dark:text-white">
+            Made this team twice?
+          </h2>
+          <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">
+            Merge the copies so its tournaments, rosters and players are all in
+            one place.
+          </p>
+          <A
+            href={`/team/${params.slug}/merge`}
+            class="mt-3 inline-flex min-h-[44px] items-center rounded-lg border border-gray-300 bg-white px-4 text-sm font-medium text-gray-900 hover:bg-gray-100 focus:outline-none focus:ring-4 focus:ring-gray-200 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
+          >
+            Merge duplicate teams
+          </A>
+        </div>
       </div>
     </div>
   );

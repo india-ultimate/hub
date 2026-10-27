@@ -34,12 +34,22 @@
 {% block breadcrumbs %}
 <div class="breadcrumbs">
   <a href="{% url 'admin:index' %}">Home</a>
-  &rsaquo; <a href="{% url 'admin:server_team_changelist' %}">Teams</a>
+  &rsaquo; <a href="{{ cancel_url }}">{% if item %}Service requests{% else %}Teams{% endif %}</a>
   &rsaquo; Merge
 </div>
 {% endblock %}
 
 {% block content %}
+{% if item %}
+  <p>
+    Asked by <strong>{{ item.user.get_full_name }}</strong> ({{ item.user.email }}) on {{ item.created_at }}, to keep {% if item.keep_team %}{{ item.keep_team.name }} #{{ item.keep_team.pk }}{% else %}a team since merged away{% endif %}.
+    <br>&ldquo;{{ item.message }}&rdquo;
+  </p>
+  <p>
+    They admin {{ asker_admins|default:"none of these teams" }}.
+    {% if asker_not_admin %}<strong>They don&rsquo;t admin {{ asker_not_admin }}.</strong> Check with its admins (their emails are below) before approving.{% endif %}
+  </p>
+{% endif %}
 {% if blockers %}
   <div class="errornote" role="alert" id="merge-blocked">
     <strong>They were both at the same event or series.</strong>
@@ -50,13 +60,13 @@
 
 <form method="post">
   {% csrf_token %}
-  <input type="hidden" name="action" value="merge_teams">
-  {% for column in teams %}<input type="hidden" name="_selected_action" value="{{ column.team.pk }}">{% endfor %}
+  <input type="hidden" name="action" value="{{ action }}">
+  {% for pk in selected %}<input type="hidden" name="_selected_action" value="{{ pk }}">{% endfor %}
   <input type="hidden" name="merge_confirmed" value="yes">
 
   <fieldset class="merge-teams">
     <legend>{% if blockers %}The teams side by side{% else %}Choose the team to keep{% endif %}</legend>
-    <p class="help">{% if not blockers %}Picked for you: the team in the most tournaments. {% endif %}<span class="merge-differs" aria-hidden="true">&ne;</span> marks details the teams disagree on.</p>
+    <p class="help">{% if not blockers %}Picked for you: {% if item %}the team they asked to keep{% else %}the team in the most tournaments{% endif %}. {% endif %}<span class="merge-differs" aria-hidden="true">&ne;</span> marks details the teams disagree on.</p>
     <div class="merge-scroll">
       <table>
         <thead>
@@ -100,7 +110,7 @@
 
   {% if blockers %}
   <div class="submit-row">
-    <a href="{% url 'admin:server_team_changelist' %}" class="button cancel-link">Back to teams</a>
+    <a href="{{ cancel_url }}" class="button cancel-link">Go back</a>
   </div>
   {% else %}
   <div class="merge-outcome">
@@ -114,7 +124,7 @@
 
   <div class="submit-row merge-submit">
     <input type="submit" class="merge-confirm" id="merge-confirm" value="Merge into {{ kept }}">
-    <a href="{% url 'admin:server_team_changelist' %}" class="button cancel-link">Cancel</a>
+    <a href="{{ cancel_url }}" class="button cancel-link">Cancel</a>
   </div>
   {% endif %}
 </form>

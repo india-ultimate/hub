@@ -51,6 +51,7 @@ const Teams = lazy(() => import("./Teams"));
 const ViewTeam = lazy(() => import("./teams/View"));
 const EditTeam = lazy(() => import("./teams/Edit"));
 const CreateTeam = lazy(() => import("./teams/Create"));
+const MergeTeams = lazy(() => import("./team-merge/MergeTeams"));
 const TournamentManager = lazy(() => import("./TournamentManager"));
 const Tournaments = lazy(() => import("./Tournaments"));
 const Tournament = lazy(() => import("./Tournament"));
@@ -234,6 +235,7 @@ export default function App() {
                   {/* Team Private Routes */}
                   <UserRoute path="/teams/new" component={CreateTeam} />
                   <UserRoute path="/team/:slug/edit" component={EditTeam} />
+                  <UserRoute path="/team/:slug/merge" component={MergeTeams} />
                   {/* Roster Public Route */}
                   <Route
                     path={"/tournament/:tournament_slug/team/:team_slug/roster"}
