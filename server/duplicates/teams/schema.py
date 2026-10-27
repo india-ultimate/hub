@@ -44,3 +44,21 @@ class OutcomeSchema(Schema):
     merged: bool
     slug: str | None = None
     request_id: int | None = None
+
+
+class CopySchema(ColumnSchema):
+    city: str | None
+    category: str
+    tournaments: int
+
+
+class SuggestionSchema(Schema):
+    team: ColumnSchema
+    copies: list[CopySchema]
+    # Staff are already looking at a merge of this team.
+    pending: bool
+
+
+class PairSchema(Schema):
+    team_id: int
+    other_id: int
