@@ -15,7 +15,7 @@ from django.db.models import Max
 from django.utils.timezone import now
 
 from server.core.models import User
-from server.duplicates.models import ClusterEvent, ClusterMember
+from server.duplicates.players.models import ClusterEvent, ClusterMember
 
 CODE_DIGITS = 6
 CODE_TTL = datetime.timedelta(minutes=10)

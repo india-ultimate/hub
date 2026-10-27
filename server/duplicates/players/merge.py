@@ -20,8 +20,8 @@ from django.db.models.fields.reverse_related import ManyToManyRel
 from oauth2_provider import models as oauth
 
 from server.core.models import Guardianship, Player, User
-from server.duplicates.clusters import close_emptied
-from server.duplicates.detect import (
+from server.duplicates.players.clusters import close_emptied
+from server.duplicates.players.detect import (
     BLOCK_DIFFERENT_GENDER,
     BLOCK_DIFFERENT_GUARDIANS,
     BLOCK_DIFFERENT_WARDS,
@@ -32,16 +32,16 @@ from server.duplicates.detect import (
     different_wards,
     name_mismatch,
 )
-from server.duplicates.history import log
-from server.duplicates.identity import normalize_name
-from server.duplicates.models import (
+from server.duplicates.players.history import log
+from server.duplicates.players.identity import normalize_name
+from server.duplicates.players.models import (
     AccountMerge,
     ClusterEvent,
     ClusterMember,
     DuplicateCluster,
     EmailAlias,
 )
-from server.duplicates.staff import close_request
+from server.duplicates.players.staff import close_request
 from server.transaction.models import RazorpayTransactionPlayer
 
 # Per M2M field name: what the absorbed row is linked to, and the primary

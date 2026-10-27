@@ -5,7 +5,7 @@ from django.http import HttpRequest
 from ninja import Router
 
 from server.core.models import Player, User
-from server.duplicates.flow import (
+from server.duplicates.players.flow import (
     FlowError,
     dismiss,
     merge_pair,
@@ -16,15 +16,20 @@ from server.duplicates.flow import (
     verify_code,
     verify_same_inbox,
 )
-from server.duplicates.identity import mask_email
-from server.duplicates.merge import (
+from server.duplicates.players.identity import mask_email
+from server.duplicates.players.merge import (
     MergeBlockedError,
     MergeFieldError,
     MergeIncompleteError,
     resolvable_fields,
 )
-from server.duplicates.models import AliasHeldError, ClusterEvent, ClusterMember, DuplicateCluster
-from server.duplicates.schema import (
+from server.duplicates.players.models import (
+    AliasHeldError,
+    ClusterEvent,
+    ClusterMember,
+    DuplicateCluster,
+)
+from server.duplicates.players.schema import (
     GroupSchema,
     MergeConfirmSchema,
     MergeResultSchema,

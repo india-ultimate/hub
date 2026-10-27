@@ -13,20 +13,20 @@ from django.utils.timezone import now
 
 from server.core.accounts import find_login_user
 from server.core.models import Player, User
-from server.duplicates import codes
-from server.duplicates.clusters import close_if_done
-from server.duplicates.emails import (
+from server.duplicates.players import codes
+from server.duplicates.players.clusters import close_if_done
+from server.duplicates.players.emails import (
     PROOF_WORDS,
     notify_kept,
     notify_merged,
     notify_staff_event,
     send_code_email,
 )
-from server.duplicates.history import log
-from server.duplicates.identity import normalize_email
-from server.duplicates.merge import MergePlan, merge_accounts
-from server.duplicates.models import ClusterEvent, ClusterMember, DuplicateCluster
-from server.duplicates.staff import close_request
+from server.duplicates.players.history import log
+from server.duplicates.players.identity import normalize_email
+from server.duplicates.players.merge import MergePlan, merge_accounts
+from server.duplicates.players.models import ClusterEvent, ClusterMember, DuplicateCluster
+from server.duplicates.players.staff import close_request
 from server.servicerequests.models import ServiceRequest, ServiceRequestStatus, ServiceRequestType
 
 

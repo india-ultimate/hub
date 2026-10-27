@@ -24,8 +24,8 @@ from server.core.models import (
     User,
     Vaccination,
 )
-from server.duplicates.history import log
-from server.duplicates.merge import (
+from server.duplicates.players.history import log
+from server.duplicates.players.merge import (
     ROW_PREFERENCE,
     MergeBlockedError,
     MergeFieldError,
@@ -35,7 +35,7 @@ from server.duplicates.merge import (
     find_references,
     merge_accounts,
 )
-from server.duplicates.models import (
+from server.duplicates.players.models import (
     AccountMerge,
     AliasHeldError,
     ClusterEvent,
@@ -43,7 +43,7 @@ from server.duplicates.models import (
     DuplicateCluster,
     EmailAlias,
 )
-from server.duplicates.review import compare
+from server.duplicates.players.review import compare
 from server.season.models import Season
 from server.servicerequests.models import ServiceRequest, ServiceRequestStatus, ServiceRequestType
 from server.subscription import sponsorship
@@ -789,7 +789,7 @@ class TestMergeRefuses(MergeTestCase):
             return {"server.Pretend.user": 1}
 
         with self.settings():
-            import server.duplicates.merge as merge_module
+            import server.duplicates.players.merge as merge_module
 
             original = merge_module.find_references
             merge_module.find_references = leave_a_row_behind
