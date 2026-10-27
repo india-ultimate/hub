@@ -3,13 +3,16 @@ from django.db.models.fields.reverse_related import ForeignObjectRel
 from django.test import SimpleTestCase
 
 import server.models  # noqa: F401  # registers every model in the app
-from server.core.models import Player, User
+from server.core.models import Player, Team, User
 
 # A merge reassigns every row pointing at the account being absorbed. These
 # counts fail the build when a relation is added, so merge.py gets taught
 # about it instead of the rows being cascade-deleted.
-INBOUND_USER_RELATIONS = 46
+INBOUND_USER_RELATIONS = 47
 INBOUND_PLAYER_RELATIONS = 29
+# The same for teams: server/duplicates/teams/merge.py repoints these, and keeps
+# team ids inside tournament JSON in step by hand.
+INBOUND_TEAM_RELATIONS = 18
 
 
 def inbound_relations(model: type[Model]) -> list[str]:
@@ -28,6 +31,10 @@ class TestInboundRelations(SimpleTestCase):
     def test_player_relation_count(self) -> None:
         relations = inbound_relations(Player)
         self.assertEqual(len(relations), INBOUND_PLAYER_RELATIONS, "\n".join(relations))
+
+    def test_team_relation_count(self) -> None:
+        relations = inbound_relations(Team)
+        self.assertEqual(len(relations), INBOUND_TEAM_RELATIONS, "\n".join(relations))
 
     def test_player_wrapped_is_registered(self) -> None:
         # Registered only via server/api.py before it was imported in

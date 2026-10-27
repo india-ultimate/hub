@@ -12,7 +12,7 @@ from django.shortcuts import redirect
 from django.template.response import TemplateResponse
 from django.urls import reverse
 from django.utils.html import format_html
-from django.utils.text import capfirst
+from django.utils.text import capfirst, get_text_list
 
 from server.accreditation.models import Accreditation
 from server.admin_views import REFUND_PERM
@@ -36,6 +36,8 @@ from server.duplicates.players.models import (
     EmailAlias,
 )
 from server.duplicates.relations import MergeIncompleteError
+from server.duplicates.teams import merge as team_merge
+from server.duplicates.teams.models import TeamMerge
 from server.election.models import (
     Candidate,
     Election,
@@ -356,6 +358,78 @@ class TeamAdmin(admin.ModelAdmin[Team]):
 
     def get_admin_display_value(self, obj: Team) -> str:
         return str(obj)
+
+    actions = ["merge_teams"]
+
+    def has_merge_permission(self, request: HttpRequest) -> bool:
+        return self.has_change_permission(request) and self.has_delete_permission(request)
+
+    @admin.action(description="Merge selected teams", permissions=["merge"])
+    def merge_teams(
+        self, request: HttpRequest, queryset: QuerySet[Team]
+    ) -> TemplateResponse | None:
+        teams = list(queryset.order_by("pk"))
+        if len(teams) < 2:  # noqa: PLR2004
+            self.message_user(request, "Select at least two teams to merge", messages.WARNING)
+            return None
+        if request.POST.get("merge_confirmed") != "yes":
+            return self._merge_review(request, teams)
+
+        keeper = next((t for t in teams if str(t.pk) == request.POST.get("keeper")), None)
+        if keeper is None:
+            self.message_user(request, "Pick the team to keep", messages.ERROR)
+            return None
+        others = [team for team in teams if team != keeper]
+        try:
+            team_merge.merge_teams(keeper, others, actor=request.user)  # type: ignore[arg-type]
+        except team_merge.TeamMergeBlockedError as blocked:
+            self.message_user(request, f"Not merged: {'; '.join(blocked.args[0])}", messages.ERROR)
+        except MergeIncompleteError as stuck:
+            self.message_user(request, f"Not merged, rows left behind: {stuck}", messages.ERROR)
+        else:
+            self.message_user(
+                request,
+                format_html(
+                    'Merged {} into <a href="{}">{}</a>',
+                    get_text_list([team_merge.label(team) for team in others], "and"),
+                    reverse("admin:server_team_change", args=[keeper.pk]),
+                    team_merge.label(keeper),
+                ),
+            )
+        return None
+
+    def _merge_review(self, request: HttpRequest, teams: list[Team]) -> TemplateResponse:
+        keeper = team_merge.default_keeper(teams)
+        blockers = team_merge.blockers(teams)
+        return TemplateResponse(
+            request,
+            "admin/team_merge_review.html",
+            {
+                **self.admin_site.each_context(request),
+                "title": (
+                    f"These {len(teams)} teams can't be merged"
+                    if blockers
+                    else f"Merge {len(teams)} teams into one?"
+                ),
+                "opts": self.model._meta,
+                "teams": [
+                    {
+                        "team": team,
+                        "logo": team.image.url if team.image else team.image_url,
+                        "keep": team == keeper,
+                        "label": team_merge.label(team),
+                    }
+                    for team in teams
+                ],
+                "lines": team_merge.compare(teams),
+                "keeper_index": teams.index(keeper),
+                "blockers": blockers,
+                "kept": team_merge.label(keeper),
+                "gone": get_text_list(
+                    [team_merge.label(team) for team in teams if team != keeper], "and"
+                ),
+            },
+        )
 
 
 class PaymentAccountForm(forms.ModelForm):  # type: ignore[type-arg]
@@ -1602,6 +1676,14 @@ class TaskAdmin(admin.ModelAdmin[Task]):
                     self.message_user(request, f"Failed to queue test email: {e}", level="error")
 
         return super().changelist_view(request, extra_context)
+
+
+@admin.register(TeamMerge)
+class TeamMergeAdmin(ReadOnly, admin.ModelAdmin[TeamMerge]):
+    list_display = ["id", "created_at", "keeper", "absorbed_team_ids", "merged_by"]
+    list_filter = ["created_at"]
+    search_fields = ["keeper__name"]
+    date_hierarchy = "created_at"
 
 
 @admin.register(AccountMerge)
