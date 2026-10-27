@@ -62,6 +62,7 @@ class TestTeamMergeIntegration(BaseCase):
         self.type("#team-merge-message", "We made the team twice last season")
         self.click("#team-merge-submit")
         self.assert_text("Request sent", "#team-merge-done")
+        self.assert_element(f'#team-merge-done a[href="/team/{self.kept.slug}"]')
         asked = ServiceRequest.objects.get(type=ServiceRequestType.REQUEST_TEAM_MERGE)
         self.assertEqual(set(asked.service_teams.all()), {self.kept, self.copy})
         self.assertTrue(Team.objects.filter(pk=self.copy.pk).exists())
