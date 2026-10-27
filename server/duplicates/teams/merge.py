@@ -18,7 +18,7 @@ from typing import Any
 
 from django.core.serializers import serialize
 from django.db import transaction
-from django.db.models import Model, Q
+from django.db.models import F, Model, Q
 from django.db.models.fields.reverse_related import ManyToManyRel
 
 from server.cache import store
@@ -31,7 +31,7 @@ from server.duplicates.relations import (
     references_to,
     relation_label,
 )
-from server.duplicates.teams.models import TeamMerge
+from server.duplicates.teams.models import TeamDuplicateNotice, TeamMerge, TeamNotDuplicate
 from server.registration.models import RosterEntry, RosterSwap
 from server.series.models import Series, SeriesRegistration, SeriesRosterInvitation
 from server.tournament.models import (
@@ -120,7 +120,7 @@ def _ids_in(values: dict[str, Any]) -> set[str]:
     return found
 
 
-def _places(teams: list[Team]) -> dict[int, set[tuple[str, int]]]:
+def places_of(teams: list[Team]) -> dict[int, set[tuple[str, int]]]:
     """Every event and series each team took part in, by team id."""
     ids = [team.pk for team in teams]
     places: dict[int, set[tuple[str, int]]] = {pk: set() for pk in ids}
@@ -164,7 +164,7 @@ def label(team: Team) -> str:
 
 def blockers(teams: list[Team], places: dict[int, set[tuple[str, int]]] | None = None) -> list[str]:
     """Why these teams cannot be one, in words. Empty if they can."""
-    places = places if places is not None else _places(teams)
+    places = places if places is not None else places_of(teams)
     events = dict(Event.objects.values_list("id", "title"))
     series = dict(Series.objects.values_list("id", "name"))
     found = []
@@ -238,6 +238,29 @@ def default_logo(keeper: Team, teams: list[Team]) -> Team | None:
     return next((team for team in [keeper, *others] if team.image or team.image_url), None)
 
 
+def _settle_decisions(source: Team, target: Team) -> None:
+    """Drop the source's rows that say what the target's already say.
+
+    Moving them would break unique_together, and the walk refuses to lose a
+    row on a clash, so one shared decision would block the whole merge.
+    """
+    # Between the two teams themselves: moot once they are one, and moving
+    # both orders of the pair would collide on (target, target).
+    TeamNotDuplicate.objects.filter(
+        Q(team=source, other=target) | Q(team=target, other=source)
+    ).delete()
+    paired = set(
+        TeamNotDuplicate.objects.filter(team=target).values_list("other_id", flat=True)
+    ) | set(TeamNotDuplicate.objects.filter(other=target).values_list("team_id", flat=True))
+    TeamNotDuplicate.objects.filter(
+        Q(team=source, other__in=paired) | Q(other=source, team__in=paired)
+    ).delete()
+    # Who was emailed about the source and about the target alike: once is enough.
+    TeamDuplicateNotice.objects.filter(
+        team=source, user__in=target.duplicate_notices.values("user_id")
+    ).delete()
+
+
 def merge_teams(
     keeper: Team, others: list[Team], actor: User | None = None, logo: Team | None = None
 ) -> TeamMerge:
@@ -258,7 +281,7 @@ def merge_teams(
         if not (chosen and (chosen.image or chosen.image_url)):
             chosen = default_logo(keeper, absorbed)
 
-        places = _places([keeper, *absorbed])
+        places = places_of([keeper, *absorbed])
         problems = blockers([keeper, *absorbed], places)
         if problems:
             raise TeamMergeBlockedError(problems)
@@ -267,6 +290,7 @@ def merge_teams(
         moved: dict[str, int] = {}
         events = {place for team in places.values() for kind, place in team if kind == "event"}
         for team in absorbed:
+            _settle_decisions(team, keeper)
             events |= _rewrite_json(team, keeper)
             _rewrite_wrapped(team, keeper)
             for rel in inbound_relations(Team):
@@ -283,6 +307,9 @@ def merge_teams(
             stuck = references_to(Team, [team])
             if stuck:
                 raise MergeIncompleteError(stuck)
+
+        # A pair marked as different teams that now names the keeper twice.
+        TeamNotDuplicate.objects.filter(team=F("other")).delete()
 
         merge = TeamMerge.objects.create(
             keeper=keeper,

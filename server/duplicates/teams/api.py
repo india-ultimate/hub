@@ -3,6 +3,7 @@
 from typing import Any
 
 from django.db import transaction
+from django.db.models import Q
 from django.http import HttpRequest
 from ninja import Router
 
@@ -17,13 +18,17 @@ from server.duplicates.teams.merge import (
     logo_of,
     merge_teams,
 )
+from server.duplicates.teams.models import TeamNotDuplicate
 from server.duplicates.teams.schema import (
     MergeTeamsSchema,
     OutcomeSchema,
+    PairSchema,
     PreviewSchema,
+    SuggestionSchema,
     TeamIdsSchema,
 )
-from server.servicerequests.models import ServiceRequest, ServiceRequestStatus, ServiceRequestType
+from server.duplicates.teams.suggest import merge_requested, normalized_name, suggestions_for
+from server.servicerequests.models import ServiceRequest, ServiceRequestType
 from server.types import message_response
 
 router = Router()
@@ -53,14 +58,6 @@ def _pick(
     if not admin_of:
         return 403, {"message": "You can only merge a team you are an admin of"}
     return teams, admin_of
-
-
-def _pending(teams: list[Team]) -> bool:
-    return ServiceRequest.objects.filter(
-        type=ServiceRequestType.REQUEST_TEAM_MERGE,
-        status=ServiceRequestStatus.PENDING,
-        service_teams__in=teams,
-    ).exists()
 
 
 @router.post(
@@ -96,7 +93,7 @@ def preview(request: AuthenticatedHttpRequest, body: TeamIdsSchema) -> Any:
         "keeper_id": default_keeper(teams).pk,
         "can_merge": len(admin_of) == len(teams),
         "admin_of": sorted(admin_of),
-        "pending": _pending(teams),
+        "pending": merge_requested(teams),
     }
 
 
@@ -138,7 +135,7 @@ def merge(request: AuthenticatedHttpRequest, body: MergeTeamsSchema) -> Any:
         return 400, {"message": "Tell us why these are the same team"}
     if len(message) > MAX_MESSAGE:
         return 400, {"message": f"Keep it under {MAX_MESSAGE} characters"}
-    if _pending(teams):
+    if merge_requested(teams):
         return 400, {"message": "A merge request for these teams is already waiting for review"}
     with transaction.atomic():
         service_request = ServiceRequest.objects.create(
@@ -150,3 +147,65 @@ def merge(request: AuthenticatedHttpRequest, body: MergeTeamsSchema) -> Any:
         )
         service_request.service_teams.set(teams)
     return 200, {"merged": False, "request_id": service_request.pk}
+
+
+def _column(team: Team) -> dict[str, Any]:
+    return {
+        "id": team.pk,
+        "name": team.name,
+        "slug": team.slug,
+        "logo": logo_of(team),
+        "label": label(team),
+    }
+
+
+@router.get("/suggestions", response=list[SuggestionSchema])
+def suggestions(request: AuthenticatedHttpRequest, team_id: int | None = None) -> Any:
+    return [
+        {
+            "team": _column(team),
+            "copies": [
+                {
+                    **_column(copy),
+                    "city": copy.city,
+                    "category": copy.category,
+                    "tournaments": copy.tournaments.count(),
+                }
+                for copy in copies
+            ],
+            "pending": merge_requested([team, *copies]),
+        }
+        for team, copies in suggestions_for(request.user, team_id)
+    ]
+
+
+@router.post(
+    "/not-duplicates",
+    response={
+        200: message_response,
+        400: message_response,
+        403: message_response,
+        404: message_response,
+    },
+)
+def not_duplicates(request: AuthenticatedHttpRequest, body: PairSchema) -> Any:
+    """An admin says another team with a matching name is a different team."""
+    if body.team_id == body.other_id:
+        return 400, {"message": "Pick another team"}
+    if not request.user.admin_teams.filter(pk=body.team_id).exists():
+        return 403, {"message": "You can only decide this for a team you are an admin of"}
+    team = Team.objects.get(pk=body.team_id)
+    other = Team.objects.filter(pk=body.other_id).first()
+    if other is None:
+        return 404, {"message": "That team no longer exists"}
+    # Only a team we would suggest: otherwise any admin could hide any pair.
+    if normalized_name(other.name) != normalized_name(team.name):
+        return 400, {"message": "Those teams don't have a matching name"}
+    pair = Q(team_id=body.team_id, other_id=body.other_id) | Q(
+        team_id=body.other_id, other_id=body.team_id
+    )
+    if not TeamNotDuplicate.objects.filter(pair).exists():
+        TeamNotDuplicate.objects.create(
+            team_id=body.team_id, other_id=body.other_id, decided_by=request.user
+        )
+    return 200, {"message": "We won't suggest these again"}
