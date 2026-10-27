@@ -7,8 +7,8 @@ from django.utils.timezone import now
 
 from server.constants import CLAIM_TOKEN_DAYS
 from server.core.models import User
-from server.duplicates.emails import MERGED_SUBJECT, build_messages, notify, notify_merged
-from server.duplicates.models import ClusterMember, DuplicateCluster
+from server.duplicates.players.emails import MERGED_SUBJECT, build_messages, notify, notify_merged
+from server.duplicates.players.models import ClusterMember, DuplicateCluster
 from server.task.models import Task
 from server.tests.test_merge_flow import MergeFlowTestCase
 
@@ -90,7 +90,7 @@ class TestDuplicateAccountEmail(MergeFlowTestCase):
         self.assertEqual(Task.objects.count(), 0)
 
     def test_the_group_is_not_marked_notified_without_its_event(self) -> None:
-        with patch("server.duplicates.emails.log") as mock_log:
+        with patch("server.duplicates.players.emails.log") as mock_log:
             mock_log.side_effect = RuntimeError("Simulated log failure")
             with self.assertRaises(RuntimeError):
                 notify(self.cluster)

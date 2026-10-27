@@ -5,8 +5,8 @@ from typing import Any
 from django.db import IntegrityError, transaction
 
 from server.core.models import User
-from server.duplicates.identity import normalize_email
-from server.duplicates.models import AccountMerge, EmailAlias
+from server.duplicates.players.identity import normalize_email
+from server.duplicates.players.models import AccountMerge, EmailAlias
 
 
 def find_user(user_id: int) -> User | None:

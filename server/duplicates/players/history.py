@@ -1,7 +1,7 @@
 """The one way a group's timeline is written."""
 
 from server.core.models import User
-from server.duplicates.models import ClusterEvent, ClusterMember, DuplicateCluster
+from server.duplicates.players.models import ClusterEvent, ClusterMember, DuplicateCluster
 
 
 def log(

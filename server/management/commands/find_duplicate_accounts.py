@@ -4,8 +4,8 @@ from typing import Any
 
 from django.core.management.base import BaseCommand, CommandParser
 
-from server.duplicates.clusters import close_finished, create_clusters
-from server.duplicates.detect import Cluster, find_clusters
+from server.duplicates.players.clusters import close_finished, create_clusters
+from server.duplicates.players.detect import Cluster, find_clusters
 
 CSV_COLUMNS = [
     "cluster",

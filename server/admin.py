@@ -5,6 +5,7 @@ from typing import Any, ClassVar
 from django import forms
 from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
+from django.db import transaction
 from django.db.models import CharField, Q, QuerySet, Sum, Value
 from django.db.models.functions import Concat
 from django.http import HttpRequest, HttpResponse
@@ -12,23 +13,22 @@ from django.shortcuts import redirect
 from django.template.response import TemplateResponse
 from django.urls import reverse
 from django.utils.html import format_html
-from django.utils.text import capfirst
+from django.utils.text import capfirst, get_text_list
 
 from server.accreditation.models import Accreditation
 from server.admin_views import REFUND_PERM
 from server.announcements.models import Announcement, Comment, CommentReaction, Reaction
 from server.core.models import Guardianship, Player, Team, User
-from server.duplicates import review
-from server.duplicates.flow import FlowError, approve_staff, reject_staff
-from server.duplicates.merge import (
+from server.duplicates.players import review
+from server.duplicates.players.flow import FlowError, approve_staff, reject_staff
+from server.duplicates.players.merge import (
     MergeBlockedError,
     MergeFieldError,
-    MergeIncompleteError,
     RelationMove,
     build_plan,
     check_blockers,
 )
-from server.duplicates.models import (
+from server.duplicates.players.models import (
     AccountMerge,
     AliasHeldError,
     ClusterEvent,
@@ -36,6 +36,9 @@ from server.duplicates.models import (
     DuplicateCluster,
     EmailAlias,
 )
+from server.duplicates.relations import MergeIncompleteError
+from server.duplicates.teams import merge as team_merge
+from server.duplicates.teams.models import TeamMerge
 from server.election.models import (
     Candidate,
     Election,
@@ -356,6 +359,143 @@ class TeamAdmin(admin.ModelAdmin[Team]):
 
     def get_admin_display_value(self, obj: Team) -> str:
         return str(obj)
+
+    actions = ["merge_teams"]
+
+    def has_merge_permission(self, request: HttpRequest) -> bool:
+        return self.has_change_permission(request) and self.has_delete_permission(request)
+
+    @admin.action(description="Merge selected teams", permissions=["merge"])
+    def merge_teams(
+        self, request: HttpRequest, queryset: QuerySet[Team]
+    ) -> TemplateResponse | None:
+        teams = list(queryset.order_by("pk"))
+        if len(teams) < 2:  # noqa: PLR2004
+            self.message_user(request, "Select at least two teams to merge", messages.WARNING)
+            return None
+        if request.POST.get("merge_confirmed") != "yes":
+            return team_merge_review(
+                self,
+                request,
+                teams,
+                team_merge.default_keeper(teams),
+                action="merge_teams",
+                selected=[team.pk for team in teams],
+                cancel_url=reverse("admin:server_team_changelist"),
+            )
+        keeper = next((t for t in teams if str(t.pk) == request.POST.get("keeper")), None)
+        if keeper is None:
+            self.message_user(request, "Pick the team to keep", messages.ERROR)
+            return None
+        logo = next((t for t in teams if str(t.pk) == request.POST.get("logo")), None)
+        run_team_merge(self, request, keeper, [team for team in teams if team != keeper], logo)
+        return None
+
+
+def run_team_merge(
+    model_admin: admin.ModelAdmin[Any],
+    request: HttpRequest,
+    keeper: Team,
+    others: list[Team],
+    logo: Team | None,
+) -> bool:
+    """Merge, and say how it went. True if it happened."""
+    try:
+        team_merge.merge_teams(keeper, others, actor=request.user, logo=logo)  # type: ignore[arg-type]
+    except team_merge.TeamMergeBlockedError as blocked:
+        model_admin.message_user(
+            request, f"Not merged: {'; '.join(blocked.args[0])}", messages.ERROR
+        )
+        return False
+    except MergeIncompleteError as stuck:
+        model_admin.message_user(request, f"Not merged, rows left behind: {stuck}", messages.ERROR)
+        return False
+    model_admin.message_user(
+        request,
+        format_html(
+            'Merged {} into <a href="{}">{}</a>',
+            get_text_list([team_merge.label(team) for team in others], "and"),
+            reverse("admin:server_team_change", args=[keeper.pk]),
+            team_merge.label(keeper),
+        ),
+    )
+    return True
+
+
+def team_merge_review(
+    model_admin: admin.ModelAdmin[Any],
+    request: HttpRequest,
+    teams: list[Team],
+    keeper: Team,
+    *,
+    logo: Team | None = None,
+    action: str,
+    selected: list[int],
+    cancel_url: str,
+    item: ServiceRequest | None = None,
+) -> TemplateResponse:
+    """The side-by-side page staff confirm a merge on. Posts back to action."""
+    blockers = team_merge.blockers(teams)
+    # Staff only: who runs each team, so a request to absorb someone else's
+    # team is checked with its admins rather than approved on trust.
+    lines = [
+        *team_merge.compare(teams),
+        team_merge.Line(
+            "Admin emails", [", ".join(a.email for a in team.admins.all()) for team in teams]
+        ),
+    ]
+    logos = {team_merge.logo_of(team) for team in teams} - {None, ""}
+    # The logo asked for, unless it has since gone.
+    asked_logo = logo if logo and (logo.image or logo.image_url) else None
+    logo = asked_logo or team_merge.default_logo(keeper, teams)
+    asker_admins = (
+        set(item.user.admin_teams.filter(pk__in=[t.pk for t in teams]).values_list("pk", flat=True))
+        if item
+        else set()
+    )
+    return TemplateResponse(
+        request,
+        "admin/team_merge_review.html",
+        {
+            **model_admin.admin_site.each_context(request),
+            "title": (
+                f"These {len(teams)} teams can't be merged"
+                if blockers
+                else f"Merge {len(teams)} teams into one?"
+            ),
+            "opts": model_admin.model._meta,
+            "teams": [
+                {
+                    "team": team,
+                    "logo": team_merge.logo_of(team),
+                    "keep": team == keeper,
+                    "logo_kept": team == logo,
+                    "label": team_merge.label(team),
+                }
+                for team in teams
+            ],
+            "lines": lines,
+            "keeper_index": teams.index(keeper),
+            # Only a choice when the teams have different logos.
+            "pick_logo": len(logos) > 1,
+            "logo_asked": asked_logo is not None,
+            "asker_admins": get_text_list(
+                [team_merge.label(t) for t in teams if t.pk in asker_admins], "and"
+            ),
+            "asker_not_admin": get_text_list(
+                [team_merge.label(t) for t in teams if t.pk not in asker_admins], "and"
+            ),
+            "blockers": blockers,
+            "kept": team_merge.label(keeper),
+            "gone": get_text_list(
+                [team_merge.label(team) for team in teams if team != keeper], "and"
+            ),
+            "action": action,
+            "selected": selected,
+            "cancel_url": cancel_url,
+            "item": item,
+        },
+    )
 
 
 class PaymentAccountForm(forms.ModelForm):  # type: ignore[type-arg]
@@ -1272,7 +1412,13 @@ class ServiceRequestAdmin(admin.ModelAdmin[ServiceRequest]):
     list_filter = ["type", "status", "season", "created_at"]
     date_hierarchy = "created_at"
     autocomplete_fields = ["user", "service_players"]
-    actions = ["approve_sponsorship", "approve_and_merge", "reject_merge"]
+    actions = [
+        "approve_sponsorship",
+        "approve_and_merge",
+        "reject_merge",
+        "approve_team_merge",
+        "reject_team_merge",
+    ]
 
     @admin.action(description="Sponsorship requests: approve", permissions=["change"])
     def approve_sponsorship(self, request: HttpRequest, queryset: QuerySet[ServiceRequest]) -> None:
@@ -1363,6 +1509,69 @@ class ServiceRequestAdmin(admin.ModelAdmin[ServiceRequest]):
                 self.message_user(request, f"Request {item.pk}: {error}", messages.ERROR)
             else:
                 self.message_user(request, f"Request {item.pk} rejected")
+
+    def has_team_merge_permission(self, request: HttpRequest) -> bool:
+        return self.has_change_permission(request) and request.user.has_perm("server.delete_team")
+
+    @admin.action(description="Team merge requests: approve and merge", permissions=["team_merge"])
+    def approve_team_merge(
+        self, request: HttpRequest, queryset: QuerySet[ServiceRequest]
+    ) -> TemplateResponse | None:
+        items = list(queryset.filter(type=ServiceRequestType.REQUEST_TEAM_MERGE))
+        if len(items) != 1:
+            self.message_user(request, "Approve team merges one at a time", messages.WARNING)
+            return None
+        (item,) = items
+        # The walk repoints these rows, so a team merged since shows as its keeper.
+        teams = list(item.service_teams.order_by("pk"))
+        if item.status != ServiceRequestStatus.PENDING:
+            error = "already closed"
+        elif item.user_id == request.user.pk:
+            error = "you asked for this merge, so someone else must approve it"
+        elif len(teams) < 2:  # noqa: PLR2004
+            error = "these teams are already one"
+        else:
+            error = ""
+        if error:
+            self.message_user(request, f"Request {item.pk}: {error}", messages.ERROR)
+            return None
+
+        if request.POST.get("merge_confirmed") != "yes":
+            asked = item.keep_team if item.keep_team in teams else None
+            return team_merge_review(
+                self,
+                request,
+                teams,
+                asked or team_merge.default_keeper(teams),
+                logo=item.logo_team if item.logo_team in teams else None,
+                action="approve_team_merge",
+                selected=[item.pk],
+                cancel_url=reverse("admin:server_servicerequest_changelist"),
+                item=item,
+            )
+        keeper = next((t for t in teams if str(t.pk) == request.POST.get("keeper")), None)
+        if keeper is None:
+            self.message_user(request, "Pick the team to keep", messages.ERROR)
+            return None
+        logo = next((t for t in teams if str(t.pk) == request.POST.get("logo")), None)
+        others = [team for team in teams if team != keeper]
+        # One transaction, so a request is never left open on teams already merged.
+        with transaction.atomic():
+            if run_team_merge(self, request, keeper, others, logo):
+                # Only the status: the merge has repointed keep_team, which this
+                # copy still holds as loaded. The status signal emails the asker.
+                item.status = ServiceRequestStatus.APPROVED
+                item.save(update_fields=["status", "updated_at"])
+        return None
+
+    @admin.action(description="Team merge requests: reject", permissions=["change"])
+    def reject_team_merge(self, request: HttpRequest, queryset: QuerySet[ServiceRequest]) -> None:
+        for item in queryset.filter(
+            type=ServiceRequestType.REQUEST_TEAM_MERGE, status=ServiceRequestStatus.PENDING
+        ):
+            item.status = ServiceRequestStatus.REJECTED
+            item.save(update_fields=["status", "updated_at"])
+            self.message_user(request, f"Request {item.pk} rejected")
 
 
 @admin.register(Announcement)
@@ -1602,6 +1811,14 @@ class TaskAdmin(admin.ModelAdmin[Task]):
                     self.message_user(request, f"Failed to queue test email: {e}", level="error")
 
         return super().changelist_view(request, extra_context)
+
+
+@admin.register(TeamMerge)
+class TeamMergeAdmin(ReadOnly, admin.ModelAdmin[TeamMerge]):
+    list_display = ["id", "created_at", "keeper", "absorbed_team_ids", "merged_by"]
+    list_filter = ["created_at"]
+    search_fields = ["keeper__name"]
+    date_hierarchy = "created_at"
 
 
 @admin.register(AccountMerge)

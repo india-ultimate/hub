@@ -8,9 +8,9 @@ from django.db.models import Count, Q
 from django.utils.timezone import now
 
 from server.core.models import User
-from server.duplicates.detect import Cluster, find_clusters
-from server.duplicates.history import log
-from server.duplicates.models import ClusterEvent, ClusterMember, DuplicateCluster
+from server.duplicates.players.detect import Cluster, find_clusters
+from server.duplicates.players.history import log
+from server.duplicates.players.models import ClusterEvent, ClusterMember, DuplicateCluster
 
 
 def _open_user_ids() -> set[int]:

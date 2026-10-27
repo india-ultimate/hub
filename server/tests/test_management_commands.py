@@ -14,7 +14,7 @@ from django.utils.timezone import now
 
 from server.accreditation.models import Accreditation
 from server.core.models import Guardianship, Player, Team, Vaccination
-from server.duplicates.models import EmailAlias
+from server.duplicates.players.models import EmailAlias
 from server.season.models import Season
 from server.series.models import Series, SeriesRegistration
 from server.servicerequests.models import (

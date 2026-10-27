@@ -8,7 +8,7 @@ from django.http import HttpRequest
 from django.utils import timezone
 
 from server.core.models import OTPAttempt
-from server.duplicates.identity import normalize_email
+from server.duplicates.players.identity import normalize_email
 
 MINUTE = datetime.timedelta(minutes=1)
 HOUR = datetime.timedelta(hours=1)

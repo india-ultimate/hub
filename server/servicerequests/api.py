@@ -32,6 +32,9 @@ def create_service_request(
     # Validate the request type
     if service_request_data.type not in [choice[0] for choice in ServiceRequestType.choices]:
         return 400, {"message": "Invalid service request type"}
+    # Asked for with its teams through /team-merge, which checks who may.
+    if service_request_data.type == ServiceRequestType.REQUEST_TEAM_MERGE:
+        return 400, {"message": "Ask for a team merge from the team's page"}
 
     # Validate service player IDs if provided
     service_players = []

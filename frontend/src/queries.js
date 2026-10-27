@@ -3011,3 +3011,31 @@ export const fetchTeamProfile = async slug => {
 
   return data;
 };
+
+const postTeamMerge = async (path, body) => {
+  const response = await fetch(`/api/team-merge/${path}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin",
+    body: JSON.stringify(body)
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data?.message || "Something went wrong");
+  }
+  return data;
+};
+
+export const previewTeamMerge = teamIds =>
+  postTeamMerge("preview", { team_ids: teamIds });
+
+export const mergeTeams = ({ teamIds, keeperId, logoId, message }) =>
+  postTeamMerge("", {
+    team_ids: teamIds,
+    keeper_id: keeperId,
+    logo_id: logoId,
+    message
+  });

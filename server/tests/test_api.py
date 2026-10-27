@@ -25,8 +25,8 @@ from server.core.models import (
     User,
     Vaccination,
 )
-from server.duplicates.merge import merge_accounts
-from server.duplicates.models import EmailAlias
+from server.duplicates.players.merge import merge_accounts
+from server.duplicates.players.models import EmailAlias
 from server.passkey_utils import ClientResponse
 from server.season.models import Season
 from server.subscription import sponsorship

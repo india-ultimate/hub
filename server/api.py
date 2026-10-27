@@ -58,8 +58,9 @@ from server.core.models import (
     User,
     Vaccination,
 )
-from server.duplicates.api import router as merge_router
-from server.duplicates.identity import full_email_match
+from server.duplicates.players.api import router as merge_router
+from server.duplicates.players.identity import full_email_match
+from server.duplicates.teams.api import router as team_merge_router
 from server.election.api import router as election_router
 from server.forms.api import router as forms_router
 from server.mcp.apps_api import router as connected_apps_router
@@ -292,6 +293,7 @@ api.add_router("/election", election_router)
 api.add_router("/chat", chat_router)
 api.add_router("/tournament-agent", tournament_agent_router)
 api.add_router("/service-requests", servicerequests_router)
+api.add_router("/team-merge", team_merge_router)
 api.add_router("/announcements", announcements_router)
 api.add_router("/committees", committees_router)
 api.add_router("/task", task_router)
