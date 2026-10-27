@@ -189,6 +189,12 @@ const MergeTeams = () => {
                   We&apos;ll email you at {userQuery.data?.email} once
                   they&apos;ve decided.
                 </p>
+                <A
+                  href={`/team/${params.slug}`}
+                  class="mt-2 inline-flex min-h-[44px] items-center text-sm font-medium text-blue-700 underline dark:text-blue-300"
+                >
+                  Back to {team()?.name?.trim() || "the team"}
+                </A>
               </>
             }
           >
