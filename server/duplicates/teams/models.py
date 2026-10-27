@@ -36,3 +36,14 @@ class TeamNotDuplicate(ExportModelOperationsMixin("team_not_duplicate"), models.
 
     class Meta:
         unique_together = ("team", "other")
+
+
+class TeamDuplicateNotice(ExportModelOperationsMixin("team_duplicate_notice"), models.Model):  # type: ignore[misc]
+    """An admin emailed about likely copies of one of their teams. Once each."""
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="team_duplicate_notices")
+    team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name="duplicate_notices")
+    sent_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("user", "team")
