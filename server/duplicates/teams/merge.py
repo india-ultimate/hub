@@ -47,6 +47,7 @@ from server.tournament.models import (
     Tournament,
     UCRegistration,
 )
+from server.wrapped.models import PlayerWrapped
 
 # Filled from an absorbed team only where the keeper has nothing.
 TEAM_FILLABLE = ("image", "image_url", "facebook_url", "city", "state_ut", "ultimate_central_id")
@@ -204,6 +205,29 @@ def _rewrite_json(source: Team, target: Team) -> set[int]:
     return events
 
 
+def _rewrite_wrapped(source: Team, target: Team) -> None:
+    """A player's year in review lists the teams they played for, by id.
+
+    The two teams never shared a tournament, so their counts simply add up.
+    """
+    # ponytail: reads every Wrapped row; filter with a JSON lookup once tests run on Postgres.
+    for row in PlayerWrapped.objects.only("pk", "teams_played_for"):
+        teams = row.teams_played_for or []
+        if not any(str(entry.get("team_id")) == str(source.pk) for entry in teams):
+            continue
+        merged: dict[Any, dict[str, Any]] = {}
+        for entry in teams:
+            moved = str(entry.get("team_id")) in (str(source.pk), str(target.pk))
+            key = target.pk if moved else entry.get("team_id")
+            if key in merged:
+                merged[key]["tournament_count"] += entry.get("tournament_count", 0)
+            else:
+                merged[key] = (
+                    {**entry, "team_id": target.pk, "team_name": target.name} if moved else entry
+                )
+        PlayerWrapped.objects.filter(pk=row.pk).update(teams_played_for=list(merged.values()))
+
+
 def merge_teams(keeper: Team, others: list[Team], actor: User | None = None) -> TeamMerge:
     """Fold others into keeper, then delete them."""
     with transaction.atomic():
@@ -229,6 +253,7 @@ def merge_teams(keeper: Team, others: list[Team], actor: User | None = None) -> 
         events = {place for team in places.values() for kind, place in team if kind == "event"}
         for team in absorbed:
             events |= _rewrite_json(team, keeper)
+            _rewrite_wrapped(team, keeper)
             for rel in inbound_relations(Team):
                 if isinstance(rel, ManyToManyRel):
                     count = _move_links(rel, team, keeper)

@@ -15,12 +15,13 @@ from server.duplicates.teams.merge import (
     merge_teams,
 )
 from server.duplicates.teams.models import TeamMerge
-from server.registration.models import RosterEntry
-from server.series.models import Series, SeriesRegistration
+from server.registration.models import RosterEntry, RosterSwap
+from server.series.models import Series, SeriesRegistration, SeriesRosterInvitation
 from server.servicerequests.models import ServiceRequest, ServiceRequestStatus, ServiceRequestType
 from server.tests.base import create_event, create_player
 from server.tournament.models import (
     Bracket,
+    EventRosterInvitation,
     Match,
     MatchEvent,
     MatchStats,
@@ -30,6 +31,7 @@ from server.tournament.models import (
     Tournament,
 )
 from server.transaction.models import RazorpayTransaction
+from server.wrapped.models import PlayerWrapped
 
 # The admin's templates need static files, and tests have no manifest.
 STATIC = {
@@ -119,6 +121,67 @@ class TestMergeMovesEverything(TeamMergeTestCase):
         self.assertEqual(set(self.keeper.admins.all()), {self.user, admin})
         self.assertEqual(list(Player.objects.get().teams.all()), [self.keeper])
         self.assertEqual(set(tournament.teams.all()), {self.rival, self.keeper})
+
+    def test_every_way_a_player_is_tied_to_the_copy_moves_to_the_keeper(self) -> None:
+        event = create_event("Regionals")
+        series = make_series("Club Series")
+        other = create_player(User.objects.create(username="q@x.com", email="q@x.com"))
+        rows = [
+            Registration.objects.create(event=event, team=self.dup, player=self.player),
+            SeriesRegistration.objects.create(series=series, team=self.dup, player=self.player),
+            RosterEntry.objects.create(event=event, team=self.dup, player=other),
+            RosterSwap.objects.create(
+                event=event, team=self.dup, out_player=other, in_player=self.player
+            ),
+            EventRosterInvitation.objects.create(
+                event=event, from_user=self.user, to_player=other, team=self.dup
+            ),
+            SeriesRosterInvitation.objects.create(
+                series=series, from_user=self.user, to_player=other, team=self.dup
+            ),
+        ]
+        self.player.teams.add(self.dup)
+        other.teams.add(self.dup)
+
+        merge_teams(self.keeper, [self.dup])
+
+        for row in rows:
+            row.refresh_from_db()
+            self.assertEqual(row.team_id, self.keeper.pk, type(row).__name__)  # type: ignore[attr-defined]
+        for player in (self.player, other):
+            self.assertEqual(list(player.teams.all()), [self.keeper])
+
+    def test_wrapped_lists_the_kept_team_once(self) -> None:
+        wrapped = PlayerWrapped.objects.create(
+            player=self.player,
+            year=2025,
+            teams_played_for=[
+                {"team_name": "Goosebumps", "team_id": self.keeper.pk, "tournament_count": 2},
+                {"team_name": "Goosebumps ", "team_id": self.dup.pk, "tournament_count": 3},
+                {"team_name": "Rivals", "team_id": self.rival.pk, "tournament_count": 1},
+            ],
+        )
+        only_copy = PlayerWrapped.objects.create(
+            player=self.player,
+            year=2024,
+            teams_played_for=[
+                {"team_name": "Goosebumps ", "team_id": self.dup.pk, "tournament_count": 1}
+            ],
+        )
+
+        merge_teams(self.keeper, [self.dup])
+
+        wrapped.refresh_from_db()
+        only_copy.refresh_from_db()
+        kept = {"team_name": "Goosebumps", "team_id": self.keeper.pk}
+        self.assertEqual(
+            wrapped.teams_played_for,
+            [
+                {**kept, "tournament_count": 5},
+                {"team_name": "Rivals", "team_id": self.rival.pk, "tournament_count": 1},
+            ],
+        )
+        self.assertEqual(only_copy.teams_played_for, [{**kept, "tournament_count": 1}])
 
     def test_details_the_kept_team_lacks_are_filled_from_the_copy(self) -> None:
         self.keeper.city = "Mumbai"
