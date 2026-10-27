@@ -1,0 +1,12 @@
+{% autoescape off %}Hi {{ first_name|default:"there" }},
+
+{% if teams|length == 1 %}A team you run{% else %}Some teams you run{% endif %} may have been added to India Ultimate Hub more than once. Merging the copies puts all their tournaments, rosters and players in one place.
+{% for team in teams %}
+{{ team.name }}{% if team.city %} ({{ team.city }}){% endif %} has a matching name:
+{% for copy in team.copies %}- {{ copy.label }}: {{ copy.detail }}
+{% endfor %}Review and merge: {{ team.url }}
+{% endfor %}
+Nothing changes until you confirm on the Hub, and our staff approve if you don't run every copy. If a team is not a copy, open the link and choose "Not a copy", and we won't suggest it again.
+
+You're getting this because you're an admin of {% if teams|length == 1 %}this team{% else %}these teams{% endif %} on India Ultimate Hub. We only send it once per team.
+{% endautoescape %}
