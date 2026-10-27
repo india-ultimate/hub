@@ -33,7 +33,7 @@ from server.duplicates.players.models import (  # noqa: F401
     DuplicateCluster,
     EmailAlias,
 )
-from server.duplicates.teams.models import TeamMerge  # noqa: F401
+from server.duplicates.teams.models import TeamMerge, TeamNotDuplicate  # noqa: F401
 from server.election.models import (  # noqa: F401
     Candidate,
     Election,

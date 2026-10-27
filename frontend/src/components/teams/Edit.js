@@ -19,6 +19,7 @@ import FileInput from "../FileInput";
 import InputError from "../InputError";
 import InputLabel from "../InputLabel";
 import DefaultSelect from "../Select";
+import DuplicateTeamsNotice from "../team-merge/DuplicateTeamsNotice";
 import TextInput from "../TextInput";
 
 const Edit = () => {
@@ -100,6 +101,10 @@ const Edit = () => {
         icon={userGroup}
         pageList={[{ url: "/teams", name: "Teams" }, { name: "Edit Team" }]}
       />
+      {/* Above the long form, where an admin with a duplicate will see it. */}
+      <Show when={teamQuery.data?.id}>
+        <DuplicateTeamsNotice teamId={teamQuery.data.id} />
+      </Show>
       <div class="mx-2">
         <div class="mb-6 flex w-full flex-row items-center justify-start gap-x-6 rounded-xl border border-gray-300 bg-gray-100 p-4">
           <div>

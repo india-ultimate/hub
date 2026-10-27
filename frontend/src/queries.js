@@ -3039,3 +3039,27 @@ export const mergeTeams = ({ teamIds, keeperId, logoId, message }) =>
     logo_id: logoId,
     message
   });
+
+export const teamSuggestionsQueryKey = teamId => [
+  "team-merge-suggestions",
+  teamId ?? "all"
+];
+
+export const fetchTeamSuggestions = async teamId => {
+  const url = teamId
+    ? `/api/team-merge/suggestions?team_id=${teamId}`
+    : "/api/team-merge/suggestions";
+  const response = await fetch(url, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin"
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data?.message || "Something went wrong");
+  }
+  return data;
+};
+
+export const markNotDuplicate = ({ teamId, otherId }) =>
+  postTeamMerge("not-duplicates", { team_id: teamId, other_id: otherId });

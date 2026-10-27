@@ -1,4 +1,4 @@
-import { A, useParams } from "@solidjs/router";
+import { A, useParams, useSearchParams } from "@solidjs/router";
 import {
   createMutation,
   createQuery,
@@ -9,10 +9,13 @@ import { createEffect, createSignal, For, Show } from "solid-js";
 
 import {
   fetchTeamBySlug,
+  fetchTeamSuggestions,
   fetchUser,
+  markNotDuplicate,
   mergeTeams,
   previewTeamMerge,
-  searchTeams
+  searchTeams,
+  teamSuggestionsQueryKey
 } from "../../queries";
 import Breadcrumbs from "../Breadcrumbs";
 
@@ -78,13 +81,52 @@ const MergeTeams = () => {
       }
     }
   );
+  // Teams the Hub thinks are copies of this one; a link can tick them.
+  const [searchParams] = useSearchParams();
+  const suggestionsQuery = createQuery(
+    () => teamSuggestionsQueryKey(team()?.id),
+    () => fetchTeamSuggestions(team().id),
+    {
+      get enabled() {
+        return !!team();
+      }
+    }
+  );
+  const suggested = () =>
+    (suggestionsQuery.data?.[0]?.copies || []).map(copy => ({
+      ...copy,
+      image_url: copy.logo
+    }));
+  const isSuggested = id => suggested().some(copy => copy.id === id);
+  let fromLink = false;
+  createEffect(() => {
+    const wanted = (searchParams.copies || "").split(",").map(Number);
+    if (fromLink || !suggestionsQuery.isSuccess || !wanted[0]) return;
+    fromLink = true;
+    const ticked = suggested().filter(copy => wanted.includes(copy.id));
+    if (ticked.length === 0) return;
+    setPicked(ticked);
+    setMessage("The Hub suggested these teams have a matching name.");
+  });
+
   const pickedIds = () => picked().map(t => t.id);
-  const results = () => [
-    ...picked(),
-    ...(searchQuery.data?.items || []).filter(
-      t => t.id !== team()?.id && !pickedIds().includes(t.id)
-    )
-  ];
+  const results = () => {
+    const seen = new Set(pickedIds());
+    const rest = [...suggested(), ...(searchQuery.data?.items || [])].filter(
+      t => t.id !== team()?.id && !seen.has(t.id) && seen.add(t.id)
+    );
+    return [...picked(), ...rest];
+  };
+
+  const [dismissed, setDismissed] = createSignal("");
+  const dismissMutation = createMutation({
+    mutationFn: markNotDuplicate,
+    onSuccess: (_, { otherId, label }) => {
+      setPicked(teams => teams.filter(t => t.id !== otherId));
+      setDismissed(`We won't suggest ${label} again.`);
+      queryClient.invalidateQueries({ queryKey: ["team-merge-suggestions"] });
+    }
+  });
 
   const teamIds = () => (team() ? [team().id, ...pickedIds()] : []);
   const previewQuery = createQuery(
@@ -304,12 +346,42 @@ const MergeTeams = () => {
                           </span>
                         </span>
                       </label>
+                      <Show when={isSuggested(result.id)}>
+                        <div class="flex items-center justify-between gap-2 px-3 pb-2 pl-11 text-sm">
+                          <span class="rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-900 dark:bg-yellow-900 dark:text-yellow-100">
+                            Matching name
+                          </span>
+                          <button
+                            type="button"
+                            class="min-h-[44px] rounded px-2 font-medium text-gray-700 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-gray-300 dark:hover:text-white"
+                            disabled={dismissMutation.isLoading}
+                            onClick={() =>
+                              dismissMutation.mutate({
+                                teamId: team().id,
+                                otherId: result.id,
+                                label: `${result.name.trim()} #${result.id}`
+                              })
+                            }
+                          >
+                            Not a copy
+                            <span class="sr-only">
+                              : {result.name} #{result.id}
+                            </span>
+                          </button>
+                        </div>
+                      </Show>
                     </li>
                   )}
                 </For>
               </ul>
             </Show>
           </fieldset>
+          <p
+            role="status"
+            class="mt-2 text-sm text-gray-600 dark:text-gray-300"
+          >
+            {dismissed()}
+          </p>
         </section>
 
         <Show when={picked().length > 0 && !preview()}>

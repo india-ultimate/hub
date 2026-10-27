@@ -21,6 +21,7 @@ import ConnectedApps from "./connected-apps/ConnectedApps";
 import IUIDBadge from "./IUIDBadge";
 import Player from "./Player";
 import ReceiptList from "./receipts/ReceiptList";
+import DuplicateTeamsNotice from "./team-merge/DuplicateTeamsNotice";
 import TransactionList from "./TransactionList";
 
 // Profile Picture Component
@@ -406,6 +407,7 @@ const Dashboard = () => {
           </A>
         </div>
       </Show>
+      <DuplicateTeamsNotice />
       <div id="accordion-flush">
         <Show when={store.data.player}>
           <Accordion
