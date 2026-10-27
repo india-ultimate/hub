@@ -1,12 +1,16 @@
+from io import StringIO
 from typing import Any
 
+from django.core.management import call_command
 from django.test import TestCase
 
 from server.core.models import Team, User
+from server.duplicates.teams.emails import build, notify, waiting
 from server.duplicates.teams.merge import merge_teams
-from server.duplicates.teams.models import TeamNotDuplicate
+from server.duplicates.teams.models import TeamDuplicateNotice, TeamNotDuplicate
 from server.duplicates.teams.suggest import copies_of, normalized_name, suggestions_for
 from server.servicerequests.models import ServiceRequest, ServiceRequestType
+from server.task.models import Task
 from server.tests.base import create_event
 from server.tournament.models import Tournament
 
@@ -137,3 +141,86 @@ class TestMergingKeepsDecisions(SuggestTestCase):
 
         (row,) = TeamNotDuplicate.objects.all()
         self.assertEqual((row.team, row.other), (self.mine, third))
+
+
+class TestTellingAdmins(SuggestTestCase):
+    def test_each_admin_is_told_once_about_each_team(self) -> None:
+        second = User.objects.create(username="b@x.com", email="b@x.com", first_name="Ravi")
+        self.copy.admins.add(second)
+        self.assertEqual(
+            [(user, [team for team, _ in found]) for user, found in waiting()],
+            [(self.admin, [self.mine]), (second, [self.copy])],
+        )
+
+        self.assertEqual(notify(), 2)
+        self.assertEqual(Task.objects.filter(type=Task.TaskType.SEND_EMAIL).count(), 2)
+        self.assertEqual(TeamDuplicateNotice.objects.count(), 2)
+
+        self.assertEqual(waiting(), [])
+        self.assertEqual(notify(), 0)
+        self.assertEqual(Task.objects.count(), 2)
+
+    def test_an_admin_of_two_copies_is_emailed_once(self) -> None:
+        self.copy.admins.add(self.admin)
+        ((_, found),) = waiting()
+        self.assertEqual(found, [(self.mine, [self.copy])])
+        self.assertEqual(notify(), 1)
+        # Told about the name once covers every copy they run.
+        self.assertEqual(waiting(), [])
+
+    def test_a_team_renamed_after_its_email_is_not_emailed_again(self) -> None:
+        notify()
+        self.mine.name = "Puyal"
+        self.mine.save()
+        Team.objects.create(name="PUYAL")
+        self.assertEqual(waiting(), [])
+        self.assertEqual(notify(), 0)
+
+    def test_a_line_break_in_a_name_stays_out_of_the_subject(self) -> None:
+        self.mine.name = "Goose\nbumps"
+        self.mine.save()
+        self.copy.name = "goosebumps"
+        self.copy.save()
+        ((user, found),) = waiting()
+        self.assertNotIn("\n", build(user, found).subject)
+
+    def test_an_admin_told_about_both_teams_does_not_block_their_merge(self) -> None:
+        TeamDuplicateNotice.objects.create(user=self.admin, team=self.mine)
+        TeamDuplicateNotice.objects.create(user=self.admin, team=self.copy)
+
+        merge_teams(self.mine, [self.copy])
+
+        (notice,) = TeamDuplicateNotice.objects.all()
+        self.assertEqual((notice.user, notice.team), (self.admin, self.mine))
+
+    def test_the_email_links_to_the_copies_ticked(self) -> None:
+        ((user, found),) = waiting()
+        message = build(user, found)
+        self.assertEqual(message.to, ["a@x.com"])
+        self.assertIn("Goosebumps", message.subject)
+        url = f"/team/{self.mine.slug}/merge?copies={self.copy.pk}"
+        self.assertIn(url, message.body)
+        html = str(message.alternatives[0][0])
+        self.assertIn(url, html)
+        self.assertIn(f"Goose-bumps #{self.copy.pk}", html)
+
+    def test_nobody_is_told_about_a_pair_staff_are_already_reviewing(self) -> None:
+        asked = ServiceRequest.objects.create(
+            user=self.admin, type=ServiceRequestType.REQUEST_TEAM_MERGE, message="x"
+        )
+        asked.service_teams.set([self.mine, self.copy])
+        self.assertEqual(waiting(), [])
+
+    def test_an_admin_without_an_address_is_skipped(self) -> None:
+        self.admin.email = ""
+        self.admin.save()
+        self.assertEqual(waiting(), [])
+
+    def test_the_command_can_report_without_sending(self) -> None:
+        out = StringIO()
+        call_command("notify_duplicate_teams", "--dry-run", stdout=out)
+        self.assertIn("Would email 1 admin", out.getvalue())
+        self.assertIn(f"Goosebumps #{self.mine.pk}", out.getvalue())
+        self.assertFalse(Task.objects.exists())
+        call_command("notify_duplicate_teams", stdout=StringIO())
+        self.assertEqual(Task.objects.count(), 1)

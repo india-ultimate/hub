@@ -31,7 +31,7 @@ from server.duplicates.relations import (
     references_to,
     relation_label,
 )
-from server.duplicates.teams.models import TeamMerge, TeamNotDuplicate
+from server.duplicates.teams.models import TeamDuplicateNotice, TeamMerge, TeamNotDuplicate
 from server.registration.models import RosterEntry, RosterSwap
 from server.series.models import Series, SeriesRegistration, SeriesRosterInvitation
 from server.tournament.models import (
@@ -254,6 +254,10 @@ def _settle_decisions(source: Team, target: Team) -> None:
     ) | set(TeamNotDuplicate.objects.filter(other=target).values_list("team_id", flat=True))
     TeamNotDuplicate.objects.filter(
         Q(team=source, other__in=paired) | Q(other=source, team__in=paired)
+    ).delete()
+    # Who was emailed about the source and about the target alike: once is enough.
+    TeamDuplicateNotice.objects.filter(
+        team=source, user__in=target.duplicate_notices.values("user_id")
     ).delete()
 
 

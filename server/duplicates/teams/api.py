@@ -27,8 +27,8 @@ from server.duplicates.teams.schema import (
     SuggestionSchema,
     TeamIdsSchema,
 )
-from server.duplicates.teams.suggest import normalized_name, suggestions_for
-from server.servicerequests.models import ServiceRequest, ServiceRequestStatus, ServiceRequestType
+from server.duplicates.teams.suggest import merge_requested, normalized_name, suggestions_for
+from server.servicerequests.models import ServiceRequest, ServiceRequestType
 from server.types import message_response
 
 router = Router()
@@ -58,14 +58,6 @@ def _pick(
     if not admin_of:
         return 403, {"message": "You can only merge a team you are an admin of"}
     return teams, admin_of
-
-
-def _pending(teams: list[Team]) -> bool:
-    return ServiceRequest.objects.filter(
-        type=ServiceRequestType.REQUEST_TEAM_MERGE,
-        status=ServiceRequestStatus.PENDING,
-        service_teams__in=teams,
-    ).exists()
 
 
 @router.post(
@@ -101,7 +93,7 @@ def preview(request: AuthenticatedHttpRequest, body: TeamIdsSchema) -> Any:
         "keeper_id": default_keeper(teams).pk,
         "can_merge": len(admin_of) == len(teams),
         "admin_of": sorted(admin_of),
-        "pending": _pending(teams),
+        "pending": merge_requested(teams),
     }
 
 
@@ -143,7 +135,7 @@ def merge(request: AuthenticatedHttpRequest, body: MergeTeamsSchema) -> Any:
         return 400, {"message": "Tell us why these are the same team"}
     if len(message) > MAX_MESSAGE:
         return 400, {"message": f"Keep it under {MAX_MESSAGE} characters"}
-    if _pending(teams):
+    if merge_requested(teams):
         return 400, {"message": "A merge request for these teams is already waiting for review"}
     with transaction.atomic():
         service_request = ServiceRequest.objects.create(
@@ -181,7 +173,7 @@ def suggestions(request: AuthenticatedHttpRequest, team_id: int | None = None) -
                 }
                 for copy in copies
             ],
-            "pending": _pending([team, *copies]),
+            "pending": merge_requested([team, *copies]),
         }
         for team, copies in suggestions_for(request.user, team_id)
     ]

@@ -13,6 +13,7 @@ from django.db.models import Q
 from server.core.models import Team, User
 from server.duplicates.teams.merge import places_of
 from server.duplicates.teams.models import TeamNotDuplicate
+from server.servicerequests.models import ServiceRequest, ServiceRequestStatus, ServiceRequestType
 
 
 def normalized_name(name: str) -> str:
@@ -67,3 +68,12 @@ def suggestions_for(user: User, team_id: int | None = None) -> list[tuple[Team, 
             seen.add(key)
             found.append((team, copies))
     return sorted(found, key=lambda item: (item[0].name.casefold(), item[0].pk))
+
+
+def merge_requested(teams: list[Team]) -> bool:
+    """Staff already have a request to merge one of these teams."""
+    return ServiceRequest.objects.filter(
+        type=ServiceRequestType.REQUEST_TEAM_MERGE,
+        status=ServiceRequestStatus.PENDING,
+        service_teams__in=teams,
+    ).exists()
