@@ -7,7 +7,7 @@ from django.db.models import Case, IntegerField, Q, Value, When
 from django.db.models.functions import Concat
 
 from server.core.models import Player, Team, User
-from server.duplicates.identity import full_email_match
+from server.duplicates.players.identity import full_email_match
 from server.registration.state import Reason, build_context, preview
 from server.series.models import Role, SeriesRegistration, is_playing_role
 from server.subscription import eligibility

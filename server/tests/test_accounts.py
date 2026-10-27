@@ -8,7 +8,7 @@ from django.test.utils import CaptureQueriesContext
 
 from server.core.accounts import find_login_user, resolve_login_user
 from server.core.models import User
-from server.duplicates.models import EmailAlias
+from server.duplicates.players.models import EmailAlias
 
 
 class TestFindLoginUser(TestCase):

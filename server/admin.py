@@ -18,9 +18,9 @@ from server.accreditation.models import Accreditation
 from server.admin_views import REFUND_PERM
 from server.announcements.models import Announcement, Comment, CommentReaction, Reaction
 from server.core.models import Guardianship, Player, Team, User
-from server.duplicates import review
-from server.duplicates.flow import FlowError, approve_staff, reject_staff
-from server.duplicates.merge import (
+from server.duplicates.players import review
+from server.duplicates.players.flow import FlowError, approve_staff, reject_staff
+from server.duplicates.players.merge import (
     MergeBlockedError,
     MergeFieldError,
     MergeIncompleteError,
@@ -28,7 +28,7 @@ from server.duplicates.merge import (
     build_plan,
     check_blockers,
 )
-from server.duplicates.models import (
+from server.duplicates.players.models import (
     AccountMerge,
     AliasHeldError,
     ClusterEvent,

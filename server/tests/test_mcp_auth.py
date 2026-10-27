@@ -15,7 +15,7 @@ from redis.exceptions import TimeoutError as RedisTimeoutError
 
 from server.cache import store
 from server.core.models import User
-from server.duplicates.merge import merge_accounts
+from server.duplicates.players.merge import merge_accounts
 from server.mcp.auth import TokenInfo, authenticate
 from server.mcp.redirects import PolicyMetadataFetcher
 from server.tests.test_merge import MergeTestCase
