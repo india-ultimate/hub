@@ -1,7 +1,9 @@
 import datetime
+from typing import Any
 from unittest import mock
 
 from django.contrib.auth.models import Permission
+from django.core import mail
 from django.test import TestCase, override_settings
 
 from server.core.models import Player, Team, User
@@ -15,6 +17,7 @@ from server.duplicates.teams.merge import (
 from server.duplicates.teams.models import TeamMerge
 from server.registration.models import RosterEntry
 from server.series.models import Series, SeriesRegistration
+from server.servicerequests.models import ServiceRequest, ServiceRequestStatus, ServiceRequestType
 from server.tests.base import create_event, create_player
 from server.tournament.models import (
     Bracket,
@@ -364,4 +367,173 @@ class TestMergeAdmin(TeamMergeTestCase):
     def test_a_keeper_outside_the_selection_is_refused(self) -> None:
         self.staff("view_team", "change_team", "delete_team")
         self.post(merge_confirmed="yes", keeper=self.rival.pk)
+        self.assertEqual(Team.objects.count(), 3)
+
+
+class TestTeamAdminsMerge(TeamMergeTestCase):
+    """A team admin merges teams they admin, and asks staff about the rest."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.keeper.admins.add(self.user)
+        self.client.force_login(self.user)
+
+    def preview(self, *teams: Team) -> Any:
+        return self.client.post(
+            "/api/team-merge/preview",
+            {"team_ids": [team.pk for team in teams]},
+            content_type="application/json",
+        )
+
+    def merge(self, keeper: Team, *teams: Team, message: str = "") -> Any:
+        return self.client.post(
+            "/api/team-merge/",
+            {"team_ids": [team.pk for team in teams], "keeper_id": keeper.pk, "message": message},
+            content_type="application/json",
+        )
+
+    def test_an_admin_of_every_team_merges_straight_away(self) -> None:
+        self.dup.admins.add(self.user)
+        preview = self.preview(self.keeper, self.dup).json()
+        self.assertTrue(preview["can_merge"])
+        self.assertEqual([team["id"] for team in preview["teams"]], [self.keeper.pk, self.dup.pk])
+
+        response = self.merge(self.keeper, self.keeper, self.dup)
+
+        self.assertEqual(
+            response.json(), {"merged": True, "slug": self.keeper.slug, "request_id": None}
+        )
+        self.assertFalse(Team.objects.filter(pk=self.dup.pk).exists())
+        self.assertEqual(TeamMerge.objects.get().merged_by, self.user)
+
+    def test_otherwise_staff_are_asked(self) -> None:
+        preview = self.preview(self.keeper, self.dup).json()
+        self.assertFalse(preview["can_merge"])
+        self.assertEqual(preview["admin_of"], [self.keeper.pk])
+
+        response = self.merge(self.keeper, self.keeper, self.dup, message="Same club, made twice")
+
+        self.assertFalse(response.json()["merged"])
+        self.assertTrue(Team.objects.filter(pk=self.dup.pk).exists())
+        asked = ServiceRequest.objects.get(pk=response.json()["request_id"])
+        self.assertEqual(asked.type, ServiceRequestType.REQUEST_TEAM_MERGE)
+        self.assertEqual(asked.keep_team, self.keeper)
+        self.assertEqual(set(asked.service_teams.all()), {self.keeper, self.dup})
+        self.assertTrue(self.preview(self.keeper, self.dup).json()["pending"])
+
+        again = self.merge(self.dup, self.keeper, self.dup, message="Again")
+        self.assertEqual(again.status_code, 400)
+        self.assertEqual(ServiceRequest.objects.count(), 1)
+
+    def test_a_merge_has_a_size_limit(self) -> None:
+        many = [Team.objects.create(name=f"Copy {n}") for n in range(10)]
+        self.assertEqual(self.preview(self.keeper, *many).status_code, 400)
+
+    def test_a_request_says_why(self) -> None:
+        response = self.merge(self.keeper, self.keeper, self.dup, message="  ")
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(ServiceRequest.objects.exists())
+
+    def test_someone_who_admins_none_of_them_is_refused(self) -> None:
+        self.keeper.admins.remove(self.user)
+        self.assertEqual(self.preview(self.keeper, self.dup).status_code, 403)
+        self.assertEqual(
+            self.merge(self.keeper, self.keeper, self.dup, message="x").status_code, 403
+        )
+        self.assertEqual(Team.objects.count(), 3)
+
+    def test_blocked_teams_can_be_neither_merged_nor_asked_about(self) -> None:
+        self.tournament_with(self.keeper, self.dup, title="Nationals 2025")
+        self.assertEqual(len(self.preview(self.keeper, self.dup).json()["blockers"]), 1)
+        self.assertEqual(
+            self.merge(self.keeper, self.keeper, self.dup, message="x").status_code, 400
+        )
+        self.dup.admins.add(self.user)
+        self.assertEqual(self.merge(self.keeper, self.keeper, self.dup).status_code, 400)
+        self.assertEqual(Team.objects.count(), 3)
+        self.assertFalse(ServiceRequest.objects.exists())
+
+    def test_the_keeper_must_be_one_of_the_teams(self) -> None:
+        self.dup.admins.add(self.user)
+        self.rival.admins.add(self.user)
+        self.assertEqual(self.merge(self.rival, self.keeper, self.dup).status_code, 400)
+        self.assertEqual(Team.objects.count(), 3)
+
+    def test_the_general_request_form_cannot_ask_for_a_team_merge(self) -> None:
+        response = self.client.post(
+            "/api/service-requests/",
+            {"type": ServiceRequestType.REQUEST_TEAM_MERGE, "message": "x"},
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 400)
+
+
+@override_settings(STORAGES=STATIC)
+class TestStaffDecideRequests(TeamMergeTestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        self.asked = ServiceRequest.objects.create(
+            user=self.user,
+            type=ServiceRequestType.REQUEST_TEAM_MERGE,
+            message="Same club, made twice",
+            keep_team=self.dup,
+        )
+        self.asked.service_teams.set([self.keeper, self.dup])
+        self.staff = User.objects.create(username="s@x.com", email="s@x.com", is_staff=True)
+        self.staff.user_permissions.add(
+            *Permission.objects.filter(
+                codename__in=["view_servicerequest", "change_servicerequest", "delete_team"]
+            )
+        )
+        self.client.force_login(self.staff)
+
+    def post(self, action: str, **extra: object) -> Any:
+        return self.client.post(
+            "/admin/server/servicerequest/",
+            {"action": action, "_selected_action": [self.asked.pk], **extra},
+        )
+
+    def test_staff_review_then_merge_into_the_team_asked_for(self) -> None:
+        self.dup.admins.add(self.staff)
+        review = self.post("approve_team_merge")
+        self.assertContains(review, "Same club, made twice")
+        # The asker admins neither team here, and staff can see who does.
+        self.assertContains(review, "They admin none of these teams")
+        self.assertContains(review, "s@x.com")
+        self.assertContains(review, f'value="{self.dup.pk}" checked')
+
+        self.post("approve_team_merge", merge_confirmed="yes", keeper=self.dup.pk)
+
+        self.assertFalse(Team.objects.filter(pk=self.keeper.pk).exists())
+        self.asked.refresh_from_db()
+        self.assertEqual(self.asked.status, ServiceRequestStatus.APPROVED)
+        self.assertEqual(TeamMerge.objects.get().merged_by, self.staff)
+        self.assertEqual(mail.outbox[-1].to, [self.user.email])
+
+    def test_staff_may_keep_another_team_than_the_one_asked_for(self) -> None:
+        self.post("approve_team_merge", merge_confirmed="yes", keeper=self.keeper.pk)
+
+        self.assertFalse(Team.objects.filter(pk=self.dup.pk).exists())
+        self.asked.refresh_from_db()
+        self.assertEqual(self.asked.status, ServiceRequestStatus.APPROVED)
+        self.assertEqual(self.asked.keep_team, self.keeper)
+        self.assertEqual(mail.outbox[-1].to, [self.user.email])
+
+    def test_staff_reject(self) -> None:
+        self.post("reject_team_merge")
+        self.asked.refresh_from_db()
+        self.assertEqual(self.asked.status, ServiceRequestStatus.REJECTED)
+        self.assertEqual(Team.objects.count(), 3)
+        self.assertEqual(mail.outbox[-1].to, [self.user.email])
+
+    def test_nobody_approves_their_own_request(self) -> None:
+        self.asked.user = self.staff
+        self.asked.save()
+        self.post("approve_team_merge", merge_confirmed="yes", keeper=self.dup.pk)
+        self.assertEqual(Team.objects.count(), 3)
+
+    def test_approving_needs_the_right_to_delete_teams(self) -> None:
+        self.staff.user_permissions.remove(Permission.objects.get(codename="delete_team"))
+        self.client.force_login(User.objects.get(pk=self.staff.pk))
+        self.post("approve_team_merge", merge_confirmed="yes", keeper=self.dup.pk)
         self.assertEqual(Team.objects.count(), 3)
