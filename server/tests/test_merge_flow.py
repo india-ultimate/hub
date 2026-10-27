@@ -448,7 +448,7 @@ class TestConfirmMergeWithResolvedFields(MergeFlowTestCase):
     def test_the_chosen_value_lands_on_the_surviving_account(self) -> None:
         # Not a name field: differing first or last names would trip the
         # merge's own name-mismatch blocker, unrelated to what this checks.
-        # Both non-blank so only the resolved choice, not _fill_blanks, can
+        # Both non-blank so only the resolved choice, not fill_blanks, can
         # produce the asserted phone.
         User.objects.filter(id=self.first.id).update(phone="1111111111")
         User.objects.filter(id=self.second.id).update(phone="9876543210")
@@ -491,7 +491,7 @@ class TestConfirmMergeEdges(MergeFlowTestCase):
         self.assertEqual(User.objects.filter(id=self.second.id).count(), 1)
 
     def test_a_refused_merge_is_a_message_not_a_500(self) -> None:
-        from server.duplicates.players.merge import MergeIncompleteError
+        from server.duplicates.relations import MergeIncompleteError
 
         self.confirmed(self.first, self.second)
         with mock.patch(

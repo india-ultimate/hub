@@ -13,10 +13,8 @@ from typing import Any
 
 from django.core.exceptions import ValidationError
 from django.core.serializers import serialize
-from django.db import IntegrityError, transaction
+from django.db import transaction
 from django.db.models import F, Model, Q
-from django.db.models.fields.related import ForeignObjectRel
-from django.db.models.fields.reverse_related import ManyToManyRel
 from oauth2_provider import models as oauth
 
 from server.core.models import Guardianship, Player, User
@@ -42,6 +40,17 @@ from server.duplicates.players.models import (
     EmailAlias,
 )
 from server.duplicates.players.staff import close_request
+from server.duplicates.relations import (
+    MergeIncompleteError,
+    MergeRecord,
+    breaks_uniqueness,
+    conflicting_row,
+    fill_blanks,
+    inbound_relations,
+    move_rows,
+    references_to,
+    relation_label,
+)
 from server.transaction.models import RazorpayTransactionPlayer
 
 # Per M2M field name: what the absorbed row is linked to, and the primary
@@ -125,7 +134,7 @@ PLAYER_FILLABLE = (
     # either account had it. A merge must never take away something granted.
     "sponsored",
     # Unique, and safe here for the same reason ultimate_central_id is:
-    # _fill_blanks runs after the duplicate's Player row is deleted. Only a
+    # fill_blanks runs after the duplicate's Player row is deleted. Only a
     # blank is filled, so the primary keeps its own number if it has one, and
     # otherwise inherits the one the person has already been given.
     "iu_id",
@@ -153,104 +162,8 @@ def _snapshot(rows: list[Model]) -> list[dict[str, Any]]:
     return serialized
 
 
-def _jsonable(value: Any) -> Any:
-    """Field values go into a JSONField, so dates and the like become text."""
-    if value is None or isinstance(value, bool | int | float | str):
-        return value
-    return str(value)
-
-
-@dataclass
-class MergeRecord:
-    """What the merge actually did, row by row.
-
-    A count cannot be undone. Once a row points at the surviving account
-    nothing in the database says where it came from, and that fact exists
-    only while the merge is running - so it is written down as it happens.
-
-    This records; it does not reverse. It is what a reversal would be built
-    from, alongside the snapshot of the rows that were deleted.
-    """
-
-    moves: list[dict[str, Any]] = field(default_factory=list)
-    overwrites: list[dict[str, Any]] = field(default_factory=list)
-    deleted: list[dict[str, Any]] = field(default_factory=list)
-    aliases: list[dict[str, Any]] = field(default_factory=list)
-    proof: dict[str, Any] = field(default_factory=dict)
-
-    def moved(self, label: str, pk: Any, name: str, was: Any, now: Any) -> None:
-        # Every value goes through _jsonable: a pk is usually an int, but
-        # PhonePeTransaction is keyed by a UUID, and one of those reaching
-        # the JSONField raw aborts the whole merge.
-        self.moves.append(
-            {
-                "model": label,
-                "pk": _jsonable(pk),
-                "field": name,
-                "was": _jsonable(was),
-                "now": _jsonable(now),
-            }
-        )
-
-    def linked(
-        self, label: str, name: str, other_pk: Any, was: Any, now: Any, already_held: bool
-    ) -> None:
-        """One many-to-many entry moved across.
-
-        other_pk is the end that stayed put. already_held says the target was
-        already in that set, so the move was really a removal from the source
-        - undoing it by unlinking the target would take away a link that was
-        there before the merge.
-        """
-        self.moves.append(
-            {
-                "model": label,
-                "field": name,
-                "other_pk": _jsonable(other_pk),
-                "was": _jsonable(was),
-                "now": _jsonable(now),
-                "already_held": already_held,
-            }
-        )
-
-    def overwrote(self, target: Model, name: str, was: Any, now: Any) -> None:
-        self.overwrites.append(
-            {
-                "model": target._meta.label,
-                "pk": _jsonable(target.pk),
-                "field": name,
-                "was": _jsonable(was),
-                "now": _jsonable(now),
-            }
-        )
-
-    def destroyed(self, row: Model, reason: str) -> None:
-        """A row this merge deleted. Its contents are in the snapshot; this
-        says which row that was and why it went, which the snapshot cannot."""
-        self.deleted.append({"model": row._meta.label, "pk": _jsonable(row.pk), "reason": reason})
-
-    def aliased(self, email: str, user_id: int, replaced_user_id: int | None) -> None:
-        """An absorbed address, and whose alias it was before, if anyone's."""
-        self.aliases.append(
-            {"email": email, "user_id": user_id, "replaced_user_id": replaced_user_id}
-        )
-
-    def as_dict(self) -> dict[str, Any]:
-        return {
-            "moves": self.moves,
-            "overwrites": self.overwrites,
-            "deleted": self.deleted,
-            "aliases": self.aliases,
-            "proof": self.proof,
-        }
-
-
 class MergeBlockedError(Exception):
     """The accounts must not be merged."""
-
-
-class MergeIncompleteError(Exception):
-    """Rows still point at an account about to be deleted."""
 
 
 class MergeFieldError(Exception):
@@ -384,43 +297,6 @@ class MergePlan:
         }
 
 
-# History, not ownership. A group row says who was in the group; moving it to
-# the keeper, or deleting it on a clash, would erase that. _settle_group_rows
-# handles these explicitly instead, and the dangling-reference guard skips
-# them because it walks the same list.
-NOT_WALKED = frozenset(
-    {
-        "server.ClusterMember.user",
-        # The link row carries a tier, an amount and the subscription it bought.
-        # Moving it as a many-to-many would .add() a fresh empty row and
-        # .remove() the one holding all of that. The through model's own
-        # player foreign key is walked instead, which repoints the real row.
-        "server.RazorpayTransaction.players",
-    }
-)
-
-
-def inbound_relations(model: type[Model]) -> list[ForeignObjectRel]:
-    return [
-        rel
-        for rel in model._meta.get_fields()
-        if isinstance(rel, ForeignObjectRel)
-        and f"{rel.field.model._meta.label}.{rel.field.name}" not in NOT_WALKED
-    ]
-
-
-def relation_label(rel: ForeignObjectRel) -> str:
-    return f"{rel.field.model._meta.label}.{rel.field.name}"
-
-
-def _breaks_uniqueness(rel: ForeignObjectRel) -> bool:
-    """Whether moving this field can collide with a row the primary has."""
-    field_name = rel.field.name
-    if getattr(rel.field, "unique", False):
-        return True
-    return any(field_name in combo for combo in rel.field.model._meta.unique_together)
-
-
 def _delete_oauth_rows(users: Sequence[User], keeper: User) -> None:
     """Sign-ins are credentials, not history: the apps must ask the survivor afresh.
     Applications they registered go to the survivor, so other users' sign-ins on them stay."""
@@ -433,105 +309,6 @@ def _delete_oauth_rows(users: Sequence[User], keeper: User) -> None:
     ):
         model._default_manager.filter(user__in=users).delete()
     oauth.get_application_model()._default_manager.filter(user__in=users).update(user=keeper)
-
-
-def _move_rows(
-    rel: ForeignObjectRel,
-    source: Model,
-    target: Model,
-    record: MergeRecord | None = None,
-) -> tuple[int, list[Model]]:
-    """Point rel at target instead of source. Returns moved count and casualties."""
-    manager = rel.field.model._default_manager
-    name = rel.field.name
-    label = rel.field.model._meta.label
-
-    if isinstance(rel, ManyToManyRel):
-        moved = 0
-        for row in manager.filter(**{name: source}):
-            entries = getattr(row, name)
-            # Whether the target was already in this set: if it was, adding it
-            # changes nothing and the remove below is the only effect, so the
-            # entry was destroyed rather than moved.
-            already_held = entries.filter(pk=target.pk).exists()
-            entries.add(target)
-            entries.remove(source)
-            if record is not None:
-                record.linked(label, name, row.pk, source.pk, target.pk, already_held)
-            moved += 1
-        return moved, []
-
-    rows = manager.filter(**{name: source})
-    if not _breaks_uniqueness(rel):
-        # One statement moves them all, so the identities have to be read
-        # first: afterwards nothing distinguishes them from the target's own.
-        pks = list(rows.values_list("pk", flat=True)) if record is not None else []
-        count = rows.update(**{name: target})
-        if record is not None:
-            for pk in pks:
-                record.moved(label, pk, name, source.pk, target.pk)
-        return count, []
-
-    rank = ROW_PREFERENCE.get(rel.field.model._meta.label)
-    moved, casualties = 0, []
-    for row in rows:
-        # Kept so the row can be archived as it actually was. The setattr
-        # below repoints it in memory whether or not the save succeeds, and
-        # the snapshot is the only record of a row this merge destroys.
-        original = getattr(row, f"{name}_id")
-        setattr(row, name, target)
-        try:
-            with transaction.atomic():
-                row.save(update_fields=[name])
-            if record is not None:
-                record.moved(label, row.pk, name, source.pk, target.pk)
-            moved += 1
-            continue
-        except IntegrityError:
-            # The only failure understood here is a clash with a row the
-            # primary already holds. Anything else - a different constraint,
-            # a trigger, a clash no row can be named for - would otherwise
-            # fall through to the casualty path below, which deletes a row.
-            theirs = _conflicting_row(rel, row, target)
-            if theirs is None:
-                raise
-
-        # The primary already holds one. Keep whichever the model says is
-        # better, rather than the primary's by default.
-        if rank is not None and rank(row) > rank(theirs):
-            # theirs was never repointed, so it archives as it stands.
-            casualties.append(theirs)
-            if record is not None:
-                record.destroyed(theirs, "unique-clash")
-            manager.filter(pk=theirs.pk).delete()
-            setattr(row, name, target)
-            with transaction.atomic():
-                row.save(update_fields=[name])
-            if record is not None:
-                record.moved(label, row.pk, name, source.pk, target.pk)
-            moved += 1
-        else:
-            # Put the owner back before archiving: this row belonged to the
-            # account being absorbed, and a snapshot that names the survivor
-            # instead would restore it onto the wrong person.
-            setattr(row, f"{name}_id", original)
-            casualties.append(row)
-            if record is not None:
-                record.destroyed(row, "unique-clash")
-            manager.filter(pk=row.pk).delete()
-    return moved, casualties
-
-
-def _conflicting_row(rel: ForeignObjectRel, row: Model, target: Model) -> Model | None:
-    """The row already on target that this one collides with."""
-    manager = rel.field.model._default_manager
-    name = rel.field.name
-    combo = next((c for c in rel.field.model._meta.unique_together if name in c), None)
-    lookup: dict[str, Any] = {name: target}
-    for other in combo or ():
-        if other != name:
-            lookup[other] = getattr(row, other)
-    return manager.filter(**lookup).first()
 
 
 def _resolve_one_to_ones(
@@ -616,25 +393,6 @@ def _move_outbound_m2m(
                 record.linked(label, name, other.pk, source.pk, target.pk, other.pk in held)
 
 
-def _fill_blanks(
-    target: Model, source: Model, names: tuple[str, ...], record: MergeRecord | None = None
-) -> None:
-    # target usually arrives as request.user, loaded before the row lock. A
-    # bare save() would write back every column as that stale instance held
-    # it - password included - reverting anything changed since. Save only
-    # the fields this call actually filled.
-    filled = []
-    for name in names:
-        was, incoming = getattr(target, name, None), getattr(source, name, None)
-        if not was and incoming:
-            setattr(target, name, incoming)
-            filled.append(name)
-            if record is not None:
-                record.overwrote(target, name, was, incoming)
-    if filled:
-        target.save(update_fields=filled)
-
-
 def _flag_lines(lines: Iterable[RazorpayTransactionPlayer], note: str) -> None:
     """Put an order line in front of staff, without overwriting an older note."""
     for line in lines:
@@ -643,20 +401,6 @@ def _flag_lines(lines: Iterable[RazorpayTransactionPlayer], note: str) -> None:
         line.needs_review = True
         line.review_note = note
         line.save(update_fields=["needs_review", "review_note"])
-
-
-def references_to(model: type[Model], objects: Sequence[Model]) -> dict[str, int]:
-    """Rows still pointing at these, by relation."""
-    dangling: dict[str, int] = {}
-    if not objects:
-        return dangling
-    for rel in inbound_relations(model):
-        count = rel.field.model._default_manager.filter(
-            **{f"{rel.field.name}__in": objects}
-        ).count()
-        if count:
-            dangling[relation_label(rel)] = count
-    return dangling
 
 
 def find_references(users: list[User]) -> dict[str, int]:
@@ -720,14 +464,14 @@ def build_plan(primary: User, duplicates: list[User]) -> MergePlan:
             continue
         for rel in inbound_relations(model):
             rows = rel.field.model._default_manager.filter(**{f"{rel.field.name}__in": objects})
-            if target is None or not _breaks_uniqueness(rel):
+            if target is None or not breaks_uniqueness(rel):
                 plan.record(relation_label(rel), rows.count(), 0)
                 continue
 
             rank = ROW_PREFERENCE.get(rel.field.model._meta.label)
             moved = collided = primary_loses = 0
             for row in rows:
-                theirs = _conflicting_row(rel, row, target)
+                theirs = conflicting_row(rel, row, target)
                 if theirs is None:
                     moved += 1
                     continue
@@ -835,7 +579,7 @@ def merge_accounts(
             .order_by("pk")
         }
         # The accounts as they are now, not as the request loaded them. A
-        # field filled in since would still look blank to _fill_blanks,
+        # field filled in since would still look blank to fill_blanks,
         # which would then write the duplicate's value over the newer one,
         # and the plan, the record and the snapshot would all describe
         # accounts that had moved on. An account another merge absorbed
@@ -904,7 +648,9 @@ def merge_accounts(
             casualties += _resolve_one_to_ones(primary_player, duplicate_player, record)
             walked: list[Model] = []
             for rel in inbound_relations(Player):
-                moved, lost = _move_rows(rel, duplicate_player, primary_player, record)
+                moved, lost = move_rows(
+                    rel, duplicate_player, primary_player, record, ROW_PREFERENCE
+                )
                 walked += lost
                 plan.record(relation_label(rel), moved, len(lost))
             casualties += walked
@@ -950,20 +696,20 @@ def merge_accounts(
             # not held by two rows at once. The instance keeps its values.
             record.destroyed(duplicate_player, "explicit")
             duplicate_player.delete()
-            _fill_blanks(primary_player, duplicate_player, PLAYER_FILLABLE, record)
+            fill_blanks(primary_player, duplicate_player, PLAYER_FILLABLE, record)
 
         _delete_oauth_rows(duplicates, primary)
 
         for duplicate in duplicates:
             for rel in inbound_relations(User):
-                moved, lost = _move_rows(rel, duplicate, primary, record)
+                moved, lost = move_rows(rel, duplicate, primary, record, ROW_PREFERENCE)
                 casualties += lost
                 plan.record(relation_label(rel), moved, len(lost))
             _move_outbound_m2m(duplicate, primary, record)
 
         emails = [user.email for user in duplicates if user.email]
         for duplicate in duplicates:
-            _fill_blanks(primary, duplicate, USER_FILLABLE, record)
+            fill_blanks(primary, duplicate, USER_FILLABLE, record)
 
         if resolved:
             _apply_resolved(
