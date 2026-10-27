@@ -7,6 +7,8 @@ class TeamIdsSchema(Schema):
 
 class MergeTeamsSchema(TeamIdsSchema):
     keeper_id: int
+    # The team whose logo the kept team takes; the keeper's own if not given.
+    logo_id: int | None = None
     # Why the teams are one, for staff. Only asked for when they must approve.
     message: str = ""
 

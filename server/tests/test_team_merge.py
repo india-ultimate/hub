@@ -194,6 +194,29 @@ class TestMergeMovesEverything(TeamMergeTestCase):
         self.assertEqual(self.keeper.city, "Mumbai")
         self.assertEqual(self.keeper.ultimate_central_id, 212436)
 
+    def test_the_kept_team_keeps_its_own_logo_by_default(self) -> None:
+        Team.objects.filter(pk=self.keeper.pk).update(image_url="https://x.com/kept.png")
+        Team.objects.filter(pk=self.dup.pk).update(image="team_logos/copy.png")
+
+        merge_teams(self.keeper, [self.dup])
+
+        self.keeper.refresh_from_db()
+        # Not the copy's file, which would show over the kept team's URL.
+        self.assertEqual(
+            (self.keeper.image.name, self.keeper.image_url), ("", "https://x.com/kept.png")
+        )
+
+    def test_the_logo_can_come_from_a_copy(self) -> None:
+        Team.objects.filter(pk=self.keeper.pk).update(image="team_logos/kept.png")
+        Team.objects.filter(pk=self.dup.pk).update(image_url="https://x.com/copy.png")
+
+        merge_teams(self.keeper, [self.dup], logo=self.dup)
+
+        self.keeper.refresh_from_db()
+        self.assertEqual(
+            (self.keeper.image.name, self.keeper.image_url), ("", "https://x.com/copy.png")
+        )
+
     def test_the_merge_is_recorded_with_what_was_deleted(self) -> None:
         actor = User.objects.create(username="staff@x.com", email="staff@x.com")
         Registration.objects.create(
@@ -450,10 +473,15 @@ class TestTeamAdminsMerge(TeamMergeTestCase):
             content_type="application/json",
         )
 
-    def merge(self, keeper: Team, *teams: Team, message: str = "") -> Any:
+    def merge(self, keeper: Team, *teams: Team, message: str = "", logo: Team | None = None) -> Any:
         return self.client.post(
             "/api/team-merge/",
-            {"team_ids": [team.pk for team in teams], "keeper_id": keeper.pk, "message": message},
+            {
+                "team_ids": [team.pk for team in teams],
+                "keeper_id": keeper.pk,
+                "logo_id": logo and logo.pk,
+                "message": message,
+            },
             content_type="application/json",
         )
 
@@ -471,18 +499,30 @@ class TestTeamAdminsMerge(TeamMergeTestCase):
         self.assertFalse(Team.objects.filter(pk=self.dup.pk).exists())
         self.assertEqual(TeamMerge.objects.get().merged_by, self.user)
 
+    def test_an_admin_picks_the_logo(self) -> None:
+        self.dup.admins.add(self.user)
+        Team.objects.filter(pk=self.keeper.pk).update(image_url="https://x.com/kept.png")
+        Team.objects.filter(pk=self.dup.pk).update(image_url="https://x.com/copy.png")
+
+        self.merge(self.keeper, self.keeper, self.dup, logo=self.dup)
+
+        self.keeper.refresh_from_db()
+        self.assertEqual(self.keeper.image_url, "https://x.com/copy.png")
+
     def test_otherwise_staff_are_asked(self) -> None:
         preview = self.preview(self.keeper, self.dup).json()
         self.assertFalse(preview["can_merge"])
         self.assertEqual(preview["admin_of"], [self.keeper.pk])
 
-        response = self.merge(self.keeper, self.keeper, self.dup, message="Same club, made twice")
+        response = self.merge(
+            self.keeper, self.keeper, self.dup, message="Same club, made twice", logo=self.dup
+        )
 
         self.assertFalse(response.json()["merged"])
         self.assertTrue(Team.objects.filter(pk=self.dup.pk).exists())
         asked = ServiceRequest.objects.get(pk=response.json()["request_id"])
         self.assertEqual(asked.type, ServiceRequestType.REQUEST_TEAM_MERGE)
-        self.assertEqual(asked.keep_team, self.keeper)
+        self.assertEqual((asked.keep_team, asked.logo_team), (self.keeper, self.dup))
         self.assertEqual(set(asked.service_teams.all()), {self.keeper, self.dup})
         self.assertTrue(self.preview(self.keeper, self.dup).json()["pending"])
 
@@ -583,6 +623,23 @@ class TestStaffDecideRequests(TeamMergeTestCase):
         self.assertEqual(self.asked.status, ServiceRequestStatus.APPROVED)
         self.assertEqual(self.asked.keep_team, self.keeper)
         self.assertEqual(mail.outbox[-1].to, [self.user.email])
+
+    def test_staff_see_the_logo_asked_for_and_may_change_it(self) -> None:
+        Team.objects.filter(pk=self.keeper.pk).update(image_url="https://x.com/a.png")
+        Team.objects.filter(pk=self.dup.pk).update(image_url="https://x.com/b.png")
+        self.asked.logo_team = self.keeper
+        self.asked.save()
+
+        review = self.post("approve_team_merge")
+        self.assertContains(review, f'type="radio" name="logo" value="{self.keeper.pk}" checked')
+
+        self.post("approve_team_merge", merge_confirmed="yes", keeper=self.dup.pk, logo=self.dup.pk)
+        self.dup.refresh_from_db()
+        self.assertEqual(self.dup.image_url, "https://x.com/b.png")
+
+    def test_one_logo_is_no_choice(self) -> None:
+        Team.objects.filter(pk=self.dup.pk).update(image_url="https://x.com/b.png")
+        self.assertNotContains(self.post("approve_team_merge"), 'type="radio" name="logo"')
 
     def test_the_review_page_can_reject_too(self) -> None:
         review = self.post("approve_team_merge")

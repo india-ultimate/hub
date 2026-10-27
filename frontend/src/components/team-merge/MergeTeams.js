@@ -59,6 +59,8 @@ const MergeTeams = () => {
   // The ticked teams themselves, so they stay listed whatever is searched.
   const [picked, setPicked] = createSignal([]);
   const [keeperId, setKeeperId] = createSignal();
+  // Until the person picks a logo, it follows the kept team.
+  const [logoPick, setLogoPick] = createSignal();
   const [message, setMessage] = createSignal("");
   const [done, setDone] = createSignal();
 
@@ -112,6 +114,15 @@ const MergeTeams = () => {
       "player"
     )}`;
   const kept = () => columns().find(t => t.id === keeperId());
+  const logos = () =>
+    new Set(
+      columns()
+        .map(t => t.logo)
+        .filter(Boolean)
+    );
+  const logoId = () =>
+    columns().find(t => t.id === logoPick() && t.logo)?.id ??
+    (kept()?.logo ? keeperId() : columns().find(t => t.logo)?.id);
   const gone = () =>
     joinNames(
       columns()
@@ -149,6 +160,7 @@ const MergeTeams = () => {
     mutation.mutate({
       teamIds: teamIds(),
       keeperId: keeperId(),
+      logoId: logoId(),
       message: message()
     });
   };
@@ -416,6 +428,42 @@ const MergeTeams = () => {
                     </For>
                   </div>
                 </fieldset>
+                <Show when={logos().size > 1}>
+                  <fieldset class="mb-4">
+                    <legend class="mb-1 text-sm font-medium text-gray-900 dark:text-white">
+                      Logo to keep
+                    </legend>
+                    <div class="flex flex-wrap gap-2">
+                      <For each={columns().filter(t => t.logo)}>
+                        {column => (
+                          <label
+                            classList={{
+                              "border-blue-600 bg-blue-50 dark:border-blue-400 dark:bg-blue-950":
+                                column.id === logoId(),
+                              "border-gray-200 dark:border-gray-700":
+                                column.id !== logoId()
+                            }}
+                            class="flex min-h-[56px] cursor-pointer items-center gap-3 rounded-lg border-2 px-3 py-2 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-blue-600"
+                          >
+                            <input
+                              type="radio"
+                              name="logo"
+                              class="h-5 w-5 border-gray-500 text-blue-600 dark:border-gray-400"
+                              value={column.id}
+                              checked={column.id === logoId()}
+                              onChange={() => setLogoPick(column.id)}
+                            />
+                            <Logo src={column.logo} name={column.name} />
+                            <span class="text-sm font-semibold text-gray-900 [overflow-wrap:anywhere] dark:text-white">
+                              <span class="sr-only">Logo of </span>
+                              {column.label}
+                            </span>
+                          </label>
+                        )}
+                      </For>
+                    </div>
+                  </fieldset>
+                </Show>
               </Show>
 
               <h3 class="mb-1 text-sm font-medium text-gray-900 dark:text-white">
@@ -521,9 +569,15 @@ const MergeTeams = () => {
                       {gone()} will be deleted. This cannot be undone.
                     </strong>{" "}
                     Everything they hold moves to {kept()?.label}, which keeps
-                    its own name. Its blank logo, city, state and Ultimate
-                    Central ID are filled in from the others, oldest first.
-                    Links to the deleted teams&apos; pages stop working.
+                    its own name
+                    <Show when={logos().size > 1}>
+                      {" "}
+                      and takes the logo picked above
+                    </Show>
+                    . Its blank <Show when={logos().size <= 1}>logo, </Show>
+                    city, state and Ultimate Central ID are filled in from the
+                    others, oldest first. Links to the deleted teams&apos; pages
+                    stop working.
                   </p>
 
                   <Show when={!preview().can_merge}>

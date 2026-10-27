@@ -12,7 +12,7 @@ INBOUND_USER_RELATIONS = 47
 INBOUND_PLAYER_RELATIONS = 29
 # The same for teams: server/duplicates/teams/merge.py repoints these, and keeps
 # team ids inside tournament JSON in step by hand.
-INBOUND_TEAM_RELATIONS = 20
+INBOUND_TEAM_RELATIONS = 21
 
 
 def inbound_relations(model: type[Model]) -> list[str]:

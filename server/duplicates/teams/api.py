@@ -14,6 +14,7 @@ from server.duplicates.teams.merge import (
     compare,
     default_keeper,
     label,
+    logo_of,
     merge_teams,
 )
 from server.duplicates.teams.schema import (
@@ -82,7 +83,7 @@ def preview(request: AuthenticatedHttpRequest, body: TeamIdsSchema) -> Any:
                 "id": team.pk,
                 "name": team.name,
                 "slug": team.slug,
-                "logo": team.image.url if team.image else team.image_url,
+                "logo": logo_of(team),
                 "label": label(team),
             }
             for team in teams
@@ -118,10 +119,11 @@ def merge(request: AuthenticatedHttpRequest, body: MergeTeamsSchema) -> Any:
     if keeper is None:
         return 400, {"message": "Pick the team to keep"}
     others = [team for team in teams if team != keeper]
+    logo = next((team for team in teams if team.pk == body.logo_id), None)
 
     if can_merge:
         try:
-            merge_teams(keeper, others, actor=request.user)
+            merge_teams(keeper, others, actor=request.user, logo=logo)
         except TeamMergeBlockedError as blocked:
             return 400, {"message": "; ".join(blocked.args[0])}
         except MergeIncompleteError:
@@ -144,6 +146,7 @@ def merge(request: AuthenticatedHttpRequest, body: MergeTeamsSchema) -> Any:
             type=ServiceRequestType.REQUEST_TEAM_MERGE,
             message=message,
             keep_team=keeper,
+            logo_team=logo,
         )
         service_request.service_teams.set(teams)
     return 200, {"merged": False, "request_id": service_request.pk}

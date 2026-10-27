@@ -44,6 +44,9 @@ class ServiceRequest(models.Model):
     keep_team = models.ForeignKey(
         Team, on_delete=models.SET_NULL, blank=True, null=True, related_name="kept_by_requests"
     )
+    logo_team = models.ForeignKey(
+        Team, on_delete=models.SET_NULL, blank=True, null=True, related_name="logo_requests"
+    )
 
     # The status as stored before this save, set by remember_previous_status.
     previous_status: str | None = None
