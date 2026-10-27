@@ -3032,5 +3032,10 @@ const postTeamMerge = async (path, body) => {
 export const previewTeamMerge = teamIds =>
   postTeamMerge("preview", { team_ids: teamIds });
 
-export const mergeTeams = ({ teamIds, keeperId, message }) =>
-  postTeamMerge("", { team_ids: teamIds, keeper_id: keeperId, message });
+export const mergeTeams = ({ teamIds, keeperId, logoId, message }) =>
+  postTeamMerge("", {
+    team_ids: teamIds,
+    keeper_id: keeperId,
+    logo_id: logoId,
+    message
+  });

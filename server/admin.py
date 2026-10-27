@@ -387,16 +387,21 @@ class TeamAdmin(admin.ModelAdmin[Team]):
         if keeper is None:
             self.message_user(request, "Pick the team to keep", messages.ERROR)
             return None
-        run_team_merge(self, request, keeper, [team for team in teams if team != keeper])
+        logo = next((t for t in teams if str(t.pk) == request.POST.get("logo")), None)
+        run_team_merge(self, request, keeper, [team for team in teams if team != keeper], logo)
         return None
 
 
 def run_team_merge(
-    model_admin: admin.ModelAdmin[Any], request: HttpRequest, keeper: Team, others: list[Team]
+    model_admin: admin.ModelAdmin[Any],
+    request: HttpRequest,
+    keeper: Team,
+    others: list[Team],
+    logo: Team | None,
 ) -> bool:
     """Merge, and say how it went. True if it happened."""
     try:
-        team_merge.merge_teams(keeper, others, actor=request.user)  # type: ignore[arg-type]
+        team_merge.merge_teams(keeper, others, actor=request.user, logo=logo)  # type: ignore[arg-type]
     except team_merge.TeamMergeBlockedError as blocked:
         model_admin.message_user(
             request, f"Not merged: {'; '.join(blocked.args[0])}", messages.ERROR
@@ -423,6 +428,7 @@ def team_merge_review(
     teams: list[Team],
     keeper: Team,
     *,
+    logo: Team | None = None,
     action: str,
     selected: list[int],
     cancel_url: str,
@@ -438,6 +444,10 @@ def team_merge_review(
             "Admin emails", [", ".join(a.email for a in team.admins.all()) for team in teams]
         ),
     ]
+    logos = {team_merge.logo_of(team) for team in teams} - {None, ""}
+    # The logo asked for, unless it has since gone.
+    asked_logo = logo if logo and (logo.image or logo.image_url) else None
+    logo = asked_logo or team_merge.default_logo(keeper, teams)
     asker_admins = (
         set(item.user.admin_teams.filter(pk__in=[t.pk for t in teams]).values_list("pk", flat=True))
         if item
@@ -457,14 +467,18 @@ def team_merge_review(
             "teams": [
                 {
                     "team": team,
-                    "logo": team.image.url if team.image else team.image_url,
+                    "logo": team_merge.logo_of(team),
                     "keep": team == keeper,
+                    "logo_kept": team == logo,
                     "label": team_merge.label(team),
                 }
                 for team in teams
             ],
             "lines": lines,
             "keeper_index": teams.index(keeper),
+            # Only a choice when the teams have different logos.
+            "pick_logo": len(logos) > 1,
+            "logo_asked": asked_logo is not None,
             "asker_admins": get_text_list(
                 [team_merge.label(t) for t in teams if t.pk in asker_admins], "and"
             ),
@@ -1529,6 +1543,7 @@ class ServiceRequestAdmin(admin.ModelAdmin[ServiceRequest]):
                 request,
                 teams,
                 asked or team_merge.default_keeper(teams),
+                logo=item.logo_team if item.logo_team in teams else None,
                 action="approve_team_merge",
                 selected=[item.pk],
                 cancel_url=reverse("admin:server_servicerequest_changelist"),
@@ -1538,9 +1553,11 @@ class ServiceRequestAdmin(admin.ModelAdmin[ServiceRequest]):
         if keeper is None:
             self.message_user(request, "Pick the team to keep", messages.ERROR)
             return None
+        logo = next((t for t in teams if str(t.pk) == request.POST.get("logo")), None)
+        others = [team for team in teams if team != keeper]
         # One transaction, so a request is never left open on teams already merged.
         with transaction.atomic():
-            if run_team_merge(self, request, keeper, [team for team in teams if team != keeper]):
+            if run_team_merge(self, request, keeper, others, logo):
                 # Only the status: the merge has repointed keep_team, which this
                 # copy still holds as loaded. The status signal emails the asker.
                 item.status = ServiceRequestStatus.APPROVED

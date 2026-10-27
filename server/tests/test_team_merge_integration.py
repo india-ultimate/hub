@@ -45,12 +45,17 @@ class TestTeamMergeIntegration(BaseCase):
 
     def test_an_admin_of_both_merges_them(self) -> None:
         self.copy.admins.add(self.captain)
+        Team.objects.filter(pk=self.kept.pk).update(image_url="https://example.com/a.png")
+        Team.objects.filter(pk=self.copy.pk).update(image_url="https://example.com/b.png")
         self.pick_the_copy()
         self.click(f'input[name="keeper"][value="{self.kept.pk}"]')
+        self.click(f'input[name="logo"][value="{self.copy.pk}"]')
         self.assert_text(f"Merge into Goosebumps #{self.kept.pk}", "#team-merge-submit")
         self.click("#team-merge-submit")
         self.assert_text(f"Merged into Goosebumps #{self.kept.pk}", "#team-merge-done")
         self.assertFalse(Team.objects.filter(pk=self.copy.pk).exists())
+        self.kept.refresh_from_db()
+        self.assertEqual(self.kept.image_url, "https://example.com/b.png")
 
     def test_an_admin_of_one_asks_staff(self) -> None:
         self.pick_the_copy()
