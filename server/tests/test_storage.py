@@ -26,7 +26,10 @@ from server.tests.base import ApiBaseTestCase, wfdf_certificate_pdf
 CLOUD = "https://res.cloudinary.com/india-ultimate"
 
 
-@override_settings(CLOUDINARY_CLOUD_NAME="india-ultimate")
+@override_settings(
+    CLOUDINARY_CLOUD_NAME="india-ultimate",
+    CLOUDINARY_API_SECRET="secret",  # noqa: S106
+)
 class TestKinds(SimpleTestCase):
     def test_names_map_to_ids_and_urls(self) -> None:
         cases = {
@@ -60,7 +63,21 @@ class TestKinds(SimpleTestCase):
             with self.subTest(name=name):
                 self.assertEqual(kind, kinds.resource_type(name))
                 self.assertEqual(public_id, kinds.public_id(name))
-                self.assertEqual(url, kinds.url(name))
+                self.assertEqual(url, kinds.url(name, original=True))
+
+    def test_pictures_are_served_resized_and_signed(self) -> None:
+        # Unsigned, strict transformations would answer 401.
+        self.assertEqual(
+            f"{CLOUD}/image/upload/s--b6e0kVDM--/c_limit,w_512/f_auto/q_auto"
+            "/v1/media/team_logos/a_png.png",
+            kinds.url("team_logos/a.png"),
+        )
+        self.assertIn("/c_limit,w_1600/f_auto/q_auto/", kinds.url("announcement_images/b.JPG"))
+
+    def test_pdfs_svgs_and_raw_files_are_served_as_they_are(self) -> None:
+        for name in ["a/c.PDF", "team_logos/l.svg", "contact-form-attachments/x.docx"]:
+            with self.subTest(name=name):
+                self.assertEqual(kinds.url(name, original=True), kinds.url(name))
 
     def test_urls_are_percent_encoded(self) -> None:
         # Old contact attachments have spaces; '#' would cut an emailed link.
