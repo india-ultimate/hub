@@ -7,6 +7,7 @@ so a name always lands in, and is served from, the same place.
 from typing import Any
 from urllib.parse import quote
 
+import cloudinary.utils
 from django.conf import settings
 
 # Stored as Cloudinary "image" (which also serves PDFs and SVGs); the rest raw.
@@ -15,6 +16,9 @@ IMAGE_EXTENSIONS = frozenset(
 )
 # Readable, at a fraction of a phone photo's size.
 COLLEGE_ID_RESIZE = [{"width": 1600, "height": 1600, "crop": "limit"}, {"quality": "auto"}]
+# Served resized: logos show at icon size, other pictures at most a page wide.
+NOT_RESIZED = frozenset({"pdf", "svg"})
+LOGO_FOLDERS = ("team_logos/", "tournament_logos/")
 
 
 def _split(name: str) -> tuple[str, str]:
@@ -39,14 +43,35 @@ def public_id(name: str) -> str:
     return f"{settings.CLOUDINARY_MEDIA_PREFIX}{stem}_{ext}"
 
 
-def url(name: str) -> str:
+def url(name: str, original: bool = False) -> str:
     kind = resource_type(name)
     path = public_id(name)
+    ext = _split(name)[1].lower()
+    if kind == "image" and ext not in NOT_RESIZED and not original:
+        return _resized_url(path, ext, 512 if name.startswith(LOGO_FOLDERS) else 1600)
     if kind == "image":
-        path += "." + _split(name)[1].lower()
+        path += "." + ext
     return (
         f"https://res.cloudinary.com/{settings.CLOUDINARY_CLOUD_NAME}/{kind}/upload/{quote(path)}"
     )
+
+
+def _resized_url(path: str, ext: str, width: int) -> str:
+    # Signed, as strict transformations refuse any other transformed URL.
+    return cloudinary.utils.cloudinary_url(
+        path,
+        resource_type="image",
+        format=ext,
+        transformation=[
+            {"crop": "limit", "width": width},
+            {"fetch_format": "auto"},
+            {"quality": "auto"},
+        ],
+        sign_url=True,
+        secure=True,
+        cloud_name=settings.CLOUDINARY_CLOUD_NAME,
+        api_secret=settings.CLOUDINARY_API_SECRET,
+    )[0]
 
 
 def stored_format(name: str) -> str | None:

@@ -49,7 +49,7 @@ class CloudinaryStorage(Storage):
 
     def _open(self, name: str, mode: str = "rb") -> File[bytes]:
         # CKEditor's uploader reads images back to make thumbnails.
-        response = requests.get(self.url(name), timeout=30)
+        response = requests.get(kinds.url(name, original=True), timeout=30)
         response.raise_for_status()
         return ContentFile(response.content, name=name)
 
