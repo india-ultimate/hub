@@ -954,6 +954,7 @@ def status_payload(ctx: Context, page_path: str) -> dict[str, Any]:
             "location": e.location,
             "series": e.series.name if e.series else None,
             "series_slug": e.series.slug if e.series else None,
+            "status": e.tournament.status,
             # The page's deadline chips.
             **{name: d.isoformat() if (d := getattr(e, name)) else None for name in DEADLINES},
             "team_late_penalty": e.team_late_penalty,  # per day, paise

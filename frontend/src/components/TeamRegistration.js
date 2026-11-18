@@ -1,4 +1,4 @@
-import { A, useNavigate, useParams } from "@solidjs/router";
+import { A, useNavigate, useParams, useSearchParams } from "@solidjs/router";
 import {
   createMutation,
   createQuery,
@@ -30,6 +30,7 @@ const TeamRegistration = () => {
   const queryClient = useQueryClient();
 
   const params = useParams();
+  const [search] = useSearchParams();
 
   const [deRegisteringTeamId, setDeRegisteringTeamId] = createSignal(undefined);
   const [registeredTeamIds, setRegisteredTeamIds] = createSignal([]);
@@ -45,7 +46,12 @@ const TeamRegistration = () => {
   const navigate = useNavigate();
   createEffect(() => {
     const user = userQuery.data;
-    if (user && !user.is_staff && user.admin_teams?.length === 1) {
+    if (
+      user &&
+      !user.is_staff &&
+      user.admin_teams?.length === 1 &&
+      search.all === undefined
+    ) {
       navigate(
         `/tournament/${params.slug}/team/${user.admin_teams[0].slug}/registration`,
         { replace: true }
@@ -372,7 +378,7 @@ const TeamRegistration = () => {
                     </div>
                     <div class="justify-self-end">
                       <A
-                        href={`/tournament/${params.slug}/team/${team.slug}/roster`}
+                        href={`/tournament/${params.slug}/team/${team.slug}/registration`}
                         class={clsx(
                           "inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium focus:outline-none focus:ring-4",
                           isAdminAndPlayerRegInProgress(team.id)

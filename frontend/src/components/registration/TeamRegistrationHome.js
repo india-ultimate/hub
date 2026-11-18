@@ -29,7 +29,13 @@ import {
 } from "../../queries";
 import { openCheckout } from "../../razorpay";
 import { useStore } from "../../store";
-import { getCookie, latestDate, parseLocalDate, todayIST } from "../../utils";
+import {
+  getCookie,
+  latestDate,
+  parseLocalDate,
+  todayIST,
+  tournamentCrumb
+} from "../../utils";
 import Breadcrumbs from "../Breadcrumbs";
 import Modal from "../Modal";
 import AddPlayersDialog from "./AddPlayersDialog";
@@ -519,7 +525,13 @@ const TeamRegistrationHome = () => {
             icon={trophy}
             pageList={[
               { url: "/tournaments", name: "All Tournaments" },
-              { url: `/tournament/${d().event.slug}`, name: d().event.title },
+              {
+                url: tournamentCrumb({
+                  status: d().event.status,
+                  event: d().event
+                }),
+                name: d().event.title
+              },
               { name: d().team.name }
             ]}
           />

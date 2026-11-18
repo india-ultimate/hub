@@ -86,6 +86,7 @@ class TestStatus(ApiCase):
         self.assertEqual(self.event.player_fee, body["checkout"]["amount"])
         self.assertNotIn("pending_order", body)
         event = body["event"]
+        self.assertEqual(self.tournament.status, event["status"])
         self.assertEqual(
             self.event.player_registration_end_date.isoformat(),
             event["player_registration_end_date"],
