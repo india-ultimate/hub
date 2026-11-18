@@ -9,7 +9,7 @@ from server.core.models import Player
 from server.registration.models import RosterEntry
 from server.series.models import Role, SeriesRegistration
 from server.tests.test_registration_integration import ADD_DIALOG, RegistrationPageCase, row
-from server.tournament.models import Event, Registration
+from server.tournament.models import Event, Registration, Tournament
 
 PHONE = (390, 844)
 PIXEL = "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=="
@@ -237,6 +237,21 @@ class TestRegistrationPageIntegration(RegistrationPageCase):
         self.assert_text("1 non-player", "[data-roster-totals]")
         # On the roster too, the series role stands.
         self.assert_element_absent(f'{row("Kiran Coach")}//select')
+
+    def test_before_its_live_the_crumb_leads_back_to_registration(self) -> None:
+        self.tournament.status = Tournament.Status.SCHEDULING
+        self.tournament.save()
+        self.open_phone()
+        self.click(f'nav a[href="/tournament/{self.event.slug}/register?all"]')
+        # A one-team admin isn't sent straight back to their team's page.
+        self.assert_element(f'a[href="{self.page}"]')
+        self.assert_url_contains(f"/tournament/{self.event.slug}/register?all")
+
+    def test_a_live_tournaments_crumb_leads_to_its_page(self) -> None:
+        self.tournament.status = Tournament.Status.LIVE
+        self.tournament.save()
+        self.open_phone()
+        self.assert_element(f'nav a[href="/tournament/{self.event.slug}"]')
 
     def test_swap_dialog_wording(self) -> None:
         self.paid("Meera", "Paid")

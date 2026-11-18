@@ -25,7 +25,8 @@ import { useStore } from "../store";
 import {
   getTournamentBreadcrumbName,
   ifTodayInBetweenDates,
-  latestDate
+  latestDate,
+  tournamentCrumb
 } from "../utils";
 import Info from "./alerts/Info";
 import Breadcrumbs from "./Breadcrumbs";
@@ -206,7 +207,9 @@ const TournamentTeam = () => {
         pageList={[
           { url: "/tournaments", name: "All Tournaments" },
           {
-            url: `/tournament/${params.tournament_slug}`,
+            url: tournamentQuery.data?.event
+              ? tournamentCrumb(tournamentQuery.data)
+              : `/tournament/${params.tournament_slug}`,
             name: getTournamentBreadcrumbName(
               tournamentQuery.data?.event?.slug || ""
             )

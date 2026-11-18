@@ -443,14 +443,20 @@ export const isPlayerRegistrationOpen = event =>
     )
   );
 
-// Registration while a scheduled tournament is signing up; its page otherwise.
+// Registration while a tournament is being scheduled; its page otherwise
+// (drafts included, which only staff and directors see).
 export const tournamentLink = tournament => {
-  const slug = tournament.event?.slug;
-  const registering =
-    tournament.status === "SCH" &&
-    (isTeamRegistrationOpen(tournament.event) ||
-      isPlayerRegistrationOpen(tournament.event));
-  return registering ? `/tournament/${slug}/register` : `/tournament/${slug}`;
+  const slug = tournament?.event?.slug;
+  return tournament?.status === "SCH"
+    ? `/tournament/${slug}/register`
+    : `/tournament/${slug}`;
+};
+
+// A crumb back to the tournament from one of its team pages. "all" keeps
+// the registration list from sending a one-team admin straight back.
+export const tournamentCrumb = tournament => {
+  const link = tournamentLink(tournament);
+  return link.endsWith("/register") ? `${link}?all` : link;
 };
 
 export const calculateLatePenalty = (
