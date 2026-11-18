@@ -20,6 +20,7 @@ from server.registration.models import RosterEntry, RosterSwap
 from server.season.models import Season
 from server.series.models import (
     PLAYING_ROLES,
+    Role,
     SeriesRegistration,
     SeriesRosterInvitation,
     is_playing_role,
@@ -90,9 +91,11 @@ class Context:
     granted: set[int] = field(default_factory=set)  # players with a grant for the season
     plans: list[SubscriptionPlan] = field(default_factory=list)  # cheapest first
     tiers_allowing: Callable[[str], str] = eligibility._tiers_allowing
+    entry_roles: dict[int, str] = field(default_factory=dict)  # player -> role on their entry
+    new_role: str = Role.DEFAULT  # the role someone not yet listed would be added in
 
 
-def _open_hold(entry: RosterEntry) -> RazorpayTransaction | None:
+def open_hold(entry: RosterEntry) -> RazorpayTransaction | None:
     """The order holding this entry, unless it is paid, failed or stale."""
     order = entry.held_by_order
     if order is None or order.status in RazorpayTransaction.SETTLED or order.status == "failed":
@@ -108,6 +111,7 @@ def build_context(
     viewer: User,
     today: datetime.date | None = None,
     extra_player_ids: Iterable[int] = (),
+    new_role: str = Role.DEFAULT,
 ) -> Context:
     entries = list(
         RosterEntry.objects.filter(event=event, team=team).select_related(
@@ -128,6 +132,8 @@ def build_context(
         season=eligibility._season_of(event),
         entries=entries,
         paid=paid,
+        entry_roles={e.player_id: e.role for e in entries},
+        new_role=new_role,
     )
     ctx.team_paid = Tournament.objects.filter(event=event, teams=team).exists()
     ctx.elsewhere = dict(
@@ -207,10 +213,19 @@ def _days(n: int) -> str:
     return "today" if n <= 0 else f"in {n} day{'s' if n != 1 else ''}"
 
 
-def _is_playing(ctx: Context, player_id: int) -> bool:
-    if ctx.event.series_id:
-        return is_playing_role(ctx.series_roles.get(player_id, "DFLT"))
-    return True
+def plays(ctx: Context, player_id: int) -> bool:
+    """What they were paid for decides, then the series role, then the role
+    they were added in: the series invite's on a series event."""
+    paid = next((r for r in ctx.paid if r.player_id == player_id), None)
+    if paid is not None:
+        return paid.is_playing
+    if player_id in ctx.series_roles:
+        return is_playing_role(ctx.series_roles[player_id])
+    return is_playing_role(ctx.entry_roles.get(player_id, ctx.new_role))
+
+
+def row_fee(ctx: Context, player_id: int) -> int:
+    return ctx.event.roster_fee(plays(ctx, player_id))
 
 
 def _closed(ctx: Context) -> Reason | None:
@@ -239,7 +254,7 @@ def _not_open(ctx: Context) -> Reason | None:
 
 def _subscription_reason(ctx: Context, entry: RosterEntry) -> Reason | None:
     player = entry.player
-    playing = _is_playing(ctx, player.id)
+    playing = plays(ctx, player.id)
     if not eligibility._needs_subscription(ctx.event):
         return None
     subscription = ctx.subscriptions.get(player.id)
@@ -303,7 +318,13 @@ def _series_reason(ctx: Context, entry: RosterEntry) -> Reason | None:
         or invite.status in (InviteStatus.REVOKED, InviteStatus.EXPIRED, InviteStatus.ACCEPTED)
         or (invite.status == InviteStatus.PENDING and invite.expires_on < ctx.today)
     )
-    if invitable and series and ctx.series_roster_taken >= series.series_roster_max_players:
+    # Staff take no place on the series roster's count.
+    if (
+        invitable
+        and series
+        and ctx.series_roster_taken >= series.series_roster_max_players
+        and plays(ctx, pid)
+    ):
         return Reason(
             "limit.series_roster",
             "limit",
@@ -361,7 +382,7 @@ def _cap_reason(
     ctx: Context, player: Player, counts: dict[str, int], *, total: bool = True
 ) -> Reason | None:
     series = ctx.event.series
-    if series is None or not _is_playing(ctx, player.id):
+    if series is None or not plays(ctx, player.id):
         return None
     mu = player.match_up
     cap = {"F": series.event_max_players_female, "M": series.event_max_players_male}.get(mu)
@@ -382,7 +403,7 @@ def _cap_reason(
     return None
 
 
-def _ready_reason(ctx: Context) -> Reason:
+def _ready_reason(ctx: Context, player_id: int) -> Reason:
     if not ctx.team_paid:
         text = (
             "Ready once the team fee is paid"
@@ -390,7 +411,7 @@ def _ready_reason(ctx: Context) -> Reason:
             else "Ready once the team is registered"
         )
         return Reason("ready.after_team_fee", "waiting", text)
-    if ctx.event.player_fee:
+    if row_fee(ctx, player_id):
         return Reason("ready", "ready", "Ready to pay")
     # Nothing to pay, so it is rostered straight away, not checked out.
     return Reason("ready.free", "ready", "Accepted", Action("Add", op="roster"))
@@ -420,8 +441,8 @@ def _unpaid_reason(
     # told the roster is full; before opening, so they can sort it early.
     reason = reason or _subscription_reason(ctx, entry) or _not_open(ctx)
     if reason is None:
-        reason = _ready_reason(ctx)
-        if _is_playing(ctx, player.id):
+        reason = _ready_reason(ctx, player.id)
+        if plays(ctx, player.id):
             _take(counts, player)
     return reason
 
@@ -436,12 +457,12 @@ def _evaluate(ctx: Context) -> tuple[dict[int, Reason], dict[str, int]]:
     held: set[int] = set()
     for entry in unpaid:
         pid = entry.player_id
-        hold = _open_hold(entry)
+        hold = open_hold(entry)
         if early[pid] is None and hold is not None and hold.user_id != ctx.viewer.id:
             # About to be paid for, so it holds its spot before any row is
             # checked against the caps, whatever order they were added in.
             held.add(pid)
-            if _is_playing(ctx, pid):
+            if plays(ctx, pid):
                 _take(counts, entry.player)
     for entry in unpaid:
         pid = entry.player_id
@@ -455,14 +476,16 @@ def _evaluate(ctx: Context) -> tuple[dict[int, Reason], dict[str, int]]:
 PAID_REMOVAL_REFUSED = "Already paid, or being paid. Request a change instead."
 
 
-def is_undo(event: Event, reason: Reason, *, rostering_open: bool) -> bool:
-    """Nothing was paid on a free tournament, so taking them off is an undo."""
-    return reason.kind == "done" and not event.player_fee and rostering_open
+def is_undo(event: Event, reason: Reason, *, rostering_open: bool, playing: bool = True) -> bool:
+    """Nothing was paid for a free place, so taking them off is an undo."""
+    return reason.kind == "done" and not event.roster_fee(playing) and rostering_open
 
 
-def removal_refused(event: Event, reason: Reason, *, rostering_open: bool) -> bool:
+def removal_refused(
+    event: Event, reason: Reason, *, rostering_open: bool, playing: bool = True
+) -> bool:
     return reason.kind in ("done", "progress") and not is_undo(
-        event, reason, rostering_open=rostering_open
+        event, reason, rostering_open=rostering_open, playing=playing
     )
 
 
@@ -489,12 +512,12 @@ def _swap_in_reason(
     early = _early_reason(ctx, entry)
     if early is not None:
         return early
-    if _open_hold(entry) is not None:
+    if open_hold(entry) is not None:
         return Reason("progress.held", "progress", "Being paid for. Try again in a few minutes.")
     counts = _paid_counts(ctx, exclude=out_player_id)
     for other in ctx.entries:
-        hold = _open_hold(other)
-        if other is not entry and hold is not None and _is_playing(ctx, other.player_id):
+        hold = open_hold(other)
+        if other is not entry and hold is not None and plays(ctx, other.player_id):
             _take(counts, other.player)
     return _unpaid_reason(ctx, entry, counts, None, total=total)
 
@@ -503,15 +526,20 @@ def preview_swap(ctx: Context, out_player_id: int, in_player_id: int) -> Reason:
     """Whether in can take out's paid place: judged with out already gone."""
     out = next(r for r in ctx.paid if r.player_id == out_player_id)
     entry = next(e for e in ctx.entries if e.player_id == in_player_id)
+    # No money moves in a swap, so a place paid for at less can't go to someone dearer.
+    if row_fee(ctx, in_player_id) > ctx.event.roster_fee(out.is_playing):
+        return Reason(
+            "limit.swap_fee", "limit", "Can't take a non-player's place: the player fee is higher"
+        )
     # Same size roster, so only the gender caps apply, unless a player
     # takes a staff member's place and the playing count grows.
-    grows = not out.is_playing and _is_playing(ctx, in_player_id)
+    grows = not out.is_playing and plays(ctx, in_player_id)
     reason = _swap_in_reason(ctx, entry, out_player_id, total=grows)
     series = ctx.event.series
     if reason.kind != "ready" or series is None or not out.is_playing:
         return reason
     mu = out.player.match_up
-    if mu == entry.player.match_up and _is_playing(ctx, entry.player_id):
+    if mu == entry.player.match_up and plays(ctx, entry.player_id):
         return reason  # same count of out's gender afterwards
     minimum = {"F": series.event_min_players_female, "M": series.event_min_players_male}.get(mu, 0)
     before = _paid_counts(ctx).get(mu, 0)
@@ -530,7 +558,7 @@ def _best_swap_state(ctx: Context, entry: RosterEntry) -> Reason:
     works. Tries the likeliest out-players first -- like for like (a player
     of the same gender, or staff for staff) -- and stops at any reason that
     isn't a limit, as only limits depend on who goes out."""
-    playing, mu = _is_playing(ctx, entry.player_id), entry.player.match_up
+    playing, mu = plays(ctx, entry.player_id), entry.player.match_up
 
     def rank(r: Registration) -> int:
         if not r.is_playing:
@@ -560,14 +588,15 @@ def meter(ctx: Context, reasons: dict[int, Reason]) -> dict[str, int]:
     # the team fee. A paid row says whether it plays; an unpaid one goes
     # by its series role.
     playing = {r.player_id: r.is_playing for r in ctx.paid}
-    counted = [
-        players[pid]
+    held = [
+        pid
         for pid, reason in reasons.items()
-        if (reason.kind in ("done", "ready", "progress") or reason.code == "ready.after_team_fee")
-        and playing.get(pid, _is_playing(ctx, pid))
+        if reason.kind in ("done", "ready", "progress") or reason.code == "ready.after_team_fee"
     ]
+    counted = [players[pid] for pid in held if playing.get(pid, plays(ctx, pid))]
     return {
         "total": len(counted),
+        "non_players": len(held) - len(counted),
         "female_matching": sum(1 for p in counted if p.match_up == "F"),
         "male_matching": sum(1 for p in counted if p.match_up == "M"),
         "max_total": series.event_max_players_total if series else 0,
@@ -707,10 +736,12 @@ def checkout_quote(ctx: Context, reasons: dict[int, Reason]) -> dict[str, Any]:
     )
     return {
         "ready_ids": ready,
+        "non_player_ids": [pid for pid in ready if not plays(ctx, pid)],
         "per_player": e.player_fee,
+        "per_non_player": e.roster_fee(False),
         "penalty_per_player": penalty,
         "penalty_from": e.player_registration_end_date.isoformat(),
-        "amount": (e.player_fee + penalty) * len(ready),
+        "amount": sum(row_fee(ctx, pid) + penalty for pid in ready),
         # Named only when it isn't India Ultimate: no account means ours.
         "payee_name": e.payment_account.name if e.payment_account else None,
         "held_by_other_admin_ids": [pid for pid, r in reasons.items() if r.code == "progress.held"],
@@ -725,7 +756,7 @@ def _handoff(ctx: Context, reasons: dict[int, Reason], page_path: str) -> dict[s
     players = {e.player_id: e.player for e in ctx.entries}
     tiers = []
     for pid in need:
-        scope = Scope.PLAY_CHAMPIONSHIPS if _is_playing(ctx, pid) else Scope.STAFF_CHAMPIONSHIPS
+        scope = Scope.PLAY_CHAMPIONSHIPS if plays(ctx, pid) else Scope.STAFF_CHAMPIONSHIPS
         if tier := suggested_tier(ctx, players[pid], scope):
             tiers.append((pid, tier))
     if not tiers:
