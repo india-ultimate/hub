@@ -22,12 +22,13 @@ import {
 import { secondaryButton } from "../../committees";
 import { fetchAnnouncement } from "../../queries";
 import { useStore } from "../../store";
+import PendingBar from "../PendingBar";
 import Comments from "./Comments";
 import CopyButton from "./CopyButton";
 import ReactionBar from "./ReactionBar";
 
 export default function AnnouncementDetail() {
-  const [store] = useStore();
+  const [store, { authPending }] = useStore();
   const params = useParams();
   const navigate = useNavigate();
 
@@ -76,23 +77,28 @@ export default function AnnouncementDetail() {
       <Show
         when={store.loggedIn}
         fallback={
-          <div class="py-12 text-center">
-            <Icon path={lockClosed} class="mx-auto h-16 w-16 text-gray-400" />
-            <h3 class="mt-4 text-xl font-semibold text-gray-900 dark:text-white">
-              Login Required
-            </h3>
-            <p class="mt-2 text-gray-600 dark:text-gray-400">
-              You need to login to read this announcement
-            </p>
-            <div class="mt-6">
-              <a
-                href={`/login?redirect=/announcement/${params.slug}`}
-                class="inline-flex items-center rounded-lg bg-blue-600 px-6 py-3 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:focus:ring-blue-800"
-              >
-                Login
-              </a>
+          <Show
+            when={!authPending()}
+            fallback={<PendingBar label="Checking who is signed in" />}
+          >
+            <div class="py-12 text-center">
+              <Icon path={lockClosed} class="mx-auto h-16 w-16 text-gray-400" />
+              <h3 class="mt-4 text-xl font-semibold text-gray-900 dark:text-white">
+                Login Required
+              </h3>
+              <p class="mt-2 text-gray-600 dark:text-gray-400">
+                You need to login to read this announcement
+              </p>
+              <div class="mt-6">
+                <a
+                  href={`/login?redirect=/announcement/${params.slug}`}
+                  class="inline-flex items-center rounded-lg bg-blue-600 px-6 py-3 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:focus:ring-blue-800"
+                >
+                  Login
+                </a>
+              </div>
             </div>
-          </div>
+          </Show>
         }
       >
         <div class="mb-8 flex items-center justify-between gap-2">

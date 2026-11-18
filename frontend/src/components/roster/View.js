@@ -28,6 +28,7 @@ import {
 import Info from "../alerts/Info";
 import Warning from "../alerts/Warning";
 import Breadcrumbs from "../Breadcrumbs";
+import PendingBar from "../PendingBar";
 import ErrorPopover from "../popover/ErrorPopover";
 import SuccessPopover from "../popover/SuccessPopover";
 import Registration from "./Registration";
@@ -39,7 +40,7 @@ const Roster = () => {
   const queryClient = useQueryClient();
 
   const params = useParams();
-  const [store] = useStore();
+  const [store, { authPending }] = useStore();
 
   const tournamentQuery = createQuery(
     () => ["tournaments", params.tournament_slug],
@@ -263,12 +264,17 @@ const Roster = () => {
                 fallback={<Info text="Player Registrations have closed!" />}
               >
                 <Show
-                  when={store.loggedIn}
-                  fallback={
-                    <Info text="You must be logged in to add/remove players from the roster!" />
-                  }
+                  when={!authPending()}
+                  fallback={<PendingBar label="Checking who is signed in" />}
                 >
-                  <Info text="You must be a team admin to perform rostering!" />
+                  <Show
+                    when={store.loggedIn}
+                    fallback={
+                      <Info text="You must be logged in to add/remove players from the roster!" />
+                    }
+                  >
+                    <Info text="You must be a team admin to perform rostering!" />
+                  </Show>
                 </Show>
               </Show>
             }

@@ -35,6 +35,7 @@ import {
 import { displayDateShort } from "../../utils";
 import Info from "../alerts/Info";
 import Breadcrumbs from "../Breadcrumbs";
+import PendingBar from "../PendingBar";
 import InvitationCard from "./Invitation";
 
 const TeamRow = props => {
@@ -384,11 +385,14 @@ const Series = () => {
             </div>
           </summary>
           <Switch>
-            {/* skeleton here */}
-            {/* <Match when={userQuery.isLoading && !userQuery.isRefetching}>
-              <div class="m-2 h-6 rounded-md bg-gray-200 dark:bg-gray-700 animate-pulse" />
-            </Match> */}
-            <Match when={userQuery.isError}>
+            <Match when={userQuery.isLoading}>
+              <PendingBar label="Loading your teams" />
+            </Match>
+            <Match
+              when={
+                userQuery.isError || (userQuery.isSuccess && !userQuery.data)
+              }
+            >
               <div class="m-2">
                 <Info text="You must be logged in to register teams !" />
               </div>

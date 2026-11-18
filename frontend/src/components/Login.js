@@ -12,6 +12,7 @@ import { Spinner } from "../icons";
 import { useStore } from "../store";
 import { getCookie } from "../utils";
 import Breadcrumbs from "./Breadcrumbs";
+import PendingBar from "./PendingBar";
 import PillTabs from "./tabs/PillTabs";
 
 const finishLogin = (navigate, redirect) => {
@@ -456,7 +457,7 @@ const PasskeyLogin = props => {
 const Login = () => {
   const [status, setStatus] = createSignal("");
   const [activeTab, setActiveTab] = createSignal("email-otp");
-  const [store, _] = useStore();
+  const [store, { authPending }] = useStore();
 
   const signInFailed = window.localStorage.getItem("emailSignInFailed");
   if (signInFailed) {
@@ -478,30 +479,35 @@ const Login = () => {
         pageList={[{ url: "/", name: "Home" }, { name: "Login" }]}
       />
 
-      <PillTabs
-        tabs={[
-          { id: "email-otp", label: "OTP" },
-          { id: "passkey", label: "One-Tap Login" },
-          { id: "password", label: "Password" }
-        ]}
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-      />
+      <Show
+        when={!authPending()}
+        fallback={<PendingBar label="Checking who is signed in" />}
+      >
+        <PillTabs
+          tabs={[
+            { id: "email-otp", label: "OTP" },
+            { id: "passkey", label: "One-Tap Login" },
+            { id: "password", label: "Password" }
+          ]}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+        />
 
-      <Show when={activeTab() === "email-otp"}>
-        <div class="rounded-lg bg-gray-50 p-4 dark:bg-gray-800">
-          <SendEmailOTP setStatus={setStatus} />
-        </div>
-      </Show>
-      <Show when={activeTab() === "password"}>
-        <div class="rounded-lg bg-gray-50 p-4 dark:bg-gray-800">
-          <PasswordLogin setStatus={setStatus} />
-        </div>
-      </Show>
-      <Show when={activeTab() === "passkey"}>
-        <div class="rounded-lg bg-gray-50 p-4 dark:bg-gray-800">
-          <PasskeyLogin setStatus={setStatus} />
-        </div>
+        <Show when={activeTab() === "email-otp"}>
+          <div class="rounded-lg bg-gray-50 p-4 dark:bg-gray-800">
+            <SendEmailOTP setStatus={setStatus} />
+          </div>
+        </Show>
+        <Show when={activeTab() === "password"}>
+          <div class="rounded-lg bg-gray-50 p-4 dark:bg-gray-800">
+            <PasswordLogin setStatus={setStatus} />
+          </div>
+        </Show>
+        <Show when={activeTab() === "passkey"}>
+          <div class="rounded-lg bg-gray-50 p-4 dark:bg-gray-800">
+            <PasskeyLogin setStatus={setStatus} />
+          </div>
+        </Show>
       </Show>
       <p>{status()}</p>
     </>

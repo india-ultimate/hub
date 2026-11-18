@@ -22,6 +22,7 @@ import { primaryButton, secondaryButton } from "../../committees";
 import { REACTIONS } from "../../reactions";
 import { useStore } from "../../store";
 import { getCookie } from "../../utils";
+import PendingBar from "../PendingBar";
 
 const emojiOf = Object.fromEntries(REACTIONS.map(r => [r.kind, r.emoji]));
 const labelOf = Object.fromEntries(REACTIONS.map(r => [r.kind, r.label]));
@@ -104,7 +105,7 @@ const draftsFirst = announcements =>
   [...announcements].sort((a, b) => a.is_published - b.is_published);
 
 const Announcements = () => {
-  const [store] = useStore();
+  const [store, { authPending }] = useStore();
   const navigate = useNavigate();
 
   // Fetch announcements (backend handles filtering based on user permissions)
@@ -155,23 +156,31 @@ const Announcements = () => {
         <Show
           when={store.loggedIn}
           fallback={
-            <div class="py-12 text-center">
-              <Icon path={lockClosed} class="mx-auto h-16 w-16 text-gray-400" />
-              <h3 class="mt-4 text-xl font-semibold text-gray-900 dark:text-white">
-                Login Required
-              </h3>
-              <p class="mt-2 text-gray-600 dark:text-gray-400">
-                Please log in to view announcements.
-              </p>
-              <div class="mt-6">
-                <a
-                  href="/login?redirect=/announcements"
-                  class="inline-flex items-center rounded-lg bg-blue-600 px-6 py-3 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:focus:ring-blue-800"
-                >
-                  Login
-                </a>
+            <Show
+              when={!authPending()}
+              fallback={<PendingBar label="Loading announcements" />}
+            >
+              <div class="py-12 text-center">
+                <Icon
+                  path={lockClosed}
+                  class="mx-auto h-16 w-16 text-gray-400"
+                />
+                <h3 class="mt-4 text-xl font-semibold text-gray-900 dark:text-white">
+                  Login Required
+                </h3>
+                <p class="mt-2 text-gray-600 dark:text-gray-400">
+                  Please log in to view announcements.
+                </p>
+                <div class="mt-6">
+                  <a
+                    href="/login?redirect=/announcements"
+                    class="inline-flex items-center rounded-lg bg-blue-600 px-6 py-3 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:focus:ring-blue-800"
+                  >
+                    Login
+                  </a>
+                </div>
               </div>
-            </div>
+            </Show>
           }
         >
           <Show
