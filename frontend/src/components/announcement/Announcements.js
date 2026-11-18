@@ -20,6 +20,7 @@ import {
 } from "../../colors";
 import { primaryButton, secondaryButton } from "../../committees";
 import { REACTIONS } from "../../reactions";
+import { Bar, Loading } from "../../skeletons/primitives";
 import { useStore } from "../../store";
 import { getCookie } from "../../utils";
 import PendingBar from "../PendingBar";
@@ -359,27 +360,27 @@ const Announcements = () => {
 };
 
 const AnnouncementsSkeleton = () => (
-  <div class="space-y-6">
+  <Loading label="Loading announcements" class="space-y-6">
     <For each={[1, 2, 3]}>
       {() => (
         <div class="rounded-lg border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
           <div class="mb-4">
-            <div class="mb-2 h-4 w-24 animate-pulse rounded bg-gray-300 dark:bg-gray-600" />
-            <div class="h-6 w-3/4 animate-pulse rounded bg-gray-300 dark:bg-gray-600" />
+            <Bar class="mb-2 h-4 w-24" />
+            <Bar class="h-6 w-3/4" />
           </div>
           <div class="mb-4 space-y-2">
-            <div class="h-4 w-full animate-pulse rounded bg-gray-300 dark:bg-gray-600" />
-            <div class="h-4 w-5/6 animate-pulse rounded bg-gray-300 dark:bg-gray-600" />
-            <div class="h-4 w-4/5 animate-pulse rounded bg-gray-300 dark:bg-gray-600" />
+            <Bar class="h-4 w-full" />
+            <Bar class="h-4 w-5/6" />
+            <Bar class="h-4 w-4/5" />
           </div>
           <div class="flex items-center gap-4">
-            <div class="h-4 w-32 animate-pulse rounded bg-gray-300 dark:bg-gray-600" />
-            <div class="h-4 w-24 animate-pulse rounded bg-gray-300 dark:bg-gray-600" />
+            <Bar class="h-4 w-32" />
+            <Bar class="h-4 w-24" />
           </div>
         </div>
       )}
     </For>
-  </div>
+  </Loading>
 );
 
 export default Announcements;

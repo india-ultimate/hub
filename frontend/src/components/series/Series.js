@@ -32,10 +32,10 @@ import {
   fetchUser,
   removeTeamSeriesRegistration
 } from "../../queries";
+import { Bar, Loading } from "../../skeletons/primitives";
 import { displayDateShort } from "../../utils";
 import Info from "../alerts/Info";
 import Breadcrumbs from "../Breadcrumbs";
-import PendingBar from "../PendingBar";
 import InvitationCard from "./Invitation";
 
 const TeamRow = props => {
@@ -182,8 +182,18 @@ const Series = () => {
 
   return (
     <Switch>
-      {/* TODO: page skeleton here */}
-      <Match when={seriesQuery.isLoading} />
+      <Match when={seriesQuery.isLoading}>
+        <Loading label="Loading series">
+          <div class="mb-5 flex items-center space-x-1 md:space-x-3">
+            <Bar class="h-[30px] w-32 !rounded-full" />
+            <Bar class="h-4 w-24" />
+          </div>
+          <Bar class="h-[190px] w-full !rounded-lg" />
+          <Bar class="mt-6 h-[46px] w-full !rounded-lg" />
+          <Bar class="mt-6 h-40 w-full !rounded-lg" />
+          <Bar class="mt-6 h-24 w-full !rounded-lg" />
+        </Loading>
+      </Match>
       <Match when={seriesQuery.isError}>
         <div>
           <div>Series could not be fetched.</div>
@@ -281,7 +291,9 @@ const Series = () => {
           </summary>
           <Switch>
             <Match when={seriesInvitationsQuery.isLoading}>
-              {/* Invitations skeleton here */}
+              <Loading quiet label="Loading invitations" class="m-2">
+                <Bar class="h-10 w-full" />
+              </Loading>
             </Match>
             <Match when={!seriesInvitationsQuery.isSuccess}>
               <div class="m-2">
@@ -386,7 +398,9 @@ const Series = () => {
           </summary>
           <Switch>
             <Match when={userQuery.isLoading}>
-              <PendingBar label="Loading your teams" />
+              <Loading quiet label="Loading your teams" class="m-2">
+                <Bar class="h-10 w-full" />
+              </Loading>
             </Match>
             <Match
               when={
@@ -427,7 +441,9 @@ const Series = () => {
               <div class="divide-y divide-gray-300 px-3 py-2">
                 <Suspense
                   fallback={
-                    <div class="m-2 h-6 animate-pulse rounded-md bg-gray-200 dark:bg-gray-700" />
+                    <Loading quiet class="m-2">
+                      <Bar class="h-6" />
+                    </Loading>
                   }
                 >
                   <For each={userQuery.data.admin_teams}>

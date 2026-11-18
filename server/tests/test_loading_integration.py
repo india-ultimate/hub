@@ -3,7 +3,7 @@ from contextlib import ExitStack
 import pytest
 from seleniumbase import BaseCase
 
-from server.core.models import User
+from server.core.models import Team, User
 from server.tests import test_ui
 from server.tests.base import add_teams_to_event, create_event, create_player, create_tournament
 from server.tests.localserver import APP_URL, running_test_server
@@ -127,3 +127,13 @@ class TestLoadingIntegration(BaseCase):
         self.assert_text("Team 1", timeout=10)
         self.assert_element(".inline-block.h-4.w-8")
         self.assert_not_in("0", self.get_text("p.bg-blue-100"))
+
+    def test_team_page_shows_a_skeleton_not_dashes(self) -> None:
+        Team.objects.create(name="Loading Lions", slug="loading-lions")
+        self.slow_requests("/api/team-profile/loading-lions", 4000)
+        self.open(f"{APP_URL}/team/loading-lions")
+        self.assert_slowed()
+        self.assert_element(loading("Loading team"))
+        self.assert_element_not_present("img:not([src])")
+        self.assert_text("Loading Lions", timeout=10)
+        self.assert_element_not_present(loading("Loading team"))

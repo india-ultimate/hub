@@ -6,6 +6,7 @@ import { For, Show } from "solid-js";
 
 import { card, EmailLink, focusRing, NoOneListed } from "../../committees";
 import { fetchCommittees } from "../../queries";
+import { Bar, Loading } from "../../skeletons/primitives";
 import { useStore } from "../../store";
 import Person from "./Person";
 
@@ -73,6 +74,21 @@ const Committees = () => {
           </A>
         </Show>
       </div>
+      <Show when={query.isLoading}>
+        <Loading label="Loading committees">
+          <Bar class="mb-4 h-5 w-32" />
+          <div class="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
+            <Bar class="h-[170px] w-full !rounded-xl" />
+            <Bar class="h-[170px] w-full !rounded-xl" />
+            <Bar class="h-[170px] w-full !rounded-xl" />
+            <Bar class="h-[170px] w-full !rounded-xl" />
+          </div>
+          <div class="grid gap-4 lg:grid-cols-2">
+            <Bar class="h-56 w-full !rounded-xl" />
+            <Bar class="h-56 w-full !rounded-xl" />
+          </div>
+        </Loading>
+      </Show>
       <Show when={query.isError}>
         <p role="alert" class="text-red-700">
           Couldn't load the committees. Please try again.

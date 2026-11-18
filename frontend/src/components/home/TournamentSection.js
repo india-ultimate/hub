@@ -5,6 +5,7 @@ import { createEffect, createSignal, For, Show } from "solid-js";
 import { formatDay } from "../../dates";
 import { ChevronRight } from "../../icons";
 import { fetchTournamentCards } from "../../queries";
+import { Bar, Loading } from "../../skeletons/primitives";
 import { parseLocalDate, todayIST, tournamentLink } from "../../utils";
 
 const TournamentSection = () => {
@@ -77,6 +78,12 @@ const TournamentSection = () => {
           </span>
         </A>
       </div>
+      <Show when={tournamentsQuery.isLoading}>
+        <Loading label="Loading tournaments">
+          <Bar class="my-2 h-[84px] w-full !rounded-md md:h-[120px]" />
+          <Bar class="my-2 h-[84px] w-full !rounded-md md:h-[120px]" />
+        </Loading>
+      </Show>
       <Show when={live().length > 0}>
         <h2 class="mt-2 text-sm">Live Tournaments</h2>
         <For each={live()}>

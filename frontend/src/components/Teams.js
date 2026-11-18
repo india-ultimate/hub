@@ -9,9 +9,9 @@ import { createEffect, createSignal, For, Show } from "solid-js";
 
 import { ChevronLeft, ChevronRight } from "../icons";
 import { fetchUser, searchTeams } from "../queries";
+import { Bar, Loading } from "../skeletons/primitives";
 import Error from "./alerts/Error";
 import Info from "./alerts/Info";
-import PendingBar from "./PendingBar";
 
 const defaultColumns = [
   {
@@ -76,7 +76,8 @@ const Teams = () => {
 
   const dataQuery = createQuery(
     () => ["teams", "search", search(), pagination()],
-    () => searchTeams(search(), pagination())
+    () => searchTeams(search(), pagination()),
+    { keepPreviousData: true }
   );
   const userQuery = createQuery(() => ["me"], fetchUser);
 
@@ -124,7 +125,11 @@ const Teams = () => {
           fallback={
             <Show
               when={userQuery.isError || userQuery.isSuccess}
-              fallback={<PendingBar label="Loading your teams" />}
+              fallback={
+                <Loading label="Loading your teams" class="w-full">
+                  <Bar class="h-10 w-full" />
+                </Loading>
+              }
             >
               <Error text="Please login to view your teams" />
             </Show>
@@ -263,31 +268,45 @@ const Teams = () => {
             </For>
           </tbody>
         </table>
-        <div class="mt-4 flex items-center gap-2">
-          <button
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-            class="flex h-8 w-28 items-center justify-center rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-700 disabled:text-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
-          >
-            <ChevronLeft width={20} />
-            Previous
-          </button>
-          <span class="flex items-center gap-1">
-            <div>Page</div>
-            <strong>
-              {table.getState().pagination.pageIndex + 1} of{" "}
-              {table.getPageCount().toLocaleString()}
-            </strong>
-          </span>
-          <button
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-            class="flex h-8 w-28 items-center justify-center rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-700 disabled:text-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
-          >
-            Next
-            <ChevronRight width={20} />
-          </button>
-        </div>
+        <Show when={dataQuery.isLoading}>
+          <Loading label="Loading teams" class="w-full">
+            <For each={Array.from({ length: 10 })}>
+              {() => <Bar class="h-[65px] w-full !rounded-none" />}
+            </For>
+          </Loading>
+        </Show>
+        <Show when={dataQuery.isError}>
+          <div class="mt-4 w-full">
+            <Error text="Couldn't load the teams. Check your connection and try again." />
+          </div>
+        </Show>
+        <Show when={dataQuery.isSuccess}>
+          <div class="mt-4 flex items-center gap-2">
+            <button
+              onClick={() => table.previousPage()}
+              disabled={!table.getCanPreviousPage()}
+              class="flex h-8 w-28 items-center justify-center rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-700 disabled:text-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
+            >
+              <ChevronLeft width={20} />
+              Previous
+            </button>
+            <span class="flex items-center gap-1">
+              <div>Page</div>
+              <strong>
+                {table.getState().pagination.pageIndex + 1} of{" "}
+                {table.getPageCount().toLocaleString()}
+              </strong>
+            </span>
+            <button
+              onClick={() => table.nextPage()}
+              disabled={!table.getCanNextPage()}
+              class="flex h-8 w-28 items-center justify-center rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-700 disabled:text-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
+            >
+              Next
+              <ChevronRight width={20} />
+            </button>
+          </div>
+        </Show>
       </div>
     </div>
   );
