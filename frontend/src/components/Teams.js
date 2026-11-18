@@ -11,6 +11,7 @@ import { ChevronLeft, ChevronRight } from "../icons";
 import { fetchUser, searchTeams } from "../queries";
 import Error from "./alerts/Error";
 import Info from "./alerts/Info";
+import PendingBar from "./PendingBar";
 
 const defaultColumns = [
   {
@@ -119,8 +120,15 @@ const Teams = () => {
           Teams in which you are an admin
         </h3>
         <Show
-          when={userQuery.isSuccess}
-          fallback={<Error text="Please login to view your teams" />}
+          when={userQuery.isSuccess && userQuery.data}
+          fallback={
+            <Show
+              when={userQuery.isError || userQuery.isSuccess}
+              fallback={<PendingBar label="Loading your teams" />}
+            >
+              <Error text="Please login to view your teams" />
+            </Show>
+          }
         >
           <Show
             when={

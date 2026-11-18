@@ -64,7 +64,7 @@ export default function Header() {
                 <span
                   id="header-auth-pending-mobile"
                   aria-hidden="true"
-                  class="mx-2 h-8 w-8 animate-pulse rounded-full bg-gray-200 motion-reduce:animate-none dark:bg-gray-700 md:hidden"
+                  class="h-12 w-12 animate-pulse rounded-full border-8 border-transparent bg-gray-200 bg-clip-padding motion-reduce:animate-none dark:bg-gray-700 md:hidden"
                 />
               }
             >
@@ -236,7 +236,7 @@ export default function Header() {
                     <span
                       id="header-auth-pending"
                       aria-hidden="true"
-                      class="hidden h-8 w-8 animate-pulse rounded-full bg-gray-200 motion-reduce:animate-none dark:bg-gray-700 md:block"
+                      class="hidden h-9 w-9 animate-pulse rounded-full bg-gray-200 motion-reduce:animate-none dark:bg-gray-700 md:block"
                     />
                   }
                 >

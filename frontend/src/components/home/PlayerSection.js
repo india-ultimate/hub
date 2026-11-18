@@ -3,9 +3,10 @@ import { Show } from "solid-js";
 
 import { useStore } from "../../store";
 import { assetURL } from "../../utils";
+import PendingBar from "../PendingBar";
 
 const PlayerSection = () => {
-  const [store] = useStore();
+  const [store, { authPending }] = useStore();
 
   return (
     <>
@@ -19,12 +20,22 @@ const PlayerSection = () => {
           <Show
             when={store?.data?.player}
             fallback={
-              <A
-                href="/dashboard"
-                class="mt-2 block w-fit rounded-lg bg-violet-600 px-4 py-2 text-sm text-white"
+              <Show
+                when={!authPending()}
+                fallback={
+                  <PendingBar
+                    label="Checking who is signed in"
+                    class="mt-2 h-9 w-32 rounded-lg !bg-blue-300 dark:!bg-blue-300"
+                  />
+                }
               >
-                Register on Hub
-              </A>
+                <A
+                  href="/dashboard"
+                  class="mt-2 block w-fit rounded-lg bg-violet-600 px-4 py-2 text-sm text-white"
+                >
+                  Register on Hub
+                </A>
+              </Show>
             }
           >
             <A
@@ -50,12 +61,22 @@ const PlayerSection = () => {
             <Show
               when={store?.data?.player}
               fallback={
-                <A
-                  href="/dashboard"
-                  class="mt-3 block w-fit rounded-lg bg-violet-600 px-8 py-2 text-sm text-white"
+                <Show
+                  when={!authPending()}
+                  fallback={
+                    <PendingBar
+                      label="Checking who is signed in"
+                      class="mt-3 h-9 w-40 rounded-lg !bg-blue-300 dark:!bg-blue-300"
+                    />
+                  }
                 >
-                  Register on Hub
-                </A>
+                  <A
+                    href="/dashboard"
+                    class="mt-3 block w-fit rounded-lg bg-violet-600 px-8 py-2 text-sm text-white"
+                  >
+                    Register on Hub
+                  </A>
+                </Show>
               }
             >
               <A

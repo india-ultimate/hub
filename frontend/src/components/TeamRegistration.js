@@ -26,6 +26,7 @@ import {
 } from "../utils";
 import Info from "./alerts/Info";
 import Breadcrumbs from "./Breadcrumbs";
+import PendingBar from "./PendingBar";
 
 const TeamRegistration = () => {
   const queryClient = useQueryClient();
@@ -459,13 +460,16 @@ const TeamRegistration = () => {
             Click to create, edit or view all teams
           </A>
           <Switch>
-            <Match when={!userQuery.isSuccess}>
+            <Match when={userQuery.isLoading}>
+              <PendingBar label="Loading your teams" />
+            </Match>
+            <Match when={userQuery.isError || !userQuery.data}>
               <Info text="You must be logged in to register teams !" />
             </Match>
-            <Match when={!userQuery.data.admin_teams?.length}>
+            <Match when={!userQuery.data?.admin_teams?.length}>
               <Info text="You must be an admin of a team to register !" />
             </Match>
-            <Match when={userQuery.data.admin_teams?.length}>
+            <Match when={userQuery.data?.admin_teams?.length}>
               <div class="my-6">
                 <For each={userQuery.data.admin_teams}>
                   {team => (

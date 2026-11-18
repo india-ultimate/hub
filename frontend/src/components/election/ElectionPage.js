@@ -386,7 +386,12 @@ const ElectionPage = () => {
                     Cast Your Vote
                   </h2>
 
-                  <Show when={!userQuery.data}>
+                  <Show
+                    when={
+                      userQuery.isError ||
+                      (userQuery.isSuccess && !userQuery.data)
+                    }
+                  >
                     <div class="rounded-lg border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 p-6 dark:border-blue-700 dark:from-blue-900/50 dark:to-indigo-900/50">
                       <div class="text-center">
                         <div class="mb-4">

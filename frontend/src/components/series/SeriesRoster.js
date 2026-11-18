@@ -24,6 +24,7 @@ import { useStore } from "../../store";
 import Info from "../alerts/Info";
 import Warning from "../alerts/Warning";
 import Breadcrumbs from "../Breadcrumbs";
+import PendingBar from "../PendingBar";
 import AddToRoster from "./AddToRoster";
 
 function groupInvitationsByPlayerId(invitations) {
@@ -83,7 +84,7 @@ const RosterList = props => (
 
 const SeriesRoster = () => {
   const params = useParams();
-  const [store] = useStore();
+  const [store, { authPending }] = useStore();
   const [latestInvitationsPerPlayer, setLatestInvitationsPerPlayer] =
     createSignal([]);
   const [numPendingInvitations, setNumPendingInvitations] =
@@ -255,6 +256,9 @@ const SeriesRoster = () => {
           <div class="mt-6">
             <h4 class="mb-2 text-xl font-bold text-blue-500">Add to Roster</h4>
             <Switch>
+              <Match when={authPending()}>
+                <PendingBar label="Checking who is signed in" />
+              </Match>
               <Match when={!store.loggedIn}>
                 <Info text="You must be logged in to add/remove players from the roster!" />
               </Match>
