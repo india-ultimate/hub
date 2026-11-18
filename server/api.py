@@ -1956,6 +1956,25 @@ def create_tournament(
     if not request.user.is_staff:
         return 401, {"message": "Only Admins can create tournament"}
 
+    # A cleared late or partial date means none: it falls back to the end date.
+    for name in (
+        "team_partial_registration_end_date",
+        "team_late_penalty_end_date",
+        "player_late_penalty_end_date",
+    ):
+        setattr(tournament_details, name, getattr(tournament_details, name) or None)
+
+    days = [
+        getattr(tournament_details, name)
+        for name in Event.DATE_FIELDS
+        if getattr(tournament_details, name, None)
+    ]
+    try:
+        for day in days:
+            datetime.date.fromisoformat(day)
+    except ValueError:
+        return 400, {"message": "Dates must be YYYY-MM-DD"}
+
     if if_dates_are_not_in_order(tournament_details.start_date, tournament_details.end_date):
         return 400, {"message": "Start date can't be after end date"}
 

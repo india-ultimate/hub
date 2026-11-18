@@ -114,7 +114,6 @@ const CreateTournamentForm = () => {
     const values = getValues(tournamentForm);
 
     const {
-      team_registration_start_date,
       team_registration_end_date,
       player_registration_end_date,
       team_partial_registration_end_date,
@@ -148,11 +147,13 @@ const CreateTournamentForm = () => {
       );
     }
 
-    if (team_registration_start_date && !team_partial_registration_end_date) {
+    // Partial payments run as long as registration, as the server reads a
+    // blank partial end date.
+    if (team_registration_end_date && !team_partial_registration_end_date) {
       setValue(
         tournamentForm,
         "team_partial_registration_end_date",
-        team_registration_start_date,
+        team_registration_end_date,
         {
           shouldTouched: false,
           shouldDirty: false,
@@ -207,7 +208,13 @@ const CreateTournamentForm = () => {
           <Field
             name="end_date"
             validate={[
-              required("Please enter the end date of the tournament.")
+              required("Please enter the end date of the tournament."),
+              value => {
+                const { start_date } = getValues(tournamentForm);
+                return value && start_date && value < start_date
+                  ? "End date can't be before the start date."
+                  : "";
+              }
             ]}
           >
             {(field, props) => (
@@ -275,6 +282,11 @@ const CreateTournamentForm = () => {
                   value > team_late_penalty_end_date
                 ) {
                   return "Team registration end date cannot be after team late penalty end date.";
+                }
+
+                const { start_date } = getValues(tournamentForm);
+                if (value && start_date && value > start_date) {
+                  return "Team registration can't end after the tournament starts.";
                 }
 
                 return "";
@@ -392,7 +404,16 @@ const CreateTournamentForm = () => {
           <Field
             name="player_registration_start_date"
             validate={[
-              required("Please enter the player rostering start date.")
+              required("Please enter the player rostering start date."),
+              value => {
+                const { team_registration_start_date } =
+                  getValues(tournamentForm);
+                return value &&
+                  team_registration_start_date &&
+                  value < team_registration_start_date
+                  ? "Player rostering can't start before team registration starts."
+                  : "";
+              }
             ]}
           >
             {(field, props) => (
@@ -422,6 +443,16 @@ const CreateTournamentForm = () => {
                   value < player_registration_start_date
                 ) {
                   return "Player rostering end date cannot be before start date.";
+                }
+
+                const { team_registration_end_date } =
+                  getValues(tournamentForm);
+                if (
+                  value &&
+                  team_registration_end_date &&
+                  value < team_registration_end_date
+                ) {
+                  return "Player rostering can't end before team registration ends.";
                 }
 
                 return "";

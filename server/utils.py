@@ -59,11 +59,8 @@ def today() -> datetime.date:
 
 
 def if_dates_are_not_in_order(first_date: str, second_date: str) -> bool:
-    ind_tz = datetime.timezone(datetime.timedelta(hours=5, minutes=30), name="IND")
-    return (
-        datetime.datetime.strptime(first_date, "%Y-%m-%d").astimezone(ind_tz).date()
-        > datetime.datetime.strptime(second_date, "%Y-%m-%d").astimezone(ind_tz).date()
-    )
+    """Plain calendar days, compared as they are: no time zone moves them."""
+    return datetime.date.fromisoformat(first_date) > datetime.date.fromisoformat(second_date)
 
 
 def is_today_in_between_dates(from_date: datetime.date, to_date: datetime.date) -> bool:

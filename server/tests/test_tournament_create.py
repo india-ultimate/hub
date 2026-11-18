@@ -42,6 +42,43 @@ class TournamentCreateTests(ApiBaseTestCase):
         self.assertEqual(200, response.status_code, response.content)
         self.assertIsNone(Event.objects.get(title="Tagged Cup").non_player_fee)
 
+    def test_late_and_partial_dates_can_be_left_out(self) -> None:
+        # Blank falls back to the regular end date everywhere it's read.
+        details = {
+            k: v
+            for k, v in TOURNAMENT_DETAILS.items()
+            if k
+            not in (
+                "team_partial_registration_end_date",
+                "team_late_penalty_end_date",
+                "player_late_penalty_end_date",
+            )
+        }
+        self.user.is_staff = True
+        self.user.save()
+        self.client.force_login(self.user)
+        response = self.client.post(
+            "/api/tournaments", data={"tournament_details": json.dumps(details)}
+        )
+        self.assertEqual(200, response.status_code, response.content)
+        event = Event.objects.get(title="Tagged Cup")
+        self.assertIsNone(event.player_late_penalty_end_date)
+        self.assertEqual(event.player_registration_end_date, event.last_rostering_day())
+
+    def test_a_cleared_late_date_is_left_blank(self) -> None:
+        response = self.create(
+            player_late_penalty_end_date="", team_partial_registration_end_date=""
+        )
+        self.assertEqual(200, response.status_code, response.content)
+        event = Event.objects.get(title="Tagged Cup")
+        self.assertIsNone(event.player_late_penalty_end_date)
+        self.assertIsNone(event.team_partial_registration_end_date)
+
+    def test_a_malformed_date_is_refused_not_a_crash(self) -> None:
+        response = self.create(player_registration_end_date="20/11/2026")
+        self.assertEqual(400, response.status_code, response.content)
+        self.assertIn("YYYY-MM-DD", response.json()["message"])
+
     def test_membership_needs_sanctioned(self) -> None:
         response = self.create(is_subscription_needed=True, is_iu_sanctioned=False)
         self.assertEqual(400, response.status_code)

@@ -160,9 +160,10 @@ class TournamentCreateSchema(Schema):
     team_registration_end_date: str
     player_registration_start_date: str
     player_registration_end_date: str
-    team_partial_registration_end_date: str
-    team_late_penalty_end_date: str
-    player_late_penalty_end_date: str
+    # Blank falls back to the regular end date wherever it's read.
+    team_partial_registration_end_date: str | None = None
+    team_late_penalty_end_date: str | None = None
+    player_late_penalty_end_date: str | None = None
     location: str
     type: str
     team_fee: int
