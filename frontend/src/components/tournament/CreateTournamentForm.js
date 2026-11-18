@@ -15,6 +15,7 @@ import { tournamentTags } from "../../eventTags";
 import { toPaise } from "../../money";
 import { createTournament } from "../../queries";
 import { withinUploadLimits } from "../../uploads";
+import { todayISTString } from "../../utils";
 import FileInput from "../FileInput";
 import Select from "../Select";
 import TextInput from "../TextInput";
@@ -90,7 +91,7 @@ const CreateTournamentForm = () => {
     createTournamentMutation.mutate(formData);
   };
 
-  const minDate = new Date().toISOString().split("T")[0];
+  const minDate = todayISTString();
 
   // Needing IU membership means the event is sanctioned (the server checks too).
   const MEMBERSHIP_RULE =

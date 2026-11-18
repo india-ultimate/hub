@@ -13,7 +13,7 @@ import {
 } from "../../queries";
 import { isSafeReturn, parseReturn } from "../../returnPath";
 import { useStore } from "../../store";
-import { displayDate, getAge } from "../../utils";
+import { displayDate, getAge, parseLocalDate } from "../../utils";
 import Error from "../alerts/Error";
 import Info from "../alerts/Info";
 import Breadcrumbs from "../Breadcrumbs";
@@ -109,7 +109,7 @@ const Subscription = () => {
     const p = player();
     setAgeRestricted(
       p?.date_of_birth
-        ? getAge(p.date_of_birth, new Date(season()?.end_date)) < minAge
+        ? getAge(p.date_of_birth, parseLocalDate(season()?.end_date)) < minAge
         : Boolean(p?.under_min_age)
     );
   });

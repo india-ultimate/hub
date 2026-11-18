@@ -12,6 +12,7 @@ import {
   Switch
 } from "solid-js";
 
+import { formatDay } from "../dates";
 import { SanctionedPill, TagChips } from "../eventTags";
 import {
   fetchTournamentBySlug,
@@ -138,13 +139,10 @@ const Tournament = () => {
               {tournamentQuery.data?.event?.location}
             </p>
             <p class="mt-2 text-center text-sm">
-              {new Date(
-                Date.parse(tournamentQuery.data?.event.start_date)
-              ).toLocaleDateString("en-US", {
+              {formatDay(tournamentQuery.data?.event.start_date, "en-US", {
                 year: "numeric",
                 month: "short",
-                day: "numeric",
-                timeZone: "UTC"
+                day: "numeric"
               })}
               <Show
                 when={
@@ -154,13 +152,10 @@ const Tournament = () => {
               >
                 {" "}
                 to{" "}
-                {new Date(
-                  Date.parse(tournamentQuery.data?.event.end_date)
-                ).toLocaleDateString("en-US", {
+                {formatDay(tournamentQuery.data?.event.end_date, "en-US", {
                   year: "numeric",
                   month: "short",
-                  day: "numeric",
-                  timeZone: "UTC"
+                  day: "numeric"
                 })}
               </Show>
             </p>
@@ -294,16 +289,11 @@ const Tournament = () => {
           <p class="text-center text-sm capitalize">
             Open till{" "}
             <span class="inline-flex font-medium">
-              {new Date(
-                Date.parse(
-                  tournamentQuery.data?.event?.player_registration_end_date
-                )
-              ).toLocaleDateString("en-US", {
-                year: "numeric",
-                month: "short",
-                day: "numeric",
-                timeZone: "UTC"
-              })}
+              {formatDay(
+                tournamentQuery.data?.event?.player_registration_end_date,
+                "en-US",
+                { year: "numeric", month: "short", day: "numeric" }
+              )}
             </span>
           </p>
         </A>

@@ -56,8 +56,12 @@ export const fetchUserData = (successCallback, failureCallback) => {
     });
 };
 
+// A bare "YYYY-MM-DD" is a day, not UTC midnight; timestamps stay as they are.
+const toDate = value =>
+  /^\d{4}-\d{2}-\d{2}$/.test(value) ? parseLocalDate(value) : new Date(value);
+
 export const displayDate = dateString => {
-  const date = new Date(dateString).toLocaleDateString("en-IN", {
+  const date = toDate(dateString).toLocaleDateString("en-IN", {
     year: "numeric",
     month: "long",
     day: "numeric"
@@ -66,7 +70,7 @@ export const displayDate = dateString => {
 };
 
 export const displayDateShort = dateString => {
-  const date = new Date(dateString).toLocaleDateString("en-US", {
+  const date = toDate(dateString).toLocaleDateString("en-US", {
     year: "numeric",
     month: "short",
     day: "numeric"
@@ -163,10 +167,8 @@ export const playerMatches = (player, text, selectedTeam) => {
   );
 };
 
-const today = new Date();
-
-export const getAge = (value, on = today) => {
-  const dobDate = new Date(value);
+export const getAge = (value, on = todayIST()) => {
+  const dobDate = typeof value === "string" ? toDate(value) : new Date(value);
   const yearDiff = on.getFullYear() - dobDate.getFullYear();
   const monthDiff = on.getMonth() - dobDate.getMonth();
   const dayDiff = on.getDate() - dobDate.getDate();
@@ -400,6 +402,15 @@ export const todayIST = () => {
   const ist = new Date(utc + 5.5 * 3600000);
   return new Date(ist.getFullYear(), ist.getMonth(), ist.getDate());
 };
+
+// A local Date as "YYYY-MM-DD", the inverse of parseLocalDate.
+export const isoDay = d => {
+  const pad = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+};
+
+// Today in India as "YYYY-MM-DD", for date inputs and day comparisons.
+export const todayISTString = () => isoDay(todayIST());
 
 /** Parse "YYYY-MM-DD" as local midnight, matching todayIST(). */
 export const parseLocalDate = dateStr => {

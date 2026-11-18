@@ -2,6 +2,7 @@ import { A } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
 import { createEffect, createSignal, For, Show } from "solid-js";
 
+import { formatDay } from "../../dates";
 import { ChevronRight } from "../../icons";
 import { fetchTournamentCards } from "../../queries";
 import { parseLocalDate, todayIST, tournamentLink } from "../../utils";
@@ -113,13 +114,10 @@ const TournamentCard = props => (
       </h3>
       <h4 class="mt-1 text-xs">{props.tournament.event.location}</h4>
       <h4 class="mt-1 text-xs">
-        {new Date(
-          Date.parse(props.tournament.event.start_date)
-        ).toLocaleDateString("en-US", {
+        {formatDay(props.tournament.event.start_date, "en-US", {
           year: "numeric",
           month: "short",
-          day: "numeric",
-          timeZone: "UTC"
+          day: "numeric"
         })}
         <Show
           when={
@@ -129,13 +127,10 @@ const TournamentCard = props => (
         >
           {" "}
           to{" "}
-          {new Date(
-            Date.parse(props.tournament.event.end_date)
-          ).toLocaleDateString("en-US", {
+          {formatDay(props.tournament.event.end_date, "en-US", {
             year: "numeric",
             month: "short",
-            day: "numeric",
-            timeZone: "UTC"
+            day: "numeric"
           })}
         </Show>
       </h4>

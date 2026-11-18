@@ -8,6 +8,7 @@ import { Icon } from "solid-heroicons";
 import { star, trophy } from "solid-heroicons/solid";
 import { createEffect, createSignal, For, Show } from "solid-js";
 
+import { formatDay } from "../../dates";
 import { useRestoreScroll } from "../../playerLinks";
 import {
   fetchTeamBySlug,
@@ -189,31 +190,20 @@ const Roster = () => {
                 <li>
                   <span>Rostering is open from </span>
                   <span class="inline-flex font-medium">
-                    {new Date(
-                      Date.parse(
-                        tournamentQuery.data?.event
-                          ?.player_registration_start_date
-                      )
-                    ).toLocaleDateString("en-US", {
-                      year: "numeric",
-                      month: "short",
-                      day: "numeric",
-                      timeZone: "UTC"
-                    })}
+                    {formatDay(
+                      tournamentQuery.data?.event
+                        ?.player_registration_start_date,
+                      "en-US",
+                      { year: "numeric", month: "short", day: "numeric" }
+                    )}
                   </span>{" "}
                   to{" "}
                   <span class="inline-flex font-medium">
-                    {new Date(
-                      Date.parse(
-                        tournamentQuery.data?.event
-                          ?.player_registration_end_date
-                      )
-                    ).toLocaleDateString("en-US", {
-                      year: "numeric",
-                      month: "short",
-                      day: "numeric",
-                      timeZone: "UTC"
-                    })}
+                    {formatDay(
+                      tournamentQuery.data?.event?.player_registration_end_date,
+                      "en-US",
+                      { year: "numeric", month: "short", day: "numeric" }
+                    )}
                   </span>
                 </li>
                 <li>

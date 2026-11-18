@@ -3,6 +3,7 @@ import clsx from "clsx";
 import { Icon } from "solid-heroicons";
 import { For, Show } from "solid-js";
 
+import { formatDay } from "../../dates";
 import { kindOf } from "../../reasonKinds";
 import Avatar from "./Avatar";
 import RemoveButton from "./RemoveButton";
@@ -26,12 +27,7 @@ const ROLE_OPTIONS = [
   ["MNGR", "Manager"]
 ];
 
-const day = iso =>
-  new Date(iso).toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "short",
-    timeZone: "UTC"
-  });
+const day = iso => formatDay(iso, "en-IN", { day: "numeric", month: "short" });
 
 const link =
   "inline-flex min-h-[44px] flex-none items-center px-2 text-xs font-semibold text-blue-700 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 dark:text-blue-400 dark:focus-visible:ring-blue-500";

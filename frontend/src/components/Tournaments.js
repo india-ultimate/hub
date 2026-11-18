@@ -6,6 +6,7 @@ import { checkBadge } from "solid-heroicons/solid";
 import { check, chevronRight } from "solid-heroicons/solid-mini";
 import { createEffect, createSignal, For, Match, Show, Switch } from "solid-js";
 
+import { formatDay } from "../dates";
 import {
   SANCTIONED,
   SanctionedSeal,
@@ -442,13 +443,10 @@ const Tournaments = () => {
                   </span>
                 </div>
                 <p class="text-sm text-blue-600 dark:text-blue-400">
-                  {new Date(
-                    Date.parse(tournament.event.start_date)
-                  ).toLocaleDateString("en-US", {
+                  {formatDay(tournament.event.start_date, "en-US", {
                     year: "numeric",
                     month: "short",
-                    day: "numeric",
-                    timeZone: "UTC"
+                    day: "numeric"
                   })}
                   <Show
                     when={
@@ -457,13 +455,10 @@ const Tournaments = () => {
                   >
                     {" "}
                     to{" "}
-                    {new Date(
-                      Date.parse(tournament.event.end_date)
-                    ).toLocaleDateString("en-US", {
+                    {formatDay(tournament.event.end_date, "en-US", {
                       year: "numeric",
                       month: "short",
-                      day: "numeric",
-                      timeZone: "UTC"
+                      day: "numeric"
                     })}
                   </Show>
                 </p>
