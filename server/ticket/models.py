@@ -98,5 +98,8 @@ class TicketMessage(models.Model):
     # Kept, its text and attachment cleared, so the conversation still reads.
     is_deleted = models.BooleanField(default=False, db_default=False)
 
+    class Meta:
+        ordering = ["created_at", "id"]
+
     def __str__(self) -> str:
         return f"Message on ticket {self.ticket.id} by {self.sender.username}"

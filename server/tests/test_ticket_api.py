@@ -648,3 +648,45 @@ class TestEditingReplies(HandledTicketTestCase):
         self.edit(self.creator, "Fixed")
         self.delete(self.creator)
         self.assertEqual([], mail.outbox)
+
+
+class TestMessageOrder(TicketTestCase):
+    def send(self, text: str) -> TicketMessage:
+        return TicketMessage.objects.create(ticket=self.ticket, sender=self.creator, message=text)
+
+    def message_ids(self) -> list[int]:
+        response = self.as_user(self.creator).get(f"/api/ticket/{self.ticket.id}")
+        self.assertEqual(200, response.status_code)
+        return [message["id"] for message in response.json()["messages"]]
+
+    def set_sent(self, message: TicketMessage, when: datetime.datetime) -> None:
+        TicketMessage.objects.filter(pk=message.pk).update(created_at=when)
+
+    def test_messages_come_back_in_the_order_they_were_sent(self) -> None:
+        first, second, third = self.send("1"), self.send("2"), self.send("3")
+        base = datetime.datetime(2026, 1, 1, tzinfo=datetime.UTC)
+        self.set_sent(first, base + datetime.timedelta(days=3))
+        self.set_sent(second, base + datetime.timedelta(days=1))
+        self.set_sent(third, base + datetime.timedelta(days=2))
+
+        self.assertEqual([second.pk, third.pk, first.pk], self.message_ids())
+
+    def test_an_edited_message_keeps_its_place(self) -> None:
+        a, b = self.send("a"), self.send("b")
+
+        response = self.as_user(self.creator).patch(
+            f"/api/ticket/{self.ticket.id}/message/{a.pk}",
+            data=json.dumps({"message": "a, fixed"}),
+            content_type="application/json",
+        )
+
+        self.assertEqual(200, response.status_code)
+        self.assertEqual([a.pk, b.pk], self.message_ids())
+
+    def test_same_second_messages_fall_back_to_id(self) -> None:
+        first, second = self.send("1"), self.send("2")
+        when = datetime.datetime(2026, 1, 1, tzinfo=datetime.UTC)
+        self.set_sent(first, when)
+        self.set_sent(second, when)
+
+        self.assertEqual([first.pk, second.pk], self.message_ids())
