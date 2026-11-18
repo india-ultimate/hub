@@ -1,14 +1,12 @@
 import { createMutation } from "@tanstack/solid-query";
 import clsx from "clsx";
-import { Icon } from "solid-heroicons";
-import { arrowDownTray } from "solid-heroicons/outline";
 import { createSignal, Show } from "solid-js";
 
 import { editTicketMessage } from "../../queries";
 import { formatDateTime, fullName } from "../../tickets";
 import ErrorAlert from "../alerts/Error";
+import AttachmentPreview from "./AttachmentPreview";
 
-const IMAGE = /\.(jpe?g|png|gif|webp|bmp|tiff)$/i;
 const focusRing =
   "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-800";
 // A text button, 44px tall on touch.
@@ -16,31 +14,6 @@ const action = clsx(
   "inline-flex min-h-[44px] items-center rounded px-2 text-sm font-medium text-gray-600 dark:text-gray-300 [@media(pointer:fine)]:min-h-[32px]",
   focusRing
 );
-
-const fileName = url => {
-  try {
-    return new URL(url).pathname.split("/").pop() || "attachment";
-  } catch {
-    return "attachment";
-  }
-};
-
-const download = async url => {
-  try {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error("Failed to fetch file");
-    const href = window.URL.createObjectURL(await response.blob());
-    const link = document.createElement("a");
-    link.href = href;
-    link.download = fileName(url);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(href);
-  } catch {
-    window.open(url, "_blank");
-  }
-};
 
 // One reply in a ticket's conversation, which its sender can edit in place.
 const Message = props => {
@@ -191,31 +164,12 @@ const Message = props => {
             </p>
             <p class="mt-1 whitespace-pre-wrap break-words">{m().message}</p>
             <Show when={m().attachment}>
-              <div class="mt-2 space-y-2">
-                <Show when={IMAGE.test(m().attachment)}>
-                  <img
-                    src={m().attachment}
-                    alt={`Attachment from ${fullName(m().sender)}`}
-                    loading="lazy"
-                    class="max-h-48 max-w-full rounded-lg object-contain"
-                  />
-                </Show>
-                <button
-                  type="button"
-                  onClick={() => download(m().attachment)}
-                  class={clsx(
-                    "inline-flex min-h-[44px] items-center gap-1.5 text-sm font-medium underline",
-                    mine() ? "text-white" : "text-blue-700 dark:text-blue-300"
-                  )}
-                >
-                  <Icon
-                    path={arrowDownTray}
-                    class="h-4 w-4"
-                    aria-hidden="true"
-                  />
-                  Download {fileName(m().attachment)}
-                </button>
-              </div>
+              <AttachmentPreview
+                url={m().attachment}
+                id={m().id}
+                alt={`Attachment from ${fullName(m().sender)}`}
+                mine={mine()}
+              />
             </Show>
           </div>
           <Show when={m().can_edit || m().can_delete}>
