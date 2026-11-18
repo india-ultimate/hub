@@ -7,7 +7,8 @@ import { useStore } from "../store";
 import { assetURL, fetchUserData } from "../utils";
 
 export default function Header() {
-  const [store, { userFetchSuccess }] = useStore();
+  const [store, { userFetchSuccess, userFetchFailure, authPending }] =
+    useStore();
   const [hamburgerOpen, setHamburgerOpen] = createSignal(false);
   const location = useLocation();
   createEffect(
@@ -23,7 +24,7 @@ export default function Header() {
   //   else setTheme("dark");
   // };
 
-  fetchUserData(userFetchSuccess, () => {});
+  fetchUserData(userFetchSuccess, userFetchFailure);
 
   return (
     <div>
@@ -58,30 +59,42 @@ export default function Header() {
               </Show>
             </button> */}
             <Show
-              when={store.loggedIn}
+              when={!authPending()}
               fallback={
-                <A
-                  href="/login"
-                  class="me-2 h-fit rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 focus:outline-none dark:bg-blue-600 dark:hover:bg-blue-700 md:hidden"
-                >
-                  Login
-                </A>
+                <span
+                  id="header-auth-pending-mobile"
+                  aria-hidden="true"
+                  class="mx-2 h-8 w-8 animate-pulse rounded-full bg-gray-200 motion-reduce:animate-none dark:bg-gray-700 md:hidden"
+                />
               }
             >
-              <A
-                href="/dashboard"
-                aria-label="My account"
-                class="inline-flex h-12 w-12 items-center justify-center rounded-lg p-2 text-sm text-gray-500 focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-300 dark:text-gray-400 dark:focus-visible:ring-blue-800 md:hidden"
+              <Show
+                when={store.loggedIn}
+                fallback={
+                  <A
+                    id="header-login-mobile"
+                    href="/login"
+                    class="me-2 h-fit rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 focus:outline-none dark:bg-blue-600 dark:hover:bg-blue-700 md:hidden"
+                  >
+                    Login
+                  </A>
+                }
               >
-                <img
-                  class="rounded-full"
-                  src={
-                    store?.data?.player?.profile_pic_url ||
-                    "https://secure.gravatar.com/avatar/04d7b508acc28c747e55a9d1d81cdd4a?s=200&d=mm&r=r"
-                  }
-                  alt=""
-                />
-              </A>
+                <A
+                  href="/dashboard"
+                  aria-label="My account"
+                  class="inline-flex h-12 w-12 items-center justify-center rounded-lg p-2 text-sm text-gray-500 focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-300 dark:text-gray-400 dark:focus-visible:ring-blue-800 md:hidden"
+                >
+                  <img
+                    class="rounded-full"
+                    src={
+                      store?.data?.player?.profile_pic_url ||
+                      "https://secure.gravatar.com/avatar/04d7b508acc28c747e55a9d1d81cdd4a?s=200&d=mm&r=r"
+                    }
+                    alt=""
+                  />
+                </A>
+              </Show>
             </Show>
             <button
               type="button"
@@ -197,50 +210,71 @@ export default function Header() {
                   Help
                 </A>
               </li>
-              <li class="mb-4 md:hidden">
-                <A
-                  href={store.loggedIn ? "/dashboard" : "/login"}
-                  activeClass="block py-2 rounded bg-transparent text-blue-700 md:p-0 dark:text-blue-500 underline underline-offset-8 font-bold decoration-2"
-                  inactiveClass="block py-2 text-gray-900 rounded md:hover:bg-transparent md:border-0 md:hover:text-blue-700 md:p-0 dark:text-white md:dark:hover:text-blue-500 md:dark:hover:bg-transparent"
-                  end={true}
-                >
-                  My account
-                </A>
-              </li>
+              <Show
+                when={!authPending()}
+                fallback={
+                  <li class="mb-4 md:hidden" aria-hidden="true">
+                    <span class="block h-10 py-2" />
+                  </li>
+                }
+              >
+                <li class="mb-4 md:hidden">
+                  <A
+                    href={store.loggedIn ? "/dashboard" : "/login"}
+                    activeClass="block py-2 rounded bg-transparent text-blue-700 md:p-0 dark:text-blue-500 underline underline-offset-8 font-bold decoration-2"
+                    inactiveClass="block py-2 text-gray-900 rounded md:hover:bg-transparent md:border-0 md:hover:text-blue-700 md:p-0 dark:text-white md:dark:hover:text-blue-500 md:dark:hover:bg-transparent"
+                    end={true}
+                  >
+                    My account
+                  </A>
+                </li>
+              </Show>
               <li>
                 <Show
-                  when={store.loggedIn}
+                  when={!authPending()}
                   fallback={
-                    <A
-                      href="/login"
-                      class="mb-2 me-2 hidden rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 md:inline"
-                    >
-                      Login
-                    </A>
+                    <span
+                      id="header-auth-pending"
+                      aria-hidden="true"
+                      class="hidden h-8 w-8 animate-pulse rounded-full bg-gray-200 motion-reduce:animate-none dark:bg-gray-700 md:block"
+                    />
                   }
                 >
-                  <A
-                    href="/dashboard"
-                    id="my-account"
-                    aria-label="My account"
-                    class="group relative hidden rounded-full py-2 pl-3 pr-4 text-gray-900 focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-300 dark:text-white dark:focus-visible:ring-blue-800 md:block md:border-0 md:p-0 md:hover:text-blue-700 md:dark:hover:text-blue-500"
+                  <Show
+                    when={store.loggedIn}
+                    fallback={
+                      <A
+                        id="header-login"
+                        href="/login"
+                        class="mb-2 me-2 hidden rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 md:inline"
+                      >
+                        Login
+                      </A>
+                    }
                   >
-                    <img
-                      class="rounded-full"
-                      style={{ width: "36px" }}
-                      src={
-                        store?.data?.player?.profile_pic_url ||
-                        "https://secure.gravatar.com/avatar/04d7b508acc28c747e55a9d1d81cdd4a?s=200&d=mm&r=r"
-                      }
-                      alt=""
-                    />
-                    <span
-                      aria-hidden="true"
-                      class="pointer-events-none absolute right-0 top-full z-10 mt-2 whitespace-nowrap rounded-lg bg-gray-900 px-3 py-2 text-sm font-medium text-white opacity-0 shadow-sm transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100 motion-reduce:transition-none dark:bg-gray-700"
+                    <A
+                      href="/dashboard"
+                      id="my-account"
+                      aria-label="My account"
+                      class="group relative hidden rounded-full py-2 pl-3 pr-4 text-gray-900 focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-300 dark:text-white dark:focus-visible:ring-blue-800 md:block md:border-0 md:p-0 md:hover:text-blue-700 md:dark:hover:text-blue-500"
                     >
-                      My account
-                    </span>
-                  </A>
+                      <img
+                        class="rounded-full"
+                        style={{ width: "36px" }}
+                        src={
+                          store?.data?.player?.profile_pic_url ||
+                          "https://secure.gravatar.com/avatar/04d7b508acc28c747e55a9d1d81cdd4a?s=200&d=mm&r=r"
+                        }
+                        alt=""
+                      />
+                      <span
+                        aria-hidden="true"
+                        class="pointer-events-none absolute right-0 top-full z-10 mt-2 whitespace-nowrap rounded-lg bg-gray-900 px-3 py-2 text-sm font-medium text-white opacity-0 shadow-sm transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100 motion-reduce:transition-none dark:bg-gray-700"
+                      >
+                        My account
+                      </span>
+                    </A>
+                  </Show>
                 </Show>
               </li>
               {/* <li>
