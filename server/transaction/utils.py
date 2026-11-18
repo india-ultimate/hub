@@ -232,6 +232,7 @@ def create_transaction(
     account: PaymentAccount | None = None
     per_player_penalty = 0
     player_names = ""
+    roles: dict[int, str] = {}  # player-fee lines: the place each one pays for
 
     if isinstance(order, PlayerRegistrationSchema):
         players = Player.objects.filter(id__in=order.player_ids)
@@ -376,15 +377,22 @@ def create_transaction(
         if len(players) == 0:
             return 400, {"message": "No players selected !"}
 
+        # Off a series, the role they were added to the roster in.
+        roles = dict(
+            RosterEntry.objects.filter(event=event, team=team, player__in=players).values_list(
+                "player_id", "role"
+            )
+        )
         for player in players:
-            is_playing = True
             if event.series:
                 can_register, error = can_register_player_to_series_event(
                     event=event, team=team, player=player
                 )
                 if not can_register and error:
                     return 400, error
-                is_playing = is_playing_role(series_role(event, team, player) or Role.DEFAULT)
+                roles[player.id] = series_role(event, team, player) or Role.DEFAULT
+            roles.setdefault(player.id, Role.DEFAULT)
+            is_playing = is_playing_role(roles[player.id])
 
             subscription_error = eligibility.check(player, event, is_playing=is_playing)
             if subscription_error is not None:
@@ -404,7 +412,7 @@ def create_transaction(
             event.player_late_penalty,
             event.player_late_penalty_end_date,
         )
-        base_amount = event.player_fee * len(players)
+        base_amount = sum(event.roster_fee(is_playing_role(roles[p.id])) for p in players)
         penalty = per_player_penalty * len(players)
         amount = base_amount + penalty
 
@@ -470,9 +478,10 @@ def create_transaction(
         )
     if isinstance(order, PlayerRegistrationSchema) and event is not None:
         # Each person's share, so one player can be refunded on their own.
-        RazorpayTransactionPlayer.objects.filter(transaction=transaction).update(
-            amount=event.player_fee + per_player_penalty
-        )
+        for player_id, role in roles.items():
+            RazorpayTransactionPlayer.objects.filter(
+                transaction=transaction, player_id=player_id
+            ).update(amount=event.roster_fee(is_playing_role(role)) + per_player_penalty, role=role)
 
     description = order_description(
         transaction.type,
@@ -633,9 +642,8 @@ def update_transaction_player_registrations(
         if (other := _paid_in_another_order(line)) is not None:
             _refund_unrosterable(line, f"Already paid for in order {other}.")
             continue
-        role: str = Role.DEFAULT
-        if event.series:
-            role = series_role(event, team, player) or Role.DEFAULT
+        # The place the line paid for; older lines didn't record one.
+        role: str = line.role or (event.series and series_role(event, team, player)) or Role.DEFAULT
         try:
             Registration.objects.get_or_create(
                 event=event,

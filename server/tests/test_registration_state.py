@@ -203,6 +203,42 @@ class TestPlayerOrderLines(RoutedTestCase):
         self.assertIn(self.team, self.tournament.teams.all())
         self.assertNotIn(self.team, self.tournament.partial_teams.all())
 
+    def test_a_coach_line_carries_the_non_player_fee_and_role(self) -> None:
+        Event.objects.filter(pk=self.event.pk).update(non_player_fee=30000)
+        player, coach = make_player("a@x.com"), make_player("c@x.com")
+        RosterEntry.objects.create(event=self.event, team=self.team, player=coach, role=Role.COACH)
+        self.tournament.teams.add(self.team)
+        data = {"team_id": self.team.id, "event_id": self.event.id}
+        response, create = self.place(
+            {**data, "player_ids": [player.id, coach.id]}, PLAYER_FEE + 30000
+        )
+        self.assertEqual(200, response.status_code, response.content)
+        self.assertEqual(PLAYER_FEE + 30000, create.call_args.kwargs["data"]["amount"])
+        order = RazorpayTransaction.objects.get(order_id=response.json()["order_id"])
+        self.assertEqual(
+            {(player.id, PLAYER_FEE, Role.DEFAULT), (coach.id, 30000, Role.COACH)},
+            set(
+                RazorpayTransactionPlayer.objects.filter(transaction=order).values_list(
+                    "player_id", "amount", "role"
+                )
+            ),
+        )
+
+    def test_payment_rosters_the_role_paid_for(self) -> None:
+        coach = make_player("c@x.com")
+        RosterEntry.objects.create(event=self.event, team=self.team, player=coach, role=Role.COACH)
+        order = self.order_for(coach)
+        # Taken off and added back as a player while the order was open.
+        RosterEntry.objects.filter(player=coach).delete()
+        RosterEntry.objects.create(event=self.event, team=self.team, player=coach)
+        RazorpayTransaction.objects.filter(pk=order.pk).update(
+            status="completed", payment_id="pay_x"
+        )
+        order.refresh_from_db()
+        apply_transaction(order)
+        registration = Registration.objects.get(event=self.event, player=coach)
+        self.assertEqual((Role.COACH, False), (registration.role, registration.is_playing))
+
     def test_paying_removes_the_entries_it_rostered(self) -> None:
         player = make_player("a@x.com")
         RosterEntry.objects.create(event=self.event, team=self.team, player=player)
