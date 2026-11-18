@@ -493,6 +493,7 @@ class EventAdmin(Rupees, admin.ModelAdmin[Event]):
         "partial_team_fee",
         "team_late_penalty",
         "player_fee",
+        "non_player_fee",
         "player_late_penalty",
     )
     form = EventAdminForm

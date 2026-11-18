@@ -6,7 +6,7 @@ from unittest import mock
 
 from django.db import IntegrityError
 from django.db.models import QuerySet
-from django.test import TestCase
+from django.test import SimpleTestCase, TestCase
 from django.utils.timezone import now
 from razorpay.resources.payment import Payment
 
@@ -35,6 +35,18 @@ from server.transaction.models import (
 )
 from server.transaction.utils import apply_transaction
 from server.utils import today
+
+
+class TestRosterFee(SimpleTestCase):
+    def test_blank_charges_the_player_fee(self) -> None:
+        self.assertEqual(75000, Event(player_fee=75000).roster_fee(False))
+
+    def test_non_players_pay_their_own_fee(self) -> None:
+        event = Event(player_fee=75000, non_player_fee=30000)
+        self.assertEqual((75000, 30000), (event.roster_fee(True), event.roster_fee(False)))
+
+    def test_zero_is_free(self) -> None:
+        self.assertEqual(0, Event(player_fee=75000, non_player_fee=0).roster_fee(False))
 
 
 class TestRosterEntry(TestCase):

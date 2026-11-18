@@ -151,7 +151,7 @@ class TestPaymentAccountIntegration(BaseCase):
         self.open(f"{APP_URL}/tournament/{self.event.slug}/team/{self.team.slug}/registration")
         self.assert_text(self.team.name, "h1")
         # With a fee, adding them readies them for the one checkout.
-        dialog = '//dialog[@aria-label="Add players"]'
+        dialog = '//dialog[@aria-label="Add to roster"]'
         self.click('button:contains("+ Add players")')
         self.type("#add-players-search", "Ravi")
         self.click(f'{dialog}//button[@aria-label="Add Ravi M"]')
