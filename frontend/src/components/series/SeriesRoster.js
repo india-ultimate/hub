@@ -20,11 +20,12 @@ import {
   fetchUser,
   revokeInvitation
 } from "../../queries";
+import { Bar, ListSkeleton, Loading } from "../../skeletons/primitives";
 import { useStore } from "../../store";
+import ErrorAlert from "../alerts/Error";
 import Info from "../alerts/Info";
 import Warning from "../alerts/Warning";
 import Breadcrumbs from "../Breadcrumbs";
-import PendingBar from "../PendingBar";
 import AddToRoster from "./AddToRoster";
 
 function groupInvitationsByPlayerId(invitations) {
@@ -168,7 +169,17 @@ const SeriesRoster = () => {
 
   return (
     <Switch>
-      <Match when={seriesQuery.isLoading}>Fetching series...</Match>
+      <Match when={seriesQuery.isLoading || teamQuery.isLoading}>
+        <Loading label="Loading roster">
+          <div class="mb-5 flex items-center space-x-1 md:space-x-3">
+            <Bar class="h-[30px] w-32 !rounded-full" />
+            <Bar class="h-4 w-24" />
+          </div>
+          <Bar class="my-2 h-[136px] w-full !rounded-xl" />
+          <Bar class="h-20 w-full !rounded-lg" />
+          <ListSkeleton rows={5} />
+        </Loading>
+      </Match>
       <Match when={seriesQuery.isError}>
         <div>
           <div>Series could not be fetched.</div>
@@ -257,7 +268,9 @@ const SeriesRoster = () => {
             <h4 class="mb-2 text-xl font-bold text-blue-500">Add to Roster</h4>
             <Switch>
               <Match when={authPending()}>
-                <PendingBar label="Checking who is signed in" />
+                <Loading quiet label="Loading roster actions">
+                  <Bar class="h-10 w-full" />
+                </Loading>
               </Match>
               <Match when={!store.loggedIn}>
                 <Info text="You must be logged in to add/remove players from the roster!" />
@@ -289,10 +302,26 @@ const SeriesRoster = () => {
               </h4>
 
               <Show
-                when={players().length !== 0}
-                fallback={<Info text="No Players in the roster yet" />}
+                when={!rosterQuery.isLoading}
+                fallback={
+                  <Loading quiet label="Loading players">
+                    <ListSkeleton rows={5} />
+                  </Loading>
+                }
               >
-                <RosterList registrations={players()} from={rosterFrom()} />
+                <Show
+                  when={rosterQuery.isSuccess}
+                  fallback={
+                    <ErrorAlert text="Couldn't load the roster. Try again later." />
+                  }
+                >
+                  <Show
+                    when={players().length !== 0}
+                    fallback={<Info text="No Players in the roster yet" />}
+                  >
+                    <RosterList registrations={players()} from={rosterFrom()} />
+                  </Show>
+                </Show>
               </Show>
 
               <Show when={staff().length !== 0}>
@@ -309,9 +338,28 @@ const SeriesRoster = () => {
                   Invited players {`(${numPendingInvitations() || "-"})`}
                 </h4>
 
+                <Show when={rosterInvitationsQuery.isLoading}>
+                  <Loading quiet label="Loading invitations">
+                    <ListSkeleton rows={2} />
+                  </Loading>
+                </Show>
                 <Show
-                  when={latestInvitationsPerPlayer()?.length !== 0}
-                  fallback={<Info text="No invitations sent yet" />}
+                  when={
+                    rosterInvitationsQuery.isSuccess &&
+                    latestInvitationsPerPlayer()?.length !== 0
+                  }
+                  fallback={
+                    <Show when={!rosterInvitationsQuery.isLoading}>
+                      <Show
+                        when={rosterInvitationsQuery.isSuccess}
+                        fallback={
+                          <ErrorAlert text="Couldn't load the invitations. Try again later." />
+                        }
+                      >
+                        <Info text="No invitations sent yet" />
+                      </Show>
+                    </Show>
+                  }
                 >
                   <div class="mt-2 w-full divide-y">
                     {/* Show pending, expired, declined invitations only */}

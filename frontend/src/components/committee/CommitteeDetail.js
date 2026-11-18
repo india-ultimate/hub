@@ -4,6 +4,7 @@ import { For, Show } from "solid-js";
 
 import { card, EmailLink, NoOneListed, termLabel } from "../../committees";
 import { fetchCommittee } from "../../queries";
+import { Bar, Loading } from "../../skeletons/primitives";
 import Error404 from "../Error404";
 import Person from "./Person";
 
@@ -37,6 +38,14 @@ const CommitteeDetail = () => {
         </Show>
       }
     >
+      <Show when={query.isLoading}>
+        <Loading label="Loading committee" class="mx-auto max-w-3xl">
+          <Bar class="h-5 w-28" />
+          <Bar class="mb-2 mt-2 h-10 w-72 max-w-full" />
+          <Bar class="h-7 w-96 max-w-full" />
+          <Bar class="mt-6 h-48 w-full !rounded-xl" />
+        </Loading>
+      </Show>
       <Show when={committee()}>
         <div class="mx-auto max-w-3xl">
           <A

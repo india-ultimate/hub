@@ -5,7 +5,6 @@ import { Icon } from "solid-heroicons";
 import {
   arrowRight,
   calendarDays,
-  documentText,
   eye,
   eyeSlash,
   lockClosed,
@@ -21,8 +20,9 @@ import {
 } from "../../colors";
 import { secondaryButton } from "../../committees";
 import { fetchAnnouncement } from "../../queries";
+import { Bar, Circle, Loading } from "../../skeletons/primitives";
 import { useStore } from "../../store";
-import PendingBar from "../PendingBar";
+import ErrorAlert from "../alerts/Error";
 import Comments from "./Comments";
 import CopyButton from "./CopyButton";
 import ReactionBar from "./ReactionBar";
@@ -79,7 +79,11 @@ export default function AnnouncementDetail() {
         fallback={
           <Show
             when={!authPending()}
-            fallback={<PendingBar label="Checking who is signed in" />}
+            fallback={
+              <Loading label="Loading sign-in status">
+                <Bar class="h-10 w-full" />
+              </Loading>
+            }
           >
             <div class="py-12 text-center">
               <Icon path={lockClosed} class="mx-auto h-16 w-16 text-gray-400" />
@@ -120,15 +124,22 @@ export default function AnnouncementDetail() {
         <Show
           when={query.data}
           fallback={
-            <div class="py-8 text-center">
-              <Icon
-                path={documentText}
-                class="mx-auto h-12 w-12 text-gray-400"
-              />
-              <p class="mt-2 text-gray-500 dark:text-gray-400">
-                Loading announcement...
-              </p>
-            </div>
+            <Show
+              when={query.isLoading}
+              fallback={
+                <ErrorAlert text="Couldn't load this announcement. Try again later." />
+              }
+            >
+              <Loading label="Loading announcement">
+                <Bar class="mb-4 h-5 w-24 !rounded-full" />
+                <Bar class="mb-3 h-9 w-3/4" />
+                <div class="mb-6 flex items-center gap-2">
+                  <Circle class="h-8 w-8" />
+                  <Bar class="h-4 w-32" />
+                </div>
+                <Bar class="h-64 w-full !rounded-lg" />
+              </Loading>
+            </Show>
           }
         >
           <article class="dark:border-gray-700 dark:bg-gray-800">

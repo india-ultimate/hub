@@ -5,6 +5,7 @@ import { arrowUpRight } from "solid-heroicons/solid";
 import { For, Match, Show, Switch } from "solid-js";
 
 import { fetchSeasons } from "../../queries";
+import { Bar, Loading } from "../../skeletons/primitives";
 import { displayDate } from "../../utils";
 
 const SeriesCard = props => {
@@ -68,6 +69,13 @@ const AllSeries = () => {
       </h1>
 
       <div class="mt-6 select-none lg:mt-10">
+        <Show when={seasonsQuery.isLoading}>
+          <Loading label="Loading series">
+            <Bar class="h-[52px] w-full !rounded-lg" />
+            <Bar class="mt-4 h-[118px] w-full !rounded-lg" />
+            <Bar class="mt-4 h-[118px] w-full !rounded-lg" />
+          </Loading>
+        </Show>
         <For each={seasonsQuery.data}>
           {season => (
             <Show when={season?.series?.length !== 0}>

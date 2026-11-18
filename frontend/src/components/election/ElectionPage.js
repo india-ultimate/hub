@@ -16,6 +16,7 @@ import {
   getMyWards,
   getVoterVerification
 } from "../../queries";
+import { Bar, Loading } from "../../skeletons/primitives";
 import { displayDateShort } from "../../utils";
 import Error from "../alerts/Error";
 import Info from "../alerts/Info";
@@ -267,7 +268,10 @@ const ElectionPage = () => {
   return (
     <div class="container mx-auto px-4 py-8">
       <Show when={electionQuery.isLoading}>
-        <p class="text-center">Loading election details...</p>
+        <Loading label="Loading election" class="space-y-8">
+          <Bar class="h-72 w-full !rounded-lg" />
+          <Bar class="h-48 w-full !rounded-lg" />
+        </Loading>
       </Show>
 
       <Show when={electionQuery.error}>
@@ -332,9 +336,18 @@ const ElectionPage = () => {
                     <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">
                       Number of Candidates
                     </h3>
-                    <p class="mt-1 text-gray-900 dark:text-white">
-                      {candidatesQuery.data?.length || 0}
-                    </p>
+                    <div class="mt-1 text-gray-900 dark:text-white">
+                      <Show
+                        when={!candidatesQuery.isLoading}
+                        fallback={
+                          <Loading quiet label="Loading candidate count">
+                            <Bar class="h-6 w-8" />
+                          </Loading>
+                        }
+                      >
+                        {candidatesQuery.data?.length || 0}
+                      </Show>
+                    </div>
                   </div>
                   <div>
                     <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">
@@ -440,8 +453,10 @@ const ElectionPage = () => {
                   </Show>
 
                   <Show when={userQuery.data}>
-                    <Show when={verificationQuery.isLoading}>
-                      <p class="text-center">Checking voting eligibility...</p>
+                    <Show when={verificationQuery.isInitialLoading}>
+                      <Loading quiet label="Checking voting eligibility">
+                        <Bar class="h-24 w-full !rounded-lg" />
+                      </Loading>
                     </Show>
 
                     <Show when={verificationQuery.error}>
@@ -528,9 +543,9 @@ const ElectionPage = () => {
 
                   <Show when={userQuery.isLoading}>
                     <div class="rounded-lg bg-gray-50 p-6 dark:bg-gray-700">
-                      <p class="text-center text-gray-600 dark:text-gray-300">
-                        Checking login status...
-                      </p>
+                      <Loading quiet label="Checking login status">
+                        <Bar class="h-12 w-full" />
+                      </Loading>
                     </div>
                   </Show>
                 </div>
@@ -538,9 +553,11 @@ const ElectionPage = () => {
 
               {/* Guardian Voting Section */}
               <Show when={electionStatus.status === "Active" && userQuery.data}>
-                <Show when={wardsQuery.isLoading}>
+                <Show when={wardsQuery.isInitialLoading}>
                   <div class="rounded-lg bg-white p-6 shadow dark:bg-gray-800">
-                    <p class="text-center">Checking for eligible wards...</p>
+                    <Loading quiet label="Checking for eligible wards">
+                      <Bar class="h-12 w-full" />
+                    </Loading>
                   </div>
                 </Show>
 
@@ -700,7 +717,15 @@ const ElectionPage = () => {
                 </h2>
 
                 <Show when={candidatesQuery.isLoading}>
-                  <p class="text-center">Loading candidates...</p>
+                  <Loading
+                    quiet
+                    label="Loading candidates"
+                    class="grid gap-6 md:grid-cols-2 lg:grid-cols-3"
+                  >
+                    <Bar class="h-72 w-full !rounded-lg" />
+                    <Bar class="h-72 w-full !rounded-lg" />
+                    <Bar class="h-72 w-full !rounded-lg" />
+                  </Loading>
                 </Show>
 
                 <Show when={candidatesQuery.error}>

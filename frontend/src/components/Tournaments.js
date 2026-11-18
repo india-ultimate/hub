@@ -14,6 +14,7 @@ import {
   tournamentTags
 } from "../eventTags";
 import { fetchTournamentCards } from "../queries";
+import { CardGridSkeleton, Loading } from "../skeletons/primitives";
 import { parseLocalDate, todayIST, tournamentLink } from "../utils";
 
 // A filter's label and its choices: label above on phones, beside them on
@@ -298,6 +299,11 @@ const Tournaments = () => {
         </div>
       </div>
 
+      <Show when={tournamentsQuery.isLoading}>
+        <Loading label="Loading tournaments">
+          <CardGridSkeleton count={6} class="mt-5" />
+        </Loading>
+      </Show>
       <Show when={tournamentsQuery.isError}>
         <p role="alert" class="mt-8 text-center text-red-600 dark:text-red-400">
           Couldn't load the tournaments. Check your connection and try again.

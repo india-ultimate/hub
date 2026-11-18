@@ -3,6 +3,7 @@ import { createQuery } from "@tanstack/solid-query";
 import { For, Show } from "solid-js";
 
 import { fetchElections } from "../../queries";
+import { Bar, Loading } from "../../skeletons/primitives";
 import { displayDateShort } from "../../utils";
 import Error from "../alerts/Error";
 
@@ -46,7 +47,13 @@ const ElectionsPage = () => {
       </h1>
 
       <Show when={electionsQuery.isLoading}>
-        <p class="text-center">Loading elections...</p>
+        <Loading label="Loading elections">
+          <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <Bar class="h-[152px] w-full !rounded-lg" />
+            <Bar class="h-[152px] w-full !rounded-lg" />
+            <Bar class="h-[152px] w-full !rounded-lg" />
+          </div>
+        </Loading>
       </Show>
 
       <Show when={electionsQuery.error}>
