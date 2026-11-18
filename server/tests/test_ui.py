@@ -239,6 +239,29 @@ class TestIntegration(BaseCase):
         # Pick up a CSRF cookie too, as a real first visit would.
         self.open(DJANGO_URL)
 
+    def slow_requests(self, path_suffix: str, ms: int, status: int | None = None) -> None:
+        """From the next page load on, fetches whose path ends in
+        `path_suffix` wait `ms`, or answer an empty `status` at once."""
+        reply = (
+            f"new Response(null, {{status: {status}}})"
+            if status is not None
+            else "original(...args)"
+        )
+        js = f"""
+        window.__slowed = true;
+        const original = window.fetch.bind(window);
+        window.fetch = (...args) => {{
+          const input = args[0];
+          const url = new URL(input instanceof Request ? input.url : String(input), location.href);
+          if (!url.pathname.endsWith({path_suffix!r})) return original(...args);
+          return new Promise((resolve) => setTimeout(() => resolve({reply}), {ms}));
+        }};
+        """
+        if self.browser == "firefox":
+            self.driver.script.add_preload_script(f"() => {{ {js} }}")
+        else:
+            self.driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {"source": js})
+
     def sign_in_with_otp(self, address: str) -> None:
         self.click("button#email-otp-tab")
         self.type("input#otp-email", address)
