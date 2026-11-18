@@ -188,6 +188,16 @@ class TestStatus(ApiCase):
         self.assertEqual("Team fee paid", titles["team_fee"])
         self.assertEqual("Roster paid", titles["roster"])
 
+    def test_a_roster_only_staff_paid_for_reads_paid(self) -> None:
+        Event.objects.filter(pk=self.event.pk).update(player_fee=0, non_player_fee=30000)
+        p = self.player("c@x.com", entry=False)
+        SeriesRegistration.objects.filter(player=p).update(role=Role.COACH)
+        Registration.objects.create(
+            event=self.event, team=self.team, player=p, role=Role.COACH, is_playing=False
+        )
+        titles = {s["key"]: s["title"] for s in self.status().json()["steps"]}
+        self.assertEqual("Roster paid", titles["roster"])
+
     def test_all_set_when_everyone_is_paid(self) -> None:
         p = self.player("a@x.com", entry=False)
         Registration.objects.create(event=self.event, team=self.team, player=p)

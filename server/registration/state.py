@@ -825,7 +825,8 @@ def step_states(ctx: Context, reasons: dict[int, Reason], page_path: str) -> lis
     callout = _payments_blocked(ctx.event) or callout
     roster_done = bool(reasons) and all(r.kind == "done" for r in reasons.values())
     roster_state = "done" if roster_done else "current"
-    done_title = "Roster paid" if ctx.event.player_fee else "Roster done"
+    paid_for = ctx.event.roster_fee(True) or ctx.event.roster_fee(False)
+    done_title = "Roster paid" if paid_for else "Roster done"
     steps.append(
         {
             "key": "roster",
