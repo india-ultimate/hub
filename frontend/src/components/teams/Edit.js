@@ -13,6 +13,7 @@ import { createEffect, createSignal, Show } from "solid-js";
 
 import { stateChoices, teamCategoryChoices } from "../../constants";
 import { fetchTeamBySlug, searchUsers, updateTeam } from "../../queries";
+import { Bar, Circle, Loading } from "../../skeletons/primitives";
 import { withinUploadLimits } from "../../uploads";
 import Breadcrumbs from "../Breadcrumbs";
 import FileInput from "../FileInput";
@@ -102,19 +103,38 @@ const Edit = () => {
       />
       <div class="mx-2">
         <div class="mb-6 flex w-full flex-row items-center justify-start gap-x-6 rounded-xl border border-gray-300 bg-gray-100 p-4">
-          <div>
-            <img
-              class="h-24 w-24 rounded-full p-1 ring-2 ring-gray-300 dark:ring-blue-500"
-              src={teamQuery.data?.image ?? teamQuery.data?.image_url}
-              alt="Bordered avatar"
-            />
-          </div>
-          <div class="text-lg font-bold text-gray-700">
-            {teamQuery.data?.name}
-          </div>
+          <Show
+            when={!teamQuery.isLoading}
+            fallback={
+              <Loading label="Loading team" class="flex items-center gap-x-6">
+                <Circle class="h-24 w-24" />
+                <Bar class="h-7 w-40" />
+              </Loading>
+            }
+          >
+            <div>
+              <img
+                class="h-24 w-24 rounded-full p-1 ring-2 ring-gray-300 dark:ring-blue-500"
+                src={teamQuery.data?.image ?? teamQuery.data?.image_url}
+                alt="Bordered avatar"
+              />
+            </div>
+            <div class="text-lg font-bold text-gray-700">
+              {teamQuery.data?.name}
+            </div>
+          </Show>
         </div>
       </div>
-      <div class="mt-6">
+      <Show when={teamQuery.isLoading}>
+        <Loading label="Loading team form" class="mt-6 space-y-6 px-8 lg:px-10">
+          <Bar class="h-16 w-full !rounded-lg" />
+          <Bar class="h-16 w-full !rounded-lg" />
+          <Bar class="h-16 w-full !rounded-lg" />
+          <Bar class="h-28 w-full !rounded-lg" />
+          <Bar class="h-16 w-full !rounded-lg" />
+        </Loading>
+      </Show>
+      <div class="mt-6" classList={{ hidden: teamQuery.isLoading }}>
         <Form
           class="space-y-2 md:space-y-4 lg:space-y-6"
           onSubmit={handleSubmit}

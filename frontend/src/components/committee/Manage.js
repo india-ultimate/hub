@@ -3,6 +3,8 @@ import { createSignal, Match, Show, Switch } from "solid-js";
 
 import { createSaved } from "../../committees";
 import { fetchCommittees } from "../../queries";
+import { Bar, Loading } from "../../skeletons/primitives";
+import Error from "../alerts/Error";
 import PillTabs from "../tabs/PillTabs";
 import ManageCommittees from "./ManageCommittees";
 import ManagePeople from "./ManagePeople";
@@ -30,7 +32,23 @@ const Manage = () => {
       >
         <Show when={saved()}>Saved</Show>
       </p>
-      <Show when={query.data}>
+      <Show
+        when={query.data}
+        fallback={
+          <Show
+            when={!query.isError}
+            fallback={
+              <Error text="The committees could not be loaded. Please try again." />
+            }
+          >
+            <Show when={query.isLoading}>
+              <Loading label="Loading committees">
+                <Bar class="h-48 w-full !rounded-lg" />
+              </Loading>
+            </Show>
+          </Show>
+        }
+      >
         <Switch>
           <Match when={tab() === "people"}>
             <ManagePeople committees={query.data} onSaved={flash} />

@@ -3,6 +3,7 @@ import { A } from "@solidjs/router";
 import { inboxStack } from "solid-heroicons/solid";
 import { createEffect, createSignal, Match, Show, Switch } from "solid-js";
 
+import { Bar, Loading } from "../skeletons/primitives";
 import { useStore } from "../store";
 import { displayDate, getCookie, getPlayer } from "../utils";
 import Breadcrumbs from "./Breadcrumbs";
@@ -437,7 +438,7 @@ const WaiverForm = props => {
 const Waiver = () => {
   const csrftoken = getCookie("csrftoken");
 
-  const [store, { setPlayerById }] = useStore();
+  const [store, { setPlayerById, authPending }] = useStore();
   const [player, setPlayer] = createSignal();
   const [status, setStatus] = createSignal("");
   const [error, setError] = createSignal("");
@@ -484,6 +485,12 @@ const Waiver = () => {
         ]}
       />
       <Switch>
+        <Match when={!player() && authPending()}>
+          <Loading label="Loading waiver">
+            <Bar class="h-8 w-56" />
+            <Bar class="mt-5 h-64 w-full !rounded-lg" />
+          </Loading>
+        </Match>
         <Match when={!player()}>
           <p>Waiver information for player {params.playerId} not accessible.</p>
         </Match>
@@ -516,7 +523,7 @@ const Waiver = () => {
           />
         </Match>
         {/* Self waiver form for adults */}
-        <Match when={player().user == store.data.id}>
+        <Match when={player()?.user == store.data.id}>
           <WaiverForm player={player()} handleSubmit={submitConsent} />
         </Match>
       </Switch>

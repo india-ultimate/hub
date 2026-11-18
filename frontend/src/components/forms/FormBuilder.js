@@ -6,6 +6,7 @@ import { createStore, produce } from "solid-js/store";
 import { groupSections, unreachableSections } from "../../formSections";
 import { toPaise, toRupees } from "../../money";
 import { createForm, fetchForm, updateForm } from "../../queries";
+import { Bar, Loading } from "../../skeletons/primitives";
 import Breadcrumbs from "../Breadcrumbs";
 
 const FIELD_TYPES = [
@@ -303,7 +304,14 @@ const FormBuilder = () => {
         fallback={
           <Show
             when={refusal()}
-            fallback={<p class="mt-3 text-gray-500">Loading...</p>}
+            fallback={
+              <Loading label="Loading form builder">
+                <Bar class="h-8 w-48" />
+                <Bar class="mt-4 h-16 w-full !rounded-lg" />
+                <Bar class="mt-6 h-12 w-full !rounded-lg" />
+                <Bar class="mt-5 h-32 w-full !rounded-lg" />
+              </Loading>
+            }
           >
             <p role="alert" class="mt-3 text-red-600 dark:text-red-400">
               {refusal()}

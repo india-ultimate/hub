@@ -10,6 +10,7 @@ import {
   fetchPaymentAccountTransactions,
   paymentAccountCsvUrl
 } from "../../queries";
+import { Bar, Loading } from "../../skeletons/primitives";
 import Pagination from "../ticket/Pagination";
 
 const day = iso =>
@@ -167,7 +168,12 @@ const PaymentAccount = () => {
           </p>
         </Match>
         <Match when={!data()}>
-          <p class={muted}>Loading payments...</p>
+          <Loading label="Loading payments">
+            <Bar class="h-8 w-64 md:h-9" />
+            <Bar class="mt-2 h-5 w-80 max-w-full" />
+            <Bar class="mt-5 h-11 w-full !rounded-lg" />
+            <Bar class="mt-5 h-72 w-full !rounded-lg" />
+          </Loading>
         </Match>
         <Match when={data()}>
           <header>

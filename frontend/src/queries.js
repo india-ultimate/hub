@@ -2526,8 +2526,10 @@ export const fetchForm = async slug => {
     credentials: "same-origin"
   });
   if (!response.ok) {
-    const data = await response.json();
-    throw new Error(data?.message || "Failed to fetch form");
+    const data = await response.json().catch(() => null);
+    const error = new Error(data?.message || "Failed to fetch form");
+    error.status = response.status;
+    throw error;
   }
   return await response.json();
 };

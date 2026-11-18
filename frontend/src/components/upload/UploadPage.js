@@ -11,6 +11,7 @@ import {
 } from "solid-js";
 
 import { Spinner } from "../../icons";
+import { Bar, Loading } from "../../skeletons/primitives";
 import { getCookie } from "../../utils";
 import Error from "../alerts/Error";
 
@@ -165,7 +166,10 @@ const UploadPage = () => {
     <div class="mx-auto max-w-md py-6 sm:py-10">
       <Switch>
         <Match when={loaded.loading}>
-          <Spinner />
+          <Loading label="Loading upload link">
+            <Bar class="h-8 w-56" />
+            <Bar class="mt-5 h-48 w-full !rounded-lg" />
+          </Loading>
         </Match>
         <Match when={loaded()?.problem}>
           <h1 class="text-2xl font-bold text-gray-900 dark:text-white">

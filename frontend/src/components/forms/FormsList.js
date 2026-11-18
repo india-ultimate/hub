@@ -6,7 +6,9 @@ import { For, Show, Suspense } from "solid-js";
 
 import { inr } from "../../money";
 import { fetchForms } from "../../queries";
+import { Bar, Loading } from "../../skeletons/primitives";
 import { useStore } from "../../store";
+import Error from "../alerts/Error";
 import Breadcrumbs from "../Breadcrumbs";
 
 // The description is rich HTML; show a plain-text snippet in the list.
@@ -15,6 +17,14 @@ const toPlainText = html => {
   tmp.innerHTML = DOMPurify.sanitize(html || "");
   return tmp.textContent || "";
 };
+
+const FormsSkeleton = () => (
+  <Loading label="Loading forms" class="mt-6 space-y-3">
+    <Bar class="h-24 w-full !rounded-lg" />
+    <Bar class="h-24 w-full !rounded-lg" />
+    <Bar class="h-24 w-full !rounded-lg" />
+  </Loading>
+);
 
 const FormsList = () => {
   const [store] = useStore();
@@ -40,60 +50,73 @@ const FormsList = () => {
         </Show>
       </div>
 
-      <Suspense fallback={<p class="mt-6 text-gray-500">Loading forms...</p>}>
-        <Show
-          when={query.data?.length}
-          fallback={<p class="mt-6 text-gray-500">No forms available.</p>}
-        >
-          <ul class="mt-6 space-y-3">
-            <For each={query.data}>
-              {form => (
-                <li class="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
-                  <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div class="min-w-0 break-words">
-                      <A
-                        href={`/forms/${form.slug}`}
-                        class="text-lg font-medium text-blue-600 hover:underline dark:text-blue-400"
-                      >
-                        {form.title}
-                      </A>
-                      <Show when={form.payment_amount}>
-                        <span class="ml-2 rounded bg-amber-100 px-2 py-0.5 text-xs text-amber-800 dark:bg-amber-900 dark:text-amber-200">
-                          {inr(form.payment_amount)}
-                        </span>
-                      </Show>
-                      <Show when={!form.is_active}>
-                        <span class="ml-2 rounded bg-gray-200 px-2 py-0.5 text-xs text-gray-700 dark:bg-gray-700 dark:text-gray-200">
-                          Inactive
-                        </span>
-                      </Show>
-                      <Show when={form.description}>
-                        <p class="mt-1 line-clamp-2 text-sm text-gray-500">
-                          {toPlainText(form.description)}
-                        </p>
+      <Suspense fallback={<FormsSkeleton />}>
+        <Show when={!query.isLoading} fallback={<FormsSkeleton />}>
+          <Show
+            when={query.data?.length}
+            fallback={
+              <Show
+                when={!query.isError}
+                fallback={
+                  <div class="mt-6">
+                    <Error text="The forms could not be loaded. Please try again in a moment." />
+                  </div>
+                }
+              >
+                <p class="mt-6 text-gray-500">No forms available.</p>
+              </Show>
+            }
+          >
+            <ul class="mt-6 space-y-3">
+              <For each={query.data}>
+                {form => (
+                  <li class="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div class="min-w-0 break-words">
+                        <A
+                          href={`/forms/${form.slug}`}
+                          class="text-lg font-medium text-blue-600 hover:underline dark:text-blue-400"
+                        >
+                          {form.title}
+                        </A>
+                        <Show when={form.payment_amount}>
+                          <span class="ml-2 rounded bg-amber-100 px-2 py-0.5 text-xs text-amber-800 dark:bg-amber-900 dark:text-amber-200">
+                            {inr(form.payment_amount)}
+                          </span>
+                        </Show>
+                        <Show when={!form.is_active}>
+                          <span class="ml-2 rounded bg-gray-200 px-2 py-0.5 text-xs text-gray-700 dark:bg-gray-700 dark:text-gray-200">
+                            Inactive
+                          </span>
+                        </Show>
+                        <Show when={form.description}>
+                          <p class="mt-1 line-clamp-2 text-sm text-gray-500">
+                            {toPlainText(form.description)}
+                          </p>
+                        </Show>
+                      </div>
+                      <Show when={form.can_manage}>
+                        <div class="flex shrink-0 flex-wrap gap-2">
+                          <A
+                            href={`/forms/${form.slug}/edit`}
+                            class="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
+                          >
+                            Edit
+                          </A>
+                          <A
+                            href={`/forms/${form.slug}/responses`}
+                            class="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
+                          >
+                            Responses
+                          </A>
+                        </div>
                       </Show>
                     </div>
-                    <Show when={form.can_manage}>
-                      <div class="flex shrink-0 flex-wrap gap-2">
-                        <A
-                          href={`/forms/${form.slug}/edit`}
-                          class="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
-                        >
-                          Edit
-                        </A>
-                        <A
-                          href={`/forms/${form.slug}/responses`}
-                          class="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
-                        >
-                          Responses
-                        </A>
-                      </div>
-                    </Show>
-                  </div>
-                </li>
-              )}
-            </For>
-          </ul>
+                  </li>
+                )}
+              </For>
+            </ul>
+          </Show>
         </Show>
       </Suspense>
     </div>

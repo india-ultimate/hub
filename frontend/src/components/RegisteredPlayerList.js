@@ -7,7 +7,7 @@ import {
 import { createSignal, For, Match, Switch } from "solid-js";
 import { onMount } from "solid-js";
 
-import { Spinner } from "../icons";
+import { Loading, TableRowsSkeleton } from "../skeletons/primitives";
 import { useStore } from "../store";
 import { fetchUrl, playerMatches } from "../utils";
 
@@ -50,7 +50,9 @@ const RegisteredPlayerList = () => {
         <div class="relative overflow-x-auto">
           <Switch>
             <Match when={loading()}>
-              <Spinner />
+              <Loading label="Loading players">
+                <TableRowsSkeleton rows={8} cols={4} />
+              </Loading>
             </Match>
             <Match when={!store.data.is_staff}>
               <p>You are not an admin!</p>

@@ -25,9 +25,20 @@ import {
   submitFormResponse
 } from "../../queries";
 import { openCheckout } from "../../razorpay";
+import { Bar, Loading } from "../../skeletons/primitives";
 import { useStore } from "../../store";
 import { fetchUserData } from "../../utils";
+import Error from "../alerts/Error";
 import Breadcrumbs from "../Breadcrumbs";
+
+const FormSkeleton = () => (
+  <Loading label="Loading form">
+    <Bar class="h-8 w-64 max-w-full" />
+    <Bar class="mt-6 h-5 w-full" />
+    <Bar class="mt-2 h-5 w-3/4" />
+    <Bar class="mt-6 h-48 w-full !rounded-lg" />
+  </Loading>
+);
 
 const FormView = () => {
   const params = useParams();
@@ -169,248 +180,262 @@ const FormView = () => {
           { name: formQuery.data?.title || "Form" }
         ]}
       />
-      <Suspense fallback={<p class="text-gray-500">Loading...</p>}>
-        <Show when={formQuery.data} fallback={<p>Form not found.</p>}>
-          <div class="flex flex-wrap items-center justify-between gap-3">
-            <h1 class="min-w-0 break-words text-2xl font-bold text-gray-900 dark:text-white">
-              {formQuery.data.title}
-            </h1>
-            <Show when={formQuery.data.can_manage}>
-              <div class="flex flex-wrap gap-2">
-                <A
-                  href={`/forms/${params.slug}/edit`}
-                  class="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
-                >
-                  Edit
-                </A>
-                <A
-                  href={`/forms/${params.slug}/responses`}
-                  class="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
-                >
-                  Responses
-                </A>
-              </div>
-            </Show>
-          </div>
-          <Show when={formQuery.data.description}>
-            <div
-              class="prose prose-sm mt-2 max-w-none whitespace-pre-line text-gray-600 dark:prose-invert dark:text-gray-300 [&_a]:text-blue-600 [&_a]:underline dark:[&_a]:text-blue-400"
-              // eslint-disable-next-line solid/no-innerhtml
-              innerHTML={DOMPurify.sanitize(formQuery.data.description)}
-            />
-          </Show>
-
-          <Show when={myResponsesQuery.data?.length}>
-            <div class="mt-4 rounded-lg bg-blue-50 p-4 text-sm text-blue-800 dark:bg-gray-800 dark:text-blue-300">
-              <p>
-                You've submitted this form {myResponsesQuery.data.length}{" "}
-                time(s).
-              </p>
-              <details class="mt-2">
-                <summary class="cursor-pointer">View your responses</summary>
-                <For each={myResponsesQuery.data}>
-                  {resp => (
-                    <div class="mt-2 border-t border-blue-200 pt-2 dark:border-gray-700">
-                      <p class="text-xs text-gray-500">
-                        {new Date(resp.submitted_at).toLocaleString()}
-                      </p>
-                      <For each={formQuery.data.fields}>
-                        {field => (
-                          <p>
-                            <span class="font-medium">{field.label}:</span>{" "}
-                            {renderAnswer(resp.answers[field.key])}
-                          </p>
-                        )}
-                      </For>
-                    </div>
-                  )}
-                </For>
-              </details>
-            </div>
-          </Show>
-
+      <Suspense fallback={<FormSkeleton />}>
+        <Show when={!formQuery.isLoading} fallback={<FormSkeleton />}>
           <Show
-            when={formQuery.data.is_active}
+            when={formQuery.data}
             fallback={
-              <p class="mt-6 rounded-lg bg-gray-100 p-4 text-sm text-gray-700 dark:bg-gray-800 dark:text-gray-300">
-                This form is no longer accepting responses.
-              </p>
+              <Show
+                when={formQuery.error?.status !== 404}
+                fallback={<p>Form not found.</p>}
+              >
+                <Error text="Couldn't load this form. Please try again." />
+              </Show>
             }
           >
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <h1 class="min-w-0 break-words text-2xl font-bold text-gray-900 dark:text-white">
+                {formQuery.data.title}
+              </h1>
+              <Show when={formQuery.data.can_manage}>
+                <div class="flex flex-wrap gap-2">
+                  <A
+                    href={`/forms/${params.slug}/edit`}
+                    class="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
+                  >
+                    Edit
+                  </A>
+                  <A
+                    href={`/forms/${params.slug}/responses`}
+                    class="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
+                  >
+                    Responses
+                  </A>
+                </div>
+              </Show>
+            </div>
+            <Show when={formQuery.data.description}>
+              <div
+                class="prose prose-sm mt-2 max-w-none whitespace-pre-line text-gray-600 dark:prose-invert dark:text-gray-300 [&_a]:text-blue-600 [&_a]:underline dark:[&_a]:text-blue-400"
+                // eslint-disable-next-line solid/no-innerhtml
+                innerHTML={DOMPurify.sanitize(formQuery.data.description)}
+              />
+            </Show>
+
+            <Show when={myResponsesQuery.data?.length}>
+              <div class="mt-4 rounded-lg bg-blue-50 p-4 text-sm text-blue-800 dark:bg-gray-800 dark:text-blue-300">
+                <p>
+                  You've submitted this form {myResponsesQuery.data.length}{" "}
+                  time(s).
+                </p>
+                <details class="mt-2">
+                  <summary class="cursor-pointer">View your responses</summary>
+                  <For each={myResponsesQuery.data}>
+                    {resp => (
+                      <div class="mt-2 border-t border-blue-200 pt-2 dark:border-gray-700">
+                        <p class="text-xs text-gray-500">
+                          {new Date(resp.submitted_at).toLocaleString()}
+                        </p>
+                        <For each={formQuery.data.fields}>
+                          {field => (
+                            <p>
+                              <span class="font-medium">{field.label}:</span>{" "}
+                              {renderAnswer(resp.answers[field.key])}
+                            </p>
+                          )}
+                        </For>
+                      </div>
+                    )}
+                  </For>
+                </details>
+              </div>
+            </Show>
+
             <Show
-              when={!done()}
+              when={formQuery.data.is_active}
               fallback={
-                <p class="mt-6 text-green-600 dark:text-green-400">
-                  {status()}
+                <p class="mt-6 rounded-lg bg-gray-100 p-4 text-sm text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                  This form is no longer accepting responses.
                 </p>
               }
             >
-              <form class="mt-6 space-y-5" onSubmit={handleSubmit}>
-                <Show when={groups().length > 1}>
-                  <div>
-                    <div
-                      ref={heading}
-                      tabindex="-1"
-                      class="focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                    >
-                      <p class="text-sm font-medium text-gray-500 dark:text-gray-400">
-                        Section {position() + 1}
-                      </p>
-                      <Show when={groups()[current()].section.title}>
-                        <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
-                          {groups()[current()].section.title}
-                        </h2>
-                      </Show>
-                    </div>
-                    <p class="mt-1 whitespace-pre-line text-sm text-gray-600 dark:text-gray-300">
-                      {groups()[current()].section.description}
-                    </p>
-                  </div>
-                </Show>
-                <For each={groups()[current()].fields}>
-                  {field => (
-                    <div>
-                      <label
-                        class="mb-1 block text-sm font-medium text-gray-900 dark:text-white"
-                        for={field.key}
-                      >
-                        {field.label}
-                        <Show when={field.required}>
-                          <span class="ml-1 text-red-500">*</span>
-                        </Show>
-                      </label>
-                      <Switch>
-                        <Match when={field.type === "textarea"}>
-                          <textarea
-                            id={field.key}
-                            required={field.required}
-                            class="w-full rounded-lg border border-gray-300 p-2.5 text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-                            rows="4"
-                            value={answers[field.key] || ""}
-                            onInput={e => setValue(field.key, e.target.value)}
-                          />
-                        </Match>
-                        <Match when={field.type === "dropdown"}>
-                          <select
-                            id={field.key}
-                            required={field.required}
-                            class="w-full rounded-lg border border-gray-300 p-2.5 text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-                            onChange={e => setValue(field.key, e.target.value)}
-                          >
-                            <option value="">Select...</option>
-                            <For each={field.options}>
-                              {opt => (
-                                <option
-                                  value={opt}
-                                  selected={answers[field.key] === opt}
-                                >
-                                  {opt}
-                                </option>
-                              )}
-                            </For>
-                          </select>
-                        </Match>
-                        <Match when={field.type === "radio"}>
-                          <div class="space-y-1">
-                            <For each={field.options}>
-                              {opt => (
-                                <label class="flex min-h-[44px] items-center gap-2 text-sm text-gray-900 dark:text-white">
-                                  <input
-                                    type="radio"
-                                    name={field.key}
-                                    value={opt}
-                                    required={field.required}
-                                    checked={answers[field.key] === opt}
-                                    onChange={() => setValue(field.key, opt)}
-                                  />
-                                  {opt}
-                                </label>
-                              )}
-                            </For>
-                          </div>
-                        </Match>
-                        <Match when={field.type === "checkbox"}>
-                          <div class="space-y-1">
-                            <For each={field.options}>
-                              {opt => (
-                                <label class="flex min-h-[44px] items-center gap-2 text-sm text-gray-900 dark:text-white">
-                                  <input
-                                    type="checkbox"
-                                    value={opt}
-                                    checked={(
-                                      answers[field.key] || []
-                                    ).includes(opt)}
-                                    onChange={e =>
-                                      toggleCheckbox(
-                                        field.key,
-                                        opt,
-                                        e.target.checked
-                                      )
-                                    }
-                                  />
-                                  {opt}
-                                </label>
-                              )}
-                            </For>
-                          </div>
-                        </Match>
-                        <Match when={true}>
-                          <input
-                            id={field.key}
-                            type={
-                              field.type === "number"
-                                ? "number"
-                                : field.type === "email"
-                                  ? "email"
-                                  : field.type === "date"
-                                    ? "date"
-                                    : "text"
-                            }
-                            required={field.required}
-                            value={untrack(() => answers[field.key]) || ""}
-                            class="w-full rounded-lg border border-gray-300 p-2.5 text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-                            onInput={e => setValue(field.key, e.target.value)}
-                          />
-                        </Match>
-                      </Switch>
-                    </div>
-                  )}
-                </For>
-
-                <Show when={status() && !done()}>
-                  <p class="text-sm text-red-600 dark:text-red-400">
+              <Show
+                when={!done()}
+                fallback={
+                  <p class="mt-6 text-green-600 dark:text-green-400">
                     {status()}
                   </p>
-                </Show>
-
-                <div class="flex items-center justify-between gap-3">
-                  <Show when={position() > 0} fallback={<span />}>
-                    <button
-                      type="button"
-                      onClick={() => navigate(-1)}
-                      class="min-h-[44px] rounded-lg border border-gray-300 px-5 py-2.5 text-sm font-medium text-gray-900 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-gray-600 dark:text-white dark:hover:bg-gray-700"
-                    >
-                      Back
-                    </button>
-                  </Show>
-                  <button
-                    type="submit"
-                    disabled={submitting()}
-                    class="min-h-[44px] rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-gray-400"
-                  >
-                    <Show when={next() === null} fallback="Next">
-                      <Show
-                        when={formQuery.data.payment_amount}
-                        fallback={submitting() ? "Submitting..." : "Submit"}
+                }
+              >
+                <form class="mt-6 space-y-5" onSubmit={handleSubmit}>
+                  <Show when={groups().length > 1}>
+                    <div>
+                      <div
+                        ref={heading}
+                        tabindex="-1"
+                        class="focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                       >
-                        {submitting()
-                          ? "Processing..."
-                          : `Pay ${inr(formQuery.data.payment_amount)} & Submit`}
-                      </Show>
+                        <p class="text-sm font-medium text-gray-500 dark:text-gray-400">
+                          Section {position() + 1}
+                        </p>
+                        <Show when={groups()[current()].section.title}>
+                          <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
+                            {groups()[current()].section.title}
+                          </h2>
+                        </Show>
+                      </div>
+                      <p class="mt-1 whitespace-pre-line text-sm text-gray-600 dark:text-gray-300">
+                        {groups()[current()].section.description}
+                      </p>
+                    </div>
+                  </Show>
+                  <For each={groups()[current()].fields}>
+                    {field => (
+                      <div>
+                        <label
+                          class="mb-1 block text-sm font-medium text-gray-900 dark:text-white"
+                          for={field.key}
+                        >
+                          {field.label}
+                          <Show when={field.required}>
+                            <span class="ml-1 text-red-500">*</span>
+                          </Show>
+                        </label>
+                        <Switch>
+                          <Match when={field.type === "textarea"}>
+                            <textarea
+                              id={field.key}
+                              required={field.required}
+                              class="w-full rounded-lg border border-gray-300 p-2.5 text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                              rows="4"
+                              value={answers[field.key] || ""}
+                              onInput={e => setValue(field.key, e.target.value)}
+                            />
+                          </Match>
+                          <Match when={field.type === "dropdown"}>
+                            <select
+                              id={field.key}
+                              required={field.required}
+                              class="w-full rounded-lg border border-gray-300 p-2.5 text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                              onChange={e =>
+                                setValue(field.key, e.target.value)
+                              }
+                            >
+                              <option value="">Select...</option>
+                              <For each={field.options}>
+                                {opt => (
+                                  <option
+                                    value={opt}
+                                    selected={answers[field.key] === opt}
+                                  >
+                                    {opt}
+                                  </option>
+                                )}
+                              </For>
+                            </select>
+                          </Match>
+                          <Match when={field.type === "radio"}>
+                            <div class="space-y-1">
+                              <For each={field.options}>
+                                {opt => (
+                                  <label class="flex min-h-[44px] items-center gap-2 text-sm text-gray-900 dark:text-white">
+                                    <input
+                                      type="radio"
+                                      name={field.key}
+                                      value={opt}
+                                      required={field.required}
+                                      checked={answers[field.key] === opt}
+                                      onChange={() => setValue(field.key, opt)}
+                                    />
+                                    {opt}
+                                  </label>
+                                )}
+                              </For>
+                            </div>
+                          </Match>
+                          <Match when={field.type === "checkbox"}>
+                            <div class="space-y-1">
+                              <For each={field.options}>
+                                {opt => (
+                                  <label class="flex min-h-[44px] items-center gap-2 text-sm text-gray-900 dark:text-white">
+                                    <input
+                                      type="checkbox"
+                                      value={opt}
+                                      checked={(
+                                        answers[field.key] || []
+                                      ).includes(opt)}
+                                      onChange={e =>
+                                        toggleCheckbox(
+                                          field.key,
+                                          opt,
+                                          e.target.checked
+                                        )
+                                      }
+                                    />
+                                    {opt}
+                                  </label>
+                                )}
+                              </For>
+                            </div>
+                          </Match>
+                          <Match when={true}>
+                            <input
+                              id={field.key}
+                              type={
+                                field.type === "number"
+                                  ? "number"
+                                  : field.type === "email"
+                                    ? "email"
+                                    : field.type === "date"
+                                      ? "date"
+                                      : "text"
+                              }
+                              required={field.required}
+                              value={untrack(() => answers[field.key]) || ""}
+                              class="w-full rounded-lg border border-gray-300 p-2.5 text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                              onInput={e => setValue(field.key, e.target.value)}
+                            />
+                          </Match>
+                        </Switch>
+                      </div>
+                    )}
+                  </For>
+
+                  <Show when={status() && !done()}>
+                    <p class="text-sm text-red-600 dark:text-red-400">
+                      {status()}
+                    </p>
+                  </Show>
+
+                  <div class="flex items-center justify-between gap-3">
+                    <Show when={position() > 0} fallback={<span />}>
+                      <button
+                        type="button"
+                        onClick={() => navigate(-1)}
+                        class="min-h-[44px] rounded-lg border border-gray-300 px-5 py-2.5 text-sm font-medium text-gray-900 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-gray-600 dark:text-white dark:hover:bg-gray-700"
+                      >
+                        Back
+                      </button>
                     </Show>
-                  </button>
-                </div>
-              </form>
+                    <button
+                      type="submit"
+                      disabled={submitting()}
+                      class="min-h-[44px] rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-gray-400"
+                    >
+                      <Show when={next() === null} fallback="Next">
+                        <Show
+                          when={formQuery.data.payment_amount}
+                          fallback={submitting() ? "Submitting..." : "Submit"}
+                        >
+                          {submitting()
+                            ? "Processing..."
+                            : `Pay ${inr(formQuery.data.payment_amount)} & Submit`}
+                        </Show>
+                      </Show>
+                    </button>
+                  </div>
+                </form>
+              </Show>
             </Show>
           </Show>
         </Show>
