@@ -485,7 +485,7 @@ export const calculateLatePenalty = (
     if (today > penaltyEnd) return { daysLate: 0, penalty: 0 };
   }
 
-  const daysLate = Math.ceil((today - regEnd) / (1000 * 60 * 60 * 24));
+  const daysLate = Math.round((today - regEnd) / (1000 * 60 * 60 * 24));
   return { daysLate, penalty: daysLate * penaltyPerDay };
 };
 

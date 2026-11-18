@@ -1520,8 +1520,7 @@ def playing_roster_error(event: Event, playing: bool = True) -> message_response
         }
 
     if not is_today_in_between_dates(
-        from_date=event.player_registration_start_date,
-        to_date=event.player_registration_end_date,
+        event.player_registration_start_date, event.last_rostering_day()
     ):
         return {"message": "Rostering has closed, you can't roster players now !"}
 
@@ -1597,17 +1596,8 @@ def remove_from_roster(
     except (Event.DoesNotExist, Team.DoesNotExist, Tournament.DoesNotExist):
         return 400, {"message": "Team/Event/Tournament does not exist"}
 
-    end_date = (
-        max(
-            tournament.event.player_registration_end_date,
-            tournament.event.player_late_penalty_end_date,
-        )
-        if tournament.event.player_late_penalty_end_date
-        else tournament.event.player_registration_end_date
-    )
     rostering_open = is_today_in_between_dates(
-        from_date=tournament.event.player_registration_start_date,
-        to_date=end_date,
+        tournament.event.player_registration_start_date, tournament.event.last_rostering_day()
     )
     if not rostering_open:
         return 400, {"message": "Rostering has closed, you can't remove players now !"}
@@ -2147,7 +2137,7 @@ def add_team_registration(
 
     if not is_today_in_between_dates(
         tournament.event.team_registration_start_date,
-        tournament.event.team_late_penalty_end_date or tournament.event.team_registration_end_date,
+        tournament.event.last_team_registration_day(),
     ):
         return 400, {"message": "Team registration has closed, you can't register a team now !"}
 
@@ -2197,7 +2187,7 @@ def remove_team_registration(
 
     if not is_today_in_between_dates(
         tournament.event.team_registration_start_date,
-        tournament.event.team_late_penalty_end_date or tournament.event.team_registration_end_date,
+        tournament.event.last_team_registration_day(),
     ):
         return 400, {"message": "Team registration has closed, you can't de-register a team now !"}
 

@@ -223,6 +223,24 @@ class TestEventCapOnRoleChange(TestCase):
         self.staff.refresh_from_db()
         self.assertTrue(self.staff.is_playing)
 
+    def test_a_promotion_in_the_late_window_is_allowed(self) -> None:
+        # The page says rostering is open until the late fee ends.
+        self.series.event_max_players_total = 2
+        self.series.save()
+        Event.objects.filter(pk=self.event.pk).update(
+            player_registration_end_date=today() - datetime.timedelta(days=1),
+            player_late_penalty_end_date=today() + datetime.timedelta(days=3),
+        )
+        series_registration = SeriesRegistration.objects.get(player=self.staff.player)
+        self.assertIsNone(change_series_role(series_registration, Role.DEFAULT))
+
+        response = self.client.put(
+            self.roster_url(self.staff),
+            data={"role": Role.DEFAULT, "is_playing": True},
+            content_type="application/json",
+        )
+        self.assertEqual(200, response.status_code, response.content)
+
     def test_a_place_paid_at_the_non_player_fee_cannot_be_promoted_here(self) -> None:
         self.series.event_max_players_total = 2
         self.series.save()

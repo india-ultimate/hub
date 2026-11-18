@@ -1,3 +1,4 @@
+import datetime
 from typing import Any
 
 from django.core.exceptions import ValidationError
@@ -155,6 +156,16 @@ class Event(ExportModelOperationsMixin("event"), models.Model):  # type: ignore[
         super().clean()
         if (self.is_subscription_needed or self.series_id) and self.is_iu_sanctioned is not True:
             raise ValidationError({"is_iu_sanctioned": self.SANCTION_RULE})
+
+    def last_rostering_day(self) -> datetime.date:
+        """Players can still be rostered through the late window."""
+        return max(
+            filter(None, [self.player_registration_end_date, self.player_late_penalty_end_date])
+        )
+
+    def last_team_registration_day(self) -> datetime.date:
+        """Teams can still sign up through the late window."""
+        return max(filter(None, [self.team_registration_end_date, self.team_late_penalty_end_date]))
 
     def roster_fee(self, playing: bool) -> int:
         if playing or self.non_player_fee is None:

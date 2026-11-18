@@ -1005,7 +1005,7 @@ class TestSwap(ApiCase):
         self.event.save()
         r = self.swap(out, new)
         self.assertEqual(400, r.status_code)
-        self.assertIn("Swaps closed", r.json()["message"])
+        self.assertIn("Swaps ended", r.json()["message"])
 
     def test_uc_registration_tournaments_cannot_swap(self) -> None:
         self.tournament.use_uc_registrations = True

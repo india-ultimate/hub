@@ -113,7 +113,8 @@ const nextDeadline = (event, steps) => {
     event.player_registration_end_date
   );
   if (Number.isNaN(closes)) return null;
-  return `Rostering ${closes >= today ? "closes" : "closed"} ${shortDate(
+  // The last day it's open, as the tournament page's "Open till" says.
+  return `Rostering ${closes >= today ? "open till" : "ended"} ${shortDate(
     new Date(closes)
   )}`;
 };
@@ -480,7 +481,7 @@ const TeamRegistrationHome = () => {
     if (today < parseLocalDate(d().event.player_registration_start_date))
       return "Rostering hasn't opened yet";
     if (today > swapUntil())
-      return `Swaps closed ${shortDate(new Date(swapUntil()))}`;
+      return `Swaps ended ${shortDate(new Date(swapUntil()))}`;
     return null;
   };
 
