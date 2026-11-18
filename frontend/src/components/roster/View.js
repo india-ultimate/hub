@@ -18,6 +18,7 @@ import {
   removeFromRoster,
   updatePlayerRegistration
 } from "../../queries";
+import { Bar, Loading, PageHeaderSkeleton } from "../../skeletons/primitives";
 import { useStore } from "../../store";
 import {
   getTournamentBreadcrumbName,
@@ -28,7 +29,6 @@ import {
 import Info from "../alerts/Info";
 import Warning from "../alerts/Warning";
 import Breadcrumbs from "../Breadcrumbs";
-import PendingBar from "../PendingBar";
 import ErrorPopover from "../popover/ErrorPopover";
 import SuccessPopover from "../popover/SuccessPopover";
 import Registration from "./Registration";
@@ -121,240 +121,268 @@ const Roster = () => {
 
   return (
     <Show
-      when={!tournamentQuery.data?.message}
+      when={!tournamentQuery.isLoading}
       fallback={
-        <div>
-          Tournament could not be fetched. Error -{" "}
-          {tournamentQuery.data.message}
-          <A href={"/tournaments"} class="text-blue-600 dark:text-blue-500">
-            <br />
-            Back to Tournaments Page
-          </A>
-        </div>
+        <Loading label="Loading tournament">
+          <PageHeaderSkeleton breadcrumbs title={false} />
+          <Bar class="my-2 h-[130px] w-full !rounded-xl" />
+          <Bar class="my-2 h-14 w-full" />
+          <Bar class="mt-4 h-40 w-full !rounded-lg" />
+        </Loading>
       }
     >
-      <Breadcrumbs
-        icon={trophy}
-        pageList={[
-          { url: "/tournaments", name: "All Tournaments" },
-          {
-            url: tournamentQuery.data?.event
-              ? tournamentCrumb(tournamentQuery.data)
-              : `/tournament/${params.tournament_slug}`,
-            name: getTournamentBreadcrumbName(
-              tournamentQuery.data?.event?.slug || ""
-            )
-          }
-        ]}
-      />
+      <Show
+        when={!tournamentQuery.data?.message}
+        fallback={
+          <div>
+            Tournament could not be fetched. Error -{" "}
+            {tournamentQuery.data.message}
+            <A href={"/tournaments"} class="text-blue-600 dark:text-blue-500">
+              <br />
+              Back to Tournaments Page
+            </A>
+          </div>
+        }
+      >
+        <Breadcrumbs
+          icon={trophy}
+          pageList={[
+            { url: "/tournaments", name: "All Tournaments" },
+            {
+              url: tournamentQuery.data?.event
+                ? tournamentCrumb(tournamentQuery.data)
+                : `/tournament/${params.tournament_slug}`,
+              name: getTournamentBreadcrumbName(
+                tournamentQuery.data?.event?.slug || ""
+              )
+            }
+          ]}
+        />
 
-      <div class="my-2 flex flex-row items-center justify-start gap-x-6 rounded-xl border border-gray-200 bg-gray-100 p-4">
-        <div>
-          <img
-            class="h-24 w-24 rounded-full p-1 ring-2 ring-gray-300 dark:ring-blue-500"
-            src={teamQuery.data?.image ?? teamQuery.data?.image_url}
-            alt="Bordered avatar"
-          />
-        </div>
-        <div class="flex flex-col items-start justify-center gap-y-1">
-          <div class="text-lg font-bold text-gray-700">
-            {teamQuery.data?.name}
+        <div class="my-2 flex flex-row items-center justify-start gap-x-6 rounded-xl border border-gray-200 bg-gray-100 p-4">
+          <div>
+            <Show when={teamQuery.data?.image ?? teamQuery.data?.image_url}>
+              <img
+                class="h-24 w-24 rounded-full p-1 ring-2 ring-gray-300 dark:ring-blue-500"
+                src={teamQuery.data?.image ?? teamQuery.data?.image_url}
+                alt="Bordered avatar"
+              />
+            </Show>
           </div>
-          <div class="text-md text-right">
-            {(teamQuery.data?.city || "") +
-              ", " +
-              (teamQuery.data?.state_ut || "")}
-          </div>
-          <div class="mt-1 flex w-full gap-2">
-            <span class="rounded-md border border-blue-300 bg-blue-100 px-2 py-0.5 text-sm font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-300">
-              {teamQuery.data?.category}
-            </span>
-            <span class="inline-flex items-center rounded-md border border-blue-300 bg-blue-100 px-2 py-0.5 text-sm font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-300">
-              <Icon path={star} class="mr-1 h-4" />
-              {rosterPointsQuery.data?.points || 0}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <div class="mx-auto mb-2 mt-2 w-full">
-        <Show
-          when={isPlayerRegInProgress()}
-          fallback={<Warning>Player Rostering window is now closed!</Warning>}
-        >
-          <details class="w-full select-none bg-yellow-50 p-4 text-yellow-800 hover:cursor-pointer">
-            <summary class="text-md font-semibold">
-              Rostering Guidelines
-            </summary>
-            <div class="mt-2 space-y-2 text-sm">
-              <ul class="list-inside list-disc space-y-1">
-                <li>
-                  <span>Rostering is open from </span>
-                  <span class="inline-flex font-medium">
-                    {formatDay(
-                      tournamentQuery.data?.event
-                        ?.player_registration_start_date,
-                      "en-US",
-                      { year: "numeric", month: "short", day: "numeric" }
-                    )}
-                  </span>{" "}
-                  to{" "}
-                  <span class="inline-flex font-medium">
-                    {formatDay(
-                      tournamentQuery.data?.event?.player_registration_end_date,
-                      "en-US",
-                      { year: "numeric", month: "short", day: "numeric" }
-                    )}
-                  </span>
-                </li>
-                <li>
-                  <span class="font-semibold">Male matching</span> players:{" "}
-                  <DisplayRosterLimit
-                    min={
-                      tournamentQuery.data?.event?.series
-                        ?.event_min_players_male
-                    }
-                    max={
-                      tournamentQuery.data?.event?.series
-                        ?.event_max_players_male
-                    }
-                  />
-                </li>
-                <li>
-                  <span class="font-semibold">Female matching</span> players:{" "}
-                  <DisplayRosterLimit
-                    min={
-                      tournamentQuery.data?.event?.series
-                        ?.event_min_players_female
-                    }
-                    max={
-                      tournamentQuery.data?.event?.series
-                        ?.event_max_players_female
-                    }
-                  />
-                </li>
-                <li>
-                  <span class="font-semibold">Total</span> players:{" "}
-                  <DisplayRosterLimit
-                    min={
-                      tournamentQuery.data?.event?.series
-                        ?.event_min_players_total
-                    }
-                    max={
-                      tournamentQuery.data?.event?.series
-                        ?.event_max_players_total
-                    }
-                  />
-                </li>
-              </ul>
+          <div class="flex flex-col items-start justify-center gap-y-1">
+            <div class="text-lg font-bold text-gray-700">
+              {teamQuery.data?.name}
             </div>
-          </details>
-          <Show />
-        </Show>
-      </div>
-
-      <div class="mx-auto max-w-screen-md">
-        <div class="mt-6">
-          <h4 class="mb-2 text-xl font-bold text-blue-500">Add to Roster</h4>
-          <Show
-            when={store.loggedIn && currentUserIsTeamAdmin()}
-            fallback={
-              <Show
-                when={isPlayerRegInProgress()}
-                fallback={<Info text="Player Registrations have closed!" />}
-              >
+            <div class="text-md text-right">
+              {(teamQuery.data?.city || "") +
+                ", " +
+                (teamQuery.data?.state_ut || "")}
+            </div>
+            <div class="mt-1 flex w-full gap-2">
+              <span class="rounded-md border border-blue-300 bg-blue-100 px-2 py-0.5 text-sm font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-300">
+                {teamQuery.data?.category}
+              </span>
+              <span class="inline-flex items-center rounded-md border border-blue-300 bg-blue-100 px-2 py-0.5 text-sm font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-300">
+                <Icon path={star} class="mr-1 h-4" />
                 <Show
-                  when={!authPending()}
-                  fallback={<PendingBar label="Checking who is signed in" />}
+                  when={rosterPointsQuery.isInitialLoading}
+                  fallback={rosterPointsQuery.data?.points || 0}
                 >
-                  <Show
-                    when={store.loggedIn}
-                    fallback={
-                      <Info text="You must be logged in to add/remove players from the roster!" />
-                    }
-                  >
-                    <Info text="You must be a team admin to perform rostering!" />
-                  </Show>
+                  <Bar class="inline-block h-4 w-8 !bg-blue-600 dark:!bg-blue-400" />
                 </Show>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div class="mx-auto mb-2 mt-2 w-full">
+          <Show
+            when={isPlayerRegInProgress()}
+            fallback={
+              <Show when={tournamentQuery.isSuccess}>
+                <Warning>Player Rostering window is now closed!</Warning>
               </Show>
             }
           >
-            <p class="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-100">
-              Rostering has moved:{" "}
-              <A
-                href={`/tournament/${params.tournament_slug}/team/${params.team_slug}/registration`}
-                class="inline-flex min-h-[44px] items-center font-semibold text-blue-700 underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 dark:text-blue-300"
-              >
-                open the team's registration page
-              </A>
-            </p>
+            <details class="w-full select-none bg-yellow-50 p-4 text-yellow-800 hover:cursor-pointer">
+              <summary class="text-md font-semibold">
+                Rostering Guidelines
+              </summary>
+              <div class="mt-2 space-y-2 text-sm">
+                <ul class="list-inside list-disc space-y-1">
+                  <li>
+                    <span>Rostering is open from </span>
+                    <span class="inline-flex font-medium">
+                      {formatDay(
+                        tournamentQuery.data?.event
+                          ?.player_registration_start_date,
+                        "en-US",
+                        { year: "numeric", month: "short", day: "numeric" }
+                      )}
+                    </span>{" "}
+                    to{" "}
+                    <span class="inline-flex font-medium">
+                      {formatDay(
+                        tournamentQuery.data?.event
+                          ?.player_registration_end_date,
+                        "en-US",
+                        { year: "numeric", month: "short", day: "numeric" }
+                      )}
+                    </span>
+                  </li>
+                  <li>
+                    <span class="font-semibold">Male matching</span> players:{" "}
+                    <DisplayRosterLimit
+                      min={
+                        tournamentQuery.data?.event?.series
+                          ?.event_min_players_male
+                      }
+                      max={
+                        tournamentQuery.data?.event?.series
+                          ?.event_max_players_male
+                      }
+                    />
+                  </li>
+                  <li>
+                    <span class="font-semibold">Female matching</span> players:{" "}
+                    <DisplayRosterLimit
+                      min={
+                        tournamentQuery.data?.event?.series
+                          ?.event_min_players_female
+                      }
+                      max={
+                        tournamentQuery.data?.event?.series
+                          ?.event_max_players_female
+                      }
+                    />
+                  </li>
+                  <li>
+                    <span class="font-semibold">Total</span> players:{" "}
+                    <DisplayRosterLimit
+                      min={
+                        tournamentQuery.data?.event?.series
+                          ?.event_min_players_total
+                      }
+                      max={
+                        tournamentQuery.data?.event?.series
+                          ?.event_max_players_total
+                      }
+                    />
+                  </li>
+                </ul>
+              </div>
+            </details>
+            <Show />
           </Show>
         </div>
-        <div class="mt-4">
-          <h4 class="text-xl font-bold text-blue-500">Current Roster</h4>
-          <h2 class="my-4 text-lg font-bold underline underline-offset-2">
-            Players {`(${players()?.length || "-"})`}
-          </h2>
-          <Show
-            when={players()?.length !== 0}
-            fallback={<Info text="No Players in the roster yet" />}
-          >
-            <div class="w-full divide-y">
-              <For each={players()}>
-                {registration => (
-                  <Registration
-                    from={rosterFrom()}
-                    registration={registration}
-                    isTeamAdmin={currentUserIsTeamAdmin()}
-                    canRemovePlayer={
-                      store.loggedIn &&
-                      currentUserIsTeamAdmin() &&
-                      isPlayerRegInProgress()
-                    }
-                    canEditPlayer={store.loggedIn && currentUserIsTeamAdmin()}
-                    removeMutation={removeFromRosterMutation}
-                    updateMutation={updateRegistrationMutation}
-                  />
-                )}
-              </For>
-            </div>
-          </Show>
-          <h2 class="mb-4 mt-8 text-lg font-bold underline underline-offset-2">
-            Non-players {`(${nonPlayers()?.length || "-"})`}
-          </h2>
-          <Show
-            when={nonPlayers()?.length !== 0}
-            fallback={<Info text="No Non-Players in the roster yet" />}
-          >
-            <div class="w-full divide-y">
-              <For each={nonPlayers()}>
-                {registration => (
-                  <Registration
-                    from={rosterFrom()}
-                    registration={registration}
-                    isTeamAdmin={currentUserIsTeamAdmin()}
-                    canRemovePlayer={
-                      store.loggedIn &&
-                      currentUserIsTeamAdmin() &&
-                      isPlayerRegInProgress()
-                    }
-                    canEditPlayer={store.loggedIn && currentUserIsTeamAdmin()}
-                    removeMutation={removeFromRosterMutation}
-                    updateMutation={updateRegistrationMutation}
-                  />
-                )}
-              </For>
-            </div>
-          </Show>
-        </div>
-      </div>
-      <SuccessPopover ref={successPopoverRef}>
-        <span class="font-medium">{editStatus()}</span>
-      </SuccessPopover>
 
-      <ErrorPopover ref={errorPopoverRef}>
-        <span class="font-medium">{editStatus()}</span>
-      </ErrorPopover>
+        <div class="mx-auto max-w-screen-md">
+          <div class="mt-6">
+            <h4 class="mb-2 text-xl font-bold text-blue-500">Add to Roster</h4>
+            <Show
+              when={store.loggedIn && currentUserIsTeamAdmin()}
+              fallback={
+                <Show
+                  when={isPlayerRegInProgress()}
+                  fallback={<Info text="Player Registrations have closed!" />}
+                >
+                  <Show
+                    when={!authPending()}
+                    fallback={
+                      <Loading label="Loading sign-in status">
+                        <Bar class="h-10 w-full" />
+                      </Loading>
+                    }
+                  >
+                    <Show
+                      when={store.loggedIn}
+                      fallback={
+                        <Info text="You must be logged in to add/remove players from the roster!" />
+                      }
+                    >
+                      <Info text="You must be a team admin to perform rostering!" />
+                    </Show>
+                  </Show>
+                </Show>
+              }
+            >
+              <p class="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-100">
+                Rostering has moved:{" "}
+                <A
+                  href={`/tournament/${params.tournament_slug}/team/${params.team_slug}/registration`}
+                  class="inline-flex min-h-[44px] items-center font-semibold text-blue-700 underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 dark:text-blue-300"
+                >
+                  open the team's registration page
+                </A>
+              </p>
+            </Show>
+          </div>
+          <div class="mt-4">
+            <h4 class="text-xl font-bold text-blue-500">Current Roster</h4>
+            <h2 class="my-4 text-lg font-bold underline underline-offset-2">
+              Players {`(${players()?.length || "-"})`}
+            </h2>
+            <Show
+              when={players()?.length !== 0}
+              fallback={<Info text="No Players in the roster yet" />}
+            >
+              <div class="w-full divide-y">
+                <For each={players()}>
+                  {registration => (
+                    <Registration
+                      from={rosterFrom()}
+                      registration={registration}
+                      isTeamAdmin={currentUserIsTeamAdmin()}
+                      canRemovePlayer={
+                        store.loggedIn &&
+                        currentUserIsTeamAdmin() &&
+                        isPlayerRegInProgress()
+                      }
+                      canEditPlayer={store.loggedIn && currentUserIsTeamAdmin()}
+                      removeMutation={removeFromRosterMutation}
+                      updateMutation={updateRegistrationMutation}
+                    />
+                  )}
+                </For>
+              </div>
+            </Show>
+            <h2 class="mb-4 mt-8 text-lg font-bold underline underline-offset-2">
+              Non-players {`(${nonPlayers()?.length || "-"})`}
+            </h2>
+            <Show
+              when={nonPlayers()?.length !== 0}
+              fallback={<Info text="No Non-Players in the roster yet" />}
+            >
+              <div class="w-full divide-y">
+                <For each={nonPlayers()}>
+                  {registration => (
+                    <Registration
+                      from={rosterFrom()}
+                      registration={registration}
+                      isTeamAdmin={currentUserIsTeamAdmin()}
+                      canRemovePlayer={
+                        store.loggedIn &&
+                        currentUserIsTeamAdmin() &&
+                        isPlayerRegInProgress()
+                      }
+                      canEditPlayer={store.loggedIn && currentUserIsTeamAdmin()}
+                      removeMutation={removeFromRosterMutation}
+                      updateMutation={updateRegistrationMutation}
+                    />
+                  )}
+                </For>
+              </div>
+            </Show>
+          </div>
+        </div>
+        <SuccessPopover ref={successPopoverRef}>
+          <span class="font-medium">{editStatus()}</span>
+        </SuccessPopover>
+
+        <ErrorPopover ref={errorPopoverRef}>
+          <span class="font-medium">{editStatus()}</span>
+        </ErrorPopover>
+      </Show>
     </Show>
   );
 };
