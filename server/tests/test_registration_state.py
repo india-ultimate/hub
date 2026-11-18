@@ -14,6 +14,7 @@ from server.core.models import Player, Team, User
 from server.registration.models import RosterEntry
 from server.registration.state import (
     build_context,
+    checkout_quote,
     entry_reasons,
     meter,
     preview,
@@ -740,3 +741,81 @@ class TestRoundTwoReasons(StateTestCase):
         new = self.player("n@x.com")  # female, playing
         ctx = build_context(self.event, self.team, self.admin)
         self.assertEqual("limit.total", preview_swap(ctx, staff.id, new.id).code)
+
+
+class OneOffStateCase(StateTestCase):
+    """A tournament outside any series, where players pay 750 and non-players 300."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        Event.objects.filter(pk=self.event.pk).update(
+            series=None, player_fee=75000, non_player_fee=30000
+        )
+        self.event.refresh_from_db()
+
+    def coach(self, email: str, *, tier: str = "community", role: str = Role.COACH) -> Player:
+        p = self.player(email, on_series=False, tier=tier, entry=False)
+        RosterEntry.objects.create(event=self.event, team=self.team, player=p, role=role)
+        return p
+
+    def ctx(self, **kwargs: Any) -> Any:
+        return build_context(self.event, self.team, self.admin, **kwargs)
+
+
+class TestNonPlayers(OneOffStateCase):
+    def test_a_coach_takes_no_spot_on_a_one_off_event(self) -> None:
+        self.player("a@x.com", on_series=False)
+        self.coach("c@x.com", tier="regular")
+        ctx = self.ctx()
+        m = meter(ctx, entry_reasons(ctx))
+        self.assertEqual((1, 1), (m["total"], m["non_players"]))
+
+    def test_a_community_coach_is_ready_and_a_community_player_is_not(self) -> None:
+        coach = self.coach("c@x.com")
+        player = self.player("a@x.com", on_series=False, tier="community")
+        reasons = self.reasons()
+        self.assertEqual("ready", reasons[coach.id].code)
+        self.assertNotEqual("ready", reasons[player.id].code)
+
+    def test_quote_charges_each_row_its_fee(self) -> None:
+        self.player("a@x.com", on_series=False)
+        self.player("b@x.com", Player.MatchupTypes.MALE, on_series=False)
+        coach = self.coach("c@x.com")
+        ctx = self.ctx()
+        quote = checkout_quote(ctx, entry_reasons(ctx))
+        self.assertEqual(
+            (2 * 75000 + 30000, 30000, [coach.id]),
+            (quote["amount"], quote["per_non_player"], quote["non_player_ids"]),
+        )
+
+    def test_a_free_non_player_is_accepted_not_checked_out(self) -> None:
+        Event.objects.filter(pk=self.event.pk).update(non_player_fee=0)
+        self.event.refresh_from_db()
+        coach = self.coach("c@x.com")
+        ctx = self.ctx()
+        reasons = entry_reasons(ctx)
+        self.assertEqual("ready.free", reasons[coach.id].code)
+        self.assertEqual([], checkout_quote(ctx, reasons)["ready_ids"])
+
+    def test_preview_reads_the_chosen_role(self) -> None:
+        p = self.player("c@x.com", on_series=False, tier="community", entry=False)
+        ctx = self.ctx(new_role=Role.COACH, extra_player_ids=[p.id])
+        self.assertEqual("ready", preview(ctx, [p])[p.id].code)
+
+    def test_a_player_cant_take_a_cheaper_coachs_place(self) -> None:
+        coach = self.player("c@x.com", on_series=False, entry=False)
+        Registration.objects.create(
+            event=self.event, team=self.team, player=coach, role=Role.COACH, is_playing=False
+        )
+        new = self.player("a@x.com", on_series=False)
+        self.assertEqual("limit.swap_fee", preview_swap(self.ctx(), coach.id, new.id).code)
+
+
+class TestSeriesNonPlayerReasons(StateTestCase):
+    def test_a_coach_can_be_invited_onto_a_full_series_roster(self) -> None:
+        self.series.series_roster_max_players = 1
+        self.series.save()
+        self.player("a@x.com")  # the one playing place on the series roster
+        coach = self.player("c@x.com", on_series=False, entry=False)
+        RosterEntry.objects.create(event=self.event, team=self.team, player=coach, role=Role.COACH)
+        self.assertEqual("action.invite", self.reasons()[coach.id].code)
