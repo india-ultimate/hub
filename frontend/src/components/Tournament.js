@@ -22,6 +22,7 @@ import {
   SpiritStandings as SpiritStandingsSkeleton,
   Standings as StandingsSkeleton
 } from "../skeletons/Standings";
+import { TournamentPageSkeleton } from "../skeletons/Tournament";
 import { isPlayerRegistrationOpen, isTeamRegistrationOpen } from "../utils";
 import Breadcrumbs from "./Breadcrumbs";
 import PillTabs from "./tabs/PillTabs";
@@ -108,377 +109,403 @@ const Tournament = () => {
 
   return (
     <Show
-      when={!tournamentQuery.data?.message}
-      fallback={
-        <div>
-          Tournament could not be fetched. Error -{" "}
-          {tournamentQuery.data.message}
-          <A href={"/tournaments"} class="text-blue-600 dark:text-blue-500">
-            <br />
-            Back to Tournaments Page
-          </A>
-        </div>
-      }
+      when={!tournamentQuery.isLoading}
+      fallback={<TournamentPageSkeleton details tabs />}
     >
-      <Breadcrumbs
-        icon={trophy}
-        pageList={[{ url: "/tournaments", name: "All Tournaments" }]}
-      />
-
-      <h1 class="mb-5 text-center">
-        <span class="w-fit bg-gradient-to-r from-blue-500 to-green-500 bg-clip-text text-2xl font-extrabold text-transparent">
-          {tournamentQuery.data?.event?.title}
-        </span>
-      </h1>
-
       <Show
-        when={tournamentQuery.data?.logo_dark}
+        when={!tournamentQuery.data?.message}
         fallback={
           <div>
-            <p class="mt-2 text-center text-sm">
-              {tournamentQuery.data?.event?.location}
-            </p>
-            <p class="mt-2 text-center text-sm">
-              {formatDay(tournamentQuery.data?.event.start_date, "en-US", {
-                year: "numeric",
-                month: "short",
-                day: "numeric"
-              })}
-              <Show
-                when={
-                  tournamentQuery.data?.event.start_date !==
-                  tournamentQuery.data?.event.end_date
-                }
-              >
-                {" "}
-                to{" "}
-                {formatDay(tournamentQuery.data?.event.end_date, "en-US", {
+            Tournament could not be fetched. Error -{" "}
+            {tournamentQuery.data.message}
+            <A href={"/tournaments"} class="text-blue-600 dark:text-blue-500">
+              <br />
+              Back to Tournaments Page
+            </A>
+          </div>
+        }
+      >
+        <Breadcrumbs
+          icon={trophy}
+          pageList={[{ url: "/tournaments", name: "All Tournaments" }]}
+        />
+
+        <h1 class="mb-5 text-center">
+          <span class="w-fit bg-gradient-to-r from-blue-500 to-green-500 bg-clip-text text-2xl font-extrabold text-transparent">
+            {tournamentQuery.data?.event?.title}
+          </span>
+        </h1>
+
+        <Show
+          when={tournamentQuery.data?.logo_dark}
+          fallback={
+            <div>
+              <p class="mt-2 text-center text-sm">
+                {tournamentQuery.data?.event?.location}
+              </p>
+              <p class="mt-2 text-center text-sm">
+                {formatDay(tournamentQuery.data?.event.start_date, "en-US", {
                   year: "numeric",
                   month: "short",
                   day: "numeric"
                 })}
-              </Show>
-            </p>
-          </div>
-        }
-      >
-        <div class="flex justify-center">
-          <img
-            src={tournamentQuery.data?.logo_dark}
-            alt="Tournament logo"
-            class="hidden w-3/4 dark:block"
-          />
-          <img
-            src={tournamentQuery.data?.logo_light}
-            alt="Tournament logo"
-            class="block w-3/4 dark:hidden"
-          />
-        </div>
-      </Show>
-
-      <Show when={tournamentQuery.data?.event?.is_iu_sanctioned}>
-        <div class="mt-4">
-          <SanctionedPill />
-        </div>
-      </Show>
-      <TagChips
-        event={tournamentQuery.data?.event}
-        variant="page"
-        class="mt-3 justify-center"
-      />
-
-      <div class="mt-5 flex justify-center">
-        <Switch>
-          <Match when={tournamentQuery.data?.status === "COM"}>
-            <span class="mr-2 h-fit rounded bg-blue-100 px-2.5 py-0.5 text-sm font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-300">
-              Completed
-            </span>
-          </Match>
-          <Match when={tournamentQuery.data?.status === "LIV"}>
-            <span class="mr-2 h-fit rounded bg-green-100 px-2.5 py-0.5 text-sm font-medium text-green-800 dark:bg-green-900 dark:text-green-300">
-              Live
-            </span>
-          </Match>
-        </Switch>
-      </div>
-      <Show when={playingTeam()}>
-        <A
-          href={`/tournament/${params.slug}/team/${playingTeam().slug}`}
-          class="mt-5 block w-full rounded-lg bg-gradient-to-br from-pink-600 to-orange-400 p-0.5 shadow-md"
+                <Show
+                  when={
+                    tournamentQuery.data?.event.start_date !==
+                    tournamentQuery.data?.event.end_date
+                  }
+                >
+                  {" "}
+                  to{" "}
+                  {formatDay(tournamentQuery.data?.event.end_date, "en-US", {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric"
+                  })}
+                </Show>
+              </p>
+            </div>
+          }
         >
-          <div class="rounded-md bg-white p-4 dark:bg-gray-800">
-            <h5 class="mb-2 text-center text-xl tracking-tight">
-              <span class="font-normal">Your team - </span>
-              <span class="bg-gradient-to-br from-orange-400 to-pink-500 bg-clip-text font-bold text-transparent">
-                {playingTeam().name}
+          <div class="flex justify-center">
+            <img
+              src={tournamentQuery.data?.logo_dark}
+              alt="Tournament logo"
+              class="hidden w-3/4 dark:block"
+            />
+            <img
+              src={tournamentQuery.data?.logo_light}
+              alt="Tournament logo"
+              class="block w-3/4 dark:hidden"
+            />
+          </div>
+        </Show>
+
+        <Show when={tournamentQuery.data?.event?.is_iu_sanctioned}>
+          <div class="mt-4">
+            <SanctionedPill />
+          </div>
+        </Show>
+        <TagChips
+          event={tournamentQuery.data?.event}
+          variant="page"
+          class="mt-3 justify-center"
+        />
+
+        <div class="mt-5 flex justify-center">
+          <Switch>
+            <Match when={tournamentQuery.data?.status === "COM"}>
+              <span class="mr-2 h-fit rounded bg-blue-100 px-2.5 py-0.5 text-sm font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-300">
+                Completed
               </span>
+            </Match>
+            <Match when={tournamentQuery.data?.status === "LIV"}>
+              <span class="mr-2 h-fit rounded bg-green-100 px-2.5 py-0.5 text-sm font-medium text-green-800 dark:bg-green-900 dark:text-green-300">
+                Live
+              </span>
+            </Match>
+          </Switch>
+        </div>
+        <Show when={playingTeam()}>
+          <A
+            href={`/tournament/${params.slug}/team/${playingTeam().slug}`}
+            class="mt-5 block w-full rounded-lg bg-gradient-to-br from-pink-600 to-orange-400 p-0.5 shadow-md"
+          >
+            <div class="rounded-md bg-white p-4 dark:bg-gray-800">
+              <h5 class="mb-2 text-center text-xl tracking-tight">
+                <span class="font-normal">Your team - </span>
+                <span class="bg-gradient-to-br from-orange-400 to-pink-500 bg-clip-text font-bold text-transparent">
+                  {playingTeam().name}
+                </span>
+              </h5>
+              <p class="text-center text-sm capitalize">
+                View the matches and roster of your team
+              </p>
+            </div>
+          </A>
+        </Show>
+        <A
+          href={`/tournament/${params.slug}/schedule`}
+          class="mt-5 block w-full rounded-lg border border-blue-600 bg-white p-4 shadow-md dark:border-blue-400 dark:bg-gray-800"
+        >
+          <h5 class="mb-2 text-center text-xl font-bold capitalize tracking-tight text-blue-600 dark:text-blue-400">
+            Schedule
+          </h5>
+          <p class="text-center text-sm capitalize">
+            View the detailed schedule of matches
+          </p>
+        </A>
+        <A
+          href={`/tournament/${params.slug}/standings`}
+          class="mt-5 block w-full rounded-lg border border-blue-600 bg-white p-4 shadow-md dark:border-blue-400 dark:bg-gray-800"
+        >
+          <h5 class="mb-2 text-center text-xl font-bold capitalize tracking-tight text-blue-600 dark:text-blue-400">
+            Standings
+          </h5>
+          <p class="text-center text-sm capitalize">
+            View the pools, brackets and the detailed standings
+          </p>
+        </A>
+        <A
+          href={`/tournament/${params.slug}/leaderboard`}
+          class="mt-5 block w-full rounded-lg border border-blue-600 bg-white p-4 shadow-md dark:border-blue-400 dark:bg-gray-800"
+        >
+          <h5 class="mb-2 text-center text-xl font-bold capitalize tracking-tight text-blue-600 dark:text-blue-400">
+            Leaderboard
+          </h5>
+          <p class="text-center text-sm capitalize">
+            View the players with the top scores, assists and blocks
+          </p>
+        </A>
+        <Show when={tournamentQuery.data?.rules}>
+          <A
+            href={`/tournament/${params.slug}/rules`}
+            class="mt-5 block w-full rounded-lg border border-blue-600 bg-white p-4 shadow dark:border-blue-400 dark:bg-gray-800"
+          >
+            <h5 class="mb-2 text-center text-xl font-bold capitalize tracking-tight text-blue-600 dark:text-blue-400">
+              Rules & Format
             </h5>
             <p class="text-center text-sm capitalize">
-              View the matches and roster of your team
+              View the detailed rules and format of the tournament
             </p>
-          </div>
-        </A>
-      </Show>
-      <A
-        href={`/tournament/${params.slug}/schedule`}
-        class="mt-5 block w-full rounded-lg border border-blue-600 bg-white p-4 shadow-md dark:border-blue-400 dark:bg-gray-800"
-      >
-        <h5 class="mb-2 text-center text-xl font-bold capitalize tracking-tight text-blue-600 dark:text-blue-400">
-          Schedule
-        </h5>
-        <p class="text-center text-sm capitalize">
-          View the detailed schedule of matches
-        </p>
-      </A>
-      <A
-        href={`/tournament/${params.slug}/standings`}
-        class="mt-5 block w-full rounded-lg border border-blue-600 bg-white p-4 shadow-md dark:border-blue-400 dark:bg-gray-800"
-      >
-        <h5 class="mb-2 text-center text-xl font-bold capitalize tracking-tight text-blue-600 dark:text-blue-400">
-          Standings
-        </h5>
-        <p class="text-center text-sm capitalize">
-          View the pools, brackets and the detailed standings
-        </p>
-      </A>
-      <A
-        href={`/tournament/${params.slug}/leaderboard`}
-        class="mt-5 block w-full rounded-lg border border-blue-600 bg-white p-4 shadow-md dark:border-blue-400 dark:bg-gray-800"
-      >
-        <h5 class="mb-2 text-center text-xl font-bold capitalize tracking-tight text-blue-600 dark:text-blue-400">
-          Leaderboard
-        </h5>
-        <p class="text-center text-sm capitalize">
-          View the players with the top scores, assists and blocks
-        </p>
-      </A>
-      <Show when={tournamentQuery.data?.rules}>
-        <A
-          href={`/tournament/${params.slug}/rules`}
-          class="mt-5 block w-full rounded-lg border border-blue-600 bg-white p-4 shadow dark:border-blue-400 dark:bg-gray-800"
-        >
-          <h5 class="mb-2 text-center text-xl font-bold capitalize tracking-tight text-blue-600 dark:text-blue-400">
-            Rules & Format
-          </h5>
-          <p class="text-center text-sm capitalize">
-            View the detailed rules and format of the tournament
-          </p>
-        </A>
-      </Show>
-      <Show when={isTeamRegistrationOpen(tournamentQuery.data?.event)}>
-        <A
-          href={`/tournament/${params.slug}/register`}
-          class="mt-5 block w-full rounded-lg border border-blue-600 bg-white p-4 shadow-md dark:border-blue-400 dark:bg-gray-800"
-        >
-          <h5 class="mb-2 text-center text-xl font-bold capitalize tracking-tight text-blue-600 dark:text-blue-400">
-            Register your team
-          </h5>
-          <p class="text-center text-sm">
-            Team fee, roster and payments in one place
-          </p>
-        </A>
-      </Show>
-      <Show when={isPlayerRegInProgress()}>
-        <A
-          href={`/tournament/${params.slug}/register`}
-          class="mt-5 block w-full rounded-lg border border-blue-600 bg-white p-4 shadow-md dark:border-blue-400 dark:bg-gray-800"
-        >
-          <h5 class="mb-2 text-center text-xl font-bold capitalize tracking-tight text-blue-600 dark:text-blue-400">
-            Player Registrations
-          </h5>
-          <p class="text-center text-sm capitalize">
-            Open till{" "}
-            <span class="inline-flex font-medium">
-              {formatDay(
-                tournamentQuery.data?.event?.player_registration_end_date,
-                "en-US",
-                { year: "numeric", month: "short", day: "numeric" }
-              )}
-            </span>
-          </p>
-        </A>
-      </Show>
+          </A>
+        </Show>
+        <Show when={isTeamRegistrationOpen(tournamentQuery.data?.event)}>
+          <A
+            href={`/tournament/${params.slug}/register`}
+            class="mt-5 block w-full rounded-lg border border-blue-600 bg-white p-4 shadow-md dark:border-blue-400 dark:bg-gray-800"
+          >
+            <h5 class="mb-2 text-center text-xl font-bold capitalize tracking-tight text-blue-600 dark:text-blue-400">
+              Register your team
+            </h5>
+            <p class="text-center text-sm">
+              Team fee, roster and payments in one place
+            </p>
+          </A>
+        </Show>
+        <Show when={isPlayerRegInProgress()}>
+          <A
+            href={`/tournament/${params.slug}/register`}
+            class="mt-5 block w-full rounded-lg border border-blue-600 bg-white p-4 shadow-md dark:border-blue-400 dark:bg-gray-800"
+          >
+            <h5 class="mb-2 text-center text-xl font-bold capitalize tracking-tight text-blue-600 dark:text-blue-400">
+              Player Registrations
+            </h5>
+            <p class="text-center text-sm capitalize">
+              Open till{" "}
+              <span class="inline-flex font-medium">
+                {formatDay(
+                  tournamentQuery.data?.event?.player_registration_end_date,
+                  "en-US",
+                  { year: "numeric", month: "short", day: "numeric" }
+                )}
+              </span>
+            </p>
+          </A>
+        </Show>
 
-      <h2 class="mt-5 text-center text-xl font-bold">Overall Standings</h2>
+        <h2 class="mt-5 text-center text-xl font-bold">Overall Standings</h2>
 
-      <PillTabs
-        tabs={[
-          { id: "current", label: currentLabel() },
-          { id: "initial", label: "Initial" },
-          { id: "sotg", label: "SoTG" }
-        ]}
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-      />
+        <PillTabs
+          tabs={[
+            { id: "current", label: currentLabel() },
+            { id: "initial", label: "Initial" },
+            { id: "sotg", label: "SoTG" }
+          ]}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+        />
 
-      <Show when={activeTab() === "current"}>
-        <div class="rounded-lg p-2">
-          <div class="relative overflow-x-auto rounded-lg shadow-md">
-            <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
-              <tbody>
-                <Suspense fallback={<StandingsSkeleton />}>
-                  <For
-                    each={Object.entries(
-                      tournamentQuery.data?.current_seeding || {}
-                    )}
-                  >
-                    {([rank, team_id]) => (
-                      <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
-                        <th
-                          scope="row"
-                          class="w-14 whitespace-nowrap py-4 pl-6 pr-2 font-normal"
-                        >
-                          {rank}
-                        </th>
-                        <td class="px-2 py-4">
-                          <A
-                            href={`/tournament/${params.slug}/team/${
-                              teamsMap()[team_id]?.slug
-                            }`}
-                          >
-                            <img
-                              class="mr-3 inline-block h-8 w-8 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
-                              src={
-                                teamsMap()[team_id]?.image ??
-                                teamsMap()[team_id]?.image_url
-                              }
-                              alt="Bordered avatar"
-                            />
-                            {teamsMap()[team_id]?.name}
-                          </A>
-                        </td>
-                        <Show when={teamsInitialSeeding()}>
-                          <td class="pl-2 pr-6">
-                            <TeamSeedingChange
-                              initialSeed={teamsInitialSeeding()[team_id]}
-                              currentSeed={parseInt(rank)}
-                            />
-                          </td>
-                        </Show>
-                      </tr>
-                    )}
-                  </For>
-                </Suspense>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </Show>
-
-      <Show when={activeTab() === "initial"}>
-        <div class="rounded-lg p-2">
-          <div class="relative overflow-x-auto rounded-lg shadow-md">
-            <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
-              <tbody>
-                <Suspense fallback={<StandingsSkeleton />}>
-                  <For
-                    each={Object.entries(
-                      tournamentQuery.data?.initial_seeding || {}
-                    )}
-                  >
-                    {([rank, team_id]) => (
-                      <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
-                        <th
-                          scope="row"
-                          class="w-14 whitespace-nowrap py-4 pl-6 pr-2 font-normal"
-                        >
-                          {rank}
-                        </th>
-                        <td class="px-2 py-4">
-                          <A
-                            href={`/tournament/${params.slug}/team/${
-                              teamsMap()[team_id]?.slug
-                            }`}
-                          >
-                            <img
-                              class="mr-3 inline-block h-8 w-8 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
-                              src={
-                                teamsMap()[team_id]?.image ??
-                                teamsMap()[team_id]?.image_url
-                              }
-                              alt="Bordered avatar"
-                            />
-                            {teamsMap()[team_id]?.name}
-                          </A>
-                        </td>
-                      </tr>
-                    )}
-                  </For>
-                </Suspense>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </Show>
-
-      <Show when={activeTab() === "sotg"}>
-        <div class="rounded-lg p-2">
-          <Suspense fallback={<SpiritStandingsSkeleton />}>
-            <Show
-              when={
-                tournamentQuery.data?.spirit_ranking.length > 0 &&
-                tournamentQuery.data?.status === "COM"
-              }
-              fallback={
-                <div
-                  class="my-4 rounded-lg bg-blue-50 p-2 text-sm dark:bg-gray-800"
-                  role="alert"
-                >
-                  <p class="text-center">
-                    Spirit rankings is not available during the tournament.
-                    <br />
-                    Please check after the tournament is completed!
-                  </p>
-                </div>
-              }
-            >
-              <div class="relative overflow-x-auto rounded-lg shadow-md">
-                <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
-                  <tbody>
-                    <For each={tournamentQuery.data?.spirit_ranking}>
-                      {spirit => (
+        <Show when={activeTab() === "current"}>
+          <div class="rounded-lg p-2">
+            <div class="relative overflow-x-auto rounded-lg shadow-md">
+              <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
+                <tbody>
+                  <Suspense fallback={<StandingsSkeleton />}>
+                    <For
+                      each={Object.entries(
+                        tournamentQuery.data?.current_seeding || {}
+                      )}
+                    >
+                      {([rank, team_id]) => (
                         <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
                           <th
                             scope="row"
                             class="w-14 whitespace-nowrap py-4 pl-6 pr-2 font-normal"
                           >
-                            {spirit.rank}
+                            {rank}
                           </th>
                           <td class="px-2 py-4">
                             <A
                               href={`/tournament/${params.slug}/team/${
-                                teamsMap()[spirit.team_id]?.slug
+                                teamsMap()[team_id]?.slug
                               }`}
                             >
-                              <img
-                                class="mr-3 inline-block h-8 w-8 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
-                                src={
-                                  teamsMap()[spirit.team_id]?.image ??
-                                  teamsMap()[spirit.team_id]?.image_url
+                              <Show
+                                when={
+                                  teamsMap()[team_id]?.image ??
+                                  teamsMap()[team_id]?.image_url
                                 }
-                                alt="Bordered avatar"
-                              />
-                              {teamsMap()[spirit.team_id]?.name}
+                              >
+                                <img
+                                  class="mr-3 inline-block h-8 w-8 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
+                                  src={
+                                    teamsMap()[team_id]?.image ??
+                                    teamsMap()[team_id]?.image_url
+                                  }
+                                  alt="Bordered avatar"
+                                />
+                              </Show>
+                              {teamsMap()[team_id]?.name}
                             </A>
                           </td>
-                          <td class="py-4 pl-2 pr-6">
-                            {spirit.points?.toFixed(2)}
-                            <Show when={spirit.self_points}>
-                              ({spirit.self_points?.toFixed(2)})
-                            </Show>
+                          <Show when={teamsInitialSeeding()}>
+                            <td class="pl-2 pr-6">
+                              <TeamSeedingChange
+                                initialSeed={teamsInitialSeeding()[team_id]}
+                                currentSeed={parseInt(rank)}
+                              />
+                            </td>
+                          </Show>
+                        </tr>
+                      )}
+                    </For>
+                  </Suspense>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </Show>
+
+        <Show when={activeTab() === "initial"}>
+          <div class="rounded-lg p-2">
+            <div class="relative overflow-x-auto rounded-lg shadow-md">
+              <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
+                <tbody>
+                  <Suspense fallback={<StandingsSkeleton />}>
+                    <For
+                      each={Object.entries(
+                        tournamentQuery.data?.initial_seeding || {}
+                      )}
+                    >
+                      {([rank, team_id]) => (
+                        <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
+                          <th
+                            scope="row"
+                            class="w-14 whitespace-nowrap py-4 pl-6 pr-2 font-normal"
+                          >
+                            {rank}
+                          </th>
+                          <td class="px-2 py-4">
+                            <A
+                              href={`/tournament/${params.slug}/team/${
+                                teamsMap()[team_id]?.slug
+                              }`}
+                            >
+                              <Show
+                                when={
+                                  teamsMap()[team_id]?.image ??
+                                  teamsMap()[team_id]?.image_url
+                                }
+                              >
+                                <img
+                                  class="mr-3 inline-block h-8 w-8 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
+                                  src={
+                                    teamsMap()[team_id]?.image ??
+                                    teamsMap()[team_id]?.image_url
+                                  }
+                                  alt="Bordered avatar"
+                                />
+                              </Show>
+                              {teamsMap()[team_id]?.name}
+                            </A>
                           </td>
                         </tr>
                       )}
                     </For>
-                  </tbody>
-                </table>
-              </div>
-              <p class="mt-2 text-right text-sm italic">
-                * Self scores are in brackets
-              </p>
-            </Show>
-          </Suspense>
-        </div>
+                  </Suspense>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </Show>
+
+        <Show when={activeTab() === "sotg"}>
+          <div class="rounded-lg p-2">
+            <Suspense fallback={<SpiritStandingsSkeleton />}>
+              <Show
+                when={
+                  tournamentQuery.data?.spirit_ranking.length > 0 &&
+                  tournamentQuery.data?.status === "COM"
+                }
+                fallback={
+                  <div
+                    class="my-4 rounded-lg bg-blue-50 p-2 text-sm dark:bg-gray-800"
+                    role="alert"
+                  >
+                    <p class="text-center">
+                      Spirit rankings is not available during the tournament.
+                      <br />
+                      Please check after the tournament is completed!
+                    </p>
+                  </div>
+                }
+              >
+                <div class="relative overflow-x-auto rounded-lg shadow-md">
+                  <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
+                    <tbody>
+                      <For each={tournamentQuery.data?.spirit_ranking}>
+                        {spirit => (
+                          <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
+                            <th
+                              scope="row"
+                              class="w-14 whitespace-nowrap py-4 pl-6 pr-2 font-normal"
+                            >
+                              {spirit.rank}
+                            </th>
+                            <td class="px-2 py-4">
+                              <A
+                                href={`/tournament/${params.slug}/team/${
+                                  teamsMap()[spirit.team_id]?.slug
+                                }`}
+                              >
+                                <Show
+                                  when={
+                                    teamsMap()[spirit.team_id]?.image ??
+                                    teamsMap()[spirit.team_id]?.image_url
+                                  }
+                                >
+                                  <img
+                                    class="mr-3 inline-block h-8 w-8 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
+                                    src={
+                                      teamsMap()[spirit.team_id]?.image ??
+                                      teamsMap()[spirit.team_id]?.image_url
+                                    }
+                                    alt="Bordered avatar"
+                                  />
+                                </Show>
+                                {teamsMap()[spirit.team_id]?.name}
+                              </A>
+                            </td>
+                            <td class="py-4 pl-2 pr-6">
+                              {spirit.points?.toFixed(2)}
+                              <Show when={spirit.self_points}>
+                                ({spirit.self_points?.toFixed(2)})
+                              </Show>
+                            </td>
+                          </tr>
+                        )}
+                      </For>
+                    </tbody>
+                  </table>
+                </div>
+                <p class="mt-2 text-right text-sm italic">
+                  * Self scores are in brackets
+                </p>
+              </Show>
+            </Suspense>
+          </div>
+        </Show>
       </Show>
     </Show>
   );

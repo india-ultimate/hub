@@ -1,45 +1,37 @@
 import { For } from "solid-js";
-const Standings = () => {
-  return (
-    <For each={new Array(6)}>
-      {/* eslint-disable-next-line no-unused-vars */}
-      {_ => (
+
+import { Bar, Circle, Loading } from "./primitives";
+
+const rows = [0, 1, 2, 3, 4, 5];
+
+const Standings = () => (
+  <Loading label="Loading standings">
+    <For each={rows}>
+      {() => (
         <div class="border-b bg-white py-5 pl-6 pr-6 dark:border-gray-700 dark:bg-gray-800">
-          <div class="h-6 w-full animate-pulse self-center rounded-md bg-gray-400 dark:bg-gray-700/50" />
+          <Bar class="h-6 w-full !rounded-md" />
         </div>
       )}
     </For>
-  );
-};
+  </Loading>
+);
 
-const SpiritStandings = () => {
-  return (
-    <div class="relative overflow-x-auto rounded-lg shadow-md">
-      <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
-        <tbody>
-          <For each={new Array(6)}>
-            {/* eslint-disable-next-line no-unused-vars */}
-            {_ => (
-              <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
-                <th scope="row" class="whitespace-nowrap px-3 py-4 font-normal">
-                  <div class="h-2.5 w-6 animate-pulse self-center rounded-full bg-gray-300 dark:bg-gray-700" />
-                </th>
-                <td class="px-3 py-4">
-                  <div class="flex animate-pulse justify-start">
-                    <div class="mr-3 h-8 w-8 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500" />
-                    <div class="h-2.5 w-24 self-center rounded-full bg-gray-300 dark:bg-gray-700" />
-                  </div>
-                </td>
-                <td class="px-3 py-4">
-                  <div class="h-2.5 w-6 self-center rounded-full bg-gray-300 dark:bg-gray-700" />
-                </td>
-              </tr>
-            )}
-          </For>
-        </tbody>
-      </table>
-    </div>
-  );
-};
+const SpiritStandings = () => (
+  <Loading
+    label="Loading standings"
+    class="relative overflow-x-auto rounded-lg shadow-md"
+  >
+    <For each={rows}>
+      {() => (
+        <div class="flex items-center border-b bg-white px-3 py-4 dark:border-gray-700 dark:bg-gray-800">
+          <Bar class="h-2.5 w-6 !rounded-full" />
+          <Circle class="ml-6 mr-3 h-8 w-8" />
+          <Bar class="h-2.5 w-24 !rounded-full" />
+          <Bar class="ml-auto h-2.5 w-6 !rounded-full" />
+        </div>
+      )}
+    </For>
+  </Loading>
+);
 
 export { SpiritStandings, Standings };

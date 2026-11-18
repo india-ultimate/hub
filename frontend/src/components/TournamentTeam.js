@@ -19,6 +19,7 @@ import {
   removeFromRoster,
   updatePlayerRegistration
 } from "../queries";
+import { Bar, Loading, PageSkeleton } from "../skeletons/primitives";
 import RosterSkeleton from "../skeletons/Roster";
 import { TournamentTeamMatches as TournamentTeamMatchesSkeleton } from "../skeletons/TournamentMatch";
 import { useStore } from "../store";
@@ -202,207 +203,220 @@ const TournamentTeam = () => {
   };
 
   return (
-    <Show when={!teamQuery.data?.message}>
-      <Breadcrumbs
-        icon={trophy}
-        pageList={[
-          { url: "/tournaments", name: "All Tournaments" },
-          {
-            url: tournamentQuery.data?.event
-              ? tournamentCrumb(tournamentQuery.data)
-              : `/tournament/${params.tournament_slug}`,
-            name: getTournamentBreadcrumbName(
-              tournamentQuery.data?.event?.slug || ""
-            )
-          }
-        ]}
-      />
-      <div class="flex justify-center">
-        <img
-          class="mr-3 inline-block h-24 w-24 rounded-full p-1 ring-2 ring-blue-600 dark:ring-blue-500"
-          src={teamQuery.data?.image ?? teamQuery.data?.image_url}
-          alt=""
-          width="96"
-          height="96"
-        />
-      </div>
-      <h1 class="mt-2 text-center">
-        <span class="w-fit bg-gradient-to-r from-blue-500 to-green-500 bg-clip-text text-2xl font-extrabold text-transparent">
-          <Suspense
-            fallback={
-              <span class="inline-block h-2 w-60 animate-pulse rounded-full bg-gray-200 dark:bg-gray-700" />
+    <Show when={!teamQuery.isLoading} fallback={<PageSkeleton />}>
+      <Show when={!teamQuery.data?.message}>
+        <Breadcrumbs
+          icon={trophy}
+          pageList={[
+            { url: "/tournaments", name: "All Tournaments" },
+            {
+              url: tournamentQuery.data?.event
+                ? tournamentCrumb(tournamentQuery.data)
+                : `/tournament/${params.tournament_slug}`,
+              name: getTournamentBreadcrumbName(
+                tournamentQuery.data?.event?.slug || ""
+              )
             }
-          >
-            {teamQuery.data?.name}
-          </Suspense>
-        </span>
-      </h1>
-      <Show when={teamQuery.data}>
+          ]}
+        />
         <div class="flex justify-center">
-          <A
-            href={`/team/${params.team_slug}`}
-            class="inline-flex min-h-[44px] items-center gap-1 rounded-lg px-3 text-sm font-medium text-blue-700 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 active:bg-blue-100"
-          >
-            View team profile
-            <span class="sr-only"> for {teamQuery.data.name}</span>
-            <Icon class="h-4 w-4" path={chevronRight} aria-hidden="true" />
-          </A>
+          <Show when={teamQuery.data?.image ?? teamQuery.data?.image_url}>
+            <img
+              class="mr-3 inline-block h-24 w-24 rounded-full p-1 ring-2 ring-blue-600 dark:ring-blue-500"
+              src={teamQuery.data?.image ?? teamQuery.data?.image_url}
+              alt=""
+              width="96"
+              height="96"
+            />
+          </Show>
         </div>
-      </Show>
-      <div class="my-2 flex w-full justify-center">
-        <p class="inline-flex items-center rounded bg-blue-100 p-1.5 text-sm font-semibold text-blue-600 dark:bg-blue-200 dark:text-blue-800">
-          <span class="sr-only">Points </span>
-          <Icon path={star} class="mr-1 h-4" />
-          {rosterPointsQuery.data?.points || 0}
-        </p>
-      </div>
+        <h1 class="mt-2 text-center">
+          <span class="w-fit bg-gradient-to-r from-blue-500 to-green-500 bg-clip-text text-2xl font-extrabold text-transparent">
+            <Suspense
+              fallback={
+                <Loading quiet class="inline-block">
+                  <Bar class="h-2 w-60 !rounded-full" />
+                </Loading>
+              }
+            >
+              {teamQuery.data?.name}
+            </Suspense>
+          </span>
+        </h1>
+        <Show when={teamQuery.data}>
+          <div class="flex justify-center">
+            <A
+              href={`/team/${params.team_slug}`}
+              class="inline-flex min-h-[44px] items-center gap-1 rounded-lg px-3 text-sm font-medium text-blue-700 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 active:bg-blue-100"
+            >
+              View team profile
+              <span class="sr-only"> for {teamQuery.data.name}</span>
+              <Icon class="h-4 w-4" path={chevronRight} aria-hidden="true" />
+            </A>
+          </div>
+        </Show>
+        <div class="my-2 flex w-full justify-center">
+          <p class="inline-flex items-center rounded bg-blue-100 p-1.5 text-sm font-semibold text-blue-600 dark:bg-blue-200 dark:text-blue-800">
+            <span class="sr-only">Points </span>
+            <Icon path={star} class="mr-1 h-4" />
+            <Show
+              when={
+                tournamentQuery.isLoading || rosterPointsQuery.isInitialLoading
+              }
+              fallback={rosterPointsQuery.data?.points || 0}
+            >
+              <Bar class="inline-block h-4 w-8 !bg-blue-600" />
+            </Show>
+          </p>
+        </div>
 
-      <PillTabs
-        tabs={[
-          { id: "matches", label: "Matches" },
-          { id: "roster", label: "Roster" }
-        ]}
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-      />
+        <PillTabs
+          tabs={[
+            { id: "matches", label: "Matches" },
+            { id: "roster", label: "Roster" }
+          ]}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+        />
 
-      <Show when={activeTab() === "matches"}>
-        <div class="rounded-lg">
-          <Show
-            when={doneFetching()}
-            fallback={<TournamentTeamMatchesSkeleton />}
-          >
-            <For each={Object.entries(matchesGroupedByDate())}>
-              {([tournamentDate, matches]) => (
-                <div class="mb-10">
-                  <Show when={tournamentDates().length > 1}>
-                    <div class="mb-5 ml-1">
-                      <h3 class="text-center text-lg font-bold">
-                        Day -{" "}
-                        {tournamentDates().indexOf(parseInt(tournamentDate)) +
-                          1}
-                      </h3>
-                    </div>
-                  </Show>
-                  <For each={matches}>
-                    {match => (
-                      <div
-                        class={clsx(
-                          "mb-5 block w-full rounded-lg border bg-white px-1 py-2 shadow dark:bg-gray-800",
-                          matchCardColorToBorderColorMap[
-                            matchOutcomeColor(match)
-                          ]
-                        )}
-                      >
-                        <MatchCard
-                          match={match}
-                          currentTeamNo={currTeamNo(match)}
-                          opponentTeamNo={oppTeamNo(match)}
-                          tournamentSlug={params.tournament_slug}
-                          tournamentType={tournamentQuery.data?.event?.type}
-                          useUCRegistrations={
-                            tournamentQuery.data?.use_uc_registrations
-                          }
-                          imgRingColor={"gray"}
-                          matchCardColorOverride={matchOutcomeColor(match)}
-                          buttonColor={matchOutcomeColor(match)}
-                        />
+        <Show when={activeTab() === "matches"}>
+          <div class="rounded-lg">
+            <Show
+              when={doneFetching()}
+              fallback={<TournamentTeamMatchesSkeleton />}
+            >
+              <For each={Object.entries(matchesGroupedByDate())}>
+                {([tournamentDate, matches]) => (
+                  <div class="mb-10">
+                    <Show when={tournamentDates().length > 1}>
+                      <div class="mb-5 ml-1">
+                        <h3 class="text-center text-lg font-bold">
+                          Day -{" "}
+                          {tournamentDates().indexOf(parseInt(tournamentDate)) +
+                            1}
+                        </h3>
                       </div>
+                    </Show>
+                    <For each={matches}>
+                      {match => (
+                        <div
+                          class={clsx(
+                            "mb-5 block w-full rounded-lg border bg-white px-1 py-2 shadow dark:bg-gray-800",
+                            matchCardColorToBorderColorMap[
+                              matchOutcomeColor(match)
+                            ]
+                          )}
+                        >
+                          <MatchCard
+                            match={match}
+                            currentTeamNo={currTeamNo(match)}
+                            opponentTeamNo={oppTeamNo(match)}
+                            tournamentSlug={params.tournament_slug}
+                            tournamentType={tournamentQuery.data?.event?.type}
+                            useUCRegistrations={
+                              tournamentQuery.data?.use_uc_registrations
+                            }
+                            imgRingColor={"gray"}
+                            matchCardColorOverride={matchOutcomeColor(match)}
+                            buttonColor={matchOutcomeColor(match)}
+                          />
+                        </div>
+                      )}
+                    </For>
+                  </div>
+                )}
+              </For>
+            </Show>
+          </div>
+        </Show>
+
+        <Show when={activeTab() === "roster"}>
+          <div class="rounded-lg">
+            <Suspense fallback={<RosterSkeleton />}>
+              <h2 class="my-4 text-xl font-bold underline underline-offset-2">
+                Players {`(${players()?.length || "-"})`}
+              </h2>
+              <Show
+                when={players()?.length !== 0}
+                fallback={<Info text="No Players in the roster" />}
+              >
+                <div class="w-full divide-y sm:divide-y-0">
+                  <For each={players()}>
+                    {registration => (
+                      <Show
+                        when={tournamentQuery.data?.use_uc_registrations}
+                        fallback={
+                          <Registration
+                            registration={registration}
+                            isTeamAdmin={currentUserIsTeamAdmin()}
+                            canRemovePlayer={
+                              store.loggedIn &&
+                              currentUserIsTeamAdmin() &&
+                              isPlayerRegInProgress()
+                            }
+                            canEditPlayer={
+                              store.loggedIn && currentUserIsTeamAdmin()
+                            }
+                            removeMutation={removeFromRosterMutation}
+                            updateMutation={updateRegistrationMutation}
+                          />
+                        }
+                      >
+                        <UCRegistration registration={registration} />
+                      </Show>
                     )}
                   </For>
                 </div>
-              )}
-            </For>
-          </Show>
-        </div>
-      </Show>
-
-      <Show when={activeTab() === "roster"}>
-        <div class="rounded-lg">
-          <Suspense fallback={<RosterSkeleton />}>
-            <h2 class="my-4 text-xl font-bold underline underline-offset-2">
-              Players {`(${players()?.length || "-"})`}
-            </h2>
-            <Show
-              when={players()?.length !== 0}
-              fallback={<Info text="No Players in the roster" />}
-            >
-              <div class="w-full divide-y sm:divide-y-0">
-                <For each={players()}>
-                  {registration => (
-                    <Show
-                      when={tournamentQuery.data?.use_uc_registrations}
-                      fallback={
-                        <Registration
-                          registration={registration}
-                          isTeamAdmin={currentUserIsTeamAdmin()}
-                          canRemovePlayer={
-                            store.loggedIn &&
-                            currentUserIsTeamAdmin() &&
-                            isPlayerRegInProgress()
-                          }
-                          canEditPlayer={
-                            store.loggedIn && currentUserIsTeamAdmin()
-                          }
-                          removeMutation={removeFromRosterMutation}
-                          updateMutation={updateRegistrationMutation}
-                        />
-                      }
-                    >
-                      <UCRegistration registration={registration} />
-                    </Show>
-                  )}
-                </For>
-              </div>
-            </Show>
-            <h2 class="mb-4 mt-8 text-xl font-bold underline underline-offset-2">
-              {tournamentQuery.data?.use_uc_registrations
-                ? "Coaches"
-                : "Non-players"}{" "}
-              {`(${nonPlayers()?.length || "-"})`}
-            </h2>
-            <Show
-              when={nonPlayers()?.length !== 0}
-              fallback={
-                <Info
-                  text={`No ${
-                    tournamentQuery.data?.use_uc_registrations
-                      ? "Coaches"
-                      : "Non-players"
-                  } in roster`}
-                />
-              }
-            >
-              <div class="w-full divide-y sm:divide-y-0">
-                <For each={nonPlayers()}>
-                  {registration => (
-                    <Show
-                      when={tournamentQuery.data?.use_uc_registrations}
-                      fallback={
-                        <Registration
-                          registration={registration}
-                          isTeamAdmin={currentUserIsTeamAdmin()}
-                          canRemovePlayer={
-                            store.loggedIn &&
-                            currentUserIsTeamAdmin() &&
-                            isPlayerRegInProgress()
-                          }
-                          canEditPlayer={
-                            store.loggedIn && currentUserIsTeamAdmin()
-                          }
-                          removeMutation={removeFromRosterMutation}
-                          updateMutation={updateRegistrationMutation}
-                        />
-                      }
-                    >
-                      <UCRegistration registration={registration} />
-                    </Show>
-                  )}
-                </For>
-              </div>
-            </Show>
-          </Suspense>
-        </div>
+              </Show>
+              <h2 class="mb-4 mt-8 text-xl font-bold underline underline-offset-2">
+                {tournamentQuery.data?.use_uc_registrations
+                  ? "Coaches"
+                  : "Non-players"}{" "}
+                {`(${nonPlayers()?.length || "-"})`}
+              </h2>
+              <Show
+                when={nonPlayers()?.length !== 0}
+                fallback={
+                  <Info
+                    text={`No ${
+                      tournamentQuery.data?.use_uc_registrations
+                        ? "Coaches"
+                        : "Non-players"
+                    } in roster`}
+                  />
+                }
+              >
+                <div class="w-full divide-y sm:divide-y-0">
+                  <For each={nonPlayers()}>
+                    {registration => (
+                      <Show
+                        when={tournamentQuery.data?.use_uc_registrations}
+                        fallback={
+                          <Registration
+                            registration={registration}
+                            isTeamAdmin={currentUserIsTeamAdmin()}
+                            canRemovePlayer={
+                              store.loggedIn &&
+                              currentUserIsTeamAdmin() &&
+                              isPlayerRegInProgress()
+                            }
+                            canEditPlayer={
+                              store.loggedIn && currentUserIsTeamAdmin()
+                            }
+                            removeMutation={removeFromRosterMutation}
+                            updateMutation={updateRegistrationMutation}
+                          />
+                        }
+                      >
+                        <UCRegistration registration={registration} />
+                      </Show>
+                    )}
+                  </For>
+                </div>
+              </Show>
+            </Suspense>
+          </div>
+        </Show>
       </Show>
     </Show>
   );

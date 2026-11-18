@@ -13,6 +13,7 @@ import {
   fetchSwissRoundsBySlug,
   fetchTournamentBySlug
 } from "../queries";
+import { TournamentPageSkeleton } from "../skeletons/Tournament";
 import { getTournamentBreadcrumbName } from "../utils";
 import { getMatchCardColor } from "../utils";
 import Breadcrumbs from "./Breadcrumbs";
@@ -236,65 +237,53 @@ const TournamentStandings = () => {
 
   return (
     <Show
-      when={!tournamentQuery.data?.message}
-      fallback={
-        <div>
-          Tournament could not be fetched. Error -{" "}
-          {tournamentQuery.data.message}
-          <A href={"/tournaments"} class="text-blue-600 dark:text-blue-500">
-            <br />
-            Back to Tournaments Page
-          </A>
-        </div>
-      }
+      when={!tournamentQuery.isLoading}
+      fallback={<TournamentPageSkeleton tabs />}
     >
-      <Breadcrumbs
-        icon={trophy}
-        pageList={[
-          { url: "/tournaments", name: "All Tournaments" },
-          {
-            url: `/tournament/${params.slug}`,
-            name: getTournamentBreadcrumbName(
-              tournamentQuery.data?.event?.slug || ""
-            )
-          }
-        ]}
-      />
-      <h1 class="mb-5 text-center">
-        <span class="w-fit bg-gradient-to-r from-blue-500 to-green-500 bg-clip-text text-2xl font-extrabold text-transparent">
-          Standings
-        </span>
-      </h1>
-
-      <PillTabs
-        tabs={stageTabs()}
-        activeTab={activeStage}
-        onTabChange={setActiveStage}
-      />
-
       <Show
-        when={activeStage() === "swiss" && swissRoundsQuery.data?.length > 0}
+        when={!tournamentQuery.data?.message}
+        fallback={
+          <div>
+            Tournament could not be fetched. Error -{" "}
+            {tournamentQuery.data.message}
+            <A href={"/tournaments"} class="text-blue-600 dark:text-blue-500">
+              <br />
+              Back to Tournaments Page
+            </A>
+          </div>
+        }
       >
-        <div class="rounded-lg p-4">
-          <Show
-            when={swissGroupTabs().length > 1}
-            fallback={
-              <SwissGroupContent
-                swissRound={activeSwissRound()}
-                teamsMap={teamsMap}
-                params={params}
-                matchesQuery={matchesQuery}
-                tournamentType={tournamentQuery.data?.event?.type}
-                useUCRegistrations={tournamentQuery.data?.use_uc_registrations}
-              />
+        <Breadcrumbs
+          icon={trophy}
+          pageList={[
+            { url: "/tournaments", name: "All Tournaments" },
+            {
+              url: `/tournament/${params.slug}`,
+              name: getTournamentBreadcrumbName(
+                tournamentQuery.data?.event?.slug || ""
+              )
             }
-          >
-            <VerticalTabs
-              tabs={swissGroupTabs()}
-              activeTab={activeSwissGroup}
-              onTabChange={setActiveSwissGroup}
-            >
-              <Show when={activeSwissRound()}>
+          ]}
+        />
+        <h1 class="mb-5 text-center">
+          <span class="w-fit bg-gradient-to-r from-blue-500 to-green-500 bg-clip-text text-2xl font-extrabold text-transparent">
+            Standings
+          </span>
+        </h1>
+
+        <PillTabs
+          tabs={stageTabs()}
+          activeTab={activeStage}
+          onTabChange={setActiveStage}
+        />
+
+        <Show
+          when={activeStage() === "swiss" && swissRoundsQuery.data?.length > 0}
+        >
+          <div class="rounded-lg p-4">
+            <Show
+              when={swissGroupTabs().length > 1}
+              fallback={
                 <SwissGroupContent
                   swissRound={activeSwissRound()}
                   teamsMap={teamsMap}
@@ -305,250 +294,307 @@ const TournamentStandings = () => {
                     tournamentQuery.data?.use_uc_registrations
                   }
                 />
-              </Show>
-            </VerticalTabs>
-          </Show>
-          <p class="mt-2 text-center text-xs text-gray-500 dark:text-gray-400">
-            Pts = Win(2) + Draw(1). OS = sum of opponents' points (higher =
-            faced stronger opponents). Tiebreaker: Pts &gt; H2H &gt; OS &gt; GD.
-          </p>
-        </div>
-      </Show>
-
-      <Show when={activeStage() === "pools" && poolsQuery.data?.length > 0}>
-        <div class="rounded-lg p-4">
-          <For each={Object.keys(poolsMap())}>
-            {poolName => (
-              <div class="mb-8">
-                <h2 class="mb-2 text-center text-lg font-semibold">
-                  Pool {poolName}
-                </h2>
-                <div class="relative my-3 overflow-x-auto rounded-lg shadow-lg">
-                  <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
-                    <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
-                      <tr>
-                        <th scope="col" class="px-4 py-3">
-                          Seed
-                        </th>
-                        <th scope="col" class="px-4 py-3">
-                          Team
-                        </th>
-                        <th scope="col" class="px-4 py-3">
-                          W
-                        </th>
-                        <th scope="col" class="px-4 py-3">
-                          L
-                        </th>
-                        <th scope="col" class="px-4 py-3">
-                          GD
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <For each={poolsMap()[poolName]}>
-                        {result => (
-                          <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
-                            <td class="px-4 py-4">{result.seed}</td>
-                            <td class="px-4 py-4">
-                              <A
-                                href={`/tournament/${params.slug}/team/${
-                                  teamsMap()[result.team_id]?.slug
-                                }`}
-                              >
-                                {teamsMap()[result.team_id]?.name}
-                              </A>
-                            </td>
-                            <td class="px-4 py-4">{result.wins}</td>
-                            <td class="px-4 py-4">{result.losses}</td>
-                            <td class="px-4 py-4">
-                              {parseInt(result["GF"]) - parseInt(result["GA"])}
-                            </td>
-                          </tr>
-                        )}
-                      </For>
-                    </tbody>
-                  </table>
-                </div>
-                <Show when={matchesQuery.isSuccess}>
-                  <div class="mt-4">
-                    <h3 class="mb-2 text-center text-sm font-semibold text-gray-700 dark:text-gray-200">
-                      Pool {poolName} matches
-                    </h3>
-                    <div class="space-y-3">
-                      <For
-                        each={matchesQuery.data?.filter(
-                          m => m.pool && m.pool.name === poolName
-                        )}
-                      >
-                        {match => (
-                          <div
-                            id={match.id}
-                            class={`mb-3 block w-full rounded-lg border bg-white px-1 py-2 shadow dark:bg-gray-800 ${
-                              matchCardColorToBorderColorMap[
-                                getMatchCardColor(match)
-                              ]
-                            }`}
-                          >
-                            <MatchCard
-                              match={match}
-                              tournamentSlug={params.slug}
-                              tournamentType={tournamentQuery.data?.event?.type}
-                              useUCRegistrations={
-                                tournamentQuery.data?.use_uc_registrations
-                              }
-                              bothTeamsClickable
-                              compact
-                            />
-                          </div>
-                        )}
-                      </For>
-                    </div>
-                  </div>
+              }
+            >
+              <VerticalTabs
+                tabs={swissGroupTabs()}
+                activeTab={activeSwissGroup}
+                onTabChange={setActiveSwissGroup}
+              >
+                <Show when={activeSwissRound()}>
+                  <SwissGroupContent
+                    swissRound={activeSwissRound()}
+                    teamsMap={teamsMap}
+                    params={params}
+                    matchesQuery={matchesQuery}
+                    tournamentType={tournamentQuery.data?.event?.type}
+                    useUCRegistrations={
+                      tournamentQuery.data?.use_uc_registrations
+                    }
+                  />
                 </Show>
-              </div>
-            )}
-          </For>
-        </div>
-      </Show>
-
-      <Show
-        when={activeStage() === "cross-pool" && !crossPoolQuery.data?.message}
-      >
-        <div class="rounded-lg p-4">
-          <Show
-            when={
-              Object.keys(crossPoolQuery.data?.initial_seeding || {}).length > 0
-            }
-            fallback={
-              <p>Cross Pool stage in the tournament is not reached yet!</p>
-            }
-          >
-            <h2 class="mt-5 text-center text-xl font-bold">
-              Initial Standings
-            </h2>
-            <div class="relative mt-5 overflow-x-auto rounded-lg shadow-md">
-              <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
-                <tbody>
-                  <For
-                    each={Object.entries(
-                      crossPoolQuery.data?.initial_seeding || {}
-                    )}
-                  >
-                    {([rank, team_id]) => (
-                      <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
-                        <th
-                          scope="row"
-                          class="whitespace-nowrap py-4 pl-10 pr-6 font-normal"
-                        >
-                          {rank}
-                        </th>
-                        <td class="px-6 py-4">
-                          <img
-                            class="mr-3 inline-block h-8 w-8 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
-                            src={getTeamImage(teamsMap()[team_id])}
-                            alt="Bordered avatar"
-                          />
-                          <A
-                            href={`/tournament/${params.slug}/team/${
-                              teamsMap()[team_id]?.slug
-                            }`}
-                          >
-                            {teamsMap()[team_id]?.name}
-                          </A>
-                        </td>
-                      </tr>
-                    )}
-                  </For>
-                </tbody>
-              </table>
-            </div>
-            <h2 class="mt-5 text-center text-xl font-bold">
-              Current Standings
-            </h2>
-            <div class="relative mt-5 overflow-x-auto rounded-lg shadow-md">
-              <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
-                <tbody>
-                  <For
-                    each={Object.entries(
-                      crossPoolQuery.data?.current_seeding || {}
-                    )}
-                  >
-                    {([rank, team_id]) => (
-                      <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
-                        <th
-                          scope="row"
-                          class="whitespace-nowrap py-4 pl-10 pr-6 font-normal"
-                        >
-                          {rank}
-                        </th>
-                        <td class="px-6 py-4">
-                          <img
-                            class="mr-3 inline-block h-8 w-8 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
-                            src={getTeamImage(teamsMap()[team_id])}
-                            alt="Bordered avatar"
-                          />
-                          <A
-                            href={`/tournament/${params.slug}/team/${
-                              teamsMap()[team_id]?.slug
-                            }`}
-                          >
-                            {teamsMap()[team_id]?.name}
-                          </A>
-                        </td>
-                      </tr>
-                    )}
-                  </For>
-                </tbody>
-              </table>
-            </div>
-            <Show when={matchesQuery.isSuccess}>
-              <div class="mt-6">
-                <h3 class="mb-2 text-center text-sm font-semibold text-gray-700 dark:text-gray-200">
-                  Cross Pool matches
-                </h3>
-                <div class="space-y-3">
-                  <For
-                    each={matchesQuery.data?.filter(
-                      m => m.cross_pool?.id === crossPoolQuery.data?.id
-                    )}
-                  >
-                    {match => (
-                      <div
-                        id={match.id}
-                        class={`mb-3 block w-full rounded-lg border bg-white px-1 py-2 shadow dark:bg-gray-800 ${
-                          matchCardColorToBorderColorMap[
-                            getMatchCardColor(match)
-                          ]
-                        }`}
-                      >
-                        <MatchCard
-                          match={match}
-                          tournamentSlug={params.slug}
-                          tournamentType={tournamentQuery.data?.event?.type}
-                          useUCRegistrations={
-                            tournamentQuery.data?.use_uc_registrations
-                          }
-                          bothTeamsClickable
-                          compact
-                        />
-                      </div>
-                    )}
-                  </For>
-                </div>
-              </div>
+              </VerticalTabs>
             </Show>
-          </Show>
-        </div>
-      </Show>
+            <p class="mt-2 text-center text-xs text-gray-500 dark:text-gray-400">
+              Pts = Win(2) + Draw(1). OS = sum of opponents' points (higher =
+              faced stronger opponents). Tiebreaker: Pts &gt; H2H &gt; OS &gt;
+              GD.
+            </p>
+          </div>
+        </Show>
 
-      <Show
-        when={activeStage() === "brackets" && bracketQuery.data?.length > 0}
-      >
-        <div class="rounded-lg p-4">
-          <Show
-            when={bracketAndPoolTabs().length > 1}
-            fallback={
-              <>
+        <Show when={activeStage() === "pools" && poolsQuery.data?.length > 0}>
+          <div class="rounded-lg p-4">
+            <For each={Object.keys(poolsMap())}>
+              {poolName => (
+                <div class="mb-8">
+                  <h2 class="mb-2 text-center text-lg font-semibold">
+                    Pool {poolName}
+                  </h2>
+                  <div class="relative my-3 overflow-x-auto rounded-lg shadow-lg">
+                    <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
+                      <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
+                        <tr>
+                          <th scope="col" class="px-4 py-3">
+                            Seed
+                          </th>
+                          <th scope="col" class="px-4 py-3">
+                            Team
+                          </th>
+                          <th scope="col" class="px-4 py-3">
+                            W
+                          </th>
+                          <th scope="col" class="px-4 py-3">
+                            L
+                          </th>
+                          <th scope="col" class="px-4 py-3">
+                            GD
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <For each={poolsMap()[poolName]}>
+                          {result => (
+                            <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
+                              <td class="px-4 py-4">{result.seed}</td>
+                              <td class="px-4 py-4">
+                                <A
+                                  href={`/tournament/${params.slug}/team/${
+                                    teamsMap()[result.team_id]?.slug
+                                  }`}
+                                >
+                                  {teamsMap()[result.team_id]?.name}
+                                </A>
+                              </td>
+                              <td class="px-4 py-4">{result.wins}</td>
+                              <td class="px-4 py-4">{result.losses}</td>
+                              <td class="px-4 py-4">
+                                {parseInt(result["GF"]) -
+                                  parseInt(result["GA"])}
+                              </td>
+                            </tr>
+                          )}
+                        </For>
+                      </tbody>
+                    </table>
+                  </div>
+                  <Show when={matchesQuery.isSuccess}>
+                    <div class="mt-4">
+                      <h3 class="mb-2 text-center text-sm font-semibold text-gray-700 dark:text-gray-200">
+                        Pool {poolName} matches
+                      </h3>
+                      <div class="space-y-3">
+                        <For
+                          each={matchesQuery.data?.filter(
+                            m => m.pool && m.pool.name === poolName
+                          )}
+                        >
+                          {match => (
+                            <div
+                              id={match.id}
+                              class={`mb-3 block w-full rounded-lg border bg-white px-1 py-2 shadow dark:bg-gray-800 ${
+                                matchCardColorToBorderColorMap[
+                                  getMatchCardColor(match)
+                                ]
+                              }`}
+                            >
+                              <MatchCard
+                                match={match}
+                                tournamentSlug={params.slug}
+                                tournamentType={
+                                  tournamentQuery.data?.event?.type
+                                }
+                                useUCRegistrations={
+                                  tournamentQuery.data?.use_uc_registrations
+                                }
+                                bothTeamsClickable
+                                compact
+                              />
+                            </div>
+                          )}
+                        </For>
+                      </div>
+                    </div>
+                  </Show>
+                </div>
+              )}
+            </For>
+          </div>
+        </Show>
+
+        <Show
+          when={activeStage() === "cross-pool" && !crossPoolQuery.data?.message}
+        >
+          <div class="rounded-lg p-4">
+            <Show
+              when={
+                Object.keys(crossPoolQuery.data?.initial_seeding || {}).length >
+                0
+              }
+              fallback={
+                <p>Cross Pool stage in the tournament is not reached yet!</p>
+              }
+            >
+              <h2 class="mt-5 text-center text-xl font-bold">
+                Initial Standings
+              </h2>
+              <div class="relative mt-5 overflow-x-auto rounded-lg shadow-md">
+                <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
+                  <tbody>
+                    <For
+                      each={Object.entries(
+                        crossPoolQuery.data?.initial_seeding || {}
+                      )}
+                    >
+                      {([rank, team_id]) => (
+                        <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
+                          <th
+                            scope="row"
+                            class="whitespace-nowrap py-4 pl-10 pr-6 font-normal"
+                          >
+                            {rank}
+                          </th>
+                          <td class="px-6 py-4">
+                            <img
+                              class="mr-3 inline-block h-8 w-8 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
+                              src={getTeamImage(teamsMap()[team_id])}
+                              alt="Bordered avatar"
+                            />
+                            <A
+                              href={`/tournament/${params.slug}/team/${
+                                teamsMap()[team_id]?.slug
+                              }`}
+                            >
+                              {teamsMap()[team_id]?.name}
+                            </A>
+                          </td>
+                        </tr>
+                      )}
+                    </For>
+                  </tbody>
+                </table>
+              </div>
+              <h2 class="mt-5 text-center text-xl font-bold">
+                Current Standings
+              </h2>
+              <div class="relative mt-5 overflow-x-auto rounded-lg shadow-md">
+                <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
+                  <tbody>
+                    <For
+                      each={Object.entries(
+                        crossPoolQuery.data?.current_seeding || {}
+                      )}
+                    >
+                      {([rank, team_id]) => (
+                        <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
+                          <th
+                            scope="row"
+                            class="whitespace-nowrap py-4 pl-10 pr-6 font-normal"
+                          >
+                            {rank}
+                          </th>
+                          <td class="px-6 py-4">
+                            <img
+                              class="mr-3 inline-block h-8 w-8 rounded-full p-1 ring-2 ring-gray-300 dark:ring-gray-500"
+                              src={getTeamImage(teamsMap()[team_id])}
+                              alt="Bordered avatar"
+                            />
+                            <A
+                              href={`/tournament/${params.slug}/team/${
+                                teamsMap()[team_id]?.slug
+                              }`}
+                            >
+                              {teamsMap()[team_id]?.name}
+                            </A>
+                          </td>
+                        </tr>
+                      )}
+                    </For>
+                  </tbody>
+                </table>
+              </div>
+              <Show when={matchesQuery.isSuccess}>
+                <div class="mt-6">
+                  <h3 class="mb-2 text-center text-sm font-semibold text-gray-700 dark:text-gray-200">
+                    Cross Pool matches
+                  </h3>
+                  <div class="space-y-3">
+                    <For
+                      each={matchesQuery.data?.filter(
+                        m => m.cross_pool?.id === crossPoolQuery.data?.id
+                      )}
+                    >
+                      {match => (
+                        <div
+                          id={match.id}
+                          class={`mb-3 block w-full rounded-lg border bg-white px-1 py-2 shadow dark:bg-gray-800 ${
+                            matchCardColorToBorderColorMap[
+                              getMatchCardColor(match)
+                            ]
+                          }`}
+                        >
+                          <MatchCard
+                            match={match}
+                            tournamentSlug={params.slug}
+                            tournamentType={tournamentQuery.data?.event?.type}
+                            useUCRegistrations={
+                              tournamentQuery.data?.use_uc_registrations
+                            }
+                            bothTeamsClickable
+                            compact
+                          />
+                        </div>
+                      )}
+                    </For>
+                  </div>
+                </div>
+              </Show>
+            </Show>
+          </div>
+        </Show>
+
+        <Show
+          when={activeStage() === "brackets" && bracketQuery.data?.length > 0}
+        >
+          <div class="rounded-lg p-4">
+            <Show
+              when={bracketAndPoolTabs().length > 1}
+              fallback={
+                <>
+                  <Show when={activeBracketData()}>
+                    <BracketContent
+                      bracket={activeBracketData()}
+                      teamsMap={teamsMap}
+                      params={params}
+                      getTeamImage={getTeamImage}
+                      matchesQuery={matchesQuery}
+                      tournamentType={tournamentQuery.data?.event?.type}
+                      useUCRegistrations={
+                        tournamentQuery.data?.use_uc_registrations
+                      }
+                    />
+                  </Show>
+                  <Show when={activePoolName()}>
+                    <PositionPoolContent
+                      poolName={activePoolName()}
+                      results={positionPoolsMap()[activePoolName()]}
+                      teamsMap={teamsMap}
+                      params={params}
+                      matchesQuery={matchesQuery}
+                      tournamentType={tournamentQuery.data?.event?.type}
+                      useUCRegistrations={
+                        tournamentQuery.data?.use_uc_registrations
+                      }
+                    />
+                  </Show>
+                </>
+              }
+            >
+              <VerticalTabs
+                tabs={bracketAndPoolTabs()}
+                activeTab={activeBracketTab}
+                onTabChange={setActiveBracketTab}
+              >
                 <Show when={activeBracketData()}>
                   <BracketContent
                     bracket={activeBracketData()}
@@ -575,43 +621,10 @@ const TournamentStandings = () => {
                     }
                   />
                 </Show>
-              </>
-            }
-          >
-            <VerticalTabs
-              tabs={bracketAndPoolTabs()}
-              activeTab={activeBracketTab}
-              onTabChange={setActiveBracketTab}
-            >
-              <Show when={activeBracketData()}>
-                <BracketContent
-                  bracket={activeBracketData()}
-                  teamsMap={teamsMap}
-                  params={params}
-                  getTeamImage={getTeamImage}
-                  matchesQuery={matchesQuery}
-                  tournamentType={tournamentQuery.data?.event?.type}
-                  useUCRegistrations={
-                    tournamentQuery.data?.use_uc_registrations
-                  }
-                />
-              </Show>
-              <Show when={activePoolName()}>
-                <PositionPoolContent
-                  poolName={activePoolName()}
-                  results={positionPoolsMap()[activePoolName()]}
-                  teamsMap={teamsMap}
-                  params={params}
-                  matchesQuery={matchesQuery}
-                  tournamentType={tournamentQuery.data?.event?.type}
-                  useUCRegistrations={
-                    tournamentQuery.data?.use_uc_registrations
-                  }
-                />
-              </Show>
-            </VerticalTabs>
-          </Show>
-        </div>
+              </VerticalTabs>
+            </Show>
+          </div>
+        </Show>
       </Show>
     </Show>
   );
