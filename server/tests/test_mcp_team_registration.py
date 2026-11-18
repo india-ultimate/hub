@@ -13,7 +13,7 @@ from server.mcp import registry
 from server.mcp.dispatch import ApiResponse
 from server.mcp.tools import team_registration
 from server.registration.models import RosterEntry
-from server.series.models import SeriesRosterInvitation
+from server.series.models import Role, SeriesRosterInvitation
 from server.subscription.models import Subscription
 from server.tests.base import make_account
 from server.tests.test_mcp_auth import make_token
@@ -172,6 +172,14 @@ class TestFindTeamCandidates(Case):
         self.assertEqual([1, 2], [found["email_position"], missing["email_position"]])
         self.assertNotIn("@x.com", json.dumps(data))
 
+    def test_a_candidate_says_how_they_would_do_as_staff(self) -> None:
+        Event.objects.filter(pk=self.event.pk).update(series=None)
+        self.player("c@x.com", on_series=False, tier="community", entry=False)
+        data = self.read("find_team_candidates", {**self.args, "emails": ["c@x.com"]})
+        candidate = data["results"][0]["candidates"][0]
+        self.assertEqual("action.upgrade", candidate["state_code"])
+        self.assertEqual("ready", candidate["as_staff"]["state_code"])
+
     def test_too_many_emails_are_refused(self) -> None:
         result = self.call("find_team_candidates", {**self.args, "emails": ["a@x.com"] * 21})
 
@@ -217,6 +225,21 @@ class TestAddToRoster(Case):
         )
         self.assertEqual([invited.user.email], [m.to[0] for m in mail.outbox])
         self.assertTrue(SeriesRosterInvitation.objects.filter(to_player=invited).exists())
+
+    def test_add_to_roster_as_coach(self) -> None:
+        Event.objects.filter(pk=self.event.pk).update(series=None)
+        coach = self.player("c@x.com", on_series=False, entry=False)
+
+        message = self.asked(
+            "add_to_roster", {**self.args, "player_ids": [coach.id], "role": "coach"}
+        )
+        self.assertIn("as coach", message)
+        result = self.confirmed(
+            "add_to_roster", {**self.args, "player_ids": [coach.id], "role": "coach"}
+        )
+
+        self.assertTrue(result["structuredContent"]["done"], result)
+        self.assertEqual(Role.COACH, RosterEntry.objects.get(player=coach).role)
 
     def test_an_unknown_player_is_refused_before_asking(self) -> None:
         result = self.call("add_to_roster", {**self.args, "player_ids": [999999]})

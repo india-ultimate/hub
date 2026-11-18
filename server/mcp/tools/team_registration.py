@@ -13,7 +13,7 @@ from server.mcp.registry import Audience, ToolContext, ToolResult, fail, ok, too
 from server.mcp.shape import SLUG_SCHEMA, cap, full_name, money, slug_problem
 from server.receipts.money import rupees
 from server.registration.models import RosterEntry
-from server.series.models import SeriesRosterInvitation
+from server.series.models import Role, SeriesRosterInvitation
 from server.tournament.models import Event, Tournament
 from server.tournament.utils import series_role
 from server.utils import calculate_late_penalty, today
@@ -314,6 +314,12 @@ def _candidate(row: dict[str, Any], group: str) -> dict[str, Any]:
         "would_email_invite": row["button"] == "invite",
         "state_code": hint.get("code"),
         "text": hint.get("text"),
+        # How they'd do added as a coach or manager, when that differs.
+        "as_staff": (
+            {"state_code": row["staff_hint"]["code"], "text": row["staff_hint"]["text"]}
+            if row["staff_hint"] and row["staff_button"]
+            else None
+        ),
     }
 
 
@@ -323,7 +329,8 @@ def _candidate(row: dict[str, Any], group: str) -> dict[str, Any]:
     description=(
         "Find players a team admin could add for an event, by name or by full email "
         "address (one lookup each, at most 20). Says whether adding someone also emails them "
-        "a series invitation, and why they could not be added. With no text or emails, lists "
+        "a series invitation, and why they could not be added. as_staff says how they would "
+        "do added as a coach or manager, when that differs. With no text or emails, lists "
         "the series roster and past teammates. Results for emails give email_position (from 1) "
         "rather than the address."
     ),
@@ -398,13 +405,23 @@ def _list_names(ids: list[int], names: dict[int, str]) -> str:
     return ", ".join(names[i] for i in ids)
 
 
+ROLES = {
+    "player": Role.DEFAULT,
+    "coach": Role.COACH,
+    "assistant_coach": Role.ASSISTANT_COACH,
+    "manager": Role.MANAGER,
+}
+
+
 @tool(
     "add_to_roster",
     title="Add players to a team's roster",
     description=(
         "Add players to a team's roster for an event. On a series event, a player who is not "
         "on the series roster is emailed an invitation to join it. Paid events list them "
-        "unpaid until pay_for_team. Asks the user first."
+        "unpaid until pay_for_team. role adds them all as coach, assistant_coach or manager: "
+        "non-players, who pay the event's non-player fee and take no player spot. Asks the "
+        "user first."
     ),
     input_schema={
         "type": "object",
@@ -412,6 +429,7 @@ def _list_names(ids: list[int], names: dict[int, str]) -> str:
             "event_slug": SLUG_SCHEMA,
             "team_slug": SLUG_SCHEMA,
             "player_ids": PLAYER_IDS,
+            "role": {"type": "string", "enum": list(ROLES), "default": "player"},
         },
         "required": ["event_slug", "team_slug", "player_ids"],
         "additionalProperties": False,
@@ -451,7 +469,9 @@ def add_to_roster(ctx: ToolContext, args: dict[str, Any]) -> ToolResult:
     listed = [i for i in ids if i not in invited]
     names = {i: _name(players[i]) for i in ids}
     roster = _base(args["event_slug"], args["team_slug"])
-    parts = [f"Add {_list_names(ids, names)} to {team.name}'s roster for {event.title}."]
+    role = args.get("role", "player")
+    as_role = "" if role == "player" else f" as {role.replace('_', ' ')}"
+    parts = [f"Add {_list_names(ids, names)} to {team.name}'s roster for {event.title}{as_role}."]
     if invited and event.series:
         parts.append(
             f"{_list_names(invited, names)} will get an email inviting them to join "
@@ -465,7 +485,9 @@ def add_to_roster(ctx: ToolContext, args: dict[str, Any]) -> ToolResult:
             ctx,
             args,
             ids,
-            lambda i: call_api(ctx, "POST", f"{roster}/roster", body={"player_id": i}),
+            lambda i: call_api(
+                ctx, "POST", f"{roster}/roster", body={"player_id": i, "role": ROLES[role]}
+            ),
             "Added",
         )
 
@@ -646,7 +668,7 @@ def pay_for_team(ctx: ToolContext, args: dict[str, Any]) -> ToolResult:
     if what == "roster":
         quote = status.data["checkout"]
         ids, amount = quote["ready_ids"], quote["amount"]
-        if not event.player_fee:
+        if not event.player_fee and not event.non_player_fee:
             return fail("This event has no player fee.", hint="Use add_to_roster for free events.")
         if not ids:
             return fail(
