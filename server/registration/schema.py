@@ -3,8 +3,13 @@ from ninja import Schema
 from server.transaction.schema import RazorpayOrderSchema
 
 
+class SetRoleSchema(Schema):
+    role: str
+
+
 class AddEntrySchema(Schema):
     player_id: int
+    role: str | None = None  # None keeps the role they were added in, or Player
 
 
 class CheckoutSchema(Schema):

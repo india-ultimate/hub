@@ -14,7 +14,7 @@ from razorpay.resources.payment import Payment
 
 from server.core.models import Player, Team, User
 from server.registration.models import RosterEntry, RosterSwap
-from server.registration.state import build_context
+from server.registration.state import build_context, plays
 from server.series.models import Role, SeriesRegistration, SeriesRosterInvitation
 from server.subscription.models import Subscription
 from server.tests.base import make_account
@@ -1202,3 +1202,366 @@ class TestSwap(ApiCase):
         add()
         add()
         self.assertEqual(before, count())
+
+
+class OneOffApiCase(ApiCase):
+    """A tournament outside any series, where players pay 750 and non-players 300."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        Event.objects.filter(pk=self.event.pk).update(
+            series=None, player_fee=75000, non_player_fee=30000
+        )
+        self.event.refresh_from_db()
+
+    def pay(self, expected: int) -> tuple[Any, mock.MagicMock]:
+        ids = self.status().json()["checkout"]["ready_ids"]
+        with mock.patch.object(
+            Order, "create", autospec=True, return_value=razorpay_order(expected)
+        ) as create:
+            response = self.web.post(
+                f"{self.base}/checkout",
+                {"expected_amount": expected, "expected_ids": ids},
+                content_type="application/json",
+            )
+        return response, create
+
+    def swap(self, out: Player, new: Player) -> Any:
+        return self.web.post(
+            f"{self.base}/swap",
+            {"out_player_id": out.id, "in_player_id": new.id},
+            content_type="application/json",
+        )
+
+    def add(self, player: Player, role: str | None = None) -> Any:
+        body: dict[str, Any] = {"player_id": player.id}
+        if role is not None:
+            body["role"] = role
+        return self.web.post(f"{self.base}/roster", body, content_type="application/json")
+
+
+class TestNonPlayerApi(OneOffApiCase):
+    def test_adding_a_coach_on_a_one_off_event_keeps_the_role(self) -> None:
+        p = self.player("c@x.com", on_series=False, tier="community", entry=False)
+        r = self.add(p, Role.COACH)
+        self.assertEqual(201, r.status_code, r.content)
+        self.assertEqual("ready", r.json()["state"]["code"])
+        self.assertEqual(Role.COACH, RosterEntry.objects.get(player=p).role)
+
+    def test_a_free_coach_is_rostered_at_once_and_can_be_undone(self) -> None:
+        Event.objects.filter(pk=self.event.pk).update(non_player_fee=0)
+        p = self.player("c@x.com", on_series=False, tier="community", entry=False)
+        self.assertEqual(201, self.add(p, Role.ASSISTANT_COACH).status_code)
+        registration = Registration.objects.get(event=self.event, player=p)
+        self.assertEqual(
+            (Role.ASSISTANT_COACH, False), (registration.role, registration.is_playing)
+        )
+        self.assertEqual(204, self.web.delete(f"{self.base}/roster/{p.id}").status_code)
+        self.assertFalse(Registration.objects.filter(event=self.event, player=p).exists())
+
+    def test_checkout_with_only_non_players(self) -> None:
+        Event.objects.filter(pk=self.event.pk).update(player_fee=0)
+        p = self.player("c@x.com", on_series=False, tier="community", entry=False)
+        self.add(p, Role.MANAGER)
+        r, create = self.pay(30000)
+        self.assertEqual(200, r.status_code, r.content)
+        self.assertEqual(30000, create.call_args.kwargs["data"]["amount"])
+
+    def test_candidates_say_how_they_would_do_as_staff(self) -> None:
+        community = self.player("c@x.com", on_series=False, tier="community", entry=False)
+        regular = self.player("r@x.com", on_series=False, entry=False)
+        rows = {
+            r["id"]: r
+            for text in ("c@x.com", "r@x.com")
+            for g in self.web.get(f"{self.base}/candidates", {"text": text}).json()["groups"]
+            for r in g["players"]
+        }
+        self.assertEqual("Subscription needs an upgrade", rows[community.id]["hint"]["text"])
+        self.assertEqual("ready", rows[community.id]["staff_hint"]["kind"])
+        self.assertIsNone(rows[regular.id]["staff_hint"])
+
+    def test_an_unknown_role_is_refused(self) -> None:
+        p = self.player("c@x.com", on_series=False, entry=False)
+        self.assertEqual(400, self.add(p, Role.CAPTAIN).status_code)
+        self.assertFalse(RosterEntry.objects.filter(player=p).exists())
+
+    def test_swapping_in_a_coach_rosters_them_as_a_coach(self) -> None:
+        out = self.player("o@x.com", on_series=False, tier="community", entry=False)
+        Registration.objects.create(
+            event=self.event, team=self.team, player=out, role=Role.COACH, is_playing=False
+        )
+        new = self.player("n@x.com", on_series=False, tier="community", entry=False)
+        self.add(new, Role.COACH)
+        r = self.swap(out, new)
+        self.assertEqual(200, r.status_code, r.content)
+        registration = Registration.objects.get(event=self.event, player=new)
+        self.assertEqual((Role.COACH, False), (registration.role, registration.is_playing))
+
+
+class TestNonPlayerSwapBack(OneOffApiCase):
+    def test_a_swapped_out_coach_goes_back_on_the_list_as_a_coach(self) -> None:
+        out = self.player("o@x.com", on_series=False, tier="community", entry=False)
+        Registration.objects.create(
+            event=self.event, team=self.team, player=out, role=Role.COACH, is_playing=False
+        )
+        new = self.player("n@x.com", on_series=False, tier="community", entry=False)
+        self.add(new, Role.COACH)
+        self.assertEqual(200, self.swap(out, new).status_code)
+        self.assertEqual(Role.COACH, RosterEntry.objects.get(player=out).role)
+
+
+class TestSeriesNonPlayers(ApiCase):
+    def test_a_series_newcomer_added_as_coach_is_invited_as_coach(self) -> None:
+        p = self.player("c@x.com", on_series=False, entry=False)
+        r = self.web.post(
+            f"{self.base}/roster",
+            {"player_id": p.id, "role": Role.COACH},
+            content_type="application/json",
+        )
+        self.assertEqual(201, r.status_code, r.content)
+        self.assertEqual(
+            Role.COACH, SeriesRosterInvitation.objects.get(to_player=p, series=self.series).role
+        )
+
+    def test_candidates_carry_their_series_role(self) -> None:
+        coach = self.player("c@x.com", entry=False)
+        SeriesRegistration.objects.filter(player=coach).update(role=Role.COACH)
+        newcomer = self.player("n@x.com", on_series=False, entry=False)
+        rows = {
+            r["id"]: r
+            for text in ("c@x.com", "n@x.com")
+            for g in self.web.get(f"{self.base}/candidates", {"text": text}).json()["groups"]
+            for r in g["players"]
+        }
+        self.assertEqual(Role.COACH, rows[coach.id]["series_role"])
+        self.assertIsNone(rows[newcomer.id]["series_role"])
+
+    def test_the_page_links_the_series_roster(self) -> None:
+        self.assertEqual(self.series.slug, self.status().json()["event"]["series_slug"])
+
+    def test_a_coach_who_paid_as_a_coach_stays_one_when_the_series_role_changes(self) -> None:
+        coach = self.player("c@x.com", entry=False)
+        Registration.objects.create(
+            event=self.event, team=self.team, player=coach, role=Role.COACH, is_playing=False
+        )
+        SeriesRegistration.objects.filter(player=coach).update(role=Role.DEFAULT)
+        self.assertFalse(plays(build_context(self.event, self.team, self.admin), coach.id))
+        body = self.status().json()
+        self.assertEqual(
+            (0, 1), (body["roster"]["meter"]["total"], body["roster"]["meter"]["non_players"])
+        )
+        row = next(r for r in body["roster"]["entries"] if r["player"]["id"] == coach.id)
+        self.assertEqual(Role.COACH, row["role"])
+
+    def test_payment_rosters_the_series_role_paid_for(self) -> None:
+        coach = self.player("c@x.com")
+        SeriesRegistration.objects.filter(player=coach).update(role=Role.COACH)
+        order = self.held(coach)
+        RazorpayTransactionPlayer.objects.filter(transaction=order).update(role=Role.COACH)
+        # Made a player on the series roster while the order was open.
+        SeriesRegistration.objects.filter(player=coach).update(role=Role.DEFAULT)
+        RazorpayTransaction.objects.filter(pk=order.pk).update(
+            status="completed", payment_id="pay_x"
+        )
+        order.refresh_from_db()
+        apply_transaction(order)
+        registration = Registration.objects.get(event=self.event, player=coach)
+        self.assertEqual((Role.COACH, False), (registration.role, registration.is_playing))
+
+    def test_a_series_members_entry_ignores_the_picked_role(self) -> None:
+        p = self.player("p@x.com", entry=False)
+        r = self.web.post(
+            f"{self.base}/roster",
+            {"player_id": p.id, "role": Role.COACH},
+            content_type="application/json",
+        )
+        self.assertEqual(201, r.status_code, r.content)
+        self.assertEqual(Role.DEFAULT, RosterEntry.objects.get(player=p).role)
+
+    def test_a_pending_invite_takes_the_newly_picked_role(self) -> None:
+        p = self.player("c@x.com", on_series=False, entry=False)
+        for role in (Role.DEFAULT, Role.COACH):
+            r = self.web.post(
+                f"{self.base}/roster",
+                {"player_id": p.id, "role": role},
+                content_type="application/json",
+            )
+            self.assertEqual(201, r.status_code, r.content)
+        invite = SeriesRosterInvitation.objects.get(to_player=p, series=self.series)
+        self.assertEqual(Role.COACH, invite.role)
+
+    def test_a_plain_add_leaves_a_pending_coach_invite_alone(self) -> None:
+        p = self.player("c@x.com", on_series=False, entry=False)
+        for role in (Role.COACH, Role.DEFAULT):
+            r = self.web.post(
+                f"{self.base}/roster",
+                {"player_id": p.id, "role": role},
+                content_type="application/json",
+            )
+            self.assertEqual(201, r.status_code, r.content)
+        invite = SeriesRosterInvitation.objects.get(to_player=p, series=self.series)
+        self.assertEqual(Role.COACH, invite.role)
+
+
+class TestSettingRoles(OneOffApiCase):
+    """Roles are set on the roster list, before paying."""
+
+    def set_role(self, player: Player, role: str) -> Any:
+        return self.web.put(
+            f"{self.base}/roster/{player.id}/role",
+            {"role": role},
+            content_type="application/json",
+        )
+
+    def row(self, player: Player) -> dict[str, Any]:
+        return next(
+            r for r in self.status().json()["roster"]["entries"] if r["player"]["id"] == player.id
+        )
+
+    def test_a_coach_pays_the_non_player_fee_and_takes_no_spot(self) -> None:
+        p = self.player("c@x.com", on_series=False, tier="community")
+        self.assertTrue(self.row(p)["role_editable"])
+        r = self.set_role(p, Role.COACH)
+        self.assertEqual(200, r.status_code, r.content)
+        self.assertEqual(Role.COACH, RosterEntry.objects.get(player=p).role)
+        body = self.status().json()
+        self.assertEqual([p.id], body["checkout"]["non_player_ids"])
+        self.assertEqual(30000, body["checkout"]["amount"])
+        self.assertEqual(
+            (0, 1), (body["roster"]["meter"]["total"], body["roster"]["meter"]["non_players"])
+        )
+
+    def test_an_unknown_role_is_refused(self) -> None:
+        p = self.player("c@x.com", on_series=False)
+        self.assertEqual(400, self.set_role(p, Role.CAPTAIN).status_code)
+
+    def test_someone_not_on_the_list_is_not_found(self) -> None:
+        p = self.player("c@x.com", on_series=False, entry=False)
+        self.assertEqual(404, self.set_role(p, Role.COACH).status_code)
+
+    def test_a_held_entry_keeps_its_role(self) -> None:
+        p = self.player("c@x.com", on_series=False)
+        self.held(p)
+        self.assertFalse(self.row(p)["role_editable"])
+        self.assertEqual(409, self.set_role(p, Role.COACH).status_code)
+        self.assertEqual(Role.DEFAULT, RosterEntry.objects.get(player=p).role)
+
+    def test_a_paid_row_is_not_editable(self) -> None:
+        p = self.player("c@x.com", on_series=False, entry=False)
+        Registration.objects.create(event=self.event, team=self.team, player=p)
+        self.assertFalse(self.row(p)["role_editable"])
+
+    def test_a_free_role_rosters_them_at_once(self) -> None:
+        Event.objects.filter(pk=self.event.pk).update(non_player_fee=0)
+        p = self.player("c@x.com", on_series=False)
+        r = self.set_role(p, Role.MANAGER)
+        self.assertEqual(200, r.status_code, r.content)
+        registration = Registration.objects.get(event=self.event, player=p)
+        self.assertEqual((Role.MANAGER, False), (registration.role, registration.is_playing))
+        self.assertFalse(RosterEntry.objects.filter(player=p).exists())
+
+
+class TestSettingSeriesRoles(ApiCase):
+    def set_role(self, player: Player, role: str) -> Any:
+        return self.web.put(
+            f"{self.base}/roster/{player.id}/role",
+            {"role": role},
+            content_type="application/json",
+        )
+
+    def test_a_series_members_role_is_set_on_the_series_roster(self) -> None:
+        p = self.player("c@x.com")
+        row = next(
+            r for r in self.status().json()["roster"]["entries"] if r["player"]["id"] == p.id
+        )
+        self.assertFalse(row["role_editable"])
+        self.assertEqual(400, self.set_role(p, Role.COACH).status_code)
+
+    def test_a_pending_invite_follows_the_role(self) -> None:
+        p = self.player("c@x.com", on_series=False, entry=False)
+        self.web.post(f"{self.base}/roster", {"player_id": p.id}, content_type="application/json")
+        r = self.set_role(p, Role.ASSISTANT_COACH)
+        self.assertEqual(200, r.status_code, r.content)
+        invite = SeriesRosterInvitation.objects.get(to_player=p, series=self.series)
+        self.assertEqual(Role.ASSISTANT_COACH, invite.role)
+        self.assertEqual(Role.ASSISTANT_COACH, RosterEntry.objects.get(player=p).role)
+
+    def test_a_full_roster_still_takes_staff(self) -> None:
+        # The one playing spot is taken; a coach needs none.
+        self.series.event_max_players_total = 1
+        self.series.save()
+        self.player("a@x.com")
+        coach = self.player("c@x.com", on_series=False, entry=False)
+        r = self.web.post(
+            f"{self.base}/roster", {"player_id": coach.id}, content_type="application/json"
+        )
+        self.assertEqual(201, r.status_code, r.content)
+        self.assertEqual(200, self.set_role(coach, Role.COACH).status_code)
+        # They accept the series invite, as a coach.
+        invite = SeriesRosterInvitation.objects.get(to_player=coach, series=self.series)
+        SeriesRegistration.objects.create(
+            series=self.series, team=self.team, player=coach, role=invite.role
+        )
+        body = self.status().json()
+        row = next(e for e in body["roster"]["entries"] if e["player"]["id"] == coach.id)
+        self.assertEqual("ready", row["state"]["code"])
+        self.assertEqual(
+            (1, 1), (body["roster"]["meter"]["total"], body["roster"]["meter"]["non_players"])
+        )
+        self.assertIn(coach.id, body["checkout"]["ready_ids"])
+        # The cap still holds for players.
+        extra = self.player("b@x.com")
+        row = next(
+            e for e in self.status().json()["roster"]["entries"] if e["player"]["id"] == extra.id
+        )
+        self.assertEqual("limit", row["state"]["kind"])
+
+
+class TestRolesWhenOnlyStaffPay(OneOffApiCase):
+    """Players free, staff paying: the role decides the price, so it's set first."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        Event.objects.filter(pk=self.event.pk).update(player_fee=0, non_player_fee=50000)
+        self.event.refresh_from_db()
+
+    def test_someone_added_without_a_role_waits_on_the_list(self) -> None:
+        p = self.player("c@x.com", on_series=False, entry=False)
+        r = self.web.post(
+            f"{self.base}/roster", {"player_id": p.id}, content_type="application/json"
+        )
+        self.assertEqual(201, r.status_code, r.content)
+        self.assertFalse(Registration.objects.filter(player=p).exists())
+        row = next(
+            e for e in self.status().json()["roster"]["entries"] if e["player"]["id"] == p.id
+        )
+        self.assertTrue(row["role_editable"])
+        self.assertEqual("ready.free", row["state"]["code"])
+        r = self.web.put(
+            f"{self.base}/roster/{p.id}/role", {"role": Role.COACH}, content_type="application/json"
+        )
+        self.assertEqual(200, r.status_code, r.content)
+        self.assertEqual(50000, self.status().json()["checkout"]["amount"])
+
+    def test_a_player_added_as_one_is_rostered_at_once(self) -> None:
+        p = self.player("c@x.com", on_series=False, entry=False)
+        self.add(p, Role.DEFAULT)
+        self.assertTrue(Registration.objects.filter(player=p).exists())
+
+    def test_a_free_role_needs_the_team_registered(self) -> None:
+        Event.objects.filter(pk=self.event.pk).update(player_fee=75000, non_player_fee=0)
+        self.tournament.teams.remove(self.team)
+        p = self.player("c@x.com", on_series=False)
+        r = self.web.put(
+            f"{self.base}/roster/{p.id}/role", {"role": Role.COACH}, content_type="application/json"
+        )
+        self.assertEqual(400, r.status_code, r.content)
+        self.assertFalse(Registration.objects.filter(player=p).exists())
+
+    def test_someone_already_rostered_is_refused(self) -> None:
+        p = self.player("c@x.com", on_series=False)
+        Registration.objects.create(event=self.event, team=self.team, player=p)
+        r = self.web.put(
+            f"{self.base}/roster/{p.id}/role", {"role": Role.COACH}, content_type="application/json"
+        )
+        self.assertEqual(400, r.status_code, r.content)

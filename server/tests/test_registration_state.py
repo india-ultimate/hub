@@ -19,6 +19,7 @@ from server.registration.state import (
     meter,
     preview,
     preview_swap,
+    status_payload,
     suggested_tier,
 )
 from server.season.models import Season
@@ -845,6 +846,13 @@ class TestNonPlayers(OneOffStateCase):
         )
         new = self.player("a@x.com", on_series=False)
         self.assertEqual("limit.swap_fee", preview_swap(self.ctx(), coach.id, new.id).code)
+
+    def test_rows_carry_one_off_roles(self) -> None:
+        coach = self.coach("c@x.com", role=Role.MANAGER)
+        rows = status_payload(self.ctx(), "/x")["roster"]["entries"]
+        self.assertEqual(
+            Role.MANAGER, next(r["role"] for r in rows if r["player"]["id"] == coach.id)
+        )
 
 
 class TestSeriesNonPlayerReasons(StateTestCase):

@@ -1512,9 +1512,9 @@ def event_roster_player_search(
     return found if request.user.is_staff else found[:USER_SEARCH_LIMIT]
 
 
-def playing_roster_error(event: Event) -> message_response | None:
-    # Rostering here would skip paying the player fee.
-    if event.player_fee:
+def playing_roster_error(event: Event, playing: bool = True) -> message_response | None:
+    # Rostering here would skip paying the place's fee.
+    if event.roster_fee(playing):
         return {
             "message": "This tournament has a player fee — add players from the team's registration page."
         }
@@ -1545,9 +1545,6 @@ def add_player_to_roster(
     except (Event.DoesNotExist, Team.DoesNotExist, Tournament.DoesNotExist):
         return 400, {"message": "Team/Event/Tournament does not exist"}
 
-    if error := playing_roster_error(event):
-        return 400, error
-
     if team not in tournament.teams.all():
         return 400, {"message": f"{team.name} is not registered for ${event.title} !"}
 
@@ -1558,6 +1555,12 @@ def add_player_to_roster(
         player = Player.objects.get(id=registration_details.player_id)
     except Player.DoesNotExist:
         return 400, {"message": "Player does not exist"}
+
+    playing = registration_details.is_playing is not False
+    if event.series:
+        playing = is_playing_role(series_role(event, team, player) or Role.DEFAULT)
+    if error := playing_roster_error(event, playing):
+        return 400, error
 
     if (
         registration_details.role is not None
@@ -1618,7 +1621,9 @@ def remove_from_roster(
         return 400, {"message": "Registration does not exist"}
 
     reason = entry_reasons(build_context(event, team, request.user)).get(registration.player_id)
-    if reason is not None and removal_refused(event, reason, rostering_open=rostering_open):
+    if reason is not None and removal_refused(
+        event, reason, rostering_open=rostering_open, playing=registration.is_playing
+    ):
         return 400, {"message": PAID_REMOVAL_REFUSED}
     registration.delete()
     return 200, {"message": "Player registration removed successfully"}

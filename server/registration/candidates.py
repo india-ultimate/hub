@@ -1,5 +1,6 @@
 """Who a team admin might add: themselves, their series roster, past teammates, anyone."""
 
+from dataclasses import replace
 from typing import Any
 
 from django.db.models import Case, IntegerField, Q, Value, When
@@ -8,7 +9,7 @@ from django.db.models.functions import Concat
 from server.core.models import Player, Team, User
 from server.duplicates.identity import full_email_match
 from server.registration.state import Reason, build_context, preview
-from server.series.models import SeriesRegistration
+from server.series.models import Role, SeriesRegistration, is_playing_role
 from server.subscription import eligibility
 from server.tournament.models import Event, Registration
 
@@ -22,7 +23,7 @@ HINTS: dict[str, tuple[str | None, str | None]] = {
     "ready.free": ("Ready", "add"),
     "ready.after_team_fee": (None, "add"),
     "action.subscription": ("Needs a subscription", "add"),
-    "action.upgrade": ("Needs a subscription", "add"),
+    "action.upgrade": ("Subscription needs an upgrade", "add"),
     "waiting.approval": ("Needs a subscription", "add"),
     "waiting.waiver": ("Waiver not signed", "add"),
     "waiting.coc": ("Code of conduct not agreed", "add"),
@@ -72,9 +73,26 @@ def _history(event: Event, team: Team) -> History:
     return seen
 
 
-def _row(player: Player, reason: Reason | None, history: History, on_list: bool) -> dict[str, Any]:
+def _hint(reason: Reason | None) -> tuple[dict[str, Any] | None, str | None]:
+    if reason is None:
+        return None, None
+    text, button = HINTS.get(reason.code, (None, "add"))
+    return {"code": reason.code, "kind": reason.kind, "text": text or reason.text}, button
+
+
+def _row(
+    player: Player,
+    reasons: tuple[Reason | None, Reason | None],
+    history: History,
+    on_list: bool,
+    series_role: str | None = None,
+) -> dict[str, Any]:
+    """reasons: as a player, then as a coach or manager."""
     last = history.get(player.id)
-    text, button = (None, None) if reason is None else HINTS.get(reason.code, (None, "add"))
+    hint, button = _hint(reasons[0])
+    staff_hint, staff_button = _hint(reasons[1])
+    if staff_hint == hint:
+        staff_hint = None
     return {
         "id": player.id,
         "name": _name(player),
@@ -84,12 +102,11 @@ def _row(player: Player, reason: Reason | None, history: History, on_list: bool)
         "last_event": last[1] if last else None,
         "events": len(last[2]) if last else 0,
         "on_list": on_list,
-        "hint": (
-            None
-            if reason is None
-            else {"code": reason.code, "kind": reason.kind, "text": text or reason.text}
-        ),
+        "series_role": series_role,
+        "hint": hint,
         "button": None if on_list else button,
+        "staff_hint": staff_hint,
+        "staff_button": None if on_list or series_role else staff_button,
     }
 
 
@@ -104,13 +121,14 @@ def candidate_payload(
         Registration.objects.filter(event=event, team=team).values_list("player_id", flat=True)
     ) | set(event.roster_entries.filter(team=team).values_list("player_id", flat=True))
     history = _history(event, team)
-    series_ids: list[int] = []
+    series_roles: dict[int, str] = {}
     if event.series_id:
-        series_ids = list(
+        series_roles = dict(
             SeriesRegistration.objects.filter(series_id=event.series_id, team=team).values_list(
-                "player_id", flat=True
+                "player_id", "role"
             )
         )
+    series_ids = list(series_roles)
     me_player = Player.objects.filter(user=viewer).select_related("user").first()
     me = me_player if me_player is not None and me_player.id not in listed else None
     hidden = listed | ({me.id} if me else set())
@@ -159,33 +177,50 @@ def candidate_payload(
     wanted = [pid for _, _, ids in groups for pid in ids] + ([me.id] if me else [])
     players = players | _players([pid for pid in wanted if pid not in players])
     ctx = build_context(event, team, viewer, extra_player_ids=wanted)
-    reasons = preview(ctx, [players[pid] for pid in wanted if pid not in listed])
-    mine = reasons.get(me.id) if me is not None else None
-    if me is not None and event.series is not None and mine and mine.code == "action.invite":
-        # Adding oneself joins the series roster directly, so it must pass
-        # what joining checks; no invite to oneself.
-        error = eligibility.check(me, event.series, is_playing=True)
-        reasons[me.id] = (
-            Reason("ready.self", "ready", "You'll join the series roster")
-            if error is None
-            else Reason(
-                "blocked.self_subscription",
-                "blocked",
-                (
-                    "Needs a subscription"
-                    if error["message"] == "Subscription missing"
-                    else error["message"]
-                ),
+    adding = [players[pid] for pid in wanted if pid not in listed]
+
+    def judged(role: str) -> dict[int, Reason]:
+        reasons = preview(replace(ctx, new_role=role), adding)
+        mine = reasons.get(me.id) if me is not None else None
+        if me is not None and event.series is not None and mine and mine.code == "action.invite":
+            # Adding oneself joins the series roster directly, so it must pass
+            # what joining checks; no invite to oneself.
+            error = eligibility.check(me, event.series, is_playing=is_playing_role(role))
+            reasons[me.id] = (
+                Reason("ready.self", "ready", "You'll join the series roster")
+                if error is None
+                else Reason(
+                    "blocked.self_subscription",
+                    "blocked",
+                    (
+                        "Needs a subscription"
+                        if error["message"] == "Subscription missing"
+                        else error["message"]
+                    ),
+                )
             )
-        )
+        return reasons
+
+    as_player, as_staff = judged(Role.DEFAULT), judged(Role.COACH)
+
+    def both(pid: int) -> tuple[Reason | None, Reason | None]:
+        return as_player.get(pid), as_staff.get(pid)
+
     return {
-        "me": _row(me, reasons.get(me.id), history, False) if me else None,
+        "me": _row(me, both(me.id), history, False, series_roles.get(me.id)) if me else None,
         "groups": [
             {
                 "key": key,
                 "title": title,
                 "players": [
-                    _row(players[pid], reasons.get(pid), history, pid in listed) for pid in ids
+                    _row(
+                        players[pid],
+                        both(pid),
+                        history,
+                        pid in listed,
+                        series_roles.get(pid),
+                    )
+                    for pid in ids
                 ],
             }
             for key, title, ids in groups
