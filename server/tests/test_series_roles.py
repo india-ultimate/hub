@@ -223,6 +223,23 @@ class TestEventCapOnRoleChange(TestCase):
         self.staff.refresh_from_db()
         self.assertTrue(self.staff.is_playing)
 
+    def test_a_place_paid_at_the_non_player_fee_cannot_be_promoted_here(self) -> None:
+        self.series.event_max_players_total = 2
+        self.series.save()
+        Event.objects.filter(pk=self.event.pk).update(player_fee=100000, non_player_fee=30000)
+        series_registration = SeriesRegistration.objects.get(player=self.staff.player)
+        self.assertIsNone(change_series_role(series_registration, Role.DEFAULT))
+
+        response = self.client.put(
+            self.roster_url(self.staff),
+            data={"role": Role.DEFAULT, "is_playing": True},
+            content_type="application/json",
+        )
+        self.assertEqual(400, response.status_code)
+        self.assertIn("player fee", response.json()["message"])
+        self.staff.refresh_from_db()
+        self.assertFalse(self.staff.is_playing)
+
 
 class TestSeriesRoleEndpoint(TestCase):
     """PUT /series/{slug}/team/{slug}/roster/{id}/role, as a team admin would."""

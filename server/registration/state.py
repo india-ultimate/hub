@@ -905,6 +905,17 @@ def status_payload(ctx: Context, page_path: str) -> dict[str, Any]:
         if reasons[e.player_id].kind != "done"
     }
 
+    paid_roles = {r.player_id: r.role for r in ctx.paid}
+    # Unpaid rows whose role is set here: not paid, not held by a checkout,
+    # and not given by the series roster.
+    role_editable = {
+        e.player_id
+        for e in ctx.entries
+        if e.player_id not in paid_roles
+        and e.player_id not in ctx.series_roles
+        and open_hold(e) is None
+    }
+
     def row(pid: int) -> dict[str, Any]:
         p = players[pid]
         swap = swap_states.get(pid)
@@ -920,7 +931,10 @@ def status_payload(ctx: Context, page_path: str) -> dict[str, Any]:
                 "match_up": p.match_up,
                 "photo": p.profile_pic_url or None,
             },
-            "role": ctx.series_roles.get(pid, "DFLT"),
+            "role": paid_roles.get(pid)
+            or ctx.series_roles.get(pid)
+            or ctx.entry_roles.get(pid, "DFLT"),
+            "role_editable": pid in role_editable,
             "state": state,
             "paid_on": paid_on.get(pid),
             "swapped_for": swapped_for.get(pid),
@@ -939,6 +953,7 @@ def status_payload(ctx: Context, page_path: str) -> dict[str, Any]:
             "end_date": e.end_date.isoformat(),
             "location": e.location,
             "series": e.series.name if e.series else None,
+            "series_slug": e.series.slug if e.series else None,
             # The page's deadline chips.
             **{name: d.isoformat() if (d := getattr(e, name)) else None for name in DEADLINES},
             "team_late_penalty": e.team_late_penalty,  # per day, paise

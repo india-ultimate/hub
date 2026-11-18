@@ -17,6 +17,7 @@ from server.registration.schema import (
     AddEntrySchema,
     CheckoutOrderSchema,
     CheckoutSchema,
+    SetRoleSchema,
     SwapSchema,
 )
 from server.registration.state import (
@@ -26,12 +27,14 @@ from server.registration.state import (
     checkout_quote,
     entry_reasons,
     is_undo,
+    open_hold,
+    plays,
     preview_swap,
     removal_refused,
     status_payload,
 )
 from server.schema import Response
-from server.series.models import Role, SeriesRosterInvitation
+from server.series.models import Role, SeriesRosterInvitation, is_playing_role
 from server.series.utils import invite_to_series, register_player
 from server.tournament.models import Event, Registration
 from server.tournament.utils import roster_player, series_role
@@ -47,6 +50,8 @@ router = Router()
 Pending = SeriesRosterInvitation.Status.PENDING
 Revoked = SeriesRosterInvitation.Status.REVOKED
 ADMINS_ONLY: message_response = {"message": "Only team admins can change this roster"}
+# The places a team admin adds people in; captains are named on the roster later.
+ROSTER_ROLES = (Role.DEFAULT, Role.COACH, Role.ASSISTANT_COACH, Role.MANAGER)
 
 
 def _load(event_slug: str, team_slug: str) -> tuple[Event, Team]:
@@ -122,11 +127,16 @@ def add_entry(
     player = Player.objects.filter(pk=body.player_id).select_related("user").first()
     if player is None:
         return 400, {"message": "Player does not exist"}
+    if body.role is not None and body.role not in ROSTER_ROLES:
+        return 400, {"message": "Pick player, coach, assistant coach or manager"}
+    entry = RosterEntry.objects.filter(event=event, team=team, player=player).first()
+    role = body.role or (entry.role if entry is not None else Role.DEFAULT)
+    on_series = series_role(event, team, player)
 
-    if event.series and series_role(event, team, player) is None:
+    if event.series and on_series is None:
         if player.user_id == request.user.id:
             # Adding oneself: join the series roster directly, no invite to oneself.
-            _, error = register_player(series=event.series, team=team, player=player)
+            _, error = register_player(series=event.series, team=team, player=player, role=role)
             if error is not None:
                 return 400, error
         else:
@@ -141,27 +151,101 @@ def add_entry(
                     series=event.series,
                     team=team,
                     player=player,
-                    role=Role.DEFAULT,
+                    role=role,
                     by=request.user,
                 )
                 if error is not None:
                     return 400, error
-    elif not event.player_fee:
+            elif body.role not in (None, Role.DEFAULT):
+                # Picked again as staff: the invite carries the new role. A
+                # plain Add leaves whatever role the invite already has.
+                invites.update(role=role)
+    elif not event.roster_fee(is_playing_role(on_series or role)) and (
+        # Rostered at once only when the role can't change the price:
+        # it's fixed, named, or every role pays the same.
+        on_series
+        or body.role is not None
+        or event.roster_fee(True) == event.roster_fee(False)
+    ):
         # Nothing to pay, so they are rostered now, in the window the row offers it.
         if not _rostering_open(event):
             return 400, {"message": "Rostering has closed, you can't roster players now !"}
         if not event.tournament.teams.filter(pk=team.pk).exists():
             return 400, {"message": f"{team.name} is not registered for {event.title}"}
-        _, error = roster_player(event, team, player)
+        place = on_series or role
+        _, error = roster_player(event, team, player, role=place, is_playing=is_playing_role(place))
         if error is not None:
             return 400, error
         RosterEntry.objects.filter(event=event, team=team, player=player).delete()
         return 201, {"player_id": player.id, "state": _state(event, team, request, player)}
 
-    RosterEntry.objects.get_or_create(
-        event=event, team=team, player=player, defaults={"added_by": request.user}
-    )
+    # A series member's place comes from the series roster, never the pick.
+    if on_series:
+        role = Role.DEFAULT
+    if entry is None:
+        RosterEntry.objects.create(
+            event=event, team=team, player=player, role=role, added_by=request.user
+        )
+    elif entry.role != role and entry.held_by_order_id is None:
+        entry.role = role
+        entry.save(update_fields=["role"])
     return 201, {"player_id": player.id, "state": _state(event, team, request, player)}
+
+
+@router.put(
+    "/{event_slug}/team/{team_slug}/roster/{player_id}/role",
+    response={200: dict[str, Any], 400: Response, 403: Response, 404: Response, 409: Response},
+)
+def set_role(
+    request: AuthenticatedHttpRequest,
+    event_slug: str,
+    team_slug: str,
+    player_id: int,
+    body: SetRoleSchema,
+) -> tuple[int, dict[str, Any] | message_response]:
+    """The role an unpaid row will be paid for, set on the roster before paying."""
+    event, team = _load(event_slug, team_slug)
+    if not _is_admin(team, request):
+        return 403, ADMINS_ONLY
+    if body.role not in ROSTER_ROLES:
+        return 400, {"message": "Pick player, coach, assistant coach or manager"}
+    with db_transaction.atomic():
+        # Locked as checkout locks it, so a role can't change under an order.
+        entry = (
+            RosterEntry.objects.select_for_update()
+            .filter(event=event, team=team, player_id=player_id)
+            .select_related("player__user", "held_by_order")
+            .first()
+        )
+        if entry is None:
+            return 404, {"message": "Not on this roster"}
+        if Registration.objects.filter(event=event, team=team, player_id=player_id).exists():
+            return 400, {"message": "Already on the roster"}
+        if series_role(event, team, entry.player) is not None:
+            return 400, {"message": "Their role is set on the series roster"}
+        if open_hold(entry) is not None:
+            return 409, {"message": "Being paid for. Try again in a few minutes."}
+        free = not event.roster_fee(is_playing_role(body.role))
+        if free and event.series is None:
+            # Nothing to pay in this role, so they are rostered now, as adding does.
+            if not _rostering_open(event):
+                return 400, {"message": "Rostering has closed, you can't roster players now !"}
+            if not event.tournament.teams.filter(pk=team.pk).exists():
+                return 400, {"message": f"{team.name} is not registered for {event.title}"}
+            _, error = roster_player(
+                event, team, entry.player, role=body.role, is_playing=is_playing_role(body.role)
+            )
+            if error is not None:
+                return 400, error
+            entry.delete()
+            return 200, {"player_id": player_id, "role": body.role}
+        entry.role = body.role
+        entry.save(update_fields=["role"])
+        if event.series is not None:
+            SeriesRosterInvitation.objects.filter(
+                series=event.series, team=team, to_player_id=player_id, status=Pending
+            ).update(role=body.role)
+    return 200, {"player_id": player_id, "role": body.role}
 
 
 @router.delete(
@@ -174,13 +258,15 @@ def remove_entry(
     event, team = _load(event_slug, team_slug)
     if not _is_admin(team, request):
         return 403, ADMINS_ONLY
-    reason = entry_reasons(build_context(event, team, request.user)).get(player_id)
+    ctx = build_context(event, team, request.user)
+    reason = entry_reasons(ctx).get(player_id)
     if reason is None:
         return 404, {"message": "Not on this roster"}
     rostering_open = _rostering_open(event)
-    if removal_refused(event, reason, rostering_open=rostering_open):
+    playing = plays(ctx, player_id)
+    if removal_refused(event, reason, rostering_open=rostering_open, playing=playing):
         return 409, {"message": PAID_REMOVAL_REFUSED}
-    undo = is_undo(event, reason, rostering_open=rostering_open)
+    undo = is_undo(event, reason, rostering_open=rostering_open, playing=playing)
     if undo:
         Registration.objects.filter(event=event, team=team, player_id=player_id).delete()
     if event.series is not None:
@@ -207,12 +293,18 @@ def resend_invite(
     if player is None:
         return 404, {"message": "Player does not exist"}
     # One live invite at a time: the old one is revoked, or the new one
-    # would be refused as a second invite.
-    SeriesRosterInvitation.objects.filter(
-        series=event.series, team=team, to_player=player, status=Pending
-    ).update(status=Revoked)
+    # would be refused as a second invite. The new one keeps its role.
+    invites = SeriesRosterInvitation.objects.filter(
+        series=event.series, team=team, to_player=player
+    )
+    last = invites.order_by("created_at").last()
+    invites.filter(status=Pending).update(status=Revoked)
     _, error = invite_to_series(
-        series=event.series, team=team, player=player, role=Role.DEFAULT, by=request.user
+        series=event.series,
+        team=team,
+        player=player,
+        role=last.role if last is not None else Role.DEFAULT,
+        by=request.user,
     )
     if error is not None:
         return 400, error
@@ -288,15 +380,20 @@ def swap(
             return 409, {"message": f"{new_name} can't take the place: {reason.text}"}
 
         out.delete()
-        role = series_role(event, team, entry.player)
-        _, error = roster_player(event, team, entry.player, role=role)
+        role = series_role(event, team, entry.player) or entry.role
+        _, error = roster_player(
+            event, team, entry.player, role=role, is_playing=is_playing_role(role)
+        )
         if error is not None:
             db_transaction.set_rollback(True)
             return 409, {"message": f"{new_name} can't take the place: {error['message']}"}
         entry.delete()
         # Old pages and the admin may have rostered them without clearing it.
         RosterEntry.objects.get_or_create(
-            event=event, team=team, player=out.player, defaults={"added_by": request.user}
+            event=event,
+            team=team,
+            player=out.player,
+            defaults={"added_by": request.user, "role": out.role},
         )
         RosterSwap.objects.create(
             event=event, team=team, out_player=out.player, in_player=entry.player, by=request.user
@@ -346,7 +443,7 @@ def checkout(
     event, team = _load(event_slug, team_slug)
     if not _is_admin(team, request):
         return 403, ADMINS_ONLY
-    if not event.player_fee:
+    if not event.player_fee and not event.non_player_fee:
         return 400, {"message": "This tournament has no player fee"}
     ctx = build_context(event, team, request.user)
     reasons = entry_reasons(ctx)
