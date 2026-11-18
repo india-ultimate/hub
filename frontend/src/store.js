@@ -1,6 +1,8 @@
 import { createContext, useContext } from "solid-js";
 import { createStore } from "solid-js/store";
 
+import { hasAuthHint } from "./utils";
+
 const StoreContext = createContext();
 
 export const StoreProvider = props => {
@@ -24,6 +26,8 @@ export const StoreProvider = props => {
     setLoggedIn(false);
     setUserFetched(true);
   };
+
+  const authPending = () => hasAuthHint() && !store.userFetched;
 
   const setPlayer = player => {
     setStore("data", "player", player);
@@ -57,6 +61,7 @@ export const StoreProvider = props => {
       setPlayerById,
       addWard,
       setTheme,
+      authPending,
       userFetchFailure,
       userFetchSuccess
     }

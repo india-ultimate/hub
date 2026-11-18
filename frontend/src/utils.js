@@ -31,29 +31,35 @@ export const filterManageableTournaments = (tournaments, user) => {
   return (tournaments || []).filter(t => ids.has(t.id));
 };
 
+let inFlight;
+
 export const fetchUserData = (successCallback, failureCallback) => {
   if (!hasAuthHint()) {
     failureCallback();
     return Promise.resolve();
   }
-  return fetch("/api/me", {
+  if (inFlight) return inFlight;
+  inFlight = fetch("/api/me", {
     method: "GET",
     headers: { "Content-Type": "application/json" },
     credentials: "same-origin"
   })
     .then(response => {
       if (response.status == 200) {
-        response.json().then(data => {
+        return response.json().then(data => {
           successCallback(data);
         });
-      } else {
-        failureCallback();
       }
+      failureCallback();
     })
     .catch(error => {
       console.log(error);
       failureCallback();
+    })
+    .finally(() => {
+      inFlight = undefined;
     });
+  return inFlight;
 };
 
 // A bare "YYYY-MM-DD" is a day, not UTC midnight; timestamps stay as they are.
