@@ -31,6 +31,7 @@ FRONTEND = Path(__file__).resolve().parents[2] / "frontend" / "src"
 MONEY = {
     ("Event", "team_fee"),
     ("Event", "player_fee"),
+    ("Event", "non_player_fee"),
     ("Event", "partial_team_fee"),
     ("Event", "team_late_penalty"),
     ("Event", "player_late_penalty"),

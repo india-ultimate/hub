@@ -32,6 +32,16 @@ class TournamentCreateTests(ApiBaseTestCase):
         self.assertEqual(200, response.status_code, response.content)
         self.assertTrue(Event.objects.get(title="Tagged Cup").is_subscription_needed)
 
+    def test_create_saves_the_non_player_fee(self) -> None:
+        response = self.create(non_player_fee=30000)
+        self.assertEqual(200, response.status_code, response.content)
+        self.assertEqual(30000, Event.objects.get(title="Tagged Cup").non_player_fee)
+
+    def test_non_players_pay_the_player_fee_unless_told(self) -> None:
+        response = self.create()
+        self.assertEqual(200, response.status_code, response.content)
+        self.assertIsNone(Event.objects.get(title="Tagged Cup").non_player_fee)
+
     def test_membership_needs_sanctioned(self) -> None:
         response = self.create(is_subscription_needed=True, is_iu_sanctioned=False)
         self.assertEqual(400, response.status_code)

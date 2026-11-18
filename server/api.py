@@ -2044,6 +2044,7 @@ def create_tournament(
         type=tournament_details.type,
         team_fee=tournament_details.team_fee,
         player_fee=tournament_details.player_fee,
+        non_player_fee=tournament_details.non_player_fee,
         partial_team_fee=tournament_details.partial_team_fee,
         team_late_penalty=tournament_details.team_late_penalty,
         player_late_penalty=tournament_details.player_late_penalty,

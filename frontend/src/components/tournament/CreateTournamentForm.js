@@ -52,6 +52,7 @@ const CreateTournamentForm = () => {
     const feeFields = [
       "team_fee",
       "player_fee",
+      "non_player_fee",
       "partial_team_fee",
       "team_late_penalty",
       "player_late_penalty"
@@ -70,6 +71,9 @@ const CreateTournamentForm = () => {
       }
     });
 
+    // Blank charges non-players the player fee.
+    if (data.non_player_fee === "" || data.non_player_fee === undefined)
+      data.non_player_fee = null;
     data.is_iu_sanctioned = data.is_iu_sanctioned === "true";
     data.is_adaptive = data.is_adaptive === "true";
     data.is_subscription_needed = data.is_subscription_needed === "true";
@@ -626,6 +630,37 @@ const CreateTournamentForm = () => {
                 label="Player Registration Fee (₹)"
                 placeholder="0"
                 required
+              />
+            )}
+          </Field>
+          <Field
+            name="non_player_fee"
+            validate={[
+              value => {
+                if (value !== undefined && value !== null && value !== "") {
+                  const numValue = Number(value);
+                  if (
+                    Number.isNaN(numValue) ||
+                    numValue < 0 ||
+                    !Number.isInteger(numValue)
+                  ) {
+                    return "Non-player fee must be a non-negative integer in rupees.";
+                  }
+                }
+                return "";
+              }
+            ]}
+          >
+            {(field, props) => (
+              <TextInput
+                {...props}
+                value={field.value}
+                error={field.error}
+                type="number"
+                min="0"
+                step="1"
+                label="Non-player Fee (₹)"
+                placeholder="Same as player fee"
               />
             )}
           </Field>

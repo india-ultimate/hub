@@ -54,6 +54,8 @@ class RazorpayTransactionPlayer(models.Model):
     )
     needs_review = models.BooleanField(default=False)
     review_note = models.TextField(blank=True)
+    # A player-fee line's place on the roster, which decided its fee.
+    role = models.CharField(max_length=6, blank=True, default="")
 
     class Meta:
         db_table = "server_razorpaytransaction_players"

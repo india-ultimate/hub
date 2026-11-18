@@ -167,6 +167,7 @@ class TournamentCreateSchema(Schema):
     type: str
     team_fee: int
     player_fee: int
+    non_player_fee: int | None = None
     partial_team_fee: int
     team_late_penalty: int
     player_late_penalty: int

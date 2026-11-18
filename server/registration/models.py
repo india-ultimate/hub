@@ -3,6 +3,7 @@
 from django.db import models
 
 from server.core.models import Player, Team, User
+from server.series.models import Role
 from server.tournament.models import Event
 
 
@@ -15,6 +16,8 @@ class RosterEntry(models.Model):
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="roster_entries")
     team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name="roster_entries")
     player = models.ForeignKey(Player, on_delete=models.CASCADE, related_name="roster_entries")
+    # On a series event the series role decides instead.
+    role = models.CharField(max_length=6, choices=Role.choices, default=Role.DEFAULT)
     added_by = models.ForeignKey(
         User, on_delete=models.SET_NULL, blank=True, null=True, related_name="roster_entries_added"
     )

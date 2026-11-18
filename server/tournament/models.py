@@ -73,6 +73,12 @@ class Event(ExportModelOperationsMixin("event"), models.Model):  # type: ignore[
     player_fee = models.PositiveIntegerField(
         default=0, help_text="Player registration fee in paise."
     )
+    non_player_fee = models.PositiveIntegerField(
+        blank=True,
+        null=True,
+        help_text="Fee for coaches, assistant coaches and managers in paise. "
+        "Blank charges them the player fee.",
+    )
     partial_team_fee = models.PositiveIntegerField(
         default=0, help_text="Partial team registration fee in paise."
     )
@@ -149,6 +155,11 @@ class Event(ExportModelOperationsMixin("event"), models.Model):  # type: ignore[
         super().clean()
         if (self.is_subscription_needed or self.series_id) and self.is_iu_sanctioned is not True:
             raise ValidationError({"is_iu_sanctioned": self.SANCTION_RULE})
+
+    def roster_fee(self, playing: bool) -> int:
+        if playing or self.non_player_fee is None:
+            return self.player_fee
+        return self.non_player_fee
 
     def get_slug(self) -> str:
         slug = slugify_max(self.title, 45)
