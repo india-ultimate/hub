@@ -11,12 +11,14 @@ import {
   fetchUserRegistrations,
   uploadProfilePicture
 } from "../queries";
+import { Bar, Circle, Loading } from "../skeletons/primitives";
 import { useStore } from "../store";
 // Aliased: this component has its own uploadError signal.
 import { MAX_CLOUDINARY_PIXELS, uploadError as checkUpload } from "../uploads";
 import { registerPasskey, showPlayerStatus } from "../utils";
 import { getCookie } from "../utils";
 import Accordion from "./Accordion";
+import Error from "./alerts/Error";
 import ConnectedApps from "./connected-apps/ConnectedApps";
 import IUIDBadge from "./IUIDBadge";
 import Player from "./Player";
@@ -458,10 +460,17 @@ const Dashboard = () => {
           id="registrations"
           title={<>Performance Points</>}
           badge={
-            <p class="inline-flex items-center rounded bg-blue-600 p-1.5 text-sm font-semibold text-white dark:bg-blue-200 dark:text-blue-800">
-              <Icon path={star} class="mr-1 h-4" />
-              {performancePoints() || 0}
-            </p>
+            <Show
+              when={!userRegistrationsQuery.isLoading}
+              fallback={<Bar class="inline-block h-8 w-12" />}
+            >
+              <Show when={!userRegistrationsQuery.isError}>
+                <p class="inline-flex items-center rounded bg-blue-600 p-1.5 text-sm font-semibold text-white dark:bg-blue-200 dark:text-blue-800">
+                  <Icon path={star} class="mr-1 h-4" />
+                  {performancePoints() || 0}
+                </p>
+              </Show>
+            </Show>
           }
         >
           <p class="mb-4 text-sm italic">
@@ -469,48 +478,73 @@ const Dashboard = () => {
             earned based on your team's final rankings
           </p>
 
-          <ul class="max-w-md divide-y divide-gray-200 dark:divide-gray-700">
-            <For
-              each={userRegistrationsQuery.data?.filter(reg => reg.points)}
-              fallback={
-                <li class="py-3 sm:py-4">
-                  <div class="w-full text-sm font-semibold">
-                    No tournaments to show!
-                  </div>
-                </li>
-              }
-            >
-              {reg => (
-                <li class="py-3 sm:py-4">
-                  <div class="flex items-center space-x-4 rtl:space-x-reverse">
-                    <div class="flex-shrink-0">
-                      <img
-                        class="h-10 w-10 rounded-full"
-                        src={reg.team.image ?? reg.team.image_url}
-                        alt="logo"
-                      />
+          <Show
+            when={!userRegistrationsQuery.isLoading}
+            fallback={
+              <Loading label="Loading performance points" class="max-w-md">
+                <For each={[0, 1]}>
+                  {() => (
+                    <div class="flex items-center space-x-4 py-3 sm:py-4">
+                      <Circle class="h-10 w-10 flex-shrink-0" />
+                      <div class="flex-1 space-y-2">
+                        <Bar class="h-4 w-32" />
+                        <Bar class="h-4 w-24" />
+                      </div>
+                      <Bar class="h-8 w-12" />
                     </div>
-                    <div class="min-w-0 flex-1">
-                      <p class="truncate text-sm font-medium text-gray-900 dark:text-white">
-                        {reg.team.name}
-                      </p>
-                      <p class="truncate text-sm text-gray-500 dark:text-gray-400">
-                        {reg.event_name}
-                      </p>
-                      <Show when={reg.series_name}>
-                        <p class="truncate text-xs text-gray-500 dark:text-gray-400">
-                          {reg.series_name}
+                  )}
+                </For>
+              </Loading>
+            }
+          >
+            <Show when={userRegistrationsQuery.isError}>
+              <Error text="Your tournaments could not be loaded. Please try again." />
+            </Show>
+            <ul class="max-w-md divide-y divide-gray-200 dark:divide-gray-700">
+              <For
+                each={userRegistrationsQuery.data?.filter(reg => reg.points)}
+                fallback={
+                  <Show when={userRegistrationsQuery.isSuccess}>
+                    <li class="py-3 sm:py-4">
+                      <div class="w-full text-sm font-semibold">
+                        No tournaments to show!
+                      </div>
+                    </li>
+                  </Show>
+                }
+              >
+                {reg => (
+                  <li class="py-3 sm:py-4">
+                    <div class="flex items-center space-x-4 rtl:space-x-reverse">
+                      <div class="flex-shrink-0">
+                        <img
+                          class="h-10 w-10 rounded-full"
+                          src={reg.team.image ?? reg.team.image_url}
+                          alt="logo"
+                        />
+                      </div>
+                      <div class="min-w-0 flex-1">
+                        <p class="truncate text-sm font-medium text-gray-900 dark:text-white">
+                          {reg.team.name}
                         </p>
-                      </Show>
+                        <p class="truncate text-sm text-gray-500 dark:text-gray-400">
+                          {reg.event_name}
+                        </p>
+                        <Show when={reg.series_name}>
+                          <p class="truncate text-xs text-gray-500 dark:text-gray-400">
+                            {reg.series_name}
+                          </p>
+                        </Show>
+                      </div>
+                      <div class="inline-flex items-center rounded bg-blue-100 p-1.5 text-sm font-semibold text-blue-800">
+                        <Icon path={star} class="mr-1 h-4" /> {reg.points}
+                      </div>
                     </div>
-                    <div class="inline-flex items-center rounded bg-blue-100 p-1.5 text-sm font-semibold text-blue-800">
-                      <Icon path={star} class="mr-1 h-4" /> {reg.points}
-                    </div>
-                  </div>
-                </li>
-              )}
-            </For>
-          </ul>
+                  </li>
+                )}
+              </For>
+            </ul>
+          </Show>
 
           <div
             class="my-2 rounded-lg bg-blue-50 p-4 text-sm text-blue-600"

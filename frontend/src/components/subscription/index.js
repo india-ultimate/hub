@@ -2,7 +2,7 @@ import { A, useParams, useSearchParams } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
 import { Icon } from "solid-heroicons";
 import { heart, inboxStack } from "solid-heroicons/solid";
-import { createEffect, createSignal, Show } from "solid-js";
+import { createEffect, createSignal, Match, Show, Switch } from "solid-js";
 
 import { minAge, minAgeWarning } from "../../constants";
 import {
@@ -12,6 +12,7 @@ import {
   fetchSeasonPlans
 } from "../../queries";
 import { isSafeReturn, parseReturn } from "../../returnPath";
+import { Bar, Loading } from "../../skeletons/primitives";
 import { useStore } from "../../store";
 import { displayDate, getAge, parseLocalDate } from "../../utils";
 import Error from "../alerts/Error";
@@ -115,6 +116,9 @@ const Subscription = () => {
   });
 
   const onSale = () => plansQuery.data ?? [];
+  const tiersPending = () =>
+    plansQuery.isInitialLoading ||
+    (Boolean(playerId()) && !player() && !playerQuery.isError);
 
   return (
     <div>
@@ -180,9 +184,10 @@ const Subscription = () => {
         fallback={
           <div class="my-4">
             <Show when={seasonQuery.isLoading}>
-              <p class="text-sm text-gray-500 dark:text-gray-400">
-                Loading the current season&hellip;
-              </p>
+              <Loading label="Loading the current season">
+                <Bar class="h-7 w-48" />
+                <Bar class="mt-1 h-5 w-64 max-w-full" />
+              </Loading>
             </Show>
             <Show when={seasonQuery.isError}>
               <Error text="Could not load the current season. Please try again." />
@@ -205,13 +210,17 @@ const Subscription = () => {
             <Show
               when={forTeam()}
               fallback={
-                searchParams.players
-                  ? `These players need a ${
-                      season().name
-                    } subscription to be rostered for your team.`
-                  : `${
-                      player()?.full_name ?? "This player"
-                    } needs this tier to be rostered for your team.`
+                registrationQuery.isInitialLoading ? (
+                  <Bar class="h-5 w-72 max-w-full" />
+                ) : searchParams.players ? (
+                  `These players need a ${
+                    season().name
+                  } subscription to be rostered for your team.`
+                ) : (
+                  `${
+                    player()?.full_name ?? "This player"
+                  } needs this tier to be rostered for your team.`
+                )
               }
             >
               {forTeam()}
@@ -267,9 +276,23 @@ const Subscription = () => {
             <Show
               when={onSale().length > 0}
               fallback={
-                <div class="my-4">
-                  <Info text="No subscriptions are on sale for this season." />
-                </div>
+                <Switch>
+                  <Match when={tiersPending()}>
+                    <Loading label="Loading subscription tiers" class="my-4">
+                      <Bar class="h-44 w-full !rounded-lg" />
+                    </Loading>
+                  </Match>
+                  <Match when={plansQuery.isError}>
+                    <div class="my-4">
+                      <Error text="Couldn't load the subscription tiers. Please try again." />
+                    </div>
+                  </Match>
+                  <Match when={plansQuery.isSuccess}>
+                    <div class="my-4">
+                      <Info text="No subscriptions are on sale for this season." />
+                    </div>
+                  </Match>
+                </Switch>
               }
             >
               <TierPicker

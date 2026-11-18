@@ -29,6 +29,7 @@ import {
   setRosterRole
 } from "../../queries";
 import { openCheckout } from "../../razorpay";
+import { Bar, Loading } from "../../skeletons/primitives";
 import { useStore } from "../../store";
 import {
   getCookie,
@@ -867,7 +868,14 @@ const TeamRegistrationHome = () => {
           </p>
         </Match>
         <Match when={true}>
-          <p class="text-sm text-gray-600 dark:text-gray-400">Loading…</p>
+          <Loading label="Loading registration">
+            <Bar class="mb-5 h-[30px] w-48 !rounded-full" />
+            <Bar class="h-8 w-56" />
+            <Bar class="mt-1 h-5 w-72 max-w-full" />
+            <Bar class="mt-3 h-24 w-full !rounded-lg" />
+            <Bar class="mt-3 h-24 w-full !rounded-lg" />
+            <Bar class="mt-3 h-24 w-full !rounded-lg" />
+          </Loading>
         </Match>
       </Switch>
 

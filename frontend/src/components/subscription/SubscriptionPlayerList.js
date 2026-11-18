@@ -3,6 +3,7 @@ import { trash } from "solid-heroicons/solid";
 import { For, Show } from "solid-js";
 
 import { inr } from "../../money";
+import { Bar } from "../../skeletons/primitives";
 
 const SubscriptionPlayerList = props => {
   return (
@@ -74,7 +75,12 @@ const SubscriptionPlayerList = props => {
                   {/* The server's price for the chosen tier, never one this
                       page worked out. */}
                   <td class="px-6 py-4">
-                    {inr(props.planFor(player.id)?.amount ?? 0)}
+                    <Show
+                      when={!props.pricesPending}
+                      fallback={<Bar class="inline-block h-4 w-14" />}
+                    >
+                      {inr(props.planFor(player.id)?.amount ?? 0)}
+                    </Show>
                   </td>
                   <td>
                     <button
@@ -100,7 +106,15 @@ const SubscriptionPlayerList = props => {
       <p class="mt-1">
         Validity: {props.startDate} to {props.endDate}
       </p>
-      <p class="mt-1 font-extrabold">Total Amount: {inr(props.fee)}</p>
+      <p class="mt-1 font-extrabold">
+        Total Amount:{" "}
+        <Show
+          when={!props.pricesPending}
+          fallback={<Bar class="inline-block h-4 w-14 align-middle" />}
+        >
+          {inr(props.fee)}
+        </Show>
+      </p>
     </div>
   );
 };

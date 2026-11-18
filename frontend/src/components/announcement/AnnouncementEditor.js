@@ -22,6 +22,7 @@ import {
   fetchAnnouncement,
   saveAnnouncement
 } from "../../queries";
+import { Bar, Loading } from "../../skeletons/primitives";
 import { useStore } from "../../store";
 import ConfirmDialog from "../ConfirmDialog";
 import TiptapEditor from "../TiptapEditor";
@@ -376,7 +377,17 @@ const AnnouncementEditor = () => {
           {query.error.message}
         </p>
       </Show>
-      <Show when={!params.slug || query.data}>
+      <Show
+        when={!params.slug || query.data}
+        fallback={
+          <Show when={query.isInitialLoading}>
+            <Loading label="Loading announcement" class="space-y-4">
+              <Bar class="h-11 w-full !rounded-lg" />
+              <Bar class="h-72 w-full !rounded-lg" />
+            </Loading>
+          </Show>
+        }
+      >
         <Show
           when={!params.slug || query.data.can_manage}
           fallback={<p>Sorry, you can't edit this announcement.</p>}

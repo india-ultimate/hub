@@ -9,7 +9,15 @@ import {
   fetchFormResponses,
   updateForm
 } from "../../queries";
+import { Bar, Loading } from "../../skeletons/primitives";
 import Breadcrumbs from "../Breadcrumbs";
+
+const ResponsesSkeleton = () => (
+  <Loading label="Loading responses" class="mt-6 space-y-3">
+    <Bar class="h-32 w-full !rounded-lg" />
+    <Bar class="h-32 w-full !rounded-lg" />
+  </Loading>
+);
 
 const FormResponses = () => {
   const params = useParams();
@@ -95,7 +103,13 @@ const FormResponses = () => {
       >
         <div class="flex flex-wrap items-center justify-between gap-3">
           <h1 class="min-w-0 break-words text-2xl font-bold text-gray-900 dark:text-white">
-            Responses — {formQuery.data?.title}
+            Responses —{" "}
+            <Show
+              when={!formQuery.isLoading}
+              fallback={<Bar class="inline-block h-6 w-40 align-middle" />}
+            >
+              {formQuery.data?.title}
+            </Show>
           </h1>
           <div class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
             <Show when={formQuery.data}>
@@ -135,78 +149,83 @@ const FormResponses = () => {
           </p>
         </Show>
 
-        <Suspense fallback={<p class="mt-6 text-gray-500">Loading...</p>}>
+        <Suspense fallback={<ResponsesSkeleton />}>
           <Show
-            when={responsesQuery.data?.length}
-            fallback={<p class="mt-6 text-gray-500">No responses yet.</p>}
+            when={!responsesQuery.isLoading}
+            fallback={<ResponsesSkeleton />}
           >
-            <ul class="mt-6 space-y-3 sm:hidden">
-              <For each={responsesQuery.data}>
-                {resp => (
-                  <li
-                    data-testid="response-card"
-                    class="break-words rounded-lg border border-gray-200 p-4 text-sm text-gray-700 dark:border-gray-700 dark:text-gray-300"
-                  >
-                    <p class="font-medium text-gray-900 dark:text-white">
-                      {resp.name}
-                    </p>
-                    <p>{resp.email}</p>
-                    <p>{resp.phone}</p>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">
-                      {new Date(resp.submitted_at).toLocaleString()}
-                    </p>
-                    <dl class="mt-3 space-y-2 border-t border-gray-200 pt-3 dark:border-gray-700">
-                      <For each={formQuery.data?.fields}>
-                        {field => (
-                          <div>
-                            <dt class="font-medium text-gray-900 dark:text-white">
-                              {field.label}
-                            </dt>
-                            <dd>{renderAnswer(resp.answers[field.key])}</dd>
-                          </div>
-                        )}
-                      </For>
-                    </dl>
-                  </li>
-                )}
-              </For>
-            </ul>
-            <div class="mt-6 hidden overflow-x-auto sm:block">
-              <table class="w-full text-left text-sm text-gray-700 dark:text-gray-300">
-                <thead class="bg-gray-100 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-300">
-                  <tr>
-                    <th class="px-4 py-2">Name</th>
-                    <th class="px-4 py-2">Email</th>
-                    <th class="px-4 py-2">Phone</th>
-                    <th class="px-4 py-2">Submitted</th>
-                    <For each={formQuery.data?.fields}>
-                      {field => <th class="px-4 py-2">{field.label}</th>}
-                    </For>
-                  </tr>
-                </thead>
-                <tbody>
-                  <For each={responsesQuery.data}>
-                    {resp => (
-                      <tr class="border-b dark:border-gray-700">
-                        <td class="px-4 py-2">{resp.name}</td>
-                        <td class="px-4 py-2">{resp.email}</td>
-                        <td class="px-4 py-2">{resp.phone}</td>
-                        <td class="px-4 py-2">
-                          {new Date(resp.submitted_at).toLocaleString()}
-                        </td>
+            <Show
+              when={responsesQuery.data?.length}
+              fallback={<p class="mt-6 text-gray-500">No responses yet.</p>}
+            >
+              <ul class="mt-6 space-y-3 sm:hidden">
+                <For each={responsesQuery.data}>
+                  {resp => (
+                    <li
+                      data-testid="response-card"
+                      class="break-words rounded-lg border border-gray-200 p-4 text-sm text-gray-700 dark:border-gray-700 dark:text-gray-300"
+                    >
+                      <p class="font-medium text-gray-900 dark:text-white">
+                        {resp.name}
+                      </p>
+                      <p>{resp.email}</p>
+                      <p>{resp.phone}</p>
+                      <p class="text-xs text-gray-500 dark:text-gray-400">
+                        {new Date(resp.submitted_at).toLocaleString()}
+                      </p>
+                      <dl class="mt-3 space-y-2 border-t border-gray-200 pt-3 dark:border-gray-700">
                         <For each={formQuery.data?.fields}>
                           {field => (
-                            <td class="px-4 py-2">
-                              {renderAnswer(resp.answers[field.key])}
-                            </td>
+                            <div>
+                              <dt class="font-medium text-gray-900 dark:text-white">
+                                {field.label}
+                              </dt>
+                              <dd>{renderAnswer(resp.answers[field.key])}</dd>
+                            </div>
                           )}
                         </For>
-                      </tr>
-                    )}
-                  </For>
-                </tbody>
-              </table>
-            </div>
+                      </dl>
+                    </li>
+                  )}
+                </For>
+              </ul>
+              <div class="mt-6 hidden overflow-x-auto sm:block">
+                <table class="w-full text-left text-sm text-gray-700 dark:text-gray-300">
+                  <thead class="bg-gray-100 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-300">
+                    <tr>
+                      <th class="px-4 py-2">Name</th>
+                      <th class="px-4 py-2">Email</th>
+                      <th class="px-4 py-2">Phone</th>
+                      <th class="px-4 py-2">Submitted</th>
+                      <For each={formQuery.data?.fields}>
+                        {field => <th class="px-4 py-2">{field.label}</th>}
+                      </For>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <For each={responsesQuery.data}>
+                      {resp => (
+                        <tr class="border-b dark:border-gray-700">
+                          <td class="px-4 py-2">{resp.name}</td>
+                          <td class="px-4 py-2">{resp.email}</td>
+                          <td class="px-4 py-2">{resp.phone}</td>
+                          <td class="px-4 py-2">
+                            {new Date(resp.submitted_at).toLocaleString()}
+                          </td>
+                          <For each={formQuery.data?.fields}>
+                            {field => (
+                              <td class="px-4 py-2">
+                                {renderAnswer(resp.answers[field.key])}
+                              </td>
+                            )}
+                          </For>
+                        </tr>
+                      )}
+                    </For>
+                  </tbody>
+                </table>
+              </div>
+            </Show>
           </Show>
         </Suspense>
       </Show>

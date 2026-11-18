@@ -1,14 +1,18 @@
 import { A, useParams } from "@solidjs/router";
-import { createSignal } from "solid-js";
+import { createSignal, Show } from "solid-js";
+
+import { Bar, Loading } from "../../skeletons/primitives";
 
 const ReceiptPage = () => {
   const params = useParams();
   const [height, setHeight] = createSignal(1200);
+  const [loaded, setLoaded] = createSignal(false);
   const fit = event => {
+    setLoaded(true);
     const doc = event.currentTarget.contentDocument;
     // body, not documentElement: the latter is clamped to the iframe's
     // current height, so it only ever grows and leaves grey space below.
-    if (doc) setHeight(doc.body.scrollHeight + 8);
+    if (doc?.body) setHeight(doc.body.scrollHeight + 8);
   };
   return (
     <div class="mx-auto max-w-4xl">
@@ -26,13 +30,21 @@ const ReceiptPage = () => {
           Download PDF
         </a>
       </div>
-      <iframe
-        title="Receipt"
-        src={`/api/receipts/${params.id}/page`}
-        onLoad={fit}
-        class="w-full border-0"
-        style={{ height: `${height()}px` }}
-      />
+      <div class="relative">
+        <Show when={!loaded()}>
+          <Loading label="Loading receipt" class="absolute inset-x-0 top-0">
+            <Bar class="h-[600px] max-h-screen w-full !rounded-lg" />
+          </Loading>
+        </Show>
+        <iframe
+          title="Receipt"
+          src={`/api/receipts/${params.id}/page`}
+          onLoad={fit}
+          onError={() => setLoaded(true)}
+          class="w-full border-0"
+          style={{ height: `${height()}px` }}
+        />
+      </div>
     </div>
   );
 };

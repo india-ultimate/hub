@@ -13,6 +13,7 @@ import {
 import { Spinner } from "../../icons";
 import { inr } from "../../money";
 import { openCheckout } from "../../razorpay";
+import { Bar, Loading } from "../../skeletons/primitives";
 import Error from "../alerts/Error";
 
 const loadOrder = async orderId => {
@@ -119,9 +120,10 @@ const PayOrder = () => {
       </h1>
       <Switch>
         <Match when={loaded.loading}>
-          <div class="mt-6">
-            <Spinner />
-          </div>
+          <Loading label="Loading order">
+            <Bar class="mt-1 h-5 w-48" />
+            <Bar class="mt-5 h-64 w-full !rounded-lg" />
+          </Loading>
         </Match>
         <Match when={loaded()?.problem}>
           <div class="mt-5">

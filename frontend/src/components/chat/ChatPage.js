@@ -7,6 +7,7 @@ import {
   fetchSubscriptionStatus,
   sendChatMessage
 } from "../../queries";
+import { Bar, Loading } from "../../skeletons/primitives";
 import { useStore } from "../../store";
 import Error from "../alerts/Error";
 import ChatHeader from "./ChatHeader";
@@ -87,7 +88,34 @@ const ChatPage = () => {
   }
 
   return (
-    <Show when={subscriptionQuery.isSuccess && historyQuery.isSuccess}>
+    <Show
+      when={subscriptionQuery.isSuccess && historyQuery.isSuccess}
+      fallback={
+        <Show
+          when={subscriptionQuery.isLoading || historyQuery.isLoading}
+          fallback={
+            <div class="p-4">
+              <Show when={subscriptionQuery.error}>
+                <Error text={subscriptionQuery.error.message} />
+              </Show>
+              <Show when={historyQuery.error}>
+                <Error text={historyQuery.error.message} />
+              </Show>
+            </div>
+          }
+        >
+          <Loading label="Loading chat" class="flex h-full flex-col gap-4 p-4">
+            <Bar class="h-12 w-full !rounded-lg" />
+            <div class="flex-1 space-y-4">
+              <Bar class="h-16 w-3/4 !rounded-lg" />
+              <Bar class="ml-auto h-12 w-1/2 !rounded-lg" />
+              <Bar class="h-16 w-2/3 !rounded-lg" />
+            </div>
+            <Bar class="h-11 w-full !rounded-lg" />
+          </Loading>
+        </Show>
+      }
+    >
       <Show
         when={subscriptionQuery.isSuccess && subscriptionQuery.data.is_active}
         fallback={
@@ -105,10 +133,6 @@ const ChatPage = () => {
         <div class="flex h-full flex-col">
           <ChatHeader onClearHistory={handleClearHistory} />
           <div class="flex-1 overflow-y-auto p-4">
-            <Show when={historyQuery.isLoading || subscriptionQuery.isLoading}>
-              <p class="text-center text-gray-500">Loading...</p>
-            </Show>
-
             <Show when={historyQuery.error}>
               <Error text={historyQuery.error.message} />
             </Show>

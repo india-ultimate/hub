@@ -17,7 +17,7 @@ import {
 } from "solid-js";
 
 import { majorAge, minAge, minAgeWarning } from "../../constants";
-import { ChevronLeft, ChevronRight, Spinner } from "../../icons";
+import { ChevronLeft, ChevronRight } from "../../icons";
 import { inr } from "../../money";
 import {
   fetchPlayerById,
@@ -25,6 +25,7 @@ import {
   fetchSeasonPlans,
   searchPlayers
 } from "../../queries";
+import { Loading, TableRowsSkeleton } from "../../skeletons/primitives";
 import { displayDate, getAge } from "../../utils";
 import Info from "../alerts/Info";
 import RazorpayPayment from "../RazorpayPayment";
@@ -190,7 +191,9 @@ const PlayerSearchDropdown = componentProps => {
                 />
               }
             >
-              <Spinner />
+              <Loading label="Loading players">
+                <TableRowsSkeleton rows={3} cols={3} />
+              </Loading>
             </Show>
           </div>
         }
@@ -373,12 +376,16 @@ const GroupSubscription = props => {
         payingPlayers().map(p => p.id)
       ),
     {
+      keepPreviousData: true,
       get enabled() {
         return Boolean(props.season?.id) && payingPlayers().length > 0;
       }
     }
   );
 
+  const pricesLoading = () =>
+    plansQuery.isInitialLoading || grantsQuery.isInitialLoading;
+  const payLocked = () => pricesLoading() || grantsQuery.isFetching;
   const plans = () => plansQuery.data ?? [];
   const hasGrant = playerId => (grantsQuery.data ?? []).includes(playerId);
 
@@ -476,6 +483,7 @@ const GroupSubscription = props => {
         planFor={planFor}
         tierFor={tierFor}
         onTierChange={setTierFor}
+        pricesPending={pricesLoading()}
       />
       <Show when={payingPlayers()?.find(p => p.is_minor)}>
         <div
@@ -490,10 +498,10 @@ const GroupSubscription = props => {
         <Switch>
           <Match when={!paymentSuccess()}>
             <RazorpayPayment
-              disabled={payDisabled() || items().length === 0}
+              disabled={payDisabled() || items().length === 0 || payLocked()}
               season={props.season}
               items={items()}
-              buttonText={`Pay ${inr(getAmount())}`}
+              buttonText={pricesLoading() ? "Pay" : `Pay ${inr(getAmount())}`}
               setStatus={setStatus}
               successCallback={paymentSuccessCallback}
             />

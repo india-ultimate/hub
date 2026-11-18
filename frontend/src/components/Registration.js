@@ -14,7 +14,7 @@ import {
 import { useParams } from "@solidjs/router";
 import { A } from "@solidjs/router";
 import { inboxStack } from "solid-heroicons/solid";
-import { createEffect, createSignal, Match, Show, Switch } from "solid-js";
+import { createEffect, createSignal, For, Match, Show, Switch } from "solid-js";
 
 import {
   genderChoices,
@@ -25,6 +25,7 @@ import {
   relationChoices,
   stateChoices
 } from "../constants";
+import { Bar, Loading } from "../skeletons/primitives";
 import { useStore } from "../store";
 import { findPlayerById, getAge, getCookie, isoDay, todayIST } from "../utils";
 import Breadcrumbs from "./Breadcrumbs";
@@ -40,8 +41,11 @@ const RegistrationForm = props => {
   const [error, setError] = createSignal("");
   const [player, setPlayer] = createSignal();
 
-  const [store, { setPlayer: setStorePlayer, addWard, setPlayerById }] =
-    useStore();
+  const [
+    store,
+    { setPlayer: setStorePlayer, addWard, setPlayerById, authPending }
+  ] = useStore();
+  const pending = () => !store.data.id && authPending();
 
   const today = todayIST();
   const oldest = todayIST();
@@ -200,8 +204,21 @@ const RegistrationForm = props => {
             </div>
           </Match>
         </Switch>
+        <Show when={pending()}>
+          <Loading
+            label="Loading registration form"
+            class="space-y-8 px-8 lg:px-10"
+          >
+            <For each={[0, 1, 2, 3, 4, 5]}>
+              {() => <Bar class="h-16 w-full !rounded-lg" />}
+            </For>
+            <Bar class="h-10 w-24 !rounded-lg" />
+          </Loading>
+        </Show>
         <Form
-          class="space-y-12 md:space-y-14 lg:space-y-16"
+          class={`space-y-12 md:space-y-14 lg:space-y-16 ${
+            pending() ? "hidden" : ""
+          }`}
           onSubmit={values => submitFormData(values)}
         >
           <div class="space-y-8">

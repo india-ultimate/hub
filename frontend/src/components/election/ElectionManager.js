@@ -9,6 +9,7 @@ import {
   getEmailWorkerStatus,
   sendElectionNotification
 } from "../../queries";
+import { Bar, Loading } from "../../skeletons/primitives";
 import { useStore } from "../../store";
 import Error from "../alerts/Error";
 import CandidateManager from "./CandidateManager";
@@ -142,7 +143,10 @@ const ElectionManager = () => {
             </div>
 
             <Show when={electionQuery.isLoading}>
-              <p class="mt-4 text-center">Loading election details...</p>
+              <Loading label="Loading election details" class="mt-4">
+                <Bar class="h-8 w-64 max-w-full" />
+                <Bar class="mt-3 h-24 w-full !rounded-lg" />
+              </Loading>
             </Show>
 
             <Show when={electionQuery.error}>
@@ -266,8 +270,10 @@ const ElectionManager = () => {
                     <Error text={generateResultsMutation.error.message} />
                   </Show>
 
-                  <Show when={resultsQuery.isLoading}>
-                    <p class="mt-4 text-center">Loading results...</p>
+                  <Show when={resultsQuery.isInitialLoading}>
+                    <Loading label="Loading results" class="mt-4">
+                      <Bar class="h-32 w-full !rounded-lg" />
+                    </Loading>
                   </Show>
 
                   <Show when={resultsQuery.error}>

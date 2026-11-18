@@ -13,6 +13,7 @@ PENDING = "#header-auth-pending"
 LOGIN = "#header-login"
 TEAMS_LOGIN_TEXT = "Please login to view your teams"
 
+
 def loading(label: str) -> str:
     return f'//*[@role="status"][.//span[normalize-space()="{label}"]]'
 
@@ -137,3 +138,13 @@ class TestLoadingIntegration(BaseCase):
         self.assert_element_not_present("img:not([src])")
         self.assert_text("Loading Lions", timeout=10)
         self.assert_element_not_present(loading("Loading team"))
+
+    def test_dashboard_does_not_say_no_tournaments_while_loading(self) -> None:
+        self.sign_in_as(self.user)
+        self.slow_requests("/api/me/registrations", 4000)
+        self.open(f"{APP_URL}/dashboard")
+        self.assert_slowed()
+        self.click("#accordion-heading-registrations")
+        self.assert_element(loading("Loading performance points"))
+        self.assert_text_not_visible("No tournaments to show!")
+        self.assert_text("No tournaments to show!", timeout=10)
