@@ -171,3 +171,4 @@ cython_debug/
 /.DS_STORE
 test.db.sqlite
 test.db.sqlite-journal
+.DS_Store
