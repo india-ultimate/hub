@@ -141,6 +141,18 @@ class Event(ExportModelOperationsMixin("event"), models.Model):  # type: ignore[
         "is_adaptive",
     )
 
+    DATE_FIELDS = (
+        "start_date",
+        "end_date",
+        "team_registration_start_date",
+        "team_registration_end_date",
+        "team_partial_registration_end_date",
+        "team_late_penalty_end_date",
+        "player_registration_start_date",
+        "player_registration_end_date",
+        "player_late_penalty_end_date",
+    )
+
     SANCTION_RULE = (
         "An event in a series or needing IU membership must be sanctioned by India Ultimate."
     )
