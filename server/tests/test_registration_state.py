@@ -51,6 +51,27 @@ class TestRosterFee(SimpleTestCase):
         self.assertEqual(0, Event(player_fee=75000, non_player_fee=0).roster_fee(False))
 
 
+class TestLastDays(SimpleTestCase):
+    def event(self, end: str, late: str | None) -> Event:
+        return Event(
+            player_registration_end_date=datetime.date.fromisoformat(end),
+            player_late_penalty_end_date=late and datetime.date.fromisoformat(late),
+            team_registration_end_date=datetime.date.fromisoformat(end),
+            team_late_penalty_end_date=late and datetime.date.fromisoformat(late),
+        )
+
+    def test_the_late_window_counts(self) -> None:
+        event = self.event("2026-11-20", "2026-11-25")
+        self.assertEqual(datetime.date(2026, 11, 25), event.last_rostering_day())
+        self.assertEqual(datetime.date(2026, 11, 25), event.last_team_registration_day())
+
+    def test_a_late_end_before_the_end_or_none_leaves_the_end(self) -> None:
+        for late in ("2026-11-18", None):
+            event = self.event("2026-11-20", late)
+            self.assertEqual(datetime.date(2026, 11, 20), event.last_rostering_day())
+            self.assertEqual(datetime.date(2026, 11, 20), event.last_team_registration_day())
+
+
 class TestRosterEntry(TestCase):
     def test_one_entry_per_player_per_team_per_event(self) -> None:
         event, team, player = open_event(), Team.objects.create(name="T"), make_player("a@x.com")

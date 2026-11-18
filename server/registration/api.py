@@ -76,10 +76,9 @@ def _page(event: Event, team: Team) -> str:
 
 def _rostering_open(event: Event) -> bool:
     """Through the late window too, as the state has it."""
-    last = max(
-        filter(None, [event.player_late_penalty_end_date, event.player_registration_end_date])
+    return is_today_in_between_dates(
+        event.player_registration_start_date, event.last_rostering_day()
     )
-    return is_today_in_between_dates(event.player_registration_start_date, last)
 
 
 def _state(event: Event, team: Team, request: AuthenticatedHttpRequest, player: Player) -> Any:
@@ -337,13 +336,11 @@ def swap(
         return 403, ADMINS_ONLY
     if event.tournament.use_uc_registrations:
         return 400, {"message": "This tournament's rosters come from Ultimate Central"}
-    last = max(
-        filter(None, [event.player_late_penalty_end_date, event.player_registration_end_date])
-    )
+    last = event.last_rostering_day()
     if today() < event.player_registration_start_date:
         return 400, {"message": "Rostering hasn't opened yet"}
     if today() > last:
-        return 400, {"message": f"Swaps closed {last:%-d %b}"}
+        return 400, {"message": f"Swaps ended {last:%-d %b}"}
     if body.out_player_id == body.in_player_id:
         return 400, {"message": "Pick two different players"}
 

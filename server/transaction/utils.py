@@ -294,14 +294,10 @@ def create_transaction(
             )
             if not is_today_in_between_dates(event.team_registration_start_date, partial_end):
                 return 400, {"message": "Partial team registration has closed!"}
-        else:
-            full_end = max(
-                filter(None, [event.team_late_penalty_end_date, event.team_registration_end_date])
-            )
-            if not is_today_in_between_dates(event.team_registration_start_date, full_end):
-                return 400, {
-                    "message": "Team registration has closed, you can't register a team now!"
-                }
+        elif not is_today_in_between_dates(
+            event.team_registration_start_date, event.last_team_registration_day()
+        ):
+            return 400, {"message": "Team registration has closed, you can't register a team now!"}
 
         if event.series and team not in event.series.teams.all():
             return 400, {
@@ -356,15 +352,7 @@ def create_transaction(
 
         if not is_today_in_between_dates(
             from_date=tournament.event.player_registration_start_date,
-            to_date=max(
-                filter(
-                    None,
-                    [
-                        tournament.event.player_late_penalty_end_date,
-                        tournament.event.player_registration_end_date,
-                    ],
-                )
-            ),
+            to_date=tournament.event.last_rostering_day(),
         ):
             return 400, {"message": "Rostering has closed, you can't roster players now !"}
 

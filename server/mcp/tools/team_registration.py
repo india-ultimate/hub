@@ -272,9 +272,7 @@ def list_team_events(ctx: ToolContext, args: dict[str, Any]) -> ToolResult:
             .values_list("pk", flat=True)
         ) | set(RosterEntry.objects.filter(team=team).values_list("event_id", flat=True))
         for event in upcoming:
-            last = max(
-                filter(None, [event.team_late_penalty_end_date, event.team_registration_end_date])
-            )
+            last = event.last_team_registration_day()
             if event.pk not in joined and not event.team_registration_start_date <= day <= last:
                 continue
             total += 1

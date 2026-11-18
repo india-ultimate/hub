@@ -230,12 +230,12 @@ def row_fee(ctx: Context, player_id: int) -> int:
 
 def _closed(ctx: Context) -> Reason | None:
     e = ctx.event
-    last = max(filter(None, [e.player_late_penalty_end_date, e.player_registration_end_date]))
+    last = e.last_rostering_day()
     if ctx.today > last:
         return Reason(
             "timing.closed",
             "timing",
-            f"Rostering closed {last:%-d %b}",
+            f"Rostering ended {last:%-d %b}",
             Action("Request a late change", href="/tickets/new?category=Tournament"),
         )
     return None
@@ -660,7 +660,7 @@ def _team_fee_step(ctx: Context) -> dict[str, Any]:
     if refunded is not None and not tournament.partial_teams.filter(pk=team.pk).exists():
         step["detail"] = f"Withdrawn · refunded {rupees(refunded)}"
     opens = e.team_registration_start_date
-    last = max(filter(None, [e.team_late_penalty_end_date, e.team_registration_end_date]))
+    last = e.last_team_registration_day()
     if step["detail"] and not opens <= ctx.today <= last:
         # Withdrawn, and it can't pay again now.
         withdrawn = {"kind": "timing", "text": step["detail"], "action": None}
@@ -674,7 +674,7 @@ def _team_fee_step(ctx: Context) -> dict[str, Any]:
         }
     if ctx.today > last:
         late = Action("Request late entry", href="/tickets/new?category=Tournament").as_dict()
-        text = f"Closed {last:%-d %b}"
+        text = f"Ended {last:%-d %b}"
         return {
             **step,
             "state": "locked",
