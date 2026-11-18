@@ -3,6 +3,7 @@
 No payments happen here, so these run without a Razorpay key.
 """
 
+import datetime
 import os
 
 import pytest
@@ -13,6 +14,7 @@ from server.series.models import Role, SeriesRegistration
 from server.tests.localserver import APP_URL
 from server.tests.test_registration_integration import ADD_DIALOG, RegistrationPageCase, row
 from server.tournament.models import Event, Registration, Tournament
+from server.utils import today
 
 PHONE = (390, 844)
 PIXEL = "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=="
@@ -241,6 +243,29 @@ class TestRegistrationPageIntegration(RegistrationPageCase):
         # On the roster too, the series role stands.
         self.assert_element_absent(f'{row("Kiran Coach")}//select')
 
+    def test_the_registration_list_reads_each_window(self) -> None:
+        t = today()
+        Event.objects.filter(pk=self.event.pk).update(
+            non_player_fee=30000,
+            team_registration_start_date=t + datetime.timedelta(days=3),
+            team_registration_end_date=t + datetime.timedelta(days=6),
+            team_late_penalty_end_date=t + datetime.timedelta(days=6),
+            player_registration_start_date=t - datetime.timedelta(days=10),
+            player_registration_end_date=t - datetime.timedelta(days=5),
+            player_late_penalty_end_date=t - datetime.timedelta(days=2),
+        )
+        self.tournament.status = Tournament.Status.SCHEDULING
+        self.tournament.save()
+        self.open_phone()
+        self.open(f"{APP_URL}/tournament/{self.event.slug}/register?all")
+        opens = t + datetime.timedelta(days=3)
+        ended = t - datetime.timedelta(days=2)  # the late window's last day
+        self.wait_for_text("Player Registration", "body")
+        shown = " ".join(self.get_text("body").lower().split())
+        self.assertIn(f"opens {opens:%b} {opens.day}".lower(), shown)
+        self.assertIn(f"ended {ended:%b} {ended.day}".lower(), shown)
+        self.assertIn("₹300 per non-player", shown)
+
     def test_before_its_live_the_crumb_leads_back_to_registration(self) -> None:
         self.tournament.status = Tournament.Status.SCHEDULING
         self.tournament.save()
@@ -311,6 +336,7 @@ class DeadlineDaysIntegrationCase(RegistrationPageCase):
             # Capitalized by CSS and split over lines, as the text reads.
             shown = " ".join(self.get_text("body").lower().split())
             self.assertIn(f"open till {end:%b} {end.day}".lower(), shown)
+            self.assertNotIn("invalid date", shown)
 
 
 class TestDeadlinesInIndiaIntegration(DeadlineDaysIntegrationCase):

@@ -212,6 +212,22 @@ const TeamRegistration = () => {
 
         const formatDate = d =>
           d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        // Not open yet, or over: when it opens, or its last day, late
+        // window included.
+        const closedText = (start, end, late) =>
+          now < start
+            ? `Opens ${formatDate(start)}`
+            : `Ended ${formatDate(
+                new Date(
+                  Math.max(
+                    ...[end, late]
+                      .map(d => d.getTime())
+                      .filter(t => !Number.isNaN(t))
+                  )
+                )
+              )}`;
+        const closedTitle = start =>
+          now < start ? " (Not open yet)" : " (Closed)";
 
         const formatFee = amount => (amount > 0 ? inr(amount) : "Free");
 
@@ -233,7 +249,7 @@ const TeamRegistration = () => {
                   ? " (Open)"
                   : teamIsLate
                     ? " (Open with Late Penalty)"
-                    : " (Closed)"}
+                    : closedTitle(teamRegStart)}
               </div>
               <div class="space-y-1">
                 <p>
@@ -241,7 +257,7 @@ const TeamRegistration = () => {
                     ? `Open till ${formatDate(teamRegEnd)}`
                     : teamIsLate
                       ? `Late penalty till ${formatDate(teamLateEnd)}`
-                      : `Closed on ${formatDate(teamRegEnd)}`}
+                      : closedText(teamRegStart, teamRegEnd, teamLateEnd)}
                 </p>
                 <p>Fee: {formatFee(event?.team_fee)}</p>
                 <Show when={teamIsLate && teamPenalty.daysLate > 0}>
@@ -260,7 +276,10 @@ const TeamRegistration = () => {
                   <p>
                     Partial reg: {formatFee(event?.partial_team_fee)} (till{" "}
                     {formatDate(
-                      parseLocalDate(event?.team_partial_registration_end_date)
+                      parseLocalDate(
+                        event?.team_partial_registration_end_date ||
+                          event?.team_registration_end_date
+                      )
                     )}
                     )
                   </p>
@@ -284,7 +303,7 @@ const TeamRegistration = () => {
                   ? " (Open)"
                   : playerIsLate
                     ? " (Open with Late Penalty)"
-                    : " (Closed)"}
+                    : closedTitle(playerRegStart)}
               </div>
               <div class="space-y-1">
                 <p>
@@ -292,9 +311,23 @@ const TeamRegistration = () => {
                     ? `Open till ${formatDate(playerRegEnd)}`
                     : playerIsLate
                       ? `Open with Late penalty till ${formatDate(playerLateEnd)}`
-                      : `Closed on ${formatDate(playerRegEnd)}`}
+                      : closedText(playerRegStart, playerRegEnd, playerLateEnd)}
                 </p>
-                <p>Fee: {formatFee(event?.player_fee)}</p>
+                <p>
+                  Fee: {formatFee(event?.player_fee)}
+                  <Show
+                    when={
+                      event?.non_player_fee != null &&
+                      event.non_player_fee !== event.player_fee
+                    }
+                  >
+                    {" "}
+                    per player ·{" "}
+                    {event.non_player_fee
+                      ? `${inr(event.non_player_fee)} per non-player`
+                      : "non-players free"}
+                  </Show>
+                </p>
                 <Show when={playerIsLate && playerPenalty.daysLate > 0}>
                   <p>
                     Late penalty: {formatFee(playerPenalty.penalty)}/player (
