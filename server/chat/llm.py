@@ -38,10 +38,29 @@ from server.tournament.models import (
     Registration,
     Tournament,
 )
+from server.utils import today
 
 from .models import ChatMessage, ChatMessageType, ChatSession
 
 T = TypeVar("T")
+
+
+def _iso(day: Any) -> str | None:
+    return day.isoformat() if day else None
+
+
+def _deadlines(event: Event) -> dict[str, Any]:
+    """The late windows and fees, as the registration pages show them."""
+    return {
+        "team_partial_registration_end_date": _iso(event.team_partial_registration_end_date),
+        "team_late_penalty_end_date": _iso(event.team_late_penalty_end_date),
+        "player_late_penalty_end_date": _iso(event.player_late_penalty_end_date),
+        "last_team_registration_day": event.last_team_registration_day().isoformat(),
+        "last_rostering_day": event.last_rostering_day().isoformat(),
+        "team_late_penalty": event.team_late_penalty,
+        "player_late_penalty": event.player_late_penalty,
+        "non_player_fee": event.non_player_fee,
+    }
 
 
 class ChatMessageDict(TypedDict):
@@ -983,7 +1002,7 @@ Available Tools:
         female_players = Player.objects.filter(gender="F").count()
         other_players = Player.objects.filter(gender="O").count()
         minor_players = Player.objects.filter(
-            date_of_birth__gt=timezone.now().date() - relativedelta(years=18)
+            date_of_birth__gt=today() - relativedelta(years=18)
         ).count()
 
         return {
@@ -1177,7 +1196,7 @@ Available Tools:
                 "name": season.name,
                 "start_date": season.start_date.isoformat(),
                 "end_date": season.end_date.isoformat(),
-                "is_current": season.start_date <= timezone.now().date() <= season.end_date,
+                "is_current": season.start_date <= today() <= season.end_date,
             }
         except Season.DoesNotExist:
             return None
@@ -1202,7 +1221,7 @@ Available Tools:
                 "event_max_players_female": series.event_max_players_female,
                 "event_min_players_total": series.event_min_players_total,
                 "event_max_players_total": series.event_max_players_total,
-                "is_current": series.start_date <= timezone.now().date() <= series.end_date,
+                "is_current": series.start_date <= today() <= series.end_date,
             }
             for series in series
         ]
@@ -1227,7 +1246,7 @@ Available Tools:
                 "event_max_players_female": series.event_max_players_female,
                 "event_min_players_total": series.event_min_players_total,
                 "event_max_players_total": series.event_max_players_total,
-                "is_current": series.start_date <= timezone.now().date() <= series.end_date,
+                "is_current": series.start_date <= today() <= series.end_date,
                 "teams": [{"id": team.id, "name": team.name} for team in series.teams.all()],
             }
         except Series.DoesNotExist:
@@ -1276,6 +1295,7 @@ Available Tools:
                 "team_registration_end_date": tournament.event.team_registration_end_date.isoformat(),
                 "player_registration_start_date": tournament.event.player_registration_start_date.isoformat(),
                 "player_registration_end_date": tournament.event.player_registration_end_date.isoformat(),
+                **_deadlines(tournament.event),
                 "max_num_teams": tournament.event.max_num_teams,
                 "team_fee": tournament.event.team_fee,
                 "player_fee": tournament.event.player_fee,
@@ -1286,9 +1306,7 @@ Available Tools:
                 "team_count": tournament.teams.count(),
                 "partial_team_count": tournament.partial_teams.count(),
                 "volunteer_count": tournament.volunteers.count(),
-                "is_current": tournament.event.start_date
-                <= timezone.now().date()
-                <= tournament.event.end_date,
+                "is_current": tournament.event.start_date <= today() <= tournament.event.end_date,
             }
             for tournament in tournaments
         ]
@@ -1311,6 +1329,7 @@ Available Tools:
                 "team_registration_end_date": tournament.event.team_registration_end_date.isoformat(),
                 "player_registration_start_date": tournament.event.player_registration_start_date.isoformat(),
                 "player_registration_end_date": tournament.event.player_registration_end_date.isoformat(),
+                **_deadlines(tournament.event),
                 "max_num_teams": tournament.event.max_num_teams,
                 "team_fee": tournament.event.team_fee,
                 "player_fee": tournament.event.player_fee,
@@ -1331,9 +1350,7 @@ Available Tools:
                 "current_seeding": tournament.current_seeding,
                 "spirit_ranking": tournament.spirit_ranking,
                 "use_uc_registrations": tournament.use_uc_registrations,
-                "is_current": tournament.event.start_date
-                <= timezone.now().date()
-                <= tournament.event.end_date,
+                "is_current": tournament.event.start_date <= today() <= tournament.event.end_date,
             }
         except Tournament.DoesNotExist:
             return None
@@ -1363,9 +1380,7 @@ Available Tools:
                 "status": tournament.get_status_display(),
                 "series": tournament.event.series.name if tournament.event.series else None,
                 "team_count": tournament.teams.count(),
-                "is_current": tournament.event.start_date
-                <= timezone.now().date()
-                <= tournament.event.end_date,
+                "is_current": tournament.event.start_date <= today() <= tournament.event.end_date,
             }
             for tournament in tournaments
         ]

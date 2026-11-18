@@ -1,3 +1,4 @@
+import datetime
 import json
 from typing import Any
 from unittest.mock import MagicMock, patch
@@ -11,6 +12,8 @@ from server.chat.models import ChatMessage, ChatMessageType, ChatSession
 from server.core.models import Player, User
 from server.season.models import Season
 from server.subscription.models import Subscription, SubscriptionPlan, SubscriptionType
+from server.tests.test_payment_accounts import open_event
+from server.tournament.models import Event, Tournament
 
 # Test-specific constants
 TEST_PASSWORD = "test_password_123"  # nosec B105
@@ -188,3 +191,28 @@ class PlayerSubscriptionToolTestCase(TestCase):
         assert answer is not None  # noqa: S101 - narrows the type
         self.assertFalse(answer["has_subscription"])
         self.assertEqual(["Season 2025-2026"], [row["season"] for row in answer["history"]])
+
+
+class TestTournamentContext(TestCase):
+    """The assistant is told the same deadlines the pages show."""
+
+    def test_it_knows_the_late_window_and_the_non_player_fee(self) -> None:
+        event = open_event(player_late_penalty=5000, non_player_fee=30000)
+        Event.objects.filter(pk=event.pk).update(
+            player_late_penalty_end_date=event.player_registration_end_date
+            + datetime.timedelta(days=5)
+        )
+        event.refresh_from_db()
+        late = event.player_late_penalty_end_date
+        if late is None:
+            self.fail("the late end date didn't save")
+        tournament = Tournament.objects.create(event=event)
+        user = User.objects.create(username="u@example.com", email="u@example.com")
+        details = ChatService(MagicMock(), user).get_tournament_details(tournament.id)
+        if details is None:
+            self.fail("no details for the tournament")
+        self.assertEqual(late.isoformat(), details["player_late_penalty_end_date"])
+        self.assertEqual(event.last_rostering_day().isoformat(), details["last_rostering_day"])
+        self.assertEqual((5000, 30000), (details["player_late_penalty"], details["non_player_fee"]))
+        listed = ChatService(MagicMock(), user).get_all_tournaments()[0]
+        self.assertEqual(event.last_rostering_day().isoformat(), listed["last_rostering_day"])
