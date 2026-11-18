@@ -1,7 +1,7 @@
 import { Navigate, Route, useLocation } from "@solidjs/router";
 import { children, createResource, Match, Suspense, Switch } from "solid-js";
 
-import { Spinner } from "../icons";
+import { PageSkeleton } from "../skeletons/primitives";
 import { useStore } from "../store";
 import { canManageTournaments, fetchUserData } from "../utils";
 
@@ -30,7 +30,7 @@ const WithUserData = props => {
   };
 
   return (
-    <Suspense fallback={<Spinner />}>
+    <Suspense fallback={<PageSkeleton />}>
       {/* NOTE: userData() doesn't have any real data, but we "read" it to be able to use the Suspense functionality */}
       <Switch>
         <Match
