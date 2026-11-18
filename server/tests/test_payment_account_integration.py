@@ -152,7 +152,7 @@ class TestPaymentAccountIntegration(BaseCase):
         self.assert_text(self.team.name, "h1")
         # With a fee, adding them readies them for the one checkout.
         dialog = '//dialog[@aria-label="Add to roster"]'
-        self.click('button:contains("+ Add players")')
+        self.click('button:contains("+ Add people")')
         self.type("#add-players-search", "Ravi")
         self.click(f'{dialog}//button[@aria-label="Add Ravi M"]')
         self.assert_text("✓ Added", dialog)

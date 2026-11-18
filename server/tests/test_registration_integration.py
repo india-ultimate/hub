@@ -38,7 +38,7 @@ COMPLETED = RazorpayTransaction.TransactionStatusChoices.COMPLETED
 PLAYER_REGISTRATION = RazorpayTransaction.TransactionTypeChoices.PLAYER_REGISTRATION
 # Payment confirmed can take up to the page's two minutes of polling.
 PAID = 150
-ADD_DIALOG = '//dialog[@aria-label="Add players"]'
+ADD_DIALOG = '//dialog[@aria-label="Add to roster"]'
 
 
 def row(name: str) -> str:
@@ -171,7 +171,7 @@ class TestRegistrationIntegration(RegistrationPageCase):
         self.assert_element('button:contains("Pay ₹3,000")')
 
         # Not on the series roster: adding them invites them to it.
-        self.click('button:contains("+ Add players")')
+        self.click('button:contains("+ Add people")')
         self.type("#add-players-search", "Vikram")
         self.click(f'{ADD_DIALOG}//button[@aria-label="Invite Vikram Singh"]')
         self.assert_text("✓ Added", ADD_DIALOG)
@@ -319,14 +319,16 @@ class TestRegistrationIntegration(RegistrationPageCase):
         self.assert_state("Kiran Waits", "Invite sent")
         self.assert_state("Meera Elsewhere", "On Rivals's series roster")
         # Someone already on the list has no Add button in the search.
-        self.click('button:contains("+ Add players")')
+        self.click('button:contains("+ Add people")')
         self.type("#add-players-search", "Lata")
         self.assert_text("On the list", f'{ADD_DIALOG}//li[contains(., "Lata Full")]')
         # Its first fetch stays inside the dialog: the page doesn't suspend
         # and drop it out of the top layer.
         self.assertTrue(
-            self.execute_script("""return document.querySelector('dialog[aria-label="Add players"]')
-                .matches(":modal")""")
+            self.execute_script(
+                """return document.querySelector('dialog[aria-label="Add to roster"]')
+                .matches(":modal")"""
+            )
         )
         self.assert_text(self.team.name, "h1")
         self.assert_element_absent('button[aria-label="Add Lata Full"]')
@@ -406,7 +408,7 @@ class TestRegistrationIntegration(RegistrationPageCase):
 
         self.sign_in_as(self.admin)
         self.open_page()
-        self.click('button:contains("+ Add players")')
+        self.click('button:contains("+ Add people")')
         # The heading is uppercased on screen; its list carries the title.
         past_group = f'{ADD_DIALOG}//ul[@aria-label="Played for Home Team before"]'
         self.assert_text("Last: Old Cup", f'{past_group}/li[contains(., "Pia Past")]')

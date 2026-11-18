@@ -22,9 +22,30 @@ const PayBar = props => {
   });
   const c = () => props.checkout;
   const n = () => c().ready_ids.length;
+  const staff = () => c().non_player_ids.length;
+  const players = () => n() - staff();
+  const plural = (k, word) => `${k} ${word}${k === 1 ? "" : "s"}`;
+  const headline = () =>
+    [
+      players() && plural(players(), "player"),
+      staff() && plural(staff(), "non-player")
+    ]
+      .filter(Boolean)
+      .join(" and ") || "0 players";
+  const each = fee => inr(fee + c().penalty_per_player);
+  const prices = () =>
+    players() && staff() && c().per_player !== c().per_non_player
+      ? [
+          `${each(c().per_player)} per player`,
+          `${each(c().per_non_player)} per non-player`
+        ]
+      : [
+          n() > 1 &&
+            `${each(staff() ? c().per_non_player : c().per_player)} each`
+        ];
   const notes = () =>
     [
-      n() > 1 && `${inr(c().per_player + c().penalty_per_player)} each`,
+      ...prices(),
       n() > 0 &&
         c().penalty_per_player &&
         `Includes ${inr(c().penalty_per_player * n())} late fee`,
@@ -40,7 +61,7 @@ const PayBar = props => {
     >
       <div class="text-sm" aria-live="polite">
         <p class="font-semibold tabular-nums text-gray-900 dark:text-white">
-          {n()} {n() === 1 ? "player" : "players"} ready
+          {headline()} ready
         </p>
         <Show when={notes()}>
           <p class="text-xs tabular-nums text-gray-600 dark:text-gray-400">

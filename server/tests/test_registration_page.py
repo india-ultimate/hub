@@ -6,8 +6,10 @@ No payments happen here, so these run without a Razorpay key.
 import pytest
 
 from server.core.models import Player
+from server.registration.models import RosterEntry
+from server.series.models import Role, SeriesRegistration
 from server.tests.test_registration_integration import ADD_DIALOG, RegistrationPageCase, row
-from server.tournament.models import Registration
+from server.tournament.models import Event, Registration
 
 PHONE = (390, 844)
 PIXEL = "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=="
@@ -129,7 +131,7 @@ class TestRegistrationPageIntegration(RegistrationPageCase):
         self.assert_element('button:contains("Pay ₹2,000")')
         # Captains add players before paying the fee.
         self.assert_element(
-            'section[aria-labelledby="step-roster"] button:contains("+ Add players")'
+            'section[aria-labelledby="step-roster"] button:contains("+ Add people")'
         )
 
     def test_pay_bar_says_it_once(self) -> None:
@@ -169,8 +171,72 @@ class TestRegistrationPageIntegration(RegistrationPageCase):
         pia.profile_pic_url = PIXEL
         pia.save()
         self.open_phone()
-        self.click('button:contains("+ Add players")')
+        self.click('button:contains("+ Add people")')
         self.assert_element(f'{ADD_DIALOG}//li[contains(., "Pia Pic")]//img')
+
+    def test_admin_adds_a_coach(self) -> None:
+        Event.objects.filter(pk=self.event.pk).update(series=None, non_player_fee=30000)
+        coach = self.player("Kiran", "Coach", on_series=False, tier="community", entry=False)
+        self.open_phone()
+        self.click('button:contains("+ Add people")')
+        self.type("#add-players-search", "Kiran")
+        kiran = f'{ADD_DIALOG}//li[contains(., "Kiran Coach")]'
+        self.assert_text("You'll set each person's role on the roster", ADD_DIALOG)
+        # Community covers coaching but not playing, and the row says both.
+        self.assert_text("As player: Subscription needs an upgrade", kiran)
+        self.assert_text("As coach or manager: Ready to pay", kiran)
+        self.click(f'{kiran}//button[@aria-label="Add Kiran Coach"]')
+        self.assert_text("✓ Added", kiran)
+        undo = f'{kiran}//button[@aria-label="Undo adding Kiran Coach"]'
+        self.assertTrue(
+            self.execute_script(
+                "return document.activeElement === arguments[0]", self.find_element(undo)
+            )
+        )
+        self.click(f'{ADD_DIALOG}//button[normalize-space()="Done"]')
+
+        # Roles are set on the roster, before paying; the price follows.
+        self.assert_text("Everyone is a player unless you change their role", "body")
+        self.assert_text("and pay ₹300 each", "body")
+        role = f'{row("Kiran Coach")}//select[@aria-label="Role for Kiran Coach"]'
+        self.assertEqual("DFLT", self.find_element(role).get_attribute("value"))
+        self.select_option_by_value(role, "COACH")
+        self.assert_text("Kiran Coach is now a coach", "body")
+        # Keyboard users stay on the role they changed.
+        self.assertEqual(
+            "Role for Kiran Coach",
+            self.execute_script("return document.activeElement.getAttribute('aria-label')"),
+        )
+        self.assert_state("Kiran Coach", "Ready to pay")
+        self.assert_text("1 non-player ready", "[data-pay-bar]")
+        self.assert_text("0 players · 1 non-player", "[data-roster-totals]")
+        self.assert_text("Pay ₹300", "[data-pay-bar]")
+        self.assertEqual(Role.COACH, RosterEntry.objects.get(player=coach).role)
+
+    def test_a_series_member_keeps_their_series_role(self) -> None:
+        Event.objects.filter(pk=self.event.pk).update(non_player_fee=30000)
+        coach = self.player("Kiran", "Coach", entry=False)  # on the series roster
+        SeriesRegistration.objects.filter(player=coach).update(role=Role.COACH)
+        self.open_phone()
+        self.click('button:contains("+ Add people")')
+        self.assert_text("Roles come from the series roster.", ADD_DIALOG)
+        link = f'{ADD_DIALOG}//a[normalize-space()="Edit series roster"]'
+        self.assertTrue(
+            self.get_attribute(link, "href").endswith(
+                f"/series/{self.series.slug}/team/{self.team.slug}"
+            )
+        )
+        kiran = f'{ADD_DIALOG}//li[contains(., "Kiran Coach")]'
+        self.assert_text("Series role: Coach", kiran)
+        self.assert_text("No player spot · ₹300", kiran)
+        # Their role is the series one, so there's no other role to pick.
+        self.assert_element_absent(f'{ADD_DIALOG}//li[contains(., "Kiran Coach")]//select')
+        self.click(f'{ADD_DIALOG}//button[@aria-label="Add Kiran Coach as coach"]')
+        self.assert_text("Added as Coach", ADD_DIALOG)
+        self.click(f'{ADD_DIALOG}//button[normalize-space()="Done"]')
+        self.assert_text("1 non-player", "[data-roster-totals]")
+        # On the roster too, the series role stands.
+        self.assert_element_absent(f'{row("Kiran Coach")}//select')
 
     def test_swap_dialog_wording(self) -> None:
         self.paid("Meera", "Paid")
