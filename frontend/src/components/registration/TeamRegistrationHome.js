@@ -15,6 +15,7 @@ import {
   Switch
 } from "solid-js";
 
+import { formatDates } from "../../dates";
 import { inr } from "../../money";
 import {
   addRosterEntry,
@@ -70,21 +71,6 @@ const errorText = "text-sm text-red-700 dark:text-red-400";
 const shortDate = day =>
   day.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
 const DAY_MS = 24 * 60 * 60 * 1000;
-
-// "21–23 Oct", "21 Oct", or "30 Oct – 2 Nov".
-const dateRange = (start, end) => {
-  const s = new Date(start);
-  const e = new Date(end);
-  const dm = d =>
-    d.toLocaleDateString("en-IN", {
-      day: "numeric",
-      month: "short",
-      timeZone: "UTC"
-    });
-  if (start === end) return dm(s);
-  if (s.getUTCMonth() === e.getUTCMonth()) return `${s.getUTCDate()}–${dm(e)}`;
-  return `${dm(s)} – ${dm(e)}`;
-};
 
 // The one deadline worth a line: a late fee starting within a week, else
 // when rostering closes. A late fee starts the day after the end date.
@@ -542,7 +528,7 @@ const TeamRegistrationHome = () => {
               </h1>
               <p class="text-sm text-gray-600 dark:text-gray-400">
                 {[
-                  dateRange(d().event.start_date, d().event.end_date),
+                  formatDates(d().event.start_date, d().event.end_date),
                   nextDeadline(d().event, d().steps)
                 ]
                   .filter(Boolean)

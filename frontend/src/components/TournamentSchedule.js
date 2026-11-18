@@ -22,7 +22,11 @@ import {
 } from "../queries";
 import DayScheduleSkeleton from "../skeletons/Schedule";
 import { TournamentMatches as TournamentMatchesSkeleton } from "../skeletons/TournamentMatch";
-import { getMatchCardColor, getTournamentBreadcrumbName } from "../utils";
+import {
+  getMatchCardColor,
+  getTournamentBreadcrumbName,
+  todayIST
+} from "../utils";
 import Breadcrumbs from "./Breadcrumbs";
 import MatchCard from "./match/MatchCard";
 import PillTabs from "./tabs/PillTabs";
@@ -68,7 +72,8 @@ const TournamentSchedule = () => {
       let start = new Date(Date.parse(tournamentQuery.data?.event?.start_date));
       let end = new Date(Date.parse(tournamentQuery.data?.event?.end_date));
 
-      for (var d = start; d <= end; d.setDate(d.getDate() + 1)) {
+      // Match times are wall-clock times stored as UTC, so days are too.
+      for (var d = start; d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
         days.push(new Date(d));
       }
 
@@ -79,9 +84,11 @@ const TournamentSchedule = () => {
   createEffect(() => {
     const days = tournamentDays();
     if (days.length > 0 && activeDay() === null) {
-      const todayIndex = days.findIndex(day =>
-        sameDay(day, new Date(Date.now()))
+      const today = todayIST();
+      const todayUTC = new Date(
+        Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())
       );
+      const todayIndex = days.findIndex(day => sameDay(day, todayUTC));
       setActiveDay(todayIndex >= 0 ? todayIndex + 1 : 1);
     }
   });

@@ -3,11 +3,14 @@
 No payments happen here, so these run without a Razorpay key.
 """
 
+import os
+
 import pytest
 
 from server.core.models import Player
 from server.registration.models import RosterEntry
 from server.series.models import Role, SeriesRegistration
+from server.tests.localserver import APP_URL
 from server.tests.test_registration_integration import ADD_DIALOG, RegistrationPageCase, row
 from server.tournament.models import Event, Registration, Tournament
 
@@ -266,3 +269,55 @@ class TestRegistrationPageIntegration(RegistrationPageCase):
         self.assert_element(
             f'{dialog}//label[contains(., "Ravi Ready")]//span[@aria-hidden="true"]'
         )
+
+
+ALIASES = {"Asia/Kolkata": "Asia/Calcutta"}
+
+
+class DeadlineDaysIntegrationCase(RegistrationPageCase):
+    """The tournament page and the registration list, seen from one time zone."""
+
+    __test__ = False  # only the zones below run
+    zone = "UTC"
+
+    def setUp(self, masterqa_mode: bool = False) -> None:
+        # Firefox (CI) takes its zone from TZ when it starts; Chrome from CDP.
+        before = os.environ.get("TZ")
+        os.environ["TZ"] = self.zone
+        try:
+            super().setUp()
+        finally:
+            if before is None:
+                del os.environ["TZ"]
+            else:
+                os.environ["TZ"] = before
+        if self.browser == "chrome":
+            self.driver.execute_cdp_cmd("Emulation.setTimezoneOverride", {"timezoneId": self.zone})
+
+    def test_deadlines_read_their_own_day(self) -> None:
+        end = self.event.player_registration_end_date
+        self.tournament.status = Tournament.Status.SCHEDULING
+        self.tournament.save()
+        self.sign_in_as(self.admin)
+        self.set_window_size(*PHONE)
+        zone = self.execute_script("return Intl.DateTimeFormat().resolvedOptions().timeZone")
+        self.assertIn(zone, {self.zone, ALIASES.get(self.zone)})
+        for page in (
+            f"/tournament/{self.event.slug}",
+            f"/tournament/{self.event.slug}/register?all",
+        ):
+            self.open(f"{APP_URL}{page}")
+            self.wait_for_text("Open", "body")
+            # Capitalized by CSS and split over lines, as the text reads.
+            shown = " ".join(self.get_text("body").lower().split())
+            self.assertIn(f"open till {end:%b} {end.day}".lower(), shown)
+
+
+class TestDeadlinesInIndiaIntegration(DeadlineDaysIntegrationCase):
+    __test__ = True
+    zone = "Asia/Kolkata"
+
+
+class TestDeadlinesInTheUSIntegration(DeadlineDaysIntegrationCase):
+    __test__ = True
+    zone = "America/Los_Angeles"

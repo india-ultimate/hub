@@ -16,6 +16,7 @@ import {
 } from "solid-js";
 import { createStore, reconcile } from "solid-js/store";
 
+import { formatDay } from "../../dates";
 import {
   addMatchScore,
   createBracket,
@@ -50,7 +51,9 @@ import { uploadError as checkUpload } from "../../uploads";
 import {
   canManageTournaments,
   filterManageableTournaments,
-  getCookie
+  getCookie,
+  isoDay,
+  parseLocalDate
 } from "../../utils";
 import MatchHeader from "../match/MatchHeader";
 import Modal from "../Modal";
@@ -255,13 +258,14 @@ const TournamentManager = props => {
         setTeams(Object.values(seeding));
       }
 
+      // Days as "YYYY-MM-DD", saved exactly as picked.
       let newDatesList = [];
       for (
-        let d = new Date(Date.parse(tournament?.event?.start_date));
-        d <= new Date(Date.parse(tournament?.event?.end_date));
+        let d = parseLocalDate(tournament?.event?.start_date);
+        d <= parseLocalDate(tournament?.event?.end_date);
         d.setDate(d.getDate() + 1)
       ) {
-        newDatesList.push(new Date(d));
+        newDatesList.push(isoDay(d));
       }
       setDatesList(newDatesList);
     }
@@ -591,17 +595,6 @@ const TournamentManager = props => {
       setFlash({ message: error.message, type: "error" });
     }
   });
-
-  Date.prototype.yyyymmdd = function () {
-    var mm = this.getMonth() + 1; // getMonth() is zero-based
-    var dd = this.getDate();
-
-    return [
-      this.getFullYear(),
-      (mm > 9 ? "" : "0") + mm,
-      (dd > 9 ? "" : "0") + dd
-    ].join("-");
-  };
 
   const convertTime12to24 = time12h => {
     const [time, modifier] = time12h.split(" ");
@@ -1584,14 +1577,15 @@ const TournamentManager = props => {
                               }}
                               class="mb-2 block rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
                             >
-                              <option selected>Choose new date</option>
+                              <option value="" selected>
+                                Choose new date
+                              </option>
                               <For each={datesList()}>
                                 {date => (
                                   <option value={date}>
-                                    {date.toLocaleDateString("en-US", {
+                                    {formatDay(date, "en-US", {
                                       month: "short",
-                                      day: "numeric",
-                                      timeZone: "UTC"
+                                      day: "numeric"
                                     })}
                                   </option>
                                 )}
@@ -1671,12 +1665,8 @@ const TournamentManager = props => {
                                   updateMatchFields[match.id]["date"] &&
                                   updateMatchFields[match.id]["time"]
                                 ) {
-                                  const date = new Date(
-                                    updateMatchFields[match.id]["date"]
-                                  );
-
                                   body["time"] =
-                                    date.yyyymmdd() +
+                                    updateMatchFields[match.id]["date"] +
                                     "T" +
                                     convertTime12to24(
                                       updateMatchFields[match.id]["time"]
@@ -1744,12 +1734,8 @@ const TournamentManager = props => {
                                   updateMatchFields[match.id]["date"] &&
                                   updateMatchFields[match.id]["time"]
                                 ) {
-                                  const date = new Date(
-                                    updateMatchFields[match.id]["date"]
-                                  );
-
                                   body["time"] =
-                                    date.yyyymmdd() +
+                                    updateMatchFields[match.id]["date"] +
                                     "T" +
                                     convertTime12to24(
                                       updateMatchFields[match.id]["time"]

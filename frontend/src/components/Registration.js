@@ -26,7 +26,7 @@ import {
   stateChoices
 } from "../constants";
 import { useStore } from "../store";
-import { findPlayerById, getAge, getCookie } from "../utils";
+import { findPlayerById, getAge, getCookie, isoDay, todayIST } from "../utils";
 import Breadcrumbs from "./Breadcrumbs";
 import Checkbox from "./Checkbox";
 import RegistrationSuccess from "./RegistrationSuccess";
@@ -43,10 +43,10 @@ const RegistrationForm = props => {
   const [store, { setPlayer: setStorePlayer, addWard, setPlayerById }] =
     useStore();
 
-  const today = new Date();
-  const maxDate = new Date(new Date().setFullYear(today.getFullYear() - minAge))
-    .toISOString()
-    .split("T")[0];
+  const today = todayIST();
+  const oldest = todayIST();
+  oldest.setFullYear(oldest.getFullYear() - minAge);
+  const maxDate = isoDay(oldest);
 
   const validateMinAge = value => {
     const yearEnd = new Date(today.getFullYear(), 11, 31);

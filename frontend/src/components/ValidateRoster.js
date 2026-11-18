@@ -19,7 +19,14 @@ import { onMount } from "solid-js";
 
 import { accreditationChoices, matchUpChoices, minAge } from "../constants";
 import { useStore } from "../store";
-import { fetchUrl, getAge, getLabel, isCollegeIdActive } from "../utils";
+import {
+  fetchUrl,
+  getAge,
+  getLabel,
+  isCollegeIdActive,
+  parseLocalDate,
+  todayISTString
+} from "../utils";
 import AccreditationInformation from "./accreditation/AccreditationInformation";
 import CollegeIDInformation from "./CollegeIDInformation";
 import Modal from "./Modal";
@@ -234,7 +241,7 @@ const ValidateRoster = () => {
   const greenText = "text-green-600 dark:text-green-500";
   const redText = "text-red-600 dark:text-red-500";
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = todayISTString();
 
   const playerAccreditationValid = player => {
     if (!player?.accreditation?.is_valid) {
@@ -401,8 +408,8 @@ const ValidateRoster = () => {
                             >
                               {registration => {
                                 const age = getAge(
-                                  new Date(registration.player?.date_of_birth),
-                                  new Date(eventData()?.start_date)
+                                  registration.player?.date_of_birth,
+                                  parseLocalDate(eventData()?.start_date)
                                 );
                                 const displayAge = Math.round(age * 100) / 100;
                                 const accreditationDate =

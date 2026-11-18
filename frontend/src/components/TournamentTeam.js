@@ -154,7 +154,8 @@ const TournamentTeam = () => {
       );
       const end = new Date(Date.parse(tournamentQuery.data?.event?.end_date));
 
-      for (let d = start; d <= end; d.setDate(d.getDate() + 1)) {
+      // Match times are wall-clock times stored as UTC, so days are too.
+      for (let d = start; d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
         dates.push(new Date(d).getUTCDate());
       }
 

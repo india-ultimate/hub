@@ -10,6 +10,7 @@ import { trophy } from "solid-heroicons/solid";
 import { arrowRight, bolt, plus } from "solid-heroicons/solid";
 import { createEffect, createSignal, For, Match, Show, Switch } from "solid-js";
 
+import { formatDay } from "../dates";
 import { inr } from "../money";
 import {
   fetchTournamentBySlug,
@@ -153,13 +154,10 @@ const TeamRegistration = () => {
           {tournamentQuery.data?.event?.location}
         </p>
         <p class="mt-2 text-center text-sm">
-          {new Date(
-            Date.parse(tournamentQuery.data?.event.start_date)
-          ).toLocaleDateString("en-US", {
+          {formatDay(tournamentQuery.data?.event.start_date, "en-US", {
             year: "numeric",
             month: "short",
-            day: "numeric",
-            timeZone: "UTC"
+            day: "numeric"
           })}
           <Show
             when={
@@ -169,13 +167,10 @@ const TeamRegistration = () => {
           >
             {" "}
             to{" "}
-            {new Date(
-              Date.parse(tournamentQuery.data?.event.end_date)
-            ).toLocaleDateString("en-US", {
+            {formatDay(tournamentQuery.data?.event.end_date, "en-US", {
               year: "numeric",
               month: "short",
-              day: "numeric",
-              timeZone: "UTC"
+              day: "numeric"
             })}
           </Show>
         </p>
@@ -216,11 +211,7 @@ const TeamRegistration = () => {
         );
 
         const formatDate = d =>
-          d.toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-            timeZone: "UTC"
-          });
+          d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
         const formatFee = amount => (amount > 0 ? inr(amount) : "Free");
 
