@@ -1,13 +1,26 @@
+import { A } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
 import clsx from "clsx";
 import { createSignal, For, onCleanup, Show, Suspense } from "solid-js";
 
+import { inr } from "../../money";
 import {
   addRosterEntry,
   fetchRosterCandidates,
   removeRosterEntry
 } from "../../queries";
 import Avatar from "./Avatar";
+
+const ROLE_NAMES = {
+  DFLT: "Player",
+  CAP: "Captain",
+  SCAP: "Spirit captain",
+  COACH: "Coach",
+  ACOACH: "Assistant coach",
+  MNGR: "Manager"
+};
+
+const NON_PLAYING = new Set(["COACH", "ACOACH", "MNGR"]);
 
 const HINT_TONE = {
   ready: "text-green-800 dark:text-green-300",
@@ -21,12 +34,14 @@ const btn =
   "inline-flex min-h-[44px] flex-none items-center rounded-lg px-3 text-sm font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600";
 
 // Yourself, your series roster and past teammates first; search finds
-// anyone. Adding takes effect at once, with an undo.
+// anyone. Adding takes effect at once, with an undo. Everyone goes on as a
+// player; roles are set on the roster before paying. On a series event,
+// anyone already on the series roster keeps their series role.
 const AddPlayersDialog = props => {
   const [text, setText] = createSignal("");
   const [query, setQuery] = createSignal("");
   const [page, setPage] = createSignal(1);
-  const [added, setAdded] = createSignal({}); // id -> true
+  const [added, setAdded] = createSignal({}); // id -> the role added in
   const [busy, setBusy] = createSignal(null);
   const [errors, setErrors] = createSignal({}); // id -> message
   let dialog;
@@ -48,16 +63,35 @@ const AddPlayersDialog = props => {
   const count = () =>
     (results.data?.groups || []).reduce((n, g) => n + g.players.length, 0);
 
-  const act = async (player, undo, mine) => {
+  const act = async (player, undo, mine, role = "DFLT") => {
     setBusy(player.id);
     setErrors(e => ({ ...e, [player.id]: null }));
     try {
       if (undo) await removeRosterEntry({ ...props.args, playerId: player.id });
-      else await addRosterEntry({ ...props.args, playerId: player.id });
-      setAdded(a => ({ ...a, [player.id]: !undo }));
+      else
+        await addRosterEntry({
+          ...props.args,
+          playerId: player.id,
+          // No role for a plain Add: it's set on the roster before paying.
+          role: player.series_role || role === "DFLT" ? undefined : role
+        });
+      const placed = player.series_role || role;
+      setAdded(a => ({ ...a, [player.id]: !undo && placed }));
+      // The control just used is gone; keep keyboard users on this row.
+      requestAnimationFrame(() =>
+        dialog
+          .querySelector(
+            `[data-player-id="${player.id}"] ${
+              undo ? "[data-add]" : "[data-undo]"
+            }`
+          )
+          ?.focus()
+      );
       props.announce(
         !undo
-          ? `Added ${player.name}`
+          ? `Added ${player.name}${
+              placed !== "DFLT" ? ` as ${ROLE_NAMES[placed].toLowerCase()}` : ""
+            }`
           : mine && props.series
             ? "Removed. You're still on the series roster."
             : `Removed ${player.name}`
@@ -67,13 +101,30 @@ const AddPlayersDialog = props => {
       const message =
         undo && e.status === 409 ? "Already paid, can't undo" : e.message;
       setErrors(x => ({ ...x, [player.id]: message }));
+      requestAnimationFrame(() =>
+        dialog
+          .querySelector(
+            `[data-player-id="${player.id}"] :is([data-add], [data-undo])`
+          )
+          ?.focus()
+      );
     } finally {
       setBusy(null);
     }
   };
 
+  const staffFee = () =>
+    props.fees?.nonPlayer ? inr(props.fees.nonPlayer) : "Free";
+
   const Row = rowProps => {
     const p = () => rowProps.player;
+    // Added as a player, the role set on the roster later; as staff only
+    // when they can't be added as a player but can be as staff (a Community
+    // subscriber adding themselves to a series).
+    const role = () => (!p().button && p().staff_button ? "COACH" : "DFLT");
+    const button = () => p().button || p().staff_button;
+    const verb = () => (button() === "invite" ? "Invite" : "Add");
+    const placed = () => p().series_role || role();
     return (
       <li
         data-player-id={p().id}
@@ -84,7 +135,7 @@ const AddPlayersDialog = props => {
       >
         <Avatar name={p().name} photo={p().photo} />
         <div class="min-w-0 flex-1">
-          <p class="truncate font-medium text-gray-900 dark:text-white">
+          <p class="font-medium text-gray-900 dark:text-white">
             {rowProps.title || p().name}
           </p>
           <p class="text-xs text-gray-600 dark:text-gray-400">
@@ -94,9 +145,29 @@ const AddPlayersDialog = props => {
                 }`
               : p().city}
           </p>
-          <Show when={p().hint}>
+          <Show when={p().series_role}>
+            <p class="text-xs text-gray-600 dark:text-gray-400">
+              Series role:{" "}
+              <span class="font-semibold text-gray-900 dark:text-white">
+                {ROLE_NAMES[p().series_role]}
+              </span>
+              <Show when={NON_PLAYING.has(p().series_role)}>
+                {" · "}
+                <span class="whitespace-nowrap">
+                  No player spot · {staffFee()}
+                </span>
+              </Show>
+            </p>
+          </Show>
+          <Show when={p().hint && !added()[p().id]}>
             <p class={clsx("text-xs", HINT_TONE[p().hint.kind])}>
+              {p().staff_hint && p().staff_button ? "As player: " : ""}
               {p().hint.text}
+            </p>
+          </Show>
+          <Show when={p().staff_hint && p().staff_button && !added()[p().id]}>
+            <p class={clsx("text-xs", HINT_TONE[p().staff_hint.kind])}>
+              As coach or manager: {p().staff_hint.text}
             </p>
           </Show>
           <Show when={errors()[p().id]}>
@@ -111,10 +182,14 @@ const AddPlayersDialog = props => {
             <span class="flex flex-none items-center gap-1">
               <span class="rounded-lg bg-green-100 px-2 py-1 text-xs font-semibold text-green-800 dark:bg-green-900 dark:text-green-200">
                 ✓ Added
+                {added()[p().id] !== "DFLT"
+                  ? ` as ${ROLE_NAMES[added()[p().id]]}`
+                  : ""}
               </span>
               <button
                 type="button"
                 class={clsx(btn, "text-blue-700 underline dark:text-blue-400")}
+                data-undo
                 aria-label={`Undo adding ${p().name}`}
                 onClick={() =>
                   busy() !== p().id && act(p(), true, rowProps.mine)
@@ -126,7 +201,7 @@ const AddPlayersDialog = props => {
           }
         >
           <Show
-            when={p().button}
+            when={p().button || p().staff_button}
             fallback={
               <span class="flex-none rounded-lg bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300">
                 {p().on_list ? "On the list" : "Unavailable"}
@@ -137,20 +212,21 @@ const AddPlayersDialog = props => {
               type="button"
               class={clsx(
                 btn,
-                "border border-blue-700 text-blue-700 hover:bg-blue-50 dark:border-blue-400 dark:text-blue-400 dark:hover:bg-gray-700",
+                "min-w-[5rem] justify-center bg-blue-700 text-white hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700",
                 busy() === p().id && "cursor-not-allowed opacity-[0.45]"
               )}
+              data-add
               aria-disabled={busy() === p().id ? "true" : undefined}
-              aria-label={`${p().button === "invite" ? "Invite" : "Add"} ${
-                p().name
+              aria-label={`${verb()} ${p().name}${
+                placed() !== "DFLT"
+                  ? ` as ${ROLE_NAMES[placed()].toLowerCase()}`
+                  : ""
               }`}
-              onClick={() => busy() !== p().id && act(p(), false)}
+              onClick={() =>
+                busy() !== p().id && act(p(), false, rowProps.mine, role())
+              }
             >
-              {busy() === p().id
-                ? "Adding…"
-                : p().button === "invite"
-                  ? "Invite"
-                  : "Add"}
+              {busy() === p().id ? "Adding…" : verb()}
             </button>
           </Show>
         </Show>
@@ -166,7 +242,7 @@ const AddPlayersDialog = props => {
         dialog = el;
         props.setRef(el);
       }}
-      aria-label="Add players"
+      aria-label="Add to roster"
       class="m-0 h-full max-h-none w-full max-w-none p-0 backdrop:bg-gray-900/60 sm:m-auto sm:h-auto sm:max-h-[85vh] sm:max-w-lg sm:rounded-xl"
       onClose={() => {
         clearTimeout(timer);
@@ -179,7 +255,7 @@ const AddPlayersDialog = props => {
     >
       <div class="flex h-full flex-col bg-white text-gray-900 dark:bg-gray-800 dark:text-white">
         <div class="flex items-center justify-between px-4 pt-4">
-          <h2 class="text-lg font-bold">Add players · {props.teamName}</h2>
+          <h2 class="text-lg font-bold">Add to roster · {props.teamName}</h2>
           <button
             type="button"
             class="inline-flex h-11 w-11 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 dark:text-gray-400 dark:hover:bg-gray-700"
@@ -189,8 +265,12 @@ const AddPlayersDialog = props => {
             ✕
           </button>
         </div>
+        <p class="px-4 pt-1 text-sm text-gray-700 dark:text-gray-300">
+          Add everyone coming: players, coaches and managers. You'll set each
+          person's role on the roster before paying.
+        </p>
         <Show when={props.meter?.max_total}>
-          <p class="px-4 text-xs text-gray-600 dark:text-gray-400">
+          <p class="mb-1 px-4 text-xs text-gray-600 dark:text-gray-400">
             {props.meter.total} of {props.meter.max_total} spots
           </p>
         </Show>
@@ -249,9 +329,24 @@ const AddPlayersDialog = props => {
             <For each={results.data?.groups || []}>
               {group => (
                 <Show when={group.players.length}>
-                  <h3 class="px-4 pb-1 pt-2 text-xs font-bold uppercase tracking-wide text-gray-600 dark:text-gray-400">
-                    {group.title} · {group.players.length}
-                  </h3>
+                  <div class="flex items-center justify-between gap-2 px-4">
+                    <h3 class="pb-1 pt-2 text-xs font-bold uppercase tracking-wide text-gray-600 dark:text-gray-400">
+                      {group.title} · {group.players.length}
+                    </h3>
+                    <Show when={group.key === "series"}>
+                      <A
+                        href={`/series/${props.seriesSlug}/team/${props.args.teamSlug}`}
+                        class="inline-flex min-h-[44px] flex-none items-center text-xs font-semibold text-blue-700 underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 dark:text-blue-400"
+                      >
+                        Edit series roster
+                      </A>
+                    </Show>
+                  </div>
+                  <Show when={group.key === "series"}>
+                    <p class="-mt-2 px-4 pb-1 text-xs text-gray-600 dark:text-gray-400">
+                      Roles come from the series roster.
+                    </p>
+                  </Show>
                   <ul aria-label={group.title}>
                     <For each={group.players}>{p => <Row player={p} />}</For>
                   </ul>

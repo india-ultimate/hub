@@ -24,6 +24,10 @@ const RosterMeter = props => {
       ),
       part(m().male_matching, "M", "male-matching", m().min_male, m().max_male)
     ].filter(Boolean);
+  const staff = () =>
+    m().non_players
+      ? ` · ${m().non_players} non-player${m().non_players === 1 ? "" : "s"}`
+      : "";
   return (
     <span
       data-roster-totals
@@ -31,7 +35,7 @@ const RosterMeter = props => {
     >
       <Show
         when={props.hasSeries}
-        fallback={`${m().total} ${m().total === 1 ? "player" : "players"}`}
+        fallback={`${m().total} ${m().total === 1 ? "player" : "players"}${staff()}`}
       >
         <Show
           when={m().max_total}
@@ -58,6 +62,7 @@ const RosterMeter = props => {
               </>
             )}
           </For>
+          {staff()}
         </Show>
       </Show>
     </span>

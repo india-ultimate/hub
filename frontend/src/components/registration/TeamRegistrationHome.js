@@ -24,7 +24,8 @@ import {
   fetchRegistrationStatus,
   fetchTournamentBySlug,
   removeRosterEntry,
-  resendRosterInvite
+  resendRosterInvite,
+  setRosterRole
 } from "../../queries";
 import { openCheckout } from "../../razorpay";
 import { useStore } from "../../store";
@@ -47,6 +48,13 @@ const CONFIRMING = "Confirming payment. Don't pay again.";
 const isPartPaid = fee => fee?.callout?.action?.op === "pay_team_rest";
 const TEAM_FEE_OPS = ["pay_team", "pay_team_partial", "pay_team_rest"];
 const POLL_MS = 3000;
+const ROLE_PHRASES = {
+  DFLT: "a player",
+  COACH: "a coach",
+  ACOACH: "an assistant coach",
+  MNGR: "a manager"
+};
+
 const POLL_FOR_MS = 2 * 60 * 1000;
 
 const tryAgain =
@@ -322,10 +330,11 @@ const TeamRegistrationHome = () => {
       queryKey: ["tournaments", params.slug],
       queryFn: () => fetchTournamentBySlug(params.slug)
     });
-  const refreshTeam = () => {
-    queryClient.invalidateQueries({ queryKey: ["tournaments", params.slug] });
-    refresh();
-  };
+  const refreshTeam = () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["tournaments", params.slug] }),
+      refresh()
+    ]);
 
   const entryOp = fn => playerId => fn({ ...args(), playerId });
   const OPS = {
@@ -333,6 +342,12 @@ const TeamRegistrationHome = () => {
     resend_invite: entryOp(resendRosterInvite),
     invite: entryOp(addRosterEntry),
     roster: entryOp(addRosterEntry),
+    role: async (playerId, role) => {
+      await setRosterRole({ ...args(), playerId, role });
+      const name = d().roster.entries.find(e => e.player.id === playerId)
+        ?.player.name;
+      announce(`${name} is now ${ROLE_PHRASES[role]}`);
+    },
     pay_team: () => payTeam(false),
     pay_team_partial: () => payTeam(true),
     pay_team_rest: () => payTeam(false),
@@ -355,17 +370,29 @@ const TeamRegistrationHome = () => {
   };
 
   const keyOf = (op, playerId) => (playerId ? `${op}:${playerId}` : op);
-  const runOp = async (op, playerId) => {
+  const runOp = async (op, playerId, extra) => {
     const key = keyOf(op, playerId);
     setBusy(key);
     setOpError(null);
     try {
-      await OPS[op](playerId);
+      await OPS[op](playerId, extra);
     } catch (error) {
-      setOpError({ key, op, playerId, message: error.message });
+      setOpError({ key, op, playerId, extra, message: error.message });
     } finally {
       setBusy(null);
-      refreshTeam();
+      await refreshTeam();
+      // A changed row comes back as a new one; keep keyboard users on it,
+      // and show the role it has if the change was refused.
+      if (op === "role")
+        requestAnimationFrame(() => {
+          const select = document.querySelector(
+            `select[data-role-for="${playerId}"]`
+          );
+          if (!select) return;
+          const entry = d().roster.entries.find(e => e.player.id === playerId);
+          if (entry) select.value = entry.role;
+          select.focus();
+        });
     }
   };
 
@@ -390,7 +417,9 @@ const TeamRegistrationHome = () => {
         <button
           type="button"
           class={tryAgain}
-          onClick={() => runOp(opError().op, opError().playerId)}
+          onClick={() =>
+            runOp(opError().op, opError().playerId, opError().extra)
+          }
         >
           Try again
         </button>
@@ -446,7 +475,7 @@ const TeamRegistrationHome = () => {
       counts[e.player.name] = (counts[e.player.name] || 0) + 1;
     return counts;
   };
-  const free = () => !d().checkout.per_player;
+  const free = () => !d().checkout.per_player && !d().checkout.per_non_player;
 
   // Swaps are open from when rostering opens until it closes.
   const swapUntil = () =>
@@ -629,7 +658,7 @@ const TeamRegistrationHome = () => {
                             addDialog.showModal();
                           }}
                         >
-                          + Add players
+                          + Add people
                         </button>
                       )
                     }
@@ -650,6 +679,27 @@ const TeamRegistrationHome = () => {
                               · {unpaidRows().length}
                             </span>
                           </h3>
+                          <Show
+                            when={
+                              !readOnly() &&
+                              unpaidRows().some(e => e.role_editable)
+                            }
+                          >
+                            <p class="mb-2 text-sm text-gray-700 dark:text-gray-300">
+                              Everyone is a player unless you change their role.
+                              Coaches, assistant coaches and managers take no
+                              player spot
+                              {d().checkout.per_non_player !==
+                              d().checkout.per_player
+                                ? ` and pay ${
+                                    d().checkout.per_non_player
+                                      ? `${inr(d().checkout.per_non_player)} each`
+                                      : "nothing"
+                                  }`
+                                : ""}
+                              . Changes save at once.
+                            </p>
+                          </Show>
                           <Show
                             when={unpaidRows().length}
                             fallback={
@@ -679,6 +729,13 @@ const TeamRegistrationHome = () => {
                                         )
                                       }
                                       onOp={runOp}
+                                      onRole={role =>
+                                        runOp("role", entry.player.id, role)
+                                      }
+                                      roleBusy={
+                                        busy() ===
+                                        keyOf("role", entry.player.id)
+                                      }
                                       removeReason={removeReason(entry)}
                                       removing={
                                         busy() ===
@@ -747,7 +804,7 @@ const TeamRegistrationHome = () => {
                         <Show
                           when={
                             !readOnly() &&
-                            d().checkout.per_player > 0 &&
+                            !free() &&
                             step().state !== "locked" &&
                             unpaidRows().length > 0
                           }
@@ -827,7 +884,12 @@ const TeamRegistrationHome = () => {
           open={addOpen()}
           teamName={d().team.name}
           series={d().event.series}
+          seriesSlug={d().event.series_slug}
           meter={d().roster.meter}
+          fees={{
+            player: d().checkout.per_player,
+            nonPlayer: d().checkout.per_non_player
+          }}
           args={args()}
           onChanged={refresh}
           announce={announce}

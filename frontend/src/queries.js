@@ -2925,10 +2925,11 @@ const registrationRequest = async (url, options = {}) => {
 export const fetchRegistrationStatus = args =>
   registrationRequest(registrationBase(args), { method: "GET" });
 
-export const addRosterEntry = ({ playerId, ...args }) =>
+// Without a role, someone already listed keeps theirs.
+export const addRosterEntry = ({ playerId, role, ...args }) =>
   registrationRequest(`${registrationBase(args)}/roster`, {
     method: "POST",
-    body: JSON.stringify({ player_id: playerId })
+    body: JSON.stringify({ player_id: playerId, ...(role && { role }) })
   });
 
 export const fetchRosterCandidates = ({ text = "", page = 1, ...args }) =>
@@ -2939,6 +2940,12 @@ export const fetchRosterCandidates = ({ text = "", page = 1, ...args }) =>
     })}`,
     { method: "GET" }
   );
+
+export const setRosterRole = ({ playerId, role, ...args }) =>
+  registrationRequest(`${registrationBase(args)}/roster/${playerId}/role`, {
+    method: "PUT",
+    body: JSON.stringify({ role })
+  });
 
 export const removeRosterEntry = ({ playerId, ...args }) =>
   registrationRequest(`${registrationBase(args)}/roster/${playerId}`, {

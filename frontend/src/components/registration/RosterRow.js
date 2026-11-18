@@ -1,7 +1,7 @@
 import { A } from "@solidjs/router";
 import clsx from "clsx";
 import { Icon } from "solid-heroicons";
-import { Show } from "solid-js";
+import { For, Show } from "solid-js";
 
 import { kindOf } from "../../reasonKinds";
 import Avatar from "./Avatar";
@@ -17,6 +17,14 @@ const ROLES = {
   ACOACH: "Assistant coach",
   MNGR: "Manager"
 };
+
+// What a row can be paid for; captains are set on the series roster.
+const ROLE_OPTIONS = [
+  ["DFLT", "Player"],
+  ["COACH", "Coach"],
+  ["ACOACH", "Asst. coach"],
+  ["MNGR", "Manager"]
+];
 
 const day = iso =>
   new Date(iso).toLocaleDateString("en-IN", {
@@ -38,6 +46,9 @@ const RosterRow = props => {
       ? { ...kindOf("done"), tone: "text-gray-600 dark:text-gray-400" }
       : kindOf(s().kind);
   const greyed = () => !props.paid && GREYED.has(s().kind);
+  // Set here before paying; paid, held and series-roster roles are fixed.
+  const editable = () =>
+    !props.paid && !props.readOnly && props.entry.role_editable;
   const statusText = () => {
     const e = props.entry;
     if (!props.paid) return s().text;
@@ -56,7 +67,7 @@ const RosterRow = props => {
       class={clsx(
         props.paid
           ? "flex items-center gap-3 border-b border-green-100 px-2 py-2 last:border-b-0 dark:border-green-900"
-          : "flex items-center gap-3 border-b border-gray-100 px-2 py-2 dark:border-gray-800",
+          : "flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-gray-100 px-2 py-2 dark:border-gray-800",
         greyed() && "bg-gray-50 dark:bg-gray-800/50"
       )}
     >
@@ -71,7 +82,7 @@ const RosterRow = props => {
           )}
         >
           <span class="truncate">{player().name}</span>
-          <Show when={ROLES[props.entry.role]}>
+          <Show when={ROLES[props.entry.role] && !editable()}>
             <span class="rounded bg-gray-100 px-1.5 py-0.5 text-xs font-medium text-gray-700 dark:bg-gray-700 dark:text-gray-300">
               {ROLES[props.entry.role]}
             </span>
@@ -126,6 +137,26 @@ const RosterRow = props => {
             {label()}
           </A>
         </Show>
+      </Show>
+      {/* Under the status on a phone, before the remove button from sm up. */}
+      <Show when={editable()}>
+        <label class="order-last flex basis-full items-center gap-2 pl-11 text-xs font-medium text-gray-700 dark:text-gray-300 sm:order-none sm:basis-auto sm:pl-0">
+          Role
+          <select
+            aria-label={`Role for ${player().name}`}
+            data-role-for={player().id}
+            aria-busy={props.roleBusy ? "true" : undefined}
+            class="block min-h-[44px] w-36 rounded-lg border border-gray-400 bg-white text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-500 dark:bg-gray-800 dark:text-white"
+            value={props.entry.role}
+            onChange={e =>
+              !props.roleBusy && props.onRole?.(e.currentTarget.value)
+            }
+          >
+            <For each={ROLE_OPTIONS}>
+              {([value, label]) => <option value={value}>{label}</option>}
+            </For>
+          </select>
+        </label>
       </Show>
       <Show when={!props.paid && !props.readOnly}>
         <RemoveButton
