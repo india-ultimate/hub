@@ -210,8 +210,10 @@ def set_role(
         return 400, {"message": "Pick player, coach, assistant coach or manager"}
     with db_transaction.atomic():
         # Locked as checkout locks it, so a role can't change under an order.
+        # of=("self",): Postgres cannot lock the nullable side of the outer
+        # join that held_by_order makes.
         entry = (
-            RosterEntry.objects.select_for_update()
+            RosterEntry.objects.select_for_update(of=("self",))
             .filter(event=event, team=team, player_id=player_id)
             .select_related("player__user", "held_by_order")
             .first()
