@@ -4,6 +4,7 @@ from unittest import mock
 from django.core.management import call_command
 from django.db import IntegrityError
 from django.test import TestCase
+from django.utils.timezone import now
 
 from server.core.models import Player
 from server.season.models import Season
@@ -86,6 +87,47 @@ class TestFulfil(TestCase):
         subscription = Subscription.objects.get(player=self.player, season=self.season)
         self.assertEqual(subscription.plan, self.plans["regular"])
         self.assertEqual(subscription.amount_paid, 75000)
+
+    def test_one_stale_upgrade_does_not_hold_up_the_rest(self) -> None:
+        other = make_player("m@example.com")
+        held = {}
+        for player in (self.player, other):
+            held[player] = Subscription.objects.create(
+                player=player,
+                season=self.season,
+                plan=self.plans["community"],
+                amount_paid=25000,
+                is_active=True,
+                start_date=self.season.start_date,
+                end_date=self.season.end_date,
+            )
+        upgrade = RazorpayTransaction.objects.create(
+            order_id="order_group_upgrade",
+            payment_id="pay_g",
+            amount=100000,
+            currency="INR",
+            user=self.player.user,
+            season=self.season,
+            start_date=self.season.start_date,
+            end_date=self.season.end_date,
+            status=RazorpayTransaction.TransactionStatusChoices.COMPLETED,
+        )
+        for player in (self.player, other):
+            RazorpayTransactionPlayer.objects.create(
+                transaction=upgrade, player=player, plan=self.plans["regular"], amount=50000
+            )
+        held[other].refunded_at = now()
+        held[other].is_active = False
+        held[other].save()
+
+        self.assertEqual(purchase.fulfil(upgrade), 1)
+
+        held[self.player].refresh_from_db()
+        self.assertEqual(held[self.player].plan, self.plans["regular"])
+        self.assertEqual(held[self.player].amount_paid, 75000)
+        stale = RazorpayTransactionPlayer.objects.get(transaction=upgrade, player=other)
+        self.assertTrue(stale.needs_review)
+        self.assertIsNone(stale.subscription_id)
 
     def test_paying_twice_for_one_season_flags_the_second(self) -> None:
         purchase.fulfil(self.order(self.plans["regular"], 75000))

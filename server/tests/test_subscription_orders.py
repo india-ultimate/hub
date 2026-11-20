@@ -147,6 +147,14 @@ class TestOrderValidation(ApiBaseTestCase):
         self.create_order = create_order
         return response
 
+    def test_more_than_fifty_people_is_refused(self) -> None:
+        response = self.post_order([{"player_id": n, "plan_type": "regular"} for n in range(1, 52)])
+        self.assertEqual(response.status_code, 422)
+        self.assertIn("at most 50", response.json()["message"])
+        self.create_order.assert_not_called()
+        response = self.post_order([{"player_id": n, "plan_type": "regular"} for n in range(1, 51)])
+        self.assertIn("couldn't be found", response.json()["message"])
+
     def test_an_unknown_player_is_refused(self) -> None:
         response = self.post_order([{"player_id": 999999, "plan_type": "regular"}])
         self.assertEqual(response.status_code, 422)
@@ -304,25 +312,42 @@ class TestOrderValidation(ApiBaseTestCase):
             125000, receipt=mock.ANY, notes=mock.ANY, account=None
         )
 
-    def test_upgrades_are_bought_one_person_at_a_time(self) -> None:
-        Subscription.objects.create(
-            player=self.player,
-            season=self.s26,
-            plan=SubscriptionPlan.objects.get(season=self.s26, type__slug="community"),
-            amount_paid=25000,
-            is_active=True,
-            start_date=self.s26.start_date,
-            end_date=self.s26.end_date,
-        )
-        other = make_player("friend@example.com")
+    def test_a_group_can_mix_upgrades_and_new_subscriptions(self) -> None:
+        friend = make_player("friend@example.com")
+        other = make_player("other@example.com")
+        community = SubscriptionPlan.objects.get(season=self.s26, type__slug="community")
+        for holder in (self.player, friend):
+            Subscription.objects.create(
+                player=holder,
+                season=self.s26,
+                plan=community,
+                amount_paid=25000,
+                is_active=True,
+                start_date=self.s26.start_date,
+                end_date=self.s26.end_date,
+            )
+        sponsorship.grant(friend, self.s26)
         response = self.post_order(
             [
                 {"player_id": self.player.id, "plan_type": "regular"},
-                {"player_id": other.id, "plan_type": "regular"},
-            ]
+                {"player_id": friend.id, "plan_type": "discounted"},
+                {"player_id": other.id, "plan_type": "community"},
+            ],
+            80000,
         )
-        self.assertEqual(response.status_code, 422)
-        self.assertEqual(response.json()["message"], "Upgrades are bought one person at a time.")
+        self.assertEqual(response.status_code, 200)
+        self.create_order.assert_called_once_with(
+            80000, receipt=mock.ANY, notes=mock.ANY, account=None
+        )
+        lines = RazorpayTransactionPlayer.objects.filter(transaction_id=response.json()["order_id"])
+        self.assertEqual(
+            set(lines.values_list("player_id", "plan__type__slug", "amount")),
+            {
+                (self.player.id, "regular", 50000),
+                (friend.id, "discounted", 5000),
+                (other.id, "community", 25000),
+            },
+        )
 
     def test_no_subscription_row_is_created_when_the_order_is_placed(self) -> None:
         before = Subscription.objects.count()

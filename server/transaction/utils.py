@@ -17,7 +17,7 @@ from server.registration.models import RosterEntry
 from server.season.models import Season
 from server.series.models import Role, is_playing_role
 from server.subscription import catalog, eligibility
-from server.subscription.pricing import UPGRADE, NeedsGrant, NotForSale, Quote, quote
+from server.subscription.pricing import MAX_GROUP, NeedsGrant, NotForSale, Quote, quote
 from server.subscription.purchase import fulfil
 from server.tournament.models import Event, Registration, Tournament
 from server.tournament.utils import can_register_player_to_series_event, series_role
@@ -78,6 +78,8 @@ def build_subscription_order(
 
     if not order.items:
         raise ValidationError("An order needs at least one person in it.")
+    if len(order.items) > MAX_GROUP:
+        raise ValidationError(f"An order can hold at most {MAX_GROUP} people.")
 
     player_ids = [item.player_id for item in order.items]
     if len(set(player_ids)) != len(player_ids):
@@ -102,9 +104,6 @@ def build_subscription_order(
         except (NotForSale, NeedsGrant) as error:
             raise ValidationError(f"{player.user.get_full_name()}: {error}") from error
         lines.append((player, priced))
-
-    if len(lines) > 1 and any(priced.kind == UPGRADE for _, priced in lines):
-        raise ValidationError("Upgrades are bought one person at a time.")
 
     return season, lines
 

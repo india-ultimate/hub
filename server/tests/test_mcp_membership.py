@@ -225,16 +225,16 @@ class TestBuyMembership(MembershipCase):
             result["structuredContent"]["amount_paise"],
         )
 
-    def test_upgrades_go_one_person_at_a_time(self) -> None:
+    def test_a_group_order_can_hold_upgrades(self) -> None:
         self.hold(self.stranger, "community")
-        result = self.buy(
-            [
-                {"player_id": self.stranger.id, "tier": "regular"},
-                {"player_id": self.me.id, "tier": "regular"},
-            ]
-        )
-        self.assertTrue(result["isError"])
-        self.assertIn("one person at a time", result["structuredContent"]["message"])
+        items = [
+            {"player_id": self.stranger.id, "tier": "regular"},
+            {"player_id": self.me.id, "tier": "regular"},
+        ]
+        total = 2 * self.price("regular") - self.price("community")
+        result = self.confirmed(items, total)
+        self.assertFalse(result["isError"], result)
+        self.assertEqual(total, RazorpayTransaction.objects.get().amount)
 
     def test_a_tier_that_needs_a_grant_is_refused_before_asking(self) -> None:
         sponsored = SubscriptionType.objects.get(requires_grant=True).slug
