@@ -9,6 +9,10 @@ from server.subscription.sponsorship import has_grant
 NEW = "new"
 UPGRADE = "upgrade"
 
+# The most people one group payment, or one ask about their prices, can hold.
+# Enough for any real team, too few to list everyone on financial support.
+MAX_GROUP = 50
+
 
 class NotForSale(Exception):  # noqa: N818
     """This plan is not something this person can buy right now."""

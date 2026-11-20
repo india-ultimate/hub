@@ -177,8 +177,8 @@ def place_order(
     description=(
         "Create a payment order for memberships, for the signed-in user, their wards or anyone "
         "else. Each item is {player_id, tier}; tiers come from get_membership_options. Several "
-        "people can go in one order, but an upgrade has to be bought for one person alone. The "
-        "user is asked to confirm the total first. Nothing is charged here: the result is an "
+        "people can go in one order, mixing new memberships and upgrades; an upgrade costs the "
+        "difference. The user is asked to confirm the total first. Nothing is charged here: the result is an "
         "order_id and a pay_url the user opens to pay."
     ),
     input_schema={
