@@ -213,9 +213,9 @@ const Subscription = () => {
                 registrationQuery.isInitialLoading ? (
                   <Bar class="h-5 w-72 max-w-full" />
                 ) : searchParams.players ? (
-                  `These players need a ${
+                  `Pay for these players' ${
                     season().name
-                  } subscription to be rostered for your team.`
+                  } subscriptions so they can be rostered for your team.`
                 ) : (
                   `${
                     player()?.full_name ?? "This player"
@@ -225,9 +225,9 @@ const Subscription = () => {
             >
               {forTeam()}
               {searchParams.players
-                ? `these players need a ${
+                ? `pay for these players' ${
                     season().name
-                  } subscription to be rostered.`
+                  } subscriptions so they can be rostered.`
                 : `${
                     player()?.full_name ?? "this player"
                   } needs this tier to be rostered.`}

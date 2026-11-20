@@ -164,6 +164,21 @@ class TestStatus(ApiCase):
             f"return=/tournament/{self.event.slug}/team/{self.team.slug}/registration", href
         )
 
+    def test_upgrades_join_the_handoff_link(self) -> None:
+        a = self.player("a@x.com", tier=None)
+        b = self.player("b@x.com", tier="community")
+        Subscription.objects.filter(player=b).update(amount_paid=25000)
+        callout = self.step("roster")["callout"]
+        self.assertEqual("2 players need a subscription or an upgrade", callout["text"])
+        href = callout["action"]["href"]
+        self.assertIn(f"{a.id}:", href)
+        self.assertIn(f"{b.id}:regular", href)
+        self.assertEqual("Pay ₹1,250", callout["action"]["label"])
+
+    def test_only_upgrades_say_upgrade(self) -> None:
+        self.player("a@x.com", tier="community")
+        self.assertEqual("1 player needs an upgrade", self.step("roster")["callout"]["text"])
+
     def test_upgrade_link_returns_to_this_page(self) -> None:
         self.player("a@x.com", tier="community")
         href = self.status().json()["roster"]["entries"][0]["state"]["action"]["href"]

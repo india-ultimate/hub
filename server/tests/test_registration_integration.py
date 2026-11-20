@@ -240,6 +240,36 @@ class TestRegistrationIntegration(RegistrationPageCase):
         self.assert_text("2 players ready", "[data-pay-bar]")
         self.assert_element('[data-pay-bar] button:contains("Pay ₹2,000")')
 
+    def test_upgrade_handoff_for_a_team_admin(self) -> None:
+        kiran = self.player("Kiran", "Iyer", tier=None)
+        asha = self.player("Asha", "Nair", tier="community")
+        Subscription.objects.filter(player=asha).update(amount_paid=25000)
+
+        self.sign_in_as(self.admin)
+        self.open_page()
+        self.assert_state("Kiran Iyer", "No subscription")
+        self.assert_text("2 players need a subscription or an upgrade")
+        self.click('a:contains("Pay ₹1,250")')
+
+        asha_row = subscription_flows.selected_row("Asha Nair")
+        self.assert_element(subscription_flows.selected_row("Kiran Iyer"))
+        self.assert_text(
+            f"For Home Team · {self.event.title} — pay for these players' "
+            f"{self.season.name} subscriptions so they can be rostered."
+        )
+        self.assert_text("Upgrade from Community", asha_row)
+        self.assert_text("₹500", f"{asha_row}/td[2]")
+        self.assert_text("Pay ₹1,250", 'button:contains("Pay ₹")')
+        complete_razorpay_test_payment(self, 'button:contains("Pay ₹1,250")')
+        self.assert_text("Payment successfully completed", timeout=60)
+        held = Subscription.objects.get(player=asha, season=self.season)
+        self.assertEqual((held.tier, held.amount_paid), ("regular", 75000))
+        self.assertEqual(Subscription.objects.get(player=kiran, season=self.season).tier, "regular")
+
+        self.click('a:contains("Back to your team\'s registration")')
+        self.assert_state("Asha Nair", "Ready to pay")
+        self.assert_state("Kiran Iyer", "Waiver not signed")
+
     def test_late_fee_change_asks_first(self) -> None:
         p = self.player("Kiran", "Rao")
         self.sign_in_as(self.admin)
