@@ -3,7 +3,9 @@
 from dataclasses import dataclass
 
 from server.core.models import Player
-from server.subscription.models import Subscription, SubscriptionPlan
+from server.season.models import Season
+from server.subscription import catalog
+from server.subscription.models import SponsorshipGrant, Subscription, SubscriptionPlan
 from server.subscription.sponsorship import has_grant
 
 NEW = "new"
@@ -71,3 +73,37 @@ def price(plan: SubscriptionPlan, held: Subscription | None, granted: bool) -> Q
         )
 
     return Quote(kind=UPGRADE, amount=plan.amount - paid, plan=plan)
+
+
+def group_quotes(
+    season: Season, player_ids: list[int]
+) -> dict[int, tuple[Subscription | None, list[Quote]]]:
+    """quote() for every tier on sale this season, for everyone in a group
+    payment: player id -> (what they hold, what they could be bought).
+
+    Unknown ids are left out.
+    """
+    found = set(Player.objects.filter(id__in=player_ids).values_list("id", flat=True))
+    held = {
+        subscription.player_id: subscription
+        for subscription in Subscription.objects.for_season(season)
+        .filter(player_id__in=found, is_active=True)
+        .select_related("plan__type")
+    }
+    granted = set(
+        SponsorshipGrant.objects.filter(season=season, player_id__in=found).values_list(
+            "player_id", flat=True
+        )
+    )
+    plans = list(catalog.plans_for(season))
+    quoted = {}
+    for player_id in found:
+        offers = []
+        for plan in plans:
+            granted_here = not plan.type.requires_grant or player_id in granted
+            try:
+                offers.append(price(plan, held.get(player_id), granted_here))
+            except (NotForSale, NeedsGrant):
+                continue
+        quoted[player_id] = (held.get(player_id), offers)
+    return quoted

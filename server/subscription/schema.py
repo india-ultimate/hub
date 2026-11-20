@@ -21,6 +21,19 @@ class SubscriptionPlanSchema(Schema):
     upgrade_amount: int | None = None
 
 
+class OfferSchema(Schema):
+    slug: str
+    # "new", or "upgrade" when amount is the difference from the held tier.
+    kind: str
+    amount: int
+
+
+class PlayerQuoteSchema(Schema):
+    player_id: int
+    held: str | None
+    offers: list[OfferSchema]
+
+
 class SubscriptionSchema(ModelSchema):
     waiver_signed_by: str | None = None
     coc_agreed_by: str | None = None
