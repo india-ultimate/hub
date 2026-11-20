@@ -9,7 +9,7 @@ from ninja import Router
 from server.core.models import Guardianship, Player
 from server.season.models import Season
 from server.subscription import catalog, pricing, sponsorship
-from server.subscription.models import SponsorshipGrant, Subscription
+from server.subscription.models import Subscription
 from server.subscription.schema import (
     OfferSchema,
     PlayerQuoteSchema,
@@ -87,28 +87,6 @@ def season_plans(
             )
         )
     return 200, offers
-
-
-@router.get("/seasons/{season_id}/grants", response={200: list[int], 400: message_response})
-def season_grants(
-    request: HttpRequest, season_id: int, player_ids: str = ""
-) -> tuple[int, list[int] | dict[str, str]]:
-    """Which of these players may buy a grant-only tier this season.
-
-    One query for the whole group, so the group-payment page never has to ask
-    per person, and never has to guess from the legacy `Player.sponsored`
-    column, which says nothing about this season.
-    """
-    wanted = [int(part) for part in player_ids.split(",") if part.strip().isdigit()]
-    if len(wanted) > MAX_GROUP_LOOKUP:
-        return 400, {"message": f"Ask about at most {MAX_GROUP_LOOKUP} players at a time"}
-    if not wanted:
-        return 200, []
-    return 200, list(
-        SponsorshipGrant.objects.filter(season_id=season_id, player_id__in=wanted).values_list(
-            "player_id", flat=True
-        )
-    )
 
 
 @router.get(

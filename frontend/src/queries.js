@@ -172,25 +172,14 @@ export const fetchSeasonPlans = async (seasonId, playerId) => {
   return await response.json();
 };
 
-// The ids, out of those asked about, that hold a sponsorship grant for the
-// season. One request for the whole group; the server refuses more than
-// MAX_GRANT_LOOKUP ids, so a bigger group is asked about in slices.
-const MAX_GRANT_LOOKUP = 50;
-export const fetchSeasonGrants = async (seasonId, playerIds) => {
+// For each person asked about: the tier they hold this season, and what they
+// could be bought at what checkout charges.
+export const fetchSeasonQuotes = async (seasonId, playerIds) => {
   if (!seasonId || playerIds.length === 0) {
     return [];
   }
-  if (playerIds.length > MAX_GRANT_LOOKUP) {
-    const slices = [];
-    for (let i = 0; i < playerIds.length; i += MAX_GRANT_LOOKUP) {
-      slices.push(
-        fetchSeasonGrants(seasonId, playerIds.slice(i, i + MAX_GRANT_LOOKUP))
-      );
-    }
-    return (await Promise.all(slices)).flat();
-  }
   const response = await fetch(
-    `/api/seasons/${seasonId}/grants?player_ids=${playerIds.join(",")}`,
+    `/api/seasons/${seasonId}/quotes?player_ids=${playerIds.join(",")}`,
     {
       method: "GET",
       headers: { "Content-Type": "application/json" },
@@ -198,7 +187,7 @@ export const fetchSeasonGrants = async (seasonId, playerIds) => {
     }
   );
   if (!response.ok) {
-    throw new Error("Failed to fetch sponsorship grants");
+    throw new Error("Failed to fetch subscription prices");
   }
   return await response.json();
 };
