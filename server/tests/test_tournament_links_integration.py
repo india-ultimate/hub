@@ -6,6 +6,9 @@ from contextlib import ExitStack
 import pytest
 from seleniumbase import BaseCase
 
+from server.core.models import Team, User
+from server.tests import test_ui
+from server.tests.base import create_player
 from server.tests.localserver import APP_URL, running_test_server
 from server.tests.test_payment_accounts import open_event
 from server.tournament.models import Tournament
@@ -14,6 +17,8 @@ from server.utils import today
 
 @pytest.mark.django_db(transaction=True)
 class TestTournamentLinksIntegration(BaseCase):
+    sign_in_as = test_ui.TestIntegration.sign_in_as
+
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
@@ -93,3 +98,39 @@ class TestTournamentLinksIntegration(BaseCase):
         self.open(f"{APP_URL}/tournament/{event.slug}")
         self.assert_element(f'a[href="/tournament/{event.slug}/register"]')
         self.assert_text("Player Registrations")
+
+    def roster_button(self, event_slug: str | None, team: Team) -> str:
+        self.open(f"{APP_URL}/tournament/{event_slug}/register")
+        button = f'a[href^="/tournament/{event_slug}/team/{team.slug}/"]'
+        self.assert_element(button)
+        return str(self.get_attribute(button, "href", hard_fail=True)).removeprefix(APP_URL)
+
+    def test_anyone_can_view_a_registered_teams_roster(self) -> None:
+        # The registration page is only for the team and staff; others got a 404.
+        event = open_event(title="Nationals", type="OPN")
+        tournament = Tournament.objects.create(event=event, status=Tournament.Status.SCHEDULING)
+        team = Team.objects.create(name="Thunderbolts", slug="thunderbolts")
+        tournament.teams.add(team)
+        user = User.objects.create(username="ananya", first_name="Ananya", last_name="Rao")
+        create_player(user)
+        self.sign_in_as(user)
+        self.assertEqual(
+            f"/tournament/{event.slug}/team/{team.slug}/roster",
+            self.roster_button(event.slug, team),
+        )
+
+    def test_a_team_admin_goes_to_their_registration(self) -> None:
+        event = open_event(title="Nationals", type="OPN")
+        tournament = Tournament.objects.create(event=event, status=Tournament.Status.SCHEDULING)
+        team = Team.objects.create(name="Thunderbolts", slug="thunderbolts")
+        other = Team.objects.create(name="Airwaves", slug="airwaves")
+        tournament.teams.add(team, other)
+        user = User.objects.create(username="ananya", first_name="Ananya", last_name="Rao")
+        create_player(user)
+        team.admins.add(user)
+        other.admins.add(user)  # two teams, so the list doesn't redirect to one
+        self.sign_in_as(user)
+        self.assertEqual(
+            f"/tournament/{event.slug}/team/{team.slug}/registration",
+            self.roster_button(event.slug, team),
+        )
