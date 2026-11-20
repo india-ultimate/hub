@@ -280,15 +280,21 @@ function Row(props) {
             >
               Send code to email
             </button>
-            <Show when={row().state !== "pending-staff"}>
-              <button
-                id={`merge-staff-open-${row().row_id}`}
-                onClick={openHelp}
-                class={SECONDARY_BUTTON}
-              >
-                Request help
-              </button>
-            </Show>
+          </Show>
+          {/* Confirmed rows too: a merge with a guardian linked is staff's call. */}
+          <Show
+            when={
+              (actionable() || (canAct() && row().verified_for_you)) &&
+              row().state !== "pending-staff"
+            }
+          >
+            <button
+              id={`merge-staff-open-${row().row_id}`}
+              onClick={openHelp}
+              class={SECONDARY_BUTTON}
+            >
+              Request help
+            </button>
           </Show>
           <Show when={canAct() && row().verified_for_you}>
             <button

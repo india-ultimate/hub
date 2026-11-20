@@ -410,6 +410,31 @@ class TestConfirmMerge(MergeFlowTestCase):
             self.assertTrue(User.objects.filter(id=self.second.id).exists())
             User.objects.filter(id=self.second.id).update(**{flag: False})
 
+    def test_a_guardian_s_account_is_not_merged_into_their_ward_s(self) -> None:
+        """A child signed in with a parent's address can prove that inbox,
+        and the merge made the child their own guardian."""
+        Guardianship.objects.create(
+            user=self.second, player=self.first.player_profile, relation=Guardianship.Relation.MO
+        )
+        self.confirmed(self.first, self.second)
+        response = self.confirm(self.token, self.second.id)
+        self.assertEqual(response.status_code, 403)
+        self.assertIn("our team", response.json()["message"])
+        self.assertTrue(User.objects.filter(id=self.second.id).exists())
+
+    def test_one_child_with_two_guardians_is_not_merged_here(self) -> None:
+        """Only one guardianship survives a merge, and it used to be the one
+        nobody could sign in to."""
+        for account, email in ((self.first, "mum@x.com"), (self.second, "coach@x.com")):
+            Guardianship.objects.create(
+                user=User.objects.create(username=email, email=email),
+                player=account.player_profile,
+                relation=Guardianship.Relation.LG,
+            )
+        self.confirmed(self.first, self.second)
+        self.assertEqual(self.confirm(self.token, self.second.id).status_code, 403)
+        self.assertEqual(Guardianship.objects.count(), 2)
+
     def test_who_merged_stays_true_after_they_are_merged_away(self) -> None:
         self.confirmed(self.first, self.second)
         self.confirm(self.token, self.second.id)
@@ -1331,6 +1356,19 @@ class TestStaffReview(RowActions):
         self.assertEqual(merge.merged_by, staff)
         self.assertEqual(merge.record["proof"]["method"], ClusterMember.Proof.STAFF)
         self.assertEqual(self.request().status, ServiceRequestStatus.APPROVED)
+
+    def test_staff_can_still_merge_two_guardians_children(self) -> None:
+        """Staff see the guardians on the review page and decide."""
+        for account, email in ((self.first, "mum@x.com"), (self.second, "coach@x.com")):
+            Guardianship.objects.create(
+                user=User.objects.create(username=email, email=email),
+                player=account.player_profile,
+                relation=Guardianship.Relation.LG,
+            )
+        self.ask()
+        second_id = self.second.id
+        approve_staff(self.request(), self.staff())
+        self.assertFalse(User.objects.filter(id=second_id).exists())
 
     def test_approving_makes_the_absorbed_address_sign_in_to_the_keeper(self) -> None:
         """Staff confirming the two accounts are one person is enough: both
