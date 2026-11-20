@@ -15,6 +15,11 @@ from server.core.accounts import find_login_user
 from server.core.models import Player, User
 from server.duplicates.players import codes
 from server.duplicates.players.clusters import close_if_done
+from server.duplicates.players.detect import (
+    BLOCK_DIFFERENT_GUARDIANS,
+    BLOCK_DIFFERENT_WARDS,
+    BLOCK_GUARDIANSHIP,
+)
 from server.duplicates.players.emails import (
     PROOF_WORDS,
     notify_kept,
@@ -24,10 +29,12 @@ from server.duplicates.players.emails import (
 )
 from server.duplicates.players.history import log
 from server.duplicates.players.identity import normalize_email
-from server.duplicates.players.merge import MergePlan, merge_accounts
+from server.duplicates.players.merge import MergePlan, check_blockers, merge_accounts
 from server.duplicates.players.models import ClusterEvent, ClusterMember, DuplicateCluster
 from server.duplicates.players.staff import close_request
 from server.servicerequests.models import ServiceRequest, ServiceRequestStatus, ServiceRequestType
+
+GUARDIAN_BLOCKERS = {BLOCK_GUARDIANSHIP, BLOCK_DIFFERENT_GUARDIANS, BLOCK_DIFFERENT_WARDS}
 
 
 class FlowError(Exception):
@@ -517,6 +524,14 @@ def merge_pair(
         if absorbed.is_staff or absorbed.is_superuser:
             raise FlowError(
                 "Staff accounts can't be merged here. Our team merges them by hand", 403
+            )
+        # Proving an inbox is not proving who you are: a child signs in with
+        # a parent's address. Staff see these on the review page and decide.
+        if staff_request is None and GUARDIAN_BLOCKERS & set(check_blockers(keeper, [absorbed])):
+            raise FlowError(
+                "A guardian is linked to one of these accounts, so our team has to merge "
+                "them. Use “Request help” on this account",
+                403,
             )
         absorbed_email = absorbed.email
         plan = merge_accounts(

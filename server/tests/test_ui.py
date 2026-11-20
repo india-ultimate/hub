@@ -578,6 +578,8 @@ class TestIntegration(BaseCase):
         self.assertEqual(b.state, ClusterMember.State.VERIFIED)
         self.assertEqual(b.proof, ClusterMember.Proof.SAME_INBOX)
         self.assertEqual(b.verified_by_id, keeper.id)
+        # Still offered: a merge with a guardian linked is staff's to make.
+        self.assert_element(f"button#merge-staff-open-{b.pk}")
 
         # Confirming opens a dialog rather than acting straight away, even
         # with no conflicting field to choose (owner decision).
