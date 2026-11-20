@@ -80,6 +80,12 @@ const TeamRegistration = () => {
 
   const scrollToMyTeams = () => registerYourTeamRef.scrollIntoView();
 
+  // The registration page is only for the team and staff; everyone else
+  // sees the public roster.
+  const canOpenRegistration = teamId =>
+    userQuery.data?.is_staff ||
+    userQuery.data?.admin_teams?.some(adminTeam => adminTeam.id === teamId);
+
   const isAdminAndPlayerRegInProgress = teamId => {
     return (
       userQuery.data?.admin_teams
@@ -431,7 +437,11 @@ const TeamRegistration = () => {
                       </div>
                       <div class="justify-self-end">
                         <A
-                          href={`/tournament/${params.slug}/team/${team.slug}/registration`}
+                          href={`/tournament/${params.slug}/team/${team.slug}/${
+                            canOpenRegistration(team.id)
+                              ? "registration"
+                              : "roster"
+                          }`}
                           class={clsx(
                             "inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium focus:outline-none focus:ring-4",
                             isAdminAndPlayerRegInProgress(team.id)
