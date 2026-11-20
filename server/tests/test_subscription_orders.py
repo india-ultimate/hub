@@ -1,12 +1,14 @@
+import contextlib
 import importlib
 from typing import Any
 from unittest import mock
 
 from django.apps import apps
 from django.test import TestCase
+from django.utils.timezone import now
 
 from server.season.models import Season
-from server.subscription import pricing, purchase, sponsorship
+from server.subscription import catalog, pricing, purchase, sponsorship
 from server.subscription.models import Subscription, SubscriptionPlan, SubscriptionType
 from server.tests.base import ApiBaseTestCase, fake_order
 from server.transaction.models import RazorpayTransaction, RazorpayTransactionPlayer
@@ -127,6 +129,45 @@ class TestQuote(TestCase):
         )
         with self.assertRaises(pricing.NotForSale):
             pricing.quote(self.player, plan)
+
+    def test_group_quotes_agree_with_quote(self) -> None:
+        community = self.plans["community"]
+
+        def player_holding(email: str, slug: str | None, **fields: Any) -> Any:
+            player = make_player(email)
+            if slug is not None:
+                Subscription.objects.create(
+                    player=player,
+                    season=self.season,
+                    plan=self.plans[slug],
+                    amount_paid=self.plans[slug].amount,
+                    start_date=self.season.start_date,
+                    end_date=self.season.end_date,
+                    **{"is_active": True, **fields},
+                )
+            return player
+
+        granted = player_holding("granted@example.com", "community")
+        sponsorship.grant(granted, self.season)
+        regular = player_holding("regular@example.com", "regular")
+        refunded = player_holding("refunded@example.com", "community", refunded_at=now())
+        placeholder = player_holding("placeholder@example.com", "community", is_active=False)
+        newcomer = player_holding("new@example.com", None)
+        players = [granted, regular, refunded, placeholder, newcomer]
+
+        quoted = pricing.group_quotes(self.season, [p.id for p in players])
+
+        for player in players:
+            expected = []
+            for plan in catalog.plans_for(self.season):
+                with contextlib.suppress(pricing.NotForSale, pricing.NeedsGrant):
+                    expected.append(pricing.quote(player, plan))
+            self.assertEqual(quoted[player.id][1], expected, player.user.email)
+        held = quoted[granted.id][0]
+        self.assertEqual(held.plan if held else None, community)
+        for player in (refunded, placeholder, newcomer):
+            self.assertIsNone(quoted[player.id][0], player.user.email)
+            self.assertTrue(all(q.kind == pricing.NEW for q in quoted[player.id][1]))
 
 
 class TestOrderValidation(ApiBaseTestCase):

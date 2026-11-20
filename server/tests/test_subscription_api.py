@@ -1,4 +1,6 @@
-from server.core.models import Guardianship, User
+from typing import Any
+
+from server.core.models import Guardianship, Player, User
 from server.season.models import Season
 from server.subscription import sponsorship
 from server.subscription.models import Subscription, SubscriptionPlan
@@ -89,6 +91,82 @@ class TestPlansEndpoint(ApiBaseTestCase):
         response = self.client.get(f"/api/seasons/{empty.id}/plans")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), [])
+
+
+class TestQuotesEndpoint(ApiBaseTestCase):
+    """What the group-payment page shows each person: what they hold, and
+    what they could be bought, at what they would pay."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.login()
+        self.s26 = Season.objects.get(name="Season 2026-2027")
+
+    def hold(self, player: Player, slug: str) -> None:
+        plan = SubscriptionPlan.objects.get(season=self.s26, type__slug=slug)
+        Subscription.objects.create(
+            player=player,
+            season=self.s26,
+            plan=plan,
+            amount_paid=plan.amount,
+            is_active=True,
+            start_date=self.s26.start_date,
+            end_date=self.s26.end_date,
+        )
+
+    def quotes(self, *ids: int) -> list[dict[str, Any]]:
+        query = ",".join(str(i) for i in ids)
+        response = self.client.get(f"/api/seasons/{self.s26.id}/quotes?player_ids={query}")
+        self.assertEqual(response.status_code, 200, response.content)
+        return response.json()
+
+    def test_a_community_holder_with_a_grant_is_offered_discounted_for_the_difference(
+        self,
+    ) -> None:
+        self.hold(self.player, "community")
+        sponsorship.grant(self.player, self.s26)
+        [quote] = self.quotes(self.player.id)
+        self.assertEqual(quote["player_id"], self.player.id)
+        self.assertEqual(quote["held"], "Community Subscription")
+        self.assertIn({"slug": "discounted", "kind": "upgrade", "amount": 5000}, quote["offers"])
+        self.assertIn({"slug": "regular", "kind": "upgrade", "amount": 50000}, quote["offers"])
+        self.assertNotIn("community", [offer["slug"] for offer in quote["offers"]])
+
+    def test_a_newcomer_without_a_grant_gets_full_prices_and_no_discounted(self) -> None:
+        [quote] = self.quotes(self.player.id)
+        self.assertIsNone(quote["held"])
+        self.assertEqual(
+            [(o["slug"], o["kind"], o["amount"]) for o in quote["offers"]],
+            [("patron", "new", 150000), ("regular", "new", 75000), ("community", "new", 25000)],
+        )
+
+    def test_a_patron_holder_has_no_offers(self) -> None:
+        self.hold(self.player, "patron")
+        [quote] = self.quotes(self.player.id)
+        self.assertEqual((quote["held"], quote["offers"]), ("Patron Subscription", []))
+
+    def test_unknown_ids_are_skipped_and_order_is_kept(self) -> None:
+        other = User.objects.create(username="b@example.com", email="b@example.com")
+        b = Player.objects.create(user=other, date_of_birth="2000-01-01")
+        quotes = self.quotes(b.id, 999999, self.player.id)
+        self.assertEqual([q["player_id"] for q in quotes], [b.id, self.player.id])
+
+    def test_an_unknown_season_is_a_404(self) -> None:
+        response = self.client.get(f"/api/seasons/999999/quotes?player_ids={self.player.id}")
+        self.assertEqual(response.status_code, 404)
+
+    def test_more_than_fifty_ids_is_refused(self) -> None:
+        ids = ",".join(str(n) for n in range(1, 52))
+        response = self.client.get(f"/api/seasons/{self.s26.id}/quotes?player_ids={ids}")
+        self.assertEqual(response.status_code, 400)
+        ids = ",".join(str(n) for n in range(1, 51))
+        response = self.client.get(f"/api/seasons/{self.s26.id}/quotes?player_ids={ids}")
+        self.assertEqual(response.status_code, 200)
+
+    def test_no_ids_or_junk_is_an_empty_list(self) -> None:
+        for query in ("", "?player_ids=", "?player_ids=abc,,"):
+            response = self.client.get(f"/api/seasons/{self.s26.id}/quotes{query}")
+            self.assertEqual(response.json(), [])
 
 
 class TestGrantsEndpoint(ApiBaseTestCase):

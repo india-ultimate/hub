@@ -10,14 +10,15 @@ from server.core.models import Guardianship, Player
 from server.season.models import Season
 from server.subscription import catalog, pricing, sponsorship
 from server.subscription.models import SponsorshipGrant, Subscription
-from server.subscription.schema import SubscriptionPlanSchema, SubscriptionSchema
+from server.subscription.schema import (
+    OfferSchema,
+    PlayerQuoteSchema,
+    SubscriptionPlanSchema,
+    SubscriptionSchema,
+)
 from server.types import message_response
 
 router = Router()
-
-# One group payment's worth. Enough for any real team, too few to list every
-# person on financial support in one request.
-MAX_GRANT_LOOKUP = 50
 
 
 def may_see(user: Any, player: Player) -> bool:
@@ -99,8 +100,8 @@ def season_grants(
     column, which says nothing about this season.
     """
     wanted = [int(part) for part in player_ids.split(",") if part.strip().isdigit()]
-    if len(wanted) > MAX_GRANT_LOOKUP:
-        return 400, {"message": f"Ask about at most {MAX_GRANT_LOOKUP} players at a time"}
+    if len(wanted) > MAX_GROUP_LOOKUP:
+        return 400, {"message": f"Ask about at most {MAX_GROUP_LOOKUP} players at a time"}
     if not wanted:
         return 200, []
     return 200, list(
@@ -108,6 +109,41 @@ def season_grants(
             "player_id", flat=True
         )
     )
+
+
+@router.get(
+    "/seasons/{season_id}/quotes",
+    response={200: list[PlayerQuoteSchema], 400: message_response},
+)
+def season_quotes(
+    request: HttpRequest, season_id: int, player_ids: str = ""
+) -> tuple[int, list[PlayerQuoteSchema] | dict[str, str]]:
+    """What each person in a group payment holds, and what they could be
+    bought at the price checkout will charge: in full, or the difference.
+
+    Anyone may pay for anyone, so anyone signed in may ask. Ordering a tier
+    someone holds says as much about them already.
+    """
+    season = get_object_or_404(Season, id=season_id)
+    wanted = [int(part) for part in player_ids.split(",") if part.strip().isdigit()]
+    if len(wanted) > pricing.MAX_GROUP:
+        return 400, {"message": f"Ask about at most {pricing.MAX_GROUP} players at a time"}
+    quoted = pricing.group_quotes(season, wanted)
+    result = []
+    for player_id in dict.fromkeys(wanted):
+        if player_id not in quoted:
+            continue
+        held, offers = quoted[player_id]
+        result.append(
+            PlayerQuoteSchema(
+                player_id=player_id,
+                held=held.plan.type.name if held is not None and held.plan is not None else None,
+                offers=[
+                    OfferSchema(slug=q.plan.type.slug, kind=q.kind, amount=q.amount) for q in offers
+                ],
+            )
+        )
+    return 200, result
 
 
 @router.get(
