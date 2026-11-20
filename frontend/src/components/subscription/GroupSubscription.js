@@ -1,4 +1,4 @@
-import { createQuery } from "@tanstack/solid-query";
+import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import {
   createSolidTable,
   flexRender,
@@ -16,13 +16,13 @@ import {
   Switch
 } from "solid-js";
 
-import { majorAge, minAge, minAgeWarning } from "../../constants";
+import { majorAge, MAX_GROUP, minAge, minAgeWarning } from "../../constants";
 import { ChevronLeft, ChevronRight } from "../../icons";
 import { inr } from "../../money";
 import {
   fetchPlayerById,
-  fetchSeasonGrants,
   fetchSeasonPlans,
+  fetchSeasonQuotes,
   searchPlayers
 } from "../../queries";
 import { Loading, TableRowsSkeleton } from "../../skeletons/primitives";
@@ -64,6 +64,11 @@ const PlayerSearchDropdown = componentProps => {
       cell: props => (
         <div>
           <div class="font-medium">{props.getValue()}</div>
+          <Show when={props.row.original.has_subscription}>
+            <div class="text-xs text-gray-500 dark:text-gray-400">
+              Has a subscription
+            </div>
+          </Show>
           <div class="flex flex-wrap">
             <For each={props.row.original.teams}>
               {team => (
@@ -96,9 +101,6 @@ const PlayerSearchDropdown = componentProps => {
             </button>
           }
         >
-          <Match when={props.row.original.has_subscription}>
-            Subscription already exists
-          </Match>
           <Match when={payingPlayers()[props.getValue()]}>Added</Match>
         </Switch>
       )
@@ -278,6 +280,7 @@ const PlayerSearchDropdown = componentProps => {
 };
 
 const GroupSubscription = props => {
+  const queryClient = useQueryClient();
   const [status, setStatus] = createSignal();
 
   const [payingPlayers, setPayingPlayers] = createSignal([]);
@@ -285,17 +288,20 @@ const GroupSubscription = props => {
   // player id -> tier slug. The tier is per person, not per group.
   const [tiers, setTiers] = createSignal({});
   const [notice, setNotice] = createSignal();
+  // Set when an add is refused for a full group; any change clears it.
+  const [full, setFull] = createSignal(false);
 
   // A team registration page links here with ?players=12,34 and
-  // &tiers=12:regular,34:regular. They're checked again on load: anyone who
-  // got a subscription since is left out with a notice. A tier no longer
-  // on offer to them falls back to the default one (tierFor).
+  // &tiers=12:regular,34:regular. A tier no longer on offer to them falls
+  // back to the default one (tierFor).
   onMount(async () => {
-    const ids = (props.preselect?.players || "")
-      .split(",")
-      .map(Number)
-      .filter(Boolean);
-    if (!ids.length) return;
+    const linked = [
+      ...new Set(
+        (props.preselect?.players || "").split(",").map(Number).filter(Boolean)
+      )
+    ];
+    if (!linked.length) return;
+    const ids = linked.slice(0, MAX_GROUP);
     const wanted = Object.fromEntries(
       (props.preselect?.tiers || "")
         .split(",")
@@ -307,12 +313,7 @@ const GroupSubscription = props => {
       ids.map(id => fetchPlayerById(id).catch(() => null))
     );
     const found = loaded.filter(Boolean);
-    const covered = found.filter(
-      p =>
-        p.subscription?.is_active && p.subscription?.season === props.season?.id
-    );
     const needing = found
-      .filter(p => !covered.includes(p))
       // The search results this list usually holds carry is_minor, as does
       // a player a team admin loads; anyone else's gets a date of birth.
       .map(p => ({
@@ -330,15 +331,6 @@ const GroupSubscription = props => {
       )
     });
     const notes = [];
-    if (covered.length) {
-      const names = covered.map(p => p.full_name).join(", ");
-      const one = covered.length === 1;
-      notes.push(
-        `${names} already ${one ? "holds" : "hold"} a subscription and ${
-          one ? "was" : "were"
-        } left out.`
-      );
-    }
     if (found.length < ids.length) {
       const missing = ids.length - found.length;
       notes.push(
@@ -347,7 +339,12 @@ const GroupSubscription = props => {
         } left out.`
       );
     }
-    setNotice(notes.join(" ") || undefined);
+    if (linked.length > ids.length) {
+      notes.push(
+        `Only the first ${MAX_GROUP} players were added. Pay for them, then come back for the rest.`
+      );
+    }
+    if (notes.length) setNotice(notes.join(" "));
   });
 
   const plansQuery = createQuery(
@@ -360,18 +357,19 @@ const GroupSubscription = props => {
     }
   );
 
-  // One request for the whole selection, refetched as it changes: the
-  // legacy `sponsored` flag on a player says nothing about this season.
-  const grantsQuery = createQuery(
+  // What each person could be bought, and at what price: in full, or the
+  // difference from the tier they hold. One request for the whole selection,
+  // refetched as it changes.
+  const quotesQuery = createQuery(
     () => [
-      "season-grants",
+      "season-quotes",
       props.season?.id,
       payingPlayers()
         .map(p => p.id)
         .join(",")
     ],
     () =>
-      fetchSeasonGrants(
+      fetchSeasonQuotes(
         props.season.id,
         payingPlayers().map(p => p.id)
       ),
@@ -384,15 +382,26 @@ const GroupSubscription = props => {
   );
 
   const pricesLoading = () =>
-    plansQuery.isInitialLoading || grantsQuery.isInitialLoading;
-  const payLocked = () => pricesLoading() || grantsQuery.isFetching;
+    plansQuery.isInitialLoading || quotesQuery.isInitialLoading;
+  const payLocked = () => pricesLoading() || quotesQuery.isFetching;
   const plans = () => plansQuery.data ?? [];
-  const hasGrant = playerId => (grantsQuery.data ?? []).includes(playerId);
+  const quoteFor = playerId =>
+    (quotesQuery.data ?? []).find(quote => quote.player_id === playerId);
+  const heldFor = playerId => quoteFor(playerId)?.held;
+  const pendingFor = playerId =>
+    !quoteFor(playerId) && !quotesQuery.isError && quotesQuery.isFetching;
+  const totalPending = () =>
+    pricesLoading() || payingPlayers().some(player => pendingFor(player.id));
 
-  // What this person may pick: the open tiers, plus a grant-only tier when
-  // they hold a grant for this season.
-  const plansFor = playerId =>
-    plans().filter(plan => !plan.requires_grant || hasGrant(playerId));
+  // What this person may pick, at what they'd pay: the server's offers for
+  // them, named from the season's plans.
+  const plansFor = playerId => {
+    const offers = quoteFor(playerId)?.offers ?? [];
+    return plans().flatMap(plan => {
+      const offer = offers.find(o => o.slug === plan.slug);
+      return offer ? [{ ...plan, amount: offer.amount, kind: offer.kind }] : [];
+    });
+  };
 
   const defaultTier = playerId => {
     const available = plansFor(playerId);
@@ -414,7 +423,7 @@ const GroupSubscription = props => {
   };
 
   const planFor = playerId =>
-    plans().find(plan => plan.slug === tierFor(playerId));
+    plansFor(playerId).find(plan => plan.slug === tierFor(playerId));
 
   const setTierFor = (playerId, slug) =>
     setTiers({ ...tiers(), [playerId]: slug });
@@ -425,23 +434,23 @@ const GroupSubscription = props => {
       .map(player => ({ player_id: player.id, plan_type: tierFor(player.id) }));
 
   const paymentSuccessCallback = () => {
+    // What they held has changed, so no price quoted before paying holds.
+    queryClient.removeQueries({ queryKey: ["season-quotes"] });
+    setFull(false);
     setPaymentSuccess(true);
     props.successCallback();
   };
 
   const handlePlayerPayingStatus = (player, isPaying) => {
-    // Don't perform any actions on a player who already has a subscription
-    if (player?.has_subscription) {
-      return;
-    }
     if (isPaying) {
-      // Add player to paying Players
+      setFull(payingPlayers().length >= MAX_GROUP);
+      if (full()) return;
       setPayingPlayers([
         ...payingPlayers().filter(p => p.id !== player.id),
         player
       ]);
     } else {
-      // Remove player from paying Players
+      setFull(false);
       setPayingPlayers(payingPlayers().filter(p => p.id !== player.id));
     }
   };
@@ -473,6 +482,13 @@ const GroupSubscription = props => {
           <Info text={notice()} />
         </div>
       </Show>
+      <Show when={full()}>
+        <div class="mt-4">
+          <Info
+            text={`A payment covers up to ${MAX_GROUP} players. Pay for these, then start another.`}
+          />
+        </div>
+      </Show>
       <SubscriptionPlayerList
         players={payingPlayers()}
         fee={getAmount()}
@@ -483,8 +499,27 @@ const GroupSubscription = props => {
         planFor={planFor}
         tierFor={tierFor}
         onTierChange={setTierFor}
+        heldFor={heldFor}
+        pendingFor={pendingFor}
+        count={items().length}
         pricesPending={pricesLoading()}
+        totalPending={totalPending()}
+        pricesFailed={quotesQuery.isError}
       />
+      <Show when={quotesQuery.isError}>
+        <div class="mb-4 flex flex-wrap items-center gap-3" role="alert">
+          <p class="text-sm text-red-700 dark:text-red-400">
+            Prices couldn't be loaded.
+          </p>
+          <button
+            type="button"
+            class="min-h-11 rounded-lg border border-blue-700 px-4 text-sm font-medium text-blue-700 hover:bg-blue-700 hover:text-white dark:border-blue-500 dark:text-blue-400"
+            onClick={() => quotesQuery.refetch()}
+          >
+            Try again
+          </button>
+        </div>
+      </Show>
       <Show when={payingPlayers()?.find(p => p.is_minor)}>
         <div
           class="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-800 dark:bg-gray-800 dark:text-red-400"
@@ -501,7 +536,11 @@ const GroupSubscription = props => {
               disabled={payDisabled() || items().length === 0 || payLocked()}
               season={props.season}
               items={items()}
-              buttonText={pricesLoading() ? "Pay" : `Pay ${inr(getAmount())}`}
+              buttonText={
+                totalPending() || quotesQuery.isError
+                  ? "Pay"
+                  : `Pay ${inr(getAmount())}`
+              }
               setStatus={setStatus}
               successCallback={paymentSuccessCallback}
             />

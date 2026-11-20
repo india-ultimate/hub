@@ -169,43 +169,6 @@ class TestQuotesEndpoint(ApiBaseTestCase):
             self.assertEqual(response.json(), [])
 
 
-class TestGrantsEndpoint(ApiBaseTestCase):
-    """Group payment offers the discounted tier only to people this returns."""
-
-    def setUp(self) -> None:
-        super().setUp()
-        self.login()
-        self.s26 = Season.objects.get(name="Season 2026-2027")
-        self.s25 = Season.objects.get(name="Season 2025-2026")
-
-    def test_only_this_seasons_grants_are_returned(self) -> None:
-        sponsorship.grant(self.player, self.s26)
-        response = self.client.get(
-            f"/api/seasons/{self.s26.id}/grants?player_ids={self.player.id},999999"
-        )
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), [self.player.id])
-        # A grant is for one season, and the legacy flag is not a grant.
-        self.player.sponsored = True
-        self.player.save()
-        response = self.client.get(f"/api/seasons/{self.s25.id}/grants?player_ids={self.player.id}")
-        self.assertEqual(response.json(), [])
-
-    def test_more_than_fifty_ids_is_refused(self) -> None:
-        # Bounded so one request cannot list everyone on financial support.
-        ids = ",".join(str(n) for n in range(1, 52))
-        response = self.client.get(f"/api/seasons/{self.s26.id}/grants?player_ids={ids}")
-        self.assertEqual(response.status_code, 400)
-        ids = ",".join(str(n) for n in range(1, 51))
-        response = self.client.get(f"/api/seasons/{self.s26.id}/grants?player_ids={ids}")
-        self.assertEqual(response.status_code, 200)
-
-    def test_no_ids_or_junk_is_an_empty_list(self) -> None:
-        for query in ("", "?player_ids=", "?player_ids=abc,,"):
-            response = self.client.get(f"/api/seasons/{self.s26.id}/grants{query}")
-            self.assertEqual(response.json(), [])
-
-
 class TestSubscriptionHistory(ApiBaseTestCase):
     def setUp(self) -> None:
         super().setUp()

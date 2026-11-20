@@ -33,7 +33,7 @@ from server.servicerequests.models import (
     ServiceRequestType,
 )
 from server.subscription.emails import CONFIRMATION_SUBJECT
-from server.subscription.models import SponsorshipGrant, Subscription
+from server.subscription.models import SponsorshipGrant, Subscription, SubscriptionPlan
 from server.tests import test_ui
 from server.tests.localserver import APP_URL, DJANGO_URL, running_test_server
 from server.tests.razorpay_checkout import complete_razorpay_test_payment
@@ -76,6 +76,11 @@ def make_staff(address: str, *codenames: str) -> User:
 def selected_row(name: str) -> str:
     """A person's row in the group's list: the only rows with a tier select."""
     return f'//tr[.//select][contains(., "{name}")]'
+
+
+def listed_row(name: str) -> str:
+    """A person's row in the group's list, whether or not it has a tier select."""
+    return f'//table[caption[contains(., "Selected Players")]]/tbody/tr[contains(., "{name}")]'
 
 
 def subscription_confirmations(address: str) -> list[str]:
@@ -499,6 +504,173 @@ class TestSubscriptionIntegration(BaseCase):
         self.assertEqual(order.status, REFUNDED)
 
     # Flow 12: Razorpay's signed webhook, for a real order. No browser needed.
+    def test_group_payment_upgrades_holders(self) -> None:
+        payer = make_player("arjun@example.com", first="Arjun", last="Captain")
+        asha = Player.objects.get(user=make_player("asha@example.com", first="Asha", last="Nair"))
+        ravi = Player.objects.get(user=make_player("ravi@example.com", first="Ravi", last="Kumar"))
+        meera = Player.objects.get(
+            user=make_player("meera@example.com", first="Meera", last="Iyer")
+        )
+        for player, slug in ((asha, "community"), (ravi, "patron")):
+            plan = SubscriptionPlan.objects.get(season=self.season, type__slug=slug)
+            Subscription.objects.create(
+                player=player,
+                season=self.season,
+                plan=plan,
+                amount_paid=plan.amount,
+                is_active=True,
+                start_date=self.season.start_date,
+                end_date=self.season.end_date,
+            )
+        SponsorshipGrant.objects.create(player=asha, season=self.season)
+
+        self.sign_in_as(payer)
+        self.open_subscription(Player.objects.get(user=payer))
+        self.click("button#group-tab")
+        for name in ("Asha Nair", "Ravi Kumar", "Meera Iyer"):
+            self.type("input#player-search", f"{name}\n")
+            if name != "Meera Iyer":
+                self.assert_text("Has a subscription", f'tr:contains("{name}")')
+            self.click(f'tr:contains("{name}") button:contains("Add")')
+            self.assert_element(listed_row(name))
+
+        asha_row, ravi_row, meera_row = (
+            listed_row(name) for name in ("Asha Nair", "Ravi Kumar", "Meera Iyer")
+        )
+        shown = "const s = arguments[0]; return s.options[s.selectedIndex].value;"
+        self.assertEqual(
+            self.execute_script(shown, self.find_element(f"{asha_row}//select")), "discounted"
+        )
+        self.assertEqual(
+            self.execute_script(
+                "const s = arguments[0]; return s.options[s.selectedIndex].text;",
+                self.find_element(f"{asha_row}//select"),
+            ),
+            "Discounted",
+        )
+        self.assert_text("Upgrade from Community", asha_row)
+        self.assert_text("₹50", f"{asha_row}/td[2]")
+        self.assert_text("there is no higher tier", ravi_row)
+        self.assert_element_absent(f"{ravi_row}//select")
+        self.assert_text("No charge", f"{ravi_row}/td[2]")
+        self.assertEqual(
+            self.execute_script(shown, self.find_element(f"{meera_row}//select")), "regular"
+        )
+        self.assert_text("₹750", f"{meera_row}/td[2]")
+        self.assert_text("Players being charged: 2")
+        self.assert_text("Total Amount: ₹800")
+        self.assert_text("Pay ₹800", 'button:contains("Pay ₹")')
+        self.pay('button:contains("Pay ₹")')
+
+        [order] = RazorpayTransaction.objects.filter(user=payer)
+        self.assertEqual((order.amount, order.status), (80000, COMPLETED))
+        held = self.subscription(asha)
+        self.assertEqual((held.tier, held.amount_paid), ("discounted", 30000))
+        line = RazorpayTransactionPlayer.objects.get(transaction=order, player=asha)
+        self.assertEqual((line.amount, line.subscription_id), (5000, held.pk))
+        held = self.subscription(meera)
+        self.assertEqual((held.tier, held.amount_paid), ("regular", 75000))
+        self.assertFalse(RazorpayTransactionPlayer.objects.filter(player=ravi).exists())
+        held = self.subscription(ravi)
+        self.assertEqual((held.tier, held.amount_paid), ("patron", 150000))
+
+        # Straight after paying, the same group is priced as what they now hold.
+        self.click('button:contains("Make another Payment")')
+        for name in ("Asha Nair", "Ravi Kumar", "Meera Iyer"):
+            self.type("input#player-search", f"{name}\n")
+            self.click(f'tr:contains("{name}") button:contains("Add")')
+            self.assert_element(listed_row(name))
+        self.assert_text("Upgrade from Discounted", asha_row)
+        self.assert_text("₹450", f"{asha_row}/td[2]")
+        self.assert_text("Upgrade from Regular", meera_row)
+        self.assert_text("₹750", f"{meera_row}/td[2]")
+
+    def test_group_prices_wait_for_every_quote(self) -> None:
+        payer = make_player("arjun@example.com", first="Arjun", last="Captain")
+        make_player("meera@example.com", first="Meera", last="Iyer")
+        make_player("asha@example.com", first="Asha", last="Nair")
+        make_player("ravi@example.com", first="Ravi", last="Kumar")
+        pay = 'button:contains("Pay")'
+
+        self.sign_in_as(payer)
+        self.open_subscription(Player.objects.get(user=payer))
+        self.click("button#group-tab")
+        self.type("input#player-search", "Meera Iyer\n")
+        self.click('tr:contains("Meera Iyer") button:contains("Add")')
+        self.assert_text("Total Amount: ₹750")
+
+        def group_quotes_answer(reply: str) -> None:
+            self.execute_script(f"""
+                window.__fetch = window.__fetch || window.fetch.bind(window);
+                window.fetch = (input, ...rest) =>
+                  String(input).includes("/quotes?player_ids=") && String(input).includes(",")
+                    ? {reply} : window.__fetch(input, ...rest);
+                """)
+
+        # Asha's price never arrives: the total waits for it, and so does Pay.
+        group_quotes_answer("new Promise(() => {})")
+        self.type("input#player-search", "Asha Nair\n")
+        self.click('tr:contains("Asha Nair") button:contains("Add")')
+        self.assert_element(listed_row("Asha Nair"))
+        self.assert_text_not_visible("Total Amount: ₹750")
+        self.assert_text_not_visible("Players being charged: 1")
+        self.assert_exact_text("Pay", pay)
+        self.assertFalse(self.find_element(pay).is_enabled())
+
+        # Prices that fail to load leave nothing payable, and say so.
+        self.click(f'{listed_row("Asha Nair")}//button[@aria-label="Remove Asha Nair"]')
+        self.assert_text("Total Amount: ₹750")
+        group_quotes_answer("Promise.resolve(new Response(null, {status: 500}))")
+        self.type("input#player-search", "Ravi Kumar\n")
+        self.click('tr:contains("Ravi Kumar") button:contains("Add")')
+        self.assert_element(
+            '//*[@role="alert"][contains(., "Prices couldn\'t be loaded")]', timeout=30
+        )
+        for name in ("Meera Iyer", "Ravi Kumar"):
+            self.assert_text("Price not loaded", listed_row(name))
+        self.assert_text_not_visible("No tier is on sale")
+        self.assert_text_not_visible("No charge")
+        self.assert_text_not_visible("Players being charged: 0")
+        self.assert_exact_text("Pay", pay)
+        self.assertFalse(self.find_element(pay).is_enabled())
+
+        # Trying again keeps the selection.
+        self.execute_script("window.fetch = window.__fetch;")
+        self.click('button:contains("Try again")')
+        self.assert_text("Total Amount: ₹1,500")
+        self.assert_text("Players being charged: 2")
+
+    def test_a_group_payment_holds_at_most_fifty(self) -> None:
+        payer = make_player("arjun@example.com", first="Arjun", last="Captain")
+        linked = [
+            Player.objects.get(user=make_player(f"m{n}@example.com", first="Member", last=f"No{n}"))
+            for n in range(51)
+        ]
+        make_player("zoya@example.com", first="Zoya", last="Khan")
+        # A link loads only people the payer may see; staff see everyone.
+        payer.is_staff = True
+        payer.save()
+
+        self.sign_in_as(payer)
+        self.open(f"{APP_URL}/subscription/group?players={','.join(str(p.id) for p in linked)}")
+        self.assert_text("Only the first 50 players were added", timeout=30)
+        self.assert_text("Players being charged: 50", timeout=30)
+        self.assert_element(listed_row("Member No49"))
+        self.assert_element_absent(listed_row("Member No50"))
+
+        self.type("input#player-search", "Zoya Khan\n")
+        self.click('tr:contains("Zoya Khan") button:contains("Add")')
+        self.assert_text("A payment covers up to 50 players")
+        self.assert_element_absent(listed_row("Zoya Khan"))
+        self.assert_text("Players being charged: 50")
+
+        # Making room lets them in, and the refusal goes.
+        self.click(f'{listed_row("Member No0")}//button[@aria-label="Remove Member No0"]')
+        self.click('tr:contains("Zoya Khan") button:contains("Add")')
+        self.assert_element(listed_row("Zoya Khan"))
+        self.assert_text_not_visible("A payment covers up to 50 players")
+        self.assert_text("Only the first 50 players were added")
+
     def test_signed_webhook(self) -> None:
         user = make_player("hook@example.com", first="Hari", last="Webb")
         player = Player.objects.get(user=user)
