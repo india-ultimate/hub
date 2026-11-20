@@ -296,7 +296,7 @@ def _subscription_reason(ctx: Context, entry: RosterEntry) -> Reason | None:
             error["description"],
             Action(
                 f"Upgrade {rupees(amount)}",
-                href=f"/subscription/{player.id}?tab=individual&tier={slug}&return=__RETURN__",
+                href=group_payment_href([(player.id, slug)], "__RETURN__"),
             ),
         )
     return Reason("blocked.other", "blocked", message)
@@ -748,9 +748,24 @@ def checkout_quote(ctx: Context, reasons: dict[int, Reason]) -> dict[str, Any]:
     }
 
 
+def group_payment_href(tiers: list[tuple[int, str]], return_to: str) -> str:
+    """The group payment page with these people and tiers picked."""
+    query = urlencode(
+        {
+            "players": ",".join(str(pid) for pid, _ in tiers),
+            "tiers": ",".join(f"{pid}:{slug}" for pid, slug in tiers),
+            "return": return_to,
+        },
+        safe=",:/",
+    )
+    return f"/subscription/group?{query}"
+
+
 def _handoff(ctx: Context, reasons: dict[int, Reason], page_path: str) -> dict[str, Any] | None:
-    """The step callout that sends the admin to buy the missing subscriptions."""
-    need = [pid for pid, r in reasons.items() if r.code == "action.subscription"]
+    """The step callout that sends the admin to buy what the roster is missing."""
+    need = [
+        pid for pid, r in reasons.items() if r.code in ("action.subscription", "action.upgrade")
+    ]
     if not need or ctx.season is None:
         return None
     players = {e.player_id: e.player for e in ctx.entries}
@@ -762,22 +777,21 @@ def _handoff(ctx: Context, reasons: dict[int, Reason], page_path: str) -> dict[s
     if not tiers:
         return None
     total = sum(amount for _, (_, amount) in tiers)
-    query = urlencode(
-        {
-            "players": ",".join(str(pid) for pid, _ in tiers),
-            "tiers": ",".join(f"{pid}:{slug}" for pid, (slug, _) in tiers),
-            "return": page_path,
-        },
-        safe=",:/",
-    )
     n = len(tiers)
+    upgrades = sum(1 for pid, _ in tiers if reasons[pid].code == "action.upgrade")
+    if upgrades == 0:
+        what = "a subscription"
+    elif upgrades == n:
+        what = "an upgrade"
+    else:
+        what = "a subscription or an upgrade"
     need_s = "needs" if n == 1 else "need"
     return {
         "kind": "action",
-        "text": f"{_plural(n, 'player')} {need_s} a subscription",
+        "text": f"{_plural(n, 'player')} {need_s} {what}",
         "action": Action(
             f"Pay {rupees(total)}",
-            href=f"/subscription/group?{query}",
+            href=group_payment_href([(pid, slug) for pid, (slug, _) in tiers], page_path),
         ).as_dict(),
     }
 

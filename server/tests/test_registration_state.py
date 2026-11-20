@@ -426,8 +426,11 @@ class TestEntryReasons(StateTestCase):
         p = self.player("a@x.com", tier="community")
         r = self.reasons()[p.id]
         self.assertEqual("action.upgrade", r.code)
-        self.assertIn("/subscription/", r.action.href)
-        self.assertIn("tier=", r.action.href)
+        self.assertTrue(
+            r.action.href.startswith(f"/subscription/group?players={p.id}&tiers={p.id}:regular"),
+            r.action.href,
+        )
+        self.assertIn("return=__RETURN__", r.action.href)
 
     def test_waiver_is_waiting_on_the_player(self) -> None:
         p = self.player("a@x.com", waiver=False)
