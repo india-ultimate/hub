@@ -39,7 +39,7 @@ def build_confirmation(subscription: Subscription) -> EmailMultiAlternatives:
         "start_date": subscription.start_date,
         "end_date": subscription.end_date,
         "waiver_signed": subscription.waiver_valid,
-        "guardian_name": g.user.get_full_name() if g else None,
+        "guardian_name": g.user.get_full_name() if g and "@" in g.user.email else None,
         "waiver_url": f"{settings.PUBLIC_URL}/waiver/{player.id}",
         "coc_agreed": subscription.coc_agreed,
         "coc_url": f"{settings.PUBLIC_URL}/code-of-conduct/{player.id}",

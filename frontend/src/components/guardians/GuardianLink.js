@@ -24,6 +24,7 @@ const GuardianLink = () => {
     setError("");
     try {
       const { redirect } = await continueGuardianLink(params.token);
+      history.replaceState(null, "", "/guardian");
       window.location.assign(redirect);
     } catch (err) {
       if (err.status === 404 || err.status === 410) {

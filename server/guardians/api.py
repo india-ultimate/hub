@@ -1,6 +1,7 @@
 """The pages a guardian lands on from the link in their email."""
 
 import datetime
+import logging
 from typing import Any, cast
 
 from django.contrib.auth import login
@@ -15,6 +16,8 @@ from server.duplicates.players.identity import mask_email
 from server.guardians import emails, tokens
 from server.guardians.access import may_manage_guardian, minor_cutoff
 from server.types import message_response
+
+logger = logging.getLogger(__name__)
 
 link_router = Router()
 guardian_router = Router()
@@ -199,9 +202,15 @@ def put_guardian(
         g, _ = Guardianship.objects.update_or_create(
             player=player, defaults={"user": user, "relation": data.relation}
         )
-    emails.send_link(g)
+    try:
+        emails.send_link(g)
+    except Exception:
+        logger.exception("Couldn't email the new guardian of player %s", player.pk)
     if old is not None:
-        emails.send_changed(old, g, by=cast(User, request.user))
+        try:
+            emails.send_changed(old, g, by=cast(User, request.user))
+        except Exception:
+            logger.exception("Couldn't tell the old guardian of player %s", player.pk)
     return 200, _status(player)
 
 

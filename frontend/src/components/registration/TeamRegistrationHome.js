@@ -395,8 +395,7 @@ const TeamRegistrationHome = () => {
     }
   };
 
-  // Only controls this page can carry out; "remind" (code of conduct,
-  // profile) has no endpoint yet, so its reason shows without a button.
+  // Actions without a control here show their reason only.
   const shown = action =>
     action && !readOnly() && (action.href || OPS[action.op]) ? action : null;
   const withAction = entry => ({

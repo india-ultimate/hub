@@ -25,6 +25,9 @@ const ChangeGuardian = props => {
   const submit = async e => {
     e.preventDefault();
     const data = Object.fromEntries(new FormData(e.currentTarget));
+    const email = data.email.trim();
+    const unchanged =
+      email.toLowerCase() === props.guardian?.email?.toLowerCase();
     setBusy(true);
     setError("");
     try {
@@ -33,7 +36,7 @@ const ChangeGuardian = props => {
         queryKey: ["guardian", props.playerId]
       });
       dialog.close();
-      props.onSaved(`Link sent to ${data.email.trim()}`);
+      props.onSaved(unchanged ? "Guardian updated" : `Link sent to ${email}`);
     } catch (err) {
       setError(err.message);
     } finally {
