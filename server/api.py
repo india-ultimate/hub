@@ -45,7 +45,7 @@ from server.announcements.schema import AnnouncementHeadlineSchema
 from server.chat.api import router as chat_router
 from server.committee.api import router as committees_router
 from server.core import otp as otp_limits
-from server.core.accounts import find_user, resolve_login_user
+from server.core.accounts import find_login_user, find_user, resolve_login_user
 from server.core.models import (
     CollegeId,
     CommentaryInfo,
@@ -63,6 +63,7 @@ from server.duplicates.players.identity import full_email_match
 from server.duplicates.teams.api import router as team_merge_router
 from server.election.api import router as election_router
 from server.forms.api import router as forms_router
+from server.guardians.access import minor_cutoff
 from server.guardians.api import guardian_router
 from server.guardians.api import link_router as guardian_link_router
 from server.guardians.emails import send_link
@@ -981,6 +982,13 @@ def register_guardian(
     email = registration.guardian_email.strip().lower()
     if request.user.email == email:
         return 400, {"message": "Use the guardians form instead of the players form"}
+
+    existing = find_login_user(email)
+    if (
+        existing is not None
+        and Player.objects.filter(user=existing, date_of_birth__gt=minor_cutoff()).exists()
+    ):
+        return 400, {"message": "A guardian must be 18 or older"}
 
     with transaction.atomic():
         user = resolve_login_user(

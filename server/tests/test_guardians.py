@@ -297,6 +297,12 @@ class TestGuardianApi(TestCase):
         self.assertEqual("Mum Rao", body["waiver"]["by_name"])
         self.assertFalse(body["coc"]["done"])
 
+    def test_a_failing_email_does_not_undo_the_change(self) -> None:
+        with mock.patch("server.guardians.emails.queue_emails", side_effect=RuntimeError):
+            r = self.put()
+        self.assertEqual(200, r.status_code)
+        self.assertEqual("dad@example.com", Guardianship.objects.get(player=self.minor).user.email)
+
     def test_a_team_admin_cannot_see_or_change_the_guardian(self) -> None:
         admin = person("coach@example.com", born=ADULT, first="Coach").user
         team = Team.objects.create(name="Tigers", slug="tigers")
@@ -468,6 +474,15 @@ class TestRegistration(TestCase):
         self.assertEqual(400, r.status_code)
         self.assertFalse(User.objects.filter(email="kid@example.com").exists())
 
+    def test_a_minor_cannot_be_the_guardian(self) -> None:
+        person("kid2@example.com", born=minor_dob())
+        r = self.post(
+            "/api/registration/guardian", {**self.form(), "guardian_email": "kid2@example.com"}
+        )
+        self.assertEqual(400, r.status_code)
+        self.assertEqual("A guardian must be 18 or older", r.json()["message"])
+        self.assertFalse(Player.objects.filter(user=self.user).exists())
+
     def test_a_failing_guardian_email_does_not_undo_the_registration(self) -> None:
         with mock.patch("server.guardians.emails.queue_emails", side_effect=RuntimeError):
             r = self.post("/api/registration/guardian", self.form())
@@ -496,6 +511,14 @@ class TestConfirmation(TestCase):
         link, confirmation = self.confirm()
         self.assertEqual(["mum@example.com"], link.call_args.args[0][0].to)
         self.assertIn("We've emailed Mum Kumar", html(confirmation.call_args.args[0][0]))
+
+    def test_a_guardian_without_an_at_address_is_not_claimed_emailed(self) -> None:
+        self.parent.user.email = "mum-rao"
+        self.parent.user.save()
+        _, confirmation = self.confirm()
+        body = html(confirmation.call_args.args[0][0])
+        self.assertNotIn("We've emailed", body)
+        self.assertIn("Sign the waiver", body)
 
     def test_a_minor_without_an_at_address_still_gets_the_guardian_link(self) -> None:
         self.minor.user.email = "tara-kumar"

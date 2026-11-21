@@ -46,6 +46,20 @@ class TestGuardiansIntegration(RegistrationPageCase):
         self.assertEqual("maya@example.com", guardianship.user.email)
         self.assertEqual("MO", guardianship.relation)
 
+    def test_the_same_guardian_says_updated_not_sent(self) -> None:
+        kid = self.minor_with_guardian()
+        self.sign_in_as(kid.user)
+        self.open(f"{APP_URL}/waiver/{kid.id}")
+        self.click(f"#guardian-change-{kid.id} button")
+        self.type('input[name="first_name"]', "Senthil")
+        self.type('input[name="last_name"]', "J")
+        self.type('input[name="email"]', "Senthil@Example.com")
+        self.type('input[name="phone"]', "+919998887776")
+        self.select_option_by_value('select[name="relation"]', "FA")
+        self.click('dialog button:contains("Save")')
+        self.assert_text("Guardian updated")
+        self.assertEqual("FA", Guardianship.objects.get(player=kid).relation)
+
     def test_a_minor_with_no_guardian_is_asked_to_add_one(self) -> None:
         kid = self.minor_with_guardian()
         Guardianship.objects.filter(player=kid).delete()
