@@ -24,6 +24,7 @@ import {
   checkoutRoster,
   fetchRegistrationStatus,
   fetchTournamentBySlug,
+  remindWaiver,
   removeRosterEntry,
   resendRosterInvite,
   setRosterRole
@@ -334,6 +335,10 @@ const TeamRegistrationHome = () => {
   const OPS = {
     remove: entryOp(removeRosterEntry),
     resend_invite: entryOp(resendRosterInvite),
+    remind_waiver: async playerId => {
+      await remindWaiver({ ...args(), playerId });
+      announce("Reminder sent");
+    },
     invite: entryOp(addRosterEntry),
     roster: entryOp(addRosterEntry),
     role: async (playerId, role) => {
@@ -390,8 +395,8 @@ const TeamRegistrationHome = () => {
     }
   };
 
-  // Only controls this page can carry out; "remind" has no endpoint yet,
-  // so its reason shows without a button.
+  // Only controls this page can carry out; "remind" (code of conduct,
+  // profile) has no endpoint yet, so its reason shows without a button.
   const shown = action =>
     action && !readOnly() && (action.href || OPS[action.op]) ? action : null;
   const withAction = entry => ({

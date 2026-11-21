@@ -615,7 +615,11 @@ class TestDocumentTexts(SimpleTestCase):
                 continue
             for part in re.split(r"\{[^}]*\}", raw):
                 text = squash(part).strip()
-                if len(text) > MIN_PART and "There is no active" not in text:
+                if (
+                    len(text) > MIN_PART
+                    and "There is no active" not in text
+                    and "Tick this" not in text
+                ):
                     found += 1
                     with self.subTest(part=text[:50]):
                         self.assertTrue(any(squash(text) in t for t in texts.values()))

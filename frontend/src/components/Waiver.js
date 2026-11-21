@@ -9,22 +9,41 @@ import { displayDate, getCookie, getPlayer } from "../utils";
 import Breadcrumbs from "./Breadcrumbs";
 import GuardianCard from "./guardians/GuardianCard";
 
-const Legal = props => (
-  <div class="my-10">
-    <label class="flex select-none space-x-4 font-medium">
+const Tick = props => (
+  <>
+    <label class="flex min-h-[44px] cursor-pointer select-none items-start gap-3 rounded-lg border border-gray-200 p-3 font-medium text-gray-900 dark:border-gray-700 dark:text-white">
       <input
-        id="legal"
-        class="mt-1 h-4 w-4 cursor-pointer lg:mt-1 lg:h-5 lg:w-5"
+        id={props.id}
+        class="mt-1 h-5 w-5 flex-none cursor-pointer rounded border-gray-300 text-blue-700 focus:ring-2 focus:ring-blue-600"
         type="checkbox"
         onChange={e => props.onChange(e.target.checked)}
         checked={props.signed}
         disabled={props.signed}
+        aria-invalid={props.missing === props.id}
+        aria-describedby={
+          props.missing === props.id ? `${props.id}-missing` : undefined
+        }
       />
-      <span>
-        I understand that this is a legally binding document and that I have
-        read and understood its contents fully.
-      </span>
+      <span>{props.children}</span>
     </label>
+    <Show when={props.missing === props.id}>
+      <p
+        id={`${props.id}-missing`}
+        role="alert"
+        class="mt-2 text-sm font-medium text-red-700 dark:text-red-400"
+      >
+        Tick this to continue
+      </p>
+    </Show>
+  </>
+);
+
+const Legal = props => (
+  <div class="my-10">
+    <Tick id="legal" {...props}>
+      I understand that this is a legally binding document and that I have read
+      and understood its contents fully.
+    </Tick>
   </div>
 );
 
@@ -183,20 +202,10 @@ const PartB = props => (
           and I certify that I am the parent or legal guardian of the minor and
           have the authority to sign this form on their behalf.
         </p>
-        <label class="flex select-none space-x-4 font-medium">
-          <input
-            id="waiver"
-            class="mt-1 h-4 w-4 cursor-pointer lg:mt-1 lg:h-5 lg:w-5"
-            type="checkbox"
-            onChange={e => props.onChange(e.target.checked)}
-            checked={props.signed}
-            disabled={props.signed}
-          />
-          <span>
-            I give my voluntary consent in signing this Liability Release Waiver
-            on behalf of my son/daughter/ward
-          </span>
-        </label>
+        <Tick id="waiver" {...props}>
+          I give my voluntary consent in signing this Liability Release Waiver
+          on behalf of my son/daughter/ward
+        </Tick>
       </Match>
       <Match when={!props.minor}>
         <p>
@@ -240,20 +249,9 @@ const PartB = props => (
           I hereby affirm that I am of legal age and competent to sign this
           Liability Waiver and Release Form.
         </p>
-        <label class="flex select-none space-x-4 font-medium">
-          <input
-            id="waiver"
-            class="mt-1 h-4 w-4 cursor-pointer lg:mt-1 lg:h-5 lg:w-5"
-            type="checkbox"
-            onChange={e => props.onChange(e.target.checked)}
-            checked={props.signed}
-            disabled={props.signed}
-          />
-          <span>
-            I give my voluntary consent in signing this Liability Release
-            Waiver.
-          </span>
-        </label>
+        <Tick id="waiver" {...props}>
+          I give my voluntary consent in signing this Liability Release Waiver.
+        </Tick>
       </Match>
     </Switch>
   </div>
@@ -328,12 +326,21 @@ const WaiverForm = props => {
 
   const [isLegal, setIsLegal] = createSignal(false);
   const [waiverSign, setWaiverSign] = createSignal(false);
-  const [enableSubmit, setEnableSubmit] = createSignal(false);
   const [detailed, setDetailed] = createSignal(!props.signed);
 
-  createEffect(() => {
-    setEnableSubmit(waiverSign() && isLegal());
-  });
+  const [missing, setMissing] = createSignal(null);
+  const tick = (setter, id, checked) => {
+    setter(checked);
+    if (checked && missing() === id) setMissing(null);
+  };
+  const agree = () => {
+    const first = !waiverSign() ? "waiver" : !isLegal() ? "legal" : null;
+    if (!first) return props.handleSubmit();
+    setMissing(first);
+    const input = document.getElementById(first);
+    input.scrollIntoView({ block: "center" });
+    input.focus();
+  };
 
   createEffect(() => {
     const headline = props.minor
@@ -408,22 +415,24 @@ const WaiverForm = props => {
           <PartB
             signed={props.signed}
             minor={props.minor}
-            onChange={setWaiverSign}
+            missing={missing()}
+            onChange={checked => tick(setWaiverSign, "waiver", checked)}
           />
           <MediaConsent
             signed={props.signed}
             player={props.player}
             minor={props.minor}
           />
-          <Legal signed={props.signed} onChange={setIsLegal} />
+          <Legal
+            signed={props.signed}
+            missing={missing()}
+            onChange={checked => tick(setIsLegal, "legal", checked)}
+          />
         </Show>
         <Show when={!props.signed}>
           <button
-            class={`my-4 w-full rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 sm:w-auto ${
-              !enableSubmit() ? "cursor-not-allowed" : ""
-            } `}
-            onClick={props.handleSubmit} // eslint-disable-line solid/reactivity
-            disabled={!enableSubmit()}
+            class="my-4 min-h-[44px] w-full rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 sm:w-auto"
+            onClick={agree}
           >
             I Agree
           </button>

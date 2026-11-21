@@ -2955,6 +2955,11 @@ export const resendRosterInvite = ({ playerId, ...args }) =>
     { method: "POST" }
   );
 
+export const remindWaiver = ({ playerId, ...args }) =>
+  registrationRequest(`${registrationBase(args)}/roster/${playerId}/remind`, {
+    method: "POST"
+  });
+
 const guardianPath = playerId => `/api/players/${playerId}/guardian`;
 
 export const fetchGuardian = playerId =>
