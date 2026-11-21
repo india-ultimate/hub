@@ -262,6 +262,7 @@ class Guardianship(ExportModelOperationsMixin("guardianship"), models.Model):  #
         LG = "LG", _("Legal Guardian")
 
     relation = models.TextField(max_length=2, choices=Relation.choices)
+    link_sent_at = models.DateTimeField(null=True, blank=True)
 
 
 def upload_vaccination_certificates(instance: "Vaccination", filename: str) -> str:
