@@ -2969,6 +2969,14 @@ export const saveGuardian = (playerId, body) =>
 export const resendGuardianLink = playerId =>
   registrationRequest(`${guardianPath(playerId)}/link`, { method: "POST" });
 
+const guardianLinkPath = token => `/api/guardians/link/${token}`;
+
+export const fetchGuardianLink = token =>
+  registrationRequest(guardianLinkPath(token), { method: "GET" });
+
+export const continueGuardianLink = token =>
+  registrationRequest(guardianLinkPath(token), { method: "POST" });
+
 // expectedIds and expectedAmount are what the page showed; the server
 // answers 409 with who dropped out and the new total if either changed.
 export const checkoutRoster = ({ expectedAmount, expectedIds, ...args }) =>
