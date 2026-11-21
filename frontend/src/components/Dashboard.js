@@ -20,6 +20,7 @@ import { getCookie } from "../utils";
 import Accordion from "./Accordion";
 import Error from "./alerts/Error";
 import ConnectedApps from "./connected-apps/ConnectedApps";
+import GuardianCard from "./guardians/GuardianCard";
 import IUIDBadge from "./IUIDBadge";
 import Player from "./Player";
 import ReceiptList from "./receipts/ReceiptList";
@@ -425,6 +426,9 @@ const Dashboard = () => {
                 setPlayerById(updatedPlayer);
               }}
             />
+            <Show when={store.data.player.is_minor}>
+              <GuardianCard playerId={store.data.player.id} />
+            </Show>
             <Player player={store.data.player} />
           </Accordion>
         </Show>
@@ -438,6 +442,9 @@ const Dashboard = () => {
                 badge={showPlayerStatus(store.data.player)}
                 open={!store?.data?.player}
               >
+                <Show when={ward.is_minor}>
+                  <GuardianCard playerId={ward.id} />
+                </Show>
                 <Player player={ward} />
               </Accordion>
             )}

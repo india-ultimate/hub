@@ -7,6 +7,7 @@ import { Bar, Loading } from "../skeletons/primitives";
 import { useStore } from "../store";
 import { displayDate, getCookie, getPlayer } from "../utils";
 import Breadcrumbs from "./Breadcrumbs";
+import GuardianCard from "./guardians/GuardianCard";
 
 const Legal = props => (
   <div class="my-10">
@@ -507,12 +508,15 @@ const Waiver = () => {
         <Match
           when={player()?.guardian && player()?.guardian !== store.data.id}
         >
-          <p>
-            Waiver forms for {player()?.full_name} can only be signed by the
-            guardian. The guardian can login to Hub with their Email and OTP.
-            They will then be able to find their wards in the Dashboard where
-            they can sign the waiver.
-          </p>
+          <GuardianCard playerId={player().id} />
+        </Match>
+        <Match
+          when={
+            player()?.is_minor &&
+            (!player()?.guardian || player()?.user === store.data.id)
+          }
+        >
+          <GuardianCard playerId={player().id} />
         </Match>
         {/* Minors waiver form */}
         <Match when={player()?.guardian === store.data.id}>
