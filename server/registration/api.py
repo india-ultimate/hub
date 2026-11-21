@@ -6,11 +6,13 @@ from typing import Any, cast
 
 from django.conf import settings
 from django.core import mail
+from django.core.cache import cache
 from django.db import transaction as db_transaction
 from django.http import Http404
 from ninja import Router
 
-from server.core.models import Player, Team, User
+from server.core.models import Guardianship, Player, Team, User
+from server.guardians import emails as guardian_emails
 from server.registration.candidates import candidate_payload
 from server.registration.models import RosterEntry, RosterSwap
 from server.registration.schema import (
@@ -310,6 +312,41 @@ def resend_invite(
     if error is not None:
         return 400, error
     return 200, {"message": "Invite sent again"}
+
+
+@router.post(
+    "/{event_slug}/team/{team_slug}/roster/{player_id}/remind",
+    response={200: Response, 400: Response, 403: Response, 404: Response, 429: Response},
+)
+def remind_waiver(
+    request: AuthenticatedHttpRequest, event_slug: str, team_slug: str, player_id: int
+) -> tuple[int, message_response]:
+    event, team = _load(event_slug, team_slug)
+    if not _is_admin(team, request):
+        return 403, ADMINS_ONLY
+    player = Player.objects.filter(pk=player_id).select_related("user").first()
+    if player is None:
+        return 404, {"message": "Player does not exist"}
+    reason = entry_reasons(build_context(event, team, request.user)).get(player.id)
+    if reason is None or reason.code != "waiting.waiver":
+        return 400, {"message": "Only an unsigned waiver can be reminded"}
+    if player.is_minor:
+        g = Guardianship.objects.filter(player=player).select_related("user").first()
+        if g is None:
+            return 400, {"message": "Add a guardian first"}
+        if g.user_id == player.user_id:
+            return 400, {
+                "message": "This player is listed as their own guardian. "
+                "They need to change their guardian first."
+            }
+        if not guardian_emails.may_send(g):
+            return 429, {"message": guardian_emails.TOO_SOON}
+        guardian_emails.send_link(g)
+    else:
+        if not cache.add(f"waiver-remind:{player.id}", 1, timeout=600):
+            return 429, {"message": guardian_emails.TOO_SOON}
+        guardian_emails.send_waiver_reminder(player, request.user, team.name)
+    return 200, {"message": "Reminder sent"}
 
 
 def _tell_swapped_out(player: Player, team: Team, event: Event, by: User) -> None:

@@ -8,11 +8,12 @@ from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from django.utils.timezone import now
 
-from server.core.models import Guardianship, User
+from server.core.models import Guardianship, Player, User
 from server.guardians import tokens
 from server.task.helpers import queue_emails
 
 RESEND_AFTER = datetime.timedelta(minutes=10)
+TOO_SOON = "A link was sent less than 10 minutes ago. Try again later."
 
 
 def may_send(g: Guardianship) -> bool:
@@ -64,6 +65,29 @@ def send_changed(old: User, g: Guardianship, by: User) -> None:
         body=strip_tags(html),
         from_email=settings.EMAIL_HOST_USER,
         to=[old.email],
+    )
+    message.attach_alternative(html, "text/html")
+    queue_emails([message])
+
+
+def send_waiver_reminder(player: Player, by: User, team_name: str) -> None:
+    """Ask a player to sign their own waiver, naming who asked."""
+    if "@" not in (player.user.email or ""):
+        return
+    html = render_to_string(
+        "emails/waiver_reminder.html",
+        {
+            "first_name": player.user.first_name or "there",
+            "by_name": by.get_full_name() or by.get_username(),
+            "team_name": team_name,
+            "waiver_url": f"{settings.PUBLIC_URL}/waiver/{player.id}",
+        },
+    )
+    message = EmailMultiAlternatives(
+        subject="Please sign your India Ultimate waiver",
+        body=strip_tags(html),
+        from_email=settings.EMAIL_HOST_USER,
+        to=[player.user.email],
     )
     message.attach_alternative(html, "text/html")
     queue_emails([message])
