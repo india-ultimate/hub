@@ -63,6 +63,7 @@ from server.duplicates.players.identity import full_email_match
 from server.duplicates.teams.api import router as team_merge_router
 from server.election.api import router as election_router
 from server.forms.api import router as forms_router
+from server.guardians.api import guardian_router
 from server.guardians.api import link_router as guardian_link_router
 from server.mcp.apps_api import router as connected_apps_router
 from server.passkey_utils import PassKeyClient
@@ -303,6 +304,7 @@ api.add_router("/player-profile", player_profile_router)
 api.add_router("/team-profile", team_profile_router)
 api.add_router("/", connected_apps_router)
 api.add_router("/guardians", guardian_link_router)
+api.add_router("/players", guardian_router)
 
 # User #########
 

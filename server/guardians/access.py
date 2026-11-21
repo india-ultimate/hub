@@ -1,4 +1,5 @@
 import datetime
+from typing import Any
 
 from dateutil.relativedelta import relativedelta
 from django.db.models import QuerySet
@@ -17,11 +18,11 @@ def wards_of(user: User) -> QuerySet[Guardianship]:
     return Guardianship.objects.filter(user=user, player__date_of_birth__gt=minor_cutoff())
 
 
-def is_guardian_of(user: User, player: Player) -> bool:
+def is_guardian_of(user: Any, player: Player) -> bool:
     return player.is_minor and Guardianship.objects.filter(user=user, player=player).exists()
 
 
-def may_manage_guardian(user: User, player: Player) -> bool:
+def may_manage_guardian(user: Any, player: Player) -> bool:
     return player.is_minor and (
         user.pk == player.user_id or user.is_staff or is_guardian_of(user, player)
     )
