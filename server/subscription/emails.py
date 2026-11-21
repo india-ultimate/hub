@@ -1,22 +1,36 @@
 """What is sent when a subscription starts or changes."""
 
+import logging
+
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 
-from server.core.models import Player, User
+from server.core.models import Guardianship, Player, User
 from server.season.models import Season
 from server.subscription.models import Subscription
 from server.task.helpers import queue_emails
+
+logger = logging.getLogger(__name__)
 
 CONFIRMATION_SUBJECT = "Your India Ultimate subscription"
 SPONSORSHIP_RESET_SUBJECT = "Your discounted subscription now renews each season"
 CODE_OF_CONDUCT_SUBJECT = "Please agree to the India Ultimate code of conduct"
 
 
+def unsigned_guardianship(subscription: Subscription) -> Guardianship | None:
+    """The guardian who still has to sign this minor's waiver."""
+    player = subscription.player
+    g = Guardianship.objects.filter(player=player).select_related("user").first()
+    if g is None or subscription.waiver_valid or not player.is_minor or g.user_id == player.user_id:
+        return None
+    return g
+
+
 def build_confirmation(subscription: Subscription) -> EmailMultiAlternatives:
     player = subscription.player
+    g = unsigned_guardianship(subscription)
     context = {
         "first_name": player.user.first_name,
         "season": subscription.season.name,
@@ -25,6 +39,7 @@ def build_confirmation(subscription: Subscription) -> EmailMultiAlternatives:
         "start_date": subscription.start_date,
         "end_date": subscription.end_date,
         "waiver_signed": subscription.waiver_valid,
+        "guardian_name": g.user.get_full_name() if g else None,
         "waiver_url": f"{settings.PUBLIC_URL}/waiver/{player.id}",
         "coc_agreed": subscription.coc_agreed,
         "coc_url": f"{settings.PUBLIC_URL}/code-of-conduct/{player.id}",
@@ -42,6 +57,14 @@ def build_confirmation(subscription: Subscription) -> EmailMultiAlternatives:
 
 def queue_confirmation(subscription: Subscription) -> None:
     """One message per subscription created or upgraded."""
+    from server.guardians.emails import may_send, send_link
+
+    g = unsigned_guardianship(subscription)
+    if g is not None and may_send(g):
+        try:
+            send_link(g)
+        except Exception:
+            logger.exception("Couldn't email the guardian of player %s", g.player_id)
     if "@" not in (subscription.player.user.email or ""):
         return
     queue_emails([build_confirmation(subscription)])
