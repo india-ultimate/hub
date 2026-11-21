@@ -1,3 +1,4 @@
+import datetime
 from typing import Any
 
 from server.core.models import Guardianship, Player, User
@@ -5,6 +6,7 @@ from server.season.models import Season
 from server.subscription import sponsorship
 from server.subscription.models import Subscription, SubscriptionPlan
 from server.tests.base import ApiBaseTestCase
+from server.utils import today
 
 
 class TestPlansEndpoint(ApiBaseTestCase):
@@ -72,6 +74,9 @@ class TestPlansEndpoint(ApiBaseTestCase):
 
     def test_a_guardian_may_price_their_ward(self) -> None:
         guardian = User.objects.create(username="parent", email="parent@example.com")
+        Player.objects.filter(pk=self.player.pk).update(
+            date_of_birth=today() - datetime.timedelta(days=15 * 365)
+        )
         Guardianship.objects.create(
             user=guardian, player=self.player, relation=Guardianship.Relation.MO
         )
@@ -227,6 +232,9 @@ class TestSubscriptionHistoryIsPrivate(ApiBaseTestCase):
 
     def test_the_guardian_may_see_it(self) -> None:
         guardian = self.someone("parent@example.com")
+        Player.objects.filter(pk=self.player.pk).update(
+            date_of_birth=today() - datetime.timedelta(days=15 * 365)
+        )
         Guardianship.objects.create(
             user=guardian, player=self.player, relation=Guardianship.Relation.MO
         )

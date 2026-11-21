@@ -23,6 +23,7 @@ from server.tests.test_mcp_auth import make_token
 from server.tests.test_mcp_protocol import McpProtocolTestCase
 from server.tournament.models import Registration
 from server.transaction.models import RazorpayTransaction, RazorpayTransactionPlayer
+from server.utils import today
 
 TODAY = datetime.date(2026, 10, 20)
 HUB = "https://hub.example.org"
@@ -93,6 +94,9 @@ class ReadinessCase(McpProtocolTestCase):
         ward_user = User.objects.create(username="w@x.com", first_name="Wren", last_name="Rao")
         self.ward = self.make_player(ward_user)
         Guardianship.objects.create(user=self.user, player=self.ward, relation="MO")
+        Player.objects.filter(pk=self.ward.pk).update(
+            date_of_birth=today() - datetime.timedelta(days=15 * 365)
+        )
         stranger = User.objects.create(username="s@x.com", first_name="Sam", last_name="Roe")
         self.stranger = self.make_player(stranger)
 
@@ -247,6 +251,19 @@ class TestGetReadiness(ReadinessCase):
         )
         data = self.data({"event_slug": "gated"})
         self.assertEqual({"ok": True, "reason": None}, data["players"][0]["can_play"])
+
+    def test_an_ex_ward_is_no_longer_mine(self) -> None:
+        event = create_event("Gated")
+        event.slug = "gated"
+        event.is_subscription_needed = True
+        event.start_date = self.season.start_date
+        event.save()
+        args = {"event_slug": "gated", "player_id": self.ward.id}
+        self.assertEqual(self.ward.id, self.data(args)["players"][0]["player_id"])
+        Player.objects.filter(pk=self.ward.pk).update(
+            date_of_birth=today() - datetime.timedelta(days=18 * 366)
+        )
+        self.assertTrue(self.call("get_readiness", args)["isError"])
 
     def test_can_play_in_a_series(self) -> None:
         Series.objects.create(

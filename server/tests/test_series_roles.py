@@ -423,6 +423,9 @@ class TestSeriesInvitationPermissions(TestCase):
 
     def test_a_guardian_can_accept_for_their_ward(self) -> None:
         guardian = User.objects.create(username="mum@example.com", email="mum@example.com")
+        Player.objects.filter(pk=self.ward.pk).update(
+            date_of_birth=today() - datetime.timedelta(days=15 * 365)
+        )
         Guardianship.objects.create(user=guardian, player=self.ward, relation="MO")
         self.client.force_login(guardian)
         response = self.respond("accept")
@@ -432,6 +435,9 @@ class TestSeriesInvitationPermissions(TestCase):
 
     def test_a_guardian_can_decline_for_their_ward(self) -> None:
         guardian = User.objects.create(username="mum@example.com", email="mum@example.com")
+        Player.objects.filter(pk=self.ward.pk).update(
+            date_of_birth=today() - datetime.timedelta(days=15 * 365)
+        )
         Guardianship.objects.create(user=guardian, player=self.ward, relation="MO")
         self.client.force_login(guardian)
         self.assertEqual(200, self.respond("decline").status_code)
@@ -493,6 +499,9 @@ class TestSeriesInvitationPermissions(TestCase):
 
     def guardian_of_ward(self) -> User:
         guardian = User.objects.create(username="mum@example.com", email="mum@example.com")
+        Player.objects.filter(pk=self.ward.pk).update(
+            date_of_birth=today() - datetime.timedelta(days=15 * 365)
+        )
         Guardianship.objects.create(user=guardian, player=self.ward, relation="MO")
         return guardian
 

@@ -7,7 +7,8 @@ from django.db.models import Q, QuerySet
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 
-from server.core.models import Guardianship, Player, Team, User
+from server.core.models import Player, Team, User
+from server.guardians.access import is_guardian_of, wards_of
 from server.subscription import eligibility
 from server.types import message_response
 
@@ -207,14 +208,11 @@ def change_series_role(registration: SeriesRegistration, role: str) -> message_r
 
 
 def may_answer_for(user: User, player: Player) -> bool:
-    return (
-        player.user_id == user.id
-        or Guardianship.objects.filter(player=player, user_id=user.id).exists()
-    )
+    return player.user_id == user.id or is_guardian_of(user, player)
 
 
 def invitations_for(user: User) -> QuerySet[SeriesRosterInvitation]:
-    wards = Guardianship.objects.filter(user=user).values("player_id")
+    wards = wards_of(user).values("player_id")
     return SeriesRosterInvitation.objects.filter(
         Q(to_player__user=user)
         | Q(to_player_id__in=wards, status=SeriesRosterInvitation.Status.PENDING)

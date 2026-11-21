@@ -14,7 +14,8 @@ from django.utils.timezone import now
 
 from server.announcements.access import can_manage, can_post
 from server.announcements.models import Announcement
-from server.core.models import Guardianship, Player, Team, User
+from server.core.models import Player, Team, User
+from server.guardians.access import is_guardian_of
 from server.mcp.registry import Audience, ToolContext, ToolResult, fail, ok, tool
 from server.payment_account.models import viewable_by
 from server.series.models import Series
@@ -159,7 +160,7 @@ def _see_player(user: User, ref: str | None) -> Answer:
     player = _player(ref)
     if player.user_id == user.pk:
         return True, "self", "It is their own profile."
-    if Guardianship.objects.filter(player=player, user_id=user.pk).exists():
+    if is_guardian_of(user, player):
         return True, "guardian", "They are this player's guardian."
     allowed = may_see(user, player)
     return (

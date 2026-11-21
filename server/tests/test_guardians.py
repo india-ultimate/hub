@@ -4,13 +4,24 @@ from typing import Any
 from unittest import mock
 
 from dateutil.relativedelta import relativedelta
-from django.test import Client, TestCase
+from django.test import Client, RequestFactory, TestCase
 from django.utils.timezone import now
 
+import server.mcp.tools  # noqa: F401
 from server.core.models import Guardianship, Player, Team, User
 from server.guardians import access, emails, tokens
+from server.mcp.auth import TokenInfo
+from server.mcp.registry import ToolContext
+from server.mcp.tools import developer, membership
+from server.season.models import Season
+from server.series.models import SeriesRosterInvitation
+from server.series.utils import invitations_for, may_answer_for
+from server.subscription.api import may_see
 from server.subscription.emails import queue_confirmation
 from server.tests.test_code_of_conduct import ADULT, html, minor_dob, person, subscribe
+from server.tests.test_eligibility import make_series
+from server.transaction.models import ManualTransaction, PaymentGateway
+from server.transaction.utils import list_transactions_by_type
 
 
 def linked(minor: Player, guardian_user: User) -> Guardianship:
@@ -505,3 +516,95 @@ class TestConfirmation(TestCase):
         ):
             queue_confirmation(self.sub)
         self.assertEqual(1, confirmation.call_count)
+
+
+class TestRightsEndAt18(TestCase):
+    def setUp(self) -> None:
+        self.minor = person("kid@example.com", born=minor_dob(), first="Tara")
+        self.parent = person("mum@example.com", born=ADULT, first="Mum")
+        self.g = linked(self.minor, self.parent.user)
+        self.guardian = self.parent.user
+
+    def turn(self, days: int = 0) -> None:
+        self.minor.date_of_birth = (
+            now().date() - relativedelta(years=18) + datetime.timedelta(days=days)
+        )
+        self.minor.save()
+
+    def ctx(self) -> ToolContext:
+        return ToolContext(
+            user=self.guardian,
+            token=TokenInfo(self.guardian, frozenset({"hub:write"}), "client"),
+            modern=True,
+            client_capabilities={},
+            input_responses=None,
+            request_state=None,
+            tool_name="x",
+            outer=RequestFactory().post("/mcp"),
+        )
+
+    def test_may_see(self) -> None:
+        self.turn(1)
+        self.assertTrue(may_see(self.guardian, self.minor))
+        self.turn()
+        self.assertFalse(may_see(self.guardian, self.minor))
+
+    def test_dashboard_wards(self) -> None:
+        client = Client()
+        client.force_login(self.guardian)
+        self.assertEqual([self.minor.id], [w["id"] for w in client.get("/api/me").json()["wards"]])
+        self.turn()
+        self.assertEqual([], client.get("/api/me").json()["wards"])
+
+    def test_series_answers(self) -> None:
+        series = make_series(Season.objects.get(name="Season 2026-2027"))
+        team = Team.objects.create(name="Team A")
+        invitation = SeriesRosterInvitation.objects.create(
+            series=series, team=team, from_user=self.guardian, to_player=self.minor
+        )
+        self.assertTrue(may_answer_for(self.guardian, self.minor))
+        self.assertEqual([invitation], list(invitations_for(self.guardian)))
+        self.turn()
+        self.assertFalse(may_answer_for(self.guardian, self.minor))
+        self.assertEqual([], list(invitations_for(self.guardian)))
+
+    def test_mcp_membership(self) -> None:
+        self.assertIn(self.minor.id, membership._own_ids(self.ctx()))
+        self.turn()
+        self.assertNotIn(self.minor.id, membership._own_ids(self.ctx()))
+
+    def test_mcp_see_player(self) -> None:
+        self.assertTrue(developer._see_player(self.guardian, str(self.minor.id))[0])
+        self.turn()
+        self.assertFalse(developer._see_player(self.guardian, str(self.minor.id))[0])
+
+    def test_signed_waiver_stays_valid(self) -> None:
+        sub = subscribe(self.minor)
+        client = Client()
+        client.force_login(self.guardian)
+        r = client.post(
+            "/api/waiver", {"player_id": self.minor.id}, content_type="application/json"
+        )
+        self.assertEqual(200, r.status_code, r.content)
+        self.turn()
+        sub.refresh_from_db()
+        self.assertTrue(sub.waiver_valid)
+
+    def test_transactions(self) -> None:
+        paid_by_ward = ManualTransaction.objects.create(
+            transaction_id="W1", amount=100, user=self.minor.user
+        )
+        paid_by_ward.players.add(self.minor)
+        paid_by_guardian = ManualTransaction.objects.create(
+            transaction_id="G1", amount=100, user=self.guardian
+        )
+
+        def seen() -> set[str]:
+            return {
+                t.transaction_id
+                for t in list_transactions_by_type(self.guardian, PaymentGateway.MANUAL)
+            }
+
+        self.assertEqual({"W1", "G1"}, seen())
+        self.turn()
+        self.assertEqual({paid_by_guardian.transaction_id}, seen())

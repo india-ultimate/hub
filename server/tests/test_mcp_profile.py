@@ -451,7 +451,7 @@ class TestSignDocument(ProfileTestCase):
                 result = self.ask(self.adult_ward, document)
 
                 self.assertTrue(result["isError"])
-                self.assertIn("Cal Rao can", result["structuredContent"]["message"])
+                self.assertIn("can't see this player", result["structuredContent"]["message"])
 
     def test_hubs_refusal_is_surfaced_when_the_precheck_lets_it_through(self) -> None:
         self.subscribe(self.kid)

@@ -129,7 +129,7 @@ class TestAccreditation(ApiBaseTestCase):
         user = User.objects.create(
             username=username, email=email, first_name="John", last_name="Williamson"
         )
-        player = Player.objects.create(date_of_birth="2000-01-01", user=user)
+        player = Player.objects.create(date_of_birth="2015-01-01", user=user)
         Guardianship.objects.create(relation="LG", user=self.user, player=player)
         response = self.upload(player_id=player.id)
         self.assertEqual(400, response.status_code)

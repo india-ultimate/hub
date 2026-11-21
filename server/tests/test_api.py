@@ -963,6 +963,9 @@ class TestPayment(ApiBaseTestCase):
 
         # Make players[1] a ward
         Guardianship.objects.create(relation="LG", user=self.user, player=players[1])
+        Player.objects.filter(pk=players[1].pk).update(
+            date_of_birth=today() - datetime.timedelta(days=15 * 365)
+        )
 
         orders = set()
 

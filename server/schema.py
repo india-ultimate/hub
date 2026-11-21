@@ -19,6 +19,7 @@ from server.core.models import (
 )
 from server.duplicates.players.identity import mask_email
 from server.forms.access import can_create_forms
+from server.guardians.access import wards_of
 from server.payment_account.models import viewable_by
 from server.season.models import Season
 from server.subscription.models import Subscription
@@ -445,7 +446,7 @@ class UserSchema(ModelSchema):
 
     @staticmethod
     def resolve_wards(user: User) -> list[Player]:
-        return list(Player.objects.filter(guardianship__user=user))
+        return [g.player for g in wards_of(user).select_related("player")]
 
     admin_teams: list[TeamSchema]
 

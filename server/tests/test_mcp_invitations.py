@@ -76,6 +76,9 @@ class InvitationCase(McpToolCase):
         ward = make_player("ward@example.com")
         self.subscribe(ward)
         Guardianship.objects.create(user=self.user, player=ward, relation="MO")
+        Player.objects.filter(pk=ward.pk).update(
+            date_of_birth=today() - datetime.timedelta(days=15 * 365)
+        )
         return ward
 
 
