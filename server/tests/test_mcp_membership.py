@@ -1,3 +1,4 @@
+import datetime
 import json
 from typing import Any
 from unittest import mock
@@ -23,6 +24,7 @@ from server.tests.base import fake_order
 from server.tests.test_mcp_auth import make_token
 from server.tests.test_mcp_protocol import McpProtocolTestCase
 from server.transaction.models import RazorpayTransaction, RazorpayTransactionPlayer
+from server.utils import today
 
 HUB = "https://hub.example.org"
 CREATE_ORDER = "server.transaction.client.razorpay.create_order"
@@ -38,6 +40,9 @@ class MembershipCase(McpProtocolTestCase):
         self.me = self.make_player(self.user)
         ward_user = User.objects.create(username="w@x.com", first_name="Wren", last_name="Rao")
         self.ward = self.make_player(ward_user)
+        Player.objects.filter(pk=self.ward.pk).update(
+            date_of_birth=today() - datetime.timedelta(days=15 * 365)
+        )
         Guardianship.objects.create(user=self.user, player=self.ward, relation="MO")
         stranger = User.objects.create(
             username="s@x.com", email="s@x.com", first_name="Sam", last_name="Roe", phone="999"

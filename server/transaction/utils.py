@@ -9,6 +9,7 @@ from django.db import transaction as db_transaction
 from django.db.models import Model, Q, QuerySet
 
 from server.core.models import Player, Team, User
+from server.guardians.access import wards_of
 from server.payment_account.models import PaymentAccount
 from server.receipts.issue import rows_for_order
 from server.receipts.money import rupees
@@ -721,7 +722,7 @@ def list_transactions_by_type(
 
     else:
         # Get ids of all associated players of a user (player + wards)
-        ward_ids = set(user.guardianship_set.values_list("player_id", flat=True))
+        ward_ids = set(wards_of(user).values_list("player_id", flat=True))
         player_id = set(Player.objects.filter(user=user).values_list("id", flat=True))
         player_ids = ward_ids.union(player_id)
 

@@ -6,7 +6,8 @@ from django.http import HttpRequest
 from django.shortcuts import get_object_or_404
 from ninja import Router
 
-from server.core.models import Guardianship, Player
+from server.core.models import Player
+from server.guardians.access import is_guardian_of
 from server.season.models import Season
 from server.subscription import catalog, pricing, sponsorship
 from server.subscription.models import Subscription
@@ -23,11 +24,7 @@ router = Router()
 
 def may_see(user: Any, player: Player) -> bool:
     """The person themselves, their guardian, or staff."""
-    return bool(
-        user.is_staff
-        or player.user_id == user.id
-        or Guardianship.objects.filter(player=player, user_id=user.id).exists()
-    )
+    return bool(user.is_staff or player.user_id == user.id or is_guardian_of(user, player))
 
 
 @router.get(

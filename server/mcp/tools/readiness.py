@@ -5,6 +5,7 @@ from django.conf import settings
 from django.db.models import Q
 
 from server.core.models import Player
+from server.guardians.access import wards_of
 from server.mcp.dispatch import call_api
 from server.mcp.pay import pay_link, unpaid_membership
 from server.mcp.registry import ToolContext, ToolResult, fail, ok, tool
@@ -268,9 +269,9 @@ def get_readiness(ctx: ToolContext, args: dict[str, Any]) -> ToolResult:
         )
     mine = (
         set(
-            Player.objects.filter(Q(user=ctx.user) | Q(guardianship__user=ctx.user)).values_list(
-                "id", flat=True
-            )
+            Player.objects.filter(
+                Q(user=ctx.user) | Q(guardianship__in=wards_of(ctx.user))
+            ).values_list("id", flat=True)
         )
         if event is not None
         else set()

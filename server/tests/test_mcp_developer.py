@@ -203,6 +203,9 @@ class TestExplainAccess(DeveloperTestCase):
         )
         self.assertTrue(self.explain("see_player", object_ref=str(self.player.pk))["allowed"])
         self.assertFalse(self.explain("see_player", object_ref=str(other.pk))["allowed"])
+        Player.objects.filter(pk=other.pk).update(
+            date_of_birth=today() - datetime.timedelta(days=15 * 365)
+        )
         Guardianship.objects.create(user=self.subject, player=other, relation="MO")
         self.assertTrue(self.explain("see_player", object_ref=str(other.pk))["allowed"])
 

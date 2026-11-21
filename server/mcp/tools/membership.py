@@ -1,6 +1,7 @@
 from typing import Any
 
-from server.core.models import Guardianship, Player
+from server.core.models import Player
+from server.guardians.access import wards_of
 from server.mcp.confirm import confirm_then
 from server.mcp.dispatch import call_api, denied
 from server.mcp.pay import pay_link, receipt_link, unpaid_membership
@@ -28,7 +29,7 @@ PLAYER_IDS = {
 
 def _own_ids(ctx: ToolContext) -> list[int]:
     mine = Player.objects.filter(user=ctx.user).values_list("id", flat=True)
-    wards = Guardianship.objects.filter(user=ctx.user).values_list("player_id", flat=True)
+    wards = wards_of(ctx.user).values_list("player_id", flat=True)
     return [*mine, *wards]
 
 
