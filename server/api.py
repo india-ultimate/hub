@@ -65,6 +65,7 @@ from server.election.api import router as election_router
 from server.forms.api import router as forms_router
 from server.guardians.api import guardian_router
 from server.guardians.api import link_router as guardian_link_router
+from server.guardians.emails import send_link
 from server.mcp.apps_api import router as connected_apps_router
 from server.passkey_utils import PassKeyClient
 from server.payment_account.api import router as payment_account_router
@@ -945,36 +946,61 @@ def register_ward(
         while User.objects.filter(username=email).exists():
             n += 1
             email = f"{name}-{n}"
-    user = resolve_login_user(
-        email,
-        phone=registration.phone,  # type: ignore[attr-defined]
-        first_name=registration.first_name,  # type: ignore[attr-defined]
-        last_name=registration.last_name,  # type: ignore[attr-defined]
-    )
-    # An address the guardian's own account absorbed in a merge is them.
-    if user.pk == request.user.pk:
-        return 400, {"message": "Use the players form instead of the guardians form"}
-    return do_register(user, registration, guardian=request.user, own_account=False)
+    with transaction.atomic():
+        user = resolve_login_user(
+            email,
+            phone=registration.phone,  # type: ignore[attr-defined]
+            first_name=registration.first_name,  # type: ignore[attr-defined]
+            last_name=registration.last_name,  # type: ignore[attr-defined]
+        )
+        # An address the guardian's own account absorbed in a merge is them.
+        if user.pk == request.user.pk:
+            return 400, {"message": "Use the players form instead of the guardians form"}
+        if Player.objects.filter(user=user).exists():
+            first = user.first_name or registration.first_name  # type: ignore[attr-defined]
+            return 400, {
+                "message": f"{first} already has a hub account. "
+                "Ask them to add you as guardian from their profile."
+            }
+        status, result = do_register(user, registration, guardian=request.user, own_account=False)
+        if not isinstance(result, Player):
+            transaction.set_rollback(True)
+            return status, result
+    return status, result
 
 
 @api.post("/registration/guardian", response={200: PlayerSchema, 400: Response})
 def register_guardian(
     request: AuthenticatedHttpRequest, registration: RegistrationGuardianSchema
 ) -> tuple[int, Player | message_response]:
+    if Player.objects.filter(user=request.user).exists():
+        return 400, {
+            "message": "You're already registered. "
+            "To change your guardian, open your profile on the Dashboard."
+        }
     email = registration.guardian_email.strip().lower()
     if request.user.email == email:
         return 400, {"message": "Use the guardians form instead of the players form"}
 
-    user = resolve_login_user(
-        email,
-        phone=registration.guardian_phone,
-        first_name=registration.guardian_first_name,
-        last_name=registration.guardian_last_name,
-    )
-    # An address the player's own account absorbed in a merge is them.
-    if user.pk == request.user.pk:
-        return 400, {"message": "Use the guardians form instead of the players form"}
-    return do_register(request.user, registration, guardian=user)
+    with transaction.atomic():
+        user = resolve_login_user(
+            email,
+            phone=registration.guardian_phone,
+            first_name=registration.guardian_first_name,
+            last_name=registration.guardian_last_name,
+        )
+        # An address the player's own account absorbed in a merge is them.
+        if user.pk == request.user.pk:
+            return 400, {"message": "Use the guardians form instead of the players form"}
+        status, result = do_register(request.user, registration, guardian=user)
+        if not isinstance(result, Player):
+            transaction.set_rollback(True)
+            return status, result
+    try:
+        send_link(result.guardianship)
+    except Exception:
+        logger.exception("Couldn't email the guardian of player %s", result.pk)
+    return status, result
 
 
 # Events ##########

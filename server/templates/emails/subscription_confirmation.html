@@ -87,7 +87,9 @@
         <span class="detail-label">Valid until:</span>{{ end_date }}
       </div>
 
-      {% if not waiver_signed %}
+      {% if guardian_name %}
+      <p>We've emailed {{ guardian_name }} a link to sign your waiver.</p>
+      {% elif not waiver_signed %}
       <p>
         One thing left: your waiver for this season has not been signed yet.
         You will need it before you can play.

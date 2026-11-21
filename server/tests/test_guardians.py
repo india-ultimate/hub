@@ -9,7 +9,8 @@ from django.utils.timezone import now
 
 from server.core.models import Guardianship, Player, Team, User
 from server.guardians import access, emails, tokens
-from server.tests.test_code_of_conduct import ADULT, minor_dob, person, subscribe
+from server.subscription.emails import queue_confirmation
+from server.tests.test_code_of_conduct import ADULT, html, minor_dob, person, subscribe
 
 
 def linked(minor: Player, guardian_user: User) -> Guardianship:
@@ -390,3 +391,117 @@ class TestGuardianApi(TestCase):
         self.assertEqual(200, r.status_code)
         self.assertEqual(1, queue.call_count)
         self.assertEqual(["dad@example.com"], queue.call_args.args[0][0].to)
+
+
+GUARDIAN_FORM = {
+    "phone": "+1234567890",
+    "gender": "F",
+    "match_up": "F",
+    "city": "Bangalore",
+    "first_name": "Nora",
+    "last_name": "Quinn",
+    "guardian_first_name": "Mora",
+    "guardian_last_name": "Saiyyan",
+    "guardian_email": "mora@gmail.com",
+    "guardian_phone": "+123321456654",
+    "relation": "MO",
+}
+
+
+class TestRegistration(TestCase):
+    def setUp(self) -> None:
+        self.user = User.objects.create(username="nora@example.com", email="nora@example.com")
+        self.client = Client()
+        self.client.force_login(self.user)
+
+    def form(self, born: datetime.date | None = None) -> dict[str, str]:
+        return {**GUARDIAN_FORM, "date_of_birth": str(born or minor_dob())}
+
+    def post(self, path: str, data: dict[str, str]) -> Any:
+        return self.client.post(path, data=data, content_type="application/json")
+
+    def test_register_guardian_leaves_no_orphan_account(self) -> None:
+        Player.objects.create(user=self.user, date_of_birth=minor_dob())
+        r = self.post("/api/registration/guardian", self.form())
+        self.assertEqual(400, r.status_code)
+        self.assertIn("already registered", r.json()["message"])
+        self.assertFalse(User.objects.filter(email="mora@gmail.com").exists())
+
+    def test_a_refused_minor_registration_creates_no_guardian_account(self) -> None:
+        r = self.post("/api/registration/guardian", self.form(born=ADULT))
+        self.assertEqual(400, r.status_code)
+        self.assertFalse(User.objects.filter(email="mora@gmail.com").exists())
+
+    def test_register_guardian_emails_the_guardian_a_link(self) -> None:
+        with mock.patch("server.guardians.emails.queue_emails") as queue:
+            r = self.post("/api/registration/guardian", self.form())
+        self.assertEqual(200, r.status_code)
+        self.assertEqual(["mora@gmail.com"], queue.call_args.args[0][0].to)
+        self.assertIsNotNone(Guardianship.objects.get(player__user=self.user).link_sent_at)
+
+    def test_register_ward_for_an_existing_player_says_to_ask_them(self) -> None:
+        ward = person("kid@example.com", born=minor_dob(), first="Tara")
+        data = {**self.form(), "email": ward.user.email}
+        data.pop("guardian_email")
+        r = self.post("/api/registration/ward", data)
+        self.assertEqual(400, r.status_code)
+        self.assertEqual(
+            "Tara already has a hub account. Ask them to add you as guardian from their profile.",
+            r.json()["message"],
+        )
+
+    def test_a_refused_ward_registration_creates_no_ward_account(self) -> None:
+        r = self.post(
+            "/api/registration/ward", {**self.form(born=ADULT), "email": "kid@example.com"}
+        )
+        self.assertEqual(400, r.status_code)
+        self.assertFalse(User.objects.filter(email="kid@example.com").exists())
+
+    def test_a_failing_guardian_email_does_not_undo_the_registration(self) -> None:
+        with mock.patch("server.guardians.emails.queue_emails", side_effect=RuntimeError):
+            r = self.post("/api/registration/guardian", self.form())
+        self.assertEqual(200, r.status_code)
+        self.assertTrue(Player.objects.filter(user=self.user).exists())
+
+
+class TestConfirmation(TestCase):
+    def setUp(self) -> None:
+        self.minor = person("kid@example.com", born=minor_dob(), first="Tara")
+        self.parent = person("mum@example.com", born=ADULT, first="Mum")
+        self.g = Guardianship.objects.create(
+            user=self.parent.user, player=self.minor, relation="MO"
+        )
+        self.sub = subscribe(self.minor)
+
+    def confirm(self) -> list[Any]:
+        with (
+            mock.patch("server.guardians.emails.queue_emails") as link,
+            mock.patch("server.subscription.emails.queue_emails") as confirmation,
+        ):
+            queue_confirmation(self.sub)
+        return [link, confirmation]
+
+    def test_a_minor_s_subscription_emails_the_guardian(self) -> None:
+        link, confirmation = self.confirm()
+        self.assertEqual(["mum@example.com"], link.call_args.args[0][0].to)
+        self.assertIn("We've emailed Mum Kumar", html(confirmation.call_args.args[0][0]))
+
+    def test_a_minor_without_an_at_address_still_gets_the_guardian_link(self) -> None:
+        self.minor.user.email = "tara-kumar"
+        self.minor.user.save()
+        link, confirmation = self.confirm()
+        self.assertEqual(1, link.call_count)
+        self.assertEqual(0, confirmation.call_count)
+
+    def test_no_second_link_within_10_minutes(self) -> None:
+        self.confirm()
+        link, _ = self.confirm()
+        self.assertEqual(0, link.call_count)
+
+    def test_a_failing_guardian_email_does_not_fail_the_confirmation(self) -> None:
+        with (
+            mock.patch("server.guardians.emails.queue_emails", side_effect=RuntimeError),
+            mock.patch("server.subscription.emails.queue_emails") as confirmation,
+        ):
+            queue_confirmation(self.sub)
+        self.assertEqual(1, confirmation.call_count)
