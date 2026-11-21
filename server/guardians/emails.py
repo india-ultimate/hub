@@ -8,7 +8,7 @@ from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from django.utils.timezone import now
 
-from server.core.models import Guardianship
+from server.core.models import Guardianship, User
 from server.guardians import tokens
 from server.task.helpers import queue_emails
 
@@ -40,6 +40,30 @@ def send_link(g: Guardianship) -> None:
         body=strip_tags(html),
         from_email=settings.EMAIL_HOST_USER,
         to=[g.user.email],
+    )
+    message.attach_alternative(html, "text/html")
+    queue_emails([message])
+
+
+def send_changed(old: User, g: Guardianship, by: User) -> None:
+    """Tell a replaced guardian who replaced them."""
+    if "@" not in (old.email or ""):
+        return
+    ward_first = g.player.user.first_name
+    html = render_to_string(
+        "emails/guardian_changed.html",
+        {
+            "first_name": old.first_name or "there",
+            "by_name": by.get_full_name() or by.get_username(),
+            "ward_first_name": ward_first,
+            "new_name": g.user.get_full_name() or g.user.get_username(),
+        },
+    )
+    message = EmailMultiAlternatives(
+        subject=f"{ward_first}'s guardian was changed",
+        body=strip_tags(html),
+        from_email=settings.EMAIL_HOST_USER,
+        to=[old.email],
     )
     message.attach_alternative(html, "text/html")
     queue_emails([message])

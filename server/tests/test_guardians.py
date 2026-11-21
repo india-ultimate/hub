@@ -1,5 +1,6 @@
 import datetime
 import time
+from typing import Any
 from unittest import mock
 
 from dateutil.relativedelta import relativedelta
@@ -237,3 +238,155 @@ class TestSendLink(TestCase):
         self.assertFalse(emails.may_send(self.g))
         self.g.link_sent_at = now() - datetime.timedelta(minutes=11)
         self.assertTrue(emails.may_send(self.g))
+
+
+class TestGuardianApi(TestCase):
+    def setUp(self) -> None:
+        self.minor = person("kid@example.com", born=minor_dob(), first="Tara")
+        self.parent = person("mum@example.com", born=ADULT, first="Mum", last="Rao")
+        self.g = linked(self.minor, self.parent.user)
+        self.url = f"/api/players/{self.minor.id}/guardian"
+        self.client = Client()
+        self.client.force_login(self.minor.user)
+
+    def body(self, **over: str) -> dict[str, str]:
+        return {
+            "first_name": "Dad",
+            "last_name": "Rao",
+            "email": "Dad@Example.com ",
+            "phone": "",
+            "relation": "FA",
+        } | over
+
+    def put(self, **over: str) -> Any:
+        return self.client.put(self.url, self.body(**over), content_type="application/json")
+
+    def test_the_minor_sees_their_guardian_with_the_full_email(self) -> None:
+        r = self.client.get(self.url)
+        self.assertEqual(200, r.status_code)
+        g = r.json()["guardian"]
+        self.assertEqual("mum@example.com", g["email"])
+        self.assertEqual("Mum Rao", g["name"])
+        self.assertEqual("LG", g["relation"])
+        self.assertFalse(g["is_minor"])
+        self.assertFalse(g["is_self"])
+        self.assertTrue(r.json()["can_change"])
+        self.assertTrue(r.json()["can_resend"])
+        self.assertIsNone(r.json()["waiver"])
+
+    def test_status_shows_who_signed(self) -> None:
+        sub = subscribe(self.minor)
+        sub.waiver_valid = True
+        sub.waiver_signed_by = self.parent.user
+        sub.waiver_signed_at = now()
+        sub.save()
+        body = self.client.get(self.url).json()
+        self.assertTrue(body["waiver"]["done"])
+        self.assertEqual("Mum Rao", body["waiver"]["by_name"])
+        self.assertFalse(body["coc"]["done"])
+
+    def test_a_team_admin_cannot_see_or_change_the_guardian(self) -> None:
+        admin = person("coach@example.com", born=ADULT, first="Coach").user
+        team = Team.objects.create(name="Tigers", slug="tigers")
+        team.admins.add(admin)
+        self.minor.teams.add(team)
+        self.client.force_login(admin)
+        self.assertEqual(403, self.client.get(self.url).status_code)
+        self.assertEqual(403, self.put().status_code)
+
+    def test_nobody_sees_an_adult_s_guardian(self) -> None:
+        adult = person("adult@example.com", born=ADULT)
+        self.client.force_login(adult.user)
+        self.assertEqual(403, self.client.get(f"/api/players/{adult.id}/guardian").status_code)
+
+    def test_unknown_player_is_404(self) -> None:
+        self.assertEqual(404, self.client.get("/api/players/999999/guardian").status_code)
+
+    def test_changing_the_guardian_keeps_what_the_old_one_signed(self) -> None:
+        sub = subscribe(self.minor)
+        sub.waiver_valid = sub.coc_agreed = True
+        sub.waiver_signed_by = sub.coc_agreed_by = self.parent.user
+        sub.save()
+        with mock.patch("server.guardians.emails.queue_emails"):
+            self.assertEqual(200, self.put().status_code)
+        sub.refresh_from_db()
+        self.assertTrue(sub.waiver_valid and sub.coc_agreed)
+        self.assertEqual(self.parent.user, sub.waiver_signed_by)
+        self.assertEqual(self.parent.user, sub.coc_agreed_by)
+
+    def test_changing_the_guardian_emails_both_people(self) -> None:
+        with mock.patch("server.guardians.emails.queue_emails") as queue:
+            r = self.put()
+        self.assertEqual(200, r.status_code)
+        self.assertEqual("dad@example.com", r.json()["guardian"]["email"])
+        self.assertEqual(1, Guardianship.objects.count())
+        sent = {m.to[0]: m for call in queue.call_args_list for m in call.args[0]}
+        self.assertIn("/guardian/", sent["dad@example.com"].body)
+        self.assertEqual("Tara's guardian was changed", sent["mum@example.com"].subject)
+        self.assertIn(
+            "Tara Kumar changed Tara's guardian to Dad Rao.", sent["mum@example.com"].body
+        )
+
+    def test_a_minor_cannot_be_a_guardian(self) -> None:
+        person("teen@example.com", born=minor_dob(), first="Teen")
+        r = self.put(email="teen@example.com")
+        self.assertEqual(400, r.status_code)
+        self.assertEqual("A guardian must be 18 or older", r.json()["message"])
+        self.g.refresh_from_db()
+        self.assertEqual(self.parent.user, self.g.user)
+
+    def test_a_refused_address_leaves_no_account(self) -> None:
+        before = User.objects.count()
+        self.put(email="nobody")
+        self.put(email="kid@example.com")
+        self.assertEqual(before, User.objects.count())
+
+    def test_a_player_cannot_be_their_own_guardian(self) -> None:
+        r = self.put(email="kid@example.com")
+        self.assertEqual(400, r.status_code)
+        self.assertEqual(
+            "That's Tara's own account. A guardian needs their own email.", r.json()["message"]
+        )
+
+    def test_an_address_without_at_is_refused(self) -> None:
+        r = self.put(email="nobody")
+        self.assertEqual(400, r.status_code)
+        self.assertEqual("Enter a valid email address", r.json()["message"])
+
+    def test_same_guardian_changes_only_the_relation(self) -> None:
+        with mock.patch("server.guardians.emails.queue_emails") as queue:
+            r = self.put(email="mum@example.com", relation="FA")
+        self.assertEqual(200, r.status_code)
+        queue.assert_not_called()
+        self.g.refresh_from_db()
+        self.assertEqual("FA", self.g.relation)
+
+    def test_resend_waits_10_minutes(self) -> None:
+        self.g.link_sent_at = None
+        self.g.save()
+        with mock.patch("server.guardians.emails.queue_emails"):
+            first = self.client.post(f"{self.url}/link")
+            second = self.client.post(f"{self.url}/link")
+            self.assertEqual(200, first.status_code)
+            self.assertEqual("Link sent to mum@example.com", first.json()["message"])
+            self.assertEqual(429, second.status_code)
+            self.g.refresh_from_db()
+            self.g.link_sent_at = now() - datetime.timedelta(minutes=11)
+            self.g.save()
+            self.assertEqual(200, self.client.post(f"{self.url}/link").status_code)
+
+    def test_resend_needs_a_guardian_who_is_not_the_player(self) -> None:
+        self.g.user = self.minor.user
+        self.g.save()
+        self.assertEqual(400, self.client.post(f"{self.url}/link").status_code)
+        self.g.delete()
+        self.assertEqual(400, self.client.post(f"{self.url}/link").status_code)
+
+    def test_a_minor_with_no_guardian_adds_one(self) -> None:
+        self.g.delete()
+        self.assertIsNone(self.client.get(self.url).json()["guardian"])
+        with mock.patch("server.guardians.emails.queue_emails") as queue:
+            r = self.put()
+        self.assertEqual(200, r.status_code)
+        self.assertEqual(1, queue.call_count)
+        self.assertEqual(["dad@example.com"], queue.call_args.args[0][0].to)
