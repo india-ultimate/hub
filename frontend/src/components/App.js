@@ -29,6 +29,7 @@ const ReceiptPage = lazy(() => import("./receipts/ReceiptPage"));
 const Home = lazy(() => import("./Home"));
 const Login = lazy(() => import("./Login"));
 const MergeAccounts = lazy(() => import("./MergeAccounts"));
+const GuardianLink = lazy(() => import("./guardians/GuardianLink"));
 const MergeList = lazy(() => import("./MergeList"));
 const MergeRequest = lazy(() => import("./MergeRequest"));
 const Registration = lazy(() => import("./Registration"));
@@ -178,6 +179,7 @@ export default function App() {
                     path="/merge-accounts/:token"
                     component={MergeAccounts}
                   />
+                  <Route path="/guardian/:token" component={GuardianLink} />
                   {/* Series routes */}
                   <Route path="/series" component={AllSeries} />
                   <Route path="/series/:slug" component={Series} />

@@ -4,11 +4,13 @@ class name puts it in CI's browser job."""
 import datetime
 
 import pytest
+from django.utils import timezone
 
 from server.core.models import Guardianship, Player
+from server.guardians import emails, tokens
 from server.subscription.models import Subscription
 from server.tests import test_ui
-from server.tests.localserver import APP_URL
+from server.tests.localserver import APP_URL, DJANGO_URL
 from server.tests.test_registration_integration import RegistrationPageCase
 from server.utils import today
 
@@ -60,3 +62,32 @@ class TestGuardiansIntegration(RegistrationPageCase):
         self.open(f"{APP_URL}/waiver/{kid.id}")
         self.assert_text("Please change the guardian", f"#guardian-card-{kid.id}")
         self.assert_element_absent("form:not(dialog form) button[type=submit]")
+
+    def test_a_guardian_signs_from_the_link(self) -> None:
+        kid = self.minor_with_guardian()
+        g = Guardianship.objects.get(player=kid)
+        emails.send_link(g)
+        self.set_window_size(390, 844)
+        self.open(DJANGO_URL)  # production serves the page itself, which sets the CSRF cookie
+        self.open(f"{APP_URL}/guardian/{tokens.mint(g)}")
+        self.assert_text("Sign Tara's waiver")
+        self.assert_text("Senthil J")
+        self.click("#guardian-continue")
+        self.assert_text("Waiver")
+        self.click("#waiver")
+        self.click("#legal")
+        self.click('button:contains("I Agree")')
+        self.assert_text("Next: agree to the code of conduct")
+
+    def test_an_expired_link_offers_sign_in(self) -> None:
+        kid = self.minor_with_guardian()
+        g = Guardianship.objects.get(player=kid)
+        emails.send_link(g)
+        token = tokens.mint(g)
+        Guardianship.objects.filter(pk=g.pk).update(
+            link_sent_at=timezone.now() + datetime.timedelta(seconds=1)
+        )
+        self.open(f"{APP_URL}/guardian/{token}")
+        self.assert_text("This link has expired or was already used.")
+        href = self.get_attribute("#guardian-sign-in", "href")
+        self.assertTrue(href.endswith(f"/login?redirect=/waiver/{kid.id}"), href)
