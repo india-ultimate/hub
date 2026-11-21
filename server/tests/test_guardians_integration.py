@@ -1,0 +1,62 @@
+"""The guardian card and Change guardian on a phone. "Integration" in the
+class name puts it in CI's browser job."""
+
+import datetime
+
+import pytest
+
+from server.core.models import Guardianship, Player
+from server.subscription.models import Subscription
+from server.tests import test_ui
+from server.tests.localserver import APP_URL
+from server.tests.test_registration_integration import RegistrationPageCase
+from server.utils import today
+
+
+@pytest.mark.django_db(transaction=True)
+class TestGuardiansIntegration(RegistrationPageCase):
+    def minor_with_guardian(self) -> Player:
+        kid = self.player("Tara", "Kumar", entry=False)
+        Subscription.objects.filter(player=kid).update(waiver_valid=False, coc_agreed=False)
+        kid.date_of_birth = today() - datetime.timedelta(days=15 * 365)
+        kid.save()
+        parent = test_ui.make_player("senthil@example.com", first="Senthil", last="J")
+        Guardianship.objects.create(user=parent, player=kid, relation="LG")
+        return kid
+
+    def test_a_minor_changes_their_guardian(self) -> None:
+        kid = self.minor_with_guardian()
+        self.sign_in_as(kid.user)
+        self.set_window_size(390, 844)
+        self.open(f"{APP_URL}/waiver/{kid.id}")
+        self.assert_text("senthil@example.com", f"#guardian-card-{kid.id}")
+        self.assert_text("Waiting for the guardian to sign", f"#guardian-card-{kid.id}")
+        self.click(f"#guardian-change-{kid.id} button")
+        self.type('input[name="first_name"]', "Maya")
+        self.type('input[name="last_name"]', "Rao")
+        self.type('input[name="email"]', "maya@example.com")
+        self.type('input[name="phone"]', "+919998887776")
+        self.select_option_by_value('select[name="relation"]', "MO")
+        self.click('dialog button:contains("Save")')
+        self.assert_text("Link sent to maya@example.com")
+        guardianship = Guardianship.objects.get(player=kid)
+        self.assertEqual("maya@example.com", guardianship.user.email)
+        self.assertEqual("MO", guardianship.relation)
+
+    def test_a_minor_with_no_guardian_is_asked_to_add_one(self) -> None:
+        kid = self.minor_with_guardian()
+        Guardianship.objects.filter(player=kid).delete()
+        self.sign_in_as(kid.user)
+        self.set_window_size(390, 844)
+        self.open(f"{APP_URL}/code-of-conduct/{kid.id}")
+        self.assert_text("No guardian yet", f"#guardian-card-{kid.id}")
+        self.assert_element_absent('button:contains("I agree")')
+
+    def test_a_minor_who_is_their_own_guardian_is_asked_to_change_it(self) -> None:
+        kid = self.minor_with_guardian()
+        Guardianship.objects.filter(player=kid).update(user=kid.user)
+        self.sign_in_as(kid.user)
+        self.set_window_size(390, 844)
+        self.open(f"{APP_URL}/waiver/{kid.id}")
+        self.assert_text("Please change the guardian", f"#guardian-card-{kid.id}")
+        self.assert_element_absent("form:not(dialog form) button[type=submit]")

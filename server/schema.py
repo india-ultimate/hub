@@ -273,6 +273,8 @@ class PlayerSchema(ModelSchema):
         except CommentaryInfo.DoesNotExist:
             return None
 
+    is_minor: bool
+
     guardian: int | None = None
 
     @staticmethod

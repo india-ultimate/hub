@@ -6,6 +6,7 @@ import text from "../markdowns/code-of-conduct.md";
 import { useStore } from "../store";
 import { displayDate, getCookie, getPlayer } from "../utils";
 import Breadcrumbs from "./Breadcrumbs";
+import GuardianCard from "./guardians/GuardianCard";
 import ReasonButton from "./registration/ReasonButton";
 import StyledMarkdown from "./StyledMarkdown";
 
@@ -119,6 +120,15 @@ const CodeOfConduct = () => {
             Your guardian needs to agree to this for you. They can log in to the
             Hub with their email to do it.
           </p>
+          <GuardianCard playerId={player().id} />
+        </Match>
+        <Match
+          when={
+            player()?.is_minor &&
+            (!player()?.guardian || player()?.user === store.data.id)
+          }
+        >
+          <GuardianCard playerId={player().id} />
         </Match>
         <Match when={isGuardian() || isSelf()}>
           <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
