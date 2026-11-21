@@ -9,9 +9,10 @@ from django.utils import timezone
 from server.core.models import Guardianship, Player
 from server.guardians import emails, tokens
 from server.subscription.models import Subscription
+from server.task.models import Task
 from server.tests import test_ui
 from server.tests.localserver import APP_URL, DJANGO_URL
-from server.tests.test_registration_integration import RegistrationPageCase
+from server.tests.test_registration_integration import RegistrationPageCase, row
 from server.utils import today
 
 
@@ -91,3 +92,25 @@ class TestGuardiansIntegration(RegistrationPageCase):
         self.assert_text("This link has expired or was already used.")
         href = self.get_attribute("#guardian-sign-in", "href")
         self.assertTrue(href.endswith(f"/login?redirect=/waiver/{kid.id}"), href)
+
+    def test_i_agree_says_which_box_to_tick(self) -> None:
+        kid = self.minor_with_guardian()
+        self.sign_in_as(Guardianship.objects.get(player=kid).user)
+        self.set_window_size(390, 844)
+        self.open(f"{APP_URL}/waiver/{kid.id}")
+        self.click('button:contains("I Agree")')
+        self.assert_text("Tick this to continue")
+        self.assertEqual("waiver", self.execute_script("return document.activeElement.id"))
+        self.click("#waiver")
+        self.assert_element_absent('p[role="alert"]:contains("Tick this to continue")')
+        self.click('button:contains("I Agree")')
+        self.assertEqual("legal", self.execute_script("return document.activeElement.id"))
+
+    def test_a_team_admin_reminds_a_waiver(self) -> None:
+        p = self.player("Dev", "Menon")
+        Subscription.objects.filter(player=p).update(waiver_valid=False)
+        self.sign_in_as(self.admin)
+        self.open_page()
+        self.click(f'{row("Dev")}//button[contains(., "Remind")]')
+        self.assert_text("Reminder sent")
+        self.assertEqual(1, Task.objects.filter(type=Task.TaskType.SEND_EMAIL).count())
