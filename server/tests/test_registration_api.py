@@ -1,10 +1,11 @@
 """The team registration home's API."""
 
 import datetime
-from typing import Any
+from typing import Any, cast
 from unittest import mock
 
 from django.core import mail
+from django.core.cache import cache
 from django.db import connection
 from django.test import Client, override_settings
 from django.test.utils import CaptureQueriesContext
@@ -12,12 +13,13 @@ from django.utils.timezone import now
 from razorpay.resources.order import Order
 from razorpay.resources.payment import Payment
 
-from server.core.models import Player, Team, User
+from server.core.models import Guardianship, Player, Team, User
 from server.registration.models import RosterEntry, RosterSwap
 from server.registration.state import build_context, plays
 from server.series.models import Role, SeriesRegistration, SeriesRosterInvitation
 from server.subscription.models import Subscription
 from server.tests.base import make_account
+from server.tests.test_code_of_conduct import minor_dob
 from server.tests.test_payment_accounts import PLAYER_FEE, razorpay_order
 from server.tests.test_registration_state import StateTestCase
 from server.tournament.models import Event, Registration
@@ -553,6 +555,84 @@ class TestRosterWrites(ApiCase):
         member = self.as_user(p.user)
         self.assertEqual(403, member.delete(f"{self.base}/roster/{p.id}").status_code)
         self.assertEqual(403, member.post(f"{self.base}/roster/{p.id}/resend-invite").status_code)
+
+
+@override_settings(CACHES={"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}})
+class TestRemind(ApiCase):
+    def setUp(self) -> None:
+        super().setUp()
+        cache.clear()
+
+    def remind(self, p: Player, client: Client | None = None) -> Any:
+        with mock.patch("server.guardians.emails.queue_emails") as queue:
+            response = (client or self.web).post(f"{self.base}/roster/{p.id}/remind")
+        self.sent = [m for call in queue.call_args_list for m in call.args[0]]
+        return response
+
+    def html(self) -> str:
+        return cast(Any, self.sent[0]).alternatives[0][0]
+
+    def minor(self, *, guardian: bool = True) -> Player:
+        p = self.player("kid@x.com", waiver=False)
+        p.date_of_birth = minor_dob()
+        p.save()
+        if guardian:
+            g = User.objects.create_user("mum@x.com", "mum@x.com", "pw")
+            Guardianship.objects.create(user=g, player=p, relation="MO")
+        return p
+
+    def test_remind_a_minor_emails_the_guardian_link(self) -> None:
+        p = self.minor()
+        response = self.remind(p)
+        self.assertEqual(200, response.status_code, response.content)
+        self.assertEqual("Reminder sent", response.json()["message"])
+        self.assertEqual(["mum@x.com"], self.sent[0].to)
+        self.assertIn("/guardian/", self.html())
+
+    def test_remind_an_adult_emails_the_player(self) -> None:
+        p = self.player("a@x.com", waiver=False)
+        response = self.remind(p)
+        self.assertEqual(200, response.status_code, response.content)
+        self.assertEqual(["a@x.com"], self.sent[0].to)
+        html = self.html()
+        self.assertIn(f"/waiver/{p.id}", html)
+        self.assertIn(self.team.name, html)
+
+    def test_remind_waits_10_minutes(self) -> None:
+        for p in (self.minor(), self.player("a@x.com", waiver=False)):
+            self.assertEqual(200, self.remind(p).status_code)
+            second = self.remind(p)
+            self.assertEqual(429, second.status_code)
+            self.assertEqual(
+                "A link was sent less than 10 minutes ago. Try again later.",
+                second.json()["message"],
+            )
+
+    def test_remind_needs_a_guardian(self) -> None:
+        response = self.remind(self.minor(guardian=False))
+        self.assertEqual(400, response.status_code)
+        self.assertEqual("Add a guardian first", response.json()["message"])
+
+    def test_remind_refuses_a_self_guardian(self) -> None:
+        p = self.minor(guardian=False)
+        Guardianship.objects.create(user=p.user, player=p, relation="MO")
+        response = self.remind(p)
+        self.assertEqual(400, response.status_code)
+        self.assertIn("own guardian", response.json()["message"])
+        self.assertEqual([], self.sent)
+
+    def test_remind_only_for_an_unsigned_waiver(self) -> None:
+        response = self.remind(self.player("a@x.com", waiver=True))
+        self.assertEqual(400, response.status_code)
+        self.assertEqual("Only an unsigned waiver can be reminded", response.json()["message"])
+        self.assertEqual([], self.sent)
+
+    def test_remind_unknown_player(self) -> None:
+        self.assertEqual(404, self.web.post(f"{self.base}/roster/999999/remind").status_code)
+
+    def test_remind_is_for_admins(self) -> None:
+        p = self.player("a@x.com", waiver=False)
+        self.assertEqual(403, self.remind(p, self.as_user(p.user)).status_code)
 
 
 class TestCheckout(ApiCase):

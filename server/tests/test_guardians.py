@@ -1,6 +1,6 @@
 import datetime
 import time
-from typing import Any
+from typing import Any, cast
 from unittest import mock
 
 from dateutil.relativedelta import relativedelta
@@ -601,7 +601,7 @@ class TestRightsEndAt18(TestCase):
 
         def seen() -> set[str]:
             return {
-                t.transaction_id
+                cast(ManualTransaction, t).transaction_id
                 for t in list_transactions_by_type(self.guardian, PaymentGateway.MANUAL)
             }
 

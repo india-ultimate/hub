@@ -267,7 +267,7 @@ def _subscription_reason(ctx: Context, entry: RosterEntry) -> Reason | None:
             "waiting.waiver",
             "waiting",
             "Waiver not signed",
-            Action("Remind", op="remind"),
+            Action("Remind", op="remind_waiver"),
         )
     if message == "Code of conduct not agreed":
         return Reason(

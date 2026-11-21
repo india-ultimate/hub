@@ -225,6 +225,6 @@ def resend_guardian_link(request: HttpRequest, player_id: int) -> tuple[int, dic
     if g.user_id == player.user_id:
         return 400, {"message": "A player cannot be their own guardian."}
     if not emails.may_send(g):
-        return 429, {"message": "A link was sent less than 10 minutes ago. Try again later."}
+        return 429, {"message": emails.TOO_SOON}
     emails.send_link(g)
     return 200, {"message": f"Link sent to {g.user.email}"}
