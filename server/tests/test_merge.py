@@ -24,18 +24,17 @@ from server.core.models import (
     User,
     Vaccination,
 )
-from server.duplicates.history import log
-from server.duplicates.merge import (
+from server.duplicates.players.history import log
+from server.duplicates.players.merge import (
     ROW_PREFERENCE,
     MergeBlockedError,
     MergeFieldError,
-    MergeIncompleteError,
     RelationMove,
     build_plan,
     find_references,
     merge_accounts,
 )
-from server.duplicates.models import (
+from server.duplicates.players.models import (
     AccountMerge,
     AliasHeldError,
     ClusterEvent,
@@ -43,7 +42,8 @@ from server.duplicates.models import (
     DuplicateCluster,
     EmailAlias,
 )
-from server.duplicates.review import compare
+from server.duplicates.players.review import compare
+from server.duplicates.relations import MergeIncompleteError
 from server.season.models import Season
 from server.servicerequests.models import ServiceRequest, ServiceRequestStatus, ServiceRequestType
 from server.subscription import sponsorship
@@ -605,7 +605,7 @@ class TestMergeMechanics(MergeTestCase):
 
     def test_a_password_change_after_load_survives_the_merge(self) -> None:
         """merge_accounts is handed request.user - loaded by auth middleware
-        before the row lock. _fill_blanks used to end in a bare save(), which
+        before the row lock. fill_blanks used to end in a bare save(), which
         writes back every column as that stale instance held it, reverting
         anything changed in the database after it was loaded."""
         stale_primary = User.objects.get(pk=self.primary.pk)
@@ -789,7 +789,7 @@ class TestMergeRefuses(MergeTestCase):
             return {"server.Pretend.user": 1}
 
         with self.settings():
-            import server.duplicates.merge as merge_module
+            import server.duplicates.players.merge as merge_module
 
             original = merge_module.find_references
             merge_module.find_references = leave_a_row_behind
@@ -1348,7 +1348,7 @@ class TestResolvedFields(MergeTestCase):
         account this campaign writes to. Resolves on phone, not a name field:
         the blank account's empty name is what keeps it clear of the merge's
         own name-mismatch blocker, and both accounts are given a non-blank,
-        differing phone so only the resolved choice, not _fill_blanks, can
+        differing phone so only the resolved choice, not fill_blanks, can
         produce the asserted value."""
         blank = User.objects.create(username="otp@x.com", email="otp@x.com", phone="1112223333")
         self.assertEqual(blank.password, "")

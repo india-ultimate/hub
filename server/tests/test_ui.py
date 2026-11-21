@@ -23,11 +23,11 @@ from hub.settings import BASE_DIR
 from server.accreditation.models import Accreditation
 from server.committee.models import Committee, Role
 from server.core.models import Guardianship, OTPAttempt, Player, Team, User
-from server.duplicates.clusters import close_finished, detect_and_create
-from server.duplicates.emails import notify
-from server.duplicates.flow import dismiss, merge_pair, request_merge, request_staff
-from server.duplicates.identity import mask_email
-from server.duplicates.models import (
+from server.duplicates.players.clusters import close_finished, detect_and_create
+from server.duplicates.players.emails import notify
+from server.duplicates.players.flow import dismiss, merge_pair, request_merge, request_staff
+from server.duplicates.players.identity import mask_email
+from server.duplicates.players.models import (
     AccountMerge,
     ClusterEvent,
     ClusterMember,

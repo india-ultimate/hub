@@ -8,7 +8,7 @@ from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 from django.template.loader import render_to_string
 
-from server.core.models import Player, User
+from server.core.models import Player, Team, User
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +19,7 @@ class ServiceRequestType(models.TextChoices):
         "Request Sponsored Subscription",
     )
     REQUEST_ACCOUNT_MERGE = "REQUEST_ACCOUNT_MERGE", "Merge accounts"
+    REQUEST_TEAM_MERGE = "REQUEST_TEAM_MERGE", "Merge teams"
 
 
 class ServiceRequestStatus(models.TextChoices):
@@ -38,6 +39,14 @@ class ServiceRequest(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     service_players = models.ManyToManyField(Player, blank=True, related_name="service_requests")
     season = models.ForeignKey("server.Season", on_delete=models.PROTECT, blank=True, null=True)
+    # A team merge: the teams to fold together, and the one asked to be kept.
+    service_teams = models.ManyToManyField(Team, blank=True, related_name="service_requests")
+    keep_team = models.ForeignKey(
+        Team, on_delete=models.SET_NULL, blank=True, null=True, related_name="kept_by_requests"
+    )
+    logo_team = models.ForeignKey(
+        Team, on_delete=models.SET_NULL, blank=True, null=True, related_name="logo_requests"
+    )
 
     # The status as stored before this save, set by remember_previous_status.
     previous_status: str | None = None

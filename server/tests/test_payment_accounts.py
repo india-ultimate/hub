@@ -21,7 +21,7 @@ from razorpay.resources.payment import Payment
 
 from server.admin import EventAdminForm
 from server.core.models import Team, User
-from server.duplicates.merge import merge_accounts
+from server.duplicates.players.merge import merge_accounts
 from server.payment_account.models import PaymentAccount, SecretsUnavailable
 from server.schema import UserSchema
 from server.subscription.refunds import refund_order
