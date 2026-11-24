@@ -229,6 +229,18 @@ export const assetURL = name =>
     ? `/static/assets/${name}`
     : `/assets/${name}`;
 
+export const showMatchSeed = (match, seeded) =>
+  seeded !== false ||
+  !(match?.pool || (match?.swiss_round && match?.sequence_number === 1));
+
+export const matchTeamLabel = (match, teamNo, seeded) => {
+  const name = match?.[`team_${teamNo}`]?.name;
+  const seed = match?.[`placeholder_seed_${teamNo}`];
+  return showMatchSeed(match, seeded) && seed != null
+    ? `${name} (${seed})`
+    : name;
+};
+
 export const getMatchCardColor = match => {
   let color = "";
   if (match && match.pool) {

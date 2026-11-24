@@ -313,6 +313,7 @@ const TournamentTeam = () => {
                             opponentTeamNo={oppTeamNo(match)}
                             tournamentSlug={params.tournament_slug}
                             tournamentType={tournamentQuery.data?.event?.type}
+                            seeded={tournamentQuery.data?.seeded}
                             useUCRegistrations={
                               tournamentQuery.data?.use_uc_registrations
                             }

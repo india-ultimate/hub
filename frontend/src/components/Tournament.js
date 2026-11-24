@@ -15,6 +15,7 @@ import {
 import { formatDay } from "../dates";
 import { SanctionedPill, TagChips } from "../eventTags";
 import {
+  fetchMatchesBySlug,
   fetchTournamentBySlug,
   fetchUserAccessByTournamentSlug
 } from "../queries";
@@ -66,6 +67,16 @@ const Tournament = () => {
     () => ["tournaments", params.slug],
     () => fetchTournamentBySlug(params.slug)
   );
+  const unseeded = () => tournamentQuery.data?.seeded === false;
+  const matchesQuery = createQuery(
+    () => ["matches", params.slug],
+    () => fetchMatchesBySlug(params.slug),
+    {
+      get enabled() {
+        return unseeded();
+      }
+    }
+  );
   const userAccessQuery = createQuery(
     () => ["user-access", params.slug],
     () => fetchUserAccessByTournamentSlug(params.slug)
@@ -101,6 +112,23 @@ const Tournament = () => {
 
   const isPlayerRegInProgress = () =>
     isPlayerRegistrationOpen(tournamentQuery.data?.event);
+
+  const hasResult = () => matchesQuery.data?.some(m => m.status === "COM");
+
+  const currentStandings = () => {
+    const rows = Object.entries(tournamentQuery.data?.current_seeding || {});
+    if (!unseeded() || hasResult()) return rows;
+    return Object.values(teamsMap())
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map(team => ["", String(team.id)]);
+  };
+
+  const tabs = () =>
+    [
+      { id: "current", label: currentLabel() },
+      unseeded() ? null : { id: "initial", label: "Initial" },
+      { id: "sotg", label: "SoTG" }
+    ].filter(Boolean);
 
   const currentLabel = () => {
     if (tournamentQuery.data?.status === "COM") return "Final";
@@ -307,11 +335,7 @@ const Tournament = () => {
         <h2 class="mt-5 text-center text-xl font-bold">Overall Standings</h2>
 
         <PillTabs
-          tabs={[
-            { id: "current", label: currentLabel() },
-            { id: "initial", label: "Initial" },
-            { id: "sotg", label: "SoTG" }
-          ]}
+          tabs={tabs()}
           activeTab={activeTab}
           onTabChange={setActiveTab}
         />
@@ -322,11 +346,7 @@ const Tournament = () => {
               <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
                 <tbody>
                   <Suspense fallback={<StandingsSkeleton />}>
-                    <For
-                      each={Object.entries(
-                        tournamentQuery.data?.current_seeding || {}
-                      )}
-                    >
+                    <For each={currentStandings()}>
                       {([rank, team_id]) => (
                         <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
                           <th
@@ -359,7 +379,7 @@ const Tournament = () => {
                               {teamsMap()[team_id]?.name}
                             </A>
                           </td>
-                          <Show when={teamsInitialSeeding()}>
+                          <Show when={teamsInitialSeeding() && !unseeded()}>
                             <td class="pl-2 pr-6">
                               <TeamSeedingChange
                                 initialSeed={teamsInitialSeeding()[team_id]}
