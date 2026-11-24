@@ -103,6 +103,7 @@ const ScheduleTable = props => {
                               ][fieldId]
                             }
                             showSeed={true}
+                            seeded={props.seeded}
                             setFlash={props.setFlash}
                             useSmallSwissName
                           />

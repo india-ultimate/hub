@@ -20,6 +20,7 @@ import {
   matchStatsFullTime,
   matchStatsHalfTime
 } from "../../../queries";
+import { matchTeamLabel } from "../../../utils";
 import ButtonWithModal from "../../modal/ButtonWithModal";
 import BlockForm from "./BlockForm";
 import DropForm from "./DropForm";
@@ -174,13 +175,13 @@ const EditStats = () => {
         </div>
         <div class="col-span-5 flex justify-center">
           <span class="text-center font-bold text-blue-600 dark:text-gray-300">
-            {`${matchQuery.data?.team_1?.name} (${matchQuery.data?.placeholder_seed_1})`}
+            {matchTeamLabel(matchQuery.data, 1, tournamentQuery.data?.seeded)}
           </span>
         </div>
         <div class="col-span-2 flex justify-center">vs</div>
         <div class="col-span-5 flex justify-center">
           <span class="text-center font-bold text-green-600 dark:text-gray-300">
-            {`${matchQuery.data?.team_2?.name} (${matchQuery.data?.placeholder_seed_2})`}
+            {matchTeamLabel(matchQuery.data, 2, tournamentQuery.data?.seeded)}
           </span>
         </div>
       </div>

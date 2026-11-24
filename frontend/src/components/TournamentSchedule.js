@@ -208,6 +208,7 @@ const TournamentSchedule = () => {
                             day={day2}
                             matchDayTimeFieldMap={matchDayTimeFieldMap}
                             setFlash={setFlash}
+                            seeded={tournamentQuery.data?.seeded}
                             fieldsMap={mapFieldIdToField(fieldsQuery.data)}
                           />
                         </Match>
@@ -268,6 +269,7 @@ const TournamentSchedule = () => {
                           match={match}
                           tournamentSlug={params.slug}
                           tournamentType={tournamentQuery.data?.event?.type}
+                          seeded={tournamentQuery.data?.seeded}
                           useUCRegistrations={
                             tournamentQuery.data?.use_uc_registrations
                           }

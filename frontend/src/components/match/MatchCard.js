@@ -17,7 +17,7 @@ import {
 } from "../../colors";
 import { usePrefetchPlayer } from "../../playerLinks";
 import { fetchUserAccessByTournamentSlug } from "../../queries";
-import { getMatchCardColor } from "../../utils";
+import { getMatchCardColor, showMatchSeed } from "../../utils";
 import QuickLook from "../player-profile/QuickLook";
 import MatchScoreForm from "../tournament/MatchScoreForm";
 import MatchSpiritScoreForm from "../tournament/MatchSpiritScoreForm";
@@ -191,6 +191,13 @@ const TournamentMatch = props => {
     return team?.image ?? team?.image_url;
   };
 
+  const teamLabel = teamNo => {
+    const name = props.match[`team_${teamNo}`].name;
+    return showMatchSeed(props.match, props.seeded)
+      ? `${name} (${props.match[`placeholder_seed_${teamNo}`]})`
+      : name;
+  };
+
   return (
     <>
       <div class="mb-4">
@@ -224,18 +231,14 @@ const TournamentMatch = props => {
           <span class="w-1/3 text-center font-bold text-gray-600 dark:text-gray-300">
             <Show
               when={props.bothTeamsClickable}
-              fallback={`${props.match[`team_${currTeamNo()}`].name} (${
-                props.match[`placeholder_seed_${currTeamNo()}`]
-              })`}
+              fallback={teamLabel(currTeamNo())}
             >
               <A
                 href={`/tournament/${props.tournamentSlug}/team/${
                   props.match[`team_${currTeamNo()}`].slug
                 }`}
               >
-                {`${props.match[`team_${currTeamNo()}`].name} (${
-                  props.match[`placeholder_seed_${currTeamNo()}`]
-                })`}
+                {teamLabel(currTeamNo())}
               </A>
             </Show>
           </span>
@@ -258,9 +261,7 @@ const TournamentMatch = props => {
                 props.match[`team_${oppTeamNo()}`].slug
               }`}
             >
-              {`${props.match[`team_${oppTeamNo()}`].name} (${
-                props.match[`placeholder_seed_${oppTeamNo()}`]
-              })`}
+              {teamLabel(oppTeamNo())}
             </A>
           </span>
 

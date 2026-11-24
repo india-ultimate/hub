@@ -1,6 +1,6 @@
 import { createEffect, createSignal, Match, Show, Switch } from "solid-js";
 
-import { getMatchCardColor } from "../../utils";
+import { getMatchCardColor, showMatchSeed } from "../../utils";
 
 const getSmallName = matchName => {
   if (matchName === "Cross Pool") {
@@ -108,7 +108,7 @@ const MatchCard = props => {
             class={`flex w-full flex-wrap justify-center bg-${color()}-100 text-${color()}-800 rounded px-2.5 py-0.5 text-xs font-medium dark:bg-${color()}-900 dark:text-${color()}-300`}
           >
             <Show
-              when={props.showSeed}
+              when={props.showSeed && showMatchSeed(props.match, props.seeded)}
               fallback={
                 <h6 class="w-full py-2 text-center">
                   {props.match?.swiss_round

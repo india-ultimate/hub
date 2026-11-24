@@ -235,6 +235,22 @@ const TournamentStandings = () => {
     return team?.image ?? team?.image_url;
   };
 
+  const unseeded = () => tournamentQuery.data?.seeded === false;
+
+  const poolHasResult = poolName =>
+    matchesQuery.data?.some(
+      m => m.pool?.name === poolName && m.status === "COM"
+    );
+
+  const poolRows = poolName => {
+    const rows = poolsMap()[poolName];
+    if (!unseeded() || poolHasResult(poolName)) return rows;
+    const teams = teamsMap();
+    return [...rows].sort((a, b) =>
+      (teams[a.team_id]?.name ?? "").localeCompare(teams[b.team_id]?.name ?? "")
+    );
+  };
+
   return (
     <Show
       when={!tournamentQuery.isLoading}
@@ -290,6 +306,7 @@ const TournamentStandings = () => {
                   params={params}
                   matchesQuery={matchesQuery}
                   tournamentType={tournamentQuery.data?.event?.type}
+                  seeded={tournamentQuery.data?.seeded}
                   useUCRegistrations={
                     tournamentQuery.data?.use_uc_registrations
                   }
@@ -308,6 +325,7 @@ const TournamentStandings = () => {
                     params={params}
                     matchesQuery={matchesQuery}
                     tournamentType={tournamentQuery.data?.event?.type}
+                    seeded={tournamentQuery.data?.seeded}
                     useUCRegistrations={
                       tournamentQuery.data?.use_uc_registrations
                     }
@@ -336,7 +354,7 @@ const TournamentStandings = () => {
                       <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
                         <tr>
                           <th scope="col" class="px-4 py-3">
-                            Seed
+                            {unseeded() ? "Rank" : "Seed"}
                           </th>
                           <th scope="col" class="px-4 py-3">
                             Team
@@ -353,10 +371,16 @@ const TournamentStandings = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        <For each={poolsMap()[poolName]}>
-                          {result => (
+                        <For each={poolRows(poolName)}>
+                          {(result, i) => (
                             <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
-                              <td class="px-4 py-4">{result.seed}</td>
+                              <td class="px-4 py-4">
+                                {unseeded()
+                                  ? poolHasResult(poolName)
+                                    ? i() + 1
+                                    : ""
+                                  : result.seed}
+                              </td>
                               <td class="px-4 py-4">
                                 <A
                                   href={`/tournament/${params.slug}/team/${
@@ -378,6 +402,11 @@ const TournamentStandings = () => {
                       </tbody>
                     </table>
                   </div>
+                  <Show when={unseeded() && !poolHasResult(poolName)}>
+                    <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
+                      Ranks appear after the first result.
+                    </p>
+                  </Show>
                   <Show when={matchesQuery.isSuccess}>
                     <div class="mt-4">
                       <h3 class="mb-2 text-center text-sm font-semibold text-gray-700 dark:text-gray-200">
@@ -404,6 +433,7 @@ const TournamentStandings = () => {
                                 tournamentType={
                                   tournamentQuery.data?.event?.type
                                 }
+                                seeded={tournamentQuery.data?.seeded}
                                 useUCRegistrations={
                                   tournamentQuery.data?.use_uc_registrations
                                 }
@@ -658,6 +688,26 @@ const SwissGroupContent = props => {
     return props.swissRound.results;
   };
 
+  const groupHasResult = () =>
+    props.matchesQuery?.data?.some(
+      m => m.swiss_round?.id === props.swissRound.id && m.status === "COM"
+    );
+
+  const showRanks = () => props.seeded !== false || groupHasResult();
+
+  const sortedResults = () => {
+    const rows = Object.entries(displayResults() || {}).map(
+      ([team_id, stats]) => ({ ...stats, team_id })
+    );
+    if (showRanks()) {
+      return rows.sort((a, b) => parseInt(a.rank) - parseInt(b.rank));
+    }
+    const teams = props.teamsMap();
+    return rows.sort((a, b) =>
+      (teams[a.team_id]?.name ?? "").localeCompare(teams[b.team_id]?.name ?? "")
+    );
+  };
+
   const completedRounds = () => {
     if (!props.swissRound.round_results) return [];
     return Object.keys(props.swissRound.round_results)
@@ -720,7 +770,7 @@ const SwissGroupContent = props => {
           <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
             <tr>
               <th scope="col" class="px-4 py-3">
-                Seed
+                {props.seeded === false ? "Rank" : "Seed"}
               </th>
               <th scope="col" class="px-4 py-3">
                 Team
@@ -746,17 +796,10 @@ const SwissGroupContent = props => {
             </tr>
           </thead>
           <tbody>
-            <For
-              each={Object.entries(displayResults() || {})
-                .map(([team_id, stats]) => ({
-                  ...stats,
-                  team_id
-                }))
-                .sort((a, b) => parseInt(a.rank) - parseInt(b.rank))}
-            >
+            <For each={sortedResults()}>
               {result => (
                 <tr class="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
-                  <td class="px-4 py-4">{result.rank}</td>
+                  <td class="px-4 py-4">{showRanks() ? result.rank : ""}</td>
                   <td class="px-4 py-4">
                     <A
                       href={`/tournament/${props.params.slug}/team/${
@@ -782,6 +825,11 @@ const SwissGroupContent = props => {
           </tbody>
         </table>
       </div>
+      <Show when={!showRanks()}>
+        <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
+          Ranks appear after the first result.
+        </p>
+      </Show>
       <Show when={props.matchesQuery?.isSuccess && selectedRound() !== "final"}>
         <div class="mt-6">
           <h3 class="mb-2 text-center text-sm font-semibold text-gray-700 dark:text-gray-200">
@@ -857,6 +905,7 @@ const SwissGroupContent = props => {
                     match={match}
                     tournamentSlug={props.params.slug}
                     tournamentType={props.tournamentType}
+                    seeded={props.seeded}
                     useUCRegistrations={props.useUCRegistrations}
                     bothTeamsClickable
                     compact

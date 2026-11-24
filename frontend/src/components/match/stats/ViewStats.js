@@ -12,7 +12,7 @@ import {
   fetchTournamentBySlug
 } from "../../../queries";
 import { PageSkeleton } from "../../../skeletons/primitives";
-import { getTournamentBreadcrumbName } from "../../../utils";
+import { getTournamentBreadcrumbName, matchTeamLabel } from "../../../utils";
 import Breadcrumbs from "../../Breadcrumbs";
 import EventsDisplay from "./EventsDisplay";
 
@@ -51,6 +51,9 @@ const ViewStats = () => {
   const getTeamImage = team => {
     return team?.image ?? team?.image_url;
   };
+
+  const teamLabel = teamNo =>
+    matchTeamLabel(matchQuery.data, teamNo, tournamentQuery.data?.seeded);
 
   return (
     <Show when={!matchQuery.isLoading} fallback={<PageSkeleton />}>
@@ -181,13 +184,13 @@ const ViewStats = () => {
           </div>
           <div class="col-span-5 flex justify-center">
             <span class="text-center font-bold text-blue-600 dark:text-gray-300">
-              {`${matchQuery.data?.team_1?.name} (${matchQuery.data?.placeholder_seed_1})`}
+              {teamLabel(1)}
             </span>
           </div>
           <div class="col-span-2 flex justify-center">vs</div>
           <div class="col-span-5 flex justify-center">
             <span class="text-center font-bold text-green-600 dark:text-gray-300">
-              {`${matchQuery.data?.team_2?.name} (${matchQuery.data?.placeholder_seed_2})`}
+              {teamLabel(2)}
             </span>
           </div>
         </div>
