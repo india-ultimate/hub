@@ -8,8 +8,10 @@ from unittest import mock
 from django.core.mail import EmailMultiAlternatives
 from django.core.management import call_command
 from django.test import Client, TestCase, override_settings
+from django.utils.timezone import now
 
 from server.core.models import Guardianship, Player, User
+from server.guardians import tokens
 from server.season.models import Season
 from server.subscription.emails import build_code_of_conduct_request, build_confirmation
 from server.subscription.models import Subscription
@@ -146,7 +148,9 @@ class TestRolloutEmail(TestCase):
         self.guardian = person("mum@example.com", born=ADULT, first="Asha")
         self.minor = person("kid@example.com", born=minor_dob(), first="Tara")
         subscribe(self.minor)
-        Guardianship.objects.create(user=self.guardian.user, player=self.minor, relation="MO")
+        self.guardianship = Guardianship.objects.create(
+            user=self.guardian.user, player=self.minor, relation="MO"
+        )
         done = person("done@example.com", born=ADULT, first="Done")
         Subscription.objects.filter(pk=subscribe(done).pk).update(coc_agreed=True)
 
@@ -186,13 +190,84 @@ class TestRolloutEmail(TestCase):
         self.assertIn("Skipped", out)
         self.assertIn("Tara", out)
 
-    def test_the_guardian_email_names_the_minor(self) -> None:
+    def test_the_guardian_gets_the_guardian_link_naming_the_minor(self) -> None:
         season = Season.current()
         assert season is not None  # noqa: S101
         message = build_code_of_conduct_request(self.minor, season, self.guardian.user)
-        self.assertEqual("Please agree to the India Ultimate code of conduct", message.subject)
-        self.assertIn("Tara Kumar", html(message))
-        self.assertIn(f"/code-of-conduct/{self.minor.id}", html(message))
+        self.assertIn("Tara", message.subject)
+        self.assertIn("/guardian/", html(message))
+        self.assertNotIn("/code-of-conduct/", html(message))
+        self.assertIn("You are Tara's parent or guardian", message.body)
+        self.assertNotIn("added you", message.body)
+        self.assertIn('tap "Resend link"', message.body)
+
+    def stamp(self) -> Any:
+        return Guardianship.objects.get(pk=self.guardianship.pk).link_sent_at
+
+    def test_building_the_request_does_not_stamp_the_guardian(self) -> None:
+        season = Season.current()
+        assert season is not None  # noqa: S101
+        build_code_of_conduct_request(self.minor, season, self.guardian.user)
+        self.assertIsNone(self.stamp())
+
+    def test_a_dry_run_stamps_nobody(self) -> None:
+        self.run_command("--dry-run")
+        self.assertIsNone(self.stamp())
+
+    def test_a_failed_queue_stamps_nobody(self) -> None:
+        with mock.patch(
+            "server.management.commands.send_code_of_conduct_emails.queue_emails",
+            side_effect=RuntimeError,
+        ), self.assertRaises(RuntimeError):
+            call_command("send_code_of_conduct_emails", stdout=StringIO())
+        self.assertIsNone(self.stamp())
+
+    def test_a_failure_while_stamping_queues_nothing(self) -> None:
+        from server.task.helpers import queue_emails as real
+        from server.task.models import Task
+
+        def queue_then_fail(messages: list[Any]) -> None:
+            real(messages)
+            raise RuntimeError
+
+        with mock.patch(
+            "server.management.commands.send_code_of_conduct_emails.queue_emails",
+            side_effect=queue_then_fail,
+        ):
+            with self.assertRaises(RuntimeError):
+                call_command("send_code_of_conduct_emails", stdout=StringIO())
+        self.assertEqual(0, Task.objects.count())
+        self.assertIsNone(self.stamp())
+
+    def test_a_resend_during_the_run_is_not_overwritten(self) -> None:
+        newer = now() + datetime.timedelta(minutes=1)
+
+        def resend_meanwhile(messages: list[Any]) -> None:
+            Guardianship.objects.filter(pk=self.guardianship.pk).update(link_sent_at=newer)
+
+        with mock.patch(
+            "server.management.commands.send_code_of_conduct_emails.queue_emails",
+            side_effect=resend_meanwhile,
+        ):
+            call_command("send_code_of_conduct_emails", stdout=StringIO())
+        self.assertEqual(newer, self.stamp())
+
+    def test_a_reused_stamp_is_left_alone(self) -> None:
+        stamp = now() - datetime.timedelta(days=1)
+        Guardianship.objects.filter(pk=self.guardianship.pk).update(link_sent_at=stamp)
+        self.run_command()
+        self.assertEqual(stamp, self.stamp())
+
+    def test_a_real_run_stamps_the_guardian(self) -> None:
+        self.run_command()
+        self.assertIsNotNone(self.stamp())
+
+    def test_the_guardian_link_from_the_command_keeps_an_earlier_link_alive(self) -> None:
+        self.guardianship.link_sent_at = now()
+        self.guardianship.save()
+        token = tokens.mint(self.guardianship)
+        self.run_command()
+        self.assertTrue(tokens.inspect(token)[1])
 
 
 class TestWaiverGuardianMessage(TestCase):

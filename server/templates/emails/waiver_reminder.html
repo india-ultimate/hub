@@ -1,53 +1,10 @@
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        line-height: 1.6;
-        color: #333;
-        max-width: 600px;
-        margin: 0 auto;
-      }
-      .container {
-        border: 1px solid #ddd;
-        border-radius: 5px;
-        padding: 20px;
-        margin: 20px 0;
-      }
-      .btn {
-        display: inline-block;
-        background-color: #3b82f6;
-        color: white;
-        padding: 10px 20px;
-        text-decoration: none;
-        border-radius: 5px;
-      }
-      .footer {
-        font-size: 12px;
-        color: #666;
-        margin-top: 20px;
-        padding-top: 10px;
-        border-top: 1px solid #ddd;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="container">
-      <p>Hi {{ first_name }},</p>
-      <p>
-        {{ by_name }} from {{ team_name }} asked you to sign your India Ultimate
-        waiver.
-      </p>
-      <p>You will need to sign in; we can email you a code.</p>
-      <p><a class="btn" href="{{ waiver_url }}">Sign the waiver</a></p>
-      <div class="footer">
-        <p>
-          This is an automated message from the India Ultimate Hub. Please do
-          not reply directly to this email.
-        </p>
-      </div>
-    </div>
-  </body>
-</html>
+{% extends "emails/base.html" %}
+{% block title %}Please sign your waiver{% endblock %}
+{% block preheader %}{{ by_name }} from {{ team_name }} asked you to sign your waiver.{% endblock %}
+{% block heading %}Please sign your waiver{% endblock %}
+{% block content %}
+<p style="margin:0 0 16px;"> Hi {{ first_name }},</p>
+<p style="margin:0 0 16px;"> {{ by_name }} from {{ team_name }} asked you to sign your India Ultimate waiver. You need it before you can play.</p>
+{% include "emails/_button.html" with url=waiver_url label="Sign the waiver" %}
+{% include "emails/_link.html" with url=waiver_url %}
+{% endblock %}

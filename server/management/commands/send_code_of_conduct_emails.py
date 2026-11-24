@@ -1,10 +1,12 @@
 """Ask everyone with this season's subscription who hasn't agreed to the code
 of conduct to do so. Safe to run again: it only reaches people still missing it."""
 
+import datetime
 from typing import Any
 
 from django.core.mail import EmailMultiAlternatives
 from django.core.management.base import BaseCommand, CommandParser
+from django.db import transaction
 
 from server.core.models import Guardianship, User
 from server.season.models import Season
@@ -29,13 +31,16 @@ class Command(BaseCommand):
         ).select_related("player__user")
         messages: list[EmailMultiAlternatives] = []
         skipped: list[str] = []
+        stamped: list[tuple[Guardianship, datetime.datetime | None]] = []
         for sub in missing:
             player = sub.player
             name = player.user.get_full_name()
             to: User | None = player.user
+            g: Guardianship | None = None
             if player.is_minor:
                 try:
-                    to = player.guardianship.user
+                    g = player.guardianship
+                    to = g.user
                 except Guardianship.DoesNotExist:
                     to = None
             if to is None or "@" not in (to.email or ""):
@@ -43,10 +48,18 @@ class Command(BaseCommand):
                 continue
             who = name if to == player.user else f"guardian of {name}"
             self.stdout.write(f"{to.email}  ({who})")
-            messages.append(build_code_of_conduct_request(player, season, to))
+            before = g.link_sent_at if g is not None else None
+            messages.append(build_code_of_conduct_request(player, season, to, g))
+            if g is not None and g.link_sent_at != before:
+                stamped.append((g, before))
         self.stdout.write(f"{len(messages)} to send")
         if skipped:
             self.stdout.write(f"Skipped, no usable email: {', '.join(skipped)}")
         if not options["dry_run"] and messages:
-            queue_emails(messages)
+            with transaction.atomic():
+                queue_emails(messages)
+                for g, before in stamped:
+                    Guardianship.objects.filter(pk=g.pk, link_sent_at=before).update(
+                        link_sent_at=g.link_sent_at
+                    )
             self.stdout.write(self.style.SUCCESS(f"Queued {len(messages)} emails"))

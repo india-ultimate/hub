@@ -257,6 +257,9 @@ def resend_guardian_link(request: HttpRequest, player_id: int) -> tuple[int, dic
         return 400, {"message": "Add a guardian first"}
     if g.user_id == player.user_id:
         return 400, {"message": "A player cannot be their own guardian."}
+    sub = player.current_subscription
+    if sub is not None and not emails.to_sign(sub):
+        return 400, {"message": "Nothing is left to sign."}
     if not emails.may_send(g):
         return 429, {"message": emails.TOO_SOON}
     try:

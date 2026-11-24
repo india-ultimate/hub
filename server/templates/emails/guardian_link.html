@@ -1,93 +1,27 @@
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        line-height: 1.6;
-        color: #333;
-        max-width: 600px;
-        margin: 0 auto;
-      }
-      .container {
-        border: 1px solid #ddd;
-        border-radius: 5px;
-        padding: 20px;
-        margin: 20px 0;
-      }
-      .header {
-        background-color: #3b82f6;
-        color: white;
-        padding: 10px 20px;
-        border-radius: 5px 5px 0 0;
-        margin: -20px -20px 20px;
-      }
-      .number {
-        font-size: 20px;
-        font-weight: bold;
-        letter-spacing: 1px;
-      }
-      .detail-row {
-        padding: 6px 0;
-        border-bottom: 1px solid #eee;
-      }
-      .detail-label {
-        color: #666;
-        display: inline-block;
-        width: 180px;
-      }
-      .btn {
-        display: inline-block;
-        background-color: #3b82f6;
-        color: white;
-        padding: 10px 20px;
-        text-decoration: none;
-        border-radius: 5px;
-        margin-top: 15px;
-      }
-      .footer {
-        font-size: 12px;
-        color: #666;
-        margin-top: 20px;
-        padding-top: 10px;
-        border-top: 1px solid #ddd;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="container">
-      <p>Hi {{ first_name }},</p>
-      <p>
-        {{ by_name }} has added you as {{ ward_name }}'s guardian on the India
-        Ultimate Hub. Because {{ ward_name }} is under 18, a parent or guardian
-        has to sign their waiver before they can play.
-      </p>
-      {% if not has_subscription %}
-      <p>
-        {{ ward_name }} has no active subscription yet, so the waiver page will
-        say so until they subscribe.
-      </p>
-      {% endif %}
-      <a class="btn" href="{{ link_url }}">Sign the waiver</a>
-      <p>Button not working? Copy this link into your browser:</p>
-      <p><a href="{{ link_url }}">{{ link_url }}</a></p>
-      <p>
-        The link works for 7 days. If it stops working, go to
-        <a href="{{ login_url }}">{{ login_url }}</a> and we will email you a
-        sign-in code.
-      </p>
-      <p>
-        Not {{ ward_name }}'s parent or guardian? Please ignore this email or
-        write to operations@indiaultimate.org.
-      </p>
-
-      <div class="footer">
-        <p>
-          This is an automated message from the India Ultimate Hub. Please do
-          not reply directly to this email.
-        </p>
-      </div>
-    </div>
-  </body>
-</html>
+{% extends "emails/base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block preheader %}{% if coc_request and coc_only %}{{ ward_first_name }} needs your agreement before joining a tournament roster.{% elif coc_request %}{{ title }}.{% else %}{{ by_first_name }} added you as {% if by_is_ward %}their{% else %}{{ ward_first_name }}'s{% endif %} parent or guardian.{% endif %} The link works for 7 days.{% endblock %}
+{% block heading %}{{ title }}{% endblock %}
+{% block content %}
+<p style="margin:0 0 16px;"> Hi {{ first_name }},</p>
+<p style="margin:0 0 16px;">
+  {% if coc_request %}
+  You are {{ ward_first_name }}'s parent or guardian on India Ultimate Hub.
+  {% if coc_only %}{{ ward_first_name }} can be added to a tournament roster only after the code of conduct is agreed, and because {{ ward_first_name }} is under 18, you agree for them. Please read it together first.{% else %}As {{ ward_first_name }} is under 18, you need to {{ to_do }}. It takes about five minutes.{% endif %}
+  {% else %}
+  {{ by_first_name }} added you as {% if by_is_ward %}their{% else %}{{ ward_first_name }}'s{% endif %}
+  parent or guardian on India Ultimate Hub.
+  As {{ ward_first_name }} is under 18, you need to {{ to_do }}.{% if long %} It takes about five minutes.{% endif %}
+  {% endif %}
+</p>
+{% if not has_subscription %}
+<p style="margin:0 0 16px;"> {{ ward_first_name }} has no subscription yet, so you can do this once they subscribe.</p>
+{% endif %}
+{% include "emails/_button.html" with url=link_url label=button %}
+<p style="margin:0 0 16px;"> The button opens the Hub and signs you in. You do not need a password.</p>
+{% include "emails/_link.html" with url=link_url %}
+<p style="margin:0 0 16px;"> This link works for 7 days.
+  If it has expired, ask
+  {% if by_is_ward %}{{ ward_first_name }}{% else %}{{ by_first_name }} or {{ ward_first_name }}{% endif %} to tap "{{ resend_label }}" on {% if by_is_ward %}their{% else %}{{ ward_first_name }}'s{% endif %} Dashboard.</p>
+<p style="margin:0 0 16px;"> Not {{ ward_first_name }}'s parent or guardian? Ignore this email.</p>
+{% endblock %}

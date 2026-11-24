@@ -1,119 +1,36 @@
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        line-height: 1.6;
-        color: #333;
-        max-width: 600px;
-        margin: 0 auto;
-      }
-      .container {
-        border: 1px solid #ddd;
-        border-radius: 5px;
-        padding: 20px;
-        margin: 20px 0;
-      }
-      .header {
-        background-color: #3b82f6;
-        color: white;
-        padding: 10px 20px;
-        border-radius: 5px 5px 0 0;
-        margin: -20px -20px 20px;
-      }
-      .number {
-        font-size: 20px;
-        font-weight: bold;
-        letter-spacing: 1px;
-      }
-      .detail-row {
-        padding: 6px 0;
-        border-bottom: 1px solid #eee;
-      }
-      .detail-label {
-        color: #666;
-        display: inline-block;
-        width: 180px;
-      }
-      .btn {
-        display: inline-block;
-        background-color: #3b82f6;
-        color: white;
-        padding: 10px 20px;
-        text-decoration: none;
-        border-radius: 5px;
-        margin-top: 15px;
-      }
-      .footer {
-        font-size: 12px;
-        color: #666;
-        margin-top: 20px;
-        padding-top: 10px;
-        border-top: 1px solid #ddd;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="container">
-      <div class="header">
-        <h2>Your subscription is confirmed</h2>
-      </div>
+{% extends "emails/base.html" %}
+{% block title %}Your subscription is active{% endblock %}
+{% block preheader %}Your {{ season }} subscription is ready.{% endblock %}
+{% block heading %}Your subscription is active{% endblock %}
+{% block content %}
+<p style="margin:0 0 16px;"> Hi {{ first_name }},</p>
+<p style="margin:0 0 16px;"> Thank you for your payment. Your India Ultimate subscription for {{ season }} is active.</p>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 16px;font-size:16px;">
+  {% if iu_id %}<tr><td style="padding:8px 0;border-bottom:1px solid #e5e7eb;color:#4b5563;">IU ID</td><td align="right" style="padding:8px 0;border-bottom:1px solid #e5e7eb;font-weight:bold;">{{ iu_id }}</td></tr>{% endif %}
+  <tr><td style="padding:8px 0;border-bottom:1px solid #e5e7eb;color:#4b5563;">Plan</td><td align="right" style="padding:8px 0;border-bottom:1px solid #e5e7eb;">{{ plan }}</td></tr>
+  <tr><td style="padding:8px 0;border-bottom:1px solid #e5e7eb;color:#4b5563;">Valid from</td><td align="right" style="padding:8px 0;border-bottom:1px solid #e5e7eb;">{{ start_date|date:"j M Y" }}</td></tr>
+  <tr><td style="padding:8px 0;border-bottom:1px solid #e5e7eb;color:#4b5563;">Valid until</td><td align="right" style="padding:8px 0;border-bottom:1px solid #e5e7eb;">{{ end_date|date:"j M Y" }}</td></tr>
+</table>
+{% if iu_id %}<p style="margin:0 0 16px;"> Your IU ID stays the same every season.</p>{% endif %}
 
-      <p>Hi {{ first_name }},</p>
-
-      <p>
-        Thank you for your payment. Your {{ tier }} subscription for
-        {{ season }} is now active.
-      </p>
-
-      <p class="number">IU ID: {{ iu_id }}</p>
-      <p>
-        This number is yours for life — it stays the same every season you
-        renew.
-      </p>
-
-      <div class="detail-row">
-        <span class="detail-label">Season:</span>{{ season }}
-      </div>
-      <div class="detail-row">
-        <span class="detail-label">Subscription type:</span>{{ tier }}
-      </div>
-      <div class="detail-row">
-        <span class="detail-label">Valid from:</span>{{ start_date }}
-      </div>
-      <div class="detail-row">
-        <span class="detail-label">Valid until:</span>{{ end_date }}
-      </div>
-
-      {% if guardian_name %}
-      <p>
-        We've emailed {{ guardian_name }} a link to sign your waiver. Ask them to
-        check their inbox and spam.
-      </p>
-      {% elif not waiver_signed %}
-      <p>
-        One thing left: your waiver for this season has not been signed yet.
-        You will need it before you can play.
-      </p>
-      <a class="btn" href="{{ waiver_url }}">Sign the waiver</a>
-      {% endif %}
-
-      {% if not coc_agreed %}
-      <p>
-        Please also agree to this season's code of conduct. You need it
-        before you can be added to a tournament roster.
-      </p>
-      <a class="btn" href="{{ coc_url }}">Read and agree</a>
-      {% endif %}
-
-      <div class="footer">
-        <p>
-          This is an automated message from the India Ultimate Hub. Please do
-          not reply directly to this email.
-        </p>
-      </div>
-    </div>
-  </body>
-</html>
+{% if guardian_name %}
+<p style="margin:0 0 16px;">We've emailed {{ guardian_name }} a link to {{ to_do }}. Ask them to check their inbox and spam.</p>
+{% elif needs_guardian %}
+<p style="margin:0 0 16px;">A parent or guardian has to {{ to_do }}. Add one on your Dashboard and we will email them a link.</p>
+{% include "emails/_button.html" with url=dashboard_url label="Add a guardian" %}
+{% else %}
+{% if not waiver_signed %}
+<p style="margin:0 0 16px;">Next: sign your waiver. You need it before you can play.</p>
+{% include "emails/_button.html" with url=waiver_url label="Sign the waiver" %}
+{% endif %}
+{% if not coc_agreed %}
+{% if waiver_signed %}
+<p style="margin:0 0 16px;">Next: agree to this season's code of conduct. You need it before you can be added to a tournament roster.</p>
+{% include "emails/_button.html" with url=coc_url label="Read and agree" %}
+{% else %}
+<p style="margin:0 0 16px;">You also need to agree to this season's code of conduct before you can be added to a tournament roster.</p>
+{% include "emails/_button.html" with url=coc_url label="Read and agree" secondary=True %}
+{% endif %}
+{% endif %}
+{% endif %}
+{% endblock %}
