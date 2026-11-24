@@ -1,6 +1,7 @@
 """The email that asks a guardian to sign a ward's waiver."""
 
 import datetime
+import re
 
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
@@ -13,14 +14,18 @@ from server.guardians import tokens
 from server.task.helpers import queue_emails
 
 RESEND_AFTER = datetime.timedelta(minutes=10)
-TOO_SOON = "A link was sent less than 10 minutes ago. Try again later."
+TOO_SOON = "A link was just sent. You can send another in 10 minutes."
+
+
+def _text(html: str) -> str:
+    return strip_tags(re.sub(r"<style.*?</style>", "", html, flags=re.S))
 
 
 def may_send(g: Guardianship) -> bool:
     return g.link_sent_at is None or now() - g.link_sent_at > RESEND_AFTER
 
 
-def send_link(g: Guardianship, *, reuse: bool = False) -> bool:
+def send_link(g: Guardianship, *, reuse: bool = False, by: User | None = None) -> bool:
     """Email a link; False if the guardian has no address to send to.
 
     A new stamp retires every earlier link. With `reuse`, a stamp whose link
@@ -37,6 +42,7 @@ def send_link(g: Guardianship, *, reuse: bool = False) -> bool:
     context = {
         "first_name": g.user.first_name or "there",
         "ward_name": ward_name,
+        "by_name": (by.get_full_name() or by.get_username()) if by else ward_name,
         "link_url": f"{settings.PUBLIC_URL}/guardian/{tokens.mint(g)}",
         "login_url": f"{settings.PUBLIC_URL}/login?redirect=/waiver/{player.id}",
         "has_subscription": player.current_subscription is not None,
@@ -44,7 +50,7 @@ def send_link(g: Guardianship, *, reuse: bool = False) -> bool:
     html = render_to_string("emails/guardian_link.html", context)
     message = EmailMultiAlternatives(
         subject=f"Please sign {player.user.first_name}'s waiver for India Ultimate",
-        body=strip_tags(html),
+        body=_text(html),
         from_email=settings.EMAIL_HOST_USER,
         to=[g.user.email],
     )
@@ -64,13 +70,14 @@ def send_changed(old: User, g: Guardianship, by: User) -> None:
         {
             "first_name": old.first_name or "there",
             "by_name": by.get_full_name() or by.get_username(),
+            "by_is_ward": by.pk == g.player.user_id,
             "ward_first_name": ward_first,
             "new_name": g.user.get_full_name() or g.user.get_username(),
         },
     )
     message = EmailMultiAlternatives(
         subject=f"{ward_first}'s guardian was changed",
-        body=strip_tags(html),
+        body=_text(html),
         from_email=settings.EMAIL_HOST_USER,
         to=[old.email],
     )
@@ -93,7 +100,7 @@ def send_waiver_reminder(player: Player, by: User, team_name: str) -> bool:
     )
     message = EmailMultiAlternatives(
         subject="Please sign your India Ultimate waiver",
-        body=strip_tags(html),
+        body=_text(html),
         from_email=settings.EMAIL_HOST_USER,
         to=[player.user.email],
     )

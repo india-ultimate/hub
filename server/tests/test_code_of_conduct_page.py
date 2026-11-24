@@ -61,7 +61,7 @@ class TestCodeOfConductPageIntegration(RegistrationPageCase):
         Guardianship.objects.create(user=self.admin, player=kid, relation="MO")
         self.sign_in_as(kid.user)
         self.open_page(kid)
-        self.assert_text("Your guardian needs to agree to this for you")
+        self.assert_text("Your guardian agrees to this for you")
         self.assert_element_absent('button:contains("I agree")')
 
     def test_the_profile_step_turns_green(self) -> None:

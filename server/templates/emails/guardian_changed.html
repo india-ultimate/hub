@@ -28,10 +28,14 @@
   <body>
     <div class="container">
       <p>Hi {{ first_name }},</p>
+      {% if by_is_ward %}
+      <p>{{ ward_first_name }} changed their guardian to {{ new_name }}.</p>
+      {% else %}
       <p>{{ by_name }} changed {{ ward_first_name }}'s guardian to {{ new_name }}.</p>
+      {% endif %}
       <p>
         You no longer sign {{ ward_first_name }}'s waiver. If this is a mistake,
-        contact {{ ward_first_name }} or India Ultimate.
+        write to operations@indiaultimate.org.
       </p>
       <div class="footer">
         <p>

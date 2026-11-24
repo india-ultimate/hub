@@ -336,8 +336,8 @@ const TeamRegistrationHome = () => {
     remove: entryOp(removeRosterEntry),
     resend_invite: entryOp(resendRosterInvite),
     remind_waiver: async playerId => {
-      await remindWaiver({ ...args(), playerId });
-      announce("Reminder sent");
+      const { message } = await remindWaiver({ ...args(), playerId });
+      announce(message);
     },
     invite: entryOp(addRosterEntry),
     roster: entryOp(addRosterEntry),

@@ -41,10 +41,44 @@ class TestGuardiansIntegration(RegistrationPageCase):
         self.type('input[name="phone"]', "+919998887776")
         self.select_option_by_value('select[name="relation"]', "MO")
         self.click('dialog button:contains("Save")')
-        self.assert_text("Link sent to maya@example.com")
+        self.assert_text("link sent just now", f"#guardian-card-{kid.id}")
         guardianship = Guardianship.objects.get(player=kid)
         self.assertEqual("maya@example.com", guardianship.user.email)
         self.assertEqual("MO", guardianship.relation)
+
+    def test_a_ward_with_no_subscription_still_shows_the_card(self) -> None:
+        kid = self.minor_with_guardian()
+        Subscription.objects.filter(player=kid).delete()
+        self.sign_in_as(kid.user)
+        self.open(f"{APP_URL}/waiver/{kid.id}")
+        self.assert_text("senthil@example.com", f"#guardian-card-{kid.id}")
+        self.assert_text("Not registered for a season yet", f"#guardian-card-{kid.id}")
+
+    def test_the_dialog_opens_prefilled_and_cancels(self) -> None:
+        kid = self.minor_with_guardian()
+        self.sign_in_as(kid.user)
+        self.open(f"{APP_URL}/waiver/{kid.id}")
+        self.click(f"#guardian-change-{kid.id} button")
+        self.assertEqual("Senthil", self.get_value('input[name="first_name"]'))
+        self.assertEqual("senthil@example.com", self.get_value('input[name="email"]'))
+        self.type('input[name="first_name"]', "Oops")
+        self.click('dialog button:contains("Cancel")')
+        self.assert_element_not_visible("dialog")
+        self.click(f"#guardian-change-{kid.id} button")
+        self.assertEqual("Senthil", self.get_value('input[name="first_name"]'))
+
+    def test_a_stored_bare_phone_is_prefilled_with_the_country_code_and_saves(self) -> None:
+        kid = self.minor_with_guardian()
+        old = Guardianship.objects.get(player=kid).user
+        self.assertRegex(old.phone, r"^\d{10}$")
+        self.sign_in_as(kid.user)
+        self.open(f"{APP_URL}/waiver/{kid.id}")
+        self.click(f"#guardian-change-{kid.id} button")
+        self.assertEqual(f"+91{old.phone}", self.get_value('input[name="phone"]'))
+        self.type('input[name="email"]', "senthil.j@example.com")
+        self.click('dialog button:contains("Save")')
+        self.assert_text("link sent just now", f"#guardian-card-{kid.id}")
+        self.assertEqual("senthil.j@example.com", Guardianship.objects.get(player=kid).user.email)
 
     def test_the_same_guardian_says_updated_not_sent(self) -> None:
         kid = self.minor_with_guardian()
@@ -85,8 +119,7 @@ class TestGuardiansIntegration(RegistrationPageCase):
         self.set_window_size(390, 844)
         self.open(DJANGO_URL)  # production serves the page itself, which sets the CSRF cookie
         self.open(f"{APP_URL}/guardian/{tokens.mint(g)}")
-        self.assert_text("Sign Tara's waiver")
-        self.assert_text("Senthil J")
+        self.assert_text("Hi Senthil, Tara needs you to sign their waiver")
         self.click("#guardian-continue")
         self.assert_text("Waiver")
         self.click("#waiver")
@@ -103,7 +136,7 @@ class TestGuardiansIntegration(RegistrationPageCase):
             link_sent_at=timezone.now() + datetime.timedelta(seconds=1)
         )
         self.open(f"{APP_URL}/guardian/{token}")
-        self.assert_text("This link has expired or was already used.")
+        self.assert_text("This link is no longer working")
         href = self.get_attribute("#guardian-sign-in", "href")
         self.assertTrue(href.endswith(f"/login?redirect=/waiver/{kid.id}"), href)
 
