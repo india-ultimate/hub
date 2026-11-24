@@ -1,6 +1,7 @@
 from io import StringIO
 from typing import Any
 
+from django.conf import settings
 from django.core.management import call_command
 from django.test import TestCase
 
@@ -210,6 +211,11 @@ class TestTellingAdmins(SuggestTestCase):
         for text in (message.body, str(message.alternatives[0][0])):
             self.assertIn("One team can play every division and format", text)
             self.assertIn("remove the ones that were never used", text)
+
+    def test_the_email_shows_the_hub_logo(self) -> None:
+        ((user, found),) = waiting()
+        html = str(build(user, found).alternatives[0][0])
+        self.assertIn(f'src="{settings.PUBLIC_URL}/static/assets/logo-vertical.png"', html)
 
     def test_nobody_is_told_about_a_pair_staff_are_already_reviewing(self) -> None:
         asked = ServiceRequest.objects.create(
