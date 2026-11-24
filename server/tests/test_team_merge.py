@@ -6,7 +6,7 @@ from django.contrib.auth.models import Permission
 from django.core import mail
 from django.test import TestCase, override_settings
 
-from server.core.models import Player, Team, User
+from server.core.models import Player, Team, UCPerson, User
 from server.duplicates.teams.merge import (
     TeamMergeBlockedError,
     blockers,
@@ -29,6 +29,7 @@ from server.tournament.models import (
     Registration,
     SwissRound,
     Tournament,
+    UCRegistration,
 )
 from server.transaction.models import RazorpayTransaction
 from server.wrapped.models import PlayerWrapped
@@ -379,6 +380,26 @@ class TestBlockers(TeamMergeTestCase):
         self.tournament_with(self.dup, title="Two")
 
         self.assertEqual(blockers([self.keeper, self.dup]), [])
+
+    def imported_at(self, event: Any) -> None:
+        for team, email in ((self.keeper, "a@x.com"), (self.dup, "b@x.com")):
+            person = UCPerson.objects.create(email=email, first_name="A", slug=email)
+            UCRegistration.objects.create(event=event, team=team, person=person, roles=[])
+
+    def test_an_ultimate_central_import_alone_does_not_block(self) -> None:
+        # Old imports listed a club's Opens and Women's squads at one event as two teams.
+        self.imported_at(create_event("Open & Women's Regionals"))
+
+        self.assertEqual(blockers([self.keeper, self.dup]), [])
+        merge_teams(self.keeper, [self.dup])
+        self.assertFalse(Team.objects.filter(pk=self.dup.pk).exists())
+        self.assertEqual(UCRegistration.objects.filter(team=self.keeper).count(), 2)
+
+    def test_an_import_does_not_excuse_a_tournament_both_played(self) -> None:
+        tournament = self.tournament_with(self.keeper, self.dup, title="Regionals")
+        self.imported_at(tournament.event)
+
+        self.assertEqual(len(blockers([self.keeper, self.dup])), 1)
 
 
 class TestReview(TeamMergeTestCase):

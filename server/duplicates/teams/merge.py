@@ -45,7 +45,6 @@ from server.tournament.models import (
     Registration,
     SwissRound,
     Tournament,
-    UCRegistration,
 )
 from server.wrapped.models import PlayerWrapped
 
@@ -130,7 +129,9 @@ def places_of(teams: list[Team]) -> dict[int, set[tuple[str, int]]]:
             if team_id in places and place is not None:
                 places[team_id].add((kind, place))
 
-    for model in (Registration, RosterEntry, RosterSwap, UCRegistration, EventRosterInvitation):
+    # Not Ultimate Central imports: they listed a club's Opens and Women's
+    # squads at one event as two teams.
+    for model in (Registration, RosterEntry, RosterSwap, EventRosterInvitation):
         add("event", model.objects.filter(team__in=ids).values_list("team_id", "event_id"))
     for through in (Tournament.teams.through, Tournament.partial_teams.through):
         add(
