@@ -241,7 +241,9 @@ class TestSendLink(TestCase):
         (messages,) = queue.call_args.args
         self.assertEqual(1, len(messages))
         self.assertEqual(["mum@example.com"], messages[0].to)
-        self.assertEqual("Please sign Tara's waiver for India Ultimate", messages[0].subject)
+        self.assertEqual(
+            "Please sign Tara's waiver and agree to the code of conduct", messages[0].subject
+        )
         self.assertIn("/guardian/", messages[0].body)
         self.assertIn("7 days", messages[0].body)
 
@@ -256,8 +258,27 @@ class TestSendLink(TestCase):
         with mock.patch("server.guardians.emails.queue_emails") as queue:
             emails.send_link(self.g, by=self.minor.user)
         message = queue.call_args.args[0][0]
-        self.assertIn("Tara Kumar has added you as Tara Kumar's guardian", message.body)
+        self.assertIn("Tara added you as their parent or guardian", message.body)
+        self.assertIn("sign their waiver and agree to their code of conduct", message.body)
         self.assertNotIn("font-family", message.body)
+        self.assertTrue(message.body.startswith("Please sign Tara's"))
+        self.assertEqual(1, message.body.count("/guardian/"))
+
+    def test_someone_else_adding_the_guardian_is_named(self) -> None:
+        coach = person("coach@example.com", born=ADULT, first="Dev")
+        with mock.patch("server.guardians.emails.queue_emails") as queue:
+            emails.send_link(self.g, by=coach.user)
+        self.assertIn("Dev added you as Tara's parent or guardian", queue.call_args.args[0][0].body)
+
+    def test_only_what_is_pending_is_asked(self) -> None:
+        sub = subscribe(self.minor)
+        sub.waiver_valid = True
+        sub.save()
+        with mock.patch("server.guardians.emails.queue_emails") as queue:
+            emails.send_link(self.g)
+        body = queue.call_args.args[0][0].body
+        self.assertIn("agree to their code of conduct.", body)
+        self.assertNotIn("waiver", body)
 
     def test_may_send_waits_10_minutes(self) -> None:
         self.assertTrue(emails.may_send(self.g))
@@ -416,6 +437,19 @@ class TestGuardianApi(TestCase):
         with mock.patch("server.guardians.emails.queue_emails"):
             self.assertEqual(200, self.client.post(f"{self.url}/link").status_code)
         self.assertFalse(tokens.inspect(old)[1])
+
+    def test_resend_with_nothing_left_to_sign_sends_nothing(self) -> None:
+        from server.subscription.models import Subscription
+
+        sub = subscribe(self.minor)
+        Subscription.objects.filter(pk=sub.pk).update(waiver_valid=True, coc_agreed=True)
+        self.g.link_sent_at = None
+        self.g.save()
+        with mock.patch("server.guardians.emails.queue_emails") as queue:
+            r = self.client.post(f"{self.url}/link")
+        self.assertEqual(400, r.status_code)
+        self.assertEqual("Nothing is left to sign.", r.json()["message"])
+        queue.assert_not_called()
 
     def test_resend_says_so_when_there_is_no_address(self) -> None:
         self.g.link_sent_at = None
@@ -599,7 +633,56 @@ class TestConfirmation(TestCase):
         _, confirmation = self.confirm()
         body = html(confirmation.call_args.args[0][0])
         self.assertNotIn("We've emailed", body)
-        self.assertIn("Sign the waiver", body)
+        self.assertIn("/dashboard", body)
+        self.assertNotIn("Sign the waiver", body)
+        self.assertNotIn("Read and agree", body)
+
+    def test_a_minor_is_never_offered_the_buttons(self) -> None:
+        _, confirmation = self.confirm()
+        body = html(confirmation.call_args.args[0][0])
+        self.assertIn("sign your waiver and agree to the code of conduct", body)
+        self.assertNotIn("Sign the waiver", body)
+        self.assertNotIn("Read and agree", body)
+
+    def test_a_minor_with_no_guardian_is_told_to_add_one(self) -> None:
+        self.g.delete()
+        _, confirmation = self.confirm()
+        message = confirmation.call_args.args[0][0]
+        self.assertIn("/dashboard", html(message))
+        self.assertIn("parent or guardian", message.body)
+        self.assertNotIn("Read and agree", html(message))
+
+    def test_the_guardian_link_goes_out_for_the_code_of_conduct_alone(self) -> None:
+        self.sub.waiver_valid = True
+        self.sub.save()
+        link, _ = self.confirm()
+        self.assertEqual(1, link.call_count)
+
+    def test_nothing_pending_sends_no_guardian_link(self) -> None:
+        self.sub.waiver_valid = True
+        self.sub.coc_agreed = True
+        self.sub.save()
+        link, _ = self.confirm()
+        self.assertEqual(0, link.call_count)
+
+    def test_a_guardian_with_no_name_is_still_not_a_reason_to_offer_buttons(self) -> None:
+        User.objects.filter(pk=self.parent.user_id).update(first_name="", last_name="")
+        self.g.refresh_from_db()
+        _, confirmation = self.confirm()
+        body = html(confirmation.call_args.args[0][0])
+        self.assertIn("We've emailed your guardian", body)
+        self.assertNotIn("Read and agree", body)
+
+    def test_the_text_part_is_plain_and_has_the_key_sentence(self) -> None:
+        _, confirmation = self.confirm()
+        body = confirmation.call_args.args[0][0].body
+        self.assertTrue(body.startswith("Your subscription is active"))
+        self.assertIn(
+            "We've emailed Mum Kumar a link to sign your waiver and agree to the code of conduct",
+            body,
+        )
+        self.assertNotIn("font-family", body)
+        self.assertNotIn("subscription subscription", body)
 
     def test_a_minor_without_an_at_address_still_gets_the_guardian_link(self) -> None:
         self.minor.user.email = "tara-kumar"
@@ -720,3 +803,4 @@ class TestRightsEndAt18(TestCase):
         self.assertEqual({"W1", "G1"}, seen())
         self.turn()
         self.assertEqual({paid_by_guardian.transaction_id}, seen())
+
