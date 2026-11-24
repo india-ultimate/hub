@@ -70,6 +70,11 @@ jobs:
       - name: Install dependencies
         run: poetry install --no-root --with=dev
 
+      - name: Set up Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 22
+
       # One process per core: each gets its own copy of the test database.
       - name: Run Django unit tests
         env:
