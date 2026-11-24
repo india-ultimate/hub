@@ -6,5 +6,13 @@
 <p style="margin:0 0 16px;"> Hi {{ first_name }},</p>
 <p style="margin:0 0 16px;"> You need to agree to India Ultimate's code of conduct before you can be added to a tournament roster. It takes about two minutes.</p>
 {% include "emails/_button.html" with url=coc_url label="Read and agree" %}
+{% if one_tap %}
+<p style="margin:0 0 16px;"> The button opens the Hub and signs you in. You do not need a password.</p>
+{% endif %}
 {% include "emails/_link.html" with url=coc_url %}
+{% if one_tap %}
+<p style="margin:0 0 16px;"> This link works once, for up to 7 days. If it stops working, open the Hub and sign in with your email.</p>
+{% else %}
+<p style="margin:0 0 16px;"> The Hub will ask you to sign in with your email.</p>
+{% endif %}
 {% endblock %}

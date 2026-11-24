@@ -596,7 +596,7 @@ class TestRemind(ApiCase):
         self.assertEqual(200, response.status_code, response.content)
         self.assertEqual(["a@x.com"], self.sent[0].to)
         html = self.html()
-        self.assertIn(f"/waiver/{p.id}", html)
+        self.assertIn("/guardian/", html)
         self.assertIn(self.team.name, html)
 
     def test_remind_waits_10_minutes(self) -> None:

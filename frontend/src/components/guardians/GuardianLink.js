@@ -10,8 +10,8 @@ import { Bar, Loading } from "../../skeletons/primitives";
 const button =
   "min-h-[44px] w-full rounded-lg bg-blue-700 px-4 py-2 text-base font-semibold text-white hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 disabled:opacity-60 sm:w-auto sm:min-w-[200px]";
 
-// Signs the guardian in only on Continue, so an email scanner that opens
-// the link changes nothing.
+// Signs the guardian (or an adult player) in only on Continue, so an email
+// scanner that opens the link changes nothing.
 const GuardianLink = () => {
   const params = useParams();
   const link = createQuery(
@@ -48,6 +48,12 @@ const GuardianLink = () => {
       ? `/login?redirect=/waiver/${link.data.player_id}`
       : "/login";
 
+  const waiverDue = () => link.data.to_sign.includes("waiver");
+  const ownTitle = () =>
+    waiverDue() ? "Sign your waiver" : "Agree to the code of conduct";
+  const ownTask = () =>
+    waiverDue() ? "sign your waiver" : "agree to the code of conduct";
+
   const guardianFirst = () => link.data.guardian_name?.split(" ")[0] || "there";
 
   return (
@@ -65,15 +71,35 @@ const GuardianLink = () => {
           when={!unusable()}
           fallback={
             <div class="flex flex-col gap-4">
-              <h1 class="text-2xl font-bold">This link is no longer working</h1>
-              <p>
-                It may be older than 7 days, or a newer link was sent. Open the
-                latest email from India Ultimate, or get a code by email to sign
-                in.
-              </p>
+              <Show
+                when={link.data?.for_self}
+                fallback={
+                  <>
+                    <h1 class="text-2xl font-bold">
+                      This link is no longer working
+                    </h1>
+                    <p>
+                      It may be older than 7 days, or a newer link was sent.
+                      Open the latest email from India Ultimate, or get a code
+                      by email to sign in.
+                    </p>
+                  </>
+                }
+              >
+                <h1 class="text-2xl font-bold">
+                  This link has already been used or has expired
+                </h1>
+                <p>
+                  Open the Hub and sign in with your email. We will send you a
+                  code.
+                </p>
+              </Show>
               <Show when={link.data?.guardian_email_masked}>
                 <p class="text-sm text-gray-700 dark:text-gray-300">
-                  Use the email address that looks like{" "}
+                  Use the email address that{" "}
+                  {link.data.for_self
+                    ? `starts with ${link.data.guardian_email_masked[0]}, like`
+                    : "looks like"}{" "}
                   {link.data.guardian_email_masked}.
                 </p>
               </Show>
@@ -88,14 +114,29 @@ const GuardianLink = () => {
           }
         >
           <div class="flex flex-col gap-4">
-            <h1 class="text-2xl font-bold">
-              Hi {guardianFirst()}, {link.data.ward_first_name} needs you to
-              sign their waiver
-            </h1>
-            <p>
-              You are {link.data.ward_first_name}'s guardian. Tap Continue to
-              read and sign it.
-            </p>
+            <Show
+              when={!link.data.for_self}
+              fallback={
+                <>
+                  <h1 class="text-2xl font-bold">{ownTitle()}</h1>
+                  <p>
+                    Hi {guardianFirst()}, Continue to sign in and {ownTask()}.
+                    You do not need a password.
+                  </p>
+                </>
+              }
+            >
+              <h1 class="text-2xl font-bold">
+                Hi {guardianFirst()}, {link.data.ward_first_name} needs you to{" "}
+                {waiverDue()
+                  ? "sign their waiver"
+                  : "agree to their code of conduct"}
+              </h1>
+              <p>
+                You are {link.data.ward_first_name}'s guardian. Tap Continue to
+                read and {waiverDue() ? "sign" : "agree"}.
+              </p>
+            </Show>
             <Show when={link.data.signed_in_name}>
               <p>
                 This device is signed in as {link.data.signed_in_name}.
@@ -125,9 +166,11 @@ const GuardianLink = () => {
                 <span>{error()}</span>
               </p>
             </Show>
-            <p class="text-sm text-gray-700 dark:text-gray-300">
-              Link sent to {link.data.guardian_email_masked}
-            </p>
+            <Show when={!link.data.for_self}>
+              <p class="text-sm text-gray-700 dark:text-gray-300">
+                Link sent to {link.data.guardian_email_masked}
+              </p>
+            </Show>
           </div>
         </Show>
       </Show>

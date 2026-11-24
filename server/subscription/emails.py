@@ -8,6 +8,7 @@ from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 
 from server.core.models import Guardianship, Player, User
+from server.guardians import tokens
 from server.guardians.emails import build_link, to_do, to_sign
 from server.season.models import Season
 from server.subscription.models import Subscription
@@ -110,10 +111,14 @@ def build_code_of_conduct_request(
         if message is not None:
             return message
     link = f"{settings.PUBLIC_URL}/code-of-conduct/{player.id}"
+    one_tap = not player.is_minor and not (to.is_staff or to.is_superuser)
+    if one_tap:
+        link = f"{settings.PUBLIC_URL}/guardian/{tokens.mint_own(player)}"
     context = {
         "site_url": settings.PUBLIC_URL,
         "first_name": to.first_name or "there",
         "coc_url": link,
+        "one_tap": one_tap,
     }
     html = render_to_string("emails/code_of_conduct_request.html", context)
     message = EmailMultiAlternatives(
