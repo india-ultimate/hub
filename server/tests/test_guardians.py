@@ -4,7 +4,8 @@ from typing import Any, cast
 from unittest import mock
 
 from dateutil.relativedelta import relativedelta
-from django.test import Client, RequestFactory, TestCase
+from django.core.cache import cache
+from django.test import Client, RequestFactory, TestCase, override_settings
 from django.utils.timezone import now
 
 import server.mcp.tools  # noqa: F401
@@ -202,7 +203,7 @@ class TestLinkEndpoints(TestCase):
         self.parent.user.save()
         r = self.client.post(self.url)
         self.assertEqual(410, r.status_code)
-        self.assertEqual("This link has expired or was already used.", r.json()["message"])
+        self.assertEqual("This link has expired, or a newer link was sent.", r.json()["message"])
         self.assertNotIn("_auth_user_id", self.client.session)
 
     def test_continue_needs_csrf(self) -> None:
@@ -349,7 +350,10 @@ class TestGuardianApi(TestCase):
         person("teen@example.com", born=minor_dob(), first="Teen")
         r = self.put(email="teen@example.com")
         self.assertEqual(400, r.status_code)
-        self.assertEqual("A guardian must be 18 or older", r.json()["message"])
+        self.assertEqual(
+            "A guardian must be 18 or older. Please use a parent or another adult.",
+            r.json()["message"],
+        )
         self.g.refresh_from_db()
         self.assertEqual(self.parent.user, self.g.user)
 
@@ -393,12 +397,74 @@ class TestGuardianApi(TestCase):
             self.g.save()
             self.assertEqual(200, self.client.post(f"{self.url}/link").status_code)
 
+    def test_resend_kills_the_link_already_sent(self) -> None:
+        self.g.link_sent_at = now() - datetime.timedelta(minutes=11)
+        self.g.save()
+        old = tokens.mint(self.g)
+        with mock.patch("server.guardians.emails.queue_emails"):
+            self.assertEqual(200, self.client.post(f"{self.url}/link").status_code)
+        self.assertFalse(tokens.inspect(old)[1])
+
+    def test_resend_says_so_when_there_is_no_address(self) -> None:
+        self.g.link_sent_at = None
+        self.g.save()
+        User.objects.filter(pk=self.parent.user_id).update(email="mum")
+        with mock.patch("server.guardians.emails.queue_emails") as queue:
+            r = self.client.post(f"{self.url}/link")
+        self.assertEqual(400, r.status_code)
+        queue.assert_not_called()
+
+    def test_a_failing_resend_is_not_a_500_and_keeps_the_old_link(self) -> None:
+        self.g.link_sent_at = None
+        self.g.save()
+        with mock.patch("server.guardians.emails.queue_emails", side_effect=RuntimeError):
+            r = self.client.post(f"{self.url}/link")
+        self.assertEqual(400, r.status_code)
+        self.g.refresh_from_db()
+        self.assertIsNone(self.g.link_sent_at)
+
     def test_resend_needs_a_guardian_who_is_not_the_player(self) -> None:
         self.g.user = self.minor.user
         self.g.save()
         self.assertEqual(400, self.client.post(f"{self.url}/link").status_code)
         self.g.delete()
         self.assertEqual(400, self.client.post(f"{self.url}/link").status_code)
+
+    def test_the_status_of_a_ward_with_no_subscription_has_no_waiver(self) -> None:
+        body = self.client.get(self.url).json()
+        self.assertIsNone(body["waiver"])
+        self.assertIsNone(body["coc"])
+        self.assertEqual("Mum", body["guardian"]["first_name"])
+
+    @override_settings(
+        CACHES={"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+    )
+    def test_a_player_may_change_the_guardian_three_times_an_hour(self) -> None:
+        cache.clear()
+        with mock.patch("server.guardians.emails.queue_emails"):
+            for n in range(3):
+                self.assertEqual(200, self.put(email=f"dad{n}@example.com").status_code)
+            self.assertEqual(200, self.put(email="dad2@example.com", relation="MO").status_code)
+            r = self.put(email="dad3@example.com")
+        self.assertEqual(429, r.status_code)
+        self.assertIn("Try again in an hour", r.json()["message"])
+        self.assertEqual("dad2@example.com", Guardianship.objects.get(player=self.minor).user.email)
+
+    @override_settings(
+        CACHES={"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+    )
+    def test_staff_are_not_capped(self) -> None:
+        cache.clear()
+        User.objects.filter(pk=self.minor.user_id).update(is_staff=True)
+        with mock.patch("server.guardians.emails.queue_emails"):
+            for n in range(5):
+                self.assertEqual(200, self.put(email=f"dad{n}@example.com").status_code)
+
+    def test_a_change_retires_the_old_stamp_even_if_the_email_fails(self) -> None:
+        with mock.patch("server.guardians.emails.queue_emails", side_effect=RuntimeError):
+            self.assertEqual(200, self.put().status_code)
+        g = Guardianship.objects.get(player=self.minor)
+        self.assertIsNone(g.link_sent_at)
 
     def test_a_minor_with_no_guardian_adds_one(self) -> None:
         self.g.delete()
@@ -480,7 +546,10 @@ class TestRegistration(TestCase):
             "/api/registration/guardian", {**self.form(), "guardian_email": "kid2@example.com"}
         )
         self.assertEqual(400, r.status_code)
-        self.assertEqual("A guardian must be 18 or older", r.json()["message"])
+        self.assertEqual(
+            "A guardian must be 18 or older. Please use a parent or another adult.",
+            r.json()["message"],
+        )
         self.assertFalse(Player.objects.filter(user=self.user).exists())
 
     def test_a_failing_guardian_email_does_not_undo_the_registration(self) -> None:
@@ -531,6 +600,14 @@ class TestConfirmation(TestCase):
         self.confirm()
         link, _ = self.confirm()
         self.assertEqual(0, link.call_count)
+
+    def test_the_confirmation_keeps_the_registration_link_valid(self) -> None:
+        self.g.link_sent_at = now() - datetime.timedelta(minutes=11)
+        self.g.save()
+        token = tokens.mint(self.g)
+        link, _ = self.confirm()
+        self.assertEqual(1, link.call_count)
+        self.assertTrue(tokens.inspect(token)[1])
 
     def test_a_failing_guardian_email_does_not_fail_the_confirmation(self) -> None:
         with (

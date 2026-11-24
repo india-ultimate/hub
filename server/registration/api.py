@@ -330,23 +330,32 @@ def remind_waiver(
     reason = entry_reasons(build_context(event, team, request.user)).get(player.id)
     if reason is None or reason.code != "waiting.waiver":
         return 400, {"message": "Only an unsigned waiver can be reminded"}
+    g = Guardianship.objects.filter(player=player).select_related("user").first()
     if player.is_minor:
-        g = Guardianship.objects.filter(player=player).select_related("user").first()
         if g is None:
             return 400, {"message": "Add a guardian first"}
         if g.user_id == player.user_id:
             return 400, {
                 "message": "This player is listed as their own guardian. "
-                "They need to change their guardian first."
+                "Ask them to change their guardian first."
             }
-        if not guardian_emails.may_send(g):
-            return 429, {"message": guardian_emails.TOO_SOON}
-        guardian_emails.send_link(g)
-    else:
-        if not cache.add(f"waiver-remind:{player.id}", 1, timeout=600):
-            return 429, {"message": guardian_emails.TOO_SOON}
-        guardian_emails.send_waiver_reminder(player, request.user, team.name)
-    return 200, {"message": "Reminder sent"}
+    if not cache.add(f"waiver-remind:{player.id}", 1, timeout=600):
+        return 429, {"message": "A reminder was sent less than 10 minutes ago. Try again later."}
+    try:
+        if player.is_minor and g is not None:
+            sent = guardian_emails.send_link(g, reuse=True)
+            who = f"{g.user.get_full_name() or g.user.get_username()} (guardian)"
+        else:
+            sent = guardian_emails.send_waiver_reminder(player, request.user, team.name)
+            who = player.user.get_full_name() or player.user.get_username()
+    except Exception:
+        logger.exception("Couldn't send a waiver reminder for player %s", player.pk)
+        cache.delete(f"waiver-remind:{player.id}")
+        return 400, {"message": "Couldn't send the email. Try again in a moment."}
+    if not sent:
+        cache.delete(f"waiver-remind:{player.id}")
+        return 400, {"message": "There is no email address on file to send the reminder to."}
+    return 200, {"message": f"Reminder sent to {who}"}
 
 
 def _tell_swapped_out(player: Player, team: Team, event: Event, by: User) -> None:
