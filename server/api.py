@@ -193,6 +193,7 @@ from server.tournament.schema import (
     TournamentPlayerRegistrationUpdateSchema,
     TournamentRulesSchema,
     TournamentSchema,
+    TournamentSeededSchema,
     TournamentUpdateSeedingSchema,
     UCRegistrationSchema,
     public_match_stats,
@@ -208,6 +209,7 @@ from server.tournament.utils import (
     can_manage_tournament,
     can_register_player_to_series_event,
     create_spirit_scores,
+    draw_tournament_seeding,
     get_bracket_match_name,
     get_default_rules,
     is_submitted_scores_equal,
@@ -216,6 +218,7 @@ from server.tournament.utils import (
     rerun_swiss_round,
     roster_player,
     series_role,
+    set_tournament_seeded,
     update_match_score_and_results,
     update_tournament_seeding,
     update_tournament_spirit_rankings,
@@ -2278,6 +2281,55 @@ def update_standings(
     ok, error = update_tournament_seeding(tournament, tournament_details.seeding)
     if not ok:
         return 400, error or {"message": "Cannot update seeding"}
+
+    return 200, tournament
+
+
+@api.put(
+    "/tournament/{tournament_id}/seeded",
+    response={200: TournamentSchema, 400: Response, 401: Response},
+)
+def update_tournament_seeded(
+    request: AuthenticatedHttpRequest, tournament_id: int, details: TournamentSeededSchema
+) -> tuple[int, Tournament] | tuple[int, message_response]:
+    try:
+        tournament = Tournament.objects.get(id=tournament_id)
+    except Tournament.DoesNotExist:
+        return 400, {"message": "Tournament does not exist"}
+
+    denied = _deny_unless_manager(request.user, tournament)
+    if denied:
+        return denied
+
+    ok, error = set_tournament_seeded(tournament, details.seeded)
+    if not ok:
+        return 400, error or {"message": "Cannot change seeding"}
+
+    return 200, tournament
+
+
+@api.post(
+    "/tournament/{tournament_id}/draw",
+    response={200: TournamentSchema, 400: Response, 401: Response},
+)
+def draw_tournament(
+    request: AuthenticatedHttpRequest, tournament_id: int
+) -> tuple[int, Tournament] | tuple[int, message_response]:
+    try:
+        tournament = Tournament.objects.get(id=tournament_id)
+    except Tournament.DoesNotExist:
+        return 400, {"message": "Tournament does not exist"}
+
+    denied = _deny_unless_manager(request.user, tournament)
+    if denied:
+        return denied
+
+    if tournament.seeded:
+        return 400, {"message": "This tournament is seeded. Switch it to unseeded to draw."}
+
+    ok, error = draw_tournament_seeding(tournament)
+    if not ok:
+        return 400, error or {"message": "Cannot draw seeding"}
 
     return 200, tournament
 

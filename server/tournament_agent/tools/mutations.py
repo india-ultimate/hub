@@ -225,6 +225,9 @@ def propose_update_seeding(ctx: ToolContext, seeding: dict[str, int]) -> dict[st
             "Fix an individual match with propose_update_match instead."
         )
         return {"error": message, "message": message}
+    if not ctx.tournament.seeded:
+        message = "This tournament is unseeded. Use Redraw to draw a new order."
+        return {"error": message, "message": message}
     return ctx.create_proposal(
         "propose_update_seeding",
         "Update tournament seeding",
