@@ -1,5 +1,7 @@
 import { createMemo, createSignal, For, Show } from "solid-js";
 
+import { BYE_SCORE, nextRound, opponentStrength, rankTeams } from "./swiss.mjs";
+
 // ============ UTILITY FUNCTIONS ============
 
 function seededRandom(seed) {
@@ -46,37 +48,6 @@ const STAGE_COLORS = {
 };
 
 // ============ TOURNAMENT ALGORITHMS ============
-
-function computeOpponentStrength(matches, results) {
-  // Sum of opponents' points for each team (higher = faced stronger opponents)
-  const strength = {};
-  for (const id of Object.keys(results)) {
-    strength[parseInt(id)] = 0;
-  }
-  for (const match of matches) {
-    if (!match.team_1 || !match.team_2) continue;
-    const t1 = match.team_1.id;
-    const t2 = match.team_2.id;
-    const t1Pts = (results[t1]?.wins || 0) * 2 + (results[t1]?.draws || 0);
-    const t2Pts = (results[t2]?.wins || 0) * 2 + (results[t2]?.draws || 0);
-    if (t1 in strength) strength[t1] += t2Pts;
-    if (t2 in strength) strength[t2] += t1Pts;
-  }
-  return strength;
-}
-
-function swissSort(a, b, strengthA = 0, strengthB = 0) {
-  // Sort descending: points (win=2, draw=1) → opponent strength (higher = better) → GD → GF
-  const ptsA = a.wins * 2 + (a.draws || 0);
-  const ptsB = b.wins * 2 + (b.draws || 0);
-  const pDiff = ptsB - ptsA;
-  if (pDiff !== 0) return pDiff;
-  const sDiff = strengthB - strengthA; // higher = faced stronger opponents
-  if (sDiff !== 0) return sDiff;
-  const gdDiff = b.GF - b.GA - (a.GF - a.GA);
-  if (gdDiff !== 0) return gdDiff;
-  return b.GF - a.GF;
-}
 
 function computePoolResults(matches, teamIds) {
   const results = {};
@@ -127,103 +98,44 @@ function computePoolResults(matches, teamIds) {
   return results;
 }
 
-function generateSwissPairings(
-  results,
-  playedPairs,
-  excludeTeam = null,
-  swissMatches = []
-) {
-  const oppStrength = computeOpponentStrength(swissMatches, results);
-  const standings = Object.entries(results)
-    .sort(([idA, a], [idB, b]) =>
-      swissSort(
-        a,
-        b,
-        oppStrength[parseInt(idA)] || 0,
-        oppStrength[parseInt(idB)] || 0
-      )
-    )
-    .map(([id]) => parseInt(id))
-    .filter(id => id !== excludeTeam);
-
-  const paired = new Set();
-  const pairs = [];
-
-  for (let i = 0; i < standings.length; i++) {
-    const tid = standings[i];
-    if (paired.has(tid)) continue;
-
-    let foundPartner = false;
-    for (let j = i + 1; j < standings.length; j++) {
-      const candidate = standings[j];
-      if (paired.has(candidate)) continue;
-      const key = [Math.min(tid, candidate), Math.max(tid, candidate)].join(
-        "-"
-      );
-      if (!playedPairs.has(key)) {
-        pairs.push([tid, candidate]);
-        paired.add(tid);
-        paired.add(candidate);
-        foundPartner = true;
-        break;
-      }
-    }
-    if (!foundPartner) {
-      for (let j = i + 1; j < standings.length; j++) {
-        const candidate = standings[j];
-        if (!paired.has(candidate)) {
-          pairs.push([tid, candidate]);
-          paired.add(tid);
-          paired.add(candidate);
-          break;
-        }
-      }
-    }
-  }
-  return pairs;
-}
-
-const BYE_SCORE = 15;
-
-function selectByeTeam(results, teamsWithByes, swissMatches = []) {
-  // Sort ascending (worst first) — reverse of swissSort
-  const oppStrength = computeOpponentStrength(swissMatches, results);
-  const standings = Object.entries(results)
-    .sort(([idA, a], [idB, b]) =>
-      swissSort(
-        b,
-        a,
-        oppStrength[parseInt(idB)] || 0,
-        oppStrength[parseInt(idA)] || 0
-      )
-    )
-    .map(([id]) => parseInt(id));
-
-  for (const tid of standings) {
-    if (!teamsWithByes.has(tid)) return tid;
-  }
-  return standings[0]; // fallback
-}
-
 function applyByeToResults(results, teamId) {
   results[teamId].wins += 1;
   results[teamId].GF += BYE_SCORE;
 }
 
-function rerankResults(results, swissMatches = []) {
-  // Compute OS (sum of opponents' points) and store on each team
-  const oppStrength = computeOpponentStrength(swissMatches, results);
-  for (const [id, stats] of Object.entries(results)) {
-    stats.os = oppStrength[parseInt(id)] || 0;
-  }
+const pairKey = (a, b) => `${Math.min(a, b)}-${Math.max(a, b)}`;
 
-  // Rank by: points → OS (higher = better) → GD → GF
-  const ranked = Object.entries(results).sort(([, a], [, b]) =>
-    swissSort(a, b, a.os || 0, b.os || 0)
+function drawLots(teamIds, drawNumber) {
+  const byLot = [...teamIds].sort(
+    (a, b) =>
+      seededRandom(drawNumber * 1000 + a) - seededRandom(drawNumber * 1000 + b)
   );
-  ranked.forEach(([, stats], i) => {
-    stats.rank = i + 1;
+  return Object.fromEntries(byLot.map((id, i) => [id, i + 1]));
+}
+
+function drawOrder(teamIds, drawNumber) {
+  return [...teamIds].sort(
+    (a, b) =>
+      seededRandom(drawNumber * 7919 + a) - seededRandom(drawNumber * 7919 + b)
+  );
+}
+
+function swissStandings(matches, teamIds, teamsWithByes, lots) {
+  const results = computePoolResults(matches, teamIds);
+  for (const id of teamsWithByes) applyByeToResults(results, id);
+  const games = matches.map(m => [
+    m.team_1.id,
+    m.team_2.id,
+    m.score_team_1,
+    m.score_team_2
+  ]);
+  const order = rankTeams(results, games, lots);
+  const strength = opponentStrength(results, games);
+  order.forEach((id, i) => {
+    results[id].rank = i + 1;
+    results[id].os = strength[id];
   });
+  return { results, order };
 }
 
 function updateBracketSeeding(seeding, match) {
@@ -321,7 +233,9 @@ function recomputeTournament(config, scoreOverrides) {
     numPools,
     swissRounds: numSwissRounds,
     numSwissGroups,
-    teamNames
+    teamNames,
+    seeded,
+    drawNumber
   } = config;
 
   // 1. Create teams
@@ -336,8 +250,14 @@ function recomputeTournament(config, scoreOverrides) {
 
   // 2. Initial seeding
   const initialSeeding = {};
-  teams.forEach((t, i) => {
-    initialSeeding[i + 1] = t.id;
+  const startOrder = seeded
+    ? teams.map(t => t.id)
+    : drawOrder(
+        teams.map(t => t.id),
+        drawNumber
+      );
+  startOrder.forEach((id, i) => {
+    initialSeeding[i + 1] = id;
   });
   let currentSeeding = { ...initialSeeding };
 
@@ -367,8 +287,8 @@ function recomputeTournament(config, scoreOverrides) {
             bracket: null,
             position_pool: null,
             sequence_number: 1,
-            placeholder_seed_1: seedsInPool[i],
-            placeholder_seed_2: seedsInPool[j],
+            placeholder_seed_1: seeded ? seedsInPool[i] : null,
+            placeholder_seed_2: seeded ? seedsInPool[j] : null,
             team_1: teamsById[initialSeeding[seedsInPool[i]]],
             team_2: teamsById[initialSeeding[seedsInPool[j]]],
             score_team_1: s1,
@@ -421,87 +341,55 @@ function recomputeTournament(config, scoreOverrides) {
         type: "swiss"
       };
       const groupTeamIds = seedsInGroup.map(s => initialSeeding[s]);
+      const lots = drawLots(groupTeamIds, drawNumber);
       const allSwissMatches = [];
       const playedPairs = new Set();
-      const isOdd = seedsInGroup.length % 2 !== 0;
+      const isOdd = groupTeamIds.length % 2 !== 0;
       const teamsWithByes = new Set();
+      const sortedSeeds = [...seedsInGroup].sort((a, b) => a - b);
 
-      // Build group-local seeding: position → teamId
-      const groupSeeding = {};
-      seedsInGroup.forEach((seed, i) => {
-        groupSeeding[i + 1] = initialSeeding[seed];
-      });
-      const groupSize = seedsInGroup.length;
-
-      // Initialize results
-      let swissResults = {};
-      groupTeamIds.forEach((tid, i) => {
-        swissResults[tid] = {
-          rank: i + 1,
-          wins: 0,
-          losses: 0,
-          draws: 0,
-          GF: 0,
-          GA: 0
-        };
-      });
+      let order = groupTeamIds;
+      let swissResults = computePoolResults([], groupTeamIds);
 
       for (let round = 1; round <= numSwissRounds; round++) {
-        let pairings;
         let byeTeamId = null;
-
+        let pairings;
+        let labelOrder = order;
         if (round === 1) {
-          if (isOdd) {
-            byeTeamId = groupSeeding[groupSize];
-            teamsWithByes.add(byeTeamId);
-            applyByeToResults(swissResults, byeTeamId);
-            rerankResults(swissResults, allSwissMatches);
-          }
-          pairings = [];
-          const activeCount = isOdd ? groupSize - 1 : groupSize;
-          for (let i = 0; i < activeCount / 2; i++) {
-            const seed1 = i + 1;
-            const seed2 = activeCount - i;
-            pairings.push([groupSeeding[seed1], groupSeeding[seed2]]);
-          }
+          if (isOdd) byeTeamId = order[order.length - 1];
+          const active = order.filter(id => id !== byeTeamId);
+          pairings = active
+            .slice(0, active.length / 2)
+            .map((id, i) => [id, active[active.length - 1 - i]]);
         } else {
-          if (isOdd) {
-            byeTeamId = selectByeTeam(
-              swissResults,
-              teamsWithByes,
-              allSwissMatches
-            );
-            teamsWithByes.add(byeTeamId);
-            applyByeToResults(swissResults, byeTeamId);
-            rerankResults(swissResults, allSwissMatches);
-          }
-          pairings = generateSwissPairings(
+          ({
+            bye: byeTeamId,
+            pairs: pairings,
+            order: labelOrder
+          } = nextRound(
             swissResults,
-            playedPairs,
-            byeTeamId,
-            allSwissMatches
-          );
+            allSwissMatches.map(m => [
+              m.team_1.id,
+              m.team_2.id,
+              m.score_team_1,
+              m.score_team_2
+            ]),
+            lots,
+            teamsWithByes,
+            playedPairs
+          ));
         }
+        if (byeTeamId !== null) teamsWithByes.add(byeTeamId);
 
         const roundMatches = [];
         const namePrefix = multiGroup ? `Swiss ${groupName} ` : "Swiss ";
+        const label = id => {
+          if (round > 1) return labelOrder.indexOf(id) + 1;
+          return seeded ? groupTeamIds.indexOf(id) + 1 : null;
+        };
         pairings.forEach(([t1Id, t2Id], matchIdx) => {
           const matchId = idCounter.next++;
           const [s1, s2] = scoreOverrides[matchId] || generateScore(matchId);
-
-          let ps1, ps2;
-          if (round === 1) {
-            ps1 = parseInt(
-              Object.entries(groupSeeding).find(([, v]) => v === t1Id)[0]
-            );
-            ps2 = parseInt(
-              Object.entries(groupSeeding).find(([, v]) => v === t2Id)[0]
-            );
-          } else {
-            ps1 = swissResults[t1Id]?.rank || 1;
-            ps2 = swissResults[t2Id]?.rank || 1;
-          }
-
           const m = {
             id: matchId,
             name: `${namePrefix}R${round} M${matchIdx + 1}`,
@@ -510,8 +398,8 @@ function recomputeTournament(config, scoreOverrides) {
             bracket: null,
             position_pool: null,
             sequence_number: round,
-            placeholder_seed_1: ps1,
-            placeholder_seed_2: ps2,
+            placeholder_seed_1: label(t1Id),
+            placeholder_seed_2: label(t2Id),
             team_1: teamsById[t1Id],
             team_2: teamsById[t2Id],
             score_team_1: s1,
@@ -520,57 +408,37 @@ function recomputeTournament(config, scoreOverrides) {
           roundMatches.push(m);
           allSwissMatches.push(m);
           allMatches.push(m);
-
-          const key = [Math.min(t1Id, t2Id), Math.max(t1Id, t2Id)].join("-");
-          playedPairs.add(key);
+          playedPairs.add(pairKey(t1Id, t2Id));
         });
 
-        swissResults = computePoolResults(allSwissMatches, groupTeamIds);
-
-        for (const btId of teamsWithByes) {
-          applyByeToResults(swissResults, btId);
-        }
-        rerankResults(swissResults, allSwissMatches);
+        ({ results: swissResults, order } = swissStandings(
+          allSwissMatches,
+          groupTeamIds,
+          teamsWithByes,
+          lots
+        ));
 
         // Update currentSeeding after each round: rank 1 → lowest seed, etc.
-        const sortedSeeds = [...seedsInGroup].sort((a, b) => a - b);
-        const roundOppStrength = computeOpponentStrength(
-          allSwissMatches,
-          swissResults
-        );
-        const rankedTeams = Object.entries(swissResults).sort(
-          ([idA, a], [idB, b]) =>
-            swissSort(
-              a,
-              b,
-              roundOppStrength[parseInt(idA)] || 0,
-              roundOppStrength[parseInt(idB)] || 0
-            )
-        );
-        rankedTeams.forEach(([teamId], idx) => {
-          currentSeeding[sortedSeeds[idx]] = parseInt(teamId);
+        order.forEach((teamId, idx) => {
+          currentSeeding[sortedSeeds[idx]] = teamId;
         });
-
-        // Build teamId → tournament seed map from updated seeding
         const teamSeedMap = {};
         sortedSeeds.forEach(seed => {
           teamSeedMap[currentSeeding[seed]] = seed;
         });
 
-        const stageName = multiGroup
-          ? `Swiss ${groupName} Round ${round}`
-          : `Swiss Round ${round}`;
-
         stages.push({
           type: "swiss",
-          name: stageName,
+          name: multiGroup
+            ? `Swiss ${groupName} Round ${round}`
+            : `Swiss Round ${round}`,
           matches: roundMatches,
           results: JSON.parse(JSON.stringify(swissResults)),
           round,
           totalRounds: numSwissRounds,
           byeTeamId,
           swissMatchesSoFar: [...allSwissMatches],
-          teamSeedMap
+          teamSeedMap: seeded ? teamSeedMap : null
         });
       }
     });
@@ -758,7 +626,8 @@ function recomputeTournament(config, scoreOverrides) {
     currentSeeding,
     postSeedingStageSeeding,
     teamsById,
-    initialStage
+    initialStage,
+    seeded
   };
 }
 
@@ -845,8 +714,8 @@ function StandingsTable(props) {
       </div>
       <Show when={isSwiss()}>
         <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-          Pts = Win(2) + Draw(1). OS = sum of opponents' points (higher = faced
-          stronger opponents). Tiebreaker: Pts &gt; H2H &gt; OS &gt; GD.
+          Pts = Win(2) + Draw(1). OS = sum of opponents' points. Ties: head to
+          head, OS, goal difference, goals scored, then a random lot.
         </p>
       </Show>
     </div>
@@ -859,9 +728,11 @@ function MatchRow(props) {
       <span class="flex-1 text-right text-sm font-medium text-gray-900 dark:text-white">
         {props.match.team_1?.name || "TBD"}
       </span>
-      <span class="text-xs text-gray-400">
-        ({props.match.placeholder_seed_1})
-      </span>
+      <Show when={props.match.placeholder_seed_1 !== null}>
+        <span class="text-xs text-gray-400">
+          ({props.match.placeholder_seed_1})
+        </span>
+      </Show>
       <input
         type="number"
         class="w-12 rounded border border-gray-300 bg-gray-50 px-1 py-0.5 text-center text-sm font-bold text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
@@ -887,9 +758,11 @@ function MatchRow(props) {
           ])
         }
       />
-      <span class="text-xs text-gray-400">
-        ({props.match.placeholder_seed_2})
-      </span>
+      <Show when={props.match.placeholder_seed_2 !== null}>
+        <span class="text-xs text-gray-400">
+          ({props.match.placeholder_seed_2})
+        </span>
+      </Show>
       <span class="flex-1 text-sm font-medium text-gray-900 dark:text-white">
         {props.match.team_2?.name || "TBD"}
       </span>
@@ -898,26 +771,38 @@ function MatchRow(props) {
 }
 
 function SeedingTable(props) {
-  const entries = createMemo(() =>
-    Object.entries(props.seeding || {}).sort(
-      ([a], [b]) => parseInt(a) - parseInt(b)
-    )
-  );
+  const entries = createMemo(() => {
+    const rows = Object.entries(props.seeding || {});
+    if (props.unseeded) {
+      const teams = props.teamsById;
+      return rows.sort(([, a], [, b]) =>
+        (teams[a]?.name || "").localeCompare(teams[b]?.name || "", undefined, {
+          numeric: true
+        })
+      );
+    }
+    return rows.sort(([a], [b]) => parseInt(a) - parseInt(b));
+  });
 
   return (
     <div
       class={`mb-6 rounded-lg border border-${props.colorClass}-200 bg-${props.colorClass}-50 p-4 dark:border-${props.colorClass}-800 dark:bg-${props.colorClass}-900/30`}
     >
-      <h3
-        class={`mb-2 text-sm font-semibold text-${props.colorClass}-700 dark:text-${props.colorClass}-300`}
-      >
-        {props.title}
-      </h3>
+      <div class="mb-2 flex items-center justify-between gap-2">
+        <h3
+          class={`text-sm font-semibold text-${props.colorClass}-700 dark:text-${props.colorClass}-300`}
+        >
+          {props.title}
+        </h3>
+        {props.action}
+      </div>
       <div class="overflow-x-auto rounded-lg shadow">
         <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
           <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
             <tr>
-              <th class="px-4 py-2">Seed</th>
+              <Show when={!props.unseeded}>
+                <th class="px-4 py-2">Seed</th>
+              </Show>
               <th class="px-4 py-2">Team</th>
             </tr>
           </thead>
@@ -925,7 +810,9 @@ function SeedingTable(props) {
             <For each={entries()}>
               {([seed, teamId]) => (
                 <tr class="border-b border-gray-200 dark:border-gray-700">
-                  <td class="px-4 py-2 font-medium">{seed}</td>
+                  <Show when={!props.unseeded}>
+                    <td class="px-4 py-2 font-medium">{seed}</td>
+                  </Show>
                   <td class="px-4 py-2 font-medium">
                     {props.teamsById[teamId]?.name}
                   </td>
@@ -949,7 +836,7 @@ function StageSection(props) {
       >
         {props.stage.name}
         <Show when={props.stage.type === "swiss"}>
-          <span class="ml-2 text-sm font-normal text-gray-500">
+          <span class="ml-2 text-sm font-normal text-gray-500 dark:text-gray-400">
             (Round {props.stage.round}/{props.stage.totalRounds})
           </span>
         </Show>
@@ -1025,6 +912,8 @@ export default function TournamentSimulator() {
   const [swissRounds, setSwissRounds] = createSignal(3);
   const [numSwissGroups, setNumSwissGroups] = createSignal(1);
   const [isGenerated, setIsGenerated] = createSignal(false);
+  const [seeded, setSeeded] = createSignal(true);
+  const [drawNumber, setDrawNumber] = createSignal(1);
   const [scoreOverrides, setScoreOverrides] = createSignal({});
   const [teamNames, setTeamNames] = createSignal(
     Array.from({ length: 24 }, (_, i) => `Team ${i + 1}`)
@@ -1044,7 +933,9 @@ export default function TournamentSimulator() {
     numPools: numPools(),
     swissRounds: swissRounds(),
     numSwissGroups: numSwissGroups(),
-    teamNames: teamNames()
+    teamNames: teamNames(),
+    seeded: seeded(),
+    drawNumber: drawNumber()
   }));
 
   const computed = createMemo(() => {
@@ -1059,6 +950,11 @@ export default function TournamentSimulator() {
   function handleGenerate() {
     setScoreOverrides({});
     setIsGenerated(true);
+  }
+
+  function handleRedraw() {
+    setScoreOverrides({});
+    setDrawNumber(n => n + 1);
   }
 
   function handleReset() {
@@ -1137,7 +1033,9 @@ export default function TournamentSimulator() {
                   vs N, 2 vs N-1, etc.). In subsequent rounds, teams are paired
                   by current standings, avoiding rematches where possible. After
                   all rounds, each group's ranked teams are mapped back to their
-                  original seed slots for bracket placement.
+                  original seed slots for bracket placement. In an unseeded
+                  tournament the seeds are hidden: teams are drawn at random
+                  into the starting order, and Redraw shuffles it again.
                 </p>
               </div>
 
@@ -1148,9 +1046,9 @@ export default function TournamentSimulator() {
                 <p class="mt-1">
                   When there is an odd number of teams, one team receives a{" "}
                   <span class="font-medium">bye</span> each round (a free 15-0
-                  win). The bye is given to the lowest-ranked team that hasn't
-                  already received a bye. Each team can only receive one bye
-                  across all rounds.
+                  win, counted as 15 goals scored and none conceded). The bye is
+                  given to the lowest-ranked team that hasn't already received a
+                  bye. Each team can only receive one bye across all rounds.
                 </p>
               </div>
 
@@ -1159,25 +1057,38 @@ export default function TournamentSimulator() {
                   Swiss — Ranking & Tiebreakers
                 </h4>
                 <p class="mt-1">
-                  Teams are ranked by <span class="font-medium">points</span>:
-                  win = 2 pts, draw = 1 pt, loss = 0 pts. When teams have the
-                  same points, ties are broken in this order:
+                  Teams are ranked in this order. Each step only matters for
+                  teams still level after the one before it:
                 </p>
                 <ol class="mt-1 list-inside list-decimal space-y-1 pl-2">
                   <li>
-                    <span class="font-medium">Head-to-head</span> — wins between
-                    the tied teams
+                    <span class="font-medium">Points</span> — win 2, draw 1, a
+                    bye counts as a win
                   </li>
                   <li>
-                    <span class="font-medium">Opponent strength (OS)</span> —
-                    sum of opponents' points. A higher value means the team
-                    faced stronger opponents and is ranked higher
+                    <span class="font-medium">Head-to-head wins</span> among the
+                    tied teams
                   </li>
                   <li>
-                    <span class="font-medium">Goal difference</span> — overall
-                    goals scored minus goals conceded
+                    <span class="font-medium">Opponent strength</span> — the sum
+                    of the current points of every opponent played
+                  </li>
+                  <li>
+                    <span class="font-medium">Goal difference</span>
+                  </li>
+                  <li>
+                    <span class="font-medium">Goals scored</span>
+                  </li>
+                  <li>
+                    <span class="font-medium">A random lot</span> drawn for each
+                    team
                   </li>
                 </ol>
+                <p class="mt-1">
+                  As soon as a step separates some teams, any teams still tied
+                  start again from head-to-head. The original seed is never a
+                  tie-breaker.
+                </p>
               </div>
 
               <div>
@@ -1245,9 +1156,11 @@ export default function TournamentSimulator() {
                 <For each={Array.from({ length: numTeams() }, (_, i) => i)}>
                   {i => (
                     <div class="flex items-center gap-2">
-                      <span class="w-6 text-right text-xs text-gray-400">
-                        {i + 1}.
-                      </span>
+                      <Show when={seeded()}>
+                        <span class="w-6 text-right text-xs text-gray-400">
+                          {i + 1}.
+                        </span>
+                      </Show>
                       <input
                         type="text"
                         value={teamNames()[i]}
@@ -1258,6 +1171,46 @@ export default function TournamentSimulator() {
                   )}
                 </For>
               </div>
+            </div>
+
+            {/* Seeding */}
+            <div>
+              <label class="mb-2 block text-sm font-medium text-gray-900 dark:text-white">
+                Seeding
+              </label>
+              <div class="flex gap-3" role="group" aria-label="Seeding">
+                <For
+                  each={[
+                    [true, "Seeded"],
+                    [false, "Unseeded"]
+                  ]}
+                >
+                  {([value, text]) => (
+                    <button
+                      class={`min-h-11 flex-1 rounded-lg border-2 px-4 py-3 text-sm font-medium transition-colors ${
+                        seeded() === value
+                          ? "border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                          : "border-gray-300 text-gray-700 hover:border-gray-400 dark:border-gray-600 dark:text-gray-300"
+                      }`}
+                      aria-pressed={seeded() === value}
+                      onClick={() => {
+                        setScoreOverrides({});
+                        setSeeded(value);
+                      }}
+                    >
+                      {text}
+                    </button>
+                  )}
+                </For>
+              </div>
+              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                <Show
+                  when={seeded()}
+                  fallback="Seeds are hidden. Teams start in a random order, and you can redraw it."
+                >
+                  Teams start in the order listed below, seed 1 first.
+                </Show>
+              </p>
             </div>
 
             {/* Initial Stage */}
@@ -1313,7 +1266,7 @@ export default function TournamentSimulator() {
                   }
                   class="w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                 />
-                <p class="mt-1 text-xs text-gray-500">
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                   ~{Math.ceil(numTeams() / numPools())} teams per pool
                   <Show when={numTeams() % numPools() !== 0}>
                     {" "}
@@ -1346,7 +1299,7 @@ export default function TournamentSimulator() {
                   }
                   class="w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                 />
-                <p class="mt-1 text-xs text-gray-500">
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                   ~{Math.ceil(numTeams() / numSwissGroups())} teams per group
                   (serpentine seeding)
                 </p>
@@ -1378,7 +1331,7 @@ export default function TournamentSimulator() {
               <h4 class="mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">
                 Bracket Stage (auto-configured)
               </h4>
-              <p class="text-xs text-gray-500">
+              <p class="text-xs text-gray-500 dark:text-gray-400">
                 <Show when={numTeams() <= 4}>1-{numTeams()} Bracket</Show>
                 <Show when={numTeams() > 4 && numTeams() <= 8}>
                   1-{numTeams()} Bracket
@@ -1441,7 +1394,18 @@ export default function TournamentSimulator() {
 
           {/* Initial Tournament Standings */}
           <SeedingTable
-            title="Initial Tournament Seedings"
+            title={seeded() ? "Initial Tournament Seedings" : "Teams"}
+            unseeded={!seeded()}
+            action={
+              <Show when={!seeded()}>
+                <button
+                  class="min-h-11 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+                  onClick={handleRedraw}
+                >
+                  Redraw
+                </button>
+              </Show>
+            }
             seeding={
               computed()?.teams?.reduce((acc, t, i) => {
                 acc[i + 1] = t.id;
