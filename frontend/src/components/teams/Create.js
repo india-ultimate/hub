@@ -1,16 +1,24 @@
-import { createForm, required } from "@modular-forms/solid";
-import { useNavigate } from "@solidjs/router";
-import { createMutation, useQueryClient } from "@tanstack/solid-query";
+import { createForm, getValue, required } from "@modular-forms/solid";
+import { A, useNavigate } from "@solidjs/router";
+import {
+  createMutation,
+  createQuery,
+  useQueryClient
+} from "@tanstack/solid-query";
 import { userGroup } from "solid-heroicons/solid";
-import { createSignal, Show } from "solid-js";
+import { createMemo, createSignal, For, Show } from "solid-js";
 
 import { stateChoices, teamCategoryChoices } from "../../constants";
-import { createTeam } from "../../queries";
+import { createTeam, fetchTeams } from "../../queries";
 import { withinUploadLimits } from "../../uploads";
 import Breadcrumbs from "../Breadcrumbs";
 import FileInput from "../FileInput";
 import DefaultSelect from "../Select";
 import TextInput from "../TextInput";
+
+// As server/duplicates/teams/suggest.py matches copies.
+const normalizedName = name =>
+  (name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
 
 const Create = () => {
   const navigate = useNavigate();
@@ -18,10 +26,20 @@ const Create = () => {
   const [error, setError] = createSignal("");
 
   const initialValues = {};
-  const [_createTeamForm, { Form, Field }] = createForm({
+  const [createTeamForm, { Form, Field }] = createForm({
     initialValues,
     validateOn: "touched",
     revalidateOn: "touched"
+  });
+
+  const teamsQuery = createQuery(() => ["teams"], fetchTeams);
+  const sameName = createMemo(() => {
+    const key = normalizedName(getValue(createTeamForm, "name"));
+    return key
+      ? (Array.isArray(teamsQuery.data) ? teamsQuery.data : []).filter(
+          team => normalizedName(team.name) === key
+        )
+      : [];
   });
 
   const queryClient = useQueryClient();
@@ -69,10 +87,52 @@ const Create = () => {
               type="text"
               label="Name"
               placeholder="Your team name"
+              aria-describedby="name-hint"
               required
             />
           )}
         </Field>
+        <p
+          id="name-hint"
+          class="px-8 text-sm text-gray-600 dark:text-gray-300 lg:px-10"
+        >
+          Use one team for every division and format: Opens, Mixed, Womens, 5v5,
+          beach. Each tournament gets its own roster.
+        </p>
+        <div aria-live="polite" class="px-8 lg:px-10">
+          <Show when={sameName().length > 0}>
+            <div
+              id="team-name-taken"
+              class="rounded-lg border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-900 dark:border-yellow-700 dark:bg-yellow-900 dark:text-yellow-100"
+            >
+              <p class="font-semibold">
+                {sameName().length === 1
+                  ? "There's already a team with this name"
+                  : "There are already teams with this name"}
+              </p>
+              <ul class="mt-1 list-disc pl-5">
+                <For each={sameName()}>
+                  {team => (
+                    <li>
+                      <A
+                        href={`/team/${team.slug}`}
+                        class="font-medium underline hover:no-underline"
+                      >
+                        {team.name.trim()}
+                      </A>
+                      <Show when={team.city}> · {team.city}</Show>
+                    </li>
+                  )}
+                </For>
+              </ul>
+              <p class="mt-2">
+                {sameName().length === 1
+                  ? "If it's yours, ask its admins to add you instead of making a new one. Different team? Go ahead."
+                  : "If one is yours, ask its admins to add you instead of making a new one. Different team? Go ahead."}
+              </p>
+            </div>
+          </Show>
+        </div>
         <Field name="category" validate={required("Please select a category.")}>
           {(field, props) => (
             <DefaultSelect

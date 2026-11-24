@@ -276,6 +276,10 @@ const MergeTeams = () => {
               Tournaments, rosters, matches, series, players and admins move to
               the team you keep.
             </li>
+            <li>
+              One team can play every division and format: Opens, Mixed, Womens,
+              5v5, beach. Each tournament gets its own roster.
+            </li>
             <li>The other teams are then deleted. This cannot be undone.</li>
             <li>
               If you aren&apos;t an admin of every team, our staff check first.

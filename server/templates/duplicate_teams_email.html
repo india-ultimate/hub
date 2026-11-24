@@ -15,6 +15,7 @@
               <td style="padding: 24px;">
                 <p style="margin: 0 0 16px;">Hi {{ first_name|default:"there" }},</p>
                 <p style="margin: 0 0 16px;">{% if teams|length == 1 %}A team you run{% else %}Some teams you run{% endif %} may have been added to India Ultimate Hub more than once. Merging the copies puts all their tournaments, rosters and players in one place.</p>
+                <p style="margin: 0 0 16px;">One team can play every division and format: Opens, Mixed, Womens, 5v5, beach. Each tournament gets its own roster.</p>
                 {% for team in teams %}
                   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin: 0 0 16px; border: 1px solid #d9dce1; border-radius: 6px;">
                     <tr>
@@ -31,7 +32,8 @@
                     </tr>
                   </table>
                 {% endfor %}
-                <p style="margin: 0 0 16px;">Nothing changes until you confirm on the Hub, and our staff approve if you don&rsquo;t run every copy. If a team is not a copy, open the link and choose &ldquo;Not a copy&rdquo;, and we won&rsquo;t suggest it again.</p>
+                <p style="margin: 0 0 16px;">Opening the link doesn&rsquo;t merge anything. You confirm on the Hub, and our staff approve if you don&rsquo;t run every copy. Not a copy? Choose &ldquo;Not a copy&rdquo; on that page and we won&rsquo;t suggest it again.</p>
+                <p style="margin: 0 0 16px;">Please merge them soon. If the copies are still around later, our staff may merge them or remove the ones that were never used.</p>
                 <p style="margin: 0; color: #555555; font-size: 14px;">You&rsquo;re getting this because you&rsquo;re an admin of {% if teams|length == 1 %}this team{% else %}these teams{% endif %} on India Ultimate Hub. We only send it once per team.</p>
               </td>
             </tr>
