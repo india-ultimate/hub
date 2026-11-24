@@ -16,6 +16,14 @@
         padding: 20px;
         margin: 20px 0;
       }
+      .btn {
+        display: inline-block;
+        background-color: #3b82f6;
+        color: white;
+        padding: 10px 20px;
+        text-decoration: none;
+        border-radius: 5px;
+      }
       .footer {
         font-size: 12px;
         color: #666;
@@ -28,8 +36,12 @@
   <body>
     <div class="container">
       <p>Hi {{ first_name }},</p>
-      <p>{{ by_name }} from {{ team_name }} asked you to sign your India Ultimate waiver.</p>
-      <p><a href="{{ waiver_url }}">Sign the waiver</a></p>
+      <p>
+        {{ by_name }} from {{ team_name }} asked you to sign your India Ultimate
+        waiver.
+      </p>
+      <p>You will need to sign in; we can email you a code.</p>
+      <p><a class="btn" href="{{ waiver_url }}">Sign the waiver</a></p>
       <div class="footer">
         <p>
           This is an automated message from the India Ultimate Hub. Please do

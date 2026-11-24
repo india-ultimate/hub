@@ -1,5 +1,7 @@
 import { useParams } from "@solidjs/router";
 import { A } from "@solidjs/router";
+import { Icon } from "solid-heroicons";
+import { exclamationTriangle } from "solid-heroicons/outline";
 import { inboxStack } from "solid-heroicons/solid";
 import { createEffect, createSignal, Match, Show, Switch } from "solid-js";
 
@@ -30,9 +32,14 @@ const Tick = props => (
       <p
         id={`${props.id}-missing`}
         role="alert"
-        class="mt-2 text-sm font-medium text-red-700 dark:text-red-400"
+        class="mt-2 flex items-start gap-1.5 text-sm font-medium text-red-700 dark:text-red-400"
       >
-        Tick this to continue
+        <Icon
+          path={exclamationTriangle}
+          class="mt-0.5 h-4 w-4 flex-none"
+          aria-hidden="true"
+        />
+        <span>Tick this to continue</span>
       </p>
     </Show>
   </>
@@ -517,7 +524,22 @@ const Waiver = () => {
         <Match
           when={player()?.guardian && player()?.guardian !== store.data.id}
         >
-          <GuardianCard playerId={player().id} />
+          <h1 class="mb-2 text-2xl font-bold text-blue-500">
+            Waiver for {player().full_name}
+          </h1>
+          <GuardianCard
+            playerId={player().id}
+            intro={
+              player()?.user === store.data.id
+                ? sent =>
+                    `Because you are under 18, your guardian signs your waiver. ${
+                      sent
+                        ? "We emailed them a link. Ask them to check their inbox and spam folder."
+                        : "Tap Send link and we'll email them."
+                    }`
+                : undefined
+            }
+          />
         </Match>
         <Match
           when={

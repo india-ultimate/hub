@@ -227,7 +227,7 @@ def put_guardian(
             player=player, defaults={"user": user, "relation": data.relation, "link_sent_at": None}
         )
     try:
-        emails.send_link(g)
+        emails.send_link(g, by=cast(User, request.user))
     except Exception:
         logger.exception("Couldn't email the new guardian of player %s", player.pk)
     if old is not None:

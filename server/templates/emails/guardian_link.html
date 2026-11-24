@@ -59,21 +59,27 @@
     <div class="container">
       <p>Hi {{ first_name }},</p>
       <p>
-        You have been named as {{ ward_name }}'s guardian on the India Ultimate
-        Hub. As they are under 18, you sign their waiver on their behalf.
+        {{ by_name }} has added you as {{ ward_name }}'s guardian on the India
+        Ultimate Hub. Because {{ ward_name }} is under 18, a parent or guardian
+        has to sign their waiver before they can play.
       </p>
       {% if not has_subscription %}
       <p>
         {{ ward_name }} has no active subscription yet, so the waiver page will
-        say so until they subscribe. Your link keeps working for 7 days.
+        say so until they subscribe.
       </p>
       {% endif %}
       <a class="btn" href="{{ link_url }}">Sign the waiver</a>
-      <p>Or open this address: <a href="{{ link_url }}">{{ link_url }}</a></p>
+      <p>Button not working? Copy this link into your browser:</p>
+      <p><a href="{{ link_url }}">{{ link_url }}</a></p>
       <p>
-        The link expires in 7 days and signs you in on the device you open it
-        on. If it has expired, or you prefer, sign in with a code sent to this
-        email address instead: <a href="{{ login_url }}">{{ login_url }}</a>
+        The link works for 7 days. If it stops working, go to
+        <a href="{{ login_url }}">{{ login_url }}</a> and we will email you a
+        sign-in code.
+      </p>
+      <p>
+        Not {{ ward_name }}'s parent or guardian? Please ignore this email or
+        write to operations@indiaultimate.org.
       </p>
 
       <div class="footer">

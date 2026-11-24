@@ -245,6 +245,20 @@ class TestSendLink(TestCase):
         self.assertIn("/guardian/", messages[0].body)
         self.assertIn("7 days", messages[0].body)
 
+    def test_send_link_without_an_address_sends_nothing(self) -> None:
+        User.objects.filter(pk=self.parent.user_id).update(email="mum")
+        self.g.refresh_from_db()
+        with mock.patch("server.guardians.emails.queue_emails") as queue:
+            self.assertFalse(emails.send_link(self.g))
+        queue.assert_not_called()
+
+    def test_the_email_names_who_added_the_guardian_and_has_no_css_in_its_text(self) -> None:
+        with mock.patch("server.guardians.emails.queue_emails") as queue:
+            emails.send_link(self.g, by=self.minor.user)
+        message = queue.call_args.args[0][0]
+        self.assertIn("Tara Kumar has added you as Tara Kumar's guardian", message.body)
+        self.assertNotIn("font-family", message.body)
+
     def test_may_send_waits_10_minutes(self) -> None:
         self.assertTrue(emails.may_send(self.g))
         self.g.link_sent_at = now()
@@ -342,9 +356,7 @@ class TestGuardianApi(TestCase):
         sent = {m.to[0]: m for call in queue.call_args_list for m in call.args[0]}
         self.assertIn("/guardian/", sent["dad@example.com"].body)
         self.assertEqual("Tara's guardian was changed", sent["mum@example.com"].subject)
-        self.assertIn(
-            "Tara Kumar changed Tara's guardian to Dad Rao.", sent["mum@example.com"].body
-        )
+        self.assertIn("Tara changed their guardian to Dad Rao.", sent["mum@example.com"].body)
 
     def test_a_minor_cannot_be_a_guardian(self) -> None:
         person("teen@example.com", born=minor_dob(), first="Teen")

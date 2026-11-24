@@ -35,6 +35,8 @@ const Line = props => (
   </p>
 );
 
+const TEN_MINUTES = 10 * 60 * 1000;
+
 const signedLine = (what, step) =>
   step.done
     ? `${what} signed by ${step.by_name} on ${displayDateShort(step.at)}`
@@ -48,16 +50,17 @@ const GuardianCard = props => {
     () => fetchGuardian(props.playerId),
     { retry: false }
   );
-  const [notice, setNotice] = createSignal("");
+  const [notice, setNotice] = createSignal(null);
   const [sending, setSending] = createSignal(false);
   let dialog;
 
   const resend = async () => {
     setSending(true);
     try {
-      setNotice((await resendGuardianLink(props.playerId)).message);
+      const { message } = await resendGuardianLink(props.playerId);
+      setNotice({ kind: "done", text: message });
     } catch (e) {
-      setNotice(e.message);
+      setNotice({ kind: "problem", text: e.message });
     } finally {
       setSending(false);
       query.refetch();
@@ -69,15 +72,38 @@ const GuardianCard = props => {
   const relation = () =>
     relationChoices.find(c => c.value === g().relation)?.label;
   const open = () => dialog.showModal();
+  const bothSigned = () => d().waiver?.done && d().coc?.done;
+  const resendLabel = () => {
+    if (d().waiver?.done) return "Resend code of conduct link";
+    return g().link_sent_at ? "Resend link" : "Send link";
+  };
+  const justSent = () => {
+    const sent = g().link_sent_at;
+    return sent && Date.now() - new Date(sent) < TEN_MINUTES
+      ? { kind: "timing", text: "You can send another in 10 minutes" }
+      : undefined;
+  };
+
+  const justSentNotice = () =>
+    notice()?.kind === "done" &&
+    notice().text.startsWith("Link sent") &&
+    justSent();
 
   return (
     <Show when={d()}>
+      <Show when={props.intro}>
+        <p class="my-2 text-base text-gray-700 dark:text-gray-300">
+          {props.intro(Boolean(g()?.link_sent_at))}
+        </p>
+      </Show>
       <section
         id={`guardian-card-${props.playerId}`}
         aria-label="Guardian"
         class="my-4 rounded-lg border border-gray-300 bg-white p-4 dark:border-gray-600 dark:bg-gray-800"
       >
-        <h2 class="text-base font-semibold">Guardian</h2>
+        <h2 class="text-base font-semibold text-gray-900 dark:text-white">
+          Guardian
+        </h2>
         <div
           id={`guardian-status-${props.playerId}`}
           class="mt-2 flex flex-col gap-1.5"
@@ -90,7 +116,7 @@ const GuardianCard = props => {
               </Line>
             }
           >
-            <p class="text-base">
+            <p class="text-base font-medium text-gray-900 dark:text-white">
               {g().name}
               <Show when={relation()}> · {relation()}</Show>
             </p>
@@ -108,44 +134,57 @@ const GuardianCard = props => {
               </Line>
             </Show>
             <Show
-              when={d().waiver.done}
+              when={d().waiver}
               fallback={
-                <Line kind="waiting">
-                  Waiting for the guardian to sign ·{" "}
-                  {g().link_sent_at
-                    ? `link sent ${timeAgo(g().link_sent_at)}`
-                    : "no link sent yet"}
-                </Line>
+                <Line kind="waiting">Not registered for a season yet</Line>
               }
             >
-              <Line kind="done">{signedLine("Waiver", d().waiver)}</Line>
               <Show
-                when={d().coc.done}
+                when={d().waiver.done}
                 fallback={
-                  <Line kind="waiting">Code of conduct not agreed yet</Line>
+                  <Line kind="waiting">
+                    Waiting for the guardian to sign ·{" "}
+                    {g().link_sent_at
+                      ? `link sent ${timeAgo(g().link_sent_at)}`
+                      : "no link sent yet"}
+                  </Line>
                 }
               >
-                <Line kind="done">
-                  {signedLine("Code of conduct", d().coc)}
-                </Line>
+                <Line kind="done">{signedLine("Waiver", d().waiver)}</Line>
+                <Show
+                  when={d().coc?.done}
+                  fallback={
+                    <Line kind="waiting">Code of conduct not agreed yet</Line>
+                  }
+                >
+                  <Line kind="done">
+                    {signedLine("Code of conduct", d().coc)}
+                  </Line>
+                </Show>
               </Show>
             </Show>
           </Show>
         </div>
         <Show when={notice()}>
           <p
-            role="status"
-            class="mt-2 text-sm font-semibold text-gray-800 dark:text-gray-100"
+            role={notice().kind === "problem" ? "alert" : "status"}
+            class={`mt-2 flex items-start gap-1.5 text-sm font-semibold ${tones[notice().kind]} ${justSentNotice() ? "sr-only" : ""}`}
           >
-            {notice()}
+            <Icon
+              path={icons[notice().kind]}
+              class="mt-0.5 h-4 w-4 flex-none"
+              aria-hidden="true"
+            />
+            <span>{notice().text}</span>
           </p>
         </Show>
         <div class="mt-3 flex flex-wrap gap-2">
-          <Show when={g() && d().can_resend}>
+          <Show when={g() && d().can_resend && !bothSigned()}>
             <div id={`guardian-resend-${props.playerId}`}>
               <ReasonButton
                 primary={false}
-                label={g().link_sent_at ? "Resend link" : "Send link"}
+                label={resendLabel()}
+                reason={justSent()}
                 busy={sending()}
                 busyLabel="Sending…"
                 onClick={resend}
@@ -166,7 +205,7 @@ const GuardianCard = props => {
           ref={el => (dialog = el)}
           playerId={props.playerId}
           guardian={g()}
-          onSaved={setNotice}
+          onSaved={text => setNotice({ kind: "done", text })}
         />
       </section>
     </Show>

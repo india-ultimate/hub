@@ -116,11 +116,16 @@ const CodeOfConduct = () => {
           </details>
         </Match>
         <Match when={player()?.guardian && !isGuardian()}>
-          <p class="mt-2 text-base text-gray-700 dark:text-gray-300">
-            Your guardian needs to agree to this for you. They can log in to the
-            Hub with their email to do it.
-          </p>
-          <GuardianCard playerId={player().id} />
+          <GuardianCard
+            playerId={player().id}
+            intro={sent =>
+              `Your guardian agrees to this for you, after they sign your waiver. ${
+                sent
+                  ? "We emailed them a link."
+                  : "Tap Send link and we'll email them."
+              }`
+            }
+          />
         </Match>
         <Match
           when={
