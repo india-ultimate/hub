@@ -28,6 +28,7 @@ import {
   createSwissRound,
   deleteField,
   deleteMatch,
+  drawTournamentSeeding,
   fetchBrackets,
   fetchCrossPool,
   fetchFieldsByTournamentId,
@@ -39,6 +40,7 @@ import {
   fetchTournaments,
   generateTournamentFixtures,
   rerunSwissRound,
+  setTournamentSeeded,
   startTournament,
   updateField,
   updateMatch,
@@ -404,6 +406,43 @@ const TournamentManager = props => {
     }
   });
 
+  const [confirmingSeeding, setConfirmingSeeding] = createSignal(null);
+  const [seedingError, setSeedingError] = createSignal("");
+  const isSeeded = () => selectedTournament()?.seeded !== false;
+  const seedingLocked = () =>
+    ["LIV", "COM"].includes(selectedTournament()?.status);
+  const focusSeedingToggle = () =>
+    setTimeout(() =>
+      document
+        .getElementById(isSeeded() ? "seeding-seeded" : "seeding-unseeded")
+        ?.focus()
+    );
+  const seedingChangeMutation = createMutation({
+    mutationFn: ({ kind, id }) =>
+      kind === "redraw"
+        ? drawTournamentSeeding({ id })
+        : setTournamentSeeded({ id, seeded: kind === "seeded" }),
+    onSuccess: () => {
+      setConfirmingSeeding(null);
+      setSeedingError("");
+      setIsStandingsEdited(false);
+      focusSeedingToggle();
+      queryClient.invalidateQueries({ queryKey: ["tournaments"] });
+      queryClient.invalidateQueries({ queryKey: ["tournament-cards"] });
+      queryClient.invalidateQueries({ queryKey: ["pools"] });
+      queryClient.invalidateQueries({ queryKey: ["swiss-rounds"] });
+    },
+    onError: error => setSeedingError(error.message)
+  });
+  const askSeeding = kind => {
+    setSeedingError("");
+    if (kind === "seeded") {
+      seedingChangeMutation.mutate({ kind, id: selectedTournamentID() });
+    } else {
+      setConfirmingSeeding(kind);
+    }
+  };
+
   const createFieldMutation = createMutation({
     mutationFn: createField,
     onSuccess: () => {
@@ -656,9 +695,113 @@ const TournamentManager = props => {
             <TournamentDirectors tournamentId={selectedTournamentID()} />
           </Show>
           <div class="relative my-5 overflow-x-auto">
-            <div class="mb-4 text-xl font-bold text-blue-500">Seeding</div>
+            <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div class="text-xl font-bold text-blue-500">Seeding</div>
+              <div
+                role="group"
+                aria-label="Seeding mode"
+                class="inline-flex rounded-lg border border-gray-300 dark:border-gray-600"
+              >
+                <For
+                  each={[
+                    ["seeded", "Seeded"],
+                    ["unseeded", "Unseeded"]
+                  ]}
+                >
+                  {([kind, label], index) => (
+                    <button
+                      type="button"
+                      id={`seeding-${kind}`}
+                      aria-pressed={isSeeded() === (kind === "seeded")}
+                      aria-describedby={
+                        seedingLocked() ? "seeding-locked" : undefined
+                      }
+                      disabled={
+                        seedingLocked() || seedingChangeMutation.isLoading
+                      }
+                      onClick={() =>
+                        isSeeded() !== (kind === "seeded") && askSeeding(kind)
+                      }
+                      class={clsx(
+                        "min-h-[44px] px-4 py-2 text-sm font-medium focus:z-10 focus:outline-none focus:ring-4 focus:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-60 dark:focus:ring-blue-800",
+                        index() === 0 ? "rounded-l-lg" : "rounded-r-lg",
+                        isSeeded() === (kind === "seeded")
+                          ? "bg-blue-700 text-white dark:bg-blue-600"
+                          : "bg-white text-gray-900 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700",
+                        confirmingSeeding() === kind && "ring-2 ring-yellow-400"
+                      )}
+                    >
+                      {label}
+                    </button>
+                  )}
+                </For>
+              </div>
+            </div>
+            <Show when={seedingLocked()}>
+              <p
+                id="seeding-locked"
+                class="mb-4 text-sm text-gray-600 dark:text-gray-400"
+              >
+                Seeding is locked once the tournament is live.
+              </p>
+            </Show>
+            <Show when={confirmingSeeding() && !seedingLocked()}>
+              <div
+                class="mb-4 rounded-lg bg-yellow-50 p-4 text-sm text-yellow-900 dark:bg-gray-800 dark:text-yellow-300"
+                role="group"
+                aria-label="Confirm draw"
+              >
+                <p class="mb-3">
+                  Replaces the current order with a random draw. Pools and Swiss
+                  groups are refilled.
+                </p>
+                <button
+                  type="button"
+                  id="seeding-confirm"
+                  ref={el => setTimeout(() => el.focus())}
+                  disabled={seedingChangeMutation.isLoading}
+                  onClick={() =>
+                    seedingChangeMutation.mutate({
+                      kind:
+                        confirmingSeeding() === "redraw"
+                          ? "redraw"
+                          : "unseeded",
+                      id: selectedTournamentID()
+                    })
+                  }
+                  class="mr-2 min-h-[44px] rounded-lg bg-red-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-red-800 focus:outline-none focus:ring-4 focus:ring-red-300 disabled:bg-gray-400 dark:bg-red-600 dark:hover:bg-red-700 dark:focus:ring-red-800"
+                >
+                  {seedingChangeMutation.isLoading
+                    ? "Drawing..."
+                    : confirmingSeeding() === "redraw"
+                      ? "Redraw"
+                      : "Switch and draw"}
+                </button>
+                <button
+                  type="button"
+                  id="seeding-cancel"
+                  disabled={seedingChangeMutation.isLoading}
+                  onClick={() => {
+                    setConfirmingSeeding(null);
+                    setSeedingError("");
+                    focusSeedingToggle();
+                  }}
+                  class="min-h-[44px] rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-medium text-gray-900 hover:bg-gray-100 focus:outline-none focus:ring-4 focus:ring-gray-200 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700 dark:focus:ring-gray-700"
+                >
+                  Cancel
+                </button>
+              </div>
+            </Show>
+            <Show when={seedingError()}>
+              <div
+                class="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-800 dark:bg-gray-800 dark:text-red-400"
+                role="alert"
+              >
+                {seedingError()}
+              </div>
+            </Show>
             <Switch>
-              <Match when={canEditSetup()}>
+              <Match when={canEditSetup() && isSeeded()}>
                 <div class="w-full md:w-1/2">
                   <ReorderTeams
                     teams={teams()}
@@ -679,11 +822,16 @@ const TournamentManager = props => {
                 </div>
               </Match>
               <Match when={selectedTournament()?.status !== "DFT"}>
+                <Show when={!isSeeded()}>
+                  <p class="mb-2 text-sm text-gray-600 dark:text-gray-400">
+                    Seeds are hidden from the public until a result is in.
+                  </p>
+                </Show>
                 <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
                   <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
                     <tr>
                       <th scope="col" class="px-6 py-3">
-                        Seeding
+                        {isSeeded() ? "Seeding" : "Draw order"}
                       </th>
                       <th scope="col" class="px-6 py-3">
                         Team Name
@@ -709,25 +857,44 @@ const TournamentManager = props => {
               </Match>
             </Switch>
 
-            <button
-              type="button"
-              onClick={() => {
-                updateSeedingMutation.mutate({
-                  id: selectedTournamentID(),
-                  teamSeeding: teams()
-                });
-                setIsStandingsEdited(false);
-              }}
-              disabled={!canEditSetup() || updateSeedingMutation.isLoading}
-              class="my-2 mb-2 mr-2 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 disabled:bg-gray-400 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
-            >
-              <Show
-                when={updateSeedingMutation.isLoading}
-                fallback={"Update Seeding"}
+            <Show when={!isSeeded()}>
+              <button
+                type="button"
+                id="seeding-redraw"
+                onClick={() => {
+                  setSeedingError("");
+                  setConfirmingSeeding("redraw");
+                }}
+                disabled={seedingLocked() || seedingChangeMutation.isLoading}
+                aria-describedby={
+                  seedingLocked() ? "seeding-locked" : undefined
+                }
+                class="my-2 mb-2 mr-2 min-h-[44px] rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-medium text-gray-900 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
               >
-                Updating...
-              </Show>
-            </button>
+                Redraw
+              </button>
+            </Show>
+            <Show when={isSeeded()}>
+              <button
+                type="button"
+                onClick={() => {
+                  updateSeedingMutation.mutate({
+                    id: selectedTournamentID(),
+                    teamSeeding: teams()
+                  });
+                  setIsStandingsEdited(false);
+                }}
+                disabled={!canEditSetup() || updateSeedingMutation.isLoading}
+                class="my-2 mb-2 mr-2 min-h-[44px] rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 disabled:bg-gray-400 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:dark:bg-gray-400"
+              >
+                <Show
+                  when={updateSeedingMutation.isLoading}
+                  fallback={"Update Seeding"}
+                >
+                  Updating...
+                </Show>
+              </button>
+            </Show>
 
             <button
               type="button"

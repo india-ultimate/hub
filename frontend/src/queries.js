@@ -929,6 +929,31 @@ export const updateSeeding = async ({ id, teamSeeding }) => {
   return await response.json();
 };
 
+const seedingRequest = async (path, options) => {
+  const response = await fetch(path, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    credentials: "same-origin"
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data?.message || JSON.stringify(data));
+  }
+  return data;
+};
+
+export const setTournamentSeeded = ({ id, seeded }) =>
+  seedingRequest(`/api/tournament/${id}/seeded`, {
+    method: "PUT",
+    body: JSON.stringify({ seeded })
+  });
+
+export const drawTournamentSeeding = ({ id }) =>
+  seedingRequest(`/api/tournament/${id}/draw`, { method: "POST" });
+
 export const deleteTournament = async ({ id }) => {
   const response = await fetch(`/api/tournament/delete/${id}`, {
     method: "DELETE",
