@@ -14,7 +14,7 @@ from django.utils.dateparse import parse_datetime
 from server.core.models import Player, Team, UCPerson, User
 from server.series.models import Role, SeriesRegistration, is_playing_role
 from server.subscription import eligibility
-from server.swiss.pairing import pair_teams, select_bye
+from server.swiss.pairing import draw_order, pair_teams, select_bye
 from server.swiss.ranking import SwissGame, draw_lots, opponent_strength, rank_teams
 from server.tournament.models import Event
 from server.types import message_response, validation_error_dict
@@ -51,7 +51,7 @@ PLAYER_ROLE = "player"
 
 
 def update_tournament_seeding(
-    tournament: Tournament, seeding: dict[int, int]
+    tournament: Tournament, seeding: dict[int, int], *, drawn: bool = False
 ) -> tuple[bool, message_response | None]:
     """Validate and apply a new tournament seeding before the tournament starts.
 
@@ -67,11 +67,26 @@ def update_tournament_seeding(
             "Match results drive the current seeding once the tournament is live."
         }
 
+    if not tournament.seeded and not drawn:
+        return False, {"message": "This tournament is unseeded. Use Redraw to draw a new order."}
+
     valid_seeds_and_teams, errors = validate_seeds_and_teams(tournament, seeding)
     if not valid_seeds_and_teams:
         message = "Cannot update standings, due to following errors: \n"
         message += "\n".join(f"{key}: {value}" for key, value in errors.items())
         return False, {"message": message}
+
+    stages: list[Pool | SwissRound] = [
+        *Pool.objects.filter(tournament=tournament),
+        *SwissRound.objects.filter(tournament=tournament),
+    ]
+    used_seeds = {int(seed) for stage in stages for seed in stage.initial_seeding}
+    unknown_seeds = used_seeds - set(map(int, seeding))
+    if unknown_seeds:
+        return False, {
+            "message": f"A pool or Swiss group uses seed {max(unknown_seeds)}, but the "
+            f"tournament has {len(seeding)} teams. Edit or delete it, then try again."
+        }
 
     with transaction.atomic():
         tournament.initial_seeding = dict(sorted(seeding.items()))
@@ -119,6 +134,34 @@ def update_tournament_seeding(
                 swiss_round.lots = _drawn_lots(new_swiss_results)
             swiss_round.save()
 
+    return True, None
+
+
+def draw_tournament_seeding(tournament: Tournament) -> tuple[bool, message_response | None]:
+    order = draw_order(tournament.teams.values_list("id", flat=True))
+    seeding = dict(enumerate(order, start=1))
+    return update_tournament_seeding(tournament, seeding, drawn=True)
+
+
+def set_tournament_seeded(
+    tournament: Tournament, seeded: bool
+) -> tuple[bool, message_response | None]:
+    if tournament.status in (Tournament.Status.LIVE, Tournament.Status.COMPLETED):
+        return False, {"message": "Cannot change seeding after the tournament has started."}
+
+    with transaction.atomic():
+        locked = Tournament.objects.select_for_update().get(pk=tournament.pk)
+        if locked.status in (Tournament.Status.LIVE, Tournament.Status.COMPLETED):
+            return False, {"message": "Cannot change seeding after the tournament has started."}
+        was_seeded = locked.seeded
+        tournament.seeded = seeded
+        tournament.save(update_fields=["seeded"])
+        if was_seeded and not seeded:
+            ok, error = draw_tournament_seeding(tournament)
+            if not ok:
+                transaction.set_rollback(True)
+                tournament.seeded = was_seeded
+                return False, error
     return True, None
 
 

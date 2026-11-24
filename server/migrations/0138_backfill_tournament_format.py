@@ -23,7 +23,8 @@ def backfill_format_block(apps: Any, schema_editor: Any) -> None:
     from server.tournament.rules import sync_rules_format, upgrade_legacy_format_block
 
     upgraded, skipped = [], []
-    for tournament in ConcreteTournament.objects.exclude(rules__isnull=True).exclude(rules=""):
+    tournaments = ConcreteTournament.objects.only("id", "rules")
+    for tournament in tournaments.exclude(rules__isnull=True).exclude(rules=""):
         updated = upgrade_legacy_format_block(tournament.rules)
         if updated is None:
             skipped.append(tournament)
@@ -46,7 +47,8 @@ def strip_format_block(apps: Any, schema_editor: Any) -> None:
     from server.tournament.models import Tournament as ConcreteTournament
     from server.tournament.rules import FORMAT_BLOCK_END, FORMAT_BLOCK_START
 
-    for tournament in ConcreteTournament.objects.exclude(rules__isnull=True).exclude(rules=""):
+    tournaments = ConcreteTournament.objects.only("id", "rules")
+    for tournament in tournaments.exclude(rules__isnull=True).exclude(rules=""):
         rules = tournament.rules or ""
         if FORMAT_BLOCK_START not in rules:
             continue

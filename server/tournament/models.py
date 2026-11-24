@@ -10,6 +10,7 @@ from django_prometheus.models import ExportModelOperationsMixin
 
 from server.core.models import Player, Team, UCPerson, User
 from server.series.models import Role, Series, SeriesRegistration
+from server.swiss.pairing import draw_order
 from server.utils import default_invitation_expiry_date, slugify_max
 
 
@@ -216,6 +217,7 @@ class Tournament(ExportModelOperationsMixin("tournament"), models.Model):  # typ
     spirit_ranking = models.JSONField(default=list, blank=True)
 
     use_uc_registrations = models.BooleanField(default=False)
+    seeded = models.BooleanField(default=True)
 
     volunteers = models.ManyToManyField(User, related_name="tournament_volunteer", blank=True)
     directors = models.ManyToManyField(User, related_name="directed_tournaments", blank=True)
@@ -226,10 +228,20 @@ def update_seeding_on_teams_change(
     sender: Any, instance: Tournament, action: str, **kwargs: Any
 ) -> None:
     if action in ("post_add", "post_remove"):
-        seeding = {}
+        team_ids = [team.id for team in instance.teams.all()]
+        if not instance.seeded and instance.status not in (
+            Tournament.Status.LIVE,
+            Tournament.Status.COMPLETED,
+        ):
+            from server.tournament.utils import update_tournament_seeding
 
-        for i, team in enumerate(instance.teams.all(), start=1):
-            seeding[i] = team.id
+            drawn = dict(enumerate(draw_order(team_ids), start=1))
+            applied, _ = update_tournament_seeding(instance, drawn, drawn=True)
+            if applied:
+                return
+            team_ids = list(drawn.values())
+
+        seeding = dict(enumerate(team_ids, start=1))
 
         instance.initial_seeding = seeding
         instance.current_seeding = seeding

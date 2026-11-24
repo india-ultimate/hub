@@ -440,6 +440,20 @@ class TournamentAgentToolTests(TestCase):
         self.assertIn("cannot be changed once the tournament has started", result["error"])
         self.assertEqual(AgentProposal.objects.count(), before)
 
+    def test_seeding_cannot_be_proposed_when_unseeded(self) -> None:
+        self.tournament.seeded = False
+        self.tournament.save(update_fields=["seeded"])
+        self.tournament.refresh_from_db()
+        before = dict(self.tournament.initial_seeding)
+        count = AgentProposal.objects.count()
+
+        result = propose_update_seeding(self.ctx, seeding={"1": 2, "2": 1})
+
+        self.assertIn("This tournament is unseeded", result["error"])
+        self.assertEqual(AgentProposal.objects.count(), count)
+        self.tournament.refresh_from_db()
+        self.assertEqual(self.tournament.initial_seeding, before)
+
     def test_propose_and_confirm_pool(self) -> None:
         result = propose_create_pool(self.ctx, name="A", sequence_number=1, seeding=[1, 2])
         proposal = AgentProposal.objects.get(id=result["proposal_id"])

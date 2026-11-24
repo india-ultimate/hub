@@ -187,6 +187,10 @@ class TournamentUpdateSeedingSchema(Schema):
     seeding: dict[int, int]
 
 
+class TournamentSeededSchema(Schema):
+    seeded: bool
+
+
 class AddOrRemoveTeamRegistrationSchema(Schema):
     team_id: int
 
