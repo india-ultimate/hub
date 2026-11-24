@@ -1,6 +1,7 @@
 import datetime
 from typing import Any, cast
 
+from server.swiss.ranking import rank_teams
 from server.tests.base import ApiBaseTestCase, add_teams_to_event, create_event, create_tournament
 from server.tournament.models import (
     Bracket,
@@ -10,7 +11,7 @@ from server.tournament.models import (
     SwissRound,
     TournamentField,
 )
-from server.tournament.utils import rerun_swiss_round, sort_swiss_tied_teams
+from server.tournament.utils import rerun_swiss_round
 
 # Slot pairs farther apart than this are not considered back-to-back
 # (e.g. an overnight gap between rounds is fine).
@@ -580,7 +581,7 @@ class TestOddSwissTournamentLifecycle(ApiBaseTestCase):
         results: dict[int, dict[str, int]] = {
             t1: {"wins": 0, "losses": 0, "draws": 0, "GF": 20, "GA": 10},
             t2: {"wins": 0, "losses": 0, "draws": 0, "GF": 10, "GA": 10},
-            t3: {"wins": 0, "losses": 0, "draws": 0, "GF": 5, "GA": 15},
+            t3: {"wins": 0, "losses": 0, "draws": 0, "GF": 5, "GA": 25},
         }
         for tid in team_ids[3:]:
             results[tid] = {"wins": 0, "losses": 0, "draws": 0, "GF": 10, "GA": 10}
@@ -1288,7 +1289,14 @@ class TestSwissTiebreakerRecursiveH2H(ApiBaseTestCase):
 
         tied_teams = list(all_results.values())
 
-        result = sort_swiss_tied_teams(tied_teams, all_results, swiss_round)
+        tied_ids = {t["id"] for t in tied_teams}
+        games = [
+            (m.team_1_id, m.team_2_id, m.score_team_1, m.score_team_2)
+            for m in Match.objects.filter(swiss_round=swiss_round)
+            if m.team_1_id in all_results and m.team_2_id in all_results
+        ]
+        order = rank_teams(all_results, games, {})
+        result = [{"id": tid} for tid in order if tid in tied_ids]
 
         # A should be first (beat B in recursive H2H), then B (beat C), then C
         self.assertEqual(result[0]["id"], team_a.id, "A should rank 1st (beat B in direct H2H)")
@@ -1406,7 +1414,14 @@ class TestSwissTiebreakerRecursiveH2H(ApiBaseTestCase):
 
         tied_teams = [all_results[team_a.id], all_results[team_b.id], all_results[team_c.id]]
 
-        result = sort_swiss_tied_teams(tied_teams, all_results, swiss_round)
+        tied_ids = {t["id"] for t in tied_teams}
+        games = [
+            (m.team_1_id, m.team_2_id, m.score_team_1, m.score_team_2)
+            for m in Match.objects.filter(swiss_round=swiss_round)
+            if m.team_1_id in all_results and m.team_2_id in all_results
+        ]
+        order = rank_teams(all_results, games, {})
+        result = [{"id": tid} for tid in order if tid in tied_ids]
 
         # All have 1 H2H win → recursion stops (sub_group == tied_teams)
         # OS: A faced D(6pts)+B(4pts)+C(4pts)=14, B faced A(4pts)+C(4pts)+E(2pts)=10,
@@ -2096,3 +2111,138 @@ class TestSwiss24TeamLifecycle(ApiBaseTestCase):
         SwissRound.objects.filter(tournament=self.tournament).delete()
         TournamentField.objects.filter(tournament=self.tournament).delete()
         super().tearDown()
+
+
+class TestSwissUnifiedOrder(ApiBaseTestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        self.user.is_staff = True
+        self.user.save()
+        self.client.force_login(self.user)
+
+    def _create_group(self, seeding: list[int], num_rounds: int = 3) -> SwissRound:
+        response = self.client.post(
+            f"/api/tournament/swiss-round/{self.tournament.id}",
+            {"num_rounds": num_rounds, "seeding": seeding, "sequence_number": 1, "name": "A"},
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        return SwissRound.objects.get(tournament=self.tournament)
+
+    def _start(self) -> None:
+        response = self.client.post(f"/api/tournament/start/{self.tournament.id}")
+        self.assertEqual(response.status_code, 200)
+
+    def _score_round(self, swiss_round: SwissRound, round_number: int, scores: list[Any]) -> None:
+        matches = Match.objects.filter(
+            swiss_round=swiss_round, sequence_number=round_number
+        ).order_by("id")
+        for match, (s1, s2) in zip(matches, scores, strict=True):
+            response = self.client.post(
+                f"/api/match/{match.id}/score",
+                {"team_1_score": s1, "team_2_score": s2},
+                content_type="application/json",
+            )
+            self.assertEqual(response.status_code, 200)
+
+    def test_round_two_pairs_by_standings(self) -> None:
+        swiss_round = self._create_group([1, 2, 3, 4, 5, 6, 7, 8])
+        self._start()
+        self._score_round(swiss_round, 1, [(15, 8), (15, 9), (15, 10), (15, 11)])
+        seeds = [
+            (m.placeholder_seed_1, m.placeholder_seed_2)
+            for m in Match.objects.filter(swiss_round=swiss_round, sequence_number=2).order_by("id")
+        ]
+        self.assertEqual(seeds, [(1, 2), (3, 4), (5, 6), (7, 8)])
+
+    def test_standings_use_goals_scored(self) -> None:
+        swiss_round = self._create_group([1, 2, 3, 4])
+        self._start()
+        self._score_round(swiss_round, 1, [(15, 10), (11, 6)])
+        swiss_round.refresh_from_db()
+        winners: dict[Any, int] = {
+            m.team_1_id: m.score_team_1
+            for m in Match.objects.filter(swiss_round=swiss_round, sequence_number=1)
+        }
+        ranks = {int(t): r["rank"] for t, r in swiss_round.results.items()}
+        high, low = sorted(winners, key=lambda t: -winners[t])
+        self.assertEqual((ranks[high], ranks[low]), (1, 2))
+
+    def test_full_tie_uses_lot(self) -> None:
+        swiss_round = self._create_group([1, 2, 3, 4])
+        self._start()
+        swiss_round.refresh_from_db()
+        winners: list[Any] = [
+            m.team_1_id for m in Match.objects.filter(swiss_round=swiss_round, sequence_number=1)
+        ]
+        first, second = sorted(winners, reverse=True)
+        others = [t for t in map(int, swiss_round.results) if t not in winners]
+        lots = {str(t): n for n, t in enumerate([first, second, *others], 1)}
+        swiss_round.lots = lots
+        swiss_round.save()
+        self._score_round(swiss_round, 1, [(15, 10), (15, 10)])
+        swiss_round.refresh_from_db()
+        self.assertEqual(swiss_round.results[str(first)]["rank"], 1)
+        self.assertEqual(swiss_round.results[str(second)]["rank"], 2)
+
+    def test_new_group_draws_lots(self) -> None:
+        swiss_round = self._create_group([1, 2, 3, 4, 5, 6])
+        self.assertEqual(set(swiss_round.lots), set(swiss_round.results))
+        self.assertEqual(sorted(swiss_round.lots.values()), [1, 2, 3, 4, 5, 6])
+
+    def test_reorder_same_teams_keeps_lots(self) -> None:
+        swiss_round = self._create_group([1, 2, 3, 4])
+        before = dict(swiss_round.lots)
+        seeding = {str(k): v for k, v in self.tournament.initial_seeding.items()}
+        seeding["1"], seeding["2"] = seeding["2"], seeding["1"]
+        response = self.client.put(
+            f"/api/tournament/update/{self.tournament.id}",
+            {"seeding": seeding},
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        swiss_round.refresh_from_db()
+        self.assertEqual(swiss_round.lots, before)
+
+    def test_team_set_change_redraws_lots(self) -> None:
+        swiss_round = self._create_group([1, 2, 3, 4])
+        seeding = {str(k): v for k, v in self.tournament.initial_seeding.items()}
+        swapped_in = seeding["5"]
+        seeding["1"], seeding["5"] = seeding["5"], seeding["1"]
+        response = self.client.put(
+            f"/api/tournament/update/{self.tournament.id}",
+            {"seeding": seeding},
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        swiss_round.refresh_from_db()
+        self.assertEqual(set(swiss_round.lots), set(swiss_round.results))
+        self.assertIn(str(swapped_in), swiss_round.lots)
+        self.assertEqual(sorted(swiss_round.lots.values()), [1, 2, 3, 4])
+
+    def test_lots_not_in_api(self) -> None:
+        self._create_group([1, 2, 3, 4])
+        response = self.client.get(f"/api/tournament/swiss-rounds?id={self.tournament.id}")
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json())
+        for row in response.json():
+            self.assertNotIn("lots", row)
+
+    def test_legacy_live_group_without_lots(self) -> None:
+        swiss_round = self._create_group([1, 2, 3, 4, 5, 6, 7, 8])
+        self._start()
+        swiss_round.refresh_from_db()
+        swiss_round.lots = {}
+        swiss_round.results = {
+            t: {k: v for k, v in r.items() if k != "opp_strength"}
+            for t, r in swiss_round.results.items()
+        }
+        swiss_round.save()
+        self._score_round(swiss_round, 1, [(15, 8), (15, 9), (15, 10), (15, 11)])
+        swiss_round.refresh_from_db()
+        ranks = sorted(r["rank"] for r in swiss_round.results.values())
+        self.assertEqual(ranks, list(range(1, 9)))
+        r2 = Match.objects.filter(swiss_round=swiss_round, sequence_number=2)
+        self.assertEqual(r2.count(), 4)
+        self.assertFalse(r2.filter(team_1__isnull=True).exists())
+        self.assertFalse(r2.filter(team_2__isnull=True).exists())

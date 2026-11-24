@@ -52,12 +52,12 @@ from server.wrapped.models import PlayerWrapped
 TEAM_FILLABLE = ("facebook_url", "city", "state_ut", "ultimate_central_id")
 
 # Every JSON field holding team ids, by model. Seedings and byes map to a team,
-# standings tables are keyed by one, spirit ranking lists them.
+# standings tables and Swiss lots are keyed by one, spirit ranking lists them.
 JSON_FIELDS: dict[type[Model], tuple[str, ...]] = {
     Tournament: ("initial_seeding", "current_seeding", "spirit_ranking"),
     Pool: ("initial_seeding", "results"),
     PositionPool: ("initial_seeding", "results"),
-    SwissRound: ("initial_seeding", "results", "round_results", "byes"),
+    SwissRound: ("initial_seeding", "results", "round_results", "byes", "lots"),
     CrossPool: ("initial_seeding", "current_seeding"),
     Bracket: ("initial_seeding", "current_seeding"),
 }
@@ -86,6 +86,8 @@ def _mapped(values: dict[str, Any], swap: Callable[[Any], Any]) -> dict[str, Any
     for name, value in values.items():
         if name == "results":
             out[name] = _table(value, swap)
+        elif name == "lots":
+            out[name] = {str(swap(key)): lot for key, lot in (value or {}).items()}
         elif name == "round_results":
             out[name] = {r: _table(table, swap) for r, table in (value or {}).items()}
         elif name == "spirit_ranking":
