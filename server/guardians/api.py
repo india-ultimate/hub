@@ -5,6 +5,7 @@ import logging
 from typing import Any, cast
 
 from django.contrib.auth import login
+from django.core.cache import cache
 from django.db import transaction
 from django.http import HttpRequest
 from django.shortcuts import get_object_or_404
@@ -71,10 +72,10 @@ def use_link(request: HttpRequest, token: str) -> tuple[int, dict[str, str]]:
     if g is None:
         return 404, {"message": "This link is not valid."}
     if not valid or not g.user.is_active:
-        return 410, {"message": "This link has expired or was already used."}
+        return 410, {"message": "This link has expired, or a newer link was sent."}
     user: User = g.user
     if user.is_staff or user.is_superuser:
-        return 403, {"message": "Staff accounts sign in the normal way."}
+        return 403, {"message": "Please sign in with your email and a code instead."}
     request.user = user
     login(request, user)
     return 200, {"redirect": f"/waiver/{g.player_id}"}
@@ -90,6 +91,9 @@ class GuardianIn(Schema):
 
 class GuardianSchema(Schema):
     name: str
+    first_name: str
+    last_name: str
+    phone: str
     email: str
     relation: str
     link_sent_at: datetime.datetime | None
@@ -127,6 +131,9 @@ def _status(player: Player) -> dict[str, object]:
     if g is not None:
         guardian = {
             "name": g.user.get_full_name() or g.user.get_username(),
+            "first_name": g.user.first_name,
+            "last_name": g.user.last_name,
+            "phone": g.user.phone,
             "email": g.user.email,
             "relation": g.relation,
             "link_sent_at": g.link_sent_at,
@@ -144,9 +151,21 @@ def _status(player: Player) -> dict[str, object]:
     }
 
 
+def _changes_this_hour(player: Player) -> int:
+    key = _CHANGES_KEY.format(player.pk)
+    cache.add(key, 0, 3600)
+    try:
+        return int(cache.incr(key))
+    except ValueError:  # a cache that stores nothing, as in tests
+        return 1
+
+
 def _managed(player_id: int) -> Player:
     return get_object_or_404(Player.objects.select_related("user"), pk=player_id)
 
+
+MAX_CHANGES_PER_HOUR = 3
+_CHANGES_KEY = "guardian-changes:{}"
 
 _FORBIDDEN = (403, {"message": "You can't manage this player's guardian."})
 
@@ -169,6 +188,7 @@ def get_guardian(request: HttpRequest, player_id: int) -> tuple[int, dict[str, A
         400: message_response,
         403: message_response,
         404: message_response,
+        429: message_response,
     },
 )
 def put_guardian(
@@ -188,19 +208,23 @@ def put_guardian(
                 "message": f"That's {first}'s own account. A guardian needs their own email."
             }
         if Player.objects.filter(user=existing, date_of_birth__gt=minor_cutoff()).exists():
-            return 400, {"message": "A guardian must be 18 or older"}
+            return 400, {
+                "message": "A guardian must be 18 or older. Please use a parent or another adult."
+            }
     current = Guardianship.objects.filter(player=player).select_related("user").first()
     if current is not None and existing is not None and current.user_id == existing.pk:
         current.relation = data.relation
         current.save(update_fields=["relation"])
         return 200, _status(player)
+    if not request.user.is_staff and _changes_this_hour(player) > MAX_CHANGES_PER_HOUR:
+        return 429, {"message": "You've changed your guardian several times. Try again in an hour."}
     with transaction.atomic():
         user = resolve_login_user(
             email, first_name=data.first_name, last_name=data.last_name, phone=data.phone
         )
         old = current.user if current is not None else None
         g, _ = Guardianship.objects.update_or_create(
-            player=player, defaults={"user": user, "relation": data.relation}
+            player=player, defaults={"user": user, "relation": data.relation, "link_sent_at": None}
         )
     try:
         emails.send_link(g)
@@ -235,5 +259,11 @@ def resend_guardian_link(request: HttpRequest, player_id: int) -> tuple[int, dic
         return 400, {"message": "A player cannot be their own guardian."}
     if not emails.may_send(g):
         return 429, {"message": emails.TOO_SOON}
-    emails.send_link(g)
+    try:
+        sent = emails.send_link(g)
+    except Exception:
+        logger.exception("Couldn't email the guardian of player %s", player.pk)
+        return 400, {"message": "Couldn't send the email. Try again in a moment."}
+    if not sent:
+        return 400, {"message": "We have no email address for this guardian. Please change them."}
     return 200, {"message": f"Link sent to {g.user.email}"}

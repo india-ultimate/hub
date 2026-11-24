@@ -14,6 +14,7 @@ from razorpay.resources.order import Order
 from razorpay.resources.payment import Payment
 
 from server.core.models import Guardianship, Player, Team, User
+from server.guardians import tokens as guardian_tokens
 from server.registration.models import RosterEntry, RosterSwap
 from server.registration.state import build_context, plays
 from server.series.models import Role, SeriesRegistration, SeriesRosterInvitation
@@ -585,7 +586,7 @@ class TestRemind(ApiCase):
         p = self.minor()
         response = self.remind(p)
         self.assertEqual(200, response.status_code, response.content)
-        self.assertEqual("Reminder sent", response.json()["message"])
+        self.assertEqual("Reminder sent to mum@x.com (guardian)", response.json()["message"])
         self.assertEqual(["mum@x.com"], self.sent[0].to)
         self.assertIn("/guardian/", self.html())
 
@@ -604,9 +605,39 @@ class TestRemind(ApiCase):
             second = self.remind(p)
             self.assertEqual(429, second.status_code)
             self.assertEqual(
-                "A link was sent less than 10 minutes ago. Try again later.",
+                "A reminder was sent less than 10 minutes ago. Try again later.",
                 second.json()["message"],
             )
+
+    def test_remind_keeps_the_link_in_the_inbox_valid(self) -> None:
+        p = self.minor()
+        g = Guardianship.objects.get(player=p)
+        self.remind(p)
+        token = self.sent[0].alternatives[0][0].split("/guardian/")[1].split('"')[0]
+        stamp = Guardianship.objects.get(pk=g.pk).link_sent_at
+        cache.clear()
+        self.remind(p)
+        self.assertEqual(stamp, Guardianship.objects.get(pk=g.pk).link_sent_at)
+        self.assertTrue(guardian_tokens.inspect(token)[1])
+
+    def test_remind_says_so_when_the_guardian_has_no_address(self) -> None:
+        p = self.minor()
+        User.objects.filter(email="mum@x.com").update(email="mum")
+        response = self.remind(p)
+        self.assertEqual(400, response.status_code)
+        self.assertEqual([], self.sent)
+
+    def test_remind_survives_a_failing_email(self) -> None:
+        p = self.minor()
+        with mock.patch("server.guardians.emails.queue_emails", side_effect=RuntimeError):
+            response = self.web.post(f"{self.base}/roster/{p.id}/remind")
+        self.assertEqual(400, response.status_code)
+
+    def test_a_failed_remind_does_not_hold_the_rate_limit(self) -> None:
+        p = self.minor()
+        with mock.patch("server.guardians.emails.queue_emails", side_effect=RuntimeError):
+            self.assertEqual(400, self.web.post(f"{self.base}/roster/{p.id}/remind").status_code)
+        self.assertEqual(200, self.remind(p).status_code)
 
     def test_remind_needs_a_guardian(self) -> None:
         response = self.remind(self.minor(guardian=False))

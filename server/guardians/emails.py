@@ -20,12 +20,18 @@ def may_send(g: Guardianship) -> bool:
     return g.link_sent_at is None or now() - g.link_sent_at > RESEND_AFTER
 
 
-def send_link(g: Guardianship) -> None:
-    """Stamp the row, which retires any earlier link, and email a new one."""
-    g.link_sent_at = now()
-    g.save(update_fields=["link_sent_at"])
+def send_link(g: Guardianship, *, reuse: bool = False) -> bool:
+    """Email a link; False if the guardian has no address to send to.
+
+    A new stamp retires every earlier link. With `reuse`, a stamp whose link
+    is still within MAX_AGE is kept, so the link already in the inbox keeps
+    working.
+    """
     if "@" not in (g.user.email or ""):
-        return
+        return False
+    stale = g.link_sent_at is None or now() - g.link_sent_at > tokens.MAX_AGE
+    if stale or not reuse:
+        g.link_sent_at = now()
     player = g.player
     ward_name = player.user.get_full_name()
     context = {
@@ -44,6 +50,8 @@ def send_link(g: Guardianship) -> None:
     )
     message.attach_alternative(html, "text/html")
     queue_emails([message])
+    g.save(update_fields=["link_sent_at"])
+    return True
 
 
 def send_changed(old: User, g: Guardianship, by: User) -> None:
@@ -70,10 +78,10 @@ def send_changed(old: User, g: Guardianship, by: User) -> None:
     queue_emails([message])
 
 
-def send_waiver_reminder(player: Player, by: User, team_name: str) -> None:
+def send_waiver_reminder(player: Player, by: User, team_name: str) -> bool:
     """Ask a player to sign their own waiver, naming who asked."""
     if "@" not in (player.user.email or ""):
-        return
+        return False
     html = render_to_string(
         "emails/waiver_reminder.html",
         {
@@ -91,3 +99,4 @@ def send_waiver_reminder(player: Player, by: User, team_name: str) -> None:
     )
     message.attach_alternative(html, "text/html")
     queue_emails([message])
+    return True

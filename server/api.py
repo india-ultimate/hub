@@ -988,7 +988,9 @@ def register_guardian(
         existing is not None
         and Player.objects.filter(user=existing, date_of_birth__gt=minor_cutoff()).exists()
     ):
-        return 400, {"message": "A guardian must be 18 or older"}
+        return 400, {
+            "message": "A guardian must be 18 or older. Please use a parent or another adult."
+        }
 
     with transaction.atomic():
         user = resolve_login_user(

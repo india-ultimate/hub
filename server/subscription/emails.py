@@ -62,7 +62,7 @@ def queue_confirmation(subscription: Subscription) -> None:
     g = unsigned_guardianship(subscription)
     if g is not None and may_send(g):
         try:
-            send_link(g)
+            send_link(g, reuse=True)
         except Exception:
             logger.exception("Couldn't email the guardian of player %s", g.player_id)
     if "@" not in (subscription.player.user.email or ""):
