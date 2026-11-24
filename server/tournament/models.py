@@ -353,6 +353,7 @@ class SwissRound(ExportModelOperationsMixin("swiss_round"), models.Model):  # ty
     results = models.JSONField()
     round_results = models.JSONField(default=dict, blank=True)
     byes = models.JSONField(default=dict, blank=True)
+    lots = models.JSONField(default=dict, blank=True)
 
     class Meta:
         unique_together = ["name", "tournament"]

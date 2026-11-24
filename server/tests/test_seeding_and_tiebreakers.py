@@ -3,6 +3,7 @@
 from typing import Any
 
 from server.core.models import Team
+from server.swiss.ranking import rank_teams
 from server.tests.base import ApiBaseTestCase
 from server.tournament.models import Bracket, Match, Pool, PositionPool, SwissRound
 from server.tournament.utils import (
@@ -10,8 +11,8 @@ from server.tournament.utils import (
     build_pool,
     get_new_pool_results,
     recompute_swiss_ranks,
-    sort_swiss_tied_teams,
     sort_tied_teams,
+    swiss_games,
     validate_bracket_name,
 )
 
@@ -388,10 +389,11 @@ class SwissTieBreakRestartTests(ApiBaseTestCase):
             {"id": self.team_a.id, **all_results[self.team_a.id]},
         ]
 
-        result = sort_swiss_tied_teams(tied, all_results, self.swiss_round)
+        tied_ids = {t["id"] for t in tied}
+        order = rank_teams(all_results, swiss_games(self.swiss_round, all_results), {})
 
         self.assertEqual(
-            [t["id"] for t in result],
+            [tid for tid in order if tid in tied_ids],
             [self.team_a.id, self.team_b.id, self.team_c.id],
         )
 

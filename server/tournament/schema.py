@@ -253,7 +253,7 @@ class PoolCreateSchema(Schema):
 class SwissRoundSchema(ModelSchema):
     class Meta:
         model = SwissRound
-        exclude = ["tournament"]
+        exclude = ["tournament", "lots"]
 
 
 class SwissRoundCreateSchema(Schema):

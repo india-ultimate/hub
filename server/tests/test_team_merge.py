@@ -31,6 +31,7 @@ from server.tournament.models import (
     Tournament,
     UCRegistration,
 )
+from server.tournament.utils import _rank_swiss_round
 from server.transaction.models import RazorpayTransaction
 from server.wrapped.models import PlayerWrapped
 
@@ -305,6 +306,38 @@ class TestTournamentsReadTheSame(TeamMergeTestCase):
         bracket = Bracket.objects.get()
         self.assertEqual(bracket.initial_seeding, {"1": k})
         self.assertEqual(bracket.current_seeding, {"1": k})
+
+    def test_swiss_lots_follow_the_kept_team_and_the_draw_is_not_redone(self) -> None:
+        tournament = self.tournament_with(self.rival, self.dup)
+        Tournament.objects.filter(pk=tournament.pk).update(seeded=False)
+        tournament.refresh_from_db()
+        d, r, k = str(self.dup.pk), str(self.rival.pk), str(self.keeper.pk)
+        tied = {"rank": 1, "wins": 0, "losses": 0, "draws": 0, "GF": 0, "GA": 0}
+        # Rival's lot is first, but the kept team has the lower id.
+        SwissRound.objects.create(
+            tournament=tournament,
+            num_rounds=3,
+            initial_seeding={"1": self.dup.pk, "2": self.rival.pk},
+            results={d: tied, r: tied},
+            lots={d: 2, r: 1},
+        )
+        before = dict(tournament.initial_seeding)
+
+        with mock.patch("server.tournament.models.draw_order") as draw:
+            merge_teams(self.keeper, [self.dup])
+
+        draw.assert_not_called()
+        swiss = SwissRound.objects.get()
+        self.assertEqual(swiss.lots, {k: 2, r: 1})
+        self.assertEqual(set(swiss.lots), set(swiss.results))
+        self.assertEqual(
+            _rank_swiss_round(swiss, {int(t): v for t, v in swiss.results.items()}),
+            [self.rival.pk, self.keeper.pk],
+        )
+        tournament.refresh_from_db()
+        expected = {s: (self.keeper.pk if t == self.dup.pk else t) for s, t in before.items()}
+        self.assertEqual(tournament.initial_seeding, expected)
+        self.assertEqual(tournament.current_seeding, expected)
 
     def test_an_id_left_only_in_json_is_rewritten_too(self) -> None:
         # The team was taken off the tournament, but its standings remain.
