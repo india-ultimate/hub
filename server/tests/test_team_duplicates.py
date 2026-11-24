@@ -204,6 +204,13 @@ class TestTellingAdmins(SuggestTestCase):
         self.assertIn(url, html)
         self.assertIn(f"Goose-bumps #{self.copy.pk}", html)
 
+    def test_the_email_says_one_team_is_enough_and_unmerged_copies_may_go(self) -> None:
+        ((user, found),) = waiting()
+        message = build(user, found)
+        for text in (message.body, str(message.alternatives[0][0])):
+            self.assertIn("One team can play every division and format", text)
+            self.assertIn("remove the ones that were never used", text)
+
     def test_nobody_is_told_about_a_pair_staff_are_already_reviewing(self) -> None:
         asked = ServiceRequest.objects.create(
             user=self.admin, type=ServiceRequestType.REQUEST_TEAM_MERGE, message="x"

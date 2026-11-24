@@ -66,3 +66,11 @@ class TestTeamDuplicatesIntegration(BaseCase):
         self.assertTrue(TeamNotDuplicate.objects.filter(team=self.kept, other=self.copy).exists())
         self.open(f"{APP_URL}/dashboard")
         self.assert_element_absent("#duplicate-teams-notice")
+
+    def test_creating_a_team_with_a_taken_name_points_to_it(self) -> None:
+        self.sign_in_as(self.captain)
+        self.open(f"{APP_URL}/teams/new")
+        self.assert_element_absent("#team-name-taken")
+        self.type("#name", "GOOSE-BUMPS")
+        self.assert_text("with this name", "#team-name-taken")
+        self.assert_element(f'#team-name-taken a[href="/team/{self.kept.slug}"]')

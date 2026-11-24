@@ -61,6 +61,14 @@ const DuplicateTeamsNotice = props => {
             )}
           </For>
         </ul>
+        <p class="mt-3">
+          One team can play every division and format: Opens, Mixed, Womens,
+          5v5, beach. Each tournament gets its own roster.
+        </p>
+        <p class="mt-1">
+          Please merge them soon. If the copies are still around later, our
+          staff may merge them or remove the ones that were never used.
+        </p>
       </section>
     </Show>
   );
