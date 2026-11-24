@@ -804,3 +804,98 @@ class TestRightsEndAt18(TestCase):
         self.turn()
         self.assertEqual({paid_by_guardian.transaction_id}, seen())
 
+
+class TestWaiverLink(TestCase):
+    def setUp(self) -> None:
+        self.adult = person("asha@example.com", born=ADULT, first="Asha")
+        self.sub = subscribe(self.adult)
+        self.token = tokens.mint_own(self.adult)
+        self.url = f"/api/guardians/link/{self.token}"
+        self.client = Client(enforce_csrf_checks=False)
+
+    def test_opening_it_says_it_is_for_the_player_and_signs_nobody_in(self) -> None:
+        body = self.client.get(self.url).json()
+        self.assertTrue(body["valid"])
+        self.assertTrue(body["for_self"])
+        self.assertEqual("Asha", body["ward_first_name"])
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_continue_signs_in_and_opens_the_waiver(self) -> None:
+        r = self.client.post(self.url)
+        self.assertEqual({"redirect": f"/waiver/{self.adult.id}"}, r.json())
+        self.assertEqual(str(self.adult.user.pk), self.client.session["_auth_user_id"])
+
+    def test_it_works_once(self) -> None:
+        self.client.post(self.url)
+        self.assertFalse(self.client.get(self.url).json()["valid"])
+        self.assertEqual(410, Client().post(self.url).status_code)
+
+    def test_signing_in_another_way_kills_it(self) -> None:
+        Client().force_login(self.adult.user)
+        self.assertEqual(410, self.client.post(self.url).status_code)
+
+    def test_staff_and_superusers_are_refused(self) -> None:
+        for flag in ("is_staff", "is_superuser"):
+            setattr(self.adult.user, flag, True)
+            self.adult.user.save()
+            self.assertEqual(403, self.client.post(self.url).status_code, flag)
+            setattr(self.adult.user, flag, False)
+            self.adult.user.save()
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_a_minor_is_refused(self) -> None:
+        self.adult.date_of_birth = minor_dob()
+        self.adult.save()
+        self.assertEqual(410, self.client.post(self.url).status_code)
+
+    def test_it_works_while_only_the_code_of_conduct_is_pending(self) -> None:
+        self.sub.waiver_valid = True
+        self.sub.save()
+        r = self.client.post(self.url)
+        self.assertEqual({"redirect": f"/code-of-conduct/{self.adult.id}"}, r.json())
+
+    def test_nothing_pending_ends_it(self) -> None:
+        self.sub.waiver_valid = True
+        self.sub.coc_agreed = True
+        self.sub.save()
+        self.assertEqual(410, self.client.post(self.url).status_code)
+
+    def test_an_inactive_user_sees_it_as_not_valid(self) -> None:
+        self.adult.user.is_active = False
+        self.adult.user.save()
+        self.assertFalse(self.client.get(self.url).json()["valid"])
+
+    def test_forged_is_404(self) -> None:
+        self.assertEqual(404, self.client.get("/api/guardians/link/forged").status_code)
+
+    def test_a_guardian_token_is_not_a_waiver_token(self) -> None:
+        minor = person("kid@example.com", born=minor_dob(), first="Tara")
+        token = tokens.mint(linked(minor, self.adult.user))
+        self.assertEqual((None, False), tokens.inspect_own(token))
+
+    def test_expired_is_410_with_the_sign_in_details(self) -> None:
+        with mock.patch("django.core.signing.time.time", return_value=time.time() + 7 * 86400 + 1):
+            body = self.client.get(self.url).json()
+            r = self.client.post(self.url)
+        self.assertFalse(body["valid"])
+        self.assertEqual(self.adult.id, body["player_id"])
+        self.assertEqual(410, r.status_code)
+
+    def test_the_reminder_email_carries_the_link(self) -> None:
+        by = person("cap@example.com", born=ADULT, first="Dev").user
+        with mock.patch("server.guardians.emails.queue_emails") as queue:
+            emails.send_waiver_reminder(self.adult, by, "Home Team")
+        message = queue.call_args.args[0][0]
+        self.assertEqual(1, message.body.count("/guardian/"))
+        self.assertIn("works once", message.body)
+        self.assertTrue(message.body.startswith("Please sign your waiver"))
+
+    def test_a_staff_player_is_reminded_with_the_plain_link(self) -> None:
+        User.objects.filter(pk=self.adult.user_id).update(is_staff=True)
+        self.adult.user.refresh_from_db()
+        by = person("cap@example.com", born=ADULT, first="Dev").user
+        with mock.patch("server.guardians.emails.queue_emails") as queue:
+            emails.send_waiver_reminder(self.adult, by, "Home Team")
+        message = queue.call_args.args[0][0]
+        self.assertIn(f"/waiver/{self.adult.id}", message.body)
+        self.assertNotIn("/guardian/", message.body)

@@ -140,6 +140,29 @@ class TestGuardiansIntegration(RegistrationPageCase):
         href = self.get_attribute("#guardian-sign-in", "href")
         self.assertTrue(href.endswith(f"/login?redirect=/waiver/{kid.id}"), href)
 
+    def test_an_adult_signs_from_their_waiver_link(self) -> None:
+        p = self.player("Asha", "Rao", entry=False)
+        Subscription.objects.filter(player=p).update(waiver_valid=False)
+        self.set_window_size(390, 844)
+        self.open(DJANGO_URL)  # production serves the page itself, which sets the CSRF cookie
+        self.open(f"{APP_URL}/guardian/{tokens.mint_own(p)}")
+        self.assert_text("Sign your waiver")
+        self.assert_text("Hi Asha, Continue to sign in and sign your waiver.")
+        self.assert_text_not_visible("guardian")
+        self.click("#guardian-continue")
+        self.assert_text("Waiver")
+
+    def test_an_adult_whose_waiver_link_is_used_gets_the_sign_in_option(self) -> None:
+        p = self.player("Asha", "Rao", entry=False)
+        Subscription.objects.filter(player=p).update(waiver_valid=False)
+        token = tokens.mint_own(p)
+        p.user.last_login = timezone.now()
+        p.user.save()
+        self.open(f"{APP_URL}/guardian/{token}")
+        self.assert_text("This link has already been used or has expired")
+        href = self.get_attribute("#guardian-sign-in", "href")
+        self.assertTrue(href.endswith(f"/login?redirect=/waiver/{p.id}"), href)
+
     def test_i_agree_says_which_box_to_tick(self) -> None:
         kid = self.minor_with_guardian()
         self.sign_in_as(Guardianship.objects.get(player=kid).user)

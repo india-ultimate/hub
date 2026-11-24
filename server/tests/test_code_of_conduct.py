@@ -233,9 +233,8 @@ class TestRolloutEmail(TestCase):
         with mock.patch(
             "server.management.commands.send_code_of_conduct_emails.queue_emails",
             side_effect=queue_then_fail,
-        ):
-            with self.assertRaises(RuntimeError):
-                call_command("send_code_of_conduct_emails", stdout=StringIO())
+        ), self.assertRaises(RuntimeError):
+            call_command("send_code_of_conduct_emails", stdout=StringIO())
         self.assertEqual(0, Task.objects.count())
         self.assertIsNone(self.stamp())
 
@@ -268,6 +267,23 @@ class TestRolloutEmail(TestCase):
         token = tokens.mint(self.guardianship)
         self.run_command()
         self.assertTrue(tokens.inspect(token)[1])
+
+    def test_the_adult_gets_a_one_tap_link(self) -> None:
+        season = Season.current()
+        assert season is not None  # noqa: S101
+        message = build_code_of_conduct_request(self.adult, season, self.adult.user)
+        self.assertEqual("Please agree to the code of conduct", message.subject)
+        self.assertIn("/guardian/", html(message))
+        self.assertIn("works once", message.body)
+
+    def test_a_staff_adult_gets_the_plain_link(self) -> None:
+        User.objects.filter(pk=self.adult.user_id).update(is_staff=True)
+        self.adult.user.refresh_from_db()
+        season = Season.current()
+        assert season is not None  # noqa: S101
+        message = build_code_of_conduct_request(self.adult, season, self.adult.user)
+        self.assertIn(f"/code-of-conduct/{self.adult.id}", html(message))
+        self.assertNotIn("/guardian/", html(message))
 
 
 class TestWaiverGuardianMessage(TestCase):

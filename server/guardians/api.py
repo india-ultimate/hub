@@ -32,28 +32,45 @@ class LinkSchema(Schema):
     player_id: int
     signed_in_as_guardian: bool
     signed_in_name: str | None
+    for_self: bool
+    to_sign: str
 
 
 class RedirectSchema(Schema):
     redirect: str
 
 
+def _resolve(token: str) -> tuple[Player, User, bool, bool] | None:
+    """The player, the person the link signs in, whether it still works, and
+    whether that person is the player (an adult's own waiver link)."""
+    g, valid = tokens.inspect(token)
+    if g is not None:
+        return g.player, g.user, valid, False
+    player, valid = tokens.inspect_own(token)
+    if player is not None:
+        return player, player.user, valid, True
+    return None
+
+
 @link_router.get("/link/{token}", auth=None, response={200: LinkSchema, 404: message_response})
 def view_link(request: HttpRequest, token: str) -> tuple[int, dict[str, object]]:
-    g, valid = tokens.inspect(token)
-    if g is None:
+    found = _resolve(token)
+    if found is None:
         return 404, {"message": "This link is not valid."}
+    player, user, valid, for_self = found
     viewer = request.user if request.user.is_authenticated else None
-    as_guardian = viewer is not None and viewer.pk == g.user_id
-    other = viewer if viewer is not None and not as_guardian else None
+    as_user = viewer is not None and viewer.pk == user.pk
+    other = viewer if viewer is not None and not as_user else None
     return 200, {
-        "valid": valid,
-        "ward_first_name": g.player.user.first_name,
-        "guardian_name": g.user.get_full_name() or g.user.first_name,
-        "guardian_email_masked": mask_email(g.user.email),
-        "player_id": g.player_id,
-        "signed_in_as_guardian": as_guardian,
+        "valid": valid and user.is_active,
+        "ward_first_name": player.user.first_name,
+        "guardian_name": user.get_full_name() or user.first_name,
+        "guardian_email_masked": mask_email(user.email),
+        "player_id": player.pk,
+        "signed_in_as_guardian": as_user,
         "signed_in_name": (other.get_full_name() or other.get_username()) if other else None,
+        "for_self": for_self,
+        "to_sign": emails.to_sign(player.current_subscription),
     }
 
 
@@ -68,17 +85,19 @@ def view_link(request: HttpRequest, token: str) -> tuple[int, dict[str, object]]
     },
 )
 def use_link(request: HttpRequest, token: str) -> tuple[int, dict[str, str]]:
-    g, valid = tokens.inspect(token)
-    if g is None:
+    found = _resolve(token)
+    if found is None:
         return 404, {"message": "This link is not valid."}
-    if not valid or not g.user.is_active:
+    player, user, valid, _ = found
+    if not valid or not user.is_active:
         return 410, {"message": "This link has expired, or a newer link was sent."}
-    user: User = g.user
     if user.is_staff or user.is_superuser:
         return 403, {"message": "Please sign in with your email and a code instead."}
     request.user = user
     login(request, user)
-    return 200, {"redirect": f"/waiver/{g.player_id}"}
+    sub = player.current_subscription
+    page = "code-of-conduct" if sub and sub.waiver_valid and not sub.coc_agreed else "waiver"
+    return 200, {"redirect": f"/{page}/{player.pk}"}
 
 
 class GuardianIn(Schema):

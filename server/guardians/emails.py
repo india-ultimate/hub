@@ -138,6 +138,12 @@ def send_waiver_reminder(player: Player, by: User, team_name: str) -> bool:
     link signs them in."""
     if "@" not in (player.user.email or ""):
         return False
+    one_tap = not (player.user.is_staff or player.user.is_superuser)
+    waiver_url = (
+        f"{settings.PUBLIC_URL}/guardian/{tokens.mint_own(player)}"
+        if one_tap
+        else f"{settings.PUBLIC_URL}/waiver/{player.id}"
+    )
     html = render_to_string(
         "emails/waiver_reminder.html",
         {
@@ -145,7 +151,8 @@ def send_waiver_reminder(player: Player, by: User, team_name: str) -> bool:
             "first_name": player.user.first_name or "there",
             "by_name": by.get_full_name() or by.get_username(),
             "team_name": team_name,
-            "waiver_url": f"{settings.PUBLIC_URL}/waiver/{player.id}",
+            "waiver_url": waiver_url,
+            "one_tap": one_tap,
         },
     )
     message = EmailMultiAlternatives(
