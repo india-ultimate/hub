@@ -67,7 +67,12 @@ def build(user: User, found: Found) -> EmailMultiAlternatives:
         if len(teams) == 1
         else f"{len(teams)} of your teams may have been added twice on India Ultimate Hub"
     )
-    context: dict[str, Any] = {"first_name": user.first_name, "teams": teams, "subject": subject}
+    context: dict[str, Any] = {
+        "first_name": user.first_name,
+        "teams": teams,
+        "subject": subject,
+        "site_url": settings.PUBLIC_URL,
+    }
     message = EmailMultiAlternatives(
         subject=subject,
         # Written out, not stripped from the HTML: stripping would drop the links.
